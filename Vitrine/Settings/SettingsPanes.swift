@@ -1,3 +1,4 @@
+import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
@@ -56,15 +57,34 @@ struct StyleSettingsView: View {
             }
 
             Section("Preview") {
-                SnapshotCanvas(config: settings.config)
-                    .scaleEffect(0.4, anchor: .topLeading)
-                    .frame(width: 360, height: 200, alignment: .topLeading)
-                    .clipped()
+                if let image = previewImage {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(maxHeight: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .accessibilityLabel("Live preview")
+                }
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420)
+        .frame(width: 460)
         .padding()
+    }
+
+    /// Config used for the preview — falls back to a sample snippet when the editor
+    /// has no code yet, so the preview is always meaningful.
+    private var previewConfig: SnapshotConfig {
+        var config = settings.config
+        if config.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            config.code = "func greet(_ name: String) {\n    print(\"Hello, \\(name)!\")\n}"
+        }
+        return config
+    }
+
+    private var previewImage: NSImage? {
+        ExportManager.renderNSImage(previewConfig, scale: 2)
     }
 
     private var themeBinding: Binding<String> {
@@ -147,8 +167,9 @@ struct AboutSettingsView: View {
             Link("GitHub", destination: URL(string: "https://github.com/johnny4young/vitrine")!)
             Text("© 2026 johnny4young · MIT").font(.footnote).foregroundStyle(.secondary)
         }
-        .frame(width: 420, height: 280)
-        .padding()
+        .padding(32)
+        .frame(width: 460, height: 320)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var appVersion: String {
