@@ -1,8 +1,9 @@
 import AppKit
 import Highlightr
+import SwiftUI
 
 /// Wraps Highlightr (Highlight.js) to produce a syntax-highlighted
-/// `NSAttributedString` for a snippet (CS-003).
+/// `NSAttributedString` and the theme's own background color (CS-003/006).
 ///
 /// A single shared instance avoids re-creating the (heavy) JS context.
 final class HighlightManager {
@@ -31,5 +32,16 @@ final class HighlightManager {
 
         let languageHint = language == .plaintext ? nil : language.hljsName
         return highlightr.highlight(code, as: languageHint, fastRender: true) ?? fallback
+    }
+
+    /// The code-card background for a theme, taken from the Highlight.js theme
+    /// itself — so a theme is purely a syntax theme, not a hand-picked color (CS-006).
+    func backgroundColor(for theme: Theme) -> Color {
+        guard let highlightr else { return Color(hex: "#1E1E1E") }
+        highlightr.setTheme(to: theme.hlJsTheme)
+        if let nsColor = highlightr.theme.themeBackgroundColor {
+            return Color(nsColor: nsColor)
+        }
+        return Color(hex: "#1E1E1E")
     }
 }

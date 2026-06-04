@@ -24,6 +24,9 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.developer-tools</string>
+	<!-- Register the bundled monospaced fonts at launch (Contents/Resources/Fonts). -->
+	<key>ATSApplicationFontsPath</key>
+	<string>Fonts</string>
 	<!-- Menu-bar agent: no Dock icon, no app-switcher entry (CS-001). -->
 	<key>LSUIElement</key>
 	<true/>

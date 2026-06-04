@@ -60,6 +60,7 @@ final class AppSettings: ObservableObject {
         static let hotkeyAction = "hotkeyAction"
         static let treatURLs = "treatURLsAsScreenshot"
         static let recentLanguages = "recentLanguages"
+        static let fontName = "fontName"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -89,6 +90,7 @@ final class AppSettings: ObservableObject {
         if let value = defaults.object(forKey: Keys.fontSize) as? Double {
             initial.fontSize = value
         }
+        if let value = defaults.string(forKey: Keys.fontName) { initial.fontName = value }
         if let value = defaults.object(forKey: Keys.padding) as? Double { initial.padding = value }
         if let value = defaults.object(forKey: Keys.cornerRadius) as? Double {
             initial.cornerRadius = value
@@ -125,6 +127,7 @@ final class AppSettings: ObservableObject {
     private func persistStyle() {
         defaults.set(config.theme.id, forKey: Keys.themeID)
         defaults.set(config.language.rawValue, forKey: Keys.languageID)
+        defaults.set(config.fontName, forKey: Keys.fontName)
         defaults.set(config.fontSize, forKey: Keys.fontSize)
         defaults.set(config.padding, forKey: Keys.padding)
         defaults.set(config.cornerRadius, forKey: Keys.cornerRadius)

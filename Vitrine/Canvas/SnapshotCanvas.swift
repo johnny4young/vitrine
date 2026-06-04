@@ -29,7 +29,7 @@ struct SnapshotCanvas: View {
         .padding(.horizontal, 26)
         .padding(.vertical, 22)
         .frame(minWidth: 360, alignment: .leading)
-        .background(config.theme.background)
+        .background(HighlightManager.shared.backgroundColor(for: config.theme))
         .clipShape(RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous)

@@ -51,6 +51,12 @@ targets:
         excludes:
           - "Resources/Info.plist"
           - "Resources/Vitrine.entitlements"
+          - "Resources/Fonts"
+      # Folder reference so the fonts land in Contents/Resources/Fonts/, which
+      # ATSApplicationFontsPath ("Fonts") registers at launch.
+      - path: Vitrine/Resources/Fonts
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: Highlightr
       - package: KeyboardShortcuts

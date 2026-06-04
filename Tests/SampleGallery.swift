@@ -135,4 +135,17 @@ struct SampleGalleryTests {
         try data.write(to: url)
         print("CLIPBOARD \(data.count) bytes \(url.path)")
     }
+
+    @Test func fontVariations() {
+        let fonts = [
+            "JetBrains Mono", "Fira Code", "IBM Plex Mono", "Hack", "Geist Mono", "Space Mono",
+        ]
+        for font in fonts {
+            var config = SnapshotConfig()
+            config.code = Self.swiftSample
+            config.fontName = font
+            let safe = font.lowercased().replacingOccurrences(of: " ", with: "-")
+            #expect(write(config, "font-\(safe)"))
+        }
+    }
 }

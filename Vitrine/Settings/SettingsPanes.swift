@@ -39,6 +39,11 @@ struct StyleSettingsView: View {
                         Text(theme.displayName).tag(theme.id)
                     }
                 }
+                Picker("Font", selection: $settings.config.fontName) {
+                    ForEach(CodeFont.all, id: \.self) { font in
+                        Text(font).tag(font)
+                    }
+                }
                 Picker("Background", selection: gradientBinding) {
                     ForEach(GradientPreset.allCases) { preset in
                         Text(preset.rawValue).tag(preset)
