@@ -15,7 +15,7 @@ XCODEBUILD := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcodebuild
 SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build test format lint clean
+.PHONY: all bootstrap project open build test format lint icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -51,6 +51,10 @@ format:
 ## lint: lint Swift sources without modifying them (fails on issues)
 lint:
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine
+
+## icon: regenerate the app icon set (scripts/make-appicon.swift)
+icon:
+	swift scripts/make-appicon.swift
 
 ## clean: remove the generated project and build artifacts
 clean:
