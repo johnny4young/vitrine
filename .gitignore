@@ -47,6 +47,11 @@ Vitrine.xcodeproj/
 Icon
 
 # ---------------------------------------------------------------------------
+# Working docs (kept local — detailed implementation spec, not tracked)
+# ---------------------------------------------------------------------------
+docs/ROADMAP.md
+
+# ---------------------------------------------------------------------------
 # Claude Code
 # ---------------------------------------------------------------------------
 # Shared project config (.claude/settings.json) IS committed; machine-local

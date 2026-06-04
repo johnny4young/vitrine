@@ -67,12 +67,33 @@ targets:
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_PREVIEWS: YES
 
+  VitrineTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Tests
+    dependencies:
+      - target: Vitrine
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.vitrine.VitrineTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Vitrine.app/Contents/MacOS/Vitrine"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
 schemes:
   Vitrine:
     build:
       targets:
         Vitrine: all
+        VitrineTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - VitrineTests
     profile:
       config: Release

@@ -15,7 +15,7 @@ XCODEBUILD := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcodebuild
 SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build format lint clean
+.PHONY: all bootstrap project open build test format lint clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -38,6 +38,11 @@ open: project
 build: project
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
+
+## test: run the unit test suite (Swift Testing)
+test: project
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+		-destination 'platform=macOS' test
 
 ## format: format Swift sources in place (Apple swift-format)
 format:
