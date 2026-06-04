@@ -95,4 +95,20 @@ struct ExportManagerTests {
         let large = try #require(ExportManager.renderCGImage(config, scale: 3))
         #expect(large.width > small.width)
     }
+
+    @Test func rendersNSImageForSharing() throws {
+        var config = SnapshotConfig()
+        config.code = "let x = 1"
+        let image = try #require(ExportManager.renderNSImage(config, scale: 2))
+        #expect(image.size.width > 0)
+        #expect(image.size.height > 0)
+    }
+
+    @Test func rendersPDFData() throws {
+        var config = SnapshotConfig()
+        config.code = "let x = 1"
+        let pdf = try #require(ExportManager.pdfData(config))
+        // PDF magic number: "%PDF".
+        #expect(Array(pdf.prefix(4)) == [0x25, 0x50, 0x44, 0x46])
+    }
 }
