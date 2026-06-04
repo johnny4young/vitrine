@@ -99,6 +99,10 @@ Or step by step:
 make project    # xcodegen generate  → Vitrine.xcodeproj
 make open       # open Vitrine.xcodeproj in Xcode
 make build      # headless xcodebuild (Debug)
+make test       # run the Swift Testing suite
+make format     # swift-format in place
+make lint       # swift-format lint (CI gate)
+make icon       # regenerate the app icon set
 ```
 
 Then hit **▶︎ Run** in Xcode. Vitrine appears in the menu bar (📸). There is no Dock
@@ -134,15 +138,20 @@ to leave the repo:
 
 - [**docs/PROJECT.md**](docs/PROJECT.md) — vision, positioning, naming, distribution, risks.
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
-- [**docs/ROADMAP.md**](docs/ROADMAP.md) — phased plan and tickets (CS-001 … CS-012) + backlog.
 - [**docs/RENDER-PHASES.md**](docs/RENDER-PHASES.md) — "beyond code": OG cards, HTML/URL snapshots, and the optional web render service.
+- [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized DMG, Homebrew cask, release workflow.
+
+> The detailed implementation spec (`docs/ROADMAP.md`, ticket-by-ticket acceptance
+> criteria) is kept as a local working document and is intentionally git-ignored.
 
 ## Status
 
-🚧 **Work in progress — v0.1.** The scaffold (CS-001) is in place: menu-bar app,
-`LSUIElement`, menu with submenus, the three SwiftUI packages wired, and the module
-skeleton from the spec. Implementation of the editor, canvas, and export pipeline is
-tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
+🟢 **v0.1 feature-complete.** Menu-bar app (`LSUIElement`) with global hotkey, the
+live-highlight editor, WYSIWYG canvas, PNG/PDF export to clipboard/file, the macOS
+share sheet, Recents history, a five-pane Settings window, launch-at-login, a privacy
+manifest, a reproducible app icon, and a tagged-release pipeline (DMG + Homebrew cask).
+Covered by a Swift Testing suite (`make test`) and CI (lint + build + test). The URL→
+screenshot path and OG cards are deliberately deferred (see RENDER-PHASES, "Phase B").
 
 ## Contributing
 
