@@ -19,6 +19,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 handleHotkey()
             }
         }
+
+        handleLaunchArguments()
+    }
+
+    /// Development launch hooks: `--demo` preloads sample code, `--open-editor` /
+    /// `--open-settings` open a window on launch (handy for manual UI testing).
+    private func handleLaunchArguments() {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--demo") {
+            AppSettings.shared.config.code = """
+                import SwiftUI
+
+                struct CounterView: View {
+                    @State private var count = 0
+
+                    var body: some View {
+                        Button("Tapped \\(count) times") {
+                            count += 1
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                """
+        }
+        if arguments.contains("--open-editor") { EditorWindowController.shared.show() }
+        if arguments.contains("--open-settings") { SettingsWindowManager.shared.show() }
     }
 
     private func handleHotkey() {
