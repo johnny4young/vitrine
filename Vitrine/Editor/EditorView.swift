@@ -40,6 +40,7 @@ struct EditorView: View {
             }
             .labelsHidden()
             .frame(maxWidth: 200)
+            .accessibilityLabel("Language")
             Spacer()
         }
         .padding(8)
@@ -55,6 +56,7 @@ struct EditorView: View {
                 Label("Copy", systemImage: "doc.on.clipboard")
             }
             .help("Render and copy the image to the clipboard")
+            .accessibilityLabel("Copy image to clipboard")
 
             Button {
                 ExportManager.saveToFile(
@@ -64,11 +66,13 @@ struct EditorView: View {
                 Label("Save…", systemImage: "square.and.arrow.down")
             }
             .help("Render and save the image as a file")
+            .accessibilityLabel("Save image to a file")
 
             Button(action: share) {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
             .help("Share the rendered image")
+            .accessibilityLabel("Share image")
         }
     }
 
