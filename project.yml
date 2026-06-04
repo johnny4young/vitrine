@@ -88,6 +88,24 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Vitrine.app/Contents/MacOS/Vitrine"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  VitrineUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Vitrine
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.vitrine.VitrineUITests
+        # XCTestCase's Objective-C lifecycle is nonisolated; keep this target
+        # nonisolated and mark XCUIAutomation test methods as @MainActor.
+        ENABLE_HARDENED_RUNTIME: NO
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        TEST_TARGET_NAME: Vitrine
+
 schemes:
   Vitrine:
     build:
@@ -103,3 +121,13 @@ schemes:
         - VitrineTests
     profile:
       config: Release
+
+  VitrineUITests:
+    build:
+      targets:
+        Vitrine: all
+        VitrineUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - VitrineUITests

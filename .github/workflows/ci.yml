@@ -33,5 +33,8 @@ jobs:
       - name: Build (Debug)
         run: make build
 
+      - name: Build UI tests
+        run: make build-ui-tests
+
       - name: Test (Swift Testing)
         run: make test

@@ -28,10 +28,11 @@ menu with submenus** (not just a popover):
 ```
 
 - **Primary action — "New capture from clipboard"** (quick mode): reads `NSPasteboard`,
-  **detects code vs URL** (code → highlight; URL → screenshot), detects the language,
-  renders with **your saved settings**, and leaves the result on the clipboard
-  (**auto-copy configurable**) or saves it — **without opening any UI**. The lowest-
-  friction path.
+  detects code vs URL, detects the language for code, renders code with **your saved
+  settings**, and leaves the result on the clipboard (**auto-copy configurable**) or
+  saves it — **without opening any UI**. URL input is detected and deferred until
+  Product Phase 2, when it will render locally with `WKWebView`. This is the
+  lowest-friction path without compromising the Phase 1 no-network promise.
 - **"Open editor…"** opens the window with live preview and controls (theme, padding,
   font, background) to tweak before exporting.
 - **"Recents" submenu** lists the last captures; choosing one reopens it in the editor.
@@ -61,7 +62,7 @@ NSStatusItem (menu bar) → quick mode or editor
     ↓
 CaptureEngine → NSPasteboard.general.string(forType: .string)
     ↓
-RenderEngine
+RenderEngine (Product Phase 1: code; Product Phase 2: URL/HTML/social cards)
   ├── SyntaxHighlighter (Highlightr — 160+ languages via Highlight.js)
   ├── ThemeManager (@AppStorage — theme persists across sessions)
   ├── BackgroundRenderer (gradients, solid, transparent)
@@ -124,7 +125,7 @@ Vitrine/
 │   ├── ExportManager.swift    # PNG, PDF, clipboard
 │   └── ShareManager.swift     # NSSharingService
 ├── Settings/
-│   ├── AppSettings.swift      # @AppStorage-backed settings store
+│   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)
 │   ├── SettingsWindow.swift   # preferences window (Settings package)
 │   └── ThemeManager.swift     # predefined themes
 ├── Models/
@@ -132,6 +133,8 @@ Vitrine/
 │   ├── Language.swift
 │   ├── SnapshotConfig.swift
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
+├── Support/
+│   └── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
 └── Resources/
     ├── Assets.xcassets
     ├── Info.plist
@@ -189,5 +192,7 @@ struct Theme: Identifiable, Hashable {
 - **Native components:** SwiftUI/AppKit Picker, Slider, Toggle — they look native because they are.
 - **Preview first:** the canvas takes ~60% of the editor. **WYSIWYG:** what you see is exactly what you export.
 - **Dark mode by default:** One Dark as the initial theme.
-- **No onboarding:** the app is simple enough to need no tutorial. Empty state: "Paste or type code…".
+- **Lightweight onboarding only:** first launch can teach the hotkey, local-only privacy
+  posture, and a sample capture, but it must stay skippable and compact. Empty state:
+  "Paste or type code…".
 - **Perceived speed:** highlight with a debounce of ≤100ms; `Copy` < 300ms.

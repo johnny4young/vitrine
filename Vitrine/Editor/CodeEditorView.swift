@@ -27,6 +27,9 @@ struct CodeEditorView: NSViewRepresentable {
         textView.backgroundColor = .textBackgroundColor
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.string = text
+        textView.setAccessibilityIdentifier("code-editor-text-view")
+        textView.setAccessibilityLabel("Code editor")
+        scrollView.setAccessibilityIdentifier("code-editor-scroll-view")
 
         context.coordinator.configure(textView)
         context.coordinator.applyHighlight(to: textView)

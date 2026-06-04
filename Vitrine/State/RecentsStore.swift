@@ -4,7 +4,7 @@ import Foundation
 /// Persists the last `limit` captures (CS-013): newest first, capped, and
 /// de-duplicated by code. `UserDefaults` is injectable so it can be unit-tested.
 final class RecentsStore: ObservableObject {
-    static let shared = RecentsStore()
+    static let shared = RecentsStore(defaults: AppDefaults.current)
     static let limit = 10
 
     @Published private(set) var captures: [Capture]

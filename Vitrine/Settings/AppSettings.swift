@@ -4,7 +4,7 @@ import SwiftUI
 /// UI, the quick-capture path, and the exporter (CS-010). `UserDefaults` is
 /// injectable so persistence can be unit-tested.
 final class AppSettings: ObservableObject {
-    static let shared = AppSettings()
+    static let shared = AppSettings(defaults: AppDefaults.current)
 
     /// The current snapshot configuration (theme, font, padding, …).
     @Published var config: SnapshotConfig { didSet { persistStyle() } }
@@ -32,7 +32,7 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(hotkeyAction.rawValue, forKey: Keys.hotkeyAction) }
     }
 
-    /// Treat clipboard URLs as a screenshot target (CS-010 · Input). Phase B.
+    /// Treat clipboard URLs as a screenshot target (CS-010 · Input). Product Phase 2.
     @Published var treatURLsAsScreenshot: Bool {
         didSet { defaults.set(treatURLsAsScreenshot, forKey: Keys.treatURLs) }
     }

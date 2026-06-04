@@ -29,6 +29,7 @@ struct EditorView: View {
         }
         .frame(minWidth: 820, minHeight: 480)
         .toolbar { toolbar }
+        .accessibilityIdentifier("editor-root")
     }
 
     private var header: some View {
@@ -41,6 +42,7 @@ struct EditorView: View {
             .labelsHidden()
             .frame(maxWidth: 200)
             .accessibilityLabel("Language")
+            .accessibilityIdentifier("language-picker")
             Spacer()
         }
         .padding(8)
@@ -57,6 +59,7 @@ struct EditorView: View {
             }
             .help("Render and copy the image to the clipboard")
             .accessibilityLabel("Copy image to clipboard")
+            .accessibilityIdentifier("copy-button")
 
             Button {
                 ExportManager.saveToFile(
@@ -67,12 +70,14 @@ struct EditorView: View {
             }
             .help("Render and save the image as a file")
             .accessibilityLabel("Save image to a file")
+            .accessibilityIdentifier("save-button")
 
             Button(action: share) {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
             .help("Share the rendered image")
             .accessibilityLabel("Share image")
+            .accessibilityIdentifier("share-button")
         }
     }
 

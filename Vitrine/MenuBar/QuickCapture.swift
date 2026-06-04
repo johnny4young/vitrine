@@ -8,7 +8,7 @@ enum QuickCapture {
     enum Outcome: Equatable {
         case copied  // rendered and copied to the clipboard
         case rendered  // rendered but auto-copy is off
-        case url(String)  // a URL was detected and URL→screenshot is enabled (Phase B)
+        case url(String)  // a URL was detected and URL→screenshot is enabled (Product Phase 2)
         case empty  // clipboard had no usable text
     }
 
@@ -22,9 +22,9 @@ enum QuickCapture {
             !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return .empty }
 
-        // URL → screenshot is Phase B; only branch off when the user opted in.
+        // URL → screenshot is Product Phase 2; only branch off when the user opted in.
         if settings.treatURLsAsScreenshot, LanguageDetector.isURL(text) {
-            // TODO: Phase B — WKWebView snapshot of the URL.
+            // TODO: CS-043 — WKWebView snapshot of the URL.
             return .url(text)
         }
 

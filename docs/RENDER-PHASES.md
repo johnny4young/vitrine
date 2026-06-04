@@ -25,7 +25,7 @@ even **HTML / URL snapshots** is natural and **100% Apple-native, serverless**.
 
 ## Options (Apple first, web as fallback)
 
-**A · Apple-native, local — RECOMMENDED for the core and v1–v2.** Everything the app
+**A · Apple-native, local — RECOMMENDED for the core and Product Phase 2.** Everything the app
 needs is done in Swift, locally, with no infra: code images, OG/social cards (same
 `ImageRenderer` pipeline) and even HTML/URL snapshots via `WKWebView`. Fits OSS +
 unmonetized + Apple ecosystem perfectly. *Caveat:* offscreen rendering with
@@ -42,17 +42,17 @@ is actually needed.** The only thing that justifies leaving Apple-native: exposi
 render as an **HTTP API for other stacks**, **public-URL sharing**, or non-Apple
 consumers. Satori (HTML/CSS subset → SVG → PNG, no browser) for OG/templates;
 Playwright for arbitrary screenshots. Inherits all of the ShotAPI research (SSRF
-guard, cache key, R2/CDN) — now as **Phase C of Vitrine**, not a separate project.
+guard, cache key, R2/CDN) — now as **Product Phase 3 of Vitrine**, not a separate project.
 
 **Recommendation:** stay Apple-native (A) for the core and most of OG/screenshots;
 keep the web (C) as a well-bounded optional phase, never a dependency of the core.
 
 ---
 
-## Reference — web render stack (Phase C, optional)
+## Reference — web render stack (Product Phase 3, optional)
 
 > Inherited from the former **"ShotAPI — Screenshot & OG Images"** project (research
-> 2026-04-24). No longer a separate project: this is reference material for **Phase C**
+> 2026-04-24). No longer a separate project: this is reference material for **Product Phase 3**
 > of Vitrine, if a web surface is ever built (programmatic API or public-URL sharing).
 > The Apple-native core **does not depend** on any of this.
 

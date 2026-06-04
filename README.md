@@ -39,13 +39,14 @@ Works **offline**, **100% local**, no account, no server. MIT-licensed.
 
 ## The flow you'll actually use
 
-1. **Copy** what you want to share — a snippet of code, or a URL.
+1. **Copy** what you want to share — a snippet of code today, and URLs in Product Phase 2.
 2. **Trigger Vitrine** — global hotkey (`⌘⇧S`) or the menu-bar icon.
 3. **Vitrine detects the content type** and picks the renderer:
    - **Code** → format + syntax highlight → a beautiful image, using the theme and
      style you preset in **Settings** (no questions asked).
-   - **URL** → screenshot the page (`WKWebView`, see [Phase B](docs/RENDER-PHASES.md)).
-4. **The result lands on your clipboard**, ready to paste anywhere — or save to a file.
+   - **URL** → detected today and deliberately deferred; Product Phase 2 will snapshot
+     the page locally with `WKWebView` (see [Product Phase 2](docs/RENDER-PHASES.md)).
+4. **The code screenshot lands on your clipboard**, ready to paste anywhere — or save to a file.
 
 Two modes, one engine:
 
@@ -100,6 +101,8 @@ make project    # xcodegen generate  → Vitrine.xcodeproj
 make open       # open Vitrine.xcodeproj in Xcode
 make build      # headless xcodebuild (Debug)
 make test       # run the Swift Testing suite
+make build-ui-tests # compile UI tests without automation permission
+make test-ui    # run UI smoke tests (requires local XCTest automation permission)
 make format     # swift-format in place
 make lint       # swift-format lint (CI gate)
 make icon       # regenerate the app icon set
@@ -150,8 +153,11 @@ to leave the repo:
 live-highlight editor, WYSIWYG canvas, PNG/PDF export to clipboard/file, the macOS
 share sheet, Recents history, a five-pane Settings window, launch-at-login, a privacy
 manifest, a reproducible app icon, and a tagged-release pipeline (DMG + Homebrew cask).
-Covered by a Swift Testing suite (`make test`) and CI (lint + build + test). The URL→
-screenshot path and OG cards are deliberately deferred (see RENDER-PHASES, "Phase B").
+Covered by a Swift Testing unit suite plus XCTest UI smoke tests. CI runs lint, build,
+the UI-test build, and the unit tests; `make test-ui` runs locally (it needs XCTest
+automation permission that GitHub-hosted runners don't grant).
+The URL→screenshot path and OG cards are deliberately deferred (see RENDER-PHASES,
+"Product Phase 2").
 
 ## Contributing
 

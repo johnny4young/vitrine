@@ -18,6 +18,7 @@ struct GeneralSettingsView: View {
             }
 
             Toggle("Launch at login", isOn: $launchAtLogin)
+                .accessibilityIdentifier("launch-at-login-toggle")
                 .onChange(of: launchAtLogin) { _, newValue in
                     LaunchAtLogin.setEnabled(newValue)
                 }
@@ -25,6 +26,7 @@ struct GeneralSettingsView: View {
         .formStyle(.grouped)
         .frame(width: 420)
         .padding()
+        .accessibilityIdentifier("settings-general-pane")
     }
 }
 
@@ -65,12 +67,14 @@ struct StyleSettingsView: View {
                         .frame(maxHeight: 300)
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .accessibilityLabel("Live preview")
+                        .accessibilityIdentifier("settings-style-preview")
                 }
             }
         }
         .formStyle(.grouped)
         .frame(width: 460)
         .padding()
+        .accessibilityIdentifier("settings-style-pane")
     }
 
     /// Config used for the preview — falls back to a sample snippet when the editor
@@ -129,6 +133,7 @@ struct OutputSettingsView: View {
         .formStyle(.grouped)
         .frame(width: 420)
         .padding()
+        .accessibilityIdentifier("settings-output-pane")
     }
 }
 
@@ -141,7 +146,7 @@ struct InputSettingsView: View {
             Toggle(
                 "Treat copied URLs as a screenshot target", isOn: $settings.treatURLsAsScreenshot)
             Text(
-                "When off, a copied URL is rendered as text. URL screenshots arrive in a later release (Phase B)."
+                "When off, a copied URL is rendered as text. URL screenshots arrive in Product Phase 2."
             )
             .font(.footnote)
             .foregroundStyle(.secondary)
@@ -149,6 +154,7 @@ struct InputSettingsView: View {
         .formStyle(.grouped)
         .frame(width: 420)
         .padding()
+        .accessibilityIdentifier("settings-input-pane")
     }
 }
 
@@ -170,6 +176,7 @@ struct AboutSettingsView: View {
         .padding(32)
         .frame(width: 460, height: 320)
         .background(Color(nsColor: .windowBackgroundColor))
+        .accessibilityIdentifier("settings-about-pane")
     }
 
     private var appVersion: String {

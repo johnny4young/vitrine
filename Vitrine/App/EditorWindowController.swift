@@ -20,6 +20,7 @@ final class EditorWindowController {
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             window.setContentSize(NSSize(width: 900, height: 560))
             window.isReleasedWhenClosed = false
+            window.setAccessibilityIdentifier("editor-window")
             window.center()
             self.window = window
         }

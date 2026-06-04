@@ -5,6 +5,7 @@
 
 PROJECT  := Vitrine.xcodeproj
 SCHEME   := Vitrine
+UI_SCHEME := VitrineUITests
 XCODEGEN := xcodegen
 
 # Use full Xcode for xcodebuild even when `xcode-select` points at the Command
@@ -15,7 +16,7 @@ XCODEBUILD := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcodebuild
 SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build test format lint icon clean
+.PHONY: all bootstrap project open build test build-ui-tests test-ui format lint icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -44,13 +45,23 @@ test: project
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' test
 
+## build-ui-tests: compile UI tests without requiring local automation permission
+build-ui-tests: project
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(UI_SCHEME) -configuration Debug \
+		-destination 'platform=macOS' build-for-testing
+
+## test-ui: run the UI smoke tests (XCTest/XCUIAutomation)
+test-ui: project
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(UI_SCHEME) -configuration Debug \
+		-destination 'platform=macOS' test
+
 ## format: format Swift sources in place (Apple swift-format)
 format:
-	$(SWIFTFORMAT) format --in-place --recursive Vitrine
+	$(SWIFTFORMAT) format --in-place --recursive Vitrine Tests UITests
 
 ## lint: lint Swift sources without modifying them (fails on issues)
 lint:
-	$(SWIFTFORMAT) lint --strict --recursive Vitrine
+	$(SWIFTFORMAT) lint --strict --recursive Vitrine Tests UITests
 
 ## icon: regenerate the app icon set (scripts/make-appicon.swift)
 icon:
