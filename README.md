@@ -59,7 +59,7 @@ Two modes, one engine:
 - ⌨️ Configurable **global hotkey** (`⌘⇧S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
 - 🎨 Themes (One Dark, GitHub, Night Owl, Dracula, Monokai, Solarized), gradients, window chrome, padding, fonts.
-- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet.
+- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
 - ⚙️ **Settings** with live preview, powered by [Settings](https://github.com/sindresorhus/Settings).
 - 🔒 Sandboxed, no network by default — your code **never leaves your Mac**.
 

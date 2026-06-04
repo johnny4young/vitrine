@@ -33,7 +33,7 @@ final class SettingsWindowManager {
         let pane = Settings.Pane(
             identifier: .general, title: "General", toolbarIcon: icon("gearshape", "General")
         ) {
-            GeneralSettingsView(settings: .shared)
+            GeneralSettingsView(settings: .shared, presets: .shared)
         }
         return Settings.PaneHostingController(pane: pane)
     }
@@ -42,7 +42,7 @@ final class SettingsWindowManager {
         let pane = Settings.Pane(
             identifier: .style, title: "Style", toolbarIcon: icon("paintpalette", "Style")
         ) {
-            StyleSettingsView(settings: .shared)
+            StyleSettingsView(settings: .shared, presets: .shared, themes: .shared)
         }
         return Settings.PaneHostingController(pane: pane)
     }
@@ -70,7 +70,7 @@ final class SettingsWindowManager {
         let pane = Settings.Pane(
             identifier: .about, title: "About", toolbarIcon: icon("info.circle", "About")
         ) {
-            AboutSettingsView()
+            AboutSettingsView(settings: .shared)
         }
         return Settings.PaneHostingController(pane: pane)
     }

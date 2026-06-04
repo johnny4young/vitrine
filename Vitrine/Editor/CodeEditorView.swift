@@ -9,6 +9,7 @@ struct CodeEditorView: NSViewRepresentable {
     var theme: Theme
     var fontName: String
     var fontSize: Double
+    var fontLigatures: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -61,20 +62,23 @@ struct CodeEditorView: NSViewRepresentable {
         private var appliedThemeID: String?
         private var appliedFontName: String?
         private var appliedFontSize: Double?
+        private var appliedFontLigatures: Bool?
 
         init(_ parent: CodeEditorView) { self.parent = parent }
 
         private var font: NSFont {
-            NSFont(name: parent.fontName, size: parent.fontSize)
-                ?? .monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
+            CodeFont.resolved(
+                family: parent.fontName, size: parent.fontSize, ligatures: parent.fontLigatures)
         }
 
-        /// True when the style (language/theme/font) differs from what was last applied.
+        /// True when the style (language/theme/font, including ligatures) differs
+        /// from what was last applied.
         var styleChanged: Bool {
             appliedLanguage != parent.language
                 || appliedThemeID != parent.theme.id
                 || appliedFontName != parent.fontName
                 || appliedFontSize != parent.fontSize
+                || appliedFontLigatures != parent.fontLigatures
         }
 
         /// Applies the monospaced font and 4-space tab stops.
@@ -110,6 +114,7 @@ struct CodeEditorView: NSViewRepresentable {
             appliedThemeID = parent.theme.id
             appliedFontName = parent.fontName
             appliedFontSize = parent.fontSize
+            appliedFontLigatures = parent.fontLigatures
         }
 
         func textDidChange(_ notification: Notification) {

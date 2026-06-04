@@ -11,7 +11,7 @@ struct VitrineApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("Vitrine", systemImage: "camera.viewfinder") {
+        MenuBarExtra("Vitrine", systemImage: Brand.symbolName) {
             MenuBarContent()
                 .environmentObject(AppSettings.shared)
                 .environmentObject(RecentsStore.shared)

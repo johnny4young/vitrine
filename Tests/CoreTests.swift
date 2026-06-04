@@ -11,12 +11,21 @@ struct ModelTests {
         #expect(Language.cpp.hljsName == "cpp")
         #expect(Language.csharp.displayName == "C#")
         #expect(Language.swift.id == "swift")
+        // The CS-052 breadth additions, including the alias-backed ids.
+        #expect(Language.objectivec.displayName == "Objective-C")
+        #expect(Language.toml.hljsName == "ini")
+        #expect(Language.html.hljsName == "xml")
+        #expect(Language.allCases.contains(.graphql))
     }
 
     @Test func themeLookupFallsBackToOneDark() {
-        #expect(Theme.all.count == 6)
+        // The curated built-in set (CS-052): a coherent spread of dark and light
+        // themes, each a verified Highlight.js stylesheet.
+        #expect(Theme.all.count == 13)
         #expect(Theme.theme(withID: "dracula").id == "dracula")
         #expect(Theme.theme(withID: "does-not-exist").id == Theme.oneDark.id)
+        // Identifiers are unique so the picker and persistence never collide.
+        #expect(Set(Theme.all.map(\.id)).count == Theme.all.count)
     }
 
     @Test func snapshotConfigDefaults() {
@@ -44,12 +53,25 @@ struct ColorHexTests {
         #expect(abs(ns.blueComponent - 0.251) < 0.02)
     }
 
-    @Test func malformedHexFallsBackToBlack() throws {
-        let ns = try #require(NSColor(Color(hex: "nonsense")).usingColorSpace(.sRGB))
-        #expect(ns.redComponent == 0)
-        #expect(ns.greenComponent == 0)
-        #expect(ns.blueComponent == 0)
+    @Test func parsesThreeDigitShorthand() throws {
+        // "#F80" expands to "#FF8800".
+        let ns = try #require(NSColor(Color(hex: "#F80")).usingColorSpace(.sRGB))
+        #expect(abs(ns.redComponent - 1.0) < 0.01)
+        #expect(abs(ns.greenComponent - 0.533) < 0.02)
+        #expect(abs(ns.blueComponent - 0.0) < 0.01)
     }
+
+    @Test func parsesEightDigitHexWithAlpha() throws {
+        // Half-transparent red.
+        let ns = try #require(NSColor(Color(hex: "#FF000080")).usingColorSpace(.sRGB))
+        #expect(abs(ns.redComponent - 1.0) < 0.01)
+        #expect(abs(ns.alphaComponent - 0.502) < 0.02)
+    }
+
+    // Note: malformed input (non-hex characters or an unsupported length) now
+    // trips an `assertionFailure` in DEBUG to surface palette typos immediately,
+    // so it cannot be exercised here without trapping the test process. The
+    // graceful opaque-black fallback remains in release builds.
 }
 
 @Suite("LanguageDetector")

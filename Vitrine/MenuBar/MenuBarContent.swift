@@ -31,7 +31,7 @@ struct MenuBarContent: View {
 
         Button("About Vitrine") {
             NSApp.activate(ignoringOtherApps: true)
-            NSApp.orderFrontStandardAboutPanel(nil)
+            NSApp.orderFrontStandardAboutPanel(options: [.credits: Self.aboutCredits])
         }
 
         Divider()
@@ -70,6 +70,26 @@ struct MenuBarContent: View {
                 }
             }
         }
+    }
+
+    /// Branded credits for the standard About panel, so the system "About
+    /// Vitrine" surface echoes the Settings About pane's identity copy instead
+    /// of drifting to bare system text (CS-036). The panel supplies the app
+    /// icon, name, and version; these credits add the matching tagline and
+    /// license line.
+    private static var aboutCredits: NSAttributedString {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineSpacing = 2
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+            .foregroundColor: NSColor(Brand.Palette.textSecondary.color),
+            .paragraphStyle: paragraph,
+        ]
+        return NSAttributedString(
+            string:
+                "Turn code into beautiful images, from your menu bar.\n© 2026 johnny4young · MIT",
+            attributes: attributes)
     }
 
     /// Loads a recent capture into the editor and shows it.

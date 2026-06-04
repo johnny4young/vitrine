@@ -8,46 +8,39 @@ struct SnapshotConfig: Equatable {
     var theme: Theme = .oneDark
     var fontName: String = "JetBrains Mono"
     var fontSize: Double = 14
+
+    /// Render programming ligatures (e.g. `->`, `=>`, `!=`) for ligature-capable
+    /// fonts such as Fira Code or JetBrains Mono (CS-052). Off by default so the
+    /// signature look shows discrete glyphs; flipping it on is purely a glyph-level
+    /// change and never reflows the code.
+    var fontLigatures: Bool = false
     var padding: Double = 32
-    var background: BackgroundStyle = .gradient(.ocean)
+    var background: BackgroundStyle = .gradient(.aurora)
     var showChrome: Bool = true
     var showShadow: Bool = true
-    var cornerRadius: Double = 8
-    var shadowRadius: Double = 20
+    var cornerRadius: Double = Brand.Radius.card
+    var shadowRadius: Double = Brand.Shadow.elevated.radius
+
+    /// Draw a line-number gutter beside the code, in both preview and export
+    /// (CS-021). Off by default so the signature look is unchanged.
+    var showLineNumbers: Bool = false
+
+    /// Selected 1-based, inclusive line ranges to highlight, e.g. `[3...3, 7...9]`
+    /// (CS-021). Empty by default (no highlight). Kept normalized (sorted, merged)
+    /// by the settings control via `LineHighlight`, but the renderer tolerates any
+    /// ordering.
+    var highlightedLineRanges: [ClosedRange<Int>] = []
+
+    /// Optional header context — filename, title, caption, and a language badge
+    /// (CS-022). Empty by default, so the header is omitted and the signature look
+    /// is unchanged until the user adds context.
+    var metadata = SnapshotMetadata()
 
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
-}
 
-/// The canvas background style.
-enum BackgroundStyle: Equatable, Hashable {
-    case solid(Color)
-    case gradient(GradientPreset)
-    case transparent
-}
-
-/// Built-in gradient presets used as canvas backgrounds.
-enum GradientPreset: String, CaseIterable, Identifiable {
-    case ocean = "Ocean"
-    case sunset = "Sunset"
-    case forest = "Forest"
-    case night = "Night"
-    case carbon = "Carbon"
-
-    var id: String { rawValue }
-
-    /// Stop colors, top-leading → bottom-trailing.
-    var colors: [Color] {
-        switch self {
-        case .ocean: [Color(hex: "#2E3192"), Color(hex: "#1BFFFF")]
-        case .sunset: [Color(hex: "#FF512F"), Color(hex: "#F09819")]
-        case .forest: [Color(hex: "#11998E"), Color(hex: "#38EF7D")]
-        case .night: [Color(hex: "#0F2027"), Color(hex: "#2C5364")]
-        case .carbon: [Color(hex: "#1F1C2C"), Color(hex: "#928DAB")]
-        }
-    }
-
-    var gradient: LinearGradient {
-        LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
-    }
+    /// Whether the row-by-row code layout (gutter and/or highlight bands) is
+    /// active. When neither feature is on, the canvas keeps drawing the code as a
+    /// single `Text`, so the default render is byte-for-byte unchanged (CS-021).
+    var usesLineRows: Bool { showLineNumbers || !highlightedLineRanges.isEmpty }
 }

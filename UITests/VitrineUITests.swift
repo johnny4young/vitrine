@@ -10,9 +10,40 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
         assertExists(element("language-picker", in: app), in: app)
+        assertExists(element("destination-preset-picker", in: app), in: app)
         assertExists(element("copy-button", in: app), in: app)
         assertExists(element("save-button", in: app), in: app)
         assertExists(element("share-button", in: app), in: app)
+    }
+
+    @MainActor
+    func testStylePaneShowsDestinationPresetPicker() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-settings"])
+        defer { app.terminate() }
+
+        // The Style pane surfaces the destination preset picker (CS-020).
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        app.toolbars.buttons["Style"].click()
+        assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
+        assertExists(element("destination-preset-picker", in: app), in: app, timeout: 3)
+    }
+
+    @MainActor
+    func testStylePaneExposesAccessibleMetadataControls() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-settings"])
+        defer { app.terminate() }
+
+        // The Header section's metadata controls are present and carry stable
+        // accessibility identifiers/labels (CS-022 acceptance).
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        app.toolbars.buttons["Style"].click()
+        assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
+        assertExists(element("metadata-filename-field", in: app), in: app, timeout: 3)
+        assertExists(element("metadata-title-field", in: app), in: app)
+        assertExists(element("metadata-caption-field", in: app), in: app)
+        assertExists(element("metadata-language-badge-toggle", in: app), in: app)
     }
 
     @MainActor

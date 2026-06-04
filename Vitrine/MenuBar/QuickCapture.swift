@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 
 /// Quick mode: read the clipboard, detect the content, render with the saved
 /// settings, store it in Recents, and put the result back on the clipboard — no
@@ -20,11 +21,16 @@ enum QuickCapture {
     ) -> Outcome {
         guard let text = clipboard(),
             !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else { return .empty }
+        else {
+            Log.capture.info("Quick capture: clipboard empty")
+            return .empty
+        }
 
         // URL → screenshot is Product Phase 2; only branch off when the user opted in.
         if settings.treatURLsAsScreenshot, LanguageDetector.isURL(text) {
             // TODO: CS-043 — WKWebView snapshot of the URL.
+            // Never log the URL itself; record only that the branch was taken.
+            Log.capture.info("Quick capture: URL detected (screenshot deferred)")
             return .url(text)
         }
 
@@ -33,15 +39,32 @@ enum QuickCapture {
         config.language = LanguageDetector.detect(text)
         settings.noteLanguageUsed(config.language)
 
-        let scale = CGFloat(settings.exportScale)
-        let didCopy = settings.autoCopy && ExportManager.copyToPasteboard(config, scale: scale)
+        // Non-PII telemetry only: the detected language name and a length measure,
+        // never the clipboard contents (CS-048).
+        Log.capture.info(
+            "Quick capture: detected \(config.language.rawValue, privacy: .public), \(text.count, privacy: .public) chars"
+        )
+
+        // Honor the active destination preset's framing (size/scale) so quick
+        // capture produces the same image the editor would (CS-020).
+        let scale = CGFloat(settings.effectiveExportScale)
+        let fixedSize = settings.effectiveFixedSize
+        let profile = settings.colorProfile
+        let didCopy =
+            settings.autoCopy
+            && ExportManager.copyToPasteboard(
+                config, scale: scale, fixedSize: fixedSize, profile: profile)
         if settings.alsoSaveToFile {
-            ExportManager.saveToFile(config, scale: scale, format: settings.exportFormat)
+            ExportManager.saveToFile(
+                config, scale: scale, format: settings.exportFormat, fixedSize: fixedSize,
+                profile: profile)
         }
 
         recents.add(
             Capture(code: text, languageID: config.language.rawValue, themeID: config.theme.id))
 
+        Log.capture.notice(
+            "Quick capture complete (\(didCopy ? "copied" : "rendered", privacy: .public))")
         return didCopy ? .copied : .rendered
     }
 }

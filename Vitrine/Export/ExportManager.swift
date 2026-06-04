@@ -1,5 +1,6 @@
 import AppKit
 import ImageIO
+import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -7,17 +8,91 @@ import UniformTypeIdentifiers
 /// (CS-007/010). PNG encoding goes through ImageIO directly from the rendered
 /// `CGImage`; PDF uses `ImageRenderer.render` into a `CGContext` — no legacy
 /// `NSBitmapImageRep`/TIFF round-trip.
+///
+/// Color management (CS-024): a render is always normalized into an explicit ICC
+/// color space before PNG encoding — sRGB by default, Display P3 only as an
+/// advanced opt-in. `ImageRenderer` happens to default to sRGB today, but the
+/// exporter tags the output deliberately rather than trusting that default, so
+/// PNG color is predictable across displays, apps, and social platforms. The
+/// normalization preserves the alpha channel (no matte), so a transparent
+/// background exports with real transparency.
 enum ExportManager {
-    /// Renders the canvas for `config` to a `CGImage` at the given scale (1/2/3).
-    static func renderCGImage(_ config: SnapshotConfig, scale: CGFloat = 2) -> CGImage? {
-        let renderer = ImageRenderer(content: SnapshotCanvas(config: config))
+    /// Renders the canvas for `config` to a `CGImage` at the given scale (1/2/3),
+    /// normalized into `profile`'s color space (sRGB by default, CS-024).
+    ///
+    /// The render is wrapped in an `os_signpost` interval (CS-048) so render
+    /// latency can be measured in Instruments/the unified log without timing code
+    /// in the hot path — this is the signal CS-026's performance budget consumes.
+    /// Only non-PII measures are attached to the signpost and the log (the code
+    /// length and scale), never the code itself.
+    static func renderCGImage(
+        _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
+        profile: ColorProfile = .sRGB
+    ) -> CGImage? {
+        let signposter = RenderSignpost.signposter
+        let state = signposter.beginInterval(
+            RenderSignpost.renderName, "scale=\(Int(scale)) length=\(config.code.count)")
+        defer { signposter.endInterval(RenderSignpost.renderName, state) }
+
+        let renderer = ImageRenderer(content: SnapshotCanvas(config: config, fixedSize: fixedSize))
         renderer.scale = scale
-        return renderer.cgImage
+        // Pin the layout size for fixed-size presets so the rendered pixel size
+        // is exactly `fixedSize × scale` (e.g. OpenGraph 1200×630 at 1×, CS-020).
+        if let fixedSize { renderer.proposedSize = ProposedViewSize(fixedSize) }
+        guard let cgImage = renderer.cgImage else {
+            Log.render.error(
+                "Render produced no image (scale \(Int(scale), privacy: .public))")
+            return nil
+        }
+        return normalized(cgImage, to: profile)
+    }
+
+    /// Converts a rendered `CGImage` into `profile`'s color space, redrawing it
+    /// through a Core Graphics context so the result is both *converted* (the
+    /// sRGB↔P3 matrix is applied) and *tagged* with that ICC profile (CS-024).
+    ///
+    /// The destination context keeps an alpha channel (`premultipliedLast`) and
+    /// is initialized fully transparent, so a transparent-background render keeps
+    /// real alpha — its empty regions stay `(0,0,0,0)` and are never composited
+    /// over an opaque matte. If the target color space cannot be created (it is
+    /// a system constant, so this is not expected) or the context fails, the
+    /// original image is returned unchanged rather than failing the export.
+    static func normalized(_ cgImage: CGImage, to profile: ColorProfile) -> CGImage {
+        guard let colorSpace = profile.cgColorSpace else {
+            Log.render.error("Color space unavailable; exporting render untagged")
+            return cgImage
+        }
+        let width = cgImage.width
+        let height = cgImage.height
+        guard
+            let context = CGContext(
+                data: nil,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else {
+            Log.render.error("Color context creation failed; exporting render untagged")
+            return cgImage
+        }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage() ?? cgImage
     }
 
     /// Renders the canvas to an `NSImage` (used by the share sheet, CS-008).
-    static func renderNSImage(_ config: SnapshotConfig, scale: CGFloat = 2) -> NSImage? {
-        guard let cgImage = renderCGImage(config, scale: scale) else { return nil }
+    static func renderNSImage(
+        _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
+        profile: ColorProfile = .sRGB
+    ) -> NSImage? {
+        guard
+            let cgImage = renderCGImage(
+                config, scale: scale, fixedSize: fixedSize, profile: profile)
+        else {
+            return nil
+        }
         return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 
@@ -35,8 +110,9 @@ enum ExportManager {
     }
 
     /// Renders the canvas to single-page PDF data.
-    static func pdfData(_ config: SnapshotConfig) -> Data? {
-        let renderer = ImageRenderer(content: SnapshotCanvas(config: config))
+    static func pdfData(_ config: SnapshotConfig, fixedSize: CGSize? = nil) -> Data? {
+        let renderer = ImageRenderer(content: SnapshotCanvas(config: config, fixedSize: fixedSize))
+        if let fixedSize { renderer.proposedSize = ProposedViewSize(fixedSize) }
         let data = NSMutableData()
         var produced = false
         renderer.render { size, renderInContext in
@@ -55,32 +131,62 @@ enum ExportManager {
 
     /// Renders and writes a PNG to the general pasteboard. Returns success.
     @discardableResult
-    static func copyToPasteboard(_ config: SnapshotConfig, scale: CGFloat = 2) -> Bool {
-        guard let cgImage = renderCGImage(config, scale: scale),
+    static func copyToPasteboard(
+        _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
+        profile: ColorProfile = .sRGB
+    ) -> Bool {
+        guard
+            let cgImage = renderCGImage(
+                config, scale: scale, fixedSize: fixedSize, profile: profile),
             let png = pngData(from: cgImage)
-        else { return false }
+        else {
+            Log.export.error("Copy to pasteboard failed: render or PNG encode returned nil")
+            return false
+        }
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        return pasteboard.setData(png, forType: .png)
+        let copied = pasteboard.setData(png, forType: .png)
+        Log.export.info("Copied image to pasteboard (success \(copied, privacy: .public))")
+        return copied
     }
 
     /// Presents an `NSSavePanel` and writes the image as PNG or PDF.
+    ///
+    /// `profile` applies to PNG export only (CS-024); PDF is a color-managed
+    /// vector document and is unaffected by the raster color-profile choice.
     static func saveToFile(
-        _ config: SnapshotConfig, scale: CGFloat = 2, format: ExportFormat = .png
+        _ config: SnapshotConfig, scale: CGFloat = 2, format: ExportFormat = .png,
+        fixedSize: CGSize? = nil, profile: ColorProfile = .sRGB
     ) {
         let payload: (data: Data, type: UTType, ext: String)? =
             switch format {
             case .png:
-                renderCGImage(config, scale: scale).flatMap(pngData(from:))
+                renderCGImage(config, scale: scale, fixedSize: fixedSize, profile: profile)
+                    .flatMap(pngData(from:))
                     .map { ($0, .png, "png") }
-            case .pdf: pdfData(config).map { ($0, .pdf, "pdf") }
+            case .pdf: pdfData(config, fixedSize: fixedSize).map { ($0, .pdf, "pdf") }
             }
         guard let payload else { return }
 
         let panel = NSSavePanel()
         panel.allowedContentTypes = [payload.type]
         panel.nameFieldStringValue = "vitrine.\(payload.ext)"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        try? payload.data.write(to: url)
+        guard panel.runModal() == .OK, let url = panel.url else {
+            Log.export.info("Save to file cancelled")
+            return
+        }
+        do {
+            // The destination is a user-chosen path; we log only the format, never
+            // the path itself (CS-048 privacy rule).
+            try payload.data.write(to: url)
+            Log.export.notice("Saved image to file (\(payload.ext, privacy: .public))")
+        } catch {
+            // Log only the error domain/code — never `localizedDescription`, which
+            // can embed the (user-chosen) filename (CS-048 privacy rule).
+            let nsError = error as NSError
+            Log.export.error(
+                "Saving image to file failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+        }
     }
 }

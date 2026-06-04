@@ -53,6 +53,22 @@ global hotkey triggers quick mode or the editor depending on the user's preferen
 - **Permission:** a clear `NSPasteboardUsageDescription`; content **never leaves the
   Mac** (no network by default).
 
+## Color management (CS-024)
+
+PNG export is **sRGB by default**, and the exporter tags every image deliberately
+rather than trusting `ImageRenderer`'s default: each render is redrawn through a
+Core Graphics context in the chosen ICC space, so the embedded profile travels
+with the file. sRGB is the safe choice because browsers, Slack, X, Keynote, and
+non–color-managed viewers all assume it, so a screenshot looks the same
+everywhere; **Display P3** is offered only as an explicit advanced option in
+*Settings → Output → Advanced* — it keeps the wider gamut of a P3 display, but a
+viewer that ignores the embedded profile renders P3 values as if they were sRGB,
+which oversaturates the image, so it is opt-in rather than the default. Both
+profiles preserve a real alpha channel: a transparent background exports with
+true transparency (its empty pixels stay fully clear, `(0,0,0,0)`) and is never
+composited over an opaque matte, so the result drops cleanly onto any slide or
+page background.
+
 ## User flow (happy path)
 
 ```
@@ -133,8 +149,12 @@ Vitrine/
 │   ├── Language.swift
 │   ├── SnapshotConfig.swift
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
+├── Feedback/
+│   ├── Notifier.swift         # quick-capture outcome banners
+│   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…" (CS-048)
 ├── Support/
-│   └── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
+│   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
+│   └── Log.swift              # os.Logger per subsystem + render signposts (CS-048)
 └── Resources/
     ├── Assets.xcassets
     ├── Info.plist

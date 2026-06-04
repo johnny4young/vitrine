@@ -1,5 +1,6 @@
 import AppKit
 import KeyboardShortcuts
+import OSLog
 
 /// App lifecycle: configures the agent app and listens for the global hotkey.
 ///
@@ -9,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Log.app.notice("Vitrine launched")
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
         NSApp.setActivationPolicy(.accessory)
 
@@ -77,7 +79,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleHotkey() {
-        switch AppSettings.shared.hotkeyAction {
+        let action = AppSettings.shared.hotkeyAction
+        Log.app.info("Global hotkey fired (\(action.rawValue, privacy: .public))")
+        switch action {
         case .quickCapture:
             Notifier.notify(QuickCapture.run(settings: .shared))
         case .openEditor:
@@ -86,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        Log.app.notice("Vitrine terminating")
         hotkeyTask?.cancel()
     }
 
