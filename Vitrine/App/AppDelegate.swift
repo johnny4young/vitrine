@@ -13,11 +13,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         // Global hotkey (CS-002): consume the key-up event stream on the main actor
-        // using structured concurrency — no completion-handler bridging needed.
+        // and dispatch to the user-chosen action.
         hotkeyTask = Task {
             for await _ in KeyboardShortcuts.events(.keyUp, for: .quickCapture) {
-                _ = QuickCapture.run(settings: .shared)
+                handleHotkey()
             }
+        }
+    }
+
+    private func handleHotkey() {
+        switch AppSettings.shared.hotkeyAction {
+        case .quickCapture:
+            Notifier.notify(QuickCapture.run(settings: .shared))
+        case .openEditor:
+            EditorWindowController.shared.show()
         }
     }
 

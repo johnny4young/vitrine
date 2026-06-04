@@ -1,63 +1,64 @@
 import KeyboardShortcuts
 import SwiftUI
 
-/// "General" preferences pane: hotkey, output behavior, launch at login (CS-010).
+/// General pane: hotkey, what it triggers, launch at login (CS-002/010/014).
 struct GeneralSettingsView: View {
     @ObservedObject var settings: AppSettings
-    @State private var launchAtLogin = false
+    @State private var launchAtLogin = LaunchAtLogin.isEnabled
 
     var body: some View {
         Form {
-            KeyboardShortcuts.Recorder("Quick capture:", name: .quickCapture)
+            KeyboardShortcuts.Recorder("Global hotkey:", name: .quickCapture)
 
-            Toggle("Copy result to clipboard automatically", isOn: $settings.autoCopy)
-
-            Picker("Export resolution", selection: $settings.exportScale) {
-                Text("1×").tag(1)
-                Text("2× (Retina)").tag(2)
-                Text("3×").tag(3)
+            Picker("Hotkey runs", selection: $settings.hotkeyAction) {
+                ForEach(HotkeyAction.allCases) { action in
+                    Text(action.displayName).tag(action)
+                }
             }
 
             Toggle("Launch at login", isOn: $launchAtLogin)
-                .disabled(true)
-                .help("Coming soon (CS-010).")
+                .onChange(of: launchAtLogin) { _, newValue in
+                    LaunchAtLogin.setEnabled(newValue)
+                }
         }
         .formStyle(.grouped)
-        .frame(width: 380)
+        .frame(width: 420)
         .padding()
     }
 }
 
-/// "Style" preferences pane: theme, background, padding, font, chrome (CS-006/010).
+/// Style pane: theme, background, padding, font, chrome, shadow + live preview (CS-006/010).
 struct StyleSettingsView: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
         Form {
-            Picker("Theme", selection: themeBinding) {
-                ForEach(Theme.all) { theme in
-                    Text(theme.displayName).tag(theme.id)
+            Section {
+                Picker("Theme", selection: themeBinding) {
+                    ForEach(Theme.all) { theme in
+                        Text(theme.displayName).tag(theme.id)
+                    }
                 }
-            }
-
-            Picker("Background", selection: gradientBinding) {
-                ForEach(GradientPreset.allCases) { preset in
-                    Text(preset.rawValue).tag(preset)
+                Picker("Background", selection: gradientBinding) {
+                    ForEach(GradientPreset.allCases) { preset in
+                        Text(preset.rawValue).tag(preset)
+                    }
                 }
+                Slider(value: $settings.config.padding, in: 16...64, step: 4) { Text("Padding") }
+                Slider(value: $settings.config.fontSize, in: 10...20, step: 1) { Text("Font size") }
+                Toggle("Window chrome", isOn: $settings.config.showChrome)
+                Toggle("Drop shadow", isOn: $settings.config.showShadow)
             }
 
-            Slider(value: $settings.config.padding, in: 16...64, step: 4) {
-                Text("Padding")
+            Section("Preview") {
+                SnapshotCanvas(config: settings.config)
+                    .scaleEffect(0.4, anchor: .topLeading)
+                    .frame(width: 360, height: 200, alignment: .topLeading)
+                    .clipped()
             }
-
-            Slider(value: $settings.config.fontSize, in: 10...20, step: 1) {
-                Text("Font size")
-            }
-
-            Toggle("Window chrome", isOn: $settings.config.showChrome)
         }
         .formStyle(.grouped)
-        .frame(width: 380)
+        .frame(width: 420)
         .padding()
     }
 
@@ -76,5 +77,76 @@ struct StyleSettingsView: View {
             },
             set: { settings.config.background = .gradient($0) }
         )
+    }
+}
+
+/// Output pane: clipboard/save behavior, resolution, format (CS-010).
+struct OutputSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Toggle("Copy to clipboard automatically", isOn: $settings.autoCopy)
+            Toggle("Also save to a file", isOn: $settings.alsoSaveToFile)
+
+            Picker("Resolution", selection: $settings.exportScale) {
+                Text("1×").tag(1)
+                Text("2× (Retina)").tag(2)
+                Text("3×").tag(3)
+            }
+
+            Picker("Format", selection: $settings.exportFormat) {
+                ForEach(ExportFormat.allCases) { format in
+                    Text(format.displayName).tag(format)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 420)
+        .padding()
+    }
+}
+
+/// Input pane: URL handling (CS-010 · Input).
+struct InputSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Toggle(
+                "Treat copied URLs as a screenshot target", isOn: $settings.treatURLsAsScreenshot)
+            Text(
+                "When off, a copied URL is rendered as text. URL screenshots arrive in a later release (Phase B)."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
+        .formStyle(.grouped)
+        .frame(width: 420)
+        .padding()
+    }
+}
+
+/// About pane: version, links, copyright (CS-010).
+struct AboutSettingsView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "camera.viewfinder")
+                .font(.system(size: 48))
+                .foregroundStyle(.tint)
+            Text("Vitrine").font(.title.bold())
+            Text("Version \(appVersion)").foregroundStyle(.secondary)
+            Text("Turn code into beautiful images, from your menu bar.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Link("GitHub", destination: URL(string: "https://github.com/johnny4young/vitrine")!)
+            Text("© 2026 johnny4young · MIT").font(.footnote).foregroundStyle(.secondary)
+        }
+        .frame(width: 420, height: 280)
+        .padding()
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     }
 }

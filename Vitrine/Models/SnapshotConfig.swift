@@ -11,8 +11,12 @@ struct SnapshotConfig: Equatable {
     var padding: Double = 32
     var background: BackgroundStyle = .gradient(.ocean)
     var showChrome: Bool = true
+    var showShadow: Bool = true
     var cornerRadius: Double = 8
     var shadowRadius: Double = 20
+
+    /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
+    var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 }
 
 /// The canvas background style.

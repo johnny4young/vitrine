@@ -5,39 +5,22 @@ import SwiftUI
 /// preferences, about, and quit (CS-009).
 struct MenuBarContent: View {
     @EnvironmentObject private var settings: AppSettings
-    @Environment(\.openWindow) private var openWindow
+    @EnvironmentObject private var recents: RecentsStore
 
     var body: some View {
         Button("New Capture from Clipboard") {
-            QuickCapture.run(settings: settings)
+            Notifier.notify(QuickCapture.run(settings: settings))
         }
         .keyboardShortcut("s", modifiers: [.command, .shift])
 
         Button("Open Editor…") {
-            openWindow(id: WindowID.editor)
-            NSApp.activate(ignoringOtherApps: true)
+            EditorWindowController.shared.show()
         }
 
         Divider()
 
-        Menu("Recents") {
-            // TODO: CS-009 — list the last 10 captures, reopenable in the editor.
-            Text("No recent captures")
-        }
-
-        Menu("Theme") {
-            ForEach(Theme.all) { theme in
-                Button {
-                    settings.selectTheme(theme)
-                } label: {
-                    if settings.config.theme.id == theme.id {
-                        Label(theme.displayName, systemImage: "checkmark")
-                    } else {
-                        Text(theme.displayName)
-                    }
-                }
-            }
-        }
+        recentsMenu
+        themeMenu
 
         Divider()
 
@@ -57,5 +40,43 @@ struct MenuBarContent: View {
             NSApp.terminate(nil)
         }
         .keyboardShortcut("q", modifiers: .command)
+    }
+
+    @ViewBuilder private var recentsMenu: some View {
+        Menu("Recents") {
+            if recents.captures.isEmpty {
+                Text("No recent captures")
+            } else {
+                ForEach(recents.captures) { capture in
+                    Button(capture.menuTitle) { reopen(capture) }
+                }
+                Divider()
+                Button("Clear Recents") { recents.clear() }
+            }
+        }
+    }
+
+    @ViewBuilder private var themeMenu: some View {
+        Menu("Theme") {
+            ForEach(Theme.all) { theme in
+                Button {
+                    settings.selectTheme(theme)
+                } label: {
+                    if settings.config.theme.id == theme.id {
+                        Label(theme.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(theme.displayName)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Loads a recent capture into the editor and shows it.
+    private func reopen(_ capture: Capture) {
+        settings.config.code = capture.code
+        settings.config.language = capture.language
+        settings.config.theme = capture.theme
+        EditorWindowController.shared.show()
     }
 }

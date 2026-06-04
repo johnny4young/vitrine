@@ -31,7 +31,7 @@ struct SnapshotCanvas: View {
         .padding(20)
         .background(config.theme.background)
         .clipShape(RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous))
-        .shadow(radius: config.shadowRadius)
+        .shadow(radius: config.effectiveShadowRadius)
     }
 
     private var highlightedCode: AttributedString {

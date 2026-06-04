@@ -1,16 +1,16 @@
 import AppKit
 import SwiftUI
 
-/// Code text editor backed by `NSTextView` (CS-003).
-///
-/// v0.1 provides plain monospaced editing with autocorrect/substitutions off.
-/// Live in-editor syntax highlighting (debounced) is tracked in CS-003.
+/// Code text editor backed by `NSTextView` with live syntax highlighting (CS-003):
+/// debounced recolor (~100 ms), monospaced font, Tab = 4 spaces, no autocorrect.
 struct CodeEditorView: NSViewRepresentable {
     @Binding var text: String
+    var language: Language
+    var theme: Theme
     var fontName: String
     var fontSize: Double
 
-    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
@@ -26,31 +26,104 @@ struct CodeEditorView: NSViewRepresentable {
         textView.allowsUndo = true
         textView.backgroundColor = .textBackgroundColor
         textView.textContainerInset = NSSize(width: 8, height: 8)
-        textView.font = Self.resolvedFont(name: fontName, size: fontSize)
         textView.string = text
+
+        context.coordinator.configure(textView)
+        context.coordinator.applyHighlight(to: textView)
         return scrollView
     }
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
-        if textView.string != text {
-            textView.string = text
-        }
-        textView.font = Self.resolvedFont(name: fontName, size: fontSize)
-    }
+        let coordinator = context.coordinator
+        coordinator.parent = self
+        coordinator.configure(textView)
 
-    private static func resolvedFont(name: String, size: Double) -> NSFont {
-        NSFont(name: name, size: size) ?? .monospacedSystemFont(ofSize: size, weight: .regular)
+        if textView.string != text {
+            // External change (e.g. reopening a recent capture): sync + recolor now.
+            textView.string = text
+            coordinator.applyHighlight(to: textView)
+        } else if coordinator.styleChanged {
+            // Theme/language/font changed: recolor now (text edits are debounced).
+            coordinator.applyHighlight(to: textView)
+        }
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
-        private let text: Binding<String>
+        var parent: CodeEditorView
+        private let debouncer = Debouncer(interval: .milliseconds(100))
+        private var isHighlighting = false
 
-        init(text: Binding<String>) { self.text = text }
+        private var appliedLanguage: Language?
+        private var appliedThemeID: String?
+        private var appliedFontName: String?
+        private var appliedFontSize: Double?
+
+        init(_ parent: CodeEditorView) { self.parent = parent }
+
+        private var font: NSFont {
+            NSFont(name: parent.fontName, size: parent.fontSize)
+                ?? .monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
+        }
+
+        /// True when the style (language/theme/font) differs from what was last applied.
+        var styleChanged: Bool {
+            appliedLanguage != parent.language
+                || appliedThemeID != parent.theme.id
+                || appliedFontName != parent.fontName
+                || appliedFontSize != parent.fontSize
+        }
+
+        /// Applies the monospaced font and 4-space tab stops.
+        func configure(_ textView: NSTextView) {
+            let font = self.font
+            textView.font = font
+            let spaceWidth = (" " as NSString).size(withAttributes: [.font: font]).width
+            let style = NSMutableParagraphStyle()
+            style.tabStops = []
+            style.defaultTabInterval = max(spaceWidth * 4, 1)
+            textView.defaultParagraphStyle = style
+            textView.typingAttributes[.paragraphStyle] = style
+            textView.typingAttributes[.font] = font
+        }
+
+        /// Recolors the whole document via Highlightr, preserving the selection.
+        func applyHighlight(to textView: NSTextView) {
+            isHighlighting = true
+            defer { isHighlighting = false }
+
+            let selection = textView.selectedRanges
+            let attributed = HighlightManager.shared.attributedString(
+                for: textView.string, language: parent.language, theme: parent.theme, font: font)
+            let mutable = NSMutableAttributedString(attributedString: attributed)
+            let paragraph = textView.defaultParagraphStyle ?? NSParagraphStyle.default
+            mutable.addAttribute(
+                .paragraphStyle, value: paragraph,
+                range: NSRange(location: 0, length: mutable.length))
+            textView.textStorage?.setAttributedString(mutable)
+            textView.selectedRanges = selection
+
+            appliedLanguage = parent.language
+            appliedThemeID = parent.theme.id
+            appliedFontName = parent.fontName
+            appliedFontSize = parent.fontSize
+        }
 
         func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
-            text.wrappedValue = textView.string
+            guard !isHighlighting, let textView = notification.object as? NSTextView else { return }
+            parent.text = textView.string
+            debouncer.schedule { [weak textView] in
+                guard let textView else { return }
+                self.applyHighlight(to: textView)
+            }
+        }
+
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertTab(_:)) {
+                textView.insertText("    ", replacementRange: textView.selectedRange())
+                return true
+            }
+            return false
         }
     }
 }
