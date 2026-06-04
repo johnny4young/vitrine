@@ -1,0 +1,61 @@
+# ---------------------------------------------------------------------------
+# Xcode
+# ---------------------------------------------------------------------------
+## User settings & state
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+*.xcscmblueprint
+*.xccheckout
+
+## Build products
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Obj-C/Swift specific
+*.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+
+# ---------------------------------------------------------------------------
+# Swift Package Manager
+# ---------------------------------------------------------------------------
+# We commit Package.resolved (pinned versions) but ignore the build/cache dirs.
+.build/
+.swiftpm/
+Packages/
+# Resolved package state lives inside the generated .xcodeproj; it is ignored
+# below together with the rest of the generated project.
+
+# ---------------------------------------------------------------------------
+# XcodeGen
+# ---------------------------------------------------------------------------
+# `project.yml` is the source of truth. The `.xcodeproj` is GENERATED from it
+# (`xcodegen generate`) and is intentionally NOT tracked, so it never drifts
+# from the spec. Run `xcodegen generate` (or `make project`) after cloning.
+Vitrine.xcodeproj/
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# ---------------------------------------------------------------------------
+# Claude Code
+# ---------------------------------------------------------------------------
+# Shared project config (.claude/settings.json) IS committed; machine-local
+# overrides (DEVELOPER_DIR, etc.) are not.
+.claude/settings.local.json
+
+# ---------------------------------------------------------------------------
+# Tooling / misc
+# ---------------------------------------------------------------------------
+*.log
+.env
+.env.local
