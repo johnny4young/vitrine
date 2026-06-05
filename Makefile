@@ -51,8 +51,19 @@ cli: project
 		-destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
 
 ## test: run the unit test suite (Swift Testing)
+## Swift Testing parallelizes suites across threads by default. Several suites
+## measure and rasterize text through CoreText (NSString.size(withAttributes:),
+## ImageRenderer), and CoreText's typesetter is not safe to drive concurrently
+## from multiple threads: under load it intermittently throws
+## NSInvalidArgumentException ("attempt to insert nil object") from an unrelated
+## text-measurement call, crashing the run. Production never hits this — every
+## such call happens on the main actor inside SwiftUI `body` — so the fix belongs
+## in how the harness schedules tests, not in product code. Pinning the
+## parallelization width to 1 serializes the run and removes the race; the suite
+## is dominated by serial main-actor rendering, so wall-clock cost is negligible.
 test: project
-	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
+		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' test
 
 ## build-ui-tests: compile UI tests without requiring local automation permission

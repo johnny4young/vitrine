@@ -70,6 +70,58 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(treatURLsAsScreenshot, forKey: Keys.treatURLs) }
     }
 
+    /// The viewport preset a URL capture lays the page out in (CS-044). Stored as a
+    /// flat discriminant; the custom size rides in `webCustomViewportWidth/Height`.
+    @Published var webViewportKind: WebSnapshotConfig.ViewportPreset.Kind {
+        didSet { defaults.set(webViewportKind.rawValue, forKey: Keys.webViewportKind) }
+    }
+
+    /// The custom viewport width in points, used only when `webViewportKind` is
+    /// `.custom` (CS-044). Clamped into the safe range on read.
+    @Published var webCustomViewportWidth: Int {
+        didSet { defaults.set(webCustomViewportWidth, forKey: Keys.webCustomViewportWidth) }
+    }
+
+    /// The custom viewport height in points, used only when `webViewportKind` is
+    /// `.custom` (CS-044). Clamped into the safe range on read.
+    @Published var webCustomViewportHeight: Int {
+        didSet { defaults.set(webCustomViewportHeight, forKey: Keys.webCustomViewportHeight) }
+    }
+
+    /// Whether a URL capture grabs the visible viewport or the full scrollable page
+    /// (CS-044). The default is the deterministic visible viewport.
+    @Published var webCaptureMode: WebSnapshotConfig.CaptureMode {
+        didSet { defaults.set(webCaptureMode.rawValue, forKey: Keys.webCaptureMode) }
+    }
+
+    /// Which wait strategy a URL capture uses before snapshotting (CS-044). Stored
+    /// as a flat discriminant; the post-load delay rides in `webWaitSeconds`.
+    @Published var webWaitKind: WebSnapshotConfig.WaitStrategy.Kind {
+        didSet { defaults.set(webWaitKind.rawValue, forKey: Keys.webWaitKind) }
+    }
+
+    /// The post-load wait, in seconds, for the fixed-delay and network-quiet
+    /// strategies (CS-044). Ignored by `.domContentLoaded`. Clamped non-negative.
+    @Published var webWaitSeconds: Int {
+        didSet { defaults.set(webWaitSeconds, forKey: Keys.webWaitSeconds) }
+    }
+
+    /// The composed viewport preset for a URL capture (CS-044): the persisted
+    /// discriminant resolved with the stored custom size, defensively clamped so a
+    /// custom preset is always a usable, memory-safe size.
+    var webViewportPreset: WebSnapshotConfig.ViewportPreset {
+        .resolve(
+            kind: webViewportKind,
+            customWidth: webCustomViewportWidth,
+            customHeight: webCustomViewportHeight)
+    }
+
+    /// The composed wait strategy for a URL capture (CS-044): the persisted
+    /// discriminant resolved with the stored post-load delay.
+    var webWaitStrategy: WebSnapshotConfig.WaitStrategy {
+        .resolve(kind: webWaitKind, extraWaitSeconds: webWaitSeconds)
+    }
+
     /// Recently used languages, most-recent first (CS-004).
     @Published private(set) var recentLanguages: [Language] {
         didSet { defaults.set(recentLanguages.map(\.rawValue), forKey: Keys.recentLanguages) }
@@ -129,6 +181,14 @@ final class AppSettings: ObservableObject {
         static let richClipboard = "richClipboard"
         static let hotkeyAction = "hotkeyAction"
         static let treatURLs = "treatURLsAsScreenshot"
+        /// Web URL-capture viewport/wait settings (CS-044). All additive keys with
+        /// documented defaults, so an older store simply reads the defaults.
+        static let webViewportKind = "webViewportKind"
+        static let webCustomViewportWidth = "webCustomViewportWidth"
+        static let webCustomViewportHeight = "webCustomViewportHeight"
+        static let webCaptureMode = "webCaptureMode"
+        static let webWaitKind = "webWaitKind"
+        static let webWaitSeconds = "webWaitSeconds"
         static let recentLanguages = "recentLanguages"
         static let fontName = "fontName"
         static let fontLigatures = "fontLigatures"
@@ -153,7 +213,9 @@ final class AppSettings: ObservableObject {
             themeID, languageID, fontSize, padding, cornerRadius, showChrome,
             showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, exportScale, exportFormat,
-            colorProfile, richClipboard, hotkeyAction, treatURLs, recentLanguages,
+            colorProfile, richClipboard, hotkeyAction, treatURLs,
+            webViewportKind, webCustomViewportWidth, webCustomViewportHeight,
+            webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
             fontName, fontLigatures, selectedPreset, hasSeenWelcome,
             lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
         ]
@@ -197,6 +259,15 @@ final class AppSettings: ObservableObject {
             ExportPreset.preset(withID: defaults.string(forKey: Keys.selectedPreset))?
             .id
         treatURLsAsScreenshot = defaults.object(forKey: Keys.treatURLs) as? Bool ?? false
+        // Web URL-capture viewport/wait settings (CS-044). Each read tolerates a
+        // missing or garbage value by falling back to the documented default and
+        // clamping numeric values into the safe range (CS-050 posture).
+        webViewportKind = WebDefaults.viewportKind(from: defaults)
+        webCustomViewportWidth = WebDefaults.customViewportWidth(from: defaults)
+        webCustomViewportHeight = WebDefaults.customViewportHeight(from: defaults)
+        webCaptureMode = WebDefaults.captureMode(from: defaults)
+        webWaitKind = WebDefaults.waitKind(from: defaults)
+        webWaitSeconds = WebDefaults.waitSeconds(from: defaults)
         recentLanguages =
             (defaults.array(forKey: Keys.recentLanguages) as? [String] ?? [])
             .compactMap(Language.init(rawValue:))
@@ -396,6 +467,12 @@ final class AppSettings: ObservableObject {
         richClipboard = false
         hotkeyAction = .fallback
         treatURLsAsScreenshot = false
+        webViewportKind = WebDefaults.viewportKind
+        webCustomViewportWidth = WebDefaults.customViewportWidth
+        webCustomViewportHeight = WebDefaults.customViewportHeight
+        webCaptureMode = WebDefaults.captureMode
+        webWaitKind = WebDefaults.waitKind
+        webWaitSeconds = WebDefaults.waitSeconds
         recentLanguages = []
         selectedPresetID = nil
         // Returns the user to a first-run experience after a full reset (CS-035).
@@ -561,4 +638,95 @@ final class AppSettings: ObservableObject {
         }
         defaults.set(data, forKey: Keys.backgroundStyle)
     }
+}
+
+/// Canonical defaults and defensive reads for the web URL-capture viewport and wait
+/// settings (CS-044), mirroring `SettingsDefaults` for the rest of the store.
+///
+/// URL capture is a Product Phase 2 feature gated on the network entitlement, so
+/// these settings have no effect in a Phase 1 build; they are still persisted with
+/// the same versioned, defensively-read discipline as every other setting (CS-050),
+/// so the choice survives across launches and a corrupt or hand-edited value can
+/// never reach the renderer as a degenerate viewport or a negative wait.
+enum WebDefaults {
+    /// The default viewport: OpenGraph's social-card size.
+    static let viewportKind: WebSnapshotConfig.ViewportPreset.Kind = .openGraph
+
+    /// The default custom viewport, used only when the kind is `.custom`. Seeds the
+    /// width/height fields with a sensible desktop-ish size the first time a user
+    /// switches to a custom viewport.
+    static let customViewportWidth = 1280
+    static let customViewportHeight = 800
+
+    /// The default capture mode: the deterministic visible viewport.
+    static let captureMode: WebSnapshotConfig.CaptureMode = .visibleViewport
+
+    /// The default wait strategy: snapshot as soon as the load settles.
+    static let waitKind: WebSnapshotConfig.WaitStrategy.Kind = .domContentLoaded
+
+    /// The default post-load wait seconds for a timed strategy.
+    static let waitSeconds = WebSnapshotConfig.WaitStrategy.defaultExtraWaitSeconds
+
+    /// Reads the persisted viewport kind, falling back to the default for a missing
+    /// or unrecognized raw value.
+    static func viewportKind(
+        from defaults: UserDefaults
+    )
+        -> WebSnapshotConfig.ViewportPreset.Kind
+    {
+        guard let raw = defaults.string(forKey: "webViewportKind"),
+            let kind = WebSnapshotConfig.ViewportPreset.Kind(rawValue: raw)
+        else { return viewportKind }
+        return kind
+    }
+
+    /// Reads the persisted custom viewport width, clamped into the safe range and
+    /// falling back to the default for a missing or non-integer value.
+    static func customViewportWidth(from defaults: UserDefaults) -> Int {
+        guard let value = defaults.object(forKey: "webCustomViewportWidth") as? Int else {
+            return customViewportWidth
+        }
+        return WebSnapshotConfig.ViewportPreset.clampCustomDimension(value)
+    }
+
+    /// Reads the persisted custom viewport height, clamped into the safe range and
+    /// falling back to the default for a missing or non-integer value.
+    static func customViewportHeight(from defaults: UserDefaults) -> Int {
+        guard let value = defaults.object(forKey: "webCustomViewportHeight") as? Int else {
+            return customViewportHeight
+        }
+        return WebSnapshotConfig.ViewportPreset.clampCustomDimension(value)
+    }
+
+    /// Reads the persisted capture mode, falling back to the default for a missing
+    /// or unrecognized raw value.
+    static func captureMode(from defaults: UserDefaults) -> WebSnapshotConfig.CaptureMode {
+        guard let raw = defaults.string(forKey: "webCaptureMode"),
+            let mode = WebSnapshotConfig.CaptureMode(rawValue: raw)
+        else { return captureMode }
+        return mode
+    }
+
+    /// Reads the persisted wait kind, falling back to the default for a missing or
+    /// unrecognized raw value.
+    static func waitKind(from defaults: UserDefaults) -> WebSnapshotConfig.WaitStrategy.Kind {
+        guard let raw = defaults.string(forKey: "webWaitKind"),
+            let kind = WebSnapshotConfig.WaitStrategy.Kind(rawValue: raw)
+        else { return waitKind }
+        return kind
+    }
+
+    /// Reads the persisted post-load wait seconds, clamped non-negative and bounded
+    /// by the wait cap, falling back to the default for a missing or non-integer value.
+    static func waitSeconds(from defaults: UserDefaults) -> Int {
+        guard let value = defaults.object(forKey: "webWaitSeconds") as? Int else {
+            return waitSeconds
+        }
+        return min(max(value, 0), waitSecondsRange.upperBound)
+    }
+
+    /// The inclusive bounds the post-load wait seconds are clamped into. The ceiling
+    /// keeps the total wait comfortably inside the hard timeout cap so the picker can
+    /// never seed a wait that would always hit the safety ceiling.
+    static let waitSecondsRange = 0...30
 }

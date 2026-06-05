@@ -3,7 +3,12 @@
 <plist version="1.0">
 <dict>
 	<!-- App Sandbox on. Deliberately NO com.apple.security.network.client:
-	     the core is fully local (CS-011). -->
+	     the core is fully local (CS-011), and Product Phase 2 URL capture (CS-043)
+	     stays disabled until this entitlement is deliberately added. The renderer
+	     reads this entitlement at runtime (NetworkCapability) and refuses a URL
+	     capture while it is absent, so a Phase 1 build provably cannot reach the
+	     network. Adding the key here is the single switch that enables URL capture;
+	     CS-045/CS-062 also update the privacy copy and App Store posture when it is. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 	<!-- User-selected file access only. This single entitlement covers every

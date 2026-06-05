@@ -33,9 +33,10 @@ const WORLDCLASS = Array.from({ length: 8 }, (_, i) => `CS-0${47 + i}`) // CS-04
 // this hardcoded PENDING list — not args — is the source of truth for what runs. Edit it to
 // change scope.
 const PENDING = [
-  // Remaining after continuation 3 (committed 97f34b2): the last Phase-1 polish
-  // ticket plus the two world-class tickets that never landed.
-  'CS-039', 'CS-047', 'CS-053',
+  // Product Phase 2 — local URL/HTML/social-card snapshots. CS-040 is the renderer
+  // abstraction the rest build on (do first); CS-043 adds the network-client
+  // entitlement (user opted in); CS-046 is a 🟡 discovery spike (doc, not a feature).
+  'CS-040', 'CS-041', 'CS-042', 'CS-043', 'CS-044', 'CS-045', 'CS-046',
 ]
 
 const cfg = (typeof args === 'object' && args) ? args : {}

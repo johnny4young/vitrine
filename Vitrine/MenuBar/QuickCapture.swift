@@ -57,10 +57,19 @@ enum QuickCapture {
         }
 
         // URL → screenshot is Product Phase 2; only branch off when the user opted in.
-        if settings.treatURLsAsScreenshot, LanguageDetector.isURL(text) {
-            // TODO: CS-043 — WKWebView snapshot of the URL.
+        if settings.treatURLsAsScreenshot, let input = classifyURL(text) {
+            // Route the classified URL input through the renderer abstraction
+            // (CS-040). The standard coordinator's web renderer is an explicit
+            // Phase 2 stub, so this resolves to a *typed* deferred outcome
+            // (`RenderError.deferredToPhase2`) rather than a blank render — the
+            // proof that the URL path is deferred behind the abstraction, not the
+            // code path. The user-facing `Outcome` stays `.url(text)` so the
+            // feedback layer can offer "Render as Text" recovery (CS-038).
             // Never log the URL itself; record only that the branch was taken.
-            Log.capture.info("Quick capture: URL detected (screenshot deferred)")
+            let deferral = RenderCoordinator.standard.deferralReason(for: input)
+            Log.capture.info(
+                "Quick capture: URL detected (deferred: \(deferral ?? "unknown", privacy: .public))"
+            )
             return .nonProducing(.url(text))
         }
 
@@ -121,6 +130,39 @@ enum QuickCapture {
             outcome: didCopy ? .copied : .rendered,
             copiedToClipboard: didCopy,
             savedToFile: didSave)
+    }
+
+    // MARK: - Input classification (CS-040)
+
+    /// Classifies raw clipboard text into a typed `CaptureInput` for the renderer
+    /// abstraction, *without rendering* — the seam that keeps the Phase 1 code path
+    /// free of Phase 2's URL assumptions (CS-040).
+    ///
+    /// When `treatURLsAsScreenshot` is on and the text is a single http(s) URL, the
+    /// input is `.url`; otherwise the text is interpreted (Markdown fences, file
+    /// paths, content scoring) and returned as `.code` carrying the detected
+    /// language as its hint. HTML is not produced from clipboard text here — pasted
+    /// HTML arrives through a dedicated Phase 2 entry point, not by sniffing the
+    /// code path — so plain HTML source still classifies as `.code` (highlighted)
+    /// exactly as before.
+    static func classify(_ text: String, treatURLsAsScreenshot: Bool) -> CaptureInput {
+        if treatURLsAsScreenshot, let url = classifyURL(text) {
+            return url
+        }
+        let interpreted = LanguageDetector.interpret(text)
+        return .code(interpreted.code, languageHint: interpreted.language)
+    }
+
+    /// Returns a `.url` input when `text` is a single http(s) URL that `URL` can
+    /// parse, or `nil` otherwise. This pairs `LanguageDetector.isURL` (the textual
+    /// gate, which the rest of the app already trusts) with an actual `URL` value
+    /// for the renderer, so a string that passes the gate but cannot form a `URL`
+    /// falls through to the code path rather than producing a broken URL input.
+    static func classifyURL(_ text: String) -> CaptureInput? {
+        guard LanguageDetector.isURL(text) else { return nil }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed) else { return nil }
+        return .url(url)
     }
 
     /// Renders an explicit string as a plain-text capture, bypassing clipboard

@@ -2,7 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Vitrine does not track users and collects no data (CS-011). -->
+	<!-- Vitrine does not track users and collects no data (CS-011).
+
+	     Product Phase 2 URL capture (CS-043/CS-045) does not change this manifest:
+	     loading a user-requested webpage locally in WebKit and rasterizing it
+	     on-device introduces no required-reason API beyond UserDefaults (used only
+	     for the app's own settings) and collects no data. There is no analytics,
+	     telemetry, or tracking, so NSPrivacyTracking stays false,
+	     NSPrivacyCollectedDataTypes stays empty, and the App Store privacy labels
+	     remain "Data Not Collected". This file changes only if a new required-reason
+	     API or data collection is actually introduced. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>

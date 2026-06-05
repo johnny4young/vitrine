@@ -1,0 +1,15 @@
+{
+  "pinnedImage" : {
+    "architecture" : "arm64",
+    "osVersion" : "26.5.0",
+    "swiftVersion" : "6.2"
+  },
+  "scenarios" : {
+    "default-card" : {
+      "configFingerprint" : "ddb96c8c775076e634dc94b1af77ba4bf9eaea5eba3b5ee6761b7e3241d8b38e",
+      "height" : 630,
+      "width" : 1200
+    }
+  },
+  "schema" : 1
+}

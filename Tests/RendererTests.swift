@@ -1,0 +1,343 @@
+import Foundation
+import Testing
+
+@testable import Vitrine
+
+/// CS-040 — the renderer abstraction for phased inputs.
+///
+/// These suites prove the three properties the ticket asks for:
+///
+/// 1. **Routing** — a `RenderCoordinator` picks the first renderer that accepts an
+///    input, and `CodeRenderer` handles the Phase 1 code case only.
+/// 2. **Deferred URL/HTML** — Phase 2 inputs resolve to a *typed*
+///    `RenderError.deferredToPhase2` (never a blank image), and quick capture
+///    returns a deferred outcome for a clipboard URL.
+/// 3. **No-network code path** — code rendering produces a real asset without any
+///    URL configuration, and the app target ships with no network entitlement.
+
+// MARK: - Input classification
+
+@Suite("CaptureInput · CS-040")
+struct CaptureInputTests {
+    @Test func codeIsPhase1AndEverythingElseIsDeferred() throws {
+        #expect(CaptureInput.code("let x = 1", languageHint: .swift).isDeferredToPhase2 == false)
+        #expect(
+            CaptureInput.url(try #require(URL(string: "https://example.com"))).isDeferredToPhase2)
+        #expect(CaptureInput.html("<b>hi</b>").isDeferredToPhase2)
+    }
+
+    @Test func diagnosticKindIsAStableNonPIILabel() throws {
+        // The label names the *kind*, never the user's content.
+        #expect(CaptureInput.code("secret token", languageHint: nil).diagnosticKind == "code")
+        #expect(
+            CaptureInput.url(try #require(URL(string: "https://example.com/secret")))
+                .diagnosticKind == "url")
+        #expect(CaptureInput.html("<p>secret</p>").diagnosticKind == "html")
+    }
+}
+
+// MARK: - Routing
+
+@MainActor
+@Suite("RenderCoordinator routing · CS-040")
+struct RenderCoordinatorRoutingTests {
+    @Test func codeRendererAcceptsOnlyCode() throws {
+        let renderer = CodeRenderer()
+        #expect(renderer.canRender(.code("x", languageHint: nil)))
+        #expect(!renderer.canRender(.url(try #require(URL(string: "https://example.com")))))
+        #expect(!renderer.canRender(.html("<b>x</b>")))
+    }
+
+    @Test func deferredWebRendererAcceptsOnlyURLAndHTML() throws {
+        let renderer = DeferredWebRenderer()
+        #expect(renderer.canRender(.url(try #require(URL(string: "https://example.com")))))
+        #expect(renderer.canRender(.html("<b>x</b>")))
+        #expect(!renderer.canRender(.code("x", languageHint: nil)))
+    }
+
+    @Test func standardCoordinatorRoutesEachInputToTheRightRenderer() throws {
+        let coordinator = RenderCoordinator.standard
+        #expect(coordinator.renderer(for: .code("x", languageHint: nil)) is CodeRenderer)
+        #expect(
+            coordinator.renderer(for: .url(try #require(URL(string: "https://example.com"))))
+                is DeferredWebRenderer)
+        #expect(coordinator.renderer(for: .html("<b>x</b>")) is DeferredWebRenderer)
+    }
+
+    @Test func firstAcceptingRendererWins() throws {
+        // Routing is "first that accepts", so order is priority: a code-accepting
+        // stub placed before `CodeRenderer` would intercept code. Verify the
+        // documented order by putting `CodeRenderer` first.
+        let coordinator = RenderCoordinator(renderers: [CodeRenderer(), DeferredWebRenderer()])
+        let chosen = coordinator.renderer(for: .code("x", languageHint: nil))
+        #expect(chosen is CodeRenderer)
+    }
+
+    @Test func unroutableInputThrowsNoRendererFor() async throws {
+        // A coordinator with no renderers cannot route anything; the error names
+        // the kind, not the content.
+        let coordinator = RenderCoordinator(renderers: [])
+        await #expect(throws: RenderError.noRendererFor(kind: "code")) {
+            try await coordinator.render(.code("x", languageHint: nil), config: SnapshotConfig())
+        }
+    }
+}
+
+// MARK: - Deferred URL / HTML (Phase 2 stubs)
+
+@MainActor
+@Suite("Deferred Phase 2 rendering · CS-040")
+struct DeferredRenderingTests {
+    @Test func urlRoutesToATypedPhase2Deferral() async throws {
+        let coordinator = RenderCoordinator.standard
+        let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
+        await #expect(throws: RenderError.deferredToPhase2(ticket: "CS-043")) {
+            try await coordinator.render(input, config: SnapshotConfig())
+        }
+        // The synchronous probe agrees with the thrown error (single source of truth).
+        #expect(coordinator.deferralReason(for: input) == "CS-043")
+    }
+
+    @Test func htmlRoutesToATypedPhase2Deferral() async throws {
+        let coordinator = RenderCoordinator.standard
+        let input = CaptureInput.html("<h1>Hello</h1>")
+        await #expect(throws: RenderError.deferredToPhase2(ticket: "CS-042")) {
+            try await coordinator.render(input, config: SnapshotConfig())
+        }
+        #expect(coordinator.deferralReason(for: input) == "CS-042")
+    }
+
+    @Test func deferralIsTypedNotABlankImage() async throws {
+        // The contract: a deferred input never silently yields an empty asset; it
+        // throws so callers can offer recovery (CS-038).
+        let coordinator = RenderCoordinator.standard
+        let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
+        do {
+            _ = try await coordinator.render(input, config: SnapshotConfig())
+            Issue.record("Expected a deferral error, but a render succeeded")
+        } catch let error as RenderError {
+            #expect(error == .deferredToPhase2(ticket: "CS-043"))
+        }
+    }
+
+    @Test func codeRendererDefersNothing() {
+        // A real renderer reports no deferral ticket for the input it renders.
+        #expect(CodeRenderer().deferralTicket(for: .code("x", languageHint: nil)) == nil)
+    }
+
+    @Test func coordinatorReasonIsNilForRenderableAndUnroutableInputs() throws {
+        // The synchronous probe distinguishes "renders today" (a registered
+        // renderer accepts it and defers nothing) from "deferred to Phase 2": code
+        // returns nil because `CodeRenderer` renders it now…
+        let coordinator = RenderCoordinator.standard
+        #expect(coordinator.deferralReason(for: .code("x", languageHint: nil)) == nil)
+        // …and an input no renderer accepts also yields nil (no accepting renderer
+        // to name a ticket), never a stray deferral string.
+        let bare = RenderCoordinator(renderers: [])
+        #expect(
+            bare.deferralReason(for: .url(try #require(URL(string: "https://example.com")))) == nil)
+    }
+
+    @Test func deferredWebRendererRejectsCodeSymmetrically() async throws {
+        // The web stub is the mirror of `CodeRenderer`: handed the input it does
+        // not accept, it defers nothing and — if called anyway (a routing mistake)
+        // — throws `noRendererFor`, not a Phase 2 deferral and not a blank image.
+        let renderer = DeferredWebRenderer()
+        #expect(renderer.deferralTicket(for: .code("x", languageHint: nil)) == nil)
+        await #expect(throws: RenderError.noRendererFor(kind: "code")) {
+            try await renderer.render(.code("x", languageHint: nil), config: SnapshotConfig())
+        }
+    }
+
+    @Test func renderErrorCasesAreDistinct() throws {
+        // The typed-error contract (deferred vs. failed vs. unroutable) only holds
+        // if the cases are not interchangeable: a routing test that asserts a
+        // *specific* error would silently pass against the wrong one if these
+        // collapsed. Pin the distinctions, including associated-value identity.
+        #expect(RenderError.deferredToPhase2(ticket: "CS-043") != .renderFailed)
+        #expect(RenderError.deferredToPhase2(ticket: "CS-043") != .noRendererFor(kind: "url"))
+        #expect(RenderError.noRendererFor(kind: "url") != .renderFailed)
+        // Associated values participate in equality, so a drifted ticket/kind is
+        // not equal to the right one.
+        #expect(
+            RenderError.deferredToPhase2(ticket: "CS-043") != .deferredToPhase2(ticket: "CS-042"))
+        #expect(RenderError.noRendererFor(kind: "url") != .noRendererFor(kind: "html"))
+        // Sanity: identical cases with identical payloads remain equal (the
+        // property `await #expect(throws:)` relies on).
+        #expect(
+            RenderError.deferredToPhase2(ticket: "CS-043") == .deferredToPhase2(ticket: "CS-043"))
+    }
+}
+
+// MARK: - No-network code path
+
+@MainActor
+@Suite("Code rendering needs no network or URL config · CS-040")
+struct CodeRenderingNoNetworkTests {
+    @Test func codeRendererProducesAnAssetWithoutURLConfig() async throws {
+        // Rendering code goes through the abstraction and yields a real image with
+        // no URL, no network, and no web configuration involved.
+        let coordinator = RenderCoordinator.standard
+        let asset = try await coordinator.render(
+            .code("let answer = 42", languageHint: .swift), config: SnapshotConfig())
+        #expect(asset.pixelWidth > 0)
+        #expect(asset.pixelHeight > 0)
+        #expect(asset.profile == .sRGB)
+    }
+
+    @Test func languageHintOverridesTheConfigLanguage() async throws {
+        // The renderer honors the detector's hint over the config's stored language
+        // (classification done upstream is respected, not re-derived).
+        var config = SnapshotConfig()
+        config.language = .plaintext
+        let asset = try await CodeRenderer().render(
+            .code("print(1)", languageHint: .python), config: config)
+        #expect(asset.pixelWidth > 0)
+    }
+
+    @Test func nonCodeInputThrowsFromCodeRenderer() async throws {
+        // Calling `CodeRenderer` with an input it rejects is a routing mistake and
+        // throws, rather than producing an image.
+        let url = CaptureInput.url(try #require(URL(string: "https://example.com")))
+        await #expect(throws: RenderError.noRendererFor(kind: "url")) {
+            try await CodeRenderer().render(url, config: SnapshotConfig())
+        }
+    }
+
+    /// The app target ships **without** `com.apple.security.network.client`, so the
+    /// Phase 1 render path provably cannot reach the network (CS-011/CS-040). The
+    /// entitlements file is excluded from the app's compiled sources and is not a
+    /// bundle resource, so it is read from the source tree via `#filePath` — the
+    /// same anchoring the golden fixtures use.
+    @Test func appHasNoNetworkClientEntitlement() throws {
+        let entitlements = Self.appEntitlements()
+        let data = try Data(contentsOf: entitlements)
+        let plist = try #require(
+            try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+            "Vitrine.entitlements must be a property list")
+
+        #expect(
+            plist["com.apple.security.network.client"] == nil,
+            "Phase 1 must not request the network client entitlement (CS-011/CS-040)")
+        // The sandbox is on and file access is the only granted capability, so the
+        // guard fails loudly if a network key is ever added alongside it.
+        #expect(plist["com.apple.security.app-sandbox"] as? Bool == true)
+    }
+
+    /// `<repo>/Vitrine/Resources/Vitrine.entitlements`, derived from this file at
+    /// `<repo>/Tests/RendererTests.swift`.
+    private static func appEntitlements() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()  // <repo>/Tests
+            .deletingLastPathComponent()  // <repo>
+            .appendingPathComponent("Vitrine", isDirectory: true)
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("Vitrine.entitlements", isDirectory: false)
+    }
+}
+
+// MARK: - Quick capture wiring
+
+@MainActor
+@Suite("QuickCapture classification · CS-040", .serialized)
+struct QuickCaptureClassificationTests {
+    private func freshDefaults() -> UserDefaults {
+        UserDefaults(suiteName: "VitrineCS040-\(UUID().uuidString)")!
+    }
+
+    @Test func clipboardCodeClassifiesAsCodeWithDetectedLanguage() {
+        let input = QuickCapture.classify("def greet():\n    pass", treatURLsAsScreenshot: false)
+        guard case .code(let code, let hint) = input else {
+            Issue.record("Expected a code input, got \(input)")
+            return
+        }
+        #expect(code == "def greet():\n    pass")
+        #expect(hint == .python)
+    }
+
+    @Test func markdownFenceIsStrippedDuringClassification() {
+        let input = QuickCapture.classify(
+            "```swift\nlet x = 1\n```", treatURLsAsScreenshot: false)
+        guard case .code(let code, let hint) = input else {
+            Issue.record("Expected a code input, got \(input)")
+            return
+        }
+        #expect(code == "let x = 1")
+        #expect(hint == .swift)
+    }
+
+    @Test func urlClassifiesAsURLOnlyWhenScreenshotEnabled() throws {
+        // With the opt-in off, a URL stays on the code path (rendered as text).
+        let asCode = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: false)
+        #expect(asCode.isDeferredToPhase2 == false)
+
+        // With the opt-in on, the same text classifies as a URL input.
+        let asURL = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: true)
+        guard case .url(let url) = asURL else {
+            Issue.record("Expected a url input, got \(asURL)")
+            return
+        }
+        #expect(url == (try #require(URL(string: "https://example.com"))))
+    }
+
+    @Test func nonURLTextNeverClassifiesAsURLEvenWhenEnabled() {
+        // Plain code with the URL opt-in on still classifies as code: only a single
+        // http(s) URL trips the URL branch.
+        let input = QuickCapture.classify("let x = 1", treatURLsAsScreenshot: true)
+        #expect(input.isDeferredToPhase2 == false)
+    }
+
+    @Test func classifyURLReturnsNilForNonURL() {
+        #expect(QuickCapture.classifyURL("not a url") == nil)
+        #expect(QuickCapture.classifyURL("ftp://example.com") == nil)
+    }
+
+    @Test func classifyURLTrimsSurroundingWhitespaceIntoTheURLValue() throws {
+        // A pasted URL often carries trailing whitespace/newlines; classification
+        // trims before building the `URL`, so the input carries the clean URL (not
+        // one that would fail to load) and still classifies as `.url`.
+        let input = try #require(QuickCapture.classifyURL("  https://example.com/path  \n"))
+        guard case .url(let url) = input else {
+            Issue.record("Expected a url input, got \(input)")
+            return
+        }
+        #expect(url == (try #require(URL(string: "https://example.com/path"))))
+    }
+
+    @Test func classifyFallsBackToCodeCarryingTheOriginalTextWhenURLOptInIsOff() {
+        // With the opt-in off, even a bare URL string takes the code path and the
+        // input carries the text verbatim (it is framed as a snippet, unchanged
+        // Phase 1 behavior) — proving the URL branch is gated, not the code path.
+        let input = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: false)
+        guard case .code(let code, _) = input else {
+            Issue.record("Expected a code input, got \(input)")
+            return
+        }
+        #expect(code == "https://example.com")
+        #expect(input.isDeferredToPhase2 == false)
+    }
+
+    @Test func quickCaptureReturnsDeferredURLOutcomeWhenEnabled() {
+        let settings = AppSettings(defaults: freshDefaults())
+        settings.treatURLsAsScreenshot = true
+        let recents = RecentsStore(defaults: freshDefaults())
+        let outcome = QuickCapture.run(
+            settings: settings, recents: recents, clipboard: { "https://example.com" })
+        // The user-facing outcome is the deferred URL; nothing is rendered, copied,
+        // or recorded for it.
+        #expect(outcome == .url("https://example.com"))
+        #expect(recents.captures.isEmpty)
+    }
+
+    @Test func quickCaptureStillRendersURLTextWhenOptInIsOff() {
+        // The URL branch is gated on the opt-in; without it, the URL text is framed
+        // as a normal code capture (unchanged Phase 1 behavior).
+        let settings = AppSettings(defaults: freshDefaults())
+        settings.treatURLsAsScreenshot = false
+        let recents = RecentsStore(defaults: freshDefaults())
+        let outcome = QuickCapture.run(
+            settings: settings, recents: recents, clipboard: { "https://example.com" })
+        #expect(outcome == .copied)
+        #expect(recents.captures.first?.code == "https://example.com")
+    }
+}

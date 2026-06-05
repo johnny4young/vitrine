@@ -89,6 +89,29 @@ on every release.
 
 See the full ticket breakdown in [**docs/ROADMAP.md**](docs/ROADMAP.md).
 
+## Privacy
+
+Vitrine is private by design, and that promise does not soften as the product grows:
+
+- **Phase 1 (today): your code never leaves your Mac.** Rendering a code image is fully
+  local and on-device. There is no account, no server, and no network access — the app
+  ships sandboxed *without* the network entitlement. Rendering needs no Screen Recording
+  or Accessibility permission.
+- **Product Phase 2 (URL capture): the requested webpage loads locally.** When a copied
+  URL is captured, Vitrine loads that webpage **locally in WebKit on your Mac** and turns
+  it into an image on-device. There is **no remote screenshot service** — the URL is never
+  sent off your machine to be rendered. URL capture is opt-in, gated behind the network
+  entitlement (absent in Phase 1 builds), and shows a first-use disclosure that explains
+  exactly this before any page loads. Only `http`/`https` URLs are accepted, and the web
+  view uses a non-persistent data store by default (no cookies or website data persist
+  across captures unless you opt in).
+- **No analytics, no telemetry, ever.** Neither code rendering nor URL capture collects,
+  tracks, or transmits any usage data. The bundled privacy manifest declares no tracking
+  and no collected data, so the App Store privacy label is **Data Not Collected**.
+
+The permission and privacy posture per phase is documented in
+[**docs/PROJECT.md**](docs/PROJECT.md#privacy-and-permissions).
+
 ## Tech stack
 
 | Layer            | Choice                                                        |
@@ -190,6 +213,7 @@ to leave the repo:
 - [**docs/PROJECT.md**](docs/PROJECT.md) — vision, positioning, naming, distribution, risks.
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
 - [**docs/RENDER-PHASES.md**](docs/RENDER-PHASES.md) — "beyond code": OG cards, HTML/URL snapshots, and the optional web render service.
+- [**docs/SCREEN-CAPTURE-DISCOVERY.md**](docs/SCREEN-CAPTURE-DISCOVERY.md) — why arbitrary screen/window capture is parked (Screen Recording trade-offs).
 - [**docs/DESIGN-QA.md**](docs/DESIGN-QA.md) — the generated launch gallery and the design-QA process.
 - [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized DMG, Homebrew cask, release workflow.
 

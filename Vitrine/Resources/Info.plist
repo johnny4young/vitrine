@@ -41,9 +41,13 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 johnny4young. MIT-licensed.</string>
-	<!-- The app reads the clipboard locally to render code/URLs; nothing leaves the Mac. -->
+	<!-- The app reads the clipboard locally to render code/URLs; nothing leaves the
+	     Mac (CS-045). Phase 1 promise is unchanged: copied code is turned into an
+	     image entirely on-device. In Product Phase 2, a copied URL is captured by
+	     loading the requested webpage locally in WebKit on this Mac — there is no
+	     remote screenshot service, no account, and no analytics or telemetry. -->
 	<key>NSPasteboardUsageDescription</key>
-	<string>Vitrine reads the clipboard to turn copied code or a URL into an image. Nothing ever leaves your Mac.</string>
+	<string>Vitrine reads the clipboard to turn copied code or a URL into an image. Code never leaves your Mac, and a URL is captured by loading the webpage locally in WebKit on your Mac.</string>
 	<!-- Services menu action (CS-034): "Render Code Image with Vitrine" takes a
 	     text selection from any app and returns a rendered PNG image. The runtime
 	     provider is registered in AppDelegate (NSApp.servicesProvider); this

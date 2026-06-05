@@ -2995,6 +2995,377 @@
           }
         }
       }
+    },
+    "%lld seconds" : {
+      "comment" : "Input pane extra-wait value, in seconds; count-aware (CS-047).",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld second"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld seconds"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld segundo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld segundos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Capture" : {
+      "comment" : "Input pane picker label: whether a web capture grabs the visible area or the full page.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura"
+          }
+        }
+      }
+    },
+    "Capture a webpage?" : {
+      "comment" : "URL capture first-use disclosure title (CS-043).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Capturar una página web?"
+          }
+        }
+      }
+    },
+    "Captures exactly the viewport size. URL capture loads the page locally in WebKit and arrives in Product Phase 2." : {
+      "comment" : "Input pane footer for the visible-area web capture mode.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura exactamente el tamaño del viewport. La captura de URL carga la página localmente en WebKit y llega en la fase 2 del producto."
+          }
+        }
+      }
+    },
+    "Captures the whole page at the viewport width, down to a bounded maximum height. Lazy-loaded content is given a chance to appear by scrolling the page a limited number of times." : {
+      "comment" : "Input pane footer for the full-page web capture mode; explains the bounded lazy-load scroll.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura la página completa con el ancho del viewport, hasta una altura máxima acotada. Al contenido de carga diferida se le da la oportunidad de aparecer desplazando la página un número limitado de veces."
+          }
+        }
+      }
+    },
+    "Custom (%lld × %lld)" : {
+      "comment" : "Input pane viewport picker label for a custom width × height (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personalizado (%lld × %lld)"
+          }
+        }
+      }
+    },
+    "Custom…" : {
+      "comment" : "Input pane viewport picker row that reveals custom width and height fields.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personalizado…"
+          }
+        }
+      }
+    },
+    "Desktop (1440 × 900)" : {
+      "comment" : "Input pane viewport preset: a common laptop logical resolution (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escritorio (1440 × 900)"
+          }
+        }
+      }
+    },
+    "Don't capture; nothing is loaded." : {
+      "comment" : "Web privacy disclosure: tooltip on the Cancel button (CS-045).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No capturar; no se carga nada."
+          }
+        }
+      }
+    },
+    "Extra wait" : {
+      "comment" : "Input pane field label: extra wait, in seconds, before a web capture snapshots.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espera adicional"
+          }
+        }
+      }
+    },
+    "Fixed delay" : {
+      "comment" : "Input pane wait-strategy picker label: wait a fixed time after load (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retraso fijo"
+          }
+        }
+      }
+    },
+    "Full HD (1920 × 1080)" : {
+      "comment" : "Input pane viewport preset: a wide full-HD desktop capture (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full HD (1920 × 1080)"
+          }
+        }
+      }
+    },
+    "Full page" : {
+      "comment" : "Input pane capture-mode picker label: capture the whole scrollable page (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página completa"
+          }
+        }
+      }
+    },
+    "Height" : {
+      "comment" : "Input pane field label: custom web-capture viewport height, in points.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alto"
+          }
+        }
+      }
+    },
+    "Load and Capture" : {
+      "comment" : "URL capture first-use disclosure confirm button (CS-043).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargar y capturar"
+          }
+        }
+      }
+    },
+    "Load this webpage locally in WebKit and capture it." : {
+      "comment" : "Web privacy disclosure: tooltip on the confirm button when URL capture is available (CS-045).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carga esta página web localmente en WebKit y captúrala."
+          }
+        }
+      }
+    },
+    "Mobile (390 × 844)" : {
+      "comment" : "Input pane viewport preset: an iPhone-class responsive width (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Móvil (390 × 844)"
+          }
+        }
+      }
+    },
+    "Network quiet (best effort)" : {
+      "comment" : "Input pane wait-strategy picker label: best-effort network-idle settle (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Red en reposo (en lo posible)"
+          }
+        }
+      }
+    },
+    "Page loaded" : {
+      "comment" : "Input pane wait-strategy picker label: snapshot as soon as the page loads (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página cargada"
+          }
+        }
+      }
+    },
+    "Snapshots as soon as the page finishes loading." : {
+      "comment" : "Input pane footer for the DOM-loaded wait strategy.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura en cuanto la página termina de cargar."
+          }
+        }
+      }
+    },
+    "Social card (1200 × 630)" : {
+      "comment" : "Input pane viewport preset: the OpenGraph social-card size (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta social (1200 × 630)"
+          }
+        }
+      }
+    },
+    "Viewport" : {
+      "comment" : "Input pane picker label: the viewport size a web capture lays the page out in.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viewport"
+          }
+        }
+      }
+    },
+    "Visible area" : {
+      "comment" : "Input pane capture-mode picker label: capture only the visible viewport (CS-044).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Área visible"
+          }
+        }
+      }
+    },
+    "Vitrine will load this webpage locally in WebKit on your Mac and turn it into an image. The page is rendered on-device — Vitrine never sends the URL to a remote screenshot service." : {
+      "comment" : "URL capture first-use disclosure body explaining local WebKit rendering (CS-043).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine cargará esta página web localmente en WebKit en tu Mac y la convertirá en una imagen. La página se procesa en el dispositivo: Vitrine nunca envía la URL a un servicio remoto de capturas."
+          }
+        }
+      }
+    },
+    "Wait until" : {
+      "comment" : "Input pane picker label: which signal a web capture waits for before snapshotting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperar a"
+          }
+        }
+      }
+    },
+    "Waits a fixed time after the page loads before snapshotting, so content added by scripts has time to appear." : {
+      "comment" : "Input pane footer for the fixed-delay wait strategy.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espera un tiempo fijo después de que la página carga antes de capturar, para que el contenido añadido por scripts tenga tiempo de aparecer."
+          }
+        }
+      }
+    },
+    "Waits, up to the chosen time, for the page to stop loading content before snapshotting. Best effort: a page that never goes quiet is captured when the time runs out." : {
+      "comment" : "Input pane footer for the best-effort network-quiet wait strategy.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espera, hasta el tiempo elegido, a que la página deje de cargar contenido antes de capturar. Mejor esfuerzo: una página que nunca se aquieta se captura cuando se agota el tiempo."
+          }
+        }
+      }
+    },
+    "Web capture (Product Phase 2)" : {
+      "comment" : "Input pane section header for the web URL-capture settings; Product Phase 2 feature.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura web (fase 2 del producto)"
+          }
+        }
+      }
+    },
+    "Webpage capture arrives in Product Phase 2 and is not available in this build." : {
+      "comment" : "Web privacy disclosure note shown in a Phase 1 build where URL capture is deferred (CS-045).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura de páginas web llega en la fase 2 del producto y no está disponible en esta versión."
+          }
+        }
+      }
+    },
+    "Width" : {
+      "comment" : "Input pane field label: custom web-capture viewport width, in points.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancho"
+          }
+        }
+      }
+    },
+    "Your code still never leaves your Mac — this only loads the webpage you asked for." : {
+      "comment" : "Web privacy disclosure: the Phase 1 promise restated before the first URL capture (CS-045).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu código sigue sin salir de tu Mac; esto solo carga la página web que pediste."
+          }
+        }
+      }
     }
   }
 }

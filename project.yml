@@ -112,6 +112,11 @@ targets:
           # path itself, so it neither links nor compiles these.
           - "AppIntents"
           - "Services"
+          # Local HTML rendering (CS-042) drives an offscreen WKWebView, which needs
+          # a window-server connection at runtime that this headless tool does not
+          # have. The CLI renders code, not web content, so it neither links WebKit
+          # nor compiles the web-rendering surface.
+          - "WebRendering"
       - path: VitrineCLI
     dependencies:
       - package: Highlightr
@@ -204,12 +209,16 @@ schemes:
       # to empty and the matching opt-in suite stays skipped.
       #   - VITRINE_RECORD_GOLDENS  → golden-image recorder (CS-025, `make record-goldens`)
       #   - VITRINE_GENERATE_GALLERY → launch-gallery generator (CS-039, `make gallery`)
+      #   - VITRINE_RECORD_SOCIAL_CARD → social-card golden recorder (CS-041)
       environmentVariables:
         - variable: VITRINE_RECORD_GOLDENS
           value: $(VITRINE_RECORD_GOLDENS)
           isEnabled: true
         - variable: VITRINE_GENERATE_GALLERY
           value: $(VITRINE_GENERATE_GALLERY)
+          isEnabled: true
+        - variable: VITRINE_RECORD_SOCIAL_CARD
+          value: $(VITRINE_RECORD_SOCIAL_CARD)
           isEnabled: true
     profile:
       config: Release

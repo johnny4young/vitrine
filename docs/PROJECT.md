@@ -61,6 +61,60 @@ Substack, or who write internal documentation.
 - Less legal/marketing surface: no competing for Store keywords. A distinctive name
   still helps discoverability.
 
+## Privacy and permissions
+
+Privacy is a product promise, not an afterthought, and it is kept reviewable per phase.
+Adding network access (Product Phase 2 URL capture) changes the product promise and the
+App Store review posture, so the posture below is the canonical reference for what each
+phase does and what it is allowed to touch (CS-045).
+
+### Phase 1 — code rendering (today)
+
+- **Your code never leaves your Mac.** Turning copied code into an image is fully local
+  and on-device: SwiftUI → `ImageRenderer` → PNG/PDF. No account, no server, no network.
+- **The app ships sandboxed without `com.apple.security.network.client`.** A Phase 1
+  build provably cannot reach the network; the renderer reads this entitlement at runtime
+  (`NetworkCapability`) and refuses any URL capture while it is absent.
+- **No elevated permissions.** Rendering needs no Screen Recording and no Accessibility
+  permission. The only declared usage is reading the clipboard to render what you copied.
+
+### Product Phase 2 — URL capture (deferred, opt-in)
+
+- **The requested webpage loads locally.** When a copied URL is captured, Vitrine loads
+  that page **locally in WebKit on this Mac** (`WKWebView`) and rasterizes it on-device.
+  There is **no remote screenshot service** — the URL is never sent off the machine to be
+  rendered.
+- **Gated and explicit.** URL capture stays disabled until the app target deliberately
+  adds the network entitlement. A first-use disclosure (`WebPrivacyDisclosureView`)
+  explains the local-WebKit behavior and restates the Phase 1 promise before any page
+  loads; nothing loads until the user confirms.
+- **Conservative web defaults.** Only `http`/`https` URLs are accepted; `file:`, `data:`,
+  `javascript:`, private/loopback hosts, and malformed URLs are rejected. The web view
+  uses `WKWebsiteDataStore.nonPersistent()` by default, so cookies and website data do
+  not persist across captures unless the user opts in.
+
+### No analytics or telemetry
+
+Neither code rendering nor URL capture collects, tracks, or transmits usage data. There
+is no analytics SDK and no telemetry anywhere in the app.
+
+### App Store privacy labels
+
+The bundled privacy manifest (`Vitrine/Resources/PrivacyInfo.xcprivacy`) matches this
+behavior exactly, and the App Store privacy labels are kept in sync with it:
+
+- **Data Used to Track You:** None (`NSPrivacyTracking` = false).
+- **Data Linked to You:** None.
+- **Data Not Linked to You:** None (`NSPrivacyCollectedDataTypes` is empty).
+- **Overall label:** **Data Not Collected.**
+- **Required-reason API:** only `NSPrivacyAccessedAPICategoryUserDefaults` (reason
+  `CA92.1`), used solely to store the app's own settings.
+
+Phase 2 URL capture does **not** change these labels: loading a user-requested page in a
+local `WKWebView` introduces no required-reason API beyond UserDefaults and collects no
+data. The privacy manifest is updated only if a new required-reason API or data
+collection is actually introduced.
+
 ## References & inspiration
 
 | Tool                  | Type                  | What we take                                                      |

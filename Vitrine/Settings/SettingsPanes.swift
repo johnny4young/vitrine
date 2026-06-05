@@ -1111,25 +1111,176 @@ struct OutputSettingsView: View {
     }
 }
 
-/// Input pane: URL handling (CS-010 · Input).
+/// Input pane: URL handling (CS-010 · Input) and the web URL-capture viewport and
+/// wait strategy (CS-044).
 struct InputSettingsView: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
         Form {
-            Toggle(
-                "Treat copied URLs as a screenshot target", isOn: $settings.treatURLsAsScreenshot)
-            Text(
-                "When off, a copied URL is rendered as text. URL screenshots arrive in Product Phase 2."
-            )
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+            Section {
+                Toggle(
+                    "Treat copied URLs as a screenshot target",
+                    isOn: $settings.treatURLsAsScreenshot)
+            } footer: {
+                Text(
+                    "When off, a copied URL is rendered as text. URL screenshots arrive in Product Phase 2."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            }
+
+            WebCaptureControls(settings: settings)
         }
         .formStyle(.grouped)
-        .frame(width: 420)
+        .frame(width: 460)
         .padding()
         .accessibilityIdentifier("settings-input-pane")
     }
+}
+
+/// The web URL-capture viewport, capture mode, and wait-strategy controls (CS-044).
+///
+/// URL capture is a Product Phase 2 feature gated on the network entitlement, so
+/// these controls set the policy a future URL capture will use; the footer states
+/// that plainly. Choosing the viewport, the visible-vs-full-page mode, and the wait
+/// strategy here is what makes a web screenshot predictable across sites. The
+/// width/height fields appear only for a custom viewport, and the seconds field only
+/// for a timed wait strategy, so the surface stays as small as the chosen options.
+struct WebCaptureControls: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Section {
+            Picker("Viewport", selection: $settings.webViewportKind) {
+                ForEach(WebSnapshotConfig.ViewportPreset.Kind.allCases, id: \.self) { kind in
+                    Text(viewportLabel(for: kind)).tag(kind)
+                }
+            }
+            .accessibilityIdentifier("web-viewport-picker")
+
+            if settings.webViewportKind == .custom {
+                Stepper(
+                    value: $settings.webCustomViewportWidth,
+                    in: customDimensionRange, step: 10
+                ) {
+                    LabeledContent("Width", value: "\(settings.webCustomViewportWidth) pt")
+                }
+                .accessibilityIdentifier("web-custom-width-stepper")
+
+                Stepper(
+                    value: $settings.webCustomViewportHeight,
+                    in: customDimensionRange, step: 10
+                ) {
+                    LabeledContent("Height", value: "\(settings.webCustomViewportHeight) pt")
+                }
+                .accessibilityIdentifier("web-custom-height-stepper")
+            }
+
+            Picker("Capture", selection: $settings.webCaptureMode) {
+                ForEach(WebSnapshotConfig.CaptureMode.allCases, id: \.self) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .accessibilityIdentifier("web-capture-mode-picker")
+        } header: {
+            Text("Web capture (Product Phase 2)")
+        } footer: {
+            Text(captureFooter)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+
+        Section {
+            Picker("Wait until", selection: $settings.webWaitKind) {
+                ForEach(WebSnapshotConfig.WaitStrategy.Kind.allCases, id: \.self) { kind in
+                    Text(waitLabel(for: kind)).tag(kind)
+                }
+            }
+            .accessibilityIdentifier("web-wait-strategy-picker")
+
+            if settings.webWaitKind != .domContentLoaded {
+                Stepper(
+                    value: $settings.webWaitSeconds,
+                    in: waitSecondsRange, step: 1
+                ) {
+                    LabeledContent("Extra wait", value: waitSecondsLabel)
+                }
+                .accessibilityIdentifier("web-wait-seconds-stepper")
+            }
+        } footer: {
+            Text(waitFooter)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// The picker label for a viewport kind. The custom row reads "Custom…" rather
+    /// than echoing the stored size, because the size is set by the fields below it.
+    private func viewportLabel(for kind: WebSnapshotConfig.ViewportPreset.Kind) -> String {
+        switch kind {
+        case .openGraph: WebSnapshotConfig.ViewportPreset.openGraph.displayName
+        case .desktop: WebSnapshotConfig.ViewportPreset.desktop.displayName
+        case .fullHD: WebSnapshotConfig.ViewportPreset.fullHD.displayName
+        case .mobile: WebSnapshotConfig.ViewportPreset.mobile.displayName
+        case .custom: String(localized: "Custom…")
+        }
+    }
+
+    /// The picker label for a wait-strategy kind, derived from a representative value
+    /// of that kind so the picker and the engine share one set of names.
+    private func waitLabel(for kind: WebSnapshotConfig.WaitStrategy.Kind) -> String {
+        switch kind {
+        case .domContentLoaded: WebSnapshotConfig.WaitStrategy.domContentLoaded.displayName
+        case .fixedDelay: WebSnapshotConfig.WaitStrategy.fixedDelay(.zero).displayName
+        case .networkQuiet: WebSnapshotConfig.WaitStrategy.networkQuiet(budget: .zero).displayName
+        }
+    }
+
+    private var waitSecondsLabel: String {
+        // One interpolated key whose singular/plural is chosen by the catalog's
+        // plural variations (CS-047), rather than a Swift `== 1` branch — so every
+        // locale's own plural categories are honored, not just one/other.
+        String(localized: "\(settings.webWaitSeconds) seconds")
+    }
+
+    private var captureFooter: String {
+        switch settings.webCaptureMode {
+        case .visibleViewport:
+            String(
+                localized:
+                    "Captures exactly the viewport size. URL capture loads the page locally in WebKit and arrives in Product Phase 2."
+            )
+        case .fullPage:
+            String(
+                localized:
+                    "Captures the whole page at the viewport width, down to a bounded maximum height. Lazy-loaded content is given a chance to appear by scrolling the page a limited number of times."
+            )
+        }
+    }
+
+    private var waitFooter: String {
+        switch settings.webWaitKind {
+        case .domContentLoaded:
+            String(localized: "Snapshots as soon as the page finishes loading.")
+        case .fixedDelay:
+            String(
+                localized:
+                    "Waits a fixed time after the page loads before snapshotting, so content added by scripts has time to appear."
+            )
+        case .networkQuiet:
+            String(
+                localized:
+                    "Waits, up to the chosen time, for the page to stop loading content before snapshotting. Best effort: a page that never goes quiet is captured when the time runs out."
+            )
+        }
+    }
+
+    private var customDimensionRange: ClosedRange<Int> {
+        WebSnapshotConfig.ViewportPreset.customDimensionRange
+    }
+
+    private var waitSecondsRange: ClosedRange<Int> { WebDefaults.waitSecondsRange }
 }
 
 /// About pane: version, links, copyright (CS-010), and a privacy-safe diagnostics

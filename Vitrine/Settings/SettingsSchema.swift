@@ -41,7 +41,12 @@ enum SettingsSchema {
     ///   (`lastSeenWhatsNewVersion`). A new optional string key with a documented
     ///   default (nil, treated as a clean first run) needs no data transform; a store
     ///   predating it simply has no value, so this step only advances the version.
-    static let current = 7
+    /// - `8`: CS-044 — adds the web URL-capture viewport and wait settings
+    ///   (`webViewportKind`, `webCustomViewportWidth`, `webCustomViewportHeight`,
+    ///   `webCaptureMode`, `webWaitKind`, `webWaitSeconds`). All brand-new keys with
+    ///   documented defaults; an older store simply has no value for them and reads
+    ///   the defaults, so this step only advances the version.
+    static let current = 8
 
     /// The `UserDefaults` key that stores the persisted schema version.
     static let versionKey = "settingsSchemaVersion"
@@ -152,6 +157,12 @@ enum SettingsSchema {
         // effectively already running — so the surface first appears on the upgrade
         // *after* this one.
         Migration(from: 6, to: 7) { _ in },
+        // v7 → v8: CS-044 adds the web URL-capture viewport and wait settings
+        // (`webViewportKind`, `webCustomViewportWidth`, `webCustomViewportHeight`,
+        // `webCaptureMode`, `webWaitKind`, `webWaitSeconds`). All brand-new keys with
+        // documented defaults; an older store simply has no value for them and reads
+        // the defaults via `WebDefaults`, so there is nothing to transform.
+        Migration(from: 7, to: 8) { _ in },
     ]
 
     /// Whether the store holds any key this app is known to write. Used to tell a
