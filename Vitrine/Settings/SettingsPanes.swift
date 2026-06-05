@@ -8,8 +8,17 @@ import SwiftUI
 ///
 /// Selecting a preset applies its presentation/output guidance and persists the
 /// choice; selecting "Custom" clears the selection without altering the style.
+///
+/// The accessibility identifier is a parameter because more than one instance can
+/// be on screen at once (the editor header plus a settings pane). The default keeps
+/// the settings panes' stable identifier; the editor passes its own so each live
+/// instance resolves to a unique element (CS-032).
 struct DestinationPresetPicker: View {
     @ObservedObject var settings: AppSettings
+
+    /// The accessibility identifier for this instance. Defaults to the settings
+    /// panes' value; callers that show a second instance pass a distinct one.
+    var identifier: String = "destination-preset-picker"
 
     /// Sentinel tag for the "Custom" row (no preset). Not a valid preset id.
     private static let customTag = ""
@@ -23,7 +32,7 @@ struct DestinationPresetPicker: View {
         }
         .help(presetHelp)
         .accessibilityLabel("Destination preset")
-        .accessibilityIdentifier("destination-preset-picker")
+        .accessibilityIdentifier(identifier)
     }
 
     private var presetHelp: String {
@@ -197,6 +206,87 @@ struct MetadataFields: View {
             get: { settings.config.metadata[keyPath: keyPath] ?? "" },
             set: { settings.config.metadata[keyPath: keyPath] = SnapshotMetadata.normalized($0) }
         )
+    }
+}
+
+/// The core style controls — theme, font, ligatures, padding, font size, window
+/// chrome, and drop shadow — as one reusable, labeled cluster (CS-006/052).
+///
+/// Extracted so the Style settings pane and the editor's inspector (CS-037) share
+/// a single accessible set of controls instead of each spelling out (and drifting
+/// on) the same pickers, sliders, and toggles. It draws plain rows with no
+/// `Section`/`Form` chrome of its own, so a host can drop it inside whichever
+/// container it already uses — a grouped `Form` section in Settings, or the
+/// inspector's disclosure group — and the row chrome comes from that host.
+///
+/// The theme picker resolves ids through `CustomThemeStore` so a custom theme
+/// (CS-031) round-trips, and the ligature toggle gates itself on whether the
+/// selected font actually ships ligatures (CS-052).
+struct CoreStyleControls: View {
+    @ObservedObject var settings: AppSettings
+    @ObservedObject var themes: CustomThemeStore
+
+    var body: some View {
+        Picker("Theme", selection: themeBinding) {
+            Section("Built-in") {
+                ForEach(Theme.builtIns) { theme in
+                    Text(theme.displayName).tag(theme.id)
+                }
+            }
+            if !themes.customThemes.isEmpty {
+                Section("Custom") {
+                    ForEach(themes.customThemes) { theme in
+                        Text(theme.displayName).tag(theme.id)
+                    }
+                }
+            }
+        }
+        .help("Choose a built-in or custom syntax theme.")
+        .accessibilityIdentifier("style-theme-picker")
+
+        Picker("Font", selection: $settings.config.fontName) {
+            ForEach(CodeFont.all, id: \.self) { font in
+                Text(font).tag(font)
+            }
+        }
+        .accessibilityIdentifier("style-font-picker")
+
+        Toggle("Ligatures", isOn: $settings.config.fontLigatures)
+            .help(ligatureHelp)
+            .disabled(!fontHasLigatures)
+            .accessibilityIdentifier("ligatures-toggle")
+
+        Slider(value: $settings.config.padding, in: 16...64, step: 4) { Text("Padding") }
+            .accessibilityIdentifier("padding-slider")
+        Slider(value: $settings.config.fontSize, in: 10...20, step: 1) { Text("Font size") }
+            .accessibilityIdentifier("font-size-slider")
+
+        Toggle("Window chrome", isOn: $settings.config.showChrome)
+            .accessibilityIdentifier("window-chrome-toggle")
+        Toggle("Drop shadow", isOn: $settings.config.showShadow)
+            .accessibilityIdentifier("drop-shadow-toggle")
+    }
+
+    private var themeBinding: Binding<String> {
+        Binding(
+            get: { settings.config.theme.id },
+            // Resolve through the store so a custom theme id (CS-031) maps to its
+            // palette-backed theme; a built-in or unknown id falls back to the
+            // built-in lookup.
+            set: { settings.config.theme = themes.theme(withID: $0) }
+        )
+    }
+
+    /// Whether the selected font ships programming ligatures, gating the toggle so
+    /// it reads as inert for a font that has none (CS-052).
+    private var fontHasLigatures: Bool {
+        CodeFont.hasLigatures(settings.config.fontName)
+    }
+
+    private var ligatureHelp: String {
+        fontHasLigatures
+            ? "Render programming ligatures (->, =>, !=) for this font."
+            : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
     }
 }
 
@@ -437,34 +527,7 @@ struct StyleSettingsView: View {
             StylePresetsSection(settings: settings, store: presets)
 
             Section {
-                Picker("Theme", selection: themeBinding) {
-                    Section("Built-in") {
-                        ForEach(Theme.builtIns) { theme in
-                            Text(theme.displayName).tag(theme.id)
-                        }
-                    }
-                    if !themes.customThemes.isEmpty {
-                        Section("Custom") {
-                            ForEach(themes.customThemes) { theme in
-                                Text(theme.displayName).tag(theme.id)
-                            }
-                        }
-                    }
-                }
-                .accessibilityIdentifier("style-theme-picker")
-                Picker("Font", selection: $settings.config.fontName) {
-                    ForEach(CodeFont.all, id: \.self) { font in
-                        Text(font).tag(font)
-                    }
-                }
-                Toggle("Ligatures", isOn: $settings.config.fontLigatures)
-                    .help(ligatureHelp)
-                    .disabled(!fontHasLigatures)
-                    .accessibilityIdentifier("ligatures-toggle")
-                Slider(value: $settings.config.padding, in: 16...64, step: 4) { Text("Padding") }
-                Slider(value: $settings.config.fontSize, in: 10...20, step: 1) { Text("Font size") }
-                Toggle("Window chrome", isOn: $settings.config.showChrome)
-                Toggle("Drop shadow", isOn: $settings.config.showShadow)
+                CoreStyleControls(settings: settings, themes: themes)
             }
 
             CustomThemesSection(settings: settings, store: themes)
@@ -557,28 +620,6 @@ struct StyleSettingsView: View {
         // (which keeps "settings-style-preview").
         .accessibilityLabel("Preview unavailable")
         .accessibilityIdentifier("settings-style-preview-placeholder")
-    }
-
-    private var themeBinding: Binding<String> {
-        Binding(
-            get: { settings.config.theme.id },
-            // Resolve through the store so a custom theme id (CS-031) maps to its
-            // palette-backed theme; a built-in or unknown id falls back to the
-            // built-in lookup.
-            set: { settings.config.theme = themes.theme(withID: $0) }
-        )
-    }
-
-    /// Whether the selected font ships programming ligatures, gating the toggle so
-    /// it reads as inert for a font that has none (CS-052).
-    private var fontHasLigatures: Bool {
-        CodeFont.hasLigatures(settings.config.fontName)
-    }
-
-    private var ligatureHelp: String {
-        fontHasLigatures
-            ? "Render programming ligatures (->, =>, !=) for this font."
-            : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
     }
 }
 
@@ -868,34 +909,67 @@ struct CustomThemeEditor: View {
             Text(draft.editingID == nil ? "New Custom Theme" : "Edit Custom Theme")
                 .font(.headline)
 
-            Form {
-                TextField("Name", text: $draft.name)
-                    .accessibilityIdentifier("custom-theme-name-field")
+            // The form and preview scroll; the title above and the action row below
+            // stay pinned so Cancel/Save are always reachable. This mirrors the
+            // AboutSettingsView fix (a ScrollView with a minHeight) so the editor
+            // grows and scrolls at large Dynamic Type sizes instead of clipping the
+            // controls or the action buttons.
+            ScrollView {
+                VStack(alignment: .leading, spacing: Brand.Spacing.md) {
+                    Form {
+                        TextField("Name", text: $draft.name)
+                            .accessibilityIdentifier("custom-theme-name-field")
 
-                Section("Base") {
-                    ColorPicker("Background", selection: $draft.background, supportsOpacity: false)
-                    ColorPicker("Foreground", selection: $draft.foreground, supportsOpacity: false)
-                }
-                Section("Syntax") {
-                    ColorPicker("Keywords", selection: $draft.keyword, supportsOpacity: false)
-                    ColorPicker("Strings", selection: $draft.string, supportsOpacity: false)
-                    ColorPicker("Comments", selection: $draft.comment, supportsOpacity: false)
-                    ColorPicker("Numbers", selection: $draft.number, supportsOpacity: false)
-                    ColorPicker("Types", selection: $draft.type, supportsOpacity: false)
-                    ColorPicker("Functions", selection: $draft.function, supportsOpacity: false)
-                    ColorPicker("Variables", selection: $draft.variable, supportsOpacity: false)
-                    ColorPicker("Attributes", selection: $draft.attribute, supportsOpacity: false)
+                        Section("Base") {
+                            ColorPicker(
+                                "Background", selection: $draft.background, supportsOpacity: false
+                            )
+                            .accessibilityIdentifier("custom-theme-color-background")
+                            ColorPicker(
+                                "Foreground", selection: $draft.foreground, supportsOpacity: false
+                            )
+                            .accessibilityIdentifier("custom-theme-color-foreground")
+                        }
+                        Section("Syntax") {
+                            ColorPicker(
+                                "Keywords", selection: $draft.keyword, supportsOpacity: false
+                            )
+                            .accessibilityIdentifier("custom-theme-color-keyword")
+                            ColorPicker("Strings", selection: $draft.string, supportsOpacity: false)
+                                .accessibilityIdentifier("custom-theme-color-string")
+                            ColorPicker(
+                                "Comments", selection: $draft.comment, supportsOpacity: false
+                            )
+                            .accessibilityIdentifier("custom-theme-color-comment")
+                            ColorPicker("Numbers", selection: $draft.number, supportsOpacity: false)
+                                .accessibilityIdentifier("custom-theme-color-number")
+                            ColorPicker("Types", selection: $draft.type, supportsOpacity: false)
+                                .accessibilityIdentifier("custom-theme-color-type")
+                            ColorPicker(
+                                "Functions", selection: $draft.function, supportsOpacity: false
+                            )
+                            .accessibilityIdentifier("custom-theme-color-function")
+                            ColorPicker(
+                                "Variables", selection: $draft.variable, supportsOpacity: false
+                            )
+                            .accessibilityIdentifier("custom-theme-color-variable")
+                            ColorPicker(
+                                "Attributes", selection: $draft.attribute, supportsOpacity: false
+                            )
+                            .accessibilityIdentifier("custom-theme-color-attribute")
+                        }
+                    }
+                    .formStyle(.grouped)
+                    .frame(minHeight: 280)
+
+                    Text("Preview")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    previewImage
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 160)
                 }
             }
-            .formStyle(.grouped)
-            .frame(height: 280)
-
-            Text("Preview")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            previewImage
-                .frame(maxWidth: .infinity)
-                .frame(height: 160)
 
             HStack {
                 Spacer()
@@ -910,6 +984,7 @@ struct CustomThemeEditor: View {
         }
         .padding()
         .frame(width: 460)
+        .frame(minHeight: 520)
         .accessibilityIdentifier("custom-theme-editor")
     }
 
@@ -926,9 +1001,19 @@ struct CustomThemeEditor: View {
             RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
                 .fill(draft.background)
                 .overlay(
+                    RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
+                        .strokeBorder(Brand.Palette.border.color)
+                )
+                .overlay(
                     Text("Preview unavailable")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        // The fill is the user-chosen draft background, so the label
+                        // must read against *that* color, not the app's appearance:
+                        // `.secondary` resolves to the environment scheme and goes
+                        // invisible on a light draft in Dark Mode (or the inverse).
+                        // The draft's own foreground is the color picked to sit on
+                        // this background, so it stays legible for any draft palette.
+                        .foregroundStyle(draft.foreground)
                 )
                 .accessibilityIdentifier("custom-theme-preview-unavailable")
         }

@@ -14,6 +14,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
         NSApp.setActivationPolicy(.accessory)
 
+        // Install the application main menu (CS-032). An agent app with only a
+        // `MenuBarExtra` scene gets no menu bar from SwiftUI; assigning one here
+        // gives the editor and settings windows a complete, keyboard-accessible
+        // menu bar (App ▸, File ▸, Edit ▸, View ▸, Window ▸, Help ▸).
+        AppMenu.install()
+
         // Global hotkey (CS-002): consume the key-up event stream on the main actor
         // and dispatch to the user-chosen action.
         hotkeyTask = Task {
@@ -83,7 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.app.info("Global hotkey fired (\(action.rawValue, privacy: .public))")
         switch action {
         case .quickCapture:
-            Notifier.notify(QuickCapture.run(settings: .shared))
+            QuickCapture.perform(settings: .shared)
         case .openEditor:
             EditorWindowController.shared.show()
         }

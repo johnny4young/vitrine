@@ -16,7 +16,7 @@ XCODEBUILD := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcodebuild
 SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build test build-ui-tests test-ui format lint icon clean
+.PHONY: all bootstrap project open build test build-ui-tests test-ui perf record-goldens format lint icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -54,6 +54,26 @@ build-ui-tests: project
 test-ui: project
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(UI_SCHEME) -configuration Debug \
 		-destination 'platform=macOS' test
+
+## perf: run only the render-latency performance budget (CS-026)
+## Documented budget: default render target 300 ms after warm-up (PERF WARN past
+## it); the suite fails only past the hard ceiling. Grep the log for `PERF`/`PERF
+## WARN` lines, which carry median/p95 for each representative fixture.
+perf: project
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+		-destination 'platform=macOS' \
+		-only-testing:VitrineTests/PerformanceTests test
+
+## record-goldens: (re)generate the golden-image fixtures + manifest (CS-025)
+## The single command that refreshes the visual baseline. It runs only the
+## opt-in recorder test (gated by VITRINE_RECORD_GOLDENS) through the same render
+## path the suite compares, writing PNGs and a platform manifest into
+## Tests/Fixtures/Golden/. Run this on the pinned runner image when a deliberate
+## visual change lands, then review and commit the diff.
+record-goldens: project
+	VITRINE_RECORD_GOLDENS=1 $(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) \
+		-configuration Debug -destination 'platform=macOS' \
+		-only-testing:VitrineTests/GoldenRecorderTests test
 
 ## format: format Swift sources in place (Apple swift-format)
 format:

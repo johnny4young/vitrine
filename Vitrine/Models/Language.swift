@@ -78,4 +78,51 @@ enum Language: String, CaseIterable, Identifiable {
         default: rawValue
         }
     }
+
+    /// The canonical filename extension for this language, lowercased and without
+    /// the leading dot (e.g. Swift → `swift`, Python → `py`), or `nil` for
+    /// `plaintext` and `diff`, which have no single source-file extension.
+    ///
+    /// This is the *forward* mapping (one language → one extension). The
+    /// *reverse* mapping (extension → language) lives in `LanguageDetector`,
+    /// which also recognizes common aliases (`.yml`, `.htm`, `.cc`, `.h`, …) that
+    /// cannot round-trip back to a single canonical extension (CS-027).
+    var fileExtension: String? {
+        switch self {
+        case .swift: "swift"
+        case .python: "py"
+        case .javascript: "js"
+        case .typescript: "ts"
+        case .go: "go"
+        case .rust: "rs"
+        case .ruby: "rb"
+        case .java: "java"
+        case .kotlin: "kt"
+        case .c: "c"
+        case .cpp: "cpp"
+        case .csharp: "cs"
+        case .objectivec: "m"
+        case .scala: "scala"
+        case .dart: "dart"
+        case .elixir: "ex"
+        case .haskell: "hs"
+        case .lua: "lua"
+        case .r: "r"
+        case .perl: "pl"
+        case .php: "php"
+        case .html: "html"
+        case .css: "css"
+        case .scss: "scss"
+        case .json: "json"
+        case .yaml: "yaml"
+        case .toml: "toml"
+        case .bash: "sh"
+        case .sql: "sql"
+        case .graphql: "graphql"
+        case .dockerfile: "dockerfile"
+        case .diff: nil
+        case .markdown: "md"
+        case .plaintext: nil
+        }
+    }
 }

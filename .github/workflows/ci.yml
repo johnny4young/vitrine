@@ -38,3 +38,80 @@ jobs:
 
       - name: Test (Swift Testing)
         run: make test
+
+      # Render-latency budget (CS-026). Documented two-tier threshold: the suite
+      # FAILS only past the hard ceiling (a real, order-of-magnitude regression),
+      # and WARNS when the 300 ms target is exceeded — surfaced here as GitHub
+      # annotations so a drift toward the limit is visible on the PR without
+      # red-flagging noisy shared CI hardware.
+      - name: Performance budget (CS-026)
+        run: |
+          set -o pipefail
+          make perf 2>&1 | tee perf.log
+        # Promote any `PERF WARN` lines the run logged into GitHub annotations.
+        # `if: always()` so warnings still surface even when the hard ceiling
+        # tripped and the step above failed.
+      - name: Annotate performance warnings
+        if: always()
+        run: |
+          if [ -f perf.log ] && grep -q 'PERF WARN' perf.log; then
+            grep 'PERF WARN' perf.log | while IFS= read -r line; do
+              echo "::warning title=Render latency over target (CS-026)::${line}"
+            done
+          fi
+
+      # Golden-image regression suite (CS-025). The strict pixel comparison runs
+      # only on the pinned runner image recorded in Tests/Fixtures/Golden/
+      # manifest.json; on any other image each scenario logs `GOLDEN SKIP` and the
+      # render is still exercised end to end, so this step stays green off the pin
+      # while a real regression on the pinned image fails it. A `GOLDEN SKIP` line
+      # is promoted to an annotation so it is visible that the strict diff did not
+      # run here.
+      - name: Golden-image suite (CS-025)
+        run: |
+          set -o pipefail
+          xcodebuild -project Vitrine.xcodeproj -scheme Vitrine -configuration Debug \
+            -destination 'platform=macOS' \
+            -only-testing:VitrineTests/GoldenImageTests test 2>&1 | tee golden.log
+      - name: Annotate skipped golden comparison
+        if: always()
+        run: |
+          if [ -f golden.log ] && grep -q 'GOLDEN SKIP' golden.log; then
+            echo "::warning title=Golden pixel diff skipped (CS-025)::This runner is not the pinned image; strict golden comparison was skipped (render coverage still ran)."
+          fi
+      # Upload the rendered "actual" images and diff masks for inspection when a
+      # golden comparison fails on the pinned image. The suite writes them under a
+      # stable temp directory; collect that path on failure.
+      - name: Upload golden diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-diffs
+          path: ${{ runner.temp }}/vitrine-golden-diffs
+          if-no-files-found: ignore
+
+      # Artifact smoke for the standalone comparator (CS-025): prove
+      # scripts/compare-goldens.swift can diff a committed golden against an exact
+      # copy of itself (a guaranteed match) and against an obviously different
+      # image (a guaranteed mismatch), so the tool CI would use to triage an
+      # uploaded artifact is itself verified.
+      - name: Golden comparator smoke (CS-025)
+        run: |
+          set -euo pipefail
+          golden=$(ls Tests/Fixtures/Golden/*.png 2>/dev/null | head -n 1 || true)
+          if [ -z "${golden}" ]; then
+            echo "No golden fixtures committed yet; skipping comparator smoke."
+            exit 0
+          fi
+          cp "${golden}" "${RUNNER_TEMP}/copy.png"
+          echo "Identical comparison (expect MATCH, exit 0):"
+          swift scripts/compare-goldens.swift "${golden}" "${RUNNER_TEMP}/copy.png"
+          other=$(ls Tests/Fixtures/Golden/*.png | tail -n 1)
+          if [ "${other}" != "${golden}" ]; then
+            echo "Different-image comparison (expect DIFFER, exit 1):"
+            if swift scripts/compare-goldens.swift "${golden}" "${other}"; then
+              echo "::error title=Golden comparator smoke (CS-025)::expected a mismatch but the comparator reported a match"
+              exit 1
+            fi
+            echo "Comparator correctly reported a mismatch."
+          fi

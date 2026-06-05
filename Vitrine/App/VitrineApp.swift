@@ -15,6 +15,7 @@ struct VitrineApp: App {
             MenuBarContent()
                 .environmentObject(AppSettings.shared)
                 .environmentObject(RecentsStore.shared)
+                .environmentObject(CaptureFeedbackPresenter.shared)
         }
         .menuBarExtraStyle(.menu)
     }

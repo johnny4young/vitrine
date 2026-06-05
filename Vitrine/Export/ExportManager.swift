@@ -154,10 +154,16 @@ enum ExportManager {
     ///
     /// `profile` applies to PNG export only (CS-024); PDF is a color-managed
     /// vector document and is unaffected by the raster color-profile choice.
+    ///
+    /// Returns the outcome so a caller can give the user precise feedback
+    /// (CS-038): `.saved` when a file was written, `.cancelled` when the user
+    /// dismissed the panel, and `.failed` when rendering, encoding, or the write
+    /// itself failed. The result is discardable for callers that do not care.
+    @discardableResult
     static func saveToFile(
         _ config: SnapshotConfig, scale: CGFloat = 2, format: ExportFormat = .png,
         fixedSize: CGSize? = nil, profile: ColorProfile = .sRGB
-    ) {
+    ) -> SaveOutcome {
         let payload: (data: Data, type: UTType, ext: String)? =
             switch format {
             case .png:
@@ -166,20 +172,24 @@ enum ExportManager {
                     .map { ($0, .png, "png") }
             case .pdf: pdfData(config, fixedSize: fixedSize).map { ($0, .pdf, "pdf") }
             }
-        guard let payload else { return }
+        guard let payload else {
+            Log.export.error("Save to file failed: render or encode returned nil")
+            return .failed
+        }
 
         let panel = NSSavePanel()
         panel.allowedContentTypes = [payload.type]
         panel.nameFieldStringValue = "vitrine.\(payload.ext)"
         guard panel.runModal() == .OK, let url = panel.url else {
             Log.export.info("Save to file cancelled")
-            return
+            return .cancelled
         }
         do {
             // The destination is a user-chosen path; we log only the format, never
             // the path itself (CS-048 privacy rule).
             try payload.data.write(to: url)
             Log.export.notice("Saved image to file (\(payload.ext, privacy: .public))")
+            return .saved
         } catch {
             // Log only the error domain/code — never `localizedDescription`, which
             // can embed the (user-chosen) filename (CS-048 privacy rule).
@@ -187,6 +197,15 @@ enum ExportManager {
             Log.export.error(
                 "Saving image to file failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
             )
+            return .failed
         }
+    }
+
+    /// The outcome of a save-to-file attempt, so callers can tell apart a written
+    /// file, a user cancel, and a genuine failure for feedback (CS-038).
+    enum SaveOutcome: Equatable {
+        case saved
+        case cancelled
+        case failed
     }
 }

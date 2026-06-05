@@ -6,7 +6,12 @@
 	     the core is fully local (CS-011). -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<!-- Save rendered images via NSSavePanel (CS-007). -->
+	<!-- User-selected file access only. This single entitlement covers every
+	     file the app touches: saving rendered images via NSSavePanel (CS-007),
+	     importing presets/themes/backgrounds via NSOpenPanel (CS-030/031/051),
+	     and loading a source file the user drags onto the editor (CS-028). A
+	     dropped file's URL is a user-selected, security-scoped resource, so drop
+	     input needs NO additional or broader file entitlement. -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
 </dict>

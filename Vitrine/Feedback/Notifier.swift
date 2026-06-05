@@ -1,21 +1,155 @@
 import Foundation
 import UserNotifications
 
-/// Surfaces quick-capture outcomes as non-intrusive banners (CS-016).
+/// Surfaces quick-capture outcomes as tasteful, non-intrusive feedback (CS-016,
+/// CS-038).
+///
+/// `Notifier` is the pure *policy* layer: it turns a `QuickCapture.Outcome` into a
+/// `CaptureFeedback` value (a category, a human message, and any inline recovery
+/// actions) and decides how that feedback should be delivered — an in-app HUD for
+/// routine success, with Notification Center reserved as a fallback. The mapping
+/// is deliberately free of side effects so it is unit-testable; the actual
+/// presentation (the HUD window, running a recovery action) is wired up by the
+/// app delegate (CS-038).
 enum Notifier {
-    /// The user-facing message for an outcome (pure and unit-testable).
-    static func message(for outcome: QuickCapture.Outcome) -> String? {
-        switch outcome {
-        case .copied: "Image copied to the clipboard"
-        case .rendered: "Image rendered"
-        case .url: "That looks like a URL — screenshot capture is coming soon"
-        case .empty: "Clipboard is empty — copy some code first"
+    /// What kind of feedback an outcome represents, used to pick an icon and to
+    /// decide whether routine in-app confirmation is enough (CS-038).
+    enum Category: Equatable {
+        /// The capture succeeded and produced an image the user now has.
+        case success
+        /// The capture did not produce an image, but it is not an error the user
+        /// must fix — e.g. several blocks were handed to the editor.
+        case info
+        /// The capture could not complete; the user likely needs to act.
+        case failure
+    }
+
+    /// A discrete recovery action offered alongside feedback (CS-038).
+    ///
+    /// These are the *intents* the feedback surfaces; the app delegate maps each
+    /// to a concrete handler (e.g. opening the editor). Keeping them as a small
+    /// enum — rather than closures — keeps `Notifier` pure and lets tests assert
+    /// exactly which actions an outcome offers.
+    enum RecoveryAction: Equatable {
+        /// Open the editor window so the user can paste or write code themselves.
+        case openEditor
+        /// Render the detected URL as plain text instead of waiting for URL
+        /// screenshot capture to ship (Product Phase 2 deferral).
+        case renderAsText
+
+        /// The button label shown for this action.
+        var title: String {
+            switch self {
+            case .openEditor: "Open Editor"
+            case .renderAsText: "Render as Text"
+            }
+        }
+
+        /// A stable, non-localized token for accessibility identifiers used by UI
+        /// tests, so an action's control can be found regardless of its visible
+        /// title (accessibility-identifier convention; CS-038).
+        var accessibilityToken: String {
+            switch self {
+            case .openEditor: "open-editor"
+            case .renderAsText: "render-as-text"
+            }
         }
     }
 
-    /// Posts a banner for `outcome`. No-op when notifications are unauthorized.
+    /// A fully-resolved piece of user feedback for one capture outcome (CS-038):
+    /// its category, a short human-readable message, and any inline recovery
+    /// actions. Pure data — safe to build and assert in tests.
+    struct CaptureFeedback: Equatable {
+        var category: Category
+        var message: String
+        var actions: [RecoveryAction]
+
+        /// An SF Symbol matching the category, for the HUD and menu surfaces.
+        var systemImageName: String {
+            switch category {
+            case .success: "checkmark.circle.fill"
+            case .info: "rectangle.stack.badge.plus"
+            case .failure: "exclamationmark.triangle.fill"
+            }
+        }
+    }
+
+    /// The legacy single-line message for an outcome (CS-016). Retained as the
+    /// stable, side-effect-free entry point used by older tests; it now simply
+    /// reads the message off the richer `feedback(for:)` value. Returns `nil` only
+    /// where an outcome has no user-facing message (there are none today).
+    static func message(for outcome: QuickCapture.Outcome) -> String? {
+        feedback(for: outcome).message
+    }
+
+    /// Resolves the rich feedback for `outcome` (CS-038).
+    ///
+    /// `copiedToClipboard` and `savedToFile` describe what actually happened with
+    /// the produced image so a success message can name the destination precisely
+    /// ("copied", "saved", or both) rather than guessing. They default to a
+    /// copy-only success so existing call sites and tests keep their meaning.
+    static func feedback(
+        for outcome: QuickCapture.Outcome,
+        copiedToClipboard: Bool = true,
+        savedToFile: Bool = false
+    ) -> CaptureFeedback {
+        switch outcome {
+        case .copied, .rendered:
+            return CaptureFeedback(
+                category: .success,
+                message: successMessage(copied: copiedToClipboard, saved: savedToFile),
+                actions: [])
+        case .url:
+            // URL → screenshot capture is Product Phase 2 (CS-043). Until it
+            // ships, offer the two things the user can do right now rather than
+            // leaving them at a dead end (CS-038).
+            return CaptureFeedback(
+                category: .info,
+                message: "That looks like a URL — screenshot capture is coming soon",
+                actions: [.renderAsText, .openEditor])
+        case .empty:
+            // An empty clipboard is the most common dead end; route the user
+            // straight to the editor rather than leaving them stuck (CS-038).
+            return CaptureFeedback(
+                category: .failure,
+                message: "Clipboard is empty — copy some code first",
+                actions: [.openEditor])
+        case .deferredToEditor(let blocks):
+            return CaptureFeedback(
+                category: .info,
+                message:
+                    "Found \(blocks) code blocks — opening the editor to choose one",
+                actions: [])
+        }
+    }
+
+    /// Builds the success message from what actually happened to the image, so the
+    /// user is told precisely where it went: copied, saved, both, or just rendered
+    /// (auto-copy off and no save) (CS-038 acceptance: "Feedback says whether
+    /// output was copied, saved, shared, or blocked.").
+    static func successMessage(copied: Bool, saved: Bool) -> String {
+        switch (copied, saved) {
+        case (true, true): "Image copied to the clipboard and saved to a file"
+        case (true, false): "Image copied to the clipboard"
+        case (false, true): "Image saved to a file"
+        case (false, false): "Image rendered"
+        }
+    }
+
+    /// Posts feedback for `outcome` (CS-016). Kept for callers that do not need
+    /// the in-app HUD; it routes through Notification Center only.
+    ///
+    /// Routine success should prefer the in-app HUD (`CaptureHUD`) so Notification
+    /// Center is not used repeatedly for ordinary captures (CS-038); the app
+    /// delegate owns that decision in `CaptureFeedbackPresenter`.
     static func notify(_ outcome: QuickCapture.Outcome) {
-        guard let body = message(for: outcome) else { return }
+        postNotification(feedback(for: outcome).message)
+    }
+
+    /// Posts a single Notification Center banner with `body`. No-op when
+    /// notifications are unauthorized. Used as the fallback channel when no in-app
+    /// HUD is available (CS-038).
+    static func postNotification(_ body: String) {
         Task {
             let center = UNUserNotificationCenter.current()
             let granted = (try? await center.requestAuthorization(options: [.alert])) ?? false

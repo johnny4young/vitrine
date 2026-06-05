@@ -18,7 +18,10 @@ final class EditorWindowController {
             let window = NSWindow(contentViewController: hosting)
             window.title = "Vitrine Editor"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-            window.setContentSize(NSSize(width: 900, height: 560))
+            // Open wide enough for the preset strip plus the code / preview /
+            // inspector columns of the redesigned editor (CS-037); the SwiftUI
+            // root enforces its own minimum below this.
+            window.setContentSize(NSSize(width: 1180, height: 680))
             window.isReleasedWhenClosed = false
             window.setAccessibilityIdentifier("editor-window")
             window.center()

@@ -6,16 +6,17 @@ import SwiftUI
 struct MenuBarContent: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var recents: RecentsStore
+    @EnvironmentObject private var feedback: CaptureFeedbackPresenter
 
     var body: some View {
-        Button("New Capture from Clipboard") {
-            Notifier.notify(QuickCapture.run(settings: settings))
-        }
-        .keyboardShortcut("s", modifiers: [.command, .shift])
+        // Titles, SF Symbols, and shortcuts come from `VitrineCommand` so the
+        // menu-bar menu and the application main menu (CS-032) never drift.
+        commandButton(.newCapture) { QuickCapture.perform(settings: settings) }
+        commandButton(.openEditor) { EditorWindowController.shared.show() }
 
-        Button("Open Editor…") {
-            EditorWindowController.shared.show()
-        }
+        // Echo the last capture's outcome so the result stays reachable after the
+        // transient HUD fades, and surface its recovery actions inline (CS-038).
+        lastCaptureStatus
 
         Divider()
 
@@ -24,12 +25,9 @@ struct MenuBarContent: View {
 
         Divider()
 
-        Button("Preferences…") {
-            SettingsWindowManager.shared.show()
-        }
-        .keyboardShortcut(",", modifiers: .command)
-
-        Button("About Vitrine") {
+        commandButton(.settings) { SettingsWindowManager.shared.show() }
+        commandButton(.help) { SettingsWindowManager.shared.show() }
+        commandButton(.about) {
             NSApp.activate(ignoringOtherApps: true)
             NSApp.orderFrontStandardAboutPanel(options: [.credits: Self.aboutCredits])
         }
@@ -40,6 +38,44 @@ struct MenuBarContent: View {
             NSApp.terminate(nil)
         }
         .keyboardShortcut("q", modifiers: .command)
+        .accessibilityIdentifier("command-quit")
+    }
+
+    /// A menu-bar button driven by a `VitrineCommand`: shared title, SF Symbol,
+    /// keyboard shortcut, and accessibility identifier (CS-032).
+    @ViewBuilder
+    private func commandButton(
+        _ command: VitrineCommand, action: @escaping () -> Void
+    )
+        -> some View
+    {
+        let button = Button(action: action) {
+            Label(command.title, systemImage: command.systemImageName)
+        }
+        .accessibilityIdentifier(command.accessibilityIdentifier)
+
+        if let shortcut = command.swiftUIShortcut {
+            button.keyboardShortcut(shortcut)
+        } else {
+            button
+        }
+    }
+
+    /// The last capture outcome as a disabled status line plus any inline recovery
+    /// actions (CS-038). Hidden until a capture has run, so a clean launch shows no
+    /// stale status. The status text itself is non-interactive; each recovery
+    /// action is a real menu item routed back through the feedback presenter.
+    @ViewBuilder private var lastCaptureStatus: some View {
+        if let last = feedback.lastFeedback {
+            Divider()
+            Label("Last capture: \(last.message)", systemImage: last.systemImageName)
+                .disabled(true)
+                .accessibilityIdentifier("menu-last-capture-status")
+            ForEach(last.actions, id: \.self) { action in
+                Button(action.title) { feedback.run(action, settings: settings) }
+                    .accessibilityIdentifier("menu-recovery-\(action.accessibilityToken)")
+            }
+        }
     }
 
     @ViewBuilder private var recentsMenu: some View {

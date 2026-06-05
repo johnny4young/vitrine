@@ -1,6 +1,6 @@
 export const meta = {
   name: 'implement-backlog',
-  description: 'Implement Vitrine backlog tickets serially with build/lint/test gates, Swift-6 concurrency + macOS-HIG review-and-fix loops, unit-test audit, Desktop review artifacts, and a final commit message',
+  description: 'Implement Vitrine backlog tickets serially with build/lint/test gates, Swift-6 concurrency + macOS-HIG review-and-fix loops, unit-test audit, per-ticket ROADMAP.md auto-marking, Desktop review artifacts, and a final commit message',
   whenToUse: 'When implementing a batch of CS-XXX backlog tickets from docs/ROADMAP.md end to end.',
   phases: [
     { title: 'Plan' },
@@ -27,15 +27,26 @@ export const meta = {
 const PHASE1 = Array.from({ length: 20 }, (_, i) => `CS-0${20 + i}`) // CS-020..CS-039
 const WORLDCLASS = Array.from({ length: 8 }, (_, i) => `CS-0${47 + i}`) // CS-047..CS-054
 
+// The 18 tickets still 🔵 Backlog / 🟡 Discovery as of 2026-06-04 — the prior batch shipped
+// CS-020/021/022/024/030/036/048/050/051/052. IMPORTANT: Workflow `args` does NOT reach this
+// script when launched via scriptPath (observed: the run ignored a passed ticket list), so
+// this hardcoded PENDING list — not args — is the source of truth for what runs. Edit it to
+// change scope.
+const PENDING = [
+  'CS-023', 'CS-025', 'CS-029', 'CS-033', 'CS-034', 'CS-035', 'CS-039',
+  'CS-047', 'CS-049', 'CS-053', 'CS-054',
+]
+
 const cfg = (typeof args === 'object' && args) ? args : {}
 const mode = cfg.mode === 'plan' ? 'plan' : 'run'
-const label = cfg.label || 'batch'
-const select = cfg.select || 'all'
+const label = cfg.label || 'continuation'
+const select = cfg.select || 'pending'
 const tickets = Array.isArray(cfg.tickets) && cfg.tickets.length
   ? cfg.tickets
   : select === 'phase1' ? PHASE1
   : select === 'worldclass' ? WORLDCLASS
-  : [...PHASE1, ...WORLDCLASS]
+  : select === 'all' ? [...PHASE1, ...WORLDCLASS]
+  : PENDING
 
 const ROADMAP = 'docs/ROADMAP.md'
 const ARTIFACT_DIR = `~/Desktop/Vitrine-Review-${label}`
@@ -185,6 +196,13 @@ ${MARK_IMPL}`,
     `Audit unit-test adequacy for ticket ${t.id}. Verify the new behavior is covered by meaningful assertions (not scaffolding) in the Swift Testing suite. If coverage is thin, add focused tests, then re-run. ${GATE}
 ${MARK_AUDIT}`,
     { label: `test-audit:${t.id}`, phase: 'Implement' }
+  )
+
+  // 5) Auto-mark the backlog: flip this ticket to 🚢 Shipped in docs/ROADMAP.md so the
+  //    backlog never drifts out of sync with the code (only reached when green).
+  await agent(
+    `In docs/ROADMAP.md, find the heading line that starts with "## ${t.id} " and change ONLY its trailing status marker ("🔵 Backlog" or "🟡 Discovery") to "🚢 Shipped". Make exactly that one-line edit — do not touch the ticket body, the legend, or any other ticket. If it is already "🚢 Shipped", do nothing.`,
+    { label: `mark:${t.id}`, phase: 'Implement' }
   )
 
   results.push({
