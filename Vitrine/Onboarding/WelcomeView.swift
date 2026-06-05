@@ -44,11 +44,16 @@ struct WelcomeView: View {
         case rendered
         case failed
 
+        /// Localized through the String Catalog (CS-047).
         var message: String {
             switch self {
-            case .copied: "Done — the sample image is on your clipboard. Paste it anywhere."
-            case .rendered: "Done — the sample image was rendered with your current style."
-            case .failed: "That sample could not be rendered. Your settings are unchanged."
+            case .copied:
+                String(
+                    localized: "Done — the sample image is on your clipboard. Paste it anywhere.")
+            case .rendered:
+                String(localized: "Done — the sample image was rendered with your current style.")
+            case .failed:
+                String(localized: "That sample could not be rendered. Your settings are unchanged.")
             }
         }
 
@@ -121,7 +126,9 @@ struct WelcomeView: View {
         .accessibilityLabel("How it works: copy code, press the hotkey, paste the image.")
     }
 
-    private func stepChip(index: Int, symbol: String, title: String, caption: String) -> some View {
+    private func stepChip(
+        index: Int, symbol: String, title: LocalizedStringKey, caption: LocalizedStringKey
+    ) -> some View {
         VStack(spacing: Brand.Spacing.xs) {
             Image(systemName: symbol)
                 .font(.system(size: 22, weight: .regular))
@@ -149,7 +156,10 @@ struct WelcomeView: View {
                 .strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Step \(index): \(title), \(caption)")
+        // Built from localized `Text` pieces so the spoken label is localized too
+        // (a `LocalizedStringKey` can't be interpolated into another) (CS-047).
+        .accessibilityLabel(
+            Text("Step \(index): ") + Text(title) + Text(verbatim: ", ") + Text(caption))
     }
 
     private var stepConnector: some View {
@@ -241,9 +251,9 @@ struct WelcomeView: View {
     /// wording matches the privacy posture in `docs/ARCHITECTURE.md` and the README.
     private var privacyBadge: some View {
         Label {
-            Text(
-                "Private by design: your code never leaves your Mac. No account, no network, "
-                    + "no screen recording or Accessibility permission.")
+            // Long copy lives in the String Catalog under a stable key (CS-047) so
+            // it localizes and does not push the source past the line limit.
+            Text("welcome.privacy.badge")
         } icon: {
             Image(systemName: "lock.shield")
         }
@@ -300,11 +310,14 @@ struct WelcomeView: View {
         Brand.Palette.stage.color
     }
 
-    /// The recorded hotkey rendered as a short caption (e.g. "⌃⌘V"), or guidance to
-    /// set one when none is bound yet, so step 2 stays accurate per user (CS-035).
-    private var hotkeyCaption: String {
+    /// The recorded hotkey rendered as a short caption (e.g. "⌃⌘V"), or localized
+    /// guidance to set one when none is bound yet, so step 2 stays accurate per user
+    /// (CS-035). Returned as a `LocalizedStringKey`: the glyph string is interpolated
+    /// (so it is shown verbatim, not looked up) while the fallback prose is localized
+    /// through the String Catalog (CS-047).
+    private var hotkeyCaption: LocalizedStringKey {
         if let shortcut = KeyboardShortcuts.getShortcut(for: .quickCapture) {
-            return shortcut.description
+            return "\(shortcut.description)"
         }
         return "set one below"
     }
@@ -369,7 +382,7 @@ final class WelcomeWindowController {
                     settings: settings,
                     onDismiss: { [weak self] in self?.close() }))
             let window = NSWindow(contentViewController: hosting)
-            window.title = "Welcome to Vitrine"
+            window.title = String(localized: "Welcome to Vitrine")
             // No resize/minimize: the quick-start is a fixed, compact first-run
             // surface, not a working window.
             window.styleMask = [.titled, .closable]

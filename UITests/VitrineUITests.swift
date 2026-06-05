@@ -23,6 +23,111 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-drop-target", in: app), in: app)
     }
 
+    // MARK: - Multi-window editing and restoration (CS-053)
+
+    @MainActor
+    func testOpeningASecondEditorWindowKeepsBothOpen() {
+        continueAfterFailure = false
+        // `--open-second-editor` opens the primary editor plus an additional,
+        // independent editor window (CS-053 "users can open multiple editor windows").
+        let app = launch(arguments: ["--demo", "--open-second-editor"])
+        defer { app.terminate() }
+
+        // Both windows exist, each addressed by its own identifier: the primary keeps
+        // the bare `editor-window`, the second is suffixed with its index.
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        assertExists(element("editor-window-2", in: app), in: app, timeout: 8)
+
+        // Each window carries the editor's primary controls; the encode/decode and
+        // per-window-independence guarantees are pinned by WindowStateTests.
+        XCTAssertTrue(
+            app.windows.count >= 2,
+            "Expected at least two editor windows to be open")
+    }
+
+    @MainActor
+    func testClosingOneEditorWindowLeavesTheOtherOpen() {
+        continueAfterFailure = false
+        // Closing one window must not lose the other's state (CS-053). Close the second
+        // window from the Window menu's window list and assert the primary survives.
+        let app = launch(arguments: ["--demo", "--open-second-editor"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let second = element("editor-window-2", in: app)
+        XCTAssertTrue(second.waitForExistence(timeout: 8), "Second editor window did not open")
+
+        // Close the key (second) window with the standard Close shortcut.
+        second.click()
+        second.typeKey("w", modifierFlags: .command)
+
+        // The primary window remains; only the second one closed.
+        assertExists(element("editor-window", in: app), in: app, timeout: 3)
+        XCTAssertTrue(
+            element("editor-window-2", in: app).waitForNonExistence(timeout: 3),
+            "The second editor window did not close")
+    }
+
+    @MainActor
+    func testEditorWindowRecoversFromOffScreenFrame() {
+        continueAfterFailure = false
+        // `--force-offscreen-editor` opens the editor, shoves it far off the visible
+        // screens, and runs the recovery pass, so a window saved on an unplugged
+        // monitor is pulled back on-screen rather than stranded (CS-053 "behaves
+        // correctly across display changes without off-screen windows").
+        let app = launch(arguments: ["--demo", "--force-offscreen-editor"])
+        defer { app.terminate() }
+
+        // After recovery the window and its controls are reachable (hittable), which is
+        // only true when the frame sits on a visible display.
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        XCTAssertTrue(
+            element("copy-button", in: app).waitForExistence(timeout: 3),
+            "Editor control is missing after off-screen recovery")
+        XCTAssertTrue(
+            element("copy-button", in: app).isHittable,
+            "Editor window was not recovered onto a visible screen")
+    }
+
+    @MainActor
+    func testFileMenuExposesNewEditorWindowAndMakeDefault() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        // The File menu carries the multi-window commands (CS-053): "New Editor
+        // Window" (always available) and "Make This Window the Default" (editor-scoped).
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let menuBar = app.menuBars.firstMatch
+        XCTAssertTrue(menuBar.waitForExistence(timeout: 5), "Main menu bar is missing")
+
+        menuBar.menuBarItems["File"].click()
+        let fileMenu = menuBar.menuBarItems["File"].menus.firstMatch
+        XCTAssertTrue(fileMenu.waitForExistence(timeout: 3))
+        for title in ["New Editor Window", "Make This Window the Default"] {
+            XCTAssertTrue(
+                fileMenu.menuItems[title].exists, "Missing File-menu command: \(title)")
+        }
+        // Close the menu without invoking anything.
+        menuBar.menuBarItems["File"].click()
+    }
+
+    @MainActor
+    func testEditorExposesMakeDefaultToolbarAction() {
+        continueAfterFailure = false
+        // The editor surfaces an explicit "Make Default" affordance so promoting a
+        // window's style to the app default is discoverable in the editor, not only in
+        // the menu (CS-053 "make default is explicit").
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        assertExists(element("make-default-button", in: app), in: app, timeout: 3)
+        XCTAssertTrue(
+            element("make-default-button", in: app).isHittable,
+            "Make Default action is not reachable")
+    }
+
     @MainActor
     func testEditorIsPresetFirstWithStripInspectorAndPreviewStage() {
         continueAfterFailure = false
@@ -319,10 +424,102 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("launch-at-login-toggle", in: app), in: app)
     }
 
+    // MARK: - Localization smoke (CS-047)
+
     @MainActor
-    private func launch(arguments: [String]) -> XCUIApplication {
+    func testSettingsPanesSurviveAccentedPseudolocale() {
+        continueAfterFailure = false
+        // The accented + lengthened pseudolocale (`en-XA`) padding-tests every
+        // localized string: if a Settings pane truncated or clipped under longer,
+        // accented text, its controls would no longer resolve. Walking the panes and
+        // asserting each one's key controls exist *and* remain hittable is the
+        // automatable proxy for "no truncation or clipping in Settings panes"
+        // (CS-047 acceptance).
+        let app = launch(arguments: ["--open-settings"], locale: .accentedPseudo)
+        defer { app.terminate() }
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        XCTAssertTrue(
+            element("reset-all-settings-button", in: app).isHittable,
+            "General pane control is clipped or unreachable under en-XA")
+
+        // The toolbar tab titles are themselves localized (they pseudo-localize under
+        // en-XA), so the tabs are selected by their stable order — General(0),
+        // Style(1), Output(2), Input(3), About(4) — rather than by visible title.
+        let toolbarButtons = app.toolbars.buttons
+        for (tabIndex, paneIdentifier, control) in [
+            (1, "settings-style-pane", "style-theme-picker"),
+            (2, "settings-output-pane", "output-format-picker"),
+            (4, "settings-about-pane", "export-diagnostics-button"),
+        ] {
+            toolbarButtons.element(boundBy: tabIndex).click()
+            assertExists(element(paneIdentifier, in: app), in: app, timeout: 3)
+            XCTAssertTrue(
+                element(control, in: app).waitForExistence(timeout: 3),
+                "Pane \(paneIdentifier) is missing \(control) under en-XA")
+            XCTAssertTrue(
+                element(control, in: app).isHittable,
+                "Control \(control) is clipped or unreachable under en-XA")
+        }
+    }
+
+    @MainActor
+    func testEditorLayoutIsSaneUnderRightToLeftPseudolocale() {
+        continueAfterFailure = false
+        // Under the right-to-left pseudolocale (`ar`, forced RTL) the editor should
+        // still lay out and expose every primary control — mirrored, but never
+        // dropped or stranded. Reachability of the preset strip, preview stage,
+        // inspector, and export toolbar is the automatable proxy for "layout is sane
+        // under RTL, mirrored where appropriate" (CS-047 acceptance).
+        let app = launch(arguments: ["--demo", "--open-editor"], locale: .rightToLeftPseudo)
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        for identifier in [
+            "editor-preset-strip", "editor-preview-stage", "editor-inspector", "copy-button",
+            "save-button", "share-button",
+        ] {
+            let control = element(identifier, in: app)
+            XCTAssertTrue(
+                control.waitForExistence(timeout: 3),
+                "Editor control \(identifier) is missing under the RTL pseudolocale")
+            XCTAssertTrue(
+                control.isHittable,
+                "Editor control \(identifier) is clipped or unreachable under RTL")
+        }
+    }
+
+    /// A locale/text-direction override applied to a launch (CS-047). Passed through
+    /// the app's `NSArgumentDomain` (the standard `-AppleLanguages` / `-AppleLocale`
+    /// / `-AppleTextDirection` overrides), so no app code is needed to force a
+    /// pseudolocale or right-to-left layout under test.
+    private enum LocaleOverride {
+        /// The system locale (no override).
+        case system
+        /// The accented, lengthened pseudolocale that stresses string layout.
+        case accentedPseudo
+        /// A right-to-left locale with forced RTL writing direction.
+        case rightToLeftPseudo
+
+        var launchArguments: [String] {
+            switch self {
+            case .system:
+                []
+            case .accentedPseudo:
+                ["-AppleLanguages", "(en-XA)", "-AppleLocale", "en_XA"]
+            case .rightToLeftPseudo:
+                [
+                    "-AppleLanguages", "(ar)", "-AppleLocale", "ar",
+                    "-AppleTextDirection", "YES", "-NSForceRightToLeftWritingDirection", "YES",
+                ]
+            }
+        }
+    }
+
+    @MainActor
+    private func launch(arguments: [String], locale: LocaleOverride = .system) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = arguments
+        app.launchArguments = arguments + locale.launchArguments
         app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
             "VitrineUITests-\(name)-\(UUID().uuidString)"
         app.launch()

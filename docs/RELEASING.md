@@ -75,12 +75,28 @@ Sparkle integration (appcast feed + EdDSA signing) is planned: add the `Sparkle`
 SPM package, host `appcast.xml`, and point `SUFeedURL` at it. Tracked as a
 follow-up to CS-012; not required for the first manual release.
 
+## Visual review — the launch gallery (CS-039)
+
+Vitrine ships with generated design-QA evidence: a launch gallery of representative
+screenshots rendered by the app itself, committed under `Tests/Fixtures/Samples/`.
+Before tagging:
+
+1. If any visual change landed this cycle, re-run `make gallery` and review the
+   `Tests/Fixtures/Samples/` diff (the regenerated PNGs + manifest).
+2. Open the committed gallery and confirm every category — languages, themes, social
+   presets, transparent backgrounds, and the accessibility/high-contrast sample —
+   still looks correct (no regressions in chrome, padding, syntax colors, or alpha).
+
+See [DESIGN-QA.md](DESIGN-QA.md) for what the gallery covers and how it is enforced.
+
 ## Checklist
 
-- [ ] `make test` green
+- [ ] `make test` green (includes the launch-gallery render regression + artifact checks)
 - [ ] `make icon` up to date
 - [ ] Version bumped in `project.yml` (`MARKETING_VERSION`) and the cask
 - [ ] Release note added to `Vitrine/Help/ReleaseNotes.swift` (newest first; version
       matches `MARKETING_VERSION`), and `docs/HELP.md` updated if Help content changed
+- [ ] **Visual review against the launch gallery** done (re-run `make gallery` if a
+      visual change landed; review the `Tests/Fixtures/Samples/` diff) — see DESIGN-QA.md
 - [ ] Tag pushed; release workflow green
 - [ ] Cask `sha256` updated to the published DMG

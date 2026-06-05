@@ -52,11 +52,15 @@ struct OpenCodeInEditorIntent: AppIntent {
         let resolved = language.language ?? LanguageDetector.interpret(code).language
 
         let settings = AppSettings.shared
-        settings.config.code = code
-        settings.config.language = resolved
         settings.noteLanguageUsed(resolved)
 
-        EditorWindowController.shared.show()
+        // Load the snippet into the primary editor window over the user's default
+        // style, so it appears even if the editor was already open (CS-053: a plain
+        // `show()` no longer clobbers an open window's per-window document).
+        var document = settings.config
+        document.code = code
+        document.language = resolved
+        EditorWindowController.shared.loadIntoPrimary(document)
         Log.app.notice("Open Code in Editor intent loaded a snippet into the editor")
         return .result()
     }

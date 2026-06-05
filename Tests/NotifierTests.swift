@@ -71,6 +71,22 @@ struct NotifierFeedbackTests {
         #expect(savedOnly.category == .success)
     }
 
+    // MARK: Standalone action confirmation (CS-053)
+    //
+    // "Make This Window the Default" is an explicit action that changes nothing on
+    // screen, so it confirms through the shared HUD. The confirmation reuses the
+    // success styling and carries no recovery actions — it is a glance, not a prompt.
+
+    @Test func confirmationCarriesItsMessageAsSuccessWithNoActions() {
+        let feedback = Notifier.confirmation("Set as the default style")
+        #expect(feedback.category == .success)
+        #expect(feedback.message == "Set as the default style")
+        #expect(feedback.actions.isEmpty)
+        // The success category resolves to a checkmark glyph, the same affordance
+        // routine capture success uses.
+        #expect(feedback.systemImageName == "checkmark.circle.fill")
+    }
+
     // MARK: Recovery actions (failure recovery)
     //
     // CS-038 acceptance: an empty clipboard or a deferred URL must offer the user a

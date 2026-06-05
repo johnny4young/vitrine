@@ -33,8 +33,9 @@ const WORLDCLASS = Array.from({ length: 8 }, (_, i) => `CS-0${47 + i}`) // CS-04
 // this hardcoded PENDING list — not args — is the source of truth for what runs. Edit it to
 // change scope.
 const PENDING = [
-  'CS-023', 'CS-025', 'CS-029', 'CS-033', 'CS-034', 'CS-035', 'CS-039',
-  'CS-047', 'CS-049', 'CS-053', 'CS-054',
+  // Remaining after continuation 3 (committed 97f34b2): the last Phase-1 polish
+  // ticket plus the two world-class tickets that never landed.
+  'CS-039', 'CS-047', 'CS-053',
 ]
 
 const cfg = (typeof args === 'object' && args) ? args : {}

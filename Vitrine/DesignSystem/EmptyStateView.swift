@@ -8,9 +8,12 @@ import SwiftUI
 /// gradient so empty states feel like part of the display case rather than a
 /// blank rectangle.
 struct EmptyStateView: View {
-    let title: String
-    let message: String
-    var actionTitle: String?
+    // `LocalizedStringKey`-typed so callers pass plain string literals that flow
+    // through the String Catalog automatically (CS-047), and `Text`/`Button` below
+    // render them localized.
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
+    var actionTitle: LocalizedStringKey?
     var action: (() -> Void)?
 
     var body: some View {

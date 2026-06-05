@@ -17,6 +17,12 @@ import UniformTypeIdentifiers
 struct EditorView: View {
     @EnvironmentObject private var settings: AppSettings
 
+    /// This window's editor session (CS-053). Each editor window has its own session
+    /// (and therefore its own `settings` above), so a window can promote *its* style to
+    /// the app-wide default without affecting the others. Injected by
+    /// `EditorWindowController` when the window is created.
+    @EnvironmentObject private var session: EditorSession
+
     /// The saved-preset catalog and the custom-theme resolver, shared with the
     /// Settings panes so the editor and Preferences operate on the same data
     /// (CS-030/031). Held as observed singletons so the strip and inspector update
@@ -235,7 +241,29 @@ struct EditorView: View {
 
             toolbarButton(
                 .shareImage, "share-button", help: "Share the rendered image", action: share)
+
+            makeDefaultButton
         }
+    }
+
+    /// Promotes this window's current style to the app-wide default (CS-053). Distinct
+    /// from the export buttons in that it is code-independent — adopting a look is
+    /// meaningful even before any code is typed — so it does not disable on an empty
+    /// editor. It mirrors the File-menu "Make This Window the Default" command.
+    @ViewBuilder
+    private var makeDefaultButton: some View {
+        Button {
+            session.makeDefault()
+        } label: {
+            Label(
+                VitrineCommand.makeDefault.title,
+                systemImage: VitrineCommand.makeDefault.systemImageName)
+        }
+        .help(
+            "Use this window's style — theme, font, background, and output — for new windows and captures."
+        )
+        .accessibilityLabel(VitrineCommand.makeDefault.accessibilityLabel)
+        .accessibilityIdentifier("make-default-button")
     }
 
     /// A small overflow menu beside the primary Copy button holding the explicit
@@ -317,8 +345,12 @@ struct EditorView: View {
 
         /// The dialog title names the source so the choice has context — the
         /// filename for a dropped file, or a generic label for dropped text.
+        /// Localized through the String Catalog (CS-047); the filename is inserted
+        /// into the localized template.
         var promptTitle: String {
-            loaded.filename.isEmpty ? "Add Dropped Text" : "Load “\(loaded.filename)”"
+            loaded.filename.isEmpty
+                ? String(localized: "Add Dropped Text")
+                : String(localized: "Load “\(loaded.filename)”")
         }
     }
 

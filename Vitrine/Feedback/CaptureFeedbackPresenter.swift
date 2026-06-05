@@ -65,7 +65,10 @@ final class CaptureFeedbackPresenter: ObservableObject {
         let settings = settings ?? settingsProvider()
         switch action {
         case .openEditor:
-            EditorWindowController.shared.show()
+            // The deferred capture's combined source lives in `settings.config`; load
+            // it into the primary editor so the "Open Editor" recovery surfaces it even
+            // if the editor is already open (CS-027 + CS-053).
+            EditorWindowController.shared.loadIntoPrimary(settings.config)
         case .renderAsText:
             renderPendingURLAsText(settings: settings)
         }

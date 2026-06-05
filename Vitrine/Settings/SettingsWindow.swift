@@ -29,9 +29,13 @@ final class SettingsWindowManager {
             ?? NSImage(size: NSSize(width: 1, height: 1))
     }
 
+    // Pane titles label the preferences toolbar tabs, so they are localized through
+    // the String Catalog (CS-047). The `PaneIdentifier`s below stay non-localized —
+    // they are stable keys, not user-facing copy.
     private func generalPane() -> SettingsPane {
         let pane = Settings.Pane(
-            identifier: .general, title: "General", toolbarIcon: icon("gearshape", "General")
+            identifier: .general, title: String(localized: "General"),
+            toolbarIcon: icon("gearshape", String(localized: "General"))
         ) {
             GeneralSettingsView(settings: .shared, presets: .shared)
         }
@@ -40,7 +44,8 @@ final class SettingsWindowManager {
 
     private func stylePane() -> SettingsPane {
         let pane = Settings.Pane(
-            identifier: .style, title: "Style", toolbarIcon: icon("paintpalette", "Style")
+            identifier: .style, title: String(localized: "Style"),
+            toolbarIcon: icon("paintpalette", String(localized: "Style"))
         ) {
             StyleSettingsView(settings: .shared, presets: .shared, themes: .shared)
         }
@@ -49,8 +54,8 @@ final class SettingsWindowManager {
 
     private func outputPane() -> SettingsPane {
         let pane = Settings.Pane(
-            identifier: .output, title: "Output",
-            toolbarIcon: icon("square.and.arrow.up.on.square", "Output")
+            identifier: .output, title: String(localized: "Output"),
+            toolbarIcon: icon("square.and.arrow.up.on.square", String(localized: "Output"))
         ) {
             OutputSettingsView(settings: .shared)
         }
@@ -59,7 +64,8 @@ final class SettingsWindowManager {
 
     private func inputPane() -> SettingsPane {
         let pane = Settings.Pane(
-            identifier: .input, title: "Input", toolbarIcon: icon("doc.on.clipboard", "Input")
+            identifier: .input, title: String(localized: "Input"),
+            toolbarIcon: icon("doc.on.clipboard", String(localized: "Input"))
         ) {
             InputSettingsView(settings: .shared)
         }
@@ -68,7 +74,8 @@ final class SettingsWindowManager {
 
     private func aboutPane() -> SettingsPane {
         let pane = Settings.Pane(
-            identifier: .about, title: "About", toolbarIcon: icon("info.circle", "About")
+            identifier: .about, title: String(localized: "About"),
+            toolbarIcon: icon("info.circle", String(localized: "About"))
         ) {
             AboutSettingsView(settings: .shared)
         }

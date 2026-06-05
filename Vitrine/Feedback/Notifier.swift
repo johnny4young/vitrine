@@ -37,11 +37,12 @@ enum Notifier {
         /// screenshot capture to ship (Product Phase 2 deferral).
         case renderAsText
 
-        /// The button label shown for this action.
+        /// The button label shown for this action. Localized through the String
+        /// Catalog (CS-047); the `accessibilityToken` below stays non-localized.
         var title: String {
             switch self {
-            case .openEditor: "Open Editor"
-            case .renderAsText: "Render as Text"
+            case .openEditor: String(localized: "Open Editor")
+            case .renderAsText: String(localized: "Render as Text")
             }
         }
 
@@ -105,22 +106,36 @@ enum Notifier {
             // leaving them at a dead end (CS-038).
             return CaptureFeedback(
                 category: .info,
-                message: "That looks like a URL — screenshot capture is coming soon",
+                message: String(
+                    localized: "That looks like a URL — screenshot capture is coming soon"),
                 actions: [.renderAsText, .openEditor])
         case .empty:
             // An empty clipboard is the most common dead end; route the user
             // straight to the editor rather than leaving them stuck (CS-038).
             return CaptureFeedback(
                 category: .failure,
-                message: "Clipboard is empty — copy some code first",
+                message: String(localized: "Clipboard is empty — copy some code first"),
                 actions: [.openEditor])
         case .deferredToEditor(let blocks):
+            // A count-aware, localized message: the catalog carries singular and
+            // plural variants per locale, and the number is formatted for the
+            // user's locale (CS-047).
             return CaptureFeedback(
                 category: .info,
-                message:
-                    "Found \(blocks) code blocks — opening the editor to choose one",
+                message: String(
+                    localized: "\(blocks) code blocks found — opening the editor to choose one"),
                 actions: [])
         }
+    }
+
+    /// A standalone success confirmation for a discrete, non-capture action — e.g.
+    /// promoting a window's style to the app-wide default (CS-053). It reuses the
+    /// HUD's success styling (a checkmark, the accent tint) so an explicit action
+    /// gets explicit, transient feedback consistent with the rest of the app's
+    /// microinteractions, without a Notification Center banner. Pure data, so the
+    /// message is unit-testable; the presentation is wired up by the caller.
+    static func confirmation(_ message: String) -> CaptureFeedback {
+        CaptureFeedback(category: .success, message: message, actions: [])
     }
 
     /// Builds the success message from what actually happened to the image, so the
@@ -129,10 +144,10 @@ enum Notifier {
     /// output was copied, saved, shared, or blocked.").
     static func successMessage(copied: Bool, saved: Bool) -> String {
         switch (copied, saved) {
-        case (true, true): "Image copied to the clipboard and saved to a file"
-        case (true, false): "Image copied to the clipboard"
-        case (false, true): "Image saved to a file"
-        case (false, false): "Image rendered"
+        case (true, true): String(localized: "Image copied to the clipboard and saved to a file")
+        case (true, false): String(localized: "Image copied to the clipboard")
+        case (false, true): String(localized: "Image saved to a file")
+        case (false, false): String(localized: "Image rendered")
         }
     }
 

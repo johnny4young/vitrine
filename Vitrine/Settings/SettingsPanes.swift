@@ -496,9 +496,10 @@ struct StylePresetsSection: View {
         do {
             let count = try PresetFileExchange.importWithOpenPanel(store: store)
             if count > 0 {
-                importSuccessMessage =
-                    count == 1
-                    ? "Added 1 preset." : "Added \(count) presets."
+                // Count-aware and localized: the String Catalog carries singular
+                // and plural variants per locale, and the count is formatted for the
+                // user's locale (CS-047).
+                importSuccessMessage = String(localized: "Added \(count) presets")
             }
         } catch let error as StylePresetDocument.ImportError {
             importErrorMessage = error.message
@@ -805,8 +806,8 @@ struct CustomThemesSection: View {
         do {
             let count = try CustomThemeFileExchange.importWithOpenPanel(store: store)
             if count > 0 {
-                importSuccessMessage =
-                    count == 1 ? "Added 1 theme." : "Added \(count) themes."
+                // Count-aware, localized, locale-formatted number (CS-047).
+                importSuccessMessage = String(localized: "Added \(count) themes")
             }
         } catch let error as CustomThemeDocument.ImportError {
             importErrorMessage = error.message
@@ -1141,7 +1142,9 @@ struct AboutSettingsView: View {
             VStack(spacing: Brand.Spacing.sm) {
                 // Identity cluster: who/what the app is.
                 BrandMark(size: 48)
-                Text("Vitrine").font(.title.bold())
+                Text(verbatim: "Vitrine").font(.title.bold())
+                // The version line's template is localized through the catalog
+                // (CS-047); the version value itself is a semver, inserted verbatim.
                 Text("Version \(appVersion)").foregroundStyle(.secondary)
                 Text("Turn code into beautiful images, from your menu bar.")
                     .multilineTextAlignment(.center)
@@ -1160,7 +1163,10 @@ struct AboutSettingsView: View {
                     "Save a privacy-safe report (no code or clipboard contents) to a file you choose."
                 )
 
-                Text("© 2026 johnny4young · MIT").font(.footnote).foregroundStyle(.secondary)
+                // A stable legal/brand string, shown verbatim like the "Vitrine"
+                // wordmark above so it bypasses the String Catalog (CS-047).
+                Text(verbatim: "© 2026 johnny4young · MIT")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(Brand.Spacing.xl)

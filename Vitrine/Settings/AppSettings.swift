@@ -157,6 +157,21 @@ final class AppSettings: ObservableObject {
             fontName, fontLigatures, selectedPreset, hasSeenWelcome,
             lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
         ]
+
+        /// The keys an editor window seeds from the app-wide defaults when it opens
+        /// (CS-053): the document/style fields plus the per-capture output knobs and
+        /// the selected destination preset. Deliberately excludes the app-global,
+        /// non-per-window state — the onboarding/What's-New flags and the hotkey
+        /// action — and the shared preset/theme *catalogs* (those resolve through the
+        /// shared stores, not the window's volatile store). Seeding only these keys is
+        /// what lets a new window open looking like the user's default while editing
+        /// its own copy.
+        static let editorSessionSeed = [
+            themeID, languageID, fontSize, padding, cornerRadius, showChrome,
+            showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
+            backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
+            colorProfile, richClipboard, selectedPreset,
+        ]
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -194,6 +209,80 @@ final class AppSettings: ObservableObject {
         lastSeenWhatsNewVersion = defaults.string(forKey: Keys.lastSeenWhatsNewVersion)
 
         config = Self.readConfig(from: defaults)
+    }
+
+    // MARK: - Per-window editor sessions (CS-053)
+
+    /// Builds an independent settings instance for one editor window, seeded from the
+    /// app-wide defaults but backed by its own **volatile** store, so the window edits
+    /// its own document/style without clobbering the global default (CS-053). Edits in
+    /// the returned instance persist only to its throwaway suite; the user adopts a
+    /// window's look as the new default explicitly via ``makeDefault(from:)``.
+    ///
+    /// Seeding copies just the document/style and output keys (``Keys.editorSessionSeed``)
+    /// from `source` into a fresh, uniquely-named suite, then loads through the normal
+    /// defensive read path so the window starts from exactly what the user would see —
+    /// same theme (built-in or custom), font, background, and output settings. The
+    /// preset/theme *catalogs* are not copied: those resolve through the shared
+    /// `PresetStore`/`CustomThemeStore`, so saved presets and custom themes are visible
+    /// in every window. Returns a standalone instance backed by `.standard` only if a
+    /// volatile suite cannot be created, which still keeps each window functional.
+    static func makeEditorSession(
+        seededFrom source: UserDefaults = AppDefaults.current
+    )
+        -> AppSettings
+    {
+        let suiteName = "app.vitrine.editor-session.\(UUID().uuidString)"
+        guard let volatile = UserDefaults(suiteName: suiteName) else {
+            return AppSettings(defaults: .standard)
+        }
+        // Start from a clean slate so a reused suite name (it never is — the name is a
+        // fresh UUID) cannot leak prior values, then copy the seed keys verbatim.
+        volatile.removePersistentDomain(forName: suiteName)
+        for key in Keys.editorSessionSeed {
+            if let value = source.object(forKey: key) { volatile.set(value, forKey: key) }
+        }
+        return AppSettings(defaults: volatile, volatileSuiteName: suiteName)
+    }
+
+    /// Convenience initializer for a volatile per-window session that records its
+    /// throwaway suite name so it can be torn down when the window closes (CS-053).
+    private convenience init(defaults: UserDefaults, volatileSuiteName: String) {
+        self.init(defaults: defaults)
+        self.volatileSuiteName = volatileSuiteName
+    }
+
+    /// The throwaway suite name backing a per-window session, or `nil` for the shared
+    /// (persistent) instance. Used to clean up the volatile store on window close.
+    private(set) var volatileSuiteName: String?
+
+    /// Removes this session's volatile backing store, if any. Called when an editor
+    /// window closes so a per-window suite never accumulates on disk (CS-053). A no-op
+    /// for the shared, persistent instance.
+    func discardVolatileStore() {
+        guard let volatileSuiteName else { return }
+        defaults.removePersistentDomain(forName: volatileSuiteName)
+        self.volatileSuiteName = nil
+    }
+
+    /// Adopts `config` (and the accompanying output settings of `session`) as the new
+    /// app-wide default (CS-053 "make default is explicit"). Called on the shared
+    /// instance from a window's "Make Default" action so a per-window look becomes the
+    /// starting point for future captures and new windows, persisting through the
+    /// normal `config` observer. Output knobs ride along so "make default" captures the
+    /// whole presentation the user dialed in, not just the canvas style.
+    func makeDefault(from session: AppSettings) {
+        config = session.config
+        exportScale = session.exportScale
+        exportFormat = session.exportFormat
+        colorProfile = session.colorProfile
+        richClipboard = session.richClipboard
+        if let preset = session.selectedPreset {
+            selectedPresetID = preset.id
+        } else {
+            selectedPresetID = nil
+        }
+        Log.settings.info("Adopted an editor window's configuration as the app default")
     }
 
     /// Sets the default theme (used by the "Theme" submenu).

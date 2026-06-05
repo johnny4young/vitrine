@@ -11,6 +11,15 @@ options:
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
+  # Localization (CS-047): English is the development language and the source of
+  # the String Catalog (Vitrine/Resources/Localizable.xcstrings); Spanish ships as
+  # a real second locale to prove the pipeline end to end. "Base" is listed so the
+  # generated project carries a Base development region for the catalog's UI keys.
+  developmentLanguage: en
+  knownRegions:
+    - en
+    - es
+    - Base
 
 # Project-wide build settings.
 settings:
@@ -188,15 +197,19 @@ schemes:
       gatherCoverageData: true
       targets:
         - VitrineTests
-      # Forward the golden-image recorder flag (CS-025) into the test runner's
-      # environment. xcodebuild does not pass arbitrary host env vars to the test
-      # process, so the value is a `$(VITRINE_RECORD_GOLDENS)` build-setting macro
-      # that expands from the value supplied on the `make record-goldens` command
-      # line. Unset (a normal `make test`) it expands to empty and the recorder
-      # suite stays skipped.
+      # Forward the opt-in generator flags into the test runner's environment.
+      # xcodebuild does not pass arbitrary host env vars to the test process, so each
+      # value is a build-setting macro that expands from the value supplied on the
+      # corresponding `make` command line. Unset (a normal `make test`) they expand
+      # to empty and the matching opt-in suite stays skipped.
+      #   - VITRINE_RECORD_GOLDENS  → golden-image recorder (CS-025, `make record-goldens`)
+      #   - VITRINE_GENERATE_GALLERY → launch-gallery generator (CS-039, `make gallery`)
       environmentVariables:
         - variable: VITRINE_RECORD_GOLDENS
           value: $(VITRINE_RECORD_GOLDENS)
+          isEnabled: true
+        - variable: VITRINE_GENERATE_GALLERY
+          value: $(VITRINE_GENERATE_GALLERY)
           isEnabled: true
     profile:
       config: Release

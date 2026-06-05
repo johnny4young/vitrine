@@ -192,7 +192,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
                     settings: settings, note: note,
                     onDismiss: { [weak self] in self?.close() }))
             let window = NSWindow(contentViewController: hosting)
-            window.title = "What's New in Vitrine"
+            window.title = String(localized: "What's New in Vitrine")
             // A compact release-notes surface, not a working window — but resizable
             // and miniaturizable (like the sibling Help window) so a user at a large
             // Dynamic Type size can grow it to reach the scrolled content and footer.

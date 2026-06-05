@@ -180,7 +180,8 @@ private struct RecentsCard: View {
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Brand.Palette.textPrimary.color)
                 .lineLimit(1)
-            Text("·")
+            // A locale-neutral separator dot, shown verbatim (CS-047).
+            Text(verbatim: "·")
                 .foregroundStyle(Brand.Palette.textSecondary.color)
             Text(capture.theme.displayName)
                 .font(.subheadline)

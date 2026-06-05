@@ -32,7 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Development launch hooks: `--demo` preloads sample code, `--open-editor` /
-    /// `--open-settings` open a window on launch (handy for manual UI testing).
+    /// `--open-settings` open a window on launch, and the multi-window hooks
+    /// (`--open-second-editor`, `--force-offscreen-editor`) drive the CS-053 UI smoke
+    /// tests. All are handy for manual UI testing.
     private func handleLaunchArguments() {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("--demo") {
@@ -53,6 +55,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if arguments.contains("--open-editor") { EditorWindowController.shared.show() }
         if arguments.contains("--open-settings") { SettingsWindowManager.shared.show() }
+
+        // Open two independent editor windows so the multi-window UI smoke (CS-053) can
+        // assert both exist and that closing one leaves the other.
+        if arguments.contains("--open-second-editor") {
+            EditorWindowController.shared.show()
+            EditorWindowController.shared.openNewWindow()
+        }
+
+        // Open the editor and force it off-screen so the off-screen-recovery UI smoke
+        // (CS-053) can verify the window is pulled back onto a visible display.
+        if arguments.contains("--force-offscreen-editor") {
+            EditorWindowController.shared.show()
+            EditorWindowController.shared.moveKeyEditorOffScreenForTesting()
+        }
 
         if arguments.contains("--snapshot-loop") {
             Task {

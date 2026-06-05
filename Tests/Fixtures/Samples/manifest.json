@@ -1,0 +1,195 @@
+{
+  "generatedOnOS" : "26.5.0",
+  "samples" : {
+    "a11y-high-contrast" : {
+      "caption" : "High-contrast palette (WCAG AA verified)",
+      "category" : "accessibility",
+      "configFingerprint" : "242d48aca784b3fff6f338bcfb60fbf57521338c8ee9a94e60fe1a9f90184cdd",
+      "height" : 880,
+      "width" : 970
+    },
+    "lang-go" : {
+      "caption" : "Go on One Dark",
+      "category" : "language",
+      "configFingerprint" : "7a3507e79855d3495f7ccf397556621fcf46e6d63306b8846285ec74fb90a4c5",
+      "height" : 564,
+      "width" : 848
+    },
+    "lang-python" : {
+      "caption" : "Python on Dracula",
+      "category" : "language",
+      "configFingerprint" : "ef78faf3864c04a2ee776a2a5c559f2800f1ff4f97d9df9b7465c69f7959d7c0",
+      "height" : 388,
+      "width" : 848
+    },
+    "lang-rust" : {
+      "caption" : "Rust on Gruvbox",
+      "category" : "language",
+      "configFingerprint" : "9deda154386ee8e525a98df1dacfc0b6fe439ef2c1e32882fcd2a7f61ac8c23f",
+      "height" : 476,
+      "width" : 854
+    },
+    "lang-sql" : {
+      "caption" : "SQL on Tokyo Night",
+      "category" : "language",
+      "configFingerprint" : "87f40c6f2de77126a2a8d2c5589abd46f7d0cae3ebcb6b85f46f1951d0c192a8",
+      "height" : 432,
+      "width" : 848
+    },
+    "lang-typescript" : {
+      "caption" : "TypeScript on Night Owl",
+      "category" : "language",
+      "configFingerprint" : "aae7213fda622cd8e40b4350025d1daec048f95036cadeff6c07874adcff2268",
+      "height" : 388,
+      "width" : 1022
+    },
+    "preset-docs" : {
+      "caption" : "Docs \/ Blog",
+      "category" : "preset",
+      "configFingerprint" : "11c1abd70db26dfaa1b899aa6ba6ef8f22c6371670b92424dcbebfe2a53d212d",
+      "height" : 796,
+      "width" : 889
+    },
+    "preset-keynote" : {
+      "caption" : "Keynote",
+      "category" : "preset",
+      "configFingerprint" : "a121777c801fa1cff6f188c9217e5b9416f34976140717e05ba3c3676b511080",
+      "height" : 924,
+      "width" : 1017
+    },
+    "preset-linkedin" : {
+      "caption" : "LinkedIn",
+      "category" : "preset",
+      "configFingerprint" : "d942430f075d6da742d5c5a492483914ee9b47f518adeada06ef3771608ef1c0",
+      "height" : 860,
+      "width" : 953
+    },
+    "preset-opengraph" : {
+      "caption" : "OpenGraph 1200×630",
+      "category" : "preset",
+      "configFingerprint" : "d87ae42bb47870a4dcca8d5468b16d2e034f123337bc82b0a33a5d81a8d7ee73",
+      "height" : 630,
+      "width" : 1200
+    },
+    "preset-transparent-slide" : {
+      "caption" : "Transparent Slide",
+      "category" : "preset",
+      "configFingerprint" : "4c1579d8e55a19c985eac4b24da6ffd21ed243d0e66b076b6081c79d4a0c0444",
+      "height" : 892,
+      "width" : 985
+    },
+    "preset-twitter" : {
+      "caption" : "X \/ Twitter",
+      "category" : "preset",
+      "configFingerprint" : "b6dd6d8f99faad506508575bf2731e1c5c90b69c1ef6650bff3006d710d5a02b",
+      "height" : 860,
+      "width" : 953
+    },
+    "theme-dracula" : {
+      "caption" : "Dracula theme",
+      "category" : "theme",
+      "configFingerprint" : "616c9ed48faaab1e83d530047366e40afe625cc945e17903579dff201b775c8a",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-github" : {
+      "caption" : "GitHub theme",
+      "category" : "theme",
+      "configFingerprint" : "ee5d0b8247a53ef507dcc6e7914f448df92548edb6271a1fb9a3d43b2a1db932",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-github-dark" : {
+      "caption" : "GitHub Dark theme",
+      "category" : "theme",
+      "configFingerprint" : "0e35682c108bb4f5739de6158cbec3b2e135514b31fb0a4cb5cb81ee1354fbb9",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-gruvbox" : {
+      "caption" : "Gruvbox theme",
+      "category" : "theme",
+      "configFingerprint" : "1411f8d2c70f17e4d17c0cef0201ed3ad54177148af3ae4212286d5273dd636b",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-monokai" : {
+      "caption" : "Monokai theme",
+      "category" : "theme",
+      "configFingerprint" : "918071ec03698151503a80c6097c2e569041c8eee0537bb2e0d424da9ad447ee",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-night-owl" : {
+      "caption" : "Night Owl theme",
+      "category" : "theme",
+      "configFingerprint" : "770ee901274e8e02d8bf747b6d82b7a54cdf8435c9d233533eda9bed355494d8",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-nord" : {
+      "caption" : "Nord theme",
+      "category" : "theme",
+      "configFingerprint" : "41a1fbfa27d8b4e057272d02a9afd9f0a302269a025b315d6fb791075601d190",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-one-dark" : {
+      "caption" : "One Dark theme",
+      "category" : "theme",
+      "configFingerprint" : "71f99f77ae8d864c75b26c705f707016f46af4e1e659e2b763a4e9dcce4b9917",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-one-light" : {
+      "caption" : "One Light theme",
+      "category" : "theme",
+      "configFingerprint" : "fbfa8090f3d36f712fc49e8f9695bdaf01a652580acebe5d08e675a041668229",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-solarized" : {
+      "caption" : "Solarized theme",
+      "category" : "theme",
+      "configFingerprint" : "0f0fc5322ca6ca23bc4da0713a50aaaff49986cd757bde6962dbb5924dfa63a4",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-solarized-light" : {
+      "caption" : "Solarized Light theme",
+      "category" : "theme",
+      "configFingerprint" : "f66ecd302d3100b1d0e6ae7dfb3f20b63f832e07541c8fc617e7d5ebd9c0e2c5",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-tokyo-night" : {
+      "caption" : "Tokyo Night theme",
+      "category" : "theme",
+      "configFingerprint" : "cd7c8d6f415e049fb610ba2df496b833edf7858bb50ccd908c823edb40957d44",
+      "height" : 828,
+      "width" : 921
+    },
+    "theme-xcode-dark" : {
+      "caption" : "Xcode Dark theme",
+      "category" : "theme",
+      "configFingerprint" : "9abd4c57b7ae0615b86c827872e88c64e05b636337cd6c8be276879ab6aee687",
+      "height" : 828,
+      "width" : 921
+    },
+    "transparent-dark" : {
+      "caption" : "Transparent canvas (dark code card)",
+      "category" : "transparent",
+      "configFingerprint" : "def29ede4b256faa112765e48d414b44e3137f3e9a94c8d0f5fb25b5dd5c3e7a",
+      "height" : 828,
+      "width" : 921
+    },
+    "transparent-light" : {
+      "caption" : "Transparent canvas (light code card)",
+      "category" : "transparent",
+      "configFingerprint" : "36437936d4940d1283066c05e1a99ef69f27bcb3a724f29bfb9890393e876c4d",
+      "height" : 828,
+      "width" : 921
+    }
+  },
+  "schema" : 1
+}

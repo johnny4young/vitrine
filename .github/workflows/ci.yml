@@ -39,6 +39,38 @@ jobs:
       - name: Test (Swift Testing)
         run: make test
 
+      # Launch-gallery design-QA artifacts (CS-039). The unit suite already renders
+      # and verifies every gallery sample; on a FAILURE, regenerate the gallery into
+      # a workspace directory and upload it so a reviewer can eyeball the *actual*
+      # rendered images for design review instead of inferring a visual regression
+      # from a log. The generator stages PNGs + manifest in the sandboxed host's
+      # container temp and prints one `GALLERY OUTPUT <path>` line; copy that out.
+      - name: Render gallery for design review
+        if: failure()
+        run: |
+          set -o pipefail
+          xcodebuild -project Vitrine.xcodeproj -scheme Vitrine -configuration Debug \
+            -destination 'platform=macOS' \
+            -only-testing:VitrineTests/SampleGalleryGeneratorTests \
+            VITRINE_GENERATE_GALLERY=1 test 2>&1 | tee gallery.log || true
+          staging="$(grep -m1 'GALLERY OUTPUT ' gallery.log | sed 's/^.*GALLERY OUTPUT //')"
+          dest="${RUNNER_TEMP}/vitrine-gallery-review"
+          mkdir -p "${dest}"
+          if [ -n "${staging}" ] && [ -d "${staging}" ]; then
+            cp "${staging}"/*.png "${dest}/" 2>/dev/null || true
+            cp "${staging}/manifest.json" "${dest}/" 2>/dev/null || true
+            echo "Collected $(ls "${dest}"/*.png 2>/dev/null | wc -l | tr -d ' ') gallery images for review."
+          else
+            echo "::warning title=Gallery render (CS-039)::could not locate the generator staging directory."
+          fi
+      - name: Upload gallery design-review artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-gallery
+          path: ${{ runner.temp }}/vitrine-gallery-review
+          if-no-files-found: ignore
+
       # Render-latency budget (CS-026). Documented two-tier threshold: the suite
       # FAILS only past the hard ceiling (a real, order-of-magnitude regression),
       # and WARNS when the 300 ms target is exceeded — surfaced here as GitHub

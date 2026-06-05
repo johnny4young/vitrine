@@ -176,7 +176,11 @@ enum QuickCapture {
     static func perform(settings: AppSettings = .shared) {
         let result = capture(settings: settings)
         if case .deferredToEditor = result.outcome {
-            EditorWindowController.shared.show()
+            // `capture` has already written the combined multi-block source into
+            // `settings.config`; load that into the primary editor window so the user
+            // sees it even if the editor was already open (CS-027 + CS-053: a plain
+            // `show()` no longer clobbers an open window's per-window document).
+            EditorWindowController.shared.loadIntoPrimary(settings.config)
         }
         CaptureFeedbackPresenter.shared.present(result, settings: settings)
     }

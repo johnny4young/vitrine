@@ -84,14 +84,24 @@ enum FileInputLoader {
         case unreadable
 
         /// A short, plain-language explanation suitable for an alert body.
+        /// Localized through the String Catalog (CS-047).
         var message: String {
             switch self {
             case .binaryFile:
-                "That file doesn't look like text. Vitrine renders source code, so binary files like images or archives can't be loaded."
+                String(
+                    localized:
+                        "That file doesn't look like text. Vitrine renders source code, so binary files like images or archives can't be loaded."
+                )
             case .tooLarge:
-                "That file is too large to load. Try a smaller source file (up to 5 MB)."
+                String(
+                    localized:
+                        "That file is too large to load. Try a smaller source file (up to 5 MB)."
+                )
             case .unreadable:
-                "That file couldn't be read. Check that it still exists and that you have permission to open it."
+                String(
+                    localized:
+                        "That file couldn't be read. Check that it still exists and that you have permission to open it."
+                )
             }
         }
     }

@@ -26,7 +26,7 @@ struct MenuBarContent: View {
         Divider()
 
         commandButton(.settings) { SettingsWindowManager.shared.show() }
-        commandButton(.help) { SettingsWindowManager.shared.show() }
+        commandButton(.help) { HelpWindowController.shared.show() }
         commandButton(.about) {
             NSApp.activate(ignoringOtherApps: true)
             NSApp.orderFrontStandardAboutPanel(options: [.credits: Self.aboutCredits])
@@ -34,6 +34,8 @@ struct MenuBarContent: View {
 
         Divider()
 
+        // `Button(_:)` takes a `LocalizedStringKey`, so this title flows through
+        // the String Catalog automatically (CS-047).
         Button("Quit Vitrine") {
             NSApp.terminate(nil)
         }
@@ -130,17 +132,23 @@ struct MenuBarContent: View {
             .foregroundColor: NSColor(Brand.Palette.textSecondary.color),
             .paragraphStyle: paragraph,
         ]
+        // The tagline is localized through the String Catalog (CS-047); the
+        // copyright line is a stable legal/brand string left as-is.
+        let tagline = String(localized: "Turn code into beautiful images, from your menu bar.")
         return NSAttributedString(
-            string:
-                "Turn code into beautiful images, from your menu bar.\n© 2026 johnny4young · MIT",
+            string: "\(tagline)\n© 2026 johnny4young · MIT",
             attributes: attributes)
     }
 
-    /// Loads a recent capture into the editor and shows it.
+    /// Loads a recent capture into the primary editor window and shows it. Builds the
+    /// document over the app's default style so the recent's code/language/theme appear
+    /// even if the editor is already open (CS-053: a plain `show()` no longer clobbers
+    /// an open window's per-window document).
     private func reopen(_ capture: Capture) {
-        settings.config.code = capture.code
-        settings.config.language = capture.language
-        settings.config.theme = capture.theme
-        EditorWindowController.shared.show()
+        var document = settings.config
+        document.code = capture.code
+        document.language = capture.language
+        document.theme = capture.theme
+        EditorWindowController.shared.loadIntoPrimary(document)
     }
 }

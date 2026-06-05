@@ -171,9 +171,10 @@ private struct CustomGradientEditor: View {
             // endpoints imply a degree readout that the slider alone omits.
             Text("Angle (\(Int(gradient.angle))°)")
         } minimumValueLabel: {
-            Text("0°")
+            // Locale-neutral degree endpoints, shown verbatim (CS-047).
+            Text(verbatim: "0°")
         } maximumValueLabel: {
-            Text("360°")
+            Text(verbatim: "360°")
         }
         .help("Gradient direction in degrees")
         .accessibilityValue("\(Int(gradient.angle))°")

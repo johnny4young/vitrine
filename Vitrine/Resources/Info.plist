@@ -4,6 +4,15 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<!-- Localization (CS-047): advertise English (development language) plus
+	     Spanish so the app reports a real second locale and the system offers it
+	     in Language & Region. The strings themselves live in the String Catalog
+	     (Localizable.xcstrings). -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

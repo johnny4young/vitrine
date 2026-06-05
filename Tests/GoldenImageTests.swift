@@ -408,6 +408,79 @@ struct GoldenImageTests {
         }
     }
 
+    // MARK: - Render settling behavior (pins the contention mitigation's contract)
+
+    @Test func settledMatchAcceptsAnAlreadyMatchingFirstFrame() throws {
+        // The clean path (the common case): when the caller's first render already
+        // matches the golden, `settledMatch` returns it on attempt 1 and never spins
+        // the run loop, so a green run pays nothing for the mitigation.
+        let scenario = GoldenScenario.openGraph
+        let golden = try #require(scenario.render())
+        let (image, attempts) = Self.settledMatch(scenario, golden: golden, first: golden)
+        #expect(attempts == 1)
+        #expect(try Self.expectSuccess(GoldenComparator.compare(golden, image)).matches)
+    }
+
+    @Test func settledMatchRecoversFromAPerturbedFirstFrame() throws {
+        // The recovery the whole mitigation rests on: a perturbed first frame (a
+        // solid stand-in for a render whose glyph caches were invalidated mid-pass)
+        // does not match, but a *settled* re-render does — so `settledMatch` retries
+        // past the bad frame and returns a matching one. OpenGraph is fixed-size and
+        // the most byte-stable scenario, so its re-render reliably reproduces the
+        // golden, keeping this assertion deterministic on any runner.
+        let scenario = GoldenScenario.openGraph
+        let golden = try #require(scenario.render())
+        let perturbed = Self.solidImage(
+            width: golden.width, height: golden.height, r: 255, g: 0, b: 255
+        ).image
+        let (image, attempts) = Self.settledMatch(scenario, golden: golden, first: perturbed)
+        #expect(attempts >= 2, "a non-matching first frame must trigger a settled re-render")
+        #expect(try Self.expectSuccess(GoldenComparator.compare(golden, image)).matches)
+    }
+
+    @Test func settledMatchExhaustsItsBudgetOnAGenuineMismatch() throws {
+        // The regression guarantee: if no render can match the golden (a real visual
+        // regression, modeled here by a golden the scenario never produces),
+        // `settledMatch` neither loops forever nor fabricates a pass — it spends its
+        // whole budget and returns the last *real* frame, which the caller records as
+        // the failure. This is why settle-and-retry cannot paper over a regression.
+        let scenario = GoldenScenario.openGraph
+        let first = try #require(scenario.render())
+        let unreachableGolden = Self.solidImage(
+            width: first.width, height: first.height, r: 255, g: 0, b: 255
+        ).image
+        let (image, attempts) = Self.settledMatch(
+            scenario, golden: unreachableGolden, first: first)
+        #expect(attempts == Self.strictRenderAttempts, "a genuine mismatch spends the full budget")
+        #expect(
+            !(try Self.expectSuccess(GoldenComparator.compare(unreachableGolden, image)).matches),
+            "the returned frame is the real render, not a fabricated match")
+    }
+
+    @Test func settledSizeReturnsTheRequestedSizeWhenAchievable() throws {
+        // The clean path for the dimension check: when the scenario renders at the
+        // requested size, `settledSize` returns that frame.
+        let scenario = GoldenScenario.openGraph
+        let expected = try #require(scenario.expectedFixedPixelSize)
+        let image = try #require(
+            Self.settledSize(scenario, width: expected.width, height: expected.height))
+        #expect(image.width == expected.width && image.height == expected.height)
+    }
+
+    @Test func settledSizeFallsBackToTheRealFrameWhenTheSizeIsNeverMet() throws {
+        // The regression guarantee for the dimension check: an unreachable target
+        // size (a real size regression) is never fabricated — `settledSize` returns
+        // the last real render at its true size, so the assertion reports the genuine
+        // drift instead of silently passing.
+        let scenario = GoldenScenario.openGraph
+        let expected = try #require(scenario.expectedFixedPixelSize)
+        let image = try #require(
+            Self.settledSize(scenario, width: expected.width + 1, height: expected.height))
+        #expect(
+            image.width == expected.width && image.height == expected.height,
+            "settledSize returns the real render, never a frame of the impossible size")
+    }
+
     // MARK: - Comparator math (pure, deterministic, OS-independent)
 
     @Test func identicalImagesMatch() throws {

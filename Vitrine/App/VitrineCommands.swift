@@ -20,6 +20,7 @@ enum VitrineCommand: String, CaseIterable {
     // App-scoped (always available)
     case newCapture
     case openEditor
+    case newEditorWindow
     case settings
     case help
     case about
@@ -30,6 +31,7 @@ enum VitrineCommand: String, CaseIterable {
     case copyImage
     case saveImage
     case shareImage
+    case makeDefault
 
     // Editor copy-submenu options (CS-054 rich export): reached from the editor's
     // copy-options menu; no global key equivalent.
@@ -39,19 +41,26 @@ enum VitrineCommand: String, CaseIterable {
     /// The menu-item title. Trailing ellipsis marks a command that opens further
     /// UI before completing (a save panel, the share sheet, a window), matching
     /// macOS Human Interface Guidelines.
+    ///
+    /// The title is resolved through the String Catalog (CS-047): it is shown both
+    /// in an AppKit `NSMenuItem` (which needs a plain `String`) and, via `Label`,
+    /// in SwiftUI surfaces, so it is localized here rather than relying on SwiftUI's
+    /// implicit `LocalizedStringKey` at only one of those call sites.
     var title: String {
         switch self {
-        case .newCapture: "New Capture from Clipboard"
-        case .openEditor: "Open Editor"
-        case .settings: "Settings…"
-        case .help: "Vitrine Help"
-        case .about: "About Vitrine"
-        case .whatsNew: "What's New"
-        case .copyImage: "Copy Image"
-        case .saveImage: "Save Image…"
-        case .shareImage: "Share Image…"
-        case .copyDataURI: "Copy as Data URI"
-        case .copyHighlightedCode: "Copy Highlighted Code"
+        case .newCapture: String(localized: "New Capture from Clipboard")
+        case .openEditor: String(localized: "Open Editor")
+        case .newEditorWindow: String(localized: "New Editor Window")
+        case .settings: String(localized: "Settings…")
+        case .help: String(localized: "Vitrine Help")
+        case .about: String(localized: "About Vitrine")
+        case .whatsNew: String(localized: "What's New")
+        case .copyImage: String(localized: "Copy Image")
+        case .saveImage: String(localized: "Save Image…")
+        case .shareImage: String(localized: "Share Image…")
+        case .makeDefault: String(localized: "Make This Window the Default")
+        case .copyDataURI: String(localized: "Copy as Data URI")
+        case .copyHighlightedCode: String(localized: "Copy Highlighted Code")
         }
     }
 
@@ -62,6 +71,7 @@ enum VitrineCommand: String, CaseIterable {
         switch self {
         case .newCapture: "camera.viewfinder"
         case .openEditor: "macwindow"
+        case .newEditorWindow: "macwindow.badge.plus"
         case .settings: "gearshape"
         case .help: "questionmark.circle"
         case .about: "info.circle"
@@ -69,6 +79,7 @@ enum VitrineCommand: String, CaseIterable {
         case .copyImage: "doc.on.clipboard"
         case .saveImage: "square.and.arrow.down"
         case .shareImage: "square.and.arrow.up"
+        case .makeDefault: "star"
         case .copyDataURI: "curlybraces"
         case .copyHighlightedCode: "chevron.left.forwardslash.chevron.right"
         }
@@ -81,13 +92,15 @@ enum VitrineCommand: String, CaseIterable {
         switch self {
         case .newCapture: "s"  // ⇧⌘S — global quick capture
         case .openEditor: "e"  // ⌘E — open the editor
+        case .newEditorWindow: "n"  // ⌘N — open an additional editor window
         case .settings: ","  // ⌘, — the standard Settings shortcut
         case .help: "?"  // ⌘? — the standard Help shortcut
         case .about: nil  // About conventionally has no shortcut
         case .copyImage: "c"  // ⇧⌘C — copy the rendered image (plain ⌘C stays text copy)
         case .saveImage: "s"  // ⌘S — save the rendered image
         case .shareImage: nil  // Share opens a picker; no reserved shortcut
-        case .copyDataURI, .copyHighlightedCode, .whatsNew: nil  // submenu/window, no shortcut
+        // Submenu/window/explicit-action commands with no reserved shortcut.
+        case .copyDataURI, .copyHighlightedCode, .whatsNew, .makeDefault: nil
         }
     }
 
@@ -99,8 +112,8 @@ enum VitrineCommand: String, CaseIterable {
         switch self {
         case .newCapture: [.command, .shift]
         case .copyImage: [.command, .shift]
-        case .openEditor, .settings, .help, .saveImage: [.command]
-        case .about, .shareImage, .copyDataURI, .copyHighlightedCode, .whatsNew: []
+        case .openEditor, .newEditorWindow, .settings, .help, .saveImage: [.command]
+        case .about, .shareImage, .makeDefault, .copyDataURI, .copyHighlightedCode, .whatsNew: []
         }
     }
 
@@ -110,32 +123,45 @@ enum VitrineCommand: String, CaseIterable {
 
     /// A concise VoiceOver description. Kept short and action-first so VoiceOver
     /// reads usefully without repeating the menu hierarchy (CS-032 "VoiceOver
-    /// labels are concise and useful").
+    /// labels are concise and useful"). Localized through the String Catalog
+    /// (CS-047); the accessibility *identifier* above stays non-localized.
     var accessibilityLabel: String {
         switch self {
-        case .newCapture: "New capture from clipboard"
-        case .openEditor: "Open editor"
-        case .settings: "Settings"
-        case .help: "Vitrine help"
-        case .about: "About Vitrine"
-        case .whatsNew: "What's new in Vitrine"
-        case .copyImage: "Copy image to clipboard"
-        case .saveImage: "Save image to a file"
-        case .shareImage: "Share image"
-        case .copyDataURI: "Copy image as a base64 data URI"
-        case .copyHighlightedCode: "Copy syntax-highlighted code"
+        case .newCapture: String(localized: "New capture from clipboard")
+        case .openEditor: String(localized: "Open editor")
+        case .newEditorWindow: String(localized: "Open a new editor window")
+        case .settings: String(localized: "Settings")
+        case .help: String(localized: "Vitrine help")
+        case .about: String(localized: "About Vitrine")
+        case .whatsNew: String(localized: "What's new in Vitrine")
+        case .copyImage: String(localized: "Copy image to clipboard")
+        case .saveImage: String(localized: "Save image to a file")
+        case .shareImage: String(localized: "Share image")
+        case .makeDefault: String(localized: "Make this window's style the default")
+        case .copyDataURI: String(localized: "Copy image as a base64 data URI")
+        case .copyHighlightedCode: String(localized: "Copy syntax-highlighted code")
         }
     }
 }
 
 extension VitrineCommand {
-    /// Editor/document-scoped commands, enabled only when an editor window is key
-    /// and it has code to render.
-    static let editorCommands: [VitrineCommand] = [.copyImage, .saveImage, .shareImage]
+    /// Editor-render commands, enabled only when an editor window is key *and* it has
+    /// code to render. Copy / Save / Share each turn the document into an image, so an
+    /// empty editor leaves them disabled.
+    static let editorRenderCommands: [VitrineCommand] = [.copyImage, .saveImage, .shareImage]
 
-    /// Whether this command acts on the editor and so is enabled only when an
-    /// editor is the key window.
+    /// All editor/document-scoped commands, enabled only when an editor window is key.
+    /// "Make Default" is editor-scoped but code-independent: adopting a window's style
+    /// as the app default is meaningful even before any code is typed (CS-053).
+    static let editorCommands: [VitrineCommand] = editorRenderCommands + [.makeDefault]
+
+    /// Whether this command acts on the editor and so is enabled only when an editor is
+    /// the key window.
     var isEditorScoped: Bool { Self.editorCommands.contains(self) }
+
+    /// Whether this command additionally requires the editor to hold code (the render
+    /// commands), as opposed to merely requiring an editor to be key.
+    var requiresCode: Bool { Self.editorRenderCommands.contains(self) }
 }
 
 // MARK: - Editor command target
@@ -149,7 +175,17 @@ extension VitrineCommand {
 /// A single shared instance is the explicit target of the editor menu items.
 /// Targeting it directly (rather than the responder chain) keeps enablement
 /// deterministic and unit-testable: a command is enabled only when an editor
-/// window is key *and* it currently holds code, which `canPerform(_:)` decides.
+/// window is key — and, for the render commands, only when that window holds
+/// code — which `canPerform(_:)` decides.
+///
+/// ## Multi-window (CS-053)
+///
+/// With more than one editor open, a menu command must act on whichever editor is
+/// *key*, not on a fixed instance. The responder therefore resolves the key window's
+/// own `EditorSession` at action time (``activeSettings``) and operates on its
+/// per-window config, falling back to the injected `settings` when no editor session
+/// is resolvable (the unit-test host, where no real window is key). "Make Default"
+/// promotes that key window's style to the app-wide default.
 final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     static let shared = EditorCommandResponder()
 
@@ -160,21 +196,29 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         super.init()
     }
 
-    /// Whether `command` can run right now. The editor commands require the
-    /// editor window to be key (so a Save/Share initiated from the menu acts on
-    /// the visible editor) and require code to render.
-    func canPerform(_ command: VitrineCommand) -> Bool {
-        guard command.isEditorScoped else { return true }
-        return isEditorKey && !settings.config.code.isEmpty
+    /// The settings the command should act on: the key editor window's own session,
+    /// or the injected instance when none is resolvable (no editor key / test host).
+    private var activeSettings: AppSettings {
+        EditorWindowController.shared.keyWindowSession?.settings ?? settings
     }
 
-    /// True when the key (or, failing that, the main) window is the editor. The
-    /// fallback to `mainWindow` keeps the command usable when focus sits in a
-    /// panel the editor presented; `EditorWindowController` tags its window with
-    /// the `editor-window` identifier.
+    /// Whether `command` can run right now. Editor-scoped commands require an editor
+    /// window to be key (so a Save/Share/Make Default from the menu acts on the visible
+    /// editor); the render commands additionally require code to render.
+    func canPerform(_ command: VitrineCommand) -> Bool {
+        guard command.isEditorScoped else { return true }
+        guard isEditorKey else { return false }
+        return command.requiresCode ? !activeSettings.config.code.isEmpty : true
+    }
+
+    /// True when the key (or, failing that, the main) window is an editor. The fallback
+    /// to `mainWindow` keeps the command usable when focus sits in a panel the editor
+    /// presented; `EditorWindowController` tags every editor window with an
+    /// `editor-window`-prefixed identifier, of which the primary is exactly
+    /// `editor-window`.
     private var isEditorKey: Bool {
-        let window = NSApp.keyWindow ?? NSApp.mainWindow
-        return window?.accessibilityIdentifier() == "editor-window"
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return false }
+        return window.accessibilityIdentifier().hasPrefix("editor-window")
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
@@ -182,12 +226,14 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(copyRenderedImage(_:)): canPerform(.copyImage)
         case #selector(saveRenderedImage(_:)): canPerform(.saveImage)
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
+        case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
         default: true
         }
     }
 
     @objc func copyRenderedImage(_ sender: Any?) {
         guard canPerform(.copyImage) else { return }
+        let settings = activeSettings
         ExportManager.copyToPasteboard(
             settings.config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile)
@@ -195,6 +241,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
 
     @objc func saveRenderedImage(_ sender: Any?) {
         guard canPerform(.saveImage) else { return }
+        let settings = activeSettings
         ExportManager.saveToFile(
             settings.config, scale: CGFloat(settings.effectiveExportScale),
             format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
@@ -202,6 +249,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     }
 
     @objc func shareRenderedImage(_ sender: Any?) {
+        let settings = activeSettings
         guard canPerform(.shareImage),
             let image = ExportManager.renderNSImage(
                 settings.config, scale: CGFloat(settings.effectiveExportScale),
@@ -209,6 +257,15 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             let view = NSApp.keyWindow?.contentView
         else { return }
         ShareManager.share(image, relativeTo: view)
+    }
+
+    /// Promotes the key editor window's current style to the app-wide default (CS-053).
+    /// A no-op when no editor window is key, so it cannot adopt a phantom configuration.
+    @objc func makeWindowDefault(_ sender: Any?) {
+        guard canPerform(.makeDefault),
+            let session = EditorWindowController.shared.keyWindowSession
+        else { return }
+        session.makeDefault()
     }
 }
 
@@ -226,6 +283,11 @@ final class AppCommandResponder: NSObject {
 
     @objc func openEditor(_ sender: Any?) {
         EditorWindowController.shared.show()
+    }
+
+    /// Opens an additional, independent editor window (CS-053).
+    @objc func newEditorWindow(_ sender: Any?) {
+        EditorWindowController.shared.openNewWindow()
     }
 
     @objc func openSettings(_ sender: Any?) {
@@ -321,7 +383,8 @@ enum AppMenu {
         menu.addItem(.separator())
 
         menu.addItem(
-            withTitle: "Hide Vitrine", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"
+            withTitle: String(localized: "Hide Vitrine"),
+            action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"
         )
         let hideOthers = NSMenuItem(
             title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)),
@@ -333,7 +396,8 @@ enum AppMenu {
             keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(
-            withTitle: "Quit Vitrine", action: #selector(NSApplication.terminate(_:)),
+            withTitle: String(localized: "Quit Vitrine"),
+            action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q")
 
         appMenuItem.submenu = menu
@@ -355,6 +419,12 @@ enum AppMenu {
             item(
                 for: .openEditor, action: #selector(AppCommandResponder.openEditor(_:)),
                 target: AppCommandResponder.shared))
+        // Open an additional, independent editor window (CS-053).
+        menu.addItem(
+            item(
+                for: .newEditorWindow,
+                action: #selector(AppCommandResponder.newEditorWindow(_:)),
+                target: AppCommandResponder.shared))
         menu.addItem(.separator())
 
         // Editor-scoped export commands. They mirror the editor toolbar and are
@@ -371,6 +441,14 @@ enum AppMenu {
         menu.addItem(
             item(
                 for: .shareImage, action: #selector(EditorCommandResponder.shareRenderedImage(_:)),
+                target: EditorCommandResponder.shared))
+        menu.addItem(.separator())
+
+        // Promote the key editor window's style to the app-wide default (CS-053).
+        // Editor-scoped but code-independent, so it is enabled whenever an editor is key.
+        menu.addItem(
+            item(
+                for: .makeDefault, action: #selector(EditorCommandResponder.makeWindowDefault(_:)),
                 target: EditorCommandResponder.shared))
         menu.addItem(.separator())
 

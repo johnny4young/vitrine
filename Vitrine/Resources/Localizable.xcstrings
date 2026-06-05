@@ -1,0 +1,3000 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "%lld code blocks found — opening the editor to choose one" : {
+      "comment" : "Capture feedback when several code blocks are detected and handed to the editor (CS-047).",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld code block found — opening the editor"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld code blocks found — opening the editor to choose one"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se encontró %lld bloque de código; abriendo el editor"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se encontraron %lld bloques de código; abriendo el editor para elegir uno"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Added %lld presets" : {
+      "comment" : "Confirmation after importing style presets; count-aware (CS-047).",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Added %lld preset."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Added %lld presets."
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se agregó %lld ajuste preestablecido."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se agregaron %lld ajustes preestablecidos."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Added %lld themes" : {
+      "comment" : "Confirmation after importing custom themes; count-aware (CS-047).",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Added %lld theme."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Added %lld themes."
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se agregó %lld tema."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Se agregaron %lld temas."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "About" : {
+      "comment" : "Settings pane tab title: About.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de"
+          }
+        }
+      }
+    },
+    "About Vitrine" : {
+      "comment" : "Menu command title and VoiceOver label for the About panel.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de Vitrine"
+          }
+        }
+      }
+    },
+    "General" : {
+      "comment" : "Settings pane tab title: General.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        }
+      }
+    },
+    "Input" : {
+      "comment" : "Settings pane tab title: Input.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrada"
+          }
+        }
+      }
+    },
+    "Output" : {
+      "comment" : "Inspector section title for output resolution and format.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salida"
+          }
+        }
+      }
+    },
+    "Add Dropped Text" : {
+      "comment" : "Drop confirmation title when plain text (not a file) is dropped.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar texto soltado"
+          }
+        }
+      }
+    },
+    "Can't Load That File" : {
+      "comment" : "Alert title when a dropped file is rejected.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se puede cargar ese archivo"
+          }
+        }
+      }
+    },
+    "Load “%@”" : {
+      "comment" : "Drop confirmation title naming the dropped file by name.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargar «%@»"
+          }
+        }
+      }
+    },
+    "That file couldn't be read. Check that it still exists and that you have permission to open it." : {
+      "comment" : "Load error: the file's bytes could not be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo leer ese archivo. Verifica que aún exista y que tengas permiso para abrirlo."
+          }
+        }
+      }
+    },
+    "That file doesn't look like text. Vitrine renders source code, so binary files like images or archives can't be loaded." : {
+      "comment" : "Load error: the file appears to be binary.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ese archivo no parece texto. Vitrine genera código fuente, así que no se pueden cargar archivos binarios como imágenes o comprimidos."
+          }
+        }
+      }
+    },
+    "That file is too large to load. Try a smaller source file (up to 5 MB)." : {
+      "comment" : "Load error: the file exceeds the size limit.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ese archivo es demasiado grande. Prueba con un archivo de origen más pequeño (hasta 5 MB)."
+          }
+        }
+      }
+    },
+    "Append" : {
+      "comment" : "Drop confirmation: append the dropped content to existing code.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar al final"
+          }
+        }
+      }
+    },
+    "Background" : {
+      "comment" : "Inspector and settings section title for background controls.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fondo"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "comment" : "Standard cancel button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar"
+          }
+        }
+      }
+    },
+    "Captures you make appear here as previews. Copy some code and press the capture hotkey to get started." : {
+      "comment" : "Recents gallery empty-state message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas que hagas aparecerán aquí como vistas previas. Copia algo de código y presiona el atajo de captura para empezar."
+          }
+        }
+      }
+    },
+    "Clear Recents" : {
+      "comment" : "Menu action that empties the recent-captures list.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar recientes"
+          }
+        }
+      }
+    },
+    "Clipboard is empty — copy some code first" : {
+      "comment" : "Capture feedback when the clipboard has nothing to render.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El portapapeles está vacío; copia algo de código primero"
+          }
+        }
+      }
+    },
+    "Copy Highlighted Code" : {
+      "comment" : "Menu/toolbar command: copy syntax-highlighted code as rich text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar código resaltado"
+          }
+        }
+      }
+    },
+    "Copy Image" : {
+      "comment" : "Menu/toolbar command: copy the rendered image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar imagen"
+          }
+        }
+      }
+    },
+    "Copy as Data URI" : {
+      "comment" : "Menu/toolbar command: copy the image as a base64 data URI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar como URI de datos"
+          }
+        }
+      }
+    },
+    "Copy image as a base64 data URI" : {
+      "comment" : "VoiceOver label for the Copy as Data URI command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar imagen como URI de datos en base64"
+          }
+        }
+      }
+    },
+    "Copy image to clipboard" : {
+      "comment" : "VoiceOver label for the Copy Image command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar imagen al portapapeles"
+          }
+        }
+      }
+    },
+    "Copy syntax-highlighted code" : {
+      "comment" : "VoiceOver label for the Copy Highlighted Code command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar código con resaltado de sintaxis"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "Dismiss button for the Help window.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo"
+          }
+        }
+      }
+    },
+    "Header" : {
+      "comment" : "Inspector and settings section title for the optional header.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encabezado"
+          }
+        }
+      }
+    },
+    "help.topic.editor.body" : {
+      "comment" : "Help topic body: the editor.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the editor to paste or type code, pick a language and theme, and fine-tune padding, corner radius, window chrome, and line numbers. Copy, save, or share the result from the toolbar or the File menu."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre el editor para pegar o escribir código, elegir un lenguaje y un tema, y ajustar el relleno, el radio de las esquinas, el marco de ventana y los números de línea. Copia, guarda o comparte el resultado desde la barra de herramientas o el menú Archivo."
+          }
+        }
+      }
+    },
+    "help.topic.editor.title" : {
+      "comment" : "Help topic title: the editor.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The editor"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El editor"
+          }
+        }
+      }
+    },
+    "help.topic.hotkey.body" : {
+      "comment" : "Help topic body: the global hotkey.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press the global hotkey from any app to capture whatever code is on your clipboard as an image. Set or change the hotkey below, or in Settings ▸ General."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presiona el atajo global desde cualquier app para capturar como imagen el código que tengas en el portapapeles. Configura o cambia el atajo abajo, o en Ajustes ▸ General."
+          }
+        }
+      }
+    },
+    "help.topic.hotkey.title" : {
+      "comment" : "Help topic title: the global hotkey.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The global hotkey"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El atajo global"
+          }
+        }
+      }
+    },
+    "help.topic.presets.body" : {
+      "comment" : "Help topic body: presets.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destination presets size the image for where it is going (a README, a social card, a slide). Style presets save a look you like so you can reapply it in one click. Manage both in Settings ▸ Style."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los ajustes preestablecidos de destino dimensionan la imagen para su lugar de publicación (un README, una tarjeta social, una diapositiva). Los de estilo guardan un aspecto que te gusta para reaplicarlo con un clic. Administra ambos en Ajustes ▸ Estilo."
+          }
+        }
+      }
+    },
+    "help.topic.presets.title" : {
+      "comment" : "Help topic title: presets.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presets"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes preestablecidos"
+          }
+        }
+      }
+    },
+    "help.topic.privacy.body" : {
+      "comment" : "Help topic body: privacy.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine is private by design: your code never leaves your Mac. There is no account and no network access, and rendering needs no screen-recording or Accessibility permission."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine es privado por diseño: tu código nunca sale de tu Mac. No hay cuenta ni acceso a la red, y la generación no necesita permiso de grabación de pantalla ni de Accesibilidad."
+          }
+        }
+      }
+    },
+    "help.topic.privacy.title" : {
+      "comment" : "Help topic title: privacy.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacidad"
+          }
+        }
+      }
+    },
+    "help.topic.quick-capture.body" : {
+      "comment" : "Help topic body: quick capture.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy code anywhere, press the hotkey, and Vitrine renders it with your current style. The image is placed on your clipboard automatically — paste it straight into a doc, chat, or pull request."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia código en cualquier parte, presiona el atajo y Vitrine lo genera con tu estilo actual. La imagen se coloca en el portapapeles automáticamente; pégala directamente en un documento, chat o pull request."
+          }
+        }
+      }
+    },
+    "help.topic.quick-capture.title" : {
+      "comment" : "Help topic title: quick capture.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick capture"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura rápida"
+          }
+        }
+      }
+    },
+    "Hide Vitrine" : {
+      "comment" : "App menu item that hides the application.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar Vitrine"
+          }
+        }
+      }
+    },
+    "Image copied to the clipboard" : {
+      "comment" : "Success feedback: the image was copied only.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen copiada al portapapeles"
+          }
+        }
+      }
+    },
+    "Image copied to the clipboard and saved to a file" : {
+      "comment" : "Success feedback: the image was both copied and saved.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen copiada al portapapeles y guardada en un archivo"
+          }
+        }
+      }
+    },
+    "Image rendered" : {
+      "comment" : "Success feedback: the image was rendered without copy or save.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen generada"
+          }
+        }
+      }
+    },
+    "Image saved to a file" : {
+      "comment" : "Success feedback: the image was saved only.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen guardada en un archivo"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "comment" : "Editor toolbar language picker label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lenguaje"
+          }
+        }
+      }
+    },
+    "Last capture: %@" : {
+      "comment" : "Menu-bar status line echoing the last capture's outcome message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Última captura: %@"
+          }
+        }
+      }
+    },
+    "Lines" : {
+      "comment" : "Inspector and settings section title for line-number controls.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas"
+          }
+        }
+      }
+    },
+    "New Capture from Clipboard" : {
+      "comment" : "Menu command: render whatever code is on the clipboard.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva captura desde el portapapeles"
+          }
+        }
+      }
+    },
+    "New capture from clipboard" : {
+      "comment" : "VoiceOver label for the New Capture command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva captura desde el portapapeles"
+          }
+        }
+      }
+    },
+    "No recent captures" : {
+      "comment" : "Empty state for the Recents submenu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay capturas recientes"
+          }
+        }
+      }
+    },
+    "Nothing to show yet" : {
+      "comment" : "Editor empty-state title before any code is pasted.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay nada que mostrar"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "comment" : "Standard acknowledge button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceptar"
+          }
+        }
+      }
+    },
+    "Open Editor" : {
+      "comment" : "Menu command title and the 'open the editor' recovery action label (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir editor"
+          }
+        }
+      }
+    },
+    "Open editor" : {
+      "comment" : "VoiceOver label for the Open Editor command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir editor"
+          }
+        }
+      }
+    },
+    "Paste Code" : {
+      "comment" : "Editor empty-state primary action: paste code from the clipboard.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegar código"
+          }
+        }
+      }
+    },
+    "Paste code, or drop a source file, to turn it into a beautiful image." : {
+      "comment" : "Editor empty-state message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega código o suelta un archivo de origen para convertirlo en una imagen atractiva."
+          }
+        }
+      }
+    },
+    "Presets" : {
+      "comment" : "Editor preset strip label and settings section title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes preestablecidos"
+          }
+        }
+      }
+    },
+    "Quit Vitrine" : {
+      "comment" : "Menu command: quit the application.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir de Vitrine"
+          }
+        }
+      }
+    },
+    "Recents" : {
+      "comment" : "Menu-bar submenu title for recent captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recientes"
+          }
+        }
+      }
+    },
+    "Recents Gallery…" : {
+      "comment" : "Menu action: open the visual recents gallery window.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Galería de recientes…"
+          }
+        }
+      }
+    },
+    "Render as Text" : {
+      "comment" : "Recovery action label: render the detected URL as plain text (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generar como texto"
+          }
+        }
+      }
+    },
+    "Replace" : {
+      "comment" : "Drop confirmation: replace existing code with the dropped content.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reemplazar"
+          }
+        }
+      }
+    },
+    "Save Image…" : {
+      "comment" : "Menu/toolbar command: save the rendered image to a file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar imagen…"
+          }
+        }
+      }
+    },
+    "Save image to a file" : {
+      "comment" : "VoiceOver label for the Save Image command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar imagen en un archivo"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "comment" : "VoiceOver label for the Settings command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes"
+          }
+        }
+      }
+    },
+    "Settings…" : {
+      "comment" : "Menu command: open Settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes…"
+          }
+        }
+      }
+    },
+    "Share Image…" : {
+      "comment" : "Menu/toolbar command: share the rendered image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartir imagen…"
+          }
+        }
+      }
+    },
+    "Share image" : {
+      "comment" : "VoiceOver label for the Share Image command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartir imagen"
+          }
+        }
+      }
+    },
+    "Style" : {
+      "comment" : "Inspector section title and editor style-preset picker label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo"
+          }
+        }
+      }
+    },
+    "That looks like a URL — screenshot capture is coming soon" : {
+      "comment" : "Capture feedback when the clipboard holds a URL (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eso parece una URL; la captura de pantalla llegará pronto"
+          }
+        }
+      }
+    },
+    "Turn code into beautiful images, from your menu bar." : {
+      "comment" : "App tagline shown in the About panel and credits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convierte código en imágenes atractivas desde la barra de menús."
+          }
+        }
+      }
+    },
+    "Version %@" : {
+      "comment" : "About pane version line; the value is the marketing version string.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión %@"
+          }
+        }
+      }
+    },
+    "Vitrine Help" : {
+      "comment" : "Help command title and Help window heading.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda de Vitrine"
+          }
+        }
+      }
+    },
+    "Vitrine help" : {
+      "comment" : "VoiceOver label for the Help command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda de Vitrine"
+          }
+        }
+      }
+    },
+    "What's New" : {
+      "comment" : "Menu command: show the What's New notes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novedades"
+          }
+        }
+      }
+    },
+    "What's new in Vitrine" : {
+      "comment" : "VoiceOver label for the What's New command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novedades de Vitrine"
+          }
+        }
+      }
+    },
+    "Copy code" : {
+      "comment" : "Onboarding step 1 title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia código"
+          }
+        }
+      }
+    },
+    "from anywhere" : {
+      "comment" : "Onboarding step 1 caption.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "desde cualquier parte"
+          }
+        }
+      }
+    },
+    "Press the hotkey" : {
+      "comment" : "Onboarding step 2 title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presiona el atajo"
+          }
+        }
+      }
+    },
+    "set one below" : {
+      "comment" : "Onboarding step 2 caption when no hotkey is set yet.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "configura uno abajo"
+          }
+        }
+      }
+    },
+    "Paste the image" : {
+      "comment" : "Onboarding step 3 title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega la imagen"
+          }
+        }
+      }
+    },
+    "into your doc" : {
+      "comment" : "Onboarding step 3 caption.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "en tu documento"
+          }
+        }
+      }
+    },
+    "Done — the sample image is on your clipboard. Paste it anywhere." : {
+      "comment" : "Onboarding sample-capture success when the image was copied.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo: la imagen de muestra está en el portapapeles. Pégala donde quieras."
+          }
+        }
+      }
+    },
+    "Done — the sample image was rendered with your current style." : {
+      "comment" : "Onboarding sample-capture success when the image was rendered only.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo: la imagen de muestra se generó con tu estilo actual."
+          }
+        }
+      }
+    },
+    "That sample could not be rendered. Your settings are unchanged." : {
+      "comment" : "Onboarding sample-capture failure message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo generar esa muestra. Tus ajustes no han cambiado."
+          }
+        }
+      }
+    },
+    "welcome.privacy.badge" : {
+      "comment" : "Onboarding privacy promise shown before the first capture.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Private by design: your code never leaves your Mac. No account, no network, no screen recording or Accessibility permission."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privado por diseño: tu código nunca sale de tu Mac. Sin cuenta, sin red, sin grabación de pantalla ni permiso de Accesibilidad."
+          }
+        }
+      }
+    },
+    "1×" : {
+      "comment" : "Output resolution option: 1x scale.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1×"
+          }
+        }
+      }
+    },
+    "2× (Retina)" : {
+      "comment" : "Output resolution option: 2x (Retina) scale.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2× (Retina)"
+          }
+        }
+      }
+    },
+    "3×" : {
+      "comment" : "Output resolution option: 3x scale.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3×"
+          }
+        }
+      }
+    },
+    "A destination preset sizes and styles the image for a place to post it." : {
+      "comment" : "Style pane footer explaining destination presets.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un ajuste preestablecido de destino dimensiona y estiliza la imagen para el lugar donde la publicarás."
+          }
+        }
+      }
+    },
+    "Add an optional filename, title, caption, or language badge above the code." : {
+      "comment" : "Style pane Header section footer.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega un nombre de archivo, título, leyenda o insignia de lenguaje opcional sobre el código."
+          }
+        }
+      }
+    },
+    "Add custom themes from a Vitrine theme file (.json)." : {
+      "comment" : "Help text for the Import themes button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega temas personalizados desde un archivo de tema de Vitrine (.json)."
+          }
+        }
+      }
+    },
+    "Add highlighted code as rich text" : {
+      "comment" : "Output pane toggle: include highlighted code as rich text on copy.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar el código resaltado como texto enriquecido"
+          }
+        }
+      }
+    },
+    "Add presets from a Vitrine preset file (.json)." : {
+      "comment" : "Help text for the Import presets button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega ajustes preestablecidos desde un archivo de Vitrine (.json)."
+          }
+        }
+      }
+    },
+    "Advanced" : {
+      "comment" : "Output pane section header: advanced color options.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avanzado"
+          }
+        }
+      }
+    },
+    "Also save to a file" : {
+      "comment" : "Output pane toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar también en un archivo"
+          }
+        }
+      }
+    },
+    "Apply" : {
+      "comment" : "Button: apply the selected preset or theme.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar"
+          }
+        }
+      }
+    },
+    "Apply this preset's style to the current snapshot." : {
+      "comment" : "Help text for the Apply preset button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplica el estilo de este ajuste preestablecido a la imagen actual."
+          }
+        }
+      }
+    },
+    "Attributes" : {
+      "comment" : "Custom theme editor color label: attributes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atributos"
+          }
+        }
+      }
+    },
+    "Base" : {
+      "comment" : "Custom theme editor section: base colors.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Base"
+          }
+        }
+      }
+    },
+    "Built-in" : {
+      "comment" : "Picker section header for built-in themes or presets.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incorporado"
+          }
+        }
+      }
+    },
+    "Built-in presets can't be changed — duplicate one to make it your own." : {
+      "comment" : "Presets footer for a built-in selection.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los ajustes preestablecidos incorporados no se pueden cambiar; duplica uno para personalizarlo."
+          }
+        }
+      }
+    },
+    "Caption" : {
+      "comment" : "Metadata field label: caption.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda"
+          }
+        }
+      }
+    },
+    "Choose a built-in or custom syntax theme." : {
+      "comment" : "Help text for the theme picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un tema de sintaxis incorporado o personalizado."
+          }
+        }
+      }
+    },
+    "Choose a preset to apply, duplicate, rename, or delete. Selecting does not change your current style." : {
+      "comment" : "Help text for the style preset picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un ajuste preestablecido para aplicar, duplicar, renombrar o eliminar. Seleccionarlo no cambia tu estilo actual."
+          }
+        }
+      }
+    },
+    "Choose a preset…" : {
+      "comment" : "Picker placeholder row for presets.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un ajuste preestablecido…"
+          }
+        }
+      }
+    },
+    "Choose a theme…" : {
+      "comment" : "Picker placeholder row for custom themes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un tema…"
+          }
+        }
+      }
+    },
+    "Clipboard" : {
+      "comment" : "Output pane section header: clipboard.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portapapeles"
+          }
+        }
+      }
+    },
+    "Close Help" : {
+      "comment" : "Help text for the Help window Done button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar la Ayuda"
+          }
+        }
+      }
+    },
+    "Color profile" : {
+      "comment" : "Output pane picker label: color profile.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Perfil de color"
+          }
+        }
+      }
+    },
+    "Comments" : {
+      "comment" : "Custom theme editor color label: comments.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentarios"
+          }
+        }
+      }
+    },
+    "Copy as a data URI, or copy the highlighted code as rich text" : {
+      "comment" : "Help text for the editor's copy-options menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia como URI de datos o copia el código resaltado como texto enriquecido"
+          }
+        }
+      }
+    },
+    "Copy to clipboard automatically" : {
+      "comment" : "Output pane toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar al portapapeles automáticamente"
+          }
+        }
+      }
+    },
+    "Create a custom syntax theme with a live preview." : {
+      "comment" : "Help text for the New theme button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea un tema de sintaxis personalizado con una vista previa en vivo."
+          }
+        }
+      }
+    },
+    "Custom" : {
+      "comment" : "Picker row/section: custom (user's own settings or themes).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personalizado"
+          }
+        }
+      }
+    },
+    "Custom Themes" : {
+      "comment" : "Style pane section header: custom themes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temas personalizados"
+          }
+        }
+      }
+    },
+    "Custom theme" : {
+      "comment" : "Picker label: custom theme.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema personalizado"
+          }
+        }
+      }
+    },
+    "Custom themes are your own syntax palettes. Built-in themes can't be changed. Theme files are JSON and never leave your Mac." : {
+      "comment" : "Custom themes section footer.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los temas personalizados son tus propias paletas de sintaxis. Los temas incorporados no se pueden cambiar. Los archivos de tema son JSON y nunca salen de tu Mac."
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "comment" : "Button: delete the selected preset or theme.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar"
+          }
+        }
+      }
+    },
+    "Delete this custom theme." : {
+      "comment" : "Help text for the Delete theme button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina este tema personalizado."
+          }
+        }
+      }
+    },
+    "Delete this saved preset. Built-in presets can't be deleted." : {
+      "comment" : "Help text for the Delete preset button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina este ajuste preestablecido guardado. Los incorporados no se pueden eliminar."
+          }
+        }
+      }
+    },
+    "Destination" : {
+      "comment" : "Destination preset picker label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destino"
+          }
+        }
+      }
+    },
+    "Destination preset" : {
+      "comment" : "Accessibility label for the destination preset picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste preestablecido de destino"
+          }
+        }
+      }
+    },
+    "Drop shadow" : {
+      "comment" : "Style control toggle: drop shadow.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sombra paralela"
+          }
+        }
+      }
+    },
+    "Drop to load" : {
+      "comment" : "Editor drop affordance label shown while dragging a file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suelta para cargar"
+          }
+        }
+      }
+    },
+    "Duplicate" : {
+      "comment" : "Button: duplicate the selected preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplicar"
+          }
+        }
+      }
+    },
+    "Edit Custom Theme" : {
+      "comment" : "Custom theme editor title when editing.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar tema personalizado"
+          }
+        }
+      }
+    },
+    "Edit this custom theme's colors with a live preview." : {
+      "comment" : "Help text for the Edit theme button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edita los colores de este tema personalizado con una vista previa en vivo."
+          }
+        }
+      }
+    },
+    "Edit…" : {
+      "comment" : "Button: edit the selected custom theme.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar…"
+          }
+        }
+      }
+    },
+    "Everything you need to turn code into images." : {
+      "comment" : "Help window subtitle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo lo que necesitas para convertir código en imágenes."
+          }
+        }
+      }
+    },
+    "Export Diagnostics…" : {
+      "comment" : "About pane button: export a diagnostics report.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar diagnósticos…"
+          }
+        }
+      }
+    },
+    "Export…" : {
+      "comment" : "Button: export presets or themes to a file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar…"
+          }
+        }
+      }
+    },
+    "Filename" : {
+      "comment" : "Metadata field label: filename.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre de archivo"
+          }
+        }
+      }
+    },
+    "Font" : {
+      "comment" : "Style control picker label: font.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fuente"
+          }
+        }
+      }
+    },
+    "Font size" : {
+      "comment" : "Style control slider label: font size.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño de fuente"
+          }
+        }
+      }
+    },
+    "Foreground" : {
+      "comment" : "Custom theme editor color label: foreground.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primer plano"
+          }
+        }
+      }
+    },
+    "Format" : {
+      "comment" : "Output pane picker label: export format.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formato"
+          }
+        }
+      }
+    },
+    "Functions" : {
+      "comment" : "Custom theme editor color label: functions.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funciones"
+          }
+        }
+      }
+    },
+    "Get Started" : {
+      "comment" : "Welcome window primary button to finish onboarding.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comenzar"
+          }
+        }
+      }
+    },
+    "GitHub" : {
+      "comment" : "About pane link to the GitHub repository (brand name).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub"
+          }
+        }
+      }
+    },
+    "Global hotkey:" : {
+      "comment" : "Label for the global hotkey recorder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajo global:"
+          }
+        }
+      }
+    },
+    "Highlight lines" : {
+      "comment" : "Text field label: lines to highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar líneas"
+          }
+        }
+      }
+    },
+    "Hotkey runs" : {
+      "comment" : "General pane picker label: what the hotkey triggers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El atajo ejecuta"
+          }
+        }
+      }
+    },
+    "How it works: copy code, press the hotkey, paste the image." : {
+      "comment" : "Accessibility label for the welcome step row.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo funciona: copia el código, presiona el atajo, pega la imagen."
+          }
+        }
+      }
+    },
+    "Import Presets" : {
+      "comment" : "Alert title: result of importing presets.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar ajustes preestablecidos"
+          }
+        }
+      }
+    },
+    "Import Themes" : {
+      "comment" : "Alert title: result of importing themes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar temas"
+          }
+        }
+      }
+    },
+    "Import…" : {
+      "comment" : "Button: import presets or themes from a file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar…"
+          }
+        }
+      }
+    },
+    "Keywords" : {
+      "comment" : "Custom theme editor color label: keywords.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palabras clave"
+          }
+        }
+      }
+    },
+    "Language badge" : {
+      "comment" : "Metadata toggle: show the language badge.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insignia de lenguaje"
+          }
+        }
+      }
+    },
+    "Launch Vitrine at login" : {
+      "comment" : "Welcome toggle: launch at login.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Vitrine al iniciar sesión"
+          }
+        }
+      }
+    },
+    "Launch at login" : {
+      "comment" : "General pane toggle: launch at login.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir al iniciar sesión"
+          }
+        }
+      }
+    },
+    "Ligatures" : {
+      "comment" : "Style control toggle: font ligatures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ligaduras"
+          }
+        }
+      }
+    },
+    "Line numbers" : {
+      "comment" : "Style control toggle: show the line-number gutter.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Números de línea"
+          }
+        }
+      }
+    },
+    "Lines or ranges to highlight, e.g. 3, 7-9, 12" : {
+      "comment" : "Help text for the highlight-lines field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas o rangos para resaltar, p. ej. 3, 7-9, 12"
+          }
+        }
+      }
+    },
+    "Live preview" : {
+      "comment" : "Accessibility label for the style live preview image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa en vivo"
+          }
+        }
+      }
+    },
+    "Live preview of the current style" : {
+      "comment" : "Help text for the style preview.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa en vivo del estilo actual"
+          }
+        }
+      }
+    },
+    "Make an editable copy of this preset." : {
+      "comment" : "Help text for the Duplicate preset button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea una copia editable de este ajuste preestablecido."
+          }
+        }
+      }
+    },
+    "More copy options" : {
+      "comment" : "Editor toolbar overflow menu label / accessibility label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más opciones de copia"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "comment" : "Text field label: name (preset, theme).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre"
+          }
+        }
+      }
+    },
+    "New Custom Theme" : {
+      "comment" : "Custom theme editor title when creating.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema personalizado nuevo"
+          }
+        }
+      }
+    },
+    "New Theme…" : {
+      "comment" : "Button: create a new custom theme.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema nuevo…"
+          }
+        }
+      }
+    },
+    "No custom themes yet. Create one, or import a theme file." : {
+      "comment" : "Empty-state text for the custom themes section.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no tienes temas personalizados. Crea uno o importa un archivo de tema."
+          }
+        }
+      }
+    },
+    "Numbers" : {
+      "comment" : "Custom theme editor color label: numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Números"
+          }
+        }
+      }
+    },
+    "Open the Vitrine documentation on GitHub" : {
+      "comment" : "Help text for the documentation link.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre la documentación de Vitrine en GitHub"
+          }
+        }
+      }
+    },
+    "Open the editor" : {
+      "comment" : "Welcome button: open the editor with a sample.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir el editor"
+          }
+        }
+      }
+    },
+    "Optional filename shown as a chip in the header" : {
+      "comment" : "Help text for the filename metadata field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre de archivo opcional que se muestra como una etiqueta en el encabezado"
+          }
+        }
+      }
+    },
+    "Optional one-line caption shown under the title" : {
+      "comment" : "Help text for the caption metadata field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda opcional de una línea que se muestra bajo el título"
+          }
+        }
+      }
+    },
+    "Optional title shown above the code" : {
+      "comment" : "Help text for the title metadata field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Título opcional que se muestra sobre el código"
+          }
+        }
+      }
+    },
+    "Optional — you can set these any time in Settings." : {
+      "comment" : "Welcome setup hint under the optional controls.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opcional: puedes configurarlos en cualquier momento en Ajustes."
+          }
+        }
+      }
+    },
+    "Padding" : {
+      "comment" : "Style control slider label: padding around the code.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relleno"
+          }
+        }
+      }
+    },
+    "Pick a starting look. You can fine-tune everything later in the editor." : {
+      "comment" : "Help text for the welcome style picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un estilo inicial. Puedes ajustarlo todo después en el editor."
+          }
+        }
+      }
+    },
+    "Preset" : {
+      "comment" : "Style pane picker label: saved style preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste preestablecido"
+          }
+        }
+      }
+    },
+    "Presets Imported" : {
+      "comment" : "Alert title: presets imported successfully.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes preestablecidos importados"
+          }
+        }
+      }
+    },
+    "Presets set the image size and resolution for a destination." : {
+      "comment" : "Output pane footer explaining presets.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los ajustes preestablecidos definen el tamaño y la resolución de la imagen para un destino."
+          }
+        }
+      }
+    },
+    "Preview" : {
+      "comment" : "Section header / label: preview.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa"
+          }
+        }
+      }
+    },
+    "Preview unavailable" : {
+      "comment" : "Placeholder shown when a preview can't be rendered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa no disponible"
+          }
+        }
+      }
+    },
+    "Rename" : {
+      "comment" : "Button: rename the selected preset or theme.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar nombre"
+          }
+        }
+      }
+    },
+    "Rename Preset" : {
+      "comment" : "Alert title: rename a style preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar nombre del ajuste preestablecido"
+          }
+        }
+      }
+    },
+    "Rename Theme" : {
+      "comment" : "Alert title: rename a custom theme.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar nombre del tema"
+          }
+        }
+      }
+    },
+    "Rename this custom theme." : {
+      "comment" : "Help text for the Rename theme button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia el nombre de este tema personalizado."
+          }
+        }
+      }
+    },
+    "Rename this saved preset. Built-in presets can't be renamed." : {
+      "comment" : "Help text for the Rename preset button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia el nombre de este ajuste preestablecido guardado. Los incorporados no se pueden renombrar."
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "comment" : "Confirmation button: reset all settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer"
+          }
+        }
+      }
+    },
+    "Reset All Settings…" : {
+      "comment" : "General pane destructive button: reset all settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer todos los ajustes…"
+          }
+        }
+      }
+    },
+    "Reset all settings to their defaults?" : {
+      "comment" : "Reset confirmation dialog title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Restablecer todos los ajustes a sus valores predeterminados?"
+          }
+        }
+      }
+    },
+    "Resolution" : {
+      "comment" : "Output pane picker label: resolution.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resolución"
+          }
+        }
+      }
+    },
+    "Restores every preference to its default, including your recent languages." : {
+      "comment" : "General pane footer for the reset action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaura cada preferencia a su valor predeterminado, incluidos tus lenguajes recientes."
+          }
+        }
+      }
+    },
+    "Sample code snippet" : {
+      "comment" : "Accessibility label for the welcome sample snippet.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragmento de código de ejemplo"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "comment" : "Button: save (a preset, a custom theme).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar"
+          }
+        }
+      }
+    },
+    "Save Current Style…" : {
+      "comment" : "Button: save the current style as a preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar el estilo actual…"
+          }
+        }
+      }
+    },
+    "Save Preset" : {
+      "comment" : "Alert title: save a style preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar ajuste preestablecido"
+          }
+        }
+      }
+    },
+    "Save a privacy-safe report (no code or clipboard contents) to a file you choose." : {
+      "comment" : "Help text for the Export diagnostics button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda un informe que respeta tu privacidad (sin código ni contenido del portapapeles) en un archivo que elijas."
+          }
+        }
+      }
+    },
+    "Save the current style as a new named preset you can reuse." : {
+      "comment" : "Help text for the Save current style button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda el estilo actual como un nuevo ajuste preestablecido con nombre que puedes reutilizar."
+          }
+        }
+      }
+    },
+    "Save the current style as a preset, then export or import presets as JSON." : {
+      "comment" : "Presets footer for a user selection.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda el estilo actual como un ajuste preestablecido y luego exporta o importa ajustes en JSON."
+          }
+        }
+      }
+    },
+    "Save the current style — theme, font, background, and the rest of your current layout — as a named preset." : {
+      "comment" : "Save preset alert message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda el estilo actual —tema, fuente, fondo y el resto de tu diseño— como un ajuste preestablecido con nombre."
+          }
+        }
+      }
+    },
+    "Saved" : {
+      "comment" : "Picker section header for the user's saved presets.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardados"
+          }
+        }
+      }
+    },
+    "Selected preset" : {
+      "comment" : "Labeled row for the selected preset's actions.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste preestablecido seleccionado"
+          }
+        }
+      }
+    },
+    "Selected theme" : {
+      "comment" : "Labeled row for the selected theme's actions.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema seleccionado"
+          }
+        }
+      }
+    },
+    "Set as the default style" : {
+      "comment" : "HUD confirmation shown after promoting an editor window's style to the app-wide default (CS-053).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Establecido como el estilo predeterminado"
+          }
+        }
+      }
+    },
+    "Set your hotkey" : {
+      "comment" : "Help window section heading for the hotkey recorder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configura tu atajo"
+          }
+        }
+      }
+    },
+    "Show a line-number gutter and highlight specific lines or ranges." : {
+      "comment" : "Style pane Lines section footer.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muestra un margen con números de línea y resalta líneas o rangos específicos."
+          }
+        }
+      }
+    },
+    "Show the current language as a badge in the header" : {
+      "comment" : "Help text for the language badge toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muestra el lenguaje actual como una insignia en el encabezado"
+          }
+        }
+      }
+    },
+    "Skip" : {
+      "comment" : "Welcome button: skip onboarding.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omitir"
+          }
+        }
+      }
+    },
+    "Starting style" : {
+      "comment" : "Accessibility label for the welcome style picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo inicial"
+          }
+        }
+      }
+    },
+    "Strings" : {
+      "comment" : "Custom theme editor color label: strings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cadenas"
+          }
+        }
+      }
+    },
+    "Syntax" : {
+      "comment" : "Custom theme editor section: syntax colors.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sintaxis"
+          }
+        }
+      }
+    },
+    "The language used to syntax-highlight the code." : {
+      "comment" : "Help text for the editor language picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El lenguaje usado para resaltar la sintaxis del código."
+          }
+        }
+      }
+    },
+    "Theme" : {
+      "comment" : "Picker/menu label: syntax theme.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema"
+          }
+        }
+      }
+    },
+    "Themes Imported" : {
+      "comment" : "Alert title: themes imported successfully.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temas importados"
+          }
+        }
+      }
+    },
+    "This cannot be undone. Your recent languages and saved presets are also cleared." : {
+      "comment" : "Reset confirmation message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto no se puede deshacer. También se borran tus lenguajes recientes y tus ajustes preestablecidos guardados."
+          }
+        }
+      }
+    },
+    "This editor already has code. Replace it with the dropped content, or append to the end?" : {
+      "comment" : "Editor drop replace-or-append dialog message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este editor ya tiene código. ¿Quieres reemplazarlo con el contenido soltado o agregarlo al final?"
+          }
+        }
+      }
+    },
+    "Title" : {
+      "comment" : "Metadata field label: title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Título"
+          }
+        }
+      }
+    },
+    "Treat copied URLs as a screenshot target" : {
+      "comment" : "Input pane toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tratar las URL copiadas como objetivo de captura"
+          }
+        }
+      }
+    },
+    "Try a sample capture" : {
+      "comment" : "Welcome button: run a sample capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Probar una captura de ejemplo"
+          }
+        }
+      }
+    },
+    "Try it now" : {
+      "comment" : "Welcome sample card heading.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pruébalo ahora"
+          }
+        }
+      }
+    },
+    "Turn code into beautiful images, right from your menu bar." : {
+      "comment" : "Welcome window tagline.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convierte código en imágenes hermosas, desde tu barra de menús."
+          }
+        }
+      }
+    },
+    "Types" : {
+      "comment" : "Custom theme editor color label: types.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tipos"
+          }
+        }
+      }
+    },
+    "Use this custom theme for the current snapshot." : {
+      "comment" : "Help text for the Apply theme button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa este tema personalizado para la imagen actual."
+          }
+        }
+      }
+    },
+    "Variables" : {
+      "comment" : "Custom theme editor color label: variables.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variables"
+          }
+        }
+      }
+    },
+    "View documentation on GitHub" : {
+      "comment" : "Help window link to documentation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver la documentación en GitHub"
+          }
+        }
+      }
+    },
+    "Welcome to Vitrine" : {
+      "comment" : "Welcome window title and header.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Te damos la bienvenida a Vitrine"
+          }
+        }
+      }
+    },
+    "When off, a copied URL is rendered as text. URL screenshots arrive in Product Phase 2." : {
+      "comment" : "Input pane footer.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuando está desactivado, una URL copiada se renderiza como texto. Las capturas de URL llegan en la fase 2 del producto."
+          }
+        }
+      }
+    },
+    "When on, Copy also places the highlighted code as rich text, so pasting into a document keeps the colors and font. The image is always included." : {
+      "comment" : "Output pane clipboard section footer.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuando está activado, Copiar también coloca el código resaltado como texto enriquecido, así al pegarlo en un documento se conservan los colores y la fuente. La imagen siempre se incluye."
+          }
+        }
+      }
+    },
+    "Window chrome" : {
+      "comment" : "Style control toggle: window chrome.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marco de ventana"
+          }
+        }
+      }
+    },
+    "e.g. 3, 7-9, 12" : {
+      "comment" : "Placeholder for the highlight-lines field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "p. ej. 3, 7-9, 12"
+          }
+        }
+      }
+    },
+    "e.g. A SwiftUI gradient" : {
+      "comment" : "Placeholder for the caption field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "p. ej. Un degradado de SwiftUI"
+          }
+        }
+      }
+    },
+    "e.g. Aurora gradient" : {
+      "comment" : "Placeholder for the title field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "p. ej. Degradado aurora"
+          }
+        }
+      }
+    },
+    "e.g. ContentView.swift" : {
+      "comment" : "Placeholder for the filename field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "p. ej. ContentView.swift"
+          }
+        }
+      }
+    },
+    "Step %lld: " : {
+      "comment" : "Accessibility label prefix for a welcome step (count-aware).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paso %lld: "
+          }
+        }
+      }
+    },
+    "Kind" : {
+      "comment" : "Background editor picker label: background kind.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tipo"
+          }
+        }
+      }
+    },
+    "Exports with a real transparent (alpha) background." : {
+      "comment" : "Background editor: transparent background note.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se exporta con un fondo realmente transparente (alfa)."
+          }
+        }
+      }
+    },
+    "Color" : {
+      "comment" : "Background editor color picker label: solid color.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color"
+          }
+        }
+      }
+    },
+    "Gradient direction in degrees" : {
+      "comment" : "Help text for the gradient angle slider.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dirección del degradado en grados"
+          }
+        }
+      }
+    },
+    "Add color stop" : {
+      "comment" : "Button: add a gradient color stop.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar punto de color"
+          }
+        }
+      }
+    },
+    "Fit" : {
+      "comment" : "Background editor picker label: image fit mode.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste"
+          }
+        }
+      }
+    },
+    "Blur" : {
+      "comment" : "Background editor slider label: image blur.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desenfoque"
+          }
+        }
+      }
+    },
+    "Soften the image so code stands out" : {
+      "comment" : "Help text for the blur slider.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suaviza la imagen para que el código resalte"
+          }
+        }
+      }
+    },
+    "Dimming" : {
+      "comment" : "Background editor slider label: image dimming.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atenuación"
+          }
+        }
+      }
+    },
+    "Darken the image to keep code readable" : {
+      "comment" : "Help text for the dimming slider.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oscurece la imagen para mantener el código legible"
+          }
+        }
+      }
+    },
+    "Images stay on your Mac — Vitrine copies the file locally and never uploads it." : {
+      "comment" : "Background editor: image privacy note.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las imágenes permanecen en tu Mac: Vitrine copia el archivo localmente y nunca lo sube."
+          }
+        }
+      }
+    },
+    "Style…" : {
+      "comment" : "Editor style preset picker prompt row.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo…"
+          }
+        }
+      }
+    },
+    "Style preset" : {
+      "comment" : "Accessibility label for the style preset picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste preestablecido de estilo"
+          }
+        }
+      }
+    },
+    "Apply a saved or built-in style — theme, background, and layout — in one step." : {
+      "comment" : "Help text for the editor style preset picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplica un estilo guardado o incorporado —tema, fondo y diseño— en un solo paso."
+          }
+        }
+      }
+    },
+    "Inspector" : {
+      "comment" : "Accessibility label for the editor inspector panel.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspector"
+          }
+        }
+      }
+    },
+    "Remove every recent capture and its cached preview" : {
+      "comment" : "Help text for the Clear Recents button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina cada captura reciente y su vista previa en caché"
+          }
+        }
+      }
+    },
+    "This removes every recent capture and its cached preview. This can't be undone." : {
+      "comment" : "Clear Recents confirmation message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina cada captura reciente y su vista previa en caché. No se puede deshacer."
+          }
+        }
+      }
+    },
+    "Open this capture in the editor" : {
+      "comment" : "Help text for a recent capture tile.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre esta captura en el editor"
+          }
+        }
+      }
+    },
+    "Open Help" : {
+      "comment" : "What's New button: open the Help window.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir la Ayuda"
+          }
+        }
+      }
+    },
+    "Open Vitrine Help" : {
+      "comment" : "Help text for the What's New Open Help button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir la Ayuda de Vitrine"
+          }
+        }
+      }
+    },
+    "Continue" : {
+      "comment" : "What's New button: dismiss and continue.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        }
+      }
+    },
+    "Dismiss and continue" : {
+      "comment" : "Help text for the What's New Continue button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descartar y continuar"
+          }
+        }
+      }
+    },
+    "What's New in Vitrine" : {
+      "comment" : "What's New window title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novedades de Vitrine"
+          }
+        }
+      }
+    },
+    "Clear Recents?" : {
+      "comment" : "Clear Recents confirmation dialog title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Borrar las capturas recientes?"
+          }
+        }
+      }
+    },
+    "Make This Window the Default" : {
+      "comment" : "File-menu command and editor toolbar action that promotes the active editor window's style to the app-wide default (CS-053).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar esta ventana como predeterminada"
+          }
+        }
+      }
+    },
+    "Make this window's style the default" : {
+      "comment" : "VoiceOver label for the Make Default command (CS-053).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar el estilo de esta ventana como predeterminado"
+          }
+        }
+      }
+    },
+    "New Editor Window" : {
+      "comment" : "File-menu command that opens an additional, independent editor window (CS-053).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva ventana del editor"
+          }
+        }
+      }
+    },
+    "Open a new editor window" : {
+      "comment" : "VoiceOver label for the New Editor Window command (CS-053).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir una nueva ventana del editor"
+          }
+        }
+      }
+    },
+    "Use this window's style — theme, font, background, and output — for new windows and captures." : {
+      "comment" : "Help tooltip on the editor's Make Default toolbar button (CS-053).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa el estilo de esta ventana —tema, fuente, fondo y salida— para nuevas ventanas y capturas."
+          }
+        }
+      }
+    },
+    "Vitrine Editor" : {
+      "comment" : "Title of an editor window (CS-053).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor de Vitrine"
+          }
+        }
+      }
+    },
+    "Vitrine Editor %lld" : {
+      "comment" : "Title of an additional editor window, disambiguated by its index in the Window menu (CS-053).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor de Vitrine %lld"
+          }
+        }
+      }
+    }
+  }
+}

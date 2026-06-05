@@ -17,7 +17,7 @@ XCODEBUILD := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcodebuild
 SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens format lint icon clean
+.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens gallery format lint icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -85,6 +85,18 @@ perf: project
 record-goldens: project
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" PROJECT="$(PROJECT)" SCHEME="$(SCHEME)" \
 		bash scripts/record-goldens.sh
+
+## gallery: (re)generate the launch-gallery design-QA samples + manifest (CS-039)
+## The single command that refreshes the README/release-notes screenshot evidence.
+## It runs only the opt-in generator test (gated by VITRINE_GENERATE_GALLERY)
+## through the real export pipeline, then copies the staged PNGs and the manifest
+## into Tests/Fixtures/Samples/. Like record-goldens, the generator stages files in
+## the sandboxed test host's container temp, so the copy step is handled by
+## scripts/generate-launch-gallery.swift. Run this when a deliberate visual change
+## lands, then review and commit the diff.
+gallery: project
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" PROJECT="$(PROJECT)" SCHEME="$(SCHEME)" \
+		swift scripts/generate-launch-gallery.swift
 
 ## format: format Swift sources in place (Apple swift-format)
 format:

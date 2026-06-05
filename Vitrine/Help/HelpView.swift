@@ -18,47 +18,34 @@ struct HelpView: View {
     /// no dependency on how it is presented.
     var onDismiss: () -> Void
 
-    /// The Help topics, each rendered as a titled card. Authored here (and mirrored
-    /// in `docs/HELP.md`) so the in-app copy and the repo doc stay in step.
+    /// The Help topics, each rendered as a titled card. The copy lives in the String
+    /// Catalog under stable keys (CS-047) — mirrored in `docs/HELP.md` — so the
+    /// in-app text is localizable and these long passages don't bloat the source.
     private let topics: [HelpTopic] = [
         HelpTopic(
             symbol: "command",
-            title: "The global hotkey",
-            body:
-                "Press the global hotkey from any app to capture whatever code is on your "
-                + "clipboard as an image. Set or change the hotkey below, or in Settings ▸ General.",
+            title: "help.topic.hotkey.title",
+            body: "help.topic.hotkey.body",
             identifier: "help-topic-hotkey"),
         HelpTopic(
             symbol: "camera.viewfinder",
-            title: "Quick capture",
-            body:
-                "Copy code anywhere, press the hotkey, and Vitrine renders it with your current "
-                + "style. The image is placed on your clipboard automatically — paste it straight "
-                + "into a doc, chat, or pull request.",
+            title: "help.topic.quick-capture.title",
+            body: "help.topic.quick-capture.body",
             identifier: "help-topic-quick-capture"),
         HelpTopic(
             symbol: "macwindow",
-            title: "The editor",
-            body:
-                "Open the editor to paste or type code, pick a language and theme, and fine-tune "
-                + "padding, corner radius, window chrome, and line numbers. Copy, save, or share "
-                + "the result from the toolbar or the File menu.",
+            title: "help.topic.editor.title",
+            body: "help.topic.editor.body",
             identifier: "help-topic-editor"),
         HelpTopic(
             symbol: "slider.horizontal.3",
-            title: "Presets",
-            body:
-                "Destination presets size the image for where it is going (a README, a social "
-                + "card, a slide). Style presets save a look you like so you can reapply it in one "
-                + "click. Manage both in Settings ▸ Style.",
+            title: "help.topic.presets.title",
+            body: "help.topic.presets.body",
             identifier: "help-topic-presets"),
         HelpTopic(
             symbol: "lock.shield",
-            title: "Privacy",
-            body:
-                "Vitrine is private by design: your code never leaves your Mac. There is no "
-                + "account and no network access, and rendering needs no screen-recording or "
-                + "Accessibility permission.",
+            title: "help.topic.privacy.title",
+            body: "help.topic.privacy.body",
             identifier: "help-topic-privacy"),
     ]
 
@@ -127,9 +114,12 @@ struct HelpView: View {
                 .strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
         )
         // Combine the icon-less title and body into one VoiceOver element per topic
-        // so navigation reads each card as a single, coherent passage.
+        // so navigation reads each card as a single, coherent passage. The label is
+        // built from the localized title and body (CS-047).
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(topic.title). \(topic.body)")
+        .accessibilityLabel(
+            Text("\(String(localized: topic.title)). \(String(localized: topic.body))")
+        )
         .accessibilityIdentifier(topic.identifier)
     }
 
@@ -175,8 +165,11 @@ struct HelpView: View {
 /// accessibility identifier for UI tests (CS-049).
 private struct HelpTopic: Identifiable {
     let symbol: String
-    let title: String
-    let body: String
+    /// Localized through the String Catalog (CS-047): `LocalizedStringResource` so
+    /// the model carries a catalog reference that `Text(_:)` renders localized,
+    /// rather than a baked-in English `String`.
+    let title: LocalizedStringResource
+    let body: LocalizedStringResource
     let identifier: String
 
     var id: String { identifier }
@@ -202,7 +195,7 @@ final class HelpWindowController {
             let hosting = NSHostingController(
                 rootView: HelpView(onDismiss: { [weak self] in self?.close() }))
             let window = NSWindow(contentViewController: hosting)
-            window.title = "Vitrine Help"
+            window.title = String(localized: "Vitrine Help")
             // Help is a fixed-width reference surface; allow resize so a user at a
             // large Dynamic Type size can grow it, but keep it non-document-like.
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
