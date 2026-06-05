@@ -80,6 +80,14 @@ struct MenuBarContent: View {
 
     @ViewBuilder private var recentsMenu: some View {
         Menu("Recents") {
+            // The visual gallery (CS-029) is a richer entry point to the same
+            // history; the text list below keeps recents reachable in one click
+            // for fast access without opening a window.
+            Button("Recents Gallery…") { RecentsGalleryWindowController.shared.show() }
+                .accessibilityIdentifier("menu-recents-gallery")
+
+            Divider()
+
             if recents.captures.isEmpty {
                 Text("No recent captures")
             } else {

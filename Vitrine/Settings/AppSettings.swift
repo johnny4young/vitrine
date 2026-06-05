@@ -45,6 +45,14 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(colorProfile.rawValue, forKey: Keys.colorProfile) }
     }
 
+    /// Add a rich-text representation (highlighted RTF/HTML) alongside the PNG on
+    /// every copy (CS-054). Off by default so the one-shortcut copy stays a plain
+    /// image; when on, a paste into a rich-text editor keeps the syntax colors and
+    /// font while an image well still receives the picture.
+    @Published var richClipboard: Bool {
+        didSet { defaults.set(richClipboard, forKey: Keys.richClipboard) }
+    }
+
     /// What the global hotkey does (CS-002).
     @Published var hotkeyAction: HotkeyAction {
         didSet { defaults.set(hotkeyAction.rawValue, forKey: Keys.hotkeyAction) }
@@ -65,6 +73,32 @@ final class AppSettings: ObservableObject {
     /// Recently used languages, most-recent first (CS-004).
     @Published private(set) var recentLanguages: [Language] {
         didSet { defaults.set(recentLanguages.map(\.rawValue), forKey: Keys.recentLanguages) }
+    }
+
+    /// Whether the first-run quick-start has been shown for this defaults suite
+    /// (CS-035). It is written `true` the first time the welcome flow appears so the
+    /// app never reshows it, and cleared by `resetToDefaults()` so a "Reset all
+    /// settings" returns the user to a first-run experience. Persisting it in the
+    /// app's defaults store (which UI tests isolate via `VITRINE_USER_DEFAULTS_SUITE`)
+    /// is what lets a test reset the onboarding state without touching real app data.
+    @Published var hasSeenWelcome: Bool {
+        didSet { defaults.set(hasSeenWelcome, forKey: Keys.hasSeenWelcome) }
+    }
+
+    /// The app version whose "What's New" the user has most recently seen (CS-049),
+    /// or `nil` when none has been recorded yet. The version-gated What's New surface
+    /// appears only when the newest bundled release notes are strictly newer than
+    /// this value, and never on a clean first run (`nil`), which onboarding owns.
+    ///
+    /// It is written the first time the notes for a version are dismissed, and on a
+    /// clean first run the launch path stamps it with the current version so What's
+    /// New starts surfacing only from the next upgrade onward. A full reset clears it
+    /// so a "Reset all settings" returns the user to the same fresh-install behavior.
+    /// Storing it in the app's defaults store (which UI tests isolate via
+    /// `VITRINE_USER_DEFAULTS_SUITE`) lets a test drive the gate without touching real
+    /// app data.
+    @Published var lastSeenWhatsNewVersion: String? {
+        didSet { defaults.set(lastSeenWhatsNewVersion, forKey: Keys.lastSeenWhatsNewVersion) }
     }
 
     private let defaults: UserDefaults
@@ -92,12 +126,17 @@ final class AppSettings: ObservableObject {
         static let exportScale = "exportScale"
         static let exportFormat = "exportFormat"
         static let colorProfile = "colorProfile"
+        static let richClipboard = "richClipboard"
         static let hotkeyAction = "hotkeyAction"
         static let treatURLs = "treatURLsAsScreenshot"
         static let recentLanguages = "recentLanguages"
         static let fontName = "fontName"
         static let fontLigatures = "fontLigatures"
         static let selectedPreset = "selectedPreset"
+        /// First-run quick-start completion flag (CS-035).
+        static let hasSeenWelcome = "hasSeenWelcome"
+        /// Last app version whose "What's New" the user has seen (CS-049).
+        static let lastSeenWhatsNewVersion = "lastSeenWhatsNewVersion"
         /// Saved style presets (CS-030). Owned by `PresetStore`, listed here so a
         /// "Reset all settings" clears the user's presets along with the rest of
         /// their data; the store reloads its in-memory copy afterward.
@@ -114,8 +153,9 @@ final class AppSettings: ObservableObject {
             themeID, languageID, fontSize, padding, cornerRadius, showChrome,
             showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, exportScale, exportFormat,
-            colorProfile, hotkeyAction, treatURLs, recentLanguages, fontName,
-            fontLigatures, selectedPreset, userStylePresets, userCustomThemes,
+            colorProfile, richClipboard, hotkeyAction, treatURLs, recentLanguages,
+            fontName, fontLigatures, selectedPreset, hasSeenWelcome,
+            lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
         ]
     }
 
@@ -134,6 +174,7 @@ final class AppSettings: ObservableObject {
         exportScale = Self.readExportScale(from: defaults)
         exportFormat = ExportFormat.resolve(defaults.string(forKey: Keys.exportFormat))
         colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
+        richClipboard = defaults.object(forKey: Keys.richClipboard) as? Bool ?? false
         hotkeyAction = HotkeyAction.resolve(defaults.string(forKey: Keys.hotkeyAction))
         // A persisted preset id that no longer maps to a known preset resolves to
         // "Custom" (nil) rather than trapping (CS-020 / CS-050 documented fallback).
@@ -144,6 +185,13 @@ final class AppSettings: ObservableObject {
         recentLanguages =
             (defaults.array(forKey: Keys.recentLanguages) as? [String] ?? [])
             .compactMap(Language.init(rawValue:))
+        // Absent (a fresh suite) reads as `false`, so a brand-new install is treated
+        // as first-run and the quick-start is offered once (CS-035).
+        hasSeenWelcome = defaults.object(forKey: Keys.hasSeenWelcome) as? Bool ?? false
+        // Absent on a fresh suite, which the What's New gate reads as a clean first
+        // run (CS-049). A non-string (hand-edited/corrupt) value also resolves to nil
+        // rather than trapping, so the gate falls back safely (CS-050 posture).
+        lastSeenWhatsNewVersion = defaults.string(forKey: Keys.lastSeenWhatsNewVersion)
 
         config = Self.readConfig(from: defaults)
     }
@@ -234,6 +282,7 @@ final class AppSettings: ObservableObject {
             exportScale: exportScale,
             exportFormat: exportFormat.rawValue,
             colorProfile: colorProfile.rawValue,
+            richClipboard: richClipboard,
             hotkeyAction: hotkeyAction.rawValue,
             treatURLsAsScreenshot: treatURLsAsScreenshot,
             recentLanguageCount: recentLanguages.count,
@@ -255,10 +304,16 @@ final class AppSettings: ObservableObject {
         exportScale = SettingsDefaults.exportScale
         exportFormat = .fallback
         colorProfile = .fallback
+        richClipboard = false
         hotkeyAction = .fallback
         treatURLsAsScreenshot = false
         recentLanguages = []
         selectedPresetID = nil
+        // Returns the user to a first-run experience after a full reset (CS-035).
+        hasSeenWelcome = false
+        // Clearing this restores the clean-install What's New behavior (CS-049): the
+        // next launch stamps the current version as seen rather than showing notes.
+        lastSeenWhatsNewVersion = nil
         config = SnapshotConfig()
     }
 

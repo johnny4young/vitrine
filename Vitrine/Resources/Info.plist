@@ -35,5 +35,40 @@
 	<!-- The app reads the clipboard locally to render code/URLs; nothing leaves the Mac. -->
 	<key>NSPasteboardUsageDescription</key>
 	<string>Vitrine reads the clipboard to turn copied code or a URL into an image. Nothing ever leaves your Mac.</string>
+	<!-- Services menu action (CS-034): "Render Code Image with Vitrine" takes a
+	     text selection from any app and returns a rendered PNG image. The runtime
+	     provider is registered in AppDelegate (NSApp.servicesProvider); this
+	     declaration is what populates the system-wide Services menu. Rendering is
+	     fully local — the selection is turned into an image on-device. -->
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Render Code Image with Vitrine</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>renderCodeImage</string>
+			<key>NSPortName</key>
+			<string>Vitrine</string>
+			<!-- Accept a plain-text selection. -->
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>public.plain-text</string>
+				<string>NSStringPboardType</string>
+			</array>
+			<!-- Return a rendered image so the host app can paste or drop it. -->
+			<key>NSReturnTypes</key>
+			<array>
+				<string>public.png</string>
+				<string>public.tiff</string>
+			</array>
+			<!-- A short, stable identifier for this service. -->
+			<key>NSUserData</key>
+			<string>app.vitrine.render-code-image</string>
+		</dict>
+	</array>
 </dict>
 </plist>

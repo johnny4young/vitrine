@@ -64,6 +64,15 @@ struct EditorInspectorView: View {
                     }
                 }
                 .accessibilityIdentifier("inspector-format-picker")
+                // Name the vector option honestly: PDF is the supported scalable
+                // format; PNG is raster (CS-023). The summary also appears as an
+                // always-visible row below so the vector/raster guidance does not
+                // depend on a hover tooltip, matching the Settings → Output pane.
+                .help(settings.exportFormat.summary)
+
+                Text(settings.exportFormat.summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

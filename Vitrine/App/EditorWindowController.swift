@@ -30,4 +30,15 @@ final class EditorWindowController {
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
+
+    /// Shows the editor preloaded with the onboarding sample snippet when the editor
+    /// has no code yet, so a first-run user can explore the flow without external
+    /// clipboard content (CS-035).
+    func showWithSample() {
+        let settings = AppSettings.shared
+        if settings.config.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            settings.config.code = EditorPreview.sampleCode
+        }
+        show()
+    }
 }

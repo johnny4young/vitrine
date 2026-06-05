@@ -59,8 +59,9 @@ Two modes, one engine:
 - ⌨️ Configurable **global hotkey** (`⌘⇧S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
 - 🎨 Themes (One Dark, GitHub, Night Owl, Dracula, Monokai, Solarized), gradients, window chrome, padding, fonts.
-- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
+- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
 - ⚙️ **Settings** with live preview, powered by [Settings](https://github.com/sindresorhus/Settings).
+- 🖥️ **Command-line renderer** — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app (no network, screen recording, or Accessibility needed).
 - 🔒 Sandboxed, no network by default — your code **never leaves your Mac**.
 
 See the full ticket breakdown in [**docs/ROADMAP.md**](docs/ROADMAP.md).
@@ -100,6 +101,7 @@ Or step by step:
 make project    # xcodegen generate  → Vitrine.xcodeproj
 make open       # open Vitrine.xcodeproj in Xcode
 make build      # headless xcodebuild (Debug)
+make cli        # build the `vitrine` command-line renderer (CS-033)
 make test       # run the Swift Testing suite
 make build-ui-tests # compile UI tests without automation permission
 make test-ui    # run UI smoke tests (requires local XCTest automation permission)
@@ -115,6 +117,28 @@ icon — that's intentional (`LSUIElement`).
 > [`project.yml`](project.yml) so it can never drift from the spec and never causes
 > merge conflicts. Run `make project` (or `xcodegen generate`) after cloning. See
 > [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Command-line renderer
+
+Vitrine ships a `vitrine` CLI that renders code to an image without the GUI — handy
+for docs pipelines and automation. It reuses the app's exact render path, so output is
+pixel-identical, and it needs no network, screen recording, or Accessibility.
+
+```bash
+make cli   # builds `vitrine` into DerivedData, next to its Fonts/ and Highlightr bundle
+
+vitrine render input.swift --out image.png
+vitrine render snippet.py --out card.png --theme dracula --preset opengraph
+vitrine render notes.go   --out clear.png --transparent --scale 3
+vitrine render --help
+```
+
+Defaults match the app (One Dark, JetBrains Mono, aurora background); `--theme`,
+`--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`), `--profile`
+(`srgb`/`p3`), and `--transparent` override individual choices. To distribute the
+binary, keep its adjacent `Fonts/` folder and `Highlightr_Highlightr.bundle` beside it.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ("Command-line renderer") for the
+hosting strategy and bundling details.
 
 ## Project layout
 

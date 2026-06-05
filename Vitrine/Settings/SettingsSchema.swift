@@ -33,7 +33,15 @@ enum SettingsSchema {
     ///   under `userStylePresets`. It is a brand-new key with a documented default
     ///   (no user presets); an older store simply has no value for it, so this step
     ///   only advances the version.
-    static let current = 5
+    /// - `6`: CS-035 — adds the first-run quick-start completion flag
+    ///   (`hasSeenWelcome`). A new boolean key with a documented default (false, i.e.
+    ///   "not yet shown") needs no data transform; a store predating it simply reads
+    ///   the default, so this step only advances the version.
+    /// - `7`: CS-049 — adds the last-seen "What's New" version key
+    ///   (`lastSeenWhatsNewVersion`). A new optional string key with a documented
+    ///   default (nil, treated as a clean first run) needs no data transform; a store
+    ///   predating it simply has no value, so this step only advances the version.
+    static let current = 7
 
     /// The `UserDefaults` key that stores the persisted schema version.
     static let versionKey = "settingsSchemaVersion"
@@ -126,6 +134,24 @@ enum SettingsSchema {
         // a brand-new JSON key with a documented default (no presets); an older
         // store simply has no value for it, so there is nothing to transform.
         Migration(from: 4, to: 5) { _ in },
+        // v5 → v6: CS-035 adds the first-run quick-start flag `hasSeenWelcome`. It is
+        // a brand-new boolean key with a documented default (false); an older store
+        // simply has no value for it and reads the default, so there is nothing to
+        // transform. An upgrading user has clearly already used the app, but it is
+        // harmless and on-brand for the lightweight quick-start to appear once after
+        // the upgrade, so the flag is intentionally left at its default rather than
+        // back-filled to true here.
+        Migration(from: 5, to: 6) { _ in },
+        // v6 → v7: CS-049 adds the last-seen "What's New" version key
+        // `lastSeenWhatsNewVersion`. It is a brand-new optional string key with a
+        // documented default (nil); an older store simply has no value for it and
+        // reads the default, so there is nothing to transform. The default (nil) is
+        // intentionally left in place: on the next launch the What's New gate treats
+        // an upgrading user the same as a clean install for one cycle — it stamps the
+        // current version as seen rather than showing notes for a version they were
+        // effectively already running — so the surface first appears on the upgrade
+        // *after* this one.
+        Migration(from: 6, to: 7) { _ in },
     ]
 
     /// Whether the store holds any key this app is known to write. Used to tell a

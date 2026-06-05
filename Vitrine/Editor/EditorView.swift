@@ -220,8 +220,11 @@ struct EditorView: View {
             ) {
                 ExportManager.copyToPasteboard(
                     settings.config, scale: CGFloat(settings.effectiveExportScale),
-                    fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile)
+                    fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
+                    richText: settings.richClipboard)
             }
+
+            copyOptionsMenu
 
             toolbarButton(.saveImage, "save-button", help: "Render and save the image as a file") {
                 ExportManager.saveToFile(
@@ -233,6 +236,43 @@ struct EditorView: View {
             toolbarButton(
                 .shareImage, "share-button", help: "Share the rendered image", action: share)
         }
+    }
+
+    /// A small overflow menu beside the primary Copy button holding the explicit
+    /// alternative copy targets (CS-054): "Copy as Data URI" (a
+    /// `data:image/png;base64,…` string) and "Copy Highlighted Code" (the syntax
+    /// colors and selected font as RTF/HTML). These sit behind a menu so the
+    /// one-click Copy stays the primary, unchanged action while the developer-grade
+    /// formats are clearly labeled and one click away.
+    @ViewBuilder
+    private var copyOptionsMenu: some View {
+        Menu {
+            Button {
+                copyDataURI()
+            } label: {
+                Label(
+                    VitrineCommand.copyDataURI.title,
+                    systemImage: VitrineCommand.copyDataURI.systemImageName)
+            }
+            .accessibilityIdentifier("copy-data-uri-button")
+
+            Button {
+                copyHighlightedCode()
+            } label: {
+                Label(
+                    VitrineCommand.copyHighlightedCode.title,
+                    systemImage: VitrineCommand.copyHighlightedCode.systemImageName)
+            }
+            .accessibilityIdentifier("copy-highlighted-code-button")
+        } label: {
+            Label("More copy options", systemImage: "ellipsis.circle")
+                .labelStyle(.iconOnly)
+        }
+        .menuIndicator(.hidden)
+        .help("Copy as a data URI, or copy the highlighted code as rich text")
+        .accessibilityLabel("More copy options")
+        .accessibilityIdentifier("copy-options-menu")
+        .disabled(settings.config.code.isEmpty)
     }
 
     /// Builds one export toolbar button from a `VitrineCommand`, applying its
@@ -388,6 +428,20 @@ struct EditorView: View {
             let view = NSApp.keyWindow?.contentView
         else { return }
         ShareManager.share(image, relativeTo: view)
+    }
+
+    /// Copies the rendered image to the clipboard as a `data:image/png;base64,…`
+    /// URI string (CS-054), honoring the active preset's framing.
+    private func copyDataURI() {
+        RichPasteboard.copyDataURI(
+            for: settings.config, scale: CGFloat(settings.effectiveExportScale),
+            fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile)
+    }
+
+    /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
+    /// and the selected font (CS-054).
+    private func copyHighlightedCode() {
+        RichPasteboard.copyHighlightedCode(for: settings.config)
     }
 }
 

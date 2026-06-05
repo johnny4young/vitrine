@@ -1053,12 +1053,36 @@ struct OutputSettingsView: View {
                     Text("2× (Retina)").tag(2)
                     Text("3×").tag(3)
                 }
+                .accessibilityIdentifier("output-resolution-picker")
 
                 Picker("Format", selection: $settings.exportFormat) {
                     ForEach(ExportFormat.allCases) { format in
                         Text(format.displayName).tag(format)
                     }
                 }
+                .accessibilityIdentifier("output-format-picker")
+            } footer: {
+                // State honestly which output is vector: PDF is the supported
+                // scalable format; PNG is raster (CS-023).
+                Text(settings.exportFormat.summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Rich clipboard is opt-in so the default copy stays a plain image; the
+            // explicit "Copy as Data URI" and "Copy Highlighted Code" actions in the
+            // editor remain available regardless of this toggle (CS-054).
+            Section {
+                Toggle("Add highlighted code as rich text", isOn: $settings.richClipboard)
+                    .accessibilityIdentifier("rich-clipboard-toggle")
+            } header: {
+                Text("Clipboard")
+            } footer: {
+                Text(
+                    "When on, Copy also places the highlighted code as rich text, so pasting into a document keeps the colors and font. The image is always included."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
 
             // Color management lives in its own "Advanced" section so the default

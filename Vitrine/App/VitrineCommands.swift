@@ -23,12 +23,18 @@ enum VitrineCommand: String, CaseIterable {
     case settings
     case help
     case about
+    case whatsNew
 
     // Editor/document-scoped (dispatched through the first responder so they are
     // enabled only while an editor window is key, and only when it has code).
     case copyImage
     case saveImage
     case shareImage
+
+    // Editor copy-submenu options (CS-054 rich export): reached from the editor's
+    // copy-options menu; no global key equivalent.
+    case copyDataURI
+    case copyHighlightedCode
 
     /// The menu-item title. Trailing ellipsis marks a command that opens further
     /// UI before completing (a save panel, the share sheet, a window), matching
@@ -40,9 +46,12 @@ enum VitrineCommand: String, CaseIterable {
         case .settings: "Settings…"
         case .help: "Vitrine Help"
         case .about: "About Vitrine"
+        case .whatsNew: "What's New"
         case .copyImage: "Copy Image"
         case .saveImage: "Save Image…"
         case .shareImage: "Share Image…"
+        case .copyDataURI: "Copy as Data URI"
+        case .copyHighlightedCode: "Copy Highlighted Code"
         }
     }
 
@@ -56,9 +65,12 @@ enum VitrineCommand: String, CaseIterable {
         case .settings: "gearshape"
         case .help: "questionmark.circle"
         case .about: "info.circle"
+        case .whatsNew: "sparkles"
         case .copyImage: "doc.on.clipboard"
         case .saveImage: "square.and.arrow.down"
         case .shareImage: "square.and.arrow.up"
+        case .copyDataURI: "curlybraces"
+        case .copyHighlightedCode: "chevron.left.forwardslash.chevron.right"
         }
     }
 
@@ -75,6 +87,7 @@ enum VitrineCommand: String, CaseIterable {
         case .copyImage: "c"  // ⇧⌘C — copy the rendered image (plain ⌘C stays text copy)
         case .saveImage: "s"  // ⌘S — save the rendered image
         case .shareImage: nil  // Share opens a picker; no reserved shortcut
+        case .copyDataURI, .copyHighlightedCode, .whatsNew: nil  // submenu/window, no shortcut
         }
     }
 
@@ -87,7 +100,7 @@ enum VitrineCommand: String, CaseIterable {
         case .newCapture: [.command, .shift]
         case .copyImage: [.command, .shift]
         case .openEditor, .settings, .help, .saveImage: [.command]
-        case .about, .shareImage: []
+        case .about, .shareImage, .copyDataURI, .copyHighlightedCode, .whatsNew: []
         }
     }
 
@@ -105,9 +118,12 @@ enum VitrineCommand: String, CaseIterable {
         case .settings: "Settings"
         case .help: "Vitrine help"
         case .about: "About Vitrine"
+        case .whatsNew: "What's new in Vitrine"
         case .copyImage: "Copy image to clipboard"
         case .saveImage: "Save image to a file"
         case .shareImage: "Share image"
+        case .copyDataURI: "Copy image as a base64 data URI"
+        case .copyHighlightedCode: "Copy syntax-highlighted code"
         }
     }
 }
@@ -217,10 +233,11 @@ final class AppCommandResponder: NSObject {
     }
 
     @objc func showHelp(_ sender: Any?) {
-        // No web dependency: until CS-049 ships in-app Help content, route Help to
-        // the Settings ▸ About pane, which carries the app's identity, version,
-        // and privacy summary. This keeps the Help command reachable and offline.
-        SettingsWindowManager.shared.show()
+        HelpWindowController.shared.show()
+    }
+
+    @objc func showWhatsNew(_ sender: Any?) {
+        WhatsNewWindowController.shared.show()
     }
 
     @objc func showAbout(_ sender: Any?) {
@@ -433,6 +450,10 @@ enum AppMenu {
         menu.addItem(
             item(
                 for: .help, action: #selector(AppCommandResponder.showHelp(_:)),
+                target: AppCommandResponder.shared))
+        menu.addItem(
+            item(
+                for: .whatsNew, action: #selector(AppCommandResponder.showWhatsNew(_:)),
                 target: AppCommandResponder.shared))
         helpMenuItem.submenu = menu
         // AppKit shows the searchable Help field at the top of this menu.

@@ -69,6 +69,157 @@ true transparency (its empty pixels stay fully clear, `(0,0,0,0)`) and is never
 composited over an opaque matte, so the result drops cleanly onto any slide or
 page background.
 
+## Vector export (CS-023)
+
+The supported scalable format is **PDF**, not SVG. This is a deliberate decision
+from the CS-023 spike, not an omission.
+
+**Finding — there is no faithful full-canvas SVG path.** SwiftUI, `ImageRenderer`,
+and AppKit expose no API that emits the rendered code canvas as vector SVG. A code
+snapshot's text is laid out and rasterized by the text system (per-glyph kerning,
+ligatures, sub-pixel positioning, theme attributes), and `ImageRenderer` can hand
+back only a `cgImage`, an `nsImage`, or a `CGContext` it draws into — which is how
+`ExportManager.pdfData` produces a real, color-managed vector PDF. There is no
+public path that re-emits that glyph layout as SVG `<text>`/`<path>` vectors. So:
+
+- **PDF is the vector format** offered in the export menu (`ExportFormat.pdf`,
+  `isVector == true`); PNG is the raster option. The picker labels this honestly
+  (`ExportFormat.summary`).
+- **No fake SVG is shipped.** Vitrine never writes a `.svg` that is merely a raster
+  PNG wrapped in an `<image>` element — that would be a raster file with a vector
+  extension. PDF preserves a transparent background (real alpha, no matte), the
+  same guarantee as the PNG path.
+
+**The one place SVG is honest — the deterministic simple-template subset.** The
+backgrounds of the social-card / simple templates (CS-041) are pure geometry and
+color with no text layout, so they *can* be emitted as native SVG primitives.
+`VectorTemplateSVG.background(_:size:)` serializes exactly that subset:
+
+| Background        | SVG output                                             |
+| ----------------- | ------------------------------------------------------ |
+| `.solid`          | a filled `<rect>`                                      |
+| `.gradient`       | an `objectBoundingBox` `<linearGradient>`              |
+| `.customGradient` | an `objectBoundingBox` `<linearGradient>` (user stops) |
+| `.transparent`    | no background rect (genuinely transparent, no matte)   |
+| `.image`          | unsupported → returns `nil` (never embeds a raster)    |
+
+Serialization is byte-for-byte deterministic (colors quantized through `RGBAColor`,
+fixed number formatting and attribute order), so the same template always produces
+identical bytes. This serializer is intentionally **not** wired up as a general
+export choice for the arbitrary code canvas; it exists for the template path only.
+
+## Command-line renderer (CS-033)
+
+`vitrine render input.swift --out image.png` renders code to an image from the
+command line, for docs pipelines and automation. It is a separate **`VitrineCLI`**
+target (product name `vitrine`); the GUI app is unchanged.
+
+**Hosting strategy (the decision the CS-033 design note asked for).** `ImageRenderer`
+and Highlightr require AppKit on the **main actor**, so a plain SwiftPM executable
+that never starts AppKit cannot render. Two options were on the table: (a) bundle a
+headless helper the CLI drives over IPC, or (b) make the CLI itself a minimal AppKit
+host. We chose (b): `VitrineCLI/main.swift` brings up the shared `NSApplication`, sets
+the **accessory** activation policy (no Dock icon, no app-switcher entry, no menu
+bar), renders synchronously on the main actor, and exits — it never shows a window and
+never calls `app.run()`, so there is no UI and no event loop to get stuck in. Option
+(b) is simpler, has no IPC surface, and keeps the render in-process where it can reuse
+the app's exact pipeline.
+
+**Pixel-identical output.** The CLI does not re-implement rendering. The `VitrineCLI`
+target compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
+`ExportManager`, `HighlightManager`, …) and supplies its own `main.swift`, excluding
+only the SwiftUI `@main` app (`VitrineApp.swift`) so there is a single entry point. The
+thin CLI layer lives in `Vitrine/CLI/`: `CLIArguments` (a dependency-free parser),
+`CLIOptions` (which builds a `SnapshotConfig` with the **same** preset/theme precedence
+the GUI uses), and `CLIRenderer` (which calls the unchanged `ExportManager`). Because
+the inputs and the pipeline are identical, a CLI render is byte-for-byte identical to
+the app's export for the same options — a unit test asserts exactly that.
+
+**Defaults** match the app: a bare `vitrine render input.swift --out image.png` uses
+`SnapshotConfig()`'s defaults (One Dark, JetBrains Mono, aurora background) at the
+app's default scale. `--theme`, `--language`, `--preset`, `--scale`, `--format`
+(`png`/`pdf`), `--profile` (`srgb`/`p3`), and `--transparent` override individual
+choices; a preset reframes presentation/output (size, padding, background) and never
+touches the source, exactly as in the GUI (CS-020). Unknown ids and out-of-range
+values are rejected up front with a clear message so an automation pipeline fails loud.
+
+**Local only.** Rendering needs no network, screen recording, or Accessibility — it is
+the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it
+has no entitlements; it reads only the input file you name and writes only the output
+you name.
+
+**Bundled resources / distribution.** A command-line tool has no `Contents/Resources`,
+so the build stages the resources the renderer needs **next to the binary**:
+
+- The **Highlightr** resource bundle (`Highlightr_Highlightr.bundle`) is placed beside
+  the binary automatically by SwiftPM, and `Bundle.module` resolves it there — this is
+  what lets the CLI highlight without the app bundle.
+- The **bundled monospaced fonts** are staged into a `Fonts/` folder beside the binary
+  by a build phase (the GUI gets these via `ATSApplicationFontsPath`, which a tool
+  lacks). `CLIEnvironment` locates that folder and `CLIFontRegistration` registers the
+  fonts with Core Text at launch, so the default JetBrains Mono render matches the app
+  instead of falling back to the system font.
+
+To distribute, ship the `vitrine` binary together with its adjacent `Fonts/` folder and
+`Highlightr_Highlightr.bundle` (e.g. copy all three into a single directory on `PATH`,
+or wrap them in a tarball). Build the binary with `make cli`; the staged folder and
+bundle are written into the same `BUILT_PRODUCTS_DIR`. A code-signed, notarized release
+artifact is future work (see RELEASING.md); the current target is local/CI use.
+
+## Automation: Shortcuts, Services, and App Intents (CS-034)
+
+Vitrine meets users in the macOS automation surfaces they already use. Two are
+exposed, and both reuse the **exact same render pipeline** as the editor, quick
+capture, and the CLI, so their output is identical and they inherit the app's privacy
+and sandbox posture unchanged — rendering is fully local, needs no network, screen
+recording, or Accessibility, and the actions write nothing to disk on their own.
+
+**Shared core.** Like the CLI's `CLIOptions`/`CLIRenderer`, the automation surfaces
+share one pure value type and one render shell, both in `Vitrine/AppIntents/`:
+
+- `SnapshotRenderRequest` is the pure, value-typed request (code + optional language,
+  theme, preset, scale, format, transparency, starting from a `baseStyle`). Its
+  `makeConfig()` builds a `SnapshotConfig` with the **same precedence** the GUI uses
+  (base style → preset → theme → transparent override) and never lets a preset touch
+  the code (CS-020). It is unit-tested off the render path.
+- `SnapshotRenderService` is the thin `@MainActor` shell that turns a request into
+  PNG/PDF data or an `NSImage` through the **unchanged** `ExportManager`, adding only
+  request resolution and an empty-input guard. A unit test asserts its bytes equal a
+  direct `ExportManager` render of the same config — the same byte-identity guarantee
+  the CLI carries.
+
+**App Intents.** `RenderCodeImageIntent` ("Render Code to Image") is the headline
+Shortcuts action: it takes code text plus task-named parameters (Language, Theme,
+Destination, Format, Transparent Background, Resolution) and returns the rendered
+image as an `IntentFile` the next Shortcut step can save, share, or copy. The picker
+parameters are `AppEnum`s (`SnapshotLanguageAppEnum`, `…ThemeAppEnum`, `…PresetAppEnum`,
+`…FormatAppEnum`) that mirror the model catalogs one-to-one, with sentinel cases
+(Automatic / Default / None) for "let the app decide"; tests assert the cases and their
+display titles cannot drift from `Language`/`Theme`/`ExportPreset`. `OpenCodeInEditorIntent`
+("Open Code in Editor") is the "hand it to me to finish" path — it loads a snippet into
+the editor for manual styling. `VitrineShortcuts` (an `AppShortcutsProvider`) surfaces
+both to Spotlight/Siri with natural phrases. Linking `AppIntents.framework` (in
+`project.yml`) is what lets the build's `appintentsmetadataprocessor` extract the actions
+so they appear in Shortcuts.
+
+**Services menu.** `CodeImageService` provides "Render Code Image with Vitrine" for a
+text selection in any app that vends one to Services. The runtime hands the selection
+in on an `NSPasteboard`; the provider renders it (detecting the language the same way
+quick capture does) and writes the resulting PNG back onto that pasteboard so the host
+app's paste/drop receives the image. Two things make a Service work and must agree: the
+`NSServices` array in `Info.plist` (menu title, `NSMessage` = `renderCodeImage`, send
+type plain text, return type image) and the runtime registration in `AppDelegate` via
+`ServiceRegistration` (`NSApp.servicesProvider` + advertised send/return types). The
+Objective-C selector is pinned with `@objc(renderCodeImage:userData:error:)` so it
+matches the shape AppKit invokes regardless of the Swift argument label.
+
+**No new permissions.** The automation surfaces add no entitlement and no Info.plist
+capability beyond the `NSServices` declaration — the App Sandbox stays on, there is
+still no network entitlement, and the only file access remains user-selected (the
+Shortcuts-managed `IntentFile` and the Services pasteboard are not app-disk writes).
+The CLI is excluded from compiling these files: it is the scriptable path itself and
+does not link `AppIntents`.
+
 ## User flow (happy path)
 
 ```
@@ -92,6 +243,33 @@ ExportEngine
   ├── Copy to clipboard (NSPasteboard) ← primary action
   └── Save to file (NSSavePanel) / Share sheet
 ```
+
+## First-run quick-start (CS-035)
+
+A lightweight, **skippable** welcome window teaches the core loop the first time the
+app runs and never again. It is gated by a single persisted flag,
+`AppSettings.hasSeenWelcome`, stored in the app's defaults store; `AppDelegate`
+calls `WelcomeWindowController.presentIfFirstRun()` after its launch hooks, so the
+gate lives in one place.
+
+- **Compact, one screen.** No multi-page tutorial: identity, the three-step loop
+  ("copy code → press the hotkey → paste the image"), a sample snippet, a starting
+  style picker, the hotkey recorder, a launch-at-login toggle, a local-only privacy
+  badge, and a clear **Skip / Get Started**. Both buttons mark the flow seen and
+  close; skipping unlocks nothing because every feature is already reachable from the
+  menu bar.
+- **Sample capture with no clipboard.** "Try a sample capture" renders a built-in
+  snippet through `QuickCapture.renderText` — the same exporter path as a real
+  capture — so a brand-new user sees the full loop work without copying anything
+  first. "Open the editor" seeds the editor with the same sample when the document is
+  empty.
+- **Privacy taught up front.** The local-only / no-network / no-screen-recording
+  promise is shown *before* the first capture, matching the posture documented above
+  and in the README.
+- **Reset returns to first run.** `AppSettings.resetToDefaults()` clears the flag, so
+  "Reset All Settings" brings the quick-start back. UI tests drive it deterministically
+  through launch hooks (`--show-welcome`, `--skip-onboarding`, `--reset-onboarding`)
+  while isolating the flag via `VITRINE_USER_DEFAULTS_SUITE`.
 
 ## Architecture
 
@@ -129,6 +307,8 @@ Vitrine/
 ├── MenuBar/
 │   ├── MenuBarContent.swift   # the menu + submenus (SwiftUI)
 │   └── QuickCapture.swift     # no-UI quick mode: clipboard → PNG
+├── Onboarding/
+│   └── WelcomeView.swift      # first-run quick-start + window controller (CS-035)
 ├── Editor/
 │   ├── CodeEditorView.swift   # NSViewRepresentable over NSTextView
 │   ├── HighlightManager.swift # Highlightr wrapper
@@ -152,6 +332,21 @@ Vitrine/
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
 │   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…" (CS-048)
+├── CLI/                       # `vitrine render` core, shared with VitrineCLI (CS-033)
+│   ├── CLIArguments.swift     # dependency-free arg parser + CLIError/CLIUsage
+│   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
+│   ├── CLIRenderer.swift      # load input → ExportManager (unchanged) → write file
+│   └── CLIFontRegistration.swift # register bundled fonts with Core Text at launch
+├── AppIntents/                # Shortcuts/Siri actions, app-only (CS-034)
+│   ├── SnapshotRenderRequest.swift   # pure request → SnapshotConfig (app precedence)
+│   ├── SnapshotRenderService.swift   # @MainActor shell over unchanged ExportManager
+│   ├── SnapshotIntentEnums.swift     # AppEnum pickers mirroring the model catalogs
+│   ├── RenderCodeImageIntent.swift   # "Render Code to Image" → IntentFile
+│   ├── OpenCodeInEditorIntent.swift  # "Open Code in Editor" → editor window
+│   └── VitrineShortcuts.swift        # AppShortcutsProvider (phrases for Spotlight/Siri)
+├── Services/                  # macOS Services menu action, app-only (CS-034)
+│   ├── CodeImageService.swift # provider: selected text → rendered PNG on pasteboard
+│   └── ServiceRegistration.swift # NSApp.servicesProvider + send/return types
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
 │   └── Log.swift              # os.Logger per subsystem + render signposts (CS-048)
@@ -159,6 +354,10 @@ Vitrine/
     ├── Assets.xcassets
     ├── Info.plist
     └── Vitrine.entitlements
+
+VitrineCLI/                    # the `vitrine` executable target (CS-033)
+├── main.swift                 # minimal accessory NSApplication host → CLIRenderer
+└── CLIEnvironment.swift       # locates the Fonts/ folder staged next to the binary
 ```
 
 ## Libraries

@@ -61,6 +61,10 @@ targets:
       - package: Highlightr
       - package: KeyboardShortcuts
       - package: Settings
+      # App Intents (CS-034): linking the framework lets the build's
+      # appintentsmetadataprocessor extract the Shortcuts actions and enums so they
+      # appear in Shortcuts/Spotlight/Siri.
+      - sdk: AppIntents.framework
     settings:
       base:
         PRODUCT_NAME: Vitrine
@@ -73,12 +77,77 @@ targets:
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_PREVIEWS: YES
 
+  # Command-line renderer (CS-033). `vitrine render input.swift --out image.png`.
+  #
+  # The CLI reuses the app's *render half* unchanged so its output is pixel-identical
+  # to the GUI: it compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
+  # `ExportManager`, `HighlightManager`, …) and supplies its own `main.swift` entry,
+  # excluding only the SwiftUI `@main` app (`VitrineApp.swift`) so there is a single
+  # entry point. It hosts a minimal accessory `NSApplication` (no Dock/menu) because
+  # `ImageRenderer`/Highlightr require AppKit on the main actor; see VitrineCLI/main.swift.
+  VitrineCLI:
+    type: tool
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Vitrine
+        excludes:
+          - "Resources/Info.plist"
+          - "Resources/Vitrine.entitlements"
+          - "Resources/Fonts"
+          # The GUI's @main App scene; the CLI provides its own main.swift entry.
+          - "App/VitrineApp.swift"
+          # The automation surfaces (CS-034) target the GUI app only: App Intents
+          # need the AppIntents framework (not linked into this headless tool) and
+          # the Services menu is a windowed-app concept. The CLI is the scriptable
+          # path itself, so it neither links nor compiles these.
+          - "AppIntents"
+          - "Services"
+      - path: VitrineCLI
+    dependencies:
+      - package: Highlightr
+      - package: KeyboardShortcuts
+      - package: Settings
+    # A command-line tool has no Contents/Resources, so a "Copy Bundle Resources"
+    # phase cannot stage the bundled fonts. Copy the Fonts folder next to the binary
+    # instead, where CLIEnvironment locates and registers it at launch (CS-033). This
+    # is what keeps a default CLI render in JetBrains Mono pixel-identical to the app
+    # rather than falling back to the system monospaced font.
+    postCompileScripts:
+      - name: Stage bundled fonts next to the binary
+        basedOnDependencyAnalysis: false
+        outputFiles:
+          - "$(BUILT_PRODUCTS_DIR)/Fonts"
+        script: |
+          set -euo pipefail
+          DEST="${BUILT_PRODUCTS_DIR}/Fonts"
+          rm -rf "${DEST}"
+          mkdir -p "${DEST}"
+          cp "${SRCROOT}/Vitrine/Resources/Fonts/"*.ttf "${DEST}/"
+    settings:
+      base:
+        PRODUCT_NAME: vitrine
+        PRODUCT_BUNDLE_IDENTIFIER: app.vitrine.cli
+        # A tool is not a sandboxed .app: render is fully local and needs no
+        # entitlements, network, screen recording, or Accessibility (CS-033). The
+        # font-staging build phase also writes next to the binary, so user-script
+        # sandboxing (on for the shipping app) is off for this dev tool target.
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        CODE_SIGN_STYLE: Automatic
+
   VitrineTests:
     type: bundle.unit-test
     platform: macOS
     deploymentTarget: "14.0"
     sources:
       - path: Tests
+        # The golden-image fixtures (CS-025) are read from the source tree via
+        # #filePath, not from the test bundle, so they must not be ingested as
+        # bundle resources (which would also run them through copypng on every
+        # build). Exclude the whole fixtures tree from the test target sources.
+        excludes:
+          - "Fixtures"
     dependencies:
       - target: Vitrine
     settings:
@@ -119,8 +188,25 @@ schemes:
       gatherCoverageData: true
       targets:
         - VitrineTests
+      # Forward the golden-image recorder flag (CS-025) into the test runner's
+      # environment. xcodebuild does not pass arbitrary host env vars to the test
+      # process, so the value is a `$(VITRINE_RECORD_GOLDENS)` build-setting macro
+      # that expands from the value supplied on the `make record-goldens` command
+      # line. Unset (a normal `make test`) it expands to empty and the recorder
+      # suite stays skipped.
+      environmentVariables:
+        - variable: VITRINE_RECORD_GOLDENS
+          value: $(VITRINE_RECORD_GOLDENS)
+          isEnabled: true
     profile:
       config: Release
+
+  VitrineCLI:
+    build:
+      targets:
+        VitrineCLI: all
+    run:
+      config: Debug
 
   VitrineUITests:
     build:

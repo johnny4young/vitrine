@@ -47,6 +47,28 @@ The signing certificate itself must be imported into the runner keychain (e.g. w
 3. Publish it to a tap (e.g. `johnny4young/homebrew-tap`) so users can
    `brew install --cask johnny4young/tap/vitrine`.
 
+## Release notes (What's New) — CS-049
+
+Release notes are bundled in the app and surface as a version-aware "What's New"
+window, so they ship offline with the binary. They live in the repo at
+`Vitrine/Help/ReleaseNotes.swift`.
+
+For each release, add a `ReleaseNote` entry to `ReleaseNotes.all`, **newest first**:
+
+```swift
+ReleaseNote(
+    version: "0.2.0",                 // must match MARKETING_VERSION
+    headline: "One-line summary",
+    highlights: [
+        "A short, user-facing sentence per notable change.",
+    ])
+```
+
+The `version` string must match the `MARKETING_VERSION` you bump in `project.yml`.
+What's New appears once when the bundled version is newer than the version the user
+last saw, and never on a clean first run (onboarding owns that). Keep `docs/HELP.md`
+in step if the change also affects in-app Help.
+
 ## Auto-update (Sparkle) — follow-up
 
 Sparkle integration (appcast feed + EdDSA signing) is planned: add the `Sparkle`
@@ -58,5 +80,7 @@ follow-up to CS-012; not required for the first manual release.
 - [ ] `make test` green
 - [ ] `make icon` up to date
 - [ ] Version bumped in `project.yml` (`MARKETING_VERSION`) and the cask
+- [ ] Release note added to `Vitrine/Help/ReleaseNotes.swift` (newest first; version
+      matches `MARKETING_VERSION`), and `docs/HELP.md` updated if Help content changed
 - [ ] Tag pushed; release workflow green
 - [ ] Cask `sha256` updated to the published DMG

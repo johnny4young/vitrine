@@ -102,7 +102,8 @@ enum QuickCapture {
         let didCopy =
             settings.autoCopy
             && ExportManager.copyToPasteboard(
-                config, scale: scale, fixedSize: fixedSize, profile: profile)
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                richText: settings.richClipboard)
         let didSave =
             settings.alsoSaveToFile
             && ExportManager.saveToFile(
@@ -147,7 +148,8 @@ enum QuickCapture {
         let didCopy =
             settings.autoCopy
             && ExportManager.copyToPasteboard(
-                config, scale: scale, fixedSize: fixedSize, profile: profile)
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                richText: settings.richClipboard)
         let didSave =
             settings.alsoSaveToFile
             && ExportManager.saveToFile(

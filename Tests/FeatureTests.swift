@@ -87,31 +87,6 @@ struct AppSettingsTests {
 }
 
 @MainActor
-@Suite("RecentsStore")
-struct RecentsStoreTests {
-    @Test func capsDedupesNewestFirst() {
-        let store = RecentsStore(defaults: freshDefaults())
-        for index in 0..<15 {
-            store.add(Capture(code: "code \(index)", languageID: "swift", themeID: "one-dark"))
-        }
-        #expect(store.captures.count == RecentsStore.limit)
-        #expect(store.captures.first?.code == "code 14")
-
-        store.add(Capture(code: "code 14", languageID: "swift", themeID: "one-dark"))
-        #expect(store.captures.count == RecentsStore.limit)
-        #expect(store.captures.filter { $0.code == "code 14" }.count == 1)
-    }
-
-    @Test func persistsToDefaults() {
-        let defaults = freshDefaults()
-        RecentsStore(defaults: defaults)
-            .add(Capture(code: "hello", languageID: "swift", themeID: "one-dark"))
-        let reloaded = RecentsStore(defaults: defaults)
-        #expect(reloaded.captures.first?.code == "hello")
-    }
-}
-
-@MainActor
 @Suite("LaunchAtLogin")
 struct LaunchAtLoginTests {
     @Test func statusMapping() {

@@ -207,6 +207,10 @@ struct DiagnosticsSettingsSnapshot: Equatable {
     var exportScale: Int
     var exportFormat: String
     var colorProfile: String
+    /// Whether the rich-clipboard opt-in is on (CS-054). A plain boolean knob,
+    /// never user-entered text. Defaults to off so older call sites that predate
+    /// the flag construct a valid snapshot without it.
+    var richClipboard: Bool = false
     var hotkeyAction: String
     var treatURLsAsScreenshot: Bool
     var recentLanguageCount: Int
@@ -231,6 +235,7 @@ struct DiagnosticsSettingsSnapshot: Equatable {
             ("exportScale", String(exportScale)),
             ("exportFormat", exportFormat),
             ("colorProfile", colorProfile),
+            ("richClipboard", String(richClipboard)),
             ("hotkeyAction", hotkeyAction),
             ("treatURLsAsScreenshot", String(treatURLsAsScreenshot)),
             ("recentLanguageCount", String(recentLanguageCount)),

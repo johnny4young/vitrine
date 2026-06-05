@@ -129,12 +129,25 @@ enum ExportManager {
         return produced ? data as Data : nil
     }
 
-    /// Renders and writes a PNG to the general pasteboard. Returns success.
+    /// Renders and writes the image to the general pasteboard. Returns success.
+    ///
+    /// By default this places a single PNG representation — the unchanged
+    /// one-shortcut copy. When `richText` is true (the user opted into the rich
+    /// clipboard, CS-054), it instead places a multi-representation item: the same
+    /// PNG plus the highlighted code as RTF and HTML, so a paste into a rich-text
+    /// editor keeps the syntax colors and font while an image well still receives
+    /// the picture. The PNG round-trip is identical in both modes — `richText`
+    /// only *adds* representations, never changes the image bytes.
     @discardableResult
     static func copyToPasteboard(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
-        profile: ColorProfile = .sRGB
+        profile: ColorProfile = .sRGB, richText: Bool = false
     ) -> Bool {
+        if richText {
+            return RichPasteboard.copy(
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                includeRichText: true)
+        }
         guard
             let cgImage = renderCGImage(
                 config, scale: scale, fixedSize: fixedSize, profile: profile),

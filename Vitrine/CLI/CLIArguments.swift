@@ -1,0 +1,249 @@
+import Foundation
+
+/// A problem the CLI reports to the user, mapped to a clear message and a process
+/// exit code (CS-033). Every failure mode the `render` command can hit has a case
+/// here so the executable never prints a raw Swift error or crashes.
+///
+/// `nonisolated` so it is a plain `Sendable & Equatable` error: the executable throws
+/// and catches it across isolation boundaries, and the test suite can assert on it
+/// with Swift Testing's `#expect(throws:)` (which requires a `Sendable` error). Its
+/// `message` composes the equally `nonisolated` `CLIUsage.text`.
+nonisolated enum CLIError: Error, Equatable {
+    /// `--help`/`-h` was requested: not an error, but it short-circuits parsing so
+    /// the caller prints usage and exits successfully.
+    case helpRequested
+    /// No subcommand, or an unrecognized one, was given.
+    case unknownCommand(String)
+    /// A flag the parser does not recognize.
+    case unknownFlag(String)
+    /// A flag that needs a value was the last token (its value is missing).
+    case missingValue(flag: String)
+    /// A required positional/option was not supplied (e.g. the input file or `--out`).
+    case missingRequired(String)
+    /// A value was supplied but is not valid for its flag (bad number, unknown id…).
+    case invalidValue(flag: String, value: String)
+    /// The input source file could not be read.
+    case inputUnreadable(path: String)
+    /// The input file decoded but is not text (likely a binary file).
+    case inputNotText(path: String)
+    /// Rendering produced no image (an internal renderer failure).
+    case renderFailed
+    /// Encoding or writing the output file failed.
+    case writeFailed(path: String)
+
+    /// A short, human-readable explanation suitable for stderr.
+    var message: String {
+        switch self {
+        case .helpRequested:
+            CLIUsage.text
+        case .unknownCommand(let command):
+            "Unknown command \"\(command)\". The only command is \"render\"."
+        case .unknownFlag(let flag):
+            "Unknown option \"\(flag)\"."
+        case .missingValue(let flag):
+            "Option \"\(flag)\" needs a value."
+        case .missingRequired(let what):
+            "Missing required \(what)."
+        case .invalidValue(let flag, let value):
+            "\"\(value)\" is not a valid value for \"\(flag)\"."
+        case .inputUnreadable(let path):
+            "Could not read the input file at \"\(path)\"."
+        case .inputNotText(let path):
+            "The input file at \"\(path)\" is not text."
+        case .renderFailed:
+            "Rendering failed to produce an image."
+        case .writeFailed(let path):
+            "Could not write the output to \"\(path)\"."
+        }
+    }
+
+    /// The process exit code this failure maps to. `0` is reserved for success and
+    /// for the help request (which is not a failure); every genuine error is `1`.
+    var exitCode: Int32 {
+        switch self {
+        case .helpRequested: 0
+        default: 1
+        }
+    }
+}
+
+/// Parses `vitrine` command-line arguments into a `CLIOptions` (CS-033).
+///
+/// The grammar is deliberately tiny and dependency-free (no third-party arg parser):
+/// a single `render` subcommand, one positional input path, a required `--out`, and
+/// a handful of `--flag value` options plus the boolean `--transparent`. Keeping it
+/// hand-rolled means the CLI adds no new package to the app and the parser is a pure,
+/// synchronous function that is trivial to unit-test.
+///
+/// Unknown flags, missing values, and bad enum/number values all throw a specific
+/// `CLIError` so a docs/automation pipeline fails loudly with a clear message instead
+/// of silently rendering the wrong thing.
+///
+/// Main-actor isolated (the module default) so it can read the main-actor model
+/// catalogs (`ExportPreset`, `SettingsDefaults`) while validating ids and ranges. The
+/// executable runs it from `main.swift`, whose top-level code is on the main actor.
+@MainActor
+enum CLIArguments {
+    /// Parses the argument list *after* the executable name (i.e. `CommandLine
+    /// .arguments.dropFirst()`), returning the options for a `render` command.
+    ///
+    /// Throws `CLIError.helpRequested` for `--help`/`-h` (the caller prints usage),
+    /// and a specific error for any malformed input.
+    static func parse(_ arguments: [String]) throws -> CLIOptions {
+        var remaining = ArraySlice(arguments)
+
+        // A bare invocation, or a top-level help request, shows usage.
+        guard let command = remaining.first else { throw CLIError.helpRequested }
+        if command == "--help" || command == "-h" { throw CLIError.helpRequested }
+        guard command == "render" else { throw CLIError.unknownCommand(command) }
+        remaining = remaining.dropFirst()
+
+        var inputPath: String?
+        var outputPath: String?
+        var themeID: String?
+        var languageID: String?
+        var presetID: String?
+        var scale: Int?
+        var format: ExportFormat = .png
+        var profile: ColorProfile = .fallback
+        var transparent = false
+
+        /// Pops the value that must follow a `--flag`, or throws if it is absent.
+        func value(for flag: String) throws -> String {
+            guard let next = remaining.first else { throw CLIError.missingValue(flag: flag) }
+            remaining = remaining.dropFirst()
+            return next
+        }
+
+        while let token = remaining.first {
+            remaining = remaining.dropFirst()
+            switch token {
+            case "--help", "-h":
+                throw CLIError.helpRequested
+            case "--out", "-o":
+                outputPath = try value(for: token)
+            case "--theme":
+                themeID = try resolveTheme(try value(for: token))
+            case "--language", "--lang":
+                languageID = try resolveLanguage(try value(for: token))
+            case "--preset":
+                presetID = try resolvePreset(try value(for: token))
+            case "--scale":
+                scale = try resolveScale(try value(for: token), flag: token)
+            case "--format":
+                format = try resolveFormat(try value(for: token))
+            case "--profile":
+                profile = try resolveProfile(try value(for: token))
+            case "--transparent":
+                transparent = true
+            default:
+                if token.hasPrefix("-") {
+                    throw CLIError.unknownFlag(token)
+                }
+                // The first non-flag token is the input path; a second positional is
+                // unexpected and rejected so a stray argument is not silently ignored.
+                guard inputPath == nil else { throw CLIError.unknownFlag(token) }
+                inputPath = token
+            }
+        }
+
+        guard let inputPath else { throw CLIError.missingRequired("input file") }
+        guard let outputPath else { throw CLIError.missingRequired("--out output path") }
+
+        return CLIOptions(
+            inputPath: inputPath,
+            outputPath: outputPath,
+            themeID: themeID,
+            language: languageID.flatMap(Language.init(rawValue:)),
+            presetID: presetID,
+            scale: scale,
+            format: format,
+            profile: profile,
+            transparent: transparent
+        )
+    }
+
+    // MARK: - Value resolution (each rejects an unknown id with a clear error)
+
+    /// Validates a theme id against the built-in catalog so a typo fails up front
+    /// rather than silently falling back to One Dark at render time.
+    private static func resolveTheme(_ raw: String) throws -> String {
+        guard Theme.builtInIDs.contains(raw) else {
+            throw CLIError.invalidValue(flag: "--theme", value: raw)
+        }
+        return raw
+    }
+
+    /// Validates a language id against the advertised catalog.
+    private static func resolveLanguage(_ raw: String) throws -> String {
+        guard Language(rawValue: raw) != nil else {
+            throw CLIError.invalidValue(flag: "--language", value: raw)
+        }
+        return raw
+    }
+
+    /// Validates a destination-preset id against the catalog.
+    private static func resolvePreset(_ raw: String) throws -> String {
+        guard ExportPreset.preset(withID: raw) != nil else {
+            throw CLIError.invalidValue(flag: "--preset", value: raw)
+        }
+        return raw
+    }
+
+    /// Parses and range-checks the export scale (1...3).
+    private static func resolveScale(_ raw: String, flag: String) throws -> Int {
+        guard let value = Int(raw),
+            SettingsDefaults.exportScaleRange.contains(value)
+        else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Parses the output format (`png`/`pdf`).
+    private static func resolveFormat(_ raw: String) throws -> ExportFormat {
+        guard let format = ExportFormat(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: "--format", value: raw)
+        }
+        return format
+    }
+
+    /// Parses the color profile, accepting the documented spellings `srgb` and `p3`
+    /// in addition to the raw enum names.
+    private static func resolveProfile(_ raw: String) throws -> ColorProfile {
+        switch raw.lowercased() {
+        case "srgb", "srgb-iec61966-2.1": return .sRGB
+        case "p3", "displayp3", "display-p3": return .displayP3
+        default: throw CLIError.invalidValue(flag: "--profile", value: raw)
+        }
+    }
+}
+
+/// The `vitrine render` usage text, shown for `--help` and on a usage error.
+///
+/// `nonisolated` (a pure static string) so `CLIError.message` — itself nonisolated —
+/// can compose it, and so the executable and tests can read it from any context.
+nonisolated enum CLIUsage {
+    static let text = """
+        vitrine — render code to an image from the command line.
+
+        USAGE:
+          vitrine render <input-file> --out <image> [options]
+
+        OPTIONS:
+          -o, --out <path>       Output image path (required).
+          --theme <id>           Syntax theme id (e.g. one-dark, dracula, nord).
+          --language <id>        Language id (e.g. swift, python). Inferred when omitted.
+          --preset <id>          Destination preset (twitter, linkedin, keynote,
+                                 docs, transparent-slide, opengraph).
+          --scale <1|2|3>        Export resolution multiplier. Defaults to the app
+                                 default, or the preset's recommended scale.
+          --format <png|pdf>     Output format. Defaults to png.
+          --profile <srgb|p3>    PNG color profile. Defaults to srgb.
+          --transparent          Render a real transparent background.
+          -h, --help             Show this help.
+
+        Code rendering is fully local: it never needs the network, screen recording,
+        or Accessibility permissions.
+        """
+}

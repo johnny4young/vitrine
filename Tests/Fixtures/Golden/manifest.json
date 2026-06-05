@@ -1,0 +1,40 @@
+{
+  "pinnedImage" : {
+    "architecture" : "arm64",
+    "osVersion" : "26.5.0",
+    "swiftVersion" : "6.2"
+  },
+  "scenarios" : {
+    "default-theme" : {
+      "configFingerprint" : "ad985e74a5a11fa4aafe488dcb5442129e495bff10b82ecf27b0b0ddb2390443",
+      "height" : 556,
+      "width" : 848
+    },
+    "light-theme" : {
+      "configFingerprint" : "82c711aee8e0d1f3a13108b9260f2bd5d6060ff6a359f3df591845c2e07c8e19",
+      "height" : 556,
+      "width" : 848
+    },
+    "line-numbers" : {
+      "configFingerprint" : "881e0d3b6ac1c47c9dee912632fdf59910cbba742b168cf0a1a48135dad77174",
+      "height" : 620,
+      "width" : 848
+    },
+    "opengraph" : {
+      "configFingerprint" : "22eb4378ed7e76282105e1c8470f572ee28de39bf764ac895d28d5ae8f2a129a",
+      "height" : 630,
+      "width" : 1200
+    },
+    "selected-line-highlight" : {
+      "configFingerprint" : "37a31e2c8c6aab19ace969ad937710c0cae4a2841017b7d5b763b2c2a2474e45",
+      "height" : 612,
+      "width" : 848
+    },
+    "transparent-background" : {
+      "configFingerprint" : "2406600d8149ec85f6c4a6757c94c0e6e10260b0df6730f5aed97bd2f445f087",
+      "height" : 556,
+      "width" : 848
+    }
+  },
+  "schema" : 1
+}

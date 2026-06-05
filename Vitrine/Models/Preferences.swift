@@ -27,12 +27,48 @@ enum HotkeyAction: String, CaseIterable, Identifiable, Codable {
 }
 
 /// Exported image format (CS-010 · Output).
+///
+/// The format menu lists only outputs the exporter can write **faithfully** from
+/// the full code canvas: a raster `png` and a true vector `pdf`. SVG is
+/// deliberately absent (CS-023): SwiftUI / `ImageRenderer` / AppKit expose no
+/// faithful full-canvas SVG path, and Vitrine does not ship a fake `.svg` that is
+/// merely a raster PNG wrapped in an `<image>` tag. PDF is therefore the supported
+/// vector format. A hand-authored SVG exists only for the deterministic
+/// simple-template subset (`VectorTemplateSVG`, CS-041) and is intentionally not a
+/// general export choice here. See `docs/ARCHITECTURE.md` ("Vector export").
 enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     case png
     case pdf
 
     var id: String { rawValue }
-    var displayName: String { self == .png ? "PNG" : "PDF" }
+
+    var displayName: String {
+        switch self {
+        case .png: "PNG"
+        case .pdf: "PDF"
+        }
+    }
+
+    /// Whether this format is a scalable vector format (true for `pdf`).
+    ///
+    /// Drives the "vector" label/help shown next to the format picker so the menu
+    /// states honestly which output is resolution-independent (CS-023). Raster PNG
+    /// is `false`; PDF is `true`.
+    var isVector: Bool {
+        switch self {
+        case .png: false
+        case .pdf: true
+        }
+    }
+
+    /// One-line guidance shown next to the format picker, naming the vector option
+    /// so docs/slide workflows know which export scales (CS-023).
+    var summary: String {
+        switch self {
+        case .png: "Raster image at the chosen resolution. Best for posting and chat."
+        case .pdf: "Scalable vector document. Best for docs, slides, and print."
+        }
+    }
 
     /// The value used when nothing is persisted or a stored string no longer
     /// maps to a case (CS-050 documented fallback).
