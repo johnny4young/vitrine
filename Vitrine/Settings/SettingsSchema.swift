@@ -172,7 +172,7 @@ enum SettingsSchema {
     }
 
     /// Key names referenced by migrations. Kept here, separate from
-    /// `AppSettings.Keys`, so migration logic does not depend on the live
+    /// `SettingsCodec.Keys`, so migration logic does not depend on the live
     /// settings type and stays purely about the on-disk shape.
     private enum LegacyKeys {
         static let exportScale = "exportScale"

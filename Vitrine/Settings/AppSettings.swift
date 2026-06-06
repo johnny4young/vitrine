@@ -16,7 +16,7 @@ final class AppSettings: ObservableObject {
     /// The current snapshot configuration (theme, font, padding, …).
     @Published var config: SnapshotConfig {
         didSet {
-            persistStyle()
+            SettingsCodec.persistStyle(config, to: defaults)
             dropPresetIfStyleDiverged()
         }
     }
@@ -170,82 +170,7 @@ final class AppSettings: ObservableObject {
     /// `selectPreset(_:)` would momentarily look like a user edit.
     private var isApplyingPreset = false
 
-    private enum Keys {
-        static let themeID = "themeID"
-        static let languageID = "languageID"
-        static let fontSize = "fontSize"
-        static let padding = "padding"
-        static let cornerRadius = "cornerRadius"
-        static let showChrome = "showChrome"
-        static let showShadow = "showShadow"
-        static let showLineNumbers = "showLineNumbers"
-        static let highlightedLines = "highlightedLines"
-        static let metadata = "metadata"
-        static let gradientPreset = "gradientPreset"
-        static let backgroundStyle = "backgroundStyle"
-        static let autoCopy = "autoCopy"
-        static let alsoSaveToFile = "alsoSaveToFile"
-        static let exportScale = "exportScale"
-        static let exportFormat = "exportFormat"
-        static let colorProfile = "colorProfile"
-        static let richClipboard = "richClipboard"
-        static let hotkeyAction = "hotkeyAction"
-        static let appLanguage = "appLanguage"
-        static let treatURLs = "treatURLsAsScreenshot"
-        /// Web URL-capture viewport/wait settings (CS-044). All additive keys with
-        /// documented defaults, so an older store simply reads the defaults.
-        static let webViewportKind = "webViewportKind"
-        static let webCustomViewportWidth = "webCustomViewportWidth"
-        static let webCustomViewportHeight = "webCustomViewportHeight"
-        static let webCaptureMode = "webCaptureMode"
-        static let webWaitKind = "webWaitKind"
-        static let webWaitSeconds = "webWaitSeconds"
-        static let recentLanguages = "recentLanguages"
-        static let fontName = "fontName"
-        static let fontLigatures = "fontLigatures"
-        static let selectedPreset = "selectedPreset"
-        /// First-run quick-start completion flag (CS-035).
-        static let hasSeenWelcome = "hasSeenWelcome"
-        /// Last app version whose "What's New" the user has seen (CS-049).
-        static let lastSeenWhatsNewVersion = "lastSeenWhatsNewVersion"
-        /// Saved style presets (CS-030). Owned by `PresetStore`, listed here so a
-        /// "Reset all settings" clears the user's presets along with the rest of
-        /// their data; the store reloads its in-memory copy afterward.
-        static let userStylePresets = PresetStore.storageKey
-        /// Custom themes (CS-031). Owned by `CustomThemeStore`, listed here so a
-        /// "Reset all settings" clears the user's themes along with the rest of their
-        /// data; the store reloads its in-memory copy afterward.
-        static let userCustomThemes = CustomThemeStore.storageKey
-
-        /// Every key this app writes, used by `resetToDefaults()` to clear the
-        /// store without an app reinstall. The schema version key is reset by
-        /// the migration step that runs afterward.
-        static let all = [
-            themeID, languageID, fontSize, padding, cornerRadius, showChrome,
-            showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
-            backgroundStyle, autoCopy, alsoSaveToFile, exportScale, exportFormat,
-            colorProfile, richClipboard, hotkeyAction, appLanguage, treatURLs,
-            webViewportKind, webCustomViewportWidth, webCustomViewportHeight,
-            webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
-            fontName, fontLigatures, selectedPreset, hasSeenWelcome,
-            lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
-        ]
-
-        /// The keys an editor window seeds from the app-wide defaults when it opens
-        /// (CS-053): the document/style fields plus the per-capture output knobs and
-        /// the selected destination preset. Deliberately excludes the app-global,
-        /// non-per-window state — the onboarding/What's-New flags and the hotkey
-        /// action — and the shared preset/theme *catalogs* (those resolve through the
-        /// shared stores, not the window's volatile store). Seeding only these keys is
-        /// what lets a new window open looking like the user's default while editing
-        /// its own copy.
-        static let editorSessionSeed = [
-            themeID, languageID, fontSize, padding, cornerRadius, showChrome,
-            showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
-            backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
-            colorProfile, richClipboard, selectedPreset,
-        ]
-    }
+    private typealias Keys = SettingsCodec.Keys
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -259,7 +184,7 @@ final class AppSettings: ObservableObject {
 
         autoCopy = defaults.object(forKey: Keys.autoCopy) as? Bool ?? true
         alsoSaveToFile = defaults.object(forKey: Keys.alsoSaveToFile) as? Bool ?? false
-        exportScale = Self.readExportScale(from: defaults)
+        exportScale = SettingsCodec.readExportScale(from: defaults)
         exportFormat = ExportFormat.resolve(defaults.string(forKey: Keys.exportFormat))
         colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
         richClipboard = defaults.object(forKey: Keys.richClipboard) as? Bool ?? false
@@ -291,7 +216,7 @@ final class AppSettings: ObservableObject {
         // rather than trapping, so the gate falls back safely (CS-050 posture).
         lastSeenWhatsNewVersion = defaults.string(forKey: Keys.lastSeenWhatsNewVersion)
 
-        config = Self.readConfig(from: defaults)
+        config = SettingsCodec.readConfig(from: defaults)
     }
 
     // MARK: - Per-window editor sessions (CS-053)
@@ -508,159 +433,11 @@ final class AppSettings: ObservableObject {
         config = SnapshotConfig()
     }
 
-    // MARK: - Defensive reads
-
-    /// Builds a `SnapshotConfig` from `defaults`, tolerating any missing or
-    /// wrongly-typed key. Each branch only overrides a default when a valid
-    /// value is present; numeric values are clamped to their documented ranges.
-    private static func readConfig(from defaults: UserDefaults) -> SnapshotConfig {
-        var config = SnapshotConfig()
-        if let id = defaults.string(forKey: Keys.themeID) {
-            // Resolve through a store bound to the same defaults so a persisted
-            // *custom* theme (CS-031) is restored on relaunch, falling back to the
-            // built-in lookup (and ultimately One Dark) for a built-in or unknown id.
-            config.theme = CustomThemeStore(defaults: defaults).theme(withID: id)
-        }
-        if let id = defaults.string(forKey: Keys.languageID), let language = Language(rawValue: id)
-        {
-            config.language = language
-        }
-        if let value = defaults.object(forKey: Keys.fontSize) as? Double {
-            config.fontSize = SettingsDefaults.clampFontSize(value)
-        }
-        if let value = defaults.string(forKey: Keys.fontName), CodeFont.all.contains(value) {
-            config.fontName = value
-        }
-        if let value = defaults.object(forKey: Keys.fontLigatures) as? Bool {
-            config.fontLigatures = value
-        }
-        if let value = defaults.object(forKey: Keys.padding) as? Double {
-            config.padding = SettingsDefaults.clampPadding(value)
-        }
-        if let value = defaults.object(forKey: Keys.cornerRadius) as? Double {
-            config.cornerRadius = SettingsDefaults.clampCornerRadius(value)
-        }
-        if let value = defaults.object(forKey: Keys.showChrome) as? Bool {
-            config.showChrome = value
-        }
-        if let value = defaults.object(forKey: Keys.showShadow) as? Bool {
-            config.showShadow = value
-        }
-        if let value = defaults.object(forKey: Keys.showLineNumbers) as? Bool {
-            config.showLineNumbers = value
-        }
-        // Highlighted lines persist as the canonical spec string ("3, 7-9"); a
-        // missing or malformed value parses to no highlight rather than trapping
-        // (CS-021 / CS-050).
-        if let spec = defaults.string(forKey: Keys.highlightedLines) {
-            config.highlightedLineRanges = LineHighlight.parse(spec)
-        }
-        if let metadata = readMetadata(from: defaults) {
-            config.metadata = metadata
-        }
-        if let background = readBackground(from: defaults) {
-            config.background = background
-        }
-        return config
-    }
-
-    /// Reads the persisted metadata header, tolerating a missing or corrupt value
-    /// (CS-022 / CS-050). Stored as a JSON-encoded `SnapshotMetadata`; a garbage
-    /// blob simply yields `nil`, leaving the empty default (no header) in place.
-    /// `SnapshotMetadata`'s decoder re-normalizes its text fields, so an empty or
-    /// untrimmed persisted string can never reach the renderer.
-    private static func readMetadata(from defaults: UserDefaults) -> SnapshotMetadata? {
-        guard let data = defaults.data(forKey: Keys.metadata),
-            let decoded = try? JSONDecoder().decode(SnapshotMetadata.self, from: data)
-        else { return nil }
-        return decoded
-    }
-
-    /// Reads the persisted background, tolerating any missing or corrupt value
-    /// (CS-050 / CS-051).
-    ///
-    /// All background kinds — solid, gradient preset, custom gradient, image, and
-    /// transparent — are stored as a single JSON-encoded `BackgroundStyle` under
-    /// `backgroundStyle`. For installs that predate CS-051 (which only ever wrote
-    /// a `gradientPreset` name), a legacy preset name is honored as a fallback so
-    /// the user's chosen gradient survives the upgrade. A garbage JSON blob or an
-    /// unknown legacy name simply yields `nil`, leaving the default in place.
-    private static func readBackground(from defaults: UserDefaults) -> BackgroundStyle? {
-        if let data = defaults.data(forKey: Keys.backgroundStyle),
-            let decoded = try? JSONDecoder().decode(BackgroundStyle.self, from: data)
-        {
-            return decoded
-        }
-        if let raw = defaults.string(forKey: Keys.gradientPreset),
-            let preset = GradientPreset(rawValue: raw)
-        {
-            return .gradient(preset)
-        }
-        return nil
-    }
-
-    /// Reads the export scale, clamping a stored value into the supported set and
-    /// falling back to the default for a missing or non-integer value.
-    private static func readExportScale(from defaults: UserDefaults) -> Int {
-        guard let value = defaults.object(forKey: Keys.exportScale) as? Int else {
-            return SettingsDefaults.exportScale
-        }
-        return SettingsDefaults.clampExportScale(value)
-    }
-
     /// Falls back to "Custom" once the user edits the style away from the active
     /// preset, so the picker never claims a preset that no longer describes the
     /// canvas (CS-020). Skipped while a preset is being applied.
     private func dropPresetIfStyleDiverged() {
         guard !isApplyingPreset, let preset = selectedPreset else { return }
         if !preset.matches(config) { selectedPresetID = nil }
-    }
-
-    private func persistStyle() {
-        defaults.set(config.theme.id, forKey: Keys.themeID)
-        defaults.set(config.language.rawValue, forKey: Keys.languageID)
-        defaults.set(config.fontName, forKey: Keys.fontName)
-        defaults.set(config.fontLigatures, forKey: Keys.fontLigatures)
-        defaults.set(config.fontSize, forKey: Keys.fontSize)
-        defaults.set(config.padding, forKey: Keys.padding)
-        defaults.set(config.cornerRadius, forKey: Keys.cornerRadius)
-        defaults.set(config.showChrome, forKey: Keys.showChrome)
-        defaults.set(config.showShadow, forKey: Keys.showShadow)
-        defaults.set(config.showLineNumbers, forKey: Keys.showLineNumbers)
-        defaults.set(
-            LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
-        persistMetadata(config.metadata)
-        persistBackground(config.background)
-    }
-
-    /// Persists the metadata header as a JSON-encoded `SnapshotMetadata` so its
-    /// fields round-trip (CS-022). An empty header clears the key so the store has
-    /// no stale value and the default (no header) is what a later read restores;
-    /// an unexpected encode failure also drops the key rather than leaving a stale
-    /// blob behind.
-    private func persistMetadata(_ metadata: SnapshotMetadata) {
-        guard !metadata.isEmpty, let data = try? JSONEncoder().encode(metadata) else {
-            defaults.removeObject(forKey: Keys.metadata)
-            return
-        }
-        defaults.set(data, forKey: Keys.metadata)
-    }
-
-    /// Persists the background as a JSON-encoded `BackgroundStyle` so every kind
-    /// (solid, gradient, custom gradient, image, transparent) round-trips
-    /// (CS-051). The legacy `gradientPreset` string key is cleared on write so the
-    /// store has a single source of truth and a stale name can never shadow the
-    /// new value on a later read.
-    private func persistBackground(_ background: BackgroundStyle) {
-        defaults.removeObject(forKey: Keys.gradientPreset)
-        guard let data = try? JSONEncoder().encode(background) else {
-            // Encoding a value type with fixed-shape members is not expected to
-            // fail; if it ever does, drop the key so the default applies rather
-            // than leaving a stale background behind.
-            defaults.removeObject(forKey: Keys.backgroundStyle)
-            Log.settings.error("Background encode failed; persisting default on next change")
-            return
-        }
-        defaults.set(data, forKey: Keys.backgroundStyle)
     }
 }

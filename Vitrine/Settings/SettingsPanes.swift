@@ -114,7 +114,7 @@ struct GeneralSettingsView: View {
             Button("Reset", role: .destructive) {
                 settings.resetToDefaults()
                 // `resetToDefaults()` clears the persisted preset blob too (its key
-                // is in `AppSettings.Keys.all`); reload so this store's in-memory
+                // is in `SettingsCodec.Keys.all`); reload so this store's in-memory
                 // copy reflects the cleared state.
                 presets.reload()
                 launchAtLogin = LaunchAtLogin.isEnabled
