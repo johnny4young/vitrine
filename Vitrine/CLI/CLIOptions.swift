@@ -66,23 +66,10 @@ struct CLIOptions: Equatable {
     /// `code` and `language` are set from the input file and never altered by a
     /// preset, exactly as in the GUI (a preset is presentation/output only, CS-020).
     func makeConfig(code: String, language: Language) -> SnapshotConfig {
-        var config = SnapshotConfig()
+        var config = SnapshotConfig().styled(
+            presetID: presetID, themeID: themeID, transparent: transparent)
         config.code = code
         config.language = language
-
-        if let preset = resolvedPreset {
-            preset.apply(to: &config)
-        }
-        if let themeID {
-            // Resolve through the custom-theme store so `--theme <custom-id>` works
-            // (it falls back to built-ins for a built-in/unknown id), matching the GUI.
-            config.theme = CustomThemeStore.shared.theme(withID: themeID)
-        }
-        // Transparency is the last word on the background so `--transparent` layers
-        // cleanly onto any preset (the user asked for real alpha regardless).
-        if transparent {
-            config.background = .transparent
-        }
         return config
     }
 

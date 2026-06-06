@@ -11,9 +11,11 @@ import Foundation
 /// to the code path.
 ///
 /// The social-card input is intentionally a documented future extension point
-/// rather than a live case: its model (`SocialCardModel`) ships with the
-/// local social-card renderer.
-// TODO: CS-041 — add `case socialCard(SocialCardModel)` once the model exists.
+/// rather than a live case: social cards ship today through their own dedicated
+/// renderer (`SocialCardRenderer` over `SocialCardModel`), not this
+/// classify-then-coordinate path. Folding them in would be a
+/// `case socialCard(SocialCardModel)` plus a `Renderer` — deferred by design,
+/// not blocked on the model, which already exists (CS-041).
 enum CaptureInput: Equatable {
     /// Source code to syntax-highlight and frame — the Phase 1 path. The optional
     /// language hint comes from the detector (a Markdown fence's info string, a

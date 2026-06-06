@@ -79,23 +79,10 @@ struct SnapshotRenderRequest: Equatable {
     /// The code is set from `code` and the language from `resolvedLanguage`; neither
     /// is ever altered by a preset (a preset is presentation/output only, CS-020).
     func makeConfig() -> SnapshotConfig {
-        var config = baseStyle
+        var config = baseStyle.styled(
+            presetID: presetID, themeID: themeID, transparent: transparent)
         config.code = code
         config.language = resolvedLanguage
-
-        if let preset = resolvedPreset {
-            preset.apply(to: &config)
-        }
-        if let themeID {
-            // Resolve through the custom-theme store so a Shortcuts/Services theme id can
-            // name a user custom theme (CS-031); it falls back to built-ins, matching the GUI.
-            config.theme = CustomThemeStore.shared.theme(withID: themeID)
-        }
-        // Transparency is the last word on the background so it layers cleanly onto
-        // any preset (the automation asked for real alpha regardless).
-        if transparent {
-            config.background = .transparent
-        }
         return config
     }
 
