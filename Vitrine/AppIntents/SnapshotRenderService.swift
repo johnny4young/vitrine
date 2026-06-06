@@ -47,17 +47,15 @@ enum SnapshotRenderService {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig()
 
-        let data: Data?
-        switch request.format {
-        case .png:
-            data = ExportManager.renderCGImage(
-                config, scale: request.effectiveScale, fixedSize: request.fixedSize,
-                profile: request.profile
-            )
-            .flatMap(ExportManager.pngData(from:))
-        case .pdf:
-            data = ExportManager.pdfData(config, fixedSize: request.fixedSize)
-        }
+        let data = ExportManager.encodedPayload(
+            request.format,
+            png: {
+                ExportManager.renderCGImage(
+                    config, scale: request.effectiveScale, fixedSize: request.fixedSize,
+                    profile: request.profile)
+            },
+            pdf: { ExportManager.pdfData(config, fixedSize: request.fixedSize) }
+        )?.data
 
         guard let data else {
             Log.export.error(

@@ -79,22 +79,9 @@ enum SocialCardRenderer {
             Log.render.error("Social card PDF skipped: model is empty")
             return nil
         }
-        let renderer = ImageRenderer(content: SocialCardCanvas(model: model, size: size))
-        renderer.proposedSize = ProposedViewSize(size)
-        let data = NSMutableData()
-        var produced = false
-        renderer.render { renderedSize, renderInContext in
-            var mediaBox = CGRect(origin: .zero, size: renderedSize)
-            guard let consumer = CGDataConsumer(data: data as CFMutableData),
-                let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
-            else { return }
-            context.beginPDFPage(nil)
-            renderInContext(context)
-            context.endPDFPage()
-            context.closePDF()
-            produced = true
-        }
-        return produced ? data as Data : nil
+        // Shares the single-page PDF rasterizer with the snapshot path (CS-041); only
+        // the canvas differs.
+        return ExportManager.pdfData(SocialCardCanvas(model: model, size: size), proposedSize: size)
     }
 
     // MARK: - Clipboard / save / share flows (CS-041 acceptance)
@@ -137,15 +124,10 @@ enum SocialCardRenderer {
         format: ExportFormat = .png,
         profile: ColorProfile = .sRGB
     ) -> ExportManager.SaveOutcome {
-        let payload: (data: Data, type: UTType, ext: String)? =
-            switch format {
-            case .png:
-                renderCGImage(model, size: size, scale: scale, profile: profile)
-                    .flatMap(ExportManager.pngData(from:))
-                    .map { ($0, .png, "png") }
-            case .pdf:
-                pdfData(model, size: size).map { ($0, .pdf, "pdf") }
-            }
+        let payload = ExportManager.encodedPayload(
+            format,
+            png: { renderCGImage(model, size: size, scale: scale, profile: profile) },
+            pdf: { pdfData(model, size: size) })
         guard let payload else {
             Log.export.error("Social card save failed: render or encode returned nil")
             return .failed

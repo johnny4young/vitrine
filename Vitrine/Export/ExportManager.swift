@@ -109,10 +109,21 @@ enum ExportManager {
         return data as Data
     }
 
-    /// Renders the canvas to single-page PDF data.
+    /// Renders the snapshot canvas for `config` to single-page PDF data, pinning the
+    /// page to `fixedSize` for size presets. A thin wrapper over the shared
+    /// `pdfData(_:proposedSize:)` rasterizer so the snapshot and social-card PDF paths
+    /// share one `CGContext` page dance instead of copying it.
     static func pdfData(_ config: SnapshotConfig, fixedSize: CGSize? = nil) -> Data? {
-        let renderer = ImageRenderer(content: SnapshotCanvas(config: config, fixedSize: fixedSize))
-        if let fixedSize { renderer.proposedSize = ProposedViewSize(fixedSize) }
+        pdfData(SnapshotCanvas(config: config, fixedSize: fixedSize), proposedSize: fixedSize)
+    }
+
+    /// Renders any SwiftUI `content` to single-page PDF data, pinning the page to
+    /// `proposedSize` when given. The single-page `CGDataConsumer`/`CGContext` dance
+    /// lives here once and is shared by both the snapshot and social-card PDF exports
+    /// (CS-007/041). Returns nil if the page context cannot be created.
+    static func pdfData<Content: View>(_ content: Content, proposedSize: CGSize?) -> Data? {
+        let renderer = ImageRenderer(content: content)
+        if let proposedSize { renderer.proposedSize = ProposedViewSize(proposedSize) }
         let data = NSMutableData()
         var produced = false
         renderer.render { size, renderInContext in
@@ -127,6 +138,23 @@ enum ExportManager {
             produced = true
         }
         return produced ? data as Data : nil
+    }
+
+    /// The single PNG/PDF format ladder shared by every save/encode path
+    /// (CS-007/041). Given a render strategy for each branch — a `png` producer of a
+    /// `CGImage` and a `pdf` producer of finished `Data` — it picks the branch for
+    /// `format`, encodes PNG through the shared color-managed ImageIO path, and pairs
+    /// the bytes with the matching content type and file extension. Returns nil if the
+    /// chosen render or encode yields nothing. Centralizing the switch here keeps a
+    /// snapshot and a social card (and the automation surface) from ever drifting on
+    /// what "PNG"/"PDF" encodes to.
+    static func encodedPayload(
+        _ format: ExportFormat, png: () -> CGImage?, pdf: () -> Data?
+    ) -> (data: Data, type: UTType, ext: String)? {
+        switch format {
+        case .png: png().flatMap(pngData(from:)).map { ($0, .png, "png") }
+        case .pdf: pdf().map { ($0, .pdf, "pdf") }
+        }
     }
 
     /// Renders and writes the image to the general pasteboard. Returns success.
@@ -177,14 +205,10 @@ enum ExportManager {
         _ config: SnapshotConfig, scale: CGFloat = 2, format: ExportFormat = .png,
         fixedSize: CGSize? = nil, profile: ColorProfile = .sRGB
     ) -> SaveOutcome {
-        let payload: (data: Data, type: UTType, ext: String)? =
-            switch format {
-            case .png:
-                renderCGImage(config, scale: scale, fixedSize: fixedSize, profile: profile)
-                    .flatMap(pngData(from:))
-                    .map { ($0, .png, "png") }
-            case .pdf: pdfData(config, fixedSize: fixedSize).map { ($0, .pdf, "pdf") }
-            }
+        let payload = encodedPayload(
+            format,
+            png: { renderCGImage(config, scale: scale, fixedSize: fixedSize, profile: profile) },
+            pdf: { pdfData(config, fixedSize: fixedSize) })
         guard let payload else {
             Log.export.error("Save to file failed: render or encode returned nil")
             return .failed
