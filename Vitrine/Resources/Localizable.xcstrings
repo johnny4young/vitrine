@@ -3432,6 +3432,61 @@
           }
         }
       }
+    },
+    "App Language" : {
+      "comment" : "Settings General pane: app UI language picker label (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idioma"
+          }
+        }
+      }
+    },
+    "System" : {
+      "comment" : "Settings General pane: app language option that follows the system language order (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sistema"
+          }
+        }
+      }
+    },
+    "English" : {
+      "comment" : "Settings General pane: app language option (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inglés"
+          }
+        }
+      }
+    },
+    "Spanish" : {
+      "comment" : "Settings General pane: app language option (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Español"
+          }
+        }
+      }
+    },
+    "Vitrine reopens in the selected language the next time you launch it." : {
+      "comment" : "Settings General pane: footnote under the app language picker (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine se reabrirá en el idioma seleccionado la próxima vez que lo abras."
+          }
+        }
+      }
     }
   }
 }

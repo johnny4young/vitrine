@@ -58,6 +58,16 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(hotkeyAction.rawValue, forKey: Keys.hotkeyAction) }
     }
 
+    /// The app's UI language (CS-047). `.system` follows the system language order; the
+    /// other cases pin a shipped locale. Persisted, and written into `AppleLanguages` so
+    /// macOS loads the chosen localization on the next launch (the Settings picker says so).
+    @Published var appLanguage: AppLanguage {
+        didSet {
+            defaults.set(appLanguage.rawValue, forKey: Keys.appLanguage)
+            applyLanguageOverride()
+        }
+    }
+
     /// The id of the last selected destination preset, or `nil` for "Custom"
     /// (no preset, the user's own settings). Persisted so the last choice is
     /// restored on relaunch (CS-020).
@@ -180,6 +190,7 @@ final class AppSettings: ObservableObject {
         static let colorProfile = "colorProfile"
         static let richClipboard = "richClipboard"
         static let hotkeyAction = "hotkeyAction"
+        static let appLanguage = "appLanguage"
         static let treatURLs = "treatURLsAsScreenshot"
         /// Web URL-capture viewport/wait settings (CS-044). All additive keys with
         /// documented defaults, so an older store simply reads the defaults.
@@ -213,7 +224,7 @@ final class AppSettings: ObservableObject {
             themeID, languageID, fontSize, padding, cornerRadius, showChrome,
             showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, exportScale, exportFormat,
-            colorProfile, richClipboard, hotkeyAction, treatURLs,
+            colorProfile, richClipboard, hotkeyAction, appLanguage, treatURLs,
             webViewportKind, webCustomViewportWidth, webCustomViewportHeight,
             webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
             fontName, fontLigatures, selectedPreset, hasSeenWelcome,
@@ -253,6 +264,7 @@ final class AppSettings: ObservableObject {
         colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
         richClipboard = defaults.object(forKey: Keys.richClipboard) as? Bool ?? false
         hotkeyAction = HotkeyAction.resolve(defaults.string(forKey: Keys.hotkeyAction))
+        appLanguage = AppLanguage.resolve(defaults.string(forKey: Keys.appLanguage))
         // A persisted preset id that no longer maps to a known preset resolves to
         // "Custom" (nil) rather than trapping (CS-020 / CS-050 documented fallback).
         selectedPresetID =
@@ -450,6 +462,18 @@ final class AppSettings: ObservableObject {
         )
     }
 
+    /// Writes the chosen UI language into `AppleLanguages` (or removes the override for
+    /// `.system`) in this instance's defaults domain — `.standard` for the shared app, an
+    /// isolated suite under test — so macOS loads the selected localization on the next
+    /// launch (CS-047).
+    private func applyLanguageOverride() {
+        if let code = appLanguage.localeCode {
+            defaults.set([code], forKey: "AppleLanguages")
+        } else {
+            defaults.removeObject(forKey: "AppleLanguages")
+        }
+    }
+
     /// Restores every setting to its factory default without an app reinstall
     /// (CS-050). Clears the persisted keys, re-stamps the current schema
     /// version, and resets the live published state so the UI updates at once.
@@ -466,6 +490,7 @@ final class AppSettings: ObservableObject {
         colorProfile = .fallback
         richClipboard = false
         hotkeyAction = .fallback
+        appLanguage = .system
         treatURLsAsScreenshot = false
         webViewportKind = WebDefaults.viewportKind
         webCustomViewportWidth = WebDefaults.customViewportWidth

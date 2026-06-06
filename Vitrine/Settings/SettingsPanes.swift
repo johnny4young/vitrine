@@ -79,6 +79,19 @@ struct GeneralSettingsView: View {
                 }
 
             Section {
+                Picker("App Language", selection: $settings.appLanguage) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                .accessibilityIdentifier("app-language-picker")
+            } footer: {
+                Text("Vitrine reopens in the selected language the next time you launch it.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Button("Reset All Settings…", role: .destructive) {
                     showResetConfirmation = true
                 }

@@ -456,3 +456,102 @@ struct AppSettingsRoundTripTests {
         #expect(reloaded.config.fontLigatures == false, "ligature flag did not stay off")
     }
 }
+
+// MARK: - App UI language persistence
+
+/// The Settings language switcher and its persistence (CS-047). macOS loads an app's
+/// localization at launch from `AppleLanguages` in its preferences domain, so the
+/// choice is stored both as the raw enum (to drive the picker) and as the
+/// `AppleLanguages` override (to take effect on the next launch). These tests use an
+/// isolated suite, so they never touch the real app's language.
+@MainActor
+@Suite("App UI language persistence · CS-047")
+struct AppLanguagePersistenceTests {
+    /// The raw key the choice is stored under and the system key macOS reads at launch.
+    private static let languageKey = "appLanguage"
+    private static let appleLanguagesKey = "AppleLanguages"
+
+    /// A clean install defaults to `.system` and persists nothing: construction reads the
+    /// absent value without writing a choice or an app-level override back, so the app
+    /// simply follows the system language order until the user picks otherwise. (`.system`
+    /// resolves to the host's `AppleLanguages` list, which is inherited from the global
+    /// domain and so is *not* `nil` here; the meaningful invariant is that the app wrote
+    /// nothing.)
+    @Test func defaultsToSystemWritesNothing() {
+        let defaults = freshDefaults()
+        let settings = AppSettings(defaults: defaults)
+        #expect(settings.appLanguage == .system)
+        #expect(defaults.string(forKey: Self.languageKey) == nil)
+    }
+
+    /// Choosing Spanish survives a close/open cycle: the choice is written through to the
+    /// store, the `AppleLanguages` override is set so macOS loads Spanish next launch, and
+    /// a fresh instance reads the choice back. This is the "persisted when the app is
+    /// closed and reopened" guarantee the picker's footnote promises.
+    @Test func spanishPersistsAndOverridesAppleLanguages() {
+        let defaults = freshDefaults()
+        let first = AppSettings(defaults: defaults)
+
+        first.appLanguage = .spanish
+        #expect(defaults.string(forKey: Self.languageKey) == "spanish")
+        #expect(defaults.array(forKey: Self.appleLanguagesKey) as? [String] == ["es"])
+
+        let reloaded = AppSettings(defaults: defaults)
+        #expect(reloaded.appLanguage == .spanish, "language choice was lost across reload")
+    }
+
+    /// Pinning English writes the `en` override — the symmetric case to Spanish — so the
+    /// app opens in English even when the system prefers another language.
+    @Test func englishOverridesAppleLanguages() {
+        let defaults = freshDefaults()
+        let settings = AppSettings(defaults: defaults)
+        settings.appLanguage = .english
+        #expect(defaults.array(forKey: Self.appleLanguagesKey) as? [String] == ["en"])
+    }
+
+    /// Returning to System clears the per-app override so the app follows the system
+    /// language order again, and the cleared state survives a reload. The baseline is
+    /// captured before any override so the assertion holds regardless of the host's
+    /// language list (`AppleLanguages` is inherited from the global domain).
+    @Test func systemClearsTheOverrideAndPersists() {
+        let defaults = freshDefaults()
+        let inherited = defaults.array(forKey: Self.appleLanguagesKey) as? [String]
+        let first = AppSettings(defaults: defaults)
+
+        first.appLanguage = .spanish
+        #expect(defaults.array(forKey: Self.appleLanguagesKey) as? [String] == ["es"])
+
+        first.appLanguage = .system
+        #expect(
+            defaults.array(forKey: Self.appleLanguagesKey) as? [String] == inherited,
+            "clearing the override should fall back to the inherited system list")
+
+        let reloaded = AppSettings(defaults: defaults)
+        #expect(reloaded.appLanguage == .system)
+    }
+
+    /// `resetToDefaults()` returns the language to `.system`, removes the override, and
+    /// the reset persists so a fresh instance also sees System (CS-047/CS-050).
+    @Test func resetReturnsLanguageToSystem() {
+        let defaults = freshDefaults()
+        let inherited = defaults.array(forKey: Self.appleLanguagesKey) as? [String]
+        let first = AppSettings(defaults: defaults)
+        first.appLanguage = .spanish
+        first.resetToDefaults()
+        #expect(first.appLanguage == .system)
+        #expect(defaults.array(forKey: Self.appleLanguagesKey) as? [String] == inherited)
+
+        let reloaded = AppSettings(defaults: defaults)
+        #expect(reloaded.appLanguage == .system)
+    }
+
+    /// `AppLanguage.resolve` defends against a missing or corrupt persisted value by
+    /// falling back to `.system`, and round-trips every valid raw value (CS-050).
+    @Test func resolveIsDefensiveAndRoundTrips() {
+        #expect(AppLanguage.resolve(nil) == .system)
+        #expect(AppLanguage.resolve("not-a-language") == .system)
+        for language in AppLanguage.allCases {
+            #expect(AppLanguage.resolve(language.rawValue) == language)
+        }
+    }
+}
