@@ -110,7 +110,9 @@ Vitrine is private by design, and that promise does not soften as the product gr
   and no collected data, so the App Store privacy label is **Data Not Collected**.
 
 The permission and privacy posture per phase is documented in
-[**docs/PROJECT.md**](docs/PROJECT.md#privacy-and-permissions).
+[**docs/PROJECT.md**](docs/PROJECT.md#privacy-and-permissions); the full
+entitlement-by-entitlement audit table (per phase and per distribution channel) is in
+[**docs/PERMISSIONS.md**](docs/PERMISSIONS.md).
 
 ## Tech stack
 
@@ -214,6 +216,7 @@ to leave the repo:
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
 - [**docs/RENDER-PHASES.md**](docs/RENDER-PHASES.md) — "beyond code": OG cards, HTML/URL snapshots, and the optional web render service.
 - [**docs/SCREEN-CAPTURE-DISCOVERY.md**](docs/SCREEN-CAPTURE-DISCOVERY.md) — why arbitrary screen/window capture is parked (Screen Recording trade-offs).
+- [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md) — the permission and entitlement matrix: every entitlement with its reason, user-facing behavior, and App Store impact, per phase and channel.
 - [**docs/DESIGN-QA.md**](docs/DESIGN-QA.md) — the generated launch gallery and the design-QA process.
 - [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized DMG, Homebrew cask, release workflow.
 

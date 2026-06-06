@@ -6,14 +6,89 @@ on:
 
 permissions:
   contents: write
+  # Sparkle auto-update (CS-064): the appcast is deployed to GitHub Pages, which the
+  # SUFeedURL in Info.plist points at. `pages: write` + `id-token: write` are required
+  # by the Pages deploy action; `contents: write` already covers attaching the appcast
+  # and the signed-DMG metadata to the GitHub release.
+  pages: write
+  id-token: write
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
+  # Release gate (CS-060): the same lint/build/test/UI-test-build checks CI runs
+  # on every PR, re-run against the tagged commit. `publish` needs this job, so a
+  # tag can never publish a DMG that fails lint, build, the unit suite, or the UI
+  # test compile. This makes a tagged release a true quality gate, not just a
+  # packaging step.
+  verify:
+    name: Verify (lint, build, UI-test build, test)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Export DEVELOPER_DIR
+        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+
+      - name: Toolchain versions
+        run: |
+          {
+            echo "### Release toolchain (CS-060)"
+            echo '```'
+            echo "Tag: ${GITHUB_REF_NAME}"
+            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
+            sw_vers
+            xcodebuild -version
+            swift --version
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Lint (swift-format)
+        run: make lint
+
+      - name: Build (Debug)
+        run: make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult"
+
+      - name: Build UI tests
+        run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
+
+      - name: Test (Swift Testing)
+        run: make test RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
+
+      # Upload diagnostics if the gate fails so a release blocked by a regression
+      # can be triaged from the tag run itself (CS-060).
+      - name: Upload .xcresult bundles
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-verify-xcresults
+          path: |
+            ${{ runner.temp }}/build.xcresult
+            ${{ runner.temp }}/build-ui-tests.xcresult
+            ${{ runner.temp }}/test.xcresult
+          if-no-files-found: ignore
+
+  publish:
     name: Build & publish DMG
+    needs: verify
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,17 +104,184 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      # Signing/notarization are gated on these secrets; the build no-ops without them.
+      # Import the Developer ID Application certificate into a temporary keychain
+      # so `codesign` can find it during the build (CS-061). Gated on the cert
+      # secret: when it is absent (e.g. a fork or a maintainer without the
+      # certificate yet), this step is skipped and the build falls back to the
+      # unsigned, ad-hoc path. The certificate is a base64-encoded .p12 export and
+      # MACOS_CERTIFICATE_PASSWORD is its export password.
+      - name: Import Developer ID certificate
+        if: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="${RUNNER_TEMP}/vitrine-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          CERT_PATH="${RUNNER_TEMP}/developer-id.p12"
+          echo "${MACOS_CERTIFICATE_P12}" | base64 --decode > "${CERT_PATH}"
+          security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN}"
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
+          security import "${CERT_PATH}" -P "${MACOS_CERTIFICATE_PASSWORD}" \
+            -A -t cert -f pkcs12 -k "${KEYCHAIN}"
+          # Allow codesign to use the imported key without an interactive prompt.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}" >/dev/null
+          # Put our keychain on the search list so codesign sees the identity.
+          security list-keychains -d user -s "${KEYCHAIN}" "$(security default-keychain -d user | tr -d ' "')"
+          rm -f "${CERT_PATH}"
+          security find-identity -v -p codesigning "${KEYCHAIN}"
+
+      # Stage the App Store Connect API private key (.p8) from a secret, if
+      # provided. This is the preferred notarization credential for CI because it
+      # avoids an app-specific password. Skipped when the secret is absent, leaving
+      # the Apple-ID credential path (or no notarization) intact.
+      - name: Stage App Store Connect API key
+        if: ${{ secrets.MACOS_NOTARY_KEY_P8 != '' }}
+        env:
+          MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="${RUNNER_TEMP}/notary-key.p8"
+          echo "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
+          echo "MACOS_NOTARY_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
+
+      # Signing + notarization are gated inside build-dmg.sh on these env vars; the
+      # build degrades to an unsigned, ad-hoc DMG when they are unset (CS-061). The
+      # script signs with the hardened runtime, notarizes with whichever credential
+      # style is present (App Store Connect API key preferred over Apple ID),
+      # staples, then runs `codesign --verify --deep --strict --verbose=2` and
+      # `spctl -a -vv` before publishing.
       - name: Build DMG
         env:
           CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
+          MACOS_SIGN_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
           MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
           MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
           MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
         run: ./scripts/build-dmg.sh
+
+      # Compute, print, and store the DMG SHA-256 so the Homebrew cask can be
+      # bumped without re-downloading the artifact (CS-063). The checksum is
+      # written to the job summary (printed), saved as a `.sha256` sidecar that
+      # ships as a release asset (stored), and emitted as a ready-to-paste cask
+      # `version`/`sha256` block to make the tap update a copy-paste — see
+      # docs/RELEASING.md. `build-dmg.sh` already prints the same checksum; this
+      # step is what persists it.
+      - name: Compute and store DMG SHA-256
+        id: checksum
+        run: |
+          set -euo pipefail
+          # The DMG name is produced by build-dmg.sh as Vitrine-<version>.dmg.
+          VERSION="${GITHUB_REF_NAME#v}"
+          DMG="dist/Vitrine-${VERSION}.dmg"
+          SHA256="$(shasum -a 256 "$DMG" | awk '{print $1}')"
+          # Standard sidecar (same format as `shasum -a 256`), uploaded with the DMG.
+          shasum -a 256 "$DMG" > "${DMG}.sha256"
+          # Ready-to-paste cask stanza values for the tap update.
+          {
+            echo "version \"${VERSION}\""
+            echo "sha256 \"${SHA256}\""
+          } > dist/vitrine-cask-update.txt
+          # Expose to later steps and the public step outputs.
+          {
+            echo "version=${VERSION}"
+            echo "sha256=${SHA256}"
+            echo "dmg=${DMG}"
+          } >> "$GITHUB_OUTPUT"
+          # Print to the run summary so the value is visible without downloading.
+          {
+            echo "### DMG checksum (CS-063)"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Artifact | \`$(basename "$DMG")\` |"
+            echo "| Version | \`${VERSION}\` |"
+            echo "| SHA-256 | \`${SHA256}\` |"
+            echo ""
+            echo "Homebrew cask update (paste into \`Casks/vitrine.rb\` in the tap):"
+            echo '```ruby'
+            echo "version \"${VERSION}\""
+            echo "sha256 \"${SHA256}\""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Sparkle auto-update appcast (CS-064). Sign the DMG with Sparkle's EdDSA tool and
+      # (re)generate the signed appcast.xml so direct-download users update from version
+      # N to N+1 without a manual reinstall. The appcast is staged into `dist/` and
+      # `_site/` here; the release publish below attaches it and the Pages deploy
+      # (next step) serves it at the SUFeedURL in Info.plist.
+      #
+      # Gated on the EdDSA private-key secret, like the signing/notarization steps
+      # (CS-061): without SPARKLE_EDDSA_PRIVATE_KEY this is skipped and the release still
+      # publishes a DMG — it just carries no appcast update entry (a fork, or this repo
+      # before the key pair exists, degrades gracefully). The private key is the secret
+      # half of the SUPublicEDKey embedded in Info.plist; it never leaves the secret.
+      - name: Generate signed Sparkle appcast
+        id: appcast
+        if: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY != '' }}
+        env:
+          SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+          # The release notes URL Sparkle shows for this version (the GitHub release page).
+          RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          # Fetch Sparkle's binary tools (generate_appcast, which signs each entry with the
+          # EdDSA key). Pinned to the same 2.x line the app links via SPM (project.yml
+          # resolves Sparkle 2.9.x) so the appcast format matches the runtime.
+          SPARKLE_VERSION="2.9.2"
+          curl -fsSL -o "${RUNNER_TEMP}/Sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          mkdir -p "${RUNNER_TEMP}/sparkle"
+          tar -xf "${RUNNER_TEMP}/Sparkle.tar.xz" -C "${RUNNER_TEMP}/sparkle"
+          GENERATE_APPCAST="${RUNNER_TEMP}/sparkle/bin/generate_appcast"
+
+          # generate_appcast reads every archive in a folder and writes appcast.xml beside
+          # them, signing each entry with the EdDSA key. The private key is fed on STDIN via
+          # `--ed-key-file -` (Sparkle's recommended CI form), so it never touches disk and
+          # is never echoed to the log. Point the tool at dist/ (which holds the built DMG);
+          # --download-url-prefix makes each item's enclosure URL the release's DMG asset.
+          printf '%s' "${SPARKLE_EDDSA_PRIVATE_KEY}" | "${GENERATE_APPCAST}" --ed-key-file - \
+            --download-url-prefix "${{ github.server_url }}/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/" \
+            --link "${RELEASE_URL}" \
+            dist/
+
+          # Stage the appcast for the GitHub Pages deploy (served at SUFeedURL).
+          mkdir -p _site
+          cp dist/appcast.xml _site/appcast.xml
+
+          {
+            echo "### Sparkle appcast (CS-064)"
+            echo ""
+            echo "Signed appcast generated for \`${VERSION}\` and staged for GitHub Pages."
+            echo "Served at the SUFeedURL in Info.plist; attached to this release as \`appcast.xml\`."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.dmg
+          files: |
+            dist/*.dmg
+            dist/*.dmg.sha256
+            dist/vitrine-cask-update.txt
+            dist/appcast.xml
           generate_release_notes: true
+
+      # Deploy the signed appcast to GitHub Pages so the SUFeedURL in Info.plist resolves.
+      # Skipped when no appcast was produced (no EdDSA key secret), so the release still
+      # publishes without it.
+      - name: Upload appcast Pages artifact
+        if: ${{ steps.appcast.outcome == 'success' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy appcast to GitHub Pages
+        if: ${{ steps.appcast.outcome == 'success' }}
+        uses: actions/deploy-pages@v4

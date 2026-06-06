@@ -45,7 +45,11 @@
 	     Mac (CS-045). Phase 1 promise is unchanged: copied code is turned into an
 	     image entirely on-device. In Product Phase 2, a copied URL is captured by
 	     loading the requested webpage locally in WebKit on this Mac — there is no
-	     remote screenshot service, no account, and no analytics or telemetry. -->
+	     remote screenshot service, no account, and no analytics or telemetry.
+	     This is the only declared usage string; it is the Info.plist row of the
+	     permission matrix in docs/PERMISSIONS.md (CS-065). No Screen Recording usage
+	     string is declared — arbitrary screen capture stays parked until approved
+	     (CS-046). Tests/PrivacyManifestTests.swift fails on drift. -->
 	<key>NSPasteboardUsageDescription</key>
 	<string>Vitrine reads the clipboard to turn copied code or a URL into an image. Code never leaves your Mac, and a URL is captured by loading the webpage locally in WebKit on your Mac.</string>
 	<!-- Services menu action (CS-034): "Render Code Image with Vitrine" takes a
@@ -83,5 +87,35 @@
 			<string>app.vitrine.render-code-image</string>
 		</dict>
 	</array>
+	<!-- Sparkle auto-update channel (CS-064, see docs/RELEASING.md). These keys
+	     configure the direct-download update story; the App Store build excludes
+	     Sparkle entirely (it removes the VITRINE_DIRECT_DOWNLOAD compilation
+	     condition and strips the framework — see docs/APP-STORE.md), so Sparkle
+	     ignores these keys there. -->
+	<!-- The appcast feed: a signed RSS feed Sparkle polls to learn about new
+	     versions. It is served over HTTPS from the GitHub Pages site for this
+	     repository and is republished on every GitHub release (see
+	     .github/workflows/release.yml). Sparkle compares the feed's entries to this
+	     bundle's CFBundleVersion to decide whether an update is available. -->
+	<key>SUFeedURL</key>
+	<string>https://johnny4young.github.io/vitrine/appcast.xml</string>
+	<!-- The EdDSA (ed25519) public key Sparkle uses to verify every downloaded
+	     update's signature before installing it. The matching PRIVATE key never
+	     leaves the release maintainer's Keychain; the appcast's signatures are
+	     produced by Sparkle's `sign_update` at release time. A build whose download
+	     does not verify against this key is rejected, which is what makes a
+	     direct-download update safe against tampering and man-in-the-middle attacks.
+	     This is a placeholder; docs/RELEASING.md documents generating the real key
+	     pair with Sparkle's `generate_keys` and pasting the public half here. -->
+	<key>SUPublicEDKey</key>
+	<string>REPLACE_WITH_SPARKLE_EDDSA_PUBLIC_KEY</string>
+	<!-- Privacy: Sparkle's optional anonymous system-profiling feature is OFF, so an
+	     update check sends no usage data — only the request needed to fetch the
+	     appcast and the chosen download. This keeps the app's no-analytics, no-
+	     telemetry promise on the update path too (CS-064; mirrors the privacy posture
+	     documented in docs/PERMISSIONS.md and PrivacyInfo.xcprivacy). No profiling
+	     delegate is installed in code either, so this cannot be silently re-enabled. -->
+	<key>SUEnableSystemProfiling</key>
+	<false/>
 </dict>
 </plist>

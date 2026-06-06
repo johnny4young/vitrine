@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Direct-download channel entitlements (CS-064). This is the SUPERSET used ONLY by
+	     the signed, notarized DMG build: it is the Phase 1 set (App Sandbox + user-selected
+	     files, identical to Vitrine.entitlements) PLUS the two capabilities Sparkle needs to
+	     auto-update a sandboxed app. The DMG packaging step selects this file via
+	     CODE_SIGN_ENTITLEMENTS (see scripts/build-dmg.sh).
+
+	     The default build and the App Store build keep the minimal Vitrine.entitlements
+	     instead — no network, no Sparkle exceptions — so:
+	       * the Phase 1 "no network" guarantee and the entitlement drift guard
+	         (Tests/PrivacyManifestTests.swift, CS-065) stay intact for the shipped App Store
+	         posture, and
+	       * the App Store build excludes Sparkle entirely (it also removes the
+	         VITRINE_DIRECT_DOWNLOAD compilation condition and strips the framework).
+	     Any change to the Sparkle-specific keys below must update docs/PERMISSIONS.md and the
+	     CS-064 tests in the same change. -->
+
+	<!-- App Sandbox on — identical to the App Store / Phase 1 entitlement set. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- User-selected file access — identical to the App Store / Phase 1 entitlement set. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+
+	<!-- Outbound network access, required for Sparkle to fetch the appcast (SUFeedURL) and
+	     download the update. This is present ONLY on the direct-download build; the App Store
+	     build ships without it (and without Sparkle), so the documented "App Store build
+	     requests no network" posture is unchanged. This is NOT the Phase 2 URL-capture switch:
+	     URL capture is still gated by NetworkCapability + its own first-use disclosure and
+	     stays off until that feature ships (CS-043). -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+
+	<!-- Sparkle XPC mach-lookup exceptions, required so a sandboxed app can talk to Sparkle's
+	     own Installer/Downloader services. $(PRODUCT_BUNDLE_IDENTIFIER) is substituted at build
+	     time (app.vitrine), yielding app.vitrine-spks / app.vitrine-spki. These name only
+	     Sparkle's per-app services — they grant no general mach-lookup access. -->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spks</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spki</string>
+	</array>
+</dict>
+</plist>

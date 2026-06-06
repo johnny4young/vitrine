@@ -25,6 +25,10 @@ enum VitrineCommand: String, CaseIterable {
     case help
     case about
     case whatsNew
+    // Direct-download auto-update (CS-064). Surfaced only on the direct-download
+    // build, which ships Sparkle; the App Store build excludes Sparkle and hides
+    // this command (see SoftwareUpdater).
+    case checkForUpdates
 
     // Editor/document-scoped (dispatched through the first responder so they are
     // enabled only while an editor window is key, and only when it has code).
@@ -55,6 +59,7 @@ enum VitrineCommand: String, CaseIterable {
         case .help: String(localized: "Vitrine Help")
         case .about: String(localized: "About Vitrine")
         case .whatsNew: String(localized: "What's New")
+        case .checkForUpdates: String(localized: "Check for Updates…")
         case .copyImage: String(localized: "Copy Image")
         case .saveImage: String(localized: "Save Image…")
         case .shareImage: String(localized: "Share Image…")
@@ -76,6 +81,7 @@ enum VitrineCommand: String, CaseIterable {
         case .help: "questionmark.circle"
         case .about: "info.circle"
         case .whatsNew: "sparkles"
+        case .checkForUpdates: "arrow.down.circle"
         case .copyImage: "doc.on.clipboard"
         case .saveImage: "square.and.arrow.down"
         case .shareImage: "square.and.arrow.up"
@@ -100,7 +106,7 @@ enum VitrineCommand: String, CaseIterable {
         case .saveImage: "s"  // ⌘S — save the rendered image
         case .shareImage: nil  // Share opens a picker; no reserved shortcut
         // Submenu/window/explicit-action commands with no reserved shortcut.
-        case .copyDataURI, .copyHighlightedCode, .whatsNew, .makeDefault: nil
+        case .copyDataURI, .copyHighlightedCode, .whatsNew, .makeDefault, .checkForUpdates: nil
         }
     }
 
@@ -113,7 +119,9 @@ enum VitrineCommand: String, CaseIterable {
         case .newCapture: [.command, .shift]
         case .copyImage: [.command, .shift]
         case .openEditor, .newEditorWindow, .settings, .help, .saveImage: [.command]
-        case .about, .shareImage, .makeDefault, .copyDataURI, .copyHighlightedCode, .whatsNew: []
+        case .about, .shareImage, .makeDefault, .copyDataURI, .copyHighlightedCode, .whatsNew,
+            .checkForUpdates:
+            []
         }
     }
 
@@ -134,6 +142,7 @@ enum VitrineCommand: String, CaseIterable {
         case .help: String(localized: "Vitrine help")
         case .about: String(localized: "About Vitrine")
         case .whatsNew: String(localized: "What's new in Vitrine")
+        case .checkForUpdates: String(localized: "Check for app updates")
         case .copyImage: String(localized: "Copy image to clipboard")
         case .saveImage: String(localized: "Save image to a file")
         case .shareImage: String(localized: "Share image")
@@ -306,6 +315,14 @@ final class AppCommandResponder: NSObject {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [:])
     }
+
+    /// Starts a user-initiated update check on the direct-download build (CS-064). The
+    /// menu item that targets this is only added on a build that ships Sparkle, so on the
+    /// App Store build (which excludes Sparkle) there is no item and `checkForUpdates()`
+    /// degrades to a no-op.
+    @objc func checkForUpdates(_ sender: Any?) {
+        SoftwareUpdater.shared.checkForUpdates()
+    }
 }
 
 // MARK: - Main menu builder
@@ -366,6 +383,19 @@ enum AppMenu {
             item(
                 for: .about, action: #selector(AppCommandResponder.showAbout(_:)),
                 target: AppCommandResponder.shared))
+
+        // "Check for Updates…" sits in its conventional App-menu position, but only on
+        // the direct-download build that ships Sparkle (CS-064). The App Store build
+        // excludes Sparkle, so `isSupported` is false and no update command appears.
+        if SoftwareUpdater.isSupported {
+            menu.addItem(.separator())
+            menu.addItem(
+                item(
+                    for: .checkForUpdates,
+                    action: #selector(AppCommandResponder.checkForUpdates(_:)),
+                    target: AppCommandResponder.shared))
+        }
+
         menu.addItem(.separator())
         menu.addItem(
             item(

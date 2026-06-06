@@ -2,6 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- This entitlement set is the Phase 1 row of the permission matrix in
+	     docs/PERMISSIONS.md (CS-065): sandbox + user-selected file access, with no
+	     network and no Screen Recording. Any change here must update that matrix in
+	     the same change; Tests/PrivacyManifestTests.swift fails on drift. -->
+	<!-- This is also the App Store-compatible entitlement set (CS-062, see
+	     docs/APP-STORE.md). The SAME app target ships through the direct-download DMG
+	     and the optional Mac App Store, so the entitlements are identical across both
+	     channels — there is no separate App Store build that drops or adds a
+	     capability. The App Store REQUIRES the App Sandbox (below); this app already
+	     runs sandboxed, so nothing changes for an App Store submission. The only
+	     channel difference is the signing identity (Developer ID + notarization for
+	     the DMG vs. Apple Distribution for the App Store). Adding the network entitlement
+	     for Phase 2 URL capture is gated: it must update docs/APP-STORE.md, the privacy
+	     copy, and the tests in the same change before any App Store submission. -->
 	<!-- App Sandbox on. Deliberately NO com.apple.security.network.client:
 	     the core is fully local (CS-011), and Product Phase 2 URL capture (CS-043)
 	     stays disabled until this entitlement is deliberately added. The renderer

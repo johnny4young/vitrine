@@ -290,6 +290,28 @@
         }
       }
     },
+    "Check for Updates…" : {
+      "comment" : "Menu command: check for an app update (Sparkle, direct-download build).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar actualizaciones…"
+          }
+        }
+      }
+    },
+    "Check for app updates" : {
+      "comment" : "VoiceOver label for the Check for Updates command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar actualizaciones de la app"
+          }
+        }
+      }
+    },
     "Clear Recents" : {
       "comment" : "Menu action that empties the recent-captures list.",
       "localizations" : {

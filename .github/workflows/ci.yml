@@ -4,14 +4,29 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Weekly drift watch (CS-060): GitHub rolls the macOS runner image and the
+  # bundled Xcode/SDK on its own schedule, which can break the build with no code
+  # change. A scheduled run on the default branch exercises the full gate against
+  # whatever the current image ships, so drift surfaces here instead of on the
+  # next unrelated PR. Mondays 08:00 UTC.
+  schedule:
+    - cron: "0 8 * * 1"
+  # Allow re-running the gate (including the drift check) on demand.
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Scheduled and manual runs have no PR ref to coalesce on, so key them by run id
+  # to avoid cancelling an in-flight drift run.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'schedule' && github.run_id || '' }}
   cancel-in-progress: true
 
 jobs:
   build:
     name: Lint & build
+    # macos-latest is the moving "current" image; the drift job above is what
+    # catches it rolling. The "Toolchain versions" step records the exact
+    # macOS/Xcode/Swift this run built against, satisfying the CS-060 acceptance
+    # to log exact versions before building.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,20 +39,83 @@ jobs:
       - name: Export DEVELOPER_DIR
         run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
 
+      # Record the exact toolchain this run built against (CS-060). Printed before
+      # any build step and echoed into the job summary so a green/red result is
+      # always tied to a known macOS image, Xcode, and Swift version — the anchor
+      # for diagnosing runner drift.
+      - name: Toolchain versions
+        run: |
+          {
+            echo "### Toolchain (CS-060)"
+            echo '```'
+            echo "Event: ${GITHUB_EVENT_NAME}"
+            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
+            sw_vers
+            echo "DEVELOPER_DIR=${DEVELOPER_DIR}"
+            xcodebuild -version
+            swift --version
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      # Cache the global Swift Package Manager download/clone cache (CS-060). This
+      # directory is a content-addressed checkout cache, safe to restore across
+      # runs; xcodebuild repopulates and re-resolves into DerivedData as needed, so
+      # a stale or partial cache only costs a re-download, never a wrong build. The
+      # key is bound to project.yml because that file is the single source of truth
+      # for the package dependencies (the resolved project is generated, not
+      # committed).
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      # Validate every workflow's YAML syntax with Ruby's standard-library parser
+      # (ships on the macOS runner; no extra install). This is the CI counterpart
+      # to WorkflowConfigurationTests, which asserts the *structure* the acceptance
+      # criteria require; this step guards against a malformed YAML edit that the
+      # structural test's targeted reads might not surface.
+      - name: Validate workflow YAML
+        run: |
+          set -euo pipefail
+          for f in .github/workflows/*.yml; do
+            ruby -ryaml -e 'YAML.load_file(ARGV[0])' "$f"
+            echo "✓ $f"
+          done
 
       - name: Lint (swift-format)
         run: make lint
 
+      # Capture an .xcresult bundle for each xcodebuild phase (CS-060) so a failure
+      # can be triaged offline from the uploaded artifact. RESULT_BUNDLE is honored
+      # by the build/test/build-ui-tests make targets.
       - name: Build (Debug)
-        run: make build
+        run: make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult"
 
       - name: Build UI tests
-        run: make build-ui-tests
+        run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
 
       - name: Test (Swift Testing)
-        run: make test
+        run: make test RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
+
+      # On any failure above, upload the .xcresult bundles so the exact build/test
+      # diagnostics are available without re-running CI. Compressed because an
+      # .xcresult is a directory bundle.
+      - name: Upload .xcresult bundles
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresults
+          path: |
+            ${{ runner.temp }}/build.xcresult
+            ${{ runner.temp }}/build-ui-tests.xcresult
+            ${{ runner.temp }}/test.xcresult
+          if-no-files-found: ignore
 
       # Launch-gallery design-QA artifacts (CS-039). The unit suite already renders
       # and verifies every gallery sample; on a FAILURE, regenerate the gallery into

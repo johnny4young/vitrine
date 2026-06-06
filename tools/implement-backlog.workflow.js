@@ -33,10 +33,12 @@ const WORLDCLASS = Array.from({ length: 8 }, (_, i) => `CS-0${47 + i}`) // CS-04
 // this hardcoded PENDING list — not args — is the source of truth for what runs. Edit it to
 // change scope.
 const PENDING = [
-  // Product Phase 2 — local URL/HTML/social-card snapshots. CS-040 is the renderer
-  // abstraction the rest build on (do first); CS-043 adds the network-client
-  // entitlement (user opted in); CS-046 is a 🟡 discovery spike (doc, not a feature).
-  'CS-040', 'CS-041', 'CS-042', 'CS-043', 'CS-044', 'CS-045', 'CS-046',
+  // CI / release / distribution scaffolding. Mostly CI workflows, scripts, and docs.
+  // Signing/notarization/App-Store/Homebrew/Sparkle can only be *scaffolded* here —
+  // the actual signing & publishing need the user's secrets and a push, so each must
+  // stay gated on secrets and never block a normal build. CS-064 (Sparkle) adds an
+  // SPM dependency in project.yml — keep the build green after it.
+  'CS-060', 'CS-061', 'CS-062', 'CS-063', 'CS-064', 'CS-065', 'CS-066',
 ]
 
 const cfg = (typeof args === 'object' && args) ? args : {}

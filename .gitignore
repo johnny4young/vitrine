@@ -11,6 +11,8 @@ xcuserdata/
 ## Build products
 build/
 DerivedData/
+# Packaged release artifacts (scripts/build-dmg.sh writes DMGs here; CS-061).
+dist/
 *.moved-aside
 *.hmap
 *.ipa
