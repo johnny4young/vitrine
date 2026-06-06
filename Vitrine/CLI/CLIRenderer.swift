@@ -68,34 +68,39 @@ enum CLIRenderer {
     /// Renders `config` and writes it to `url` as PNG or PDF, returning the pixel
     /// dimensions of the written image (for PDF, the logical point size).
     ///
-    /// PNG goes through `renderCGImage` + `pngData` (the same ImageIO path the GUI
-    /// uses, honoring the chosen scale, fixed size, and color profile). PDF uses
-    /// `pdfData`. A render or encode failure maps to `CLIError.renderFailed`; a write
-    /// failure to `CLIError.writeFailed` — neither ever crashes the process.
+    /// Encoding goes through the shared `ExportManager.encodedPayload` ladder — the
+    /// same ImageIO/PDF path the GUI uses, honoring the chosen scale, fixed size, and
+    /// color profile — so the CLI never re-implements the format switch. The PNG branch
+    /// keeps its `CGImage` only to report exact pixel dimensions; the format-specific
+    /// dimension reporting below is the one genuinely CLI-only part. A render or encode
+    /// failure maps to `CLIError.renderFailed`; a write failure to
+    /// `CLIError.writeFailed` — neither ever crashes the process.
     private static func renderAndWrite(
         _ config: SnapshotConfig, options: CLIOptions, to url: URL
     ) throws -> (width: Int, height: Int) {
+        var pngImage: CGImage?
+        let payload = ExportManager.encodedPayload(
+            options.format,
+            png: {
+                let image = ExportManager.renderCGImage(
+                    config, scale: options.effectiveScale, fixedSize: options.fixedSize,
+                    profile: options.profile)
+                pngImage = image
+                return image
+            },
+            pdf: { ExportManager.pdfData(config, fixedSize: options.fixedSize) })
+        guard let payload else { throw CLIError.renderFailed }
+        try write(payload.data, to: url, options: options)
+
         switch options.format {
         case .png:
-            guard
-                let cgImage = ExportManager.renderCGImage(
-                    config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                    profile: options.profile),
-                let data = ExportManager.pngData(from: cgImage)
-            else {
-                throw CLIError.renderFailed
-            }
-            try write(data, to: url, options: options)
-            return (cgImage.width, cgImage.height)
+            // `pngImage` is non-nil whenever a PNG payload was produced above.
+            return (pngImage?.width ?? 0, pngImage?.height ?? 0)
         case .pdf:
-            guard let data = ExportManager.pdfData(config, fixedSize: options.fixedSize) else {
-                throw CLIError.renderFailed
-            }
-            try write(data, to: url, options: options)
             // A PDF is a vector document; report the logical point size it was laid
             // out at (the fixed preset size when one is pinned, else the hugged size
             // read back from the page).
-            let size = options.fixedSize ?? pdfPointSize(of: data) ?? .zero
+            let size = options.fixedSize ?? pdfPointSize(of: payload.data) ?? .zero
             return (Int(size.width.rounded()), Int(size.height.rounded()))
         }
     }
