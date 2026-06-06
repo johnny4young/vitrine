@@ -138,6 +138,14 @@ enum Notifier {
         CaptureFeedback(category: .success, message: message, actions: [])
     }
 
+    /// A standalone failure notice for a discrete action that could not complete — e.g.
+    /// a menu "Copy Image" / "Save Image" whose render or write failed. Reuses the HUD's
+    /// failure styling so the command never silently no-ops (CS-038 "Feedback says whether
+    /// output was copied, saved, shared, or blocked").
+    static func failure(_ message: String) -> CaptureFeedback {
+        CaptureFeedback(category: .failure, message: message, actions: [])
+    }
+
     /// Builds the success message from what actually happened to the image, so the
     /// user is told precisely where it went: copied, saved, both, or just rendered
     /// (auto-copy off and no save) (CS-038 acceptance: "Feedback says whether
@@ -175,7 +183,15 @@ enum Notifier {
             content.body = body
             let request = UNNotificationRequest(
                 identifier: UUID().uuidString, content: content, trigger: nil)
-            try? await center.add(request)
+            do {
+                try await center.add(request)
+            } catch {
+                // Don't leave a failed post completely silent; the body is non-PII
+                // feedback text, but log only the error domain/code to be safe (CS-048).
+                Log.app.error(
+                    "Notification post failed (\((error as NSError).domain, privacy: .public) \((error as NSError).code, privacy: .public))"
+                )
+            }
         }
     }
 }

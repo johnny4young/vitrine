@@ -74,7 +74,9 @@ struct CLIOptions: Equatable {
             preset.apply(to: &config)
         }
         if let themeID {
-            config.theme = Theme.theme(withID: themeID)
+            // Resolve through the custom-theme store so `--theme <custom-id>` works
+            // (it falls back to built-ins for a built-in/unknown id), matching the GUI.
+            config.theme = CustomThemeStore.shared.theme(withID: themeID)
         }
         // Transparency is the last word on the background so `--transparent` layers
         // cleanly onto any preset (the user asked for real alpha regardless).

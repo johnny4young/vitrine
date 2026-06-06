@@ -243,18 +243,34 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     @objc func copyRenderedImage(_ sender: Any?) {
         guard canPerform(.copyImage) else { return }
         let settings = activeSettings
-        ExportManager.copyToPasteboard(
+        // Surface the outcome so a render/encode failure from the menu isn't silent
+        // (CS-038), mirroring the quick-capture HUD path.
+        let copied = ExportManager.copyToPasteboard(
             settings.config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile)
+        CaptureHUDController.shared.present(
+            copied
+                ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
+                : Notifier.failure(String(localized: "Couldn't copy the image")))
     }
 
     @objc func saveRenderedImage(_ sender: Any?) {
         guard canPerform(.saveImage) else { return }
         let settings = activeSettings
-        ExportManager.saveToFile(
+        switch ExportManager.saveToFile(
             settings.config, scale: CGFloat(settings.effectiveExportScale),
             format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
             profile: settings.colorProfile)
+        {
+        case .saved:
+            CaptureHUDController.shared.present(
+                Notifier.confirmation(String(localized: "Image saved")))
+        case .failed:
+            CaptureHUDController.shared.present(
+                Notifier.failure(String(localized: "Couldn't save the image")))
+        case .cancelled:
+            break  // the user dismissed the save panel — no feedback needed
+        }
     }
 
     @objc func shareRenderedImage(_ sender: Any?) {

@@ -2,6 +2,50 @@
   "sourceLanguage" : "en",
   "version" : "1.0",
   "strings" : {
+    "Couldn't copy the image" : {
+      "comment" : "Editor menu: Copy Image failure feedback (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar la imagen"
+          }
+        }
+      }
+    },
+    "Couldn't save the image" : {
+      "comment" : "Editor menu: Save Image failure feedback (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo guardar la imagen"
+          }
+        }
+      }
+    },
+    "Image copied to clipboard" : {
+      "comment" : "Editor menu: Copy Image success feedback (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen copiada al portapapeles"
+          }
+        }
+      }
+    },
+    "Image saved" : {
+      "comment" : "Editor menu: Save Image success feedback (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen guardada"
+          }
+        }
+      }
+    },
     "%lld code blocks found — opening the editor to choose one" : {
       "comment" : "Capture feedback when several code blocks are detected and handed to the editor (CS-047).",
       "localizations" : {

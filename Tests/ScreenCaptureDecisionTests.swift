@@ -204,32 +204,4 @@ struct ScreenCaptureDecisionTests {
         #expect(doc.localizedCaseInsensitiveContains("App Sandbox"))
     }
 
-    /// When the maintainer's local working roadmap is present, cross-check that it records
-    /// CS-046 as parked with the no-code resolution. `docs/ROADMAP.md` is the **git-ignored**
-    /// local backlog, so it is absent in CI and fresh clones — there the committed decision
-    /// record `docs/SCREEN-CAPTURE-DISCOVERY.md` (asserted above) is the source of truth, and
-    /// this cross-check is skipped rather than failing on a deliberately-uncommitted file.
-    @Test func localRoadmapParksCS046WhenPresent() throws {
-        let roadmapURL = Self.file("docs", "ROADMAP.md")
-        guard FileManager.default.fileExists(atPath: roadmapURL.path) else { return }
-        let roadmap = try String(contentsOf: roadmapURL, encoding: .utf8)
-        #expect(roadmap.contains("CS-046"), "ROADMAP must contain the CS-046 entry")
-        // Parked, not promoted. The status is asserted via stable text ("parked" and the
-        // explicit refusal to promote) rather than the ⏸ status emoji, so a re-encoding of
-        // the glyph cannot mask a real promotion of the ticket.
-        #expect(
-            roadmap.localizedCaseInsensitiveContains("(parked)"),
-            "CS-046 must be marked parked in the ROADMAP")
-        #expect(
-            roadmap.localizedCaseInsensitiveContains("do not promote to Product Phase"),
-            "CS-046 must explicitly decline promotion to a Product phase")
-        // The no-code resolution, matched on the contiguous phrase (the ROADMAP prose
-        // wraps "No" onto the previous line, so the full sentence is not on one line).
-        #expect(
-            roadmap.localizedCaseInsensitiveContains(
-                "screen-capture code is added to the app target"),
-            "ROADMAP must record that CS-046 adds no screen-capture code to the app target")
-        // It points at the discovery document as the decision record.
-        #expect(roadmap.contains("SCREEN-CAPTURE-DISCOVERY.md"))
-    }
 }

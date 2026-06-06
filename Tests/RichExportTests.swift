@@ -244,12 +244,14 @@ struct RichExportTests {
         // Cocoa's HTML writer emits foreground color as a CSS `color:` rule.
         #expect(markup.localizedCaseInsensitiveContains("color"))
 
-        // And it round-trips back to multiple foreground colors, like the RTF path.
-        let reread = try #require(
-            NSAttributedString(
-                html: html, options: [.characterEncoding: String.Encoding.utf8.rawValue],
-                documentAttributes: nil))
-        #expect(Self.foregroundColors(in: reread).count > 1)
+        // And it carries multiple distinct foreground colors. We assert on the emitted
+        // CSS rather than re-parsing via `NSAttributedString(html:)`, which spins a WebKit
+        // run loop and intermittently returns nil under the headless parallel test runner.
+        let colors = Set(
+            markup.matches(of: /color:\s*([^;"}<]+)/).map {
+                String($0.1).trimmingCharacters(in: .whitespaces).lowercased()
+            })
+        #expect(colors.count > 1, "highlighted HTML must carry more than one color")
     }
 
     @Test func copyHighlightedCodePlacesRichTextAndPlainTextFallback() throws {

@@ -583,29 +583,43 @@ extension WebSnapshotConfig {
     /// — is refused unless a future explicit local-file mode is added.
     static let allowedSchemes: Set<String> = ["http", "https"]
 
-    /// Whether `host` names the local machine, which is refused for capture. Covers
-    /// `localhost`, the IPv4 loopback range `127.0.0.0/8`, the IPv6 loopback `::1`,
-    /// and Bonjour `.local` names — the private-localhost cases CS-043 rejects.
+    /// Whether `host` is local, private, or link-local — refused for capture as the
+    /// SSRF defense for CS-043. Covers `localhost`/`.local`, IPv4 loopback `127.0.0.0/8`,
+    /// the RFC1918 private ranges (`10/8`, `172.16/12`, `192.168/16`), link-local
+    /// `169.254.0.0/16` (including the `169.254.169.254` cloud-metadata endpoint),
+    /// IPv6 loopback `::1`, link-local `fe80::/10`, unique-local `fc00::/7`, and
+    /// IPv4-mapped IPv6 (`::ffff:a.b.c.d`). A public hostname or address passes through.
     static func isPrivateLocalhost(host: String) -> Bool {
         let lowered = host.lowercased()
         // Strip the brackets WebKit/URL use around an IPv6 literal host.
         let bare = lowered.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
 
-        if bare == "localhost" || bare == "::1" || bare == "0.0.0.0" {
-            return true
+        // Hostnames that always resolve to the local machine / link.
+        if bare == "localhost" || bare == "0.0.0.0" { return true }
+        if bare == "local" || bare.hasSuffix(".local") { return true }
+
+        // IPv6 loopback / link-local / unique-local literals (must contain a colon so a
+        // hostname like "fc-host.com" is not mistaken for a `fc00::/7` address).
+        if bare == "::1" { return true }
+        if bare.contains(":") {
+            // Link-local (fe80::/10) and unique-local (fc00::/7, i.e. fc/fd) IPv6 ranges.
+            if bare.hasPrefix("fe80:") { return true }
+            if bare.hasPrefix("fc") || bare.hasPrefix("fd") { return true }
         }
-        // Any `*.local` Bonjour name resolves only on the local link.
-        if bare == "local" || bare.hasSuffix(".local") {
-            return true
+
+        // IPv4-mapped IPv6 (::ffff:a.b.c.d) reduces to its IPv4 tail for the range check.
+        let ipv4 =
+            bare.hasPrefix("::ffff:") ? String(bare.dropFirst("::ffff:".count)) : bare
+        let octets = ipv4.split(separator: ".").compactMap { UInt8($0) }
+        guard octets.count == 4 else { return false }  // a hostname, not an IPv4 literal
+        switch (octets[0], octets[1]) {
+        case (127, _): return true  // 127.0.0.0/8 loopback
+        case (10, _): return true  // 10.0.0.0/8 private
+        case (169, 254): return true  // 169.254/16 link-local + cloud metadata
+        case (172, 16...31): return true  // 172.16.0.0/12 private
+        case (192, 168): return true  // 192.168.0.0/16 private
+        default: return false
         }
-        // The whole 127.0.0.0/8 loopback block, not just 127.0.0.1.
-        if bare.hasPrefix("127.") {
-            let octets = bare.split(separator: ".")
-            if octets.count == 4, octets.allSatisfy({ UInt8($0) != nil }) {
-                return true
-            }
-        }
-        return false
     }
 }
 

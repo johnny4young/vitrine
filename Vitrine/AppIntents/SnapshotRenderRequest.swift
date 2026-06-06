@@ -87,7 +87,9 @@ struct SnapshotRenderRequest: Equatable {
             preset.apply(to: &config)
         }
         if let themeID {
-            config.theme = Theme.theme(withID: themeID)
+            // Resolve through the custom-theme store so a Shortcuts/Services theme id can
+            // name a user custom theme (CS-031); it falls back to built-ins, matching the GUI.
+            config.theme = CustomThemeStore.shared.theme(withID: themeID)
         }
         // Transparency is the last word on the background so it layers cleanly onto
         // any preset (the automation asked for real alpha regardless).
