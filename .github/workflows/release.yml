@@ -111,7 +111,7 @@ jobs:
       # unsigned, ad-hoc path. The certificate is a base64-encoded .p12 export and
       # MACOS_CERTIFICATE_PASSWORD is its export password.
       - name: Import Developer ID certificate
-        if: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
+        if: ${{ env.MACOS_CERTIFICATE_P12 != '' }}
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -139,7 +139,7 @@ jobs:
       # avoids an app-specific password. Skipped when the secret is absent, leaving
       # the Apple-ID credential path (or no notarization) intact.
       - name: Stage App Store Connect API key
-        if: ${{ secrets.MACOS_NOTARY_KEY_P8 != '' }}
+        if: ${{ env.MACOS_NOTARY_KEY_P8 != '' }}
         env:
           MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
         run: |
@@ -223,7 +223,7 @@ jobs:
       # half of the SUPublicEDKey embedded in Info.plist; it never leaves the secret.
       - name: Generate signed Sparkle appcast
         id: appcast
-        if: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY != '' }}
+        if: ${{ env.SPARKLE_EDDSA_PRIVATE_KEY != '' }}
         env:
           SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
           # The release notes URL Sparkle shows for this version (the GitHub release page).

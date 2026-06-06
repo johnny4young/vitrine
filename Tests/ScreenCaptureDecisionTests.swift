@@ -204,11 +204,15 @@ struct ScreenCaptureDecisionTests {
         #expect(doc.localizedCaseInsensitiveContains("App Sandbox"))
     }
 
-    /// The roadmap records CS-046 as parked (⏸ Future) with the no-code resolution, so the
-    /// product status and the discovery doc agree. The decision is only meaningful if the
-    /// roadmap reflects it; this fails if the entry is removed or quietly promoted.
-    @Test func roadmapParksCS046WithNoShippedCaptureCode() throws {
-        let roadmap = try Self.text("docs", "ROADMAP.md")
+    /// When the maintainer's local working roadmap is present, cross-check that it records
+    /// CS-046 as parked with the no-code resolution. `docs/ROADMAP.md` is the **git-ignored**
+    /// local backlog, so it is absent in CI and fresh clones — there the committed decision
+    /// record `docs/SCREEN-CAPTURE-DISCOVERY.md` (asserted above) is the source of truth, and
+    /// this cross-check is skipped rather than failing on a deliberately-uncommitted file.
+    @Test func localRoadmapParksCS046WhenPresent() throws {
+        let roadmapURL = Self.file("docs", "ROADMAP.md")
+        guard FileManager.default.fileExists(atPath: roadmapURL.path) else { return }
+        let roadmap = try String(contentsOf: roadmapURL, encoding: .utf8)
         #expect(roadmap.contains("CS-046"), "ROADMAP must contain the CS-046 entry")
         // Parked, not promoted. The status is asserted via stable text ("parked" and the
         // explicit refusal to promote) rather than the ⏸ status emoji, so a re-encoding of
