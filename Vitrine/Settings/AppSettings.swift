@@ -68,6 +68,17 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    /// The UI language this process actually launched with — the effective
+    /// localization macOS resolved at launch. It never changes during the process's
+    /// life; `appLanguage` may diverge from it once the user picks a new language that
+    /// only takes effect on the next launch (CS-047).
+    let launchLanguage: AppLanguage
+
+    /// Whether the selected `appLanguage` differs from the language the running process
+    /// was launched with, so a relaunch would change the visible UI language. Drives
+    /// the Settings "Relaunch to Apply" affordance (CS-047).
+    var languageChangePendingRelaunch: Bool { appLanguage != launchLanguage }
+
     /// The id of the last selected destination preset, or `nil` for "Custom"
     /// (no preset, the user's own settings). Persisted so the last choice is
     /// restored on relaunch (CS-020).
@@ -189,7 +200,11 @@ final class AppSettings: ObservableObject {
         colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
         richClipboard = defaults.object(forKey: Keys.richClipboard) as? Bool ?? false
         hotkeyAction = HotkeyAction.resolve(defaults.string(forKey: Keys.hotkeyAction))
-        appLanguage = AppLanguage.resolve(defaults.string(forKey: Keys.appLanguage))
+        let resolvedLanguage = AppLanguage.resolve(defaults.string(forKey: Keys.appLanguage))
+        appLanguage = resolvedLanguage
+        // Capture the launch-time language so the Settings pane can tell when a change
+        // needs a relaunch to take effect (CS-047).
+        launchLanguage = resolvedLanguage
         // A persisted preset id that no longer maps to a known preset resolves to
         // "Custom" (nil) rather than trapping (CS-020 / CS-050 documented fallback).
         selectedPresetID =

@@ -79,12 +79,20 @@ struct GeneralSettingsView: View {
                 }
 
             Section {
-                Picker("App Language", selection: $settings.appLanguage) {
+                Picker("App language", selection: $settings.appLanguage) {
                     ForEach(AppLanguage.allCases) { language in
                         Text(language.displayName).tag(language)
                     }
                 }
                 .accessibilityIdentifier("app-language-picker")
+
+                // Shown only once the choice differs from the language the app is
+                // running in, so the user can apply it now instead of quitting and
+                // reopening a Dock-less menu-bar agent by hand (CS-047).
+                if settings.languageChangePendingRelaunch {
+                    Button("Relaunch to Apply") { AppRelauncher.relaunch() }
+                        .accessibilityIdentifier("relaunch-to-apply-button")
+                }
             } footer: {
                 Text("Vitrine reopens in the selected language the next time you launch it.")
                     .font(.footnote)
