@@ -62,7 +62,11 @@ if [ -n "$SIGN_IDENTITY" ] && [ "$SIGN_IDENTITY" != "-" ]; then
 	SIGNED=1
 fi
 
-echo "==> Generating project"
+# The Vitrine target reads its entitlements file from this env var at generate time
+# (project.yml: CODE_SIGN_ENTITLEMENTS: ${VITRINE_ENTITLEMENTS_FILE}). The DMG is the
+# direct-download build, so it signs with the superset (network + Sparkle XPC, CS-064).
+export VITRINE_ENTITLEMENTS_FILE="$DIRECT_DOWNLOAD_ENTITLEMENTS"
+echo "==> Generating project (entitlements: $VITRINE_ENTITLEMENTS_FILE)"
 xcodegen generate
 
 # Hardened runtime must stay enabled for any distributable build; the app target
@@ -79,7 +83,6 @@ if [ "$SIGNED" -eq 1 ]; then
 		-derivedDataPath "$DERIVED" \
 		CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
 		CODE_SIGN_STYLE=Manual \
-		VITRINE_CODE_SIGN_ENTITLEMENTS="$DIRECT_DOWNLOAD_ENTITLEMENTS" \
 		ENABLE_HARDENED_RUNTIME=YES \
 		${MACOS_SIGN_TEAM_ID:+DEVELOPMENT_TEAM="$MACOS_SIGN_TEAM_ID"} \
 		build
@@ -92,7 +95,6 @@ else
 		-derivedDataPath "$DERIVED" \
 		CODE_SIGN_IDENTITY="-" \
 		CODE_SIGN_STYLE=Manual \
-		VITRINE_CODE_SIGN_ENTITLEMENTS="$DIRECT_DOWNLOAD_ENTITLEMENTS" \
 		build
 fi
 

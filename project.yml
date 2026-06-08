@@ -126,14 +126,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Vitrine/Resources/Info.plist
-        # Default to the minimal (App Store / Phase 1) entitlements. The DMG build
-        # overrides VITRINE_CODE_SIGN_ENTITLEMENTS — NOT CODE_SIGN_ENTITLEMENTS — so only
-        # THIS target switches to the direct-download superset (CS-064). Overriding
-        # CODE_SIGN_ENTITLEMENTS globally on the xcodebuild CLI instead would leak the
-        # path onto the SPM resource bundles (Settings/KeyboardShortcuts/Highlightr),
-        # which then fail to resolve it from their own SRCROOT (CS-061).
-        CODE_SIGN_ENTITLEMENTS: $(VITRINE_CODE_SIGN_ENTITLEMENTS)
-        VITRINE_CODE_SIGN_ENTITLEMENTS: Vitrine/Resources/Vitrine.entitlements
+        # Injected at generate time via the VITRINE_ENTITLEMENTS_FILE env var (Makefile
+        # default = minimal App Store / Phase 1 set; scripts/build-dmg.sh exports the
+        # direct-download superset, CS-064). XcodeGen ${...} interpolation writes a literal
+        # path into the project, so the build resolves no xcodebuild-time variable (which
+        # stalled the CI runner) and nothing leaks onto the SPM resource bundles (CS-061).
+        CODE_SIGN_ENTITLEMENTS: ${VITRINE_ENTITLEMENTS_FILE}
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         COMBINE_HIDPI_IMAGES: YES

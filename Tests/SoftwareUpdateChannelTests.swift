@@ -333,8 +333,8 @@ struct SoftwareUpdateChannelTests {
             script.contains("Vitrine.DirectDownload.entitlements"),
             "build-dmg.sh must sign the DMG with the direct-download entitlements (CS-064)")
         #expect(
-            script.contains("CODE_SIGN_ENTITLEMENTS="),
-            "build-dmg.sh must select the entitlements file via CODE_SIGN_ENTITLEMENTS (CS-064)")
+            script.contains("VITRINE_ENTITLEMENTS_FILE="),
+            "build-dmg.sh must select the entitlements file via VITRINE_ENTITLEMENTS_FILE (CS-064)")
     }
 
     // MARK: - Acceptance: documentation (keys generated + documented; N→N+1; signature; channels)
