@@ -33,16 +33,13 @@ settings:
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     # Direct-download channel marker (CS-064). Code guarded by
-    # `#if VITRINE_DIRECT_DOWNLOAD` ships in the signed direct-download DMG and is
-    # absent from the Mac App Store binary (see docs/APP-STORE.md, appstore.yml).
-    # DISABLED BY DEFAULT: the Sparkle SPM binary artifact does not build under
-    # `CODE_SIGNING_ALLOWED=NO` (it hangs the headless compile-check), and the live
-    # updater needs EdDSA keys + a Developer ID signed build anyway. So the default /
-    # CI build leaves this flag (and the Sparkle package below) OFF — `SoftwareUpdater`
-    # compiles to its no-op form and the build excludes Sparkle. The signed-release
-    # follow-up (docs/RELEASING.md) re-enables both: uncomment the line below and the
-    # Sparkle package, and supply the signing secrets.
-    # SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_DIRECT_DOWNLOAD
+    # `#if VITRINE_DIRECT_DOWNLOAD` ships in the direct-download build (the default) and
+    # is compiled out of the Mac App Store binary, which also strips the Sparkle
+    # framework (see docs/APP-STORE.md, appstore.yml). ON by default so the DMG ships the
+    # live Sparkle updater; the App Store archive removes this flag. The Sparkle binary
+    # xcframework is auto-embedded by SPM (see the dependency note below) — do NOT add an
+    # explicit `embed: true`, which generates a broken Copy phase for binary targets.
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_DIRECT_DOWNLOAD
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
@@ -64,16 +61,13 @@ packages:
   # direct-download update story only: it checks a signed EdDSA appcast (SUFeedURL +
   # SUPublicEDKey in Info.plist) and installs the new build without a manual reinstall.
   # It is linked into the app target but every use is gated behind the
-  # VITRINE_DIRECT_DOWNLOAD compilation condition (set below on the direct-download
+  # VITRINE_DIRECT_DOWNLOAD compilation condition (set above on the direct-download
   # build): the Mac App Store variant builds with that flag removed and strips the
   # framework, so the App Store build excludes Sparkle (the App Store owns its own
   # update mechanism, and a third-party updater is disallowed there).
-  # Disabled by default (see the SWIFT_ACTIVE_COMPILATION_CONDITIONS note above) — the
-  # Sparkle binary artifact hangs the headless compile-check. Uncomment for the signed
-  # direct-download DMG follow-up.
-  # Sparkle:
-  #   url: https://github.com/sparkle-project/Sparkle
-  #   from: "2.6.0"
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
 
 targets:
   Vitrine:
@@ -100,13 +94,13 @@ targets:
       - package: KeyboardShortcuts
       - package: Settings
       # Sparkle auto-update (CS-064): linked into the app for the direct-download
-      # channel. Every call site is behind `#if VITRINE_DIRECT_DOWNLOAD`, so the
-      # App Store build (which removes that flag and strips the framework) excludes
-      # it. embed: true so the framework, its Autoupdate helper, and the
-      # Installer/Downloader XPC services ship inside the DMG's app bundle.
-      # Disabled by default (see note above); uncomment for the signed direct-download DMG:
-      # - package: Sparkle
-      #   embed: true
+      # channel. Every call site is behind `#if VITRINE_DIRECT_DOWNLOAD`, so the App
+      # Store build (which removes that flag and strips the framework) excludes it.
+      # No `embed: true` on purpose: Xcode auto-embeds the Sparkle binary xcframework
+      # (framework, Autoupdate, Updater.app, Installer/Downloader XPC) into the bundle.
+      # An explicit `embed: true` makes XcodeGen add the product to a Copy phase that
+      # fails for a binary xcframework ("the file Sparkle … no such file").
+      - package: Sparkle
       # App Intents (CS-034): linking the framework lets the build's
       # appintentsmetadataprocessor extract the Shortcuts actions and enums so they
       # appear in Shortcuts/Spotlight/Siri.

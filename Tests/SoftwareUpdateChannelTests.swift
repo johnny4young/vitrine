@@ -275,15 +275,14 @@ struct SoftwareUpdateChannelTests {
     }
 
     /// The runtime gate matches the build gate: `SoftwareUpdater.isSupported` reflects whether
-    /// Sparkle is compiled in. The default / CI build leaves `VITRINE_DIRECT_DOWNLOAD` OFF
-    /// (the live Sparkle SPM binary artifact does not build under `CODE_SIGNING_ALLOWED=NO`;
-    /// the signed direct-download DMG re-enables the flag and the package — see project.yml and
-    /// docs/RELEASING.md), so the updater compiles to its no-op form and reports itself
-    /// unsupported here. The signed DMG build is what flips this to `true`.
-    @Test func defaultBuildReportsUpdatesUnsupportedUntilTheSignedDMGEnablesSparkle() {
+    /// Sparkle is compiled in. The direct-download build is the default and defines
+    /// `VITRINE_DIRECT_DOWNLOAD`, so the updater is live and reports itself supported here. The
+    /// Mac App Store archive removes that flag and strips the framework, flipping this to
+    /// `false` there — asserted by `appStoreBuildExcludesSparkleViaCompilationFlagAndStrip`.
+    @Test func directDownloadBuildReportsUpdatesSupported() {
         #expect(
-            SoftwareUpdater.isSupported == false,
-            "default/CI build excludes Sparkle; updates stay unsupported until the signed direct-download DMG enables VITRINE_DIRECT_DOWNLOAD (CS-064)"
+            SoftwareUpdater.isSupported,
+            "the direct-download build defines VITRINE_DIRECT_DOWNLOAD, so Sparkle is compiled in and updates are supported (CS-064)"
         )
     }
 
