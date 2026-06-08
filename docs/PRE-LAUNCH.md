@@ -65,6 +65,16 @@ Store Connect API key** (notarizes it, and later uploads to the App Store).
 
 This is the identity Gatekeeper trusts for a direct download.
 
+> **Know this first (Apple nuance):** a Developer ID Application certificate is **team-wide,
+> not per-app** — Apple ties it to your *account*, the **same** cert signs every
+> direct-download app you ever ship, and its name is fixed by Apple
+> (`Developer ID Application: Your Name (TEAMID)`), so there is no "Vitrine-only" signing
+> cert. Since you don't have one yet, you create it now (your first); just **don't create
+> another one per app later** — Apple caps how many you can hold. The things you genuinely
+> label/scope per-app are the **notary API key** (§2b), the **Sparkle keys** (§3), and the
+> **repo secrets** (§4). Name the exported `.p12` whatever you like (e.g.
+> `vitrine-developer-id.p12`), knowing the cert inside is your shared team identity.
+
 1. Easiest path — **Xcode**: *Settings ▸ Accounts ▸* (your Apple ID) *▸ Manage
    Certificates ▸ + ▸ Developer ID Application*. Xcode creates it and stores the private
    key in your login Keychain.
@@ -86,8 +96,11 @@ This is the identity Gatekeeper trusts for a direct download.
 One key both **notarizes** the DMG (CS-061) and **uploads** App Store builds (CS-062).
 
 1. <https://appstoreconnect.apple.com> → *Users and Access ▸ Integrations ▸ App Store
-   Connect API* → **Generate API Key** (name it e.g. "Vitrine CI"; a *Developer*-level
-   role is sufficient for notarization and uploads).
+   Connect API* → **Generate API Key**. **Name it `Vitrine CI`** so it is a dedicated,
+   independently-revocable key for this app; a *Developer*-level role is enough for
+   notarization (and later App Store uploads). The key technically can notarize any app on
+   the team, but naming it for Vitrine is what lets you revoke it without touching anything
+   else.
 2. **Download the `.p8` immediately — it is shown only once.** Store it securely (a
    password manager); losing it means generating a new one.
 3. Record the **Key ID** (10 chars) and the **Issuer ID** (a UUID shown above the keys
