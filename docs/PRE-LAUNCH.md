@@ -104,6 +104,13 @@ One key both **notarizes** the DMG (CS-061) and **uploads** App Store builds (CS
 Only needed if you want the direct-download build to auto-update. The App Store channel
 ignores Sparkle entirely. Full flow: [`RELEASING.md` ▸ Auto-update](RELEASING.md#auto-update-sparkle--cs-064).
 
+> **Do this _before_ tagging v0.1.0.** macOS reads `SUPublicEDKey` at launch, so the
+> public key must already be embedded in the **first** shipped build. If v0.1.0 ships with
+> the placeholder key, that installed base can **never** auto-update — every user would
+> have to re-download the DMG by hand to reach v0.2.0. Generating the keys and filling the
+> placeholder (§7) is therefore a **pre-v0.1.0 requirement**, not a later step. Skip all of
+> §3 only if you deliberately don't want auto-update at all.
+
 1. Download a Sparkle release (`Sparkle-<version>.tar.xz`) from
    <https://github.com/sparkle-project/Sparkle/releases> and run its tool:
    ```bash
