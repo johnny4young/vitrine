@@ -65,6 +65,7 @@ fi
 # The Vitrine target reads its entitlements file from this env var at generate time
 # (project.yml: CODE_SIGN_ENTITLEMENTS: ${VITRINE_ENTITLEMENTS_FILE}). The DMG is the
 # direct-download build, so it signs with the superset (network + Sparkle XPC, CS-064).
+"$(dirname "$0")/fetch-sparkle.sh"
 export VITRINE_ENTITLEMENTS_FILE="$DIRECT_DOWNLOAD_ENTITLEMENTS"
 echo "==> Generating project (entitlements: $VITRINE_ENTITLEMENTS_FILE)"
 xcodegen generate

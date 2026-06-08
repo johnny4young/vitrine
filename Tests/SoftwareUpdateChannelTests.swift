@@ -105,18 +105,32 @@ struct SoftwareUpdateChannelTests {
         }
     }
 
-    // MARK: - Acceptance: the Sparkle SPM package is added through project.yml
+    // MARK: - Acceptance: Sparkle is embedded as a local framework through project.yml
 
-    @Test func sparklePackageIsAddedThroughProjectYAML() throws {
+    /// Sparkle is embedded as a LOCAL framework (Vendor/Sparkle.framework), not via its SPM
+    /// binary artifact — that artifact's resolution hung intermittently on headless CI runners,
+    /// stalling `xcodebuild` for 20+ minutes. The framework is fetched and checksum-verified by
+    /// `scripts/fetch-sparkle.sh` before generate, and the app target embeds it (CS-064).
+    @Test func sparkleIsEmbeddedAsALocalFrameworkThroughProjectYAML() throws {
         let project = try Self.projectYAML()
-        // The package is declared from the official Sparkle repository…
+        // The app target depends on the locally-vendored framework…
         #expect(
-            project.contains("https://github.com/sparkle-project/Sparkle"),
-            "project.yml must declare the Sparkle SPM package (CS-064)")
-        // …and linked into the app target as a dependency.
+            project.contains("framework: Vendor/Sparkle.framework"),
+            "project.yml must depend on the local Vendor/Sparkle.framework (CS-064)")
+        // …and embeds it into the app bundle so the updater ships inside Vitrine.app.
         #expect(
-            project.contains("package: Sparkle"),
-            "project.yml must link the Sparkle package into the app target (CS-064)")
+            project.contains("embed: true"),
+            "project.yml must embed Vendor/Sparkle.framework into the app bundle (CS-064)")
+        // The framework is fetched + checksum-verified by a dedicated script, so the SPM
+        // binary artifact (which hung CI) is never resolved.
+        let fetchScript = try Self.text("scripts", "fetch-sparkle.sh")
+        #expect(
+            fetchScript.contains("Sparkle.framework"),
+            "scripts/fetch-sparkle.sh must stage Sparkle.framework into Vendor/ (CS-064)")
+        #expect(
+            fetchScript.localizedCaseInsensitiveContains("sha256")
+                || fetchScript.contains("shasum"),
+            "scripts/fetch-sparkle.sh must verify the download against a pinned checksum (CS-064)")
     }
 
     /// Sparkle must be linked into the **app** target but **not** the headless CLI (which

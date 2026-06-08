@@ -70,3 +70,4 @@ docs/ROADMAP.md
 # Coverage profiles
 *.profraw
 *.profdata
+Vendor/

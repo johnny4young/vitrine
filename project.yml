@@ -36,9 +36,9 @@ settings:
     # `#if VITRINE_DIRECT_DOWNLOAD` ships in the direct-download build (the default) and
     # is compiled out of the Mac App Store binary, which also strips the Sparkle
     # framework (see docs/APP-STORE.md, appstore.yml). ON by default so the DMG ships the
-    # live Sparkle updater; the App Store archive removes this flag. The Sparkle binary
-    # xcframework is auto-embedded by SPM (see the dependency note below) — do NOT add an
-    # explicit `embed: true`, which generates a broken Copy phase for binary targets.
+    # live Sparkle updater; the App Store archive removes this flag. Sparkle ships as a
+    # LOCAL framework embedded into the app bundle (see the dependency note below); the
+    # framework is fetched + checksum-verified by scripts/fetch-sparkle.sh into Vendor/.
     SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_DIRECT_DOWNLOAD
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
@@ -57,17 +57,6 @@ packages:
   Settings:
     url: https://github.com/sindresorhus/Settings
     from: "3.0.0"
-  # Sparkle auto-update channel (CS-064, see docs/RELEASING.md). Sparkle powers the
-  # direct-download update story only: it checks a signed EdDSA appcast (SUFeedURL +
-  # SUPublicEDKey in Info.plist) and installs the new build without a manual reinstall.
-  # It is linked into the app target but every use is gated behind the
-  # VITRINE_DIRECT_DOWNLOAD compilation condition (set above on the direct-download
-  # build): the Mac App Store variant builds with that flag removed and strips the
-  # framework, so the App Store build excludes Sparkle (the App Store owns its own
-  # update mechanism, and a third-party updater is disallowed there).
-  Sparkle:
-    url: https://github.com/sparkle-project/Sparkle
-    from: "2.6.0"
 
 targets:
   Vitrine:
@@ -93,14 +82,12 @@ targets:
       - package: Highlightr
       - package: KeyboardShortcuts
       - package: Settings
-      # Sparkle auto-update (CS-064): linked into the app for the direct-download
-      # channel. Every call site is behind `#if VITRINE_DIRECT_DOWNLOAD`, so the App
-      # Store build (which removes that flag and strips the framework) excludes it.
-      # No `embed: true` on purpose: Xcode auto-embeds the Sparkle binary xcframework
-      # (framework, Autoupdate, Updater.app, Installer/Downloader XPC) into the bundle.
-      # An explicit `embed: true` makes XcodeGen add the product to a Copy phase that
-      # fails for a binary xcframework ("the file Sparkle … no such file").
-      - package: Sparkle
+      # Sparkle auto-update (CS-064): embedded as a LOCAL framework fetched by
+      # scripts/fetch-sparkle.sh into Vendor/ (gitignored), NOT via the SPM binary
+      # artifact — its resolution hung intermittently on headless CI runners. Every
+      # call site is behind `#if VITRINE_DIRECT_DOWNLOAD`; the App Store build strips it.
+      - framework: Vendor/Sparkle.framework
+        embed: true
       # App Intents (CS-034): linking the framework lets the build's
       # appintentsmetadataprocessor extract the Shortcuts actions and enums so they
       # appear in Shortcuts/Spotlight/Siri.
@@ -231,6 +218,14 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.VitrineTests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Vitrine.app/Contents/MacOS/Vitrine"
         BUNDLE_LOADER: "$(TEST_HOST)"
+        # `@testable import Vitrine` pulls in Vitrine's module interface, which
+        # transitively references the Sparkle module under VITRINE_DIRECT_DOWNLOAD
+        # (set on this target via the project base). Point the compiler at the
+        # locally-fetched framework (scripts/fetch-sparkle.sh → Vendor/) so it can
+        # resolve that module dependency. The symbols come from the host app, which
+        # embeds Sparkle (TEST_HOST/BUNDLE_LOADER), so this target neither links nor
+        # embeds the framework itself — only the search path is needed (CS-064).
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/Vendor
 
   VitrineUITests:
     type: bundle.ui-testing

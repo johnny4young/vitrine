@@ -45,6 +45,7 @@ bootstrap:
 
 ## project: generate Vitrine.xcodeproj from project.yml
 project: bootstrap
+	./scripts/fetch-sparkle.sh
 	$(XCODEGEN) generate
 
 ## open: open the generated project in Xcode
