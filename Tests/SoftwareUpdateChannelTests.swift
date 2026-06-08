@@ -356,6 +356,10 @@ struct SoftwareUpdateChannelTests {
     @Test func releasingDocDocumentsKeysAppcastAndChannelExclusion() throws {
         let doc = try Self.releasingDoc()
         #expect(doc.contains("CS-064"), "RELEASING.md must reference the Sparkle ticket")
+        #expect(
+            doc.contains("Vendor/Sparkle.framework") && doc.contains("scripts/fetch-sparkle.sh"),
+            "RELEASING.md must document that Sparkle is embedded as the local checked framework, not an SPM package"
+        )
         // EdDSA key generation is documented (the generate_keys tool + the secret).
         #expect(
             doc.contains("generate_keys"),

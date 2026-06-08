@@ -151,6 +151,44 @@ struct ReleaseSigningTests {
             "build-dmg.sh should explain why the timestamp flag is required")
     }
 
+    /// The tag workflow builds and packages directly instead of using Xcode's
+    /// Archive/Export path. In that mode Xcode can leak development entitlements
+    /// into the signed app and can leave Sparkle's nested helpers ad-hoc signed, so
+    /// the script must explicitly perform the distribution-only repair before
+    /// submitting to Apple.
+    @Test func signedBuildReSignsSparkleHelpersAndRejectsDevelopmentEntitlements() throws {
+        let script = try Self.script()
+        #expect(
+            script.contains("CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"),
+            "Developer ID builds must not inject get-task-allow into distribution entitlements"
+        )
+        #expect(
+            script.contains("com.apple.security.get-task-allow"),
+            "build-dmg.sh must fail fast if get-task-allow leaks into a notarized app")
+        for helper in [
+            "XPCServices/Installer.xpc",
+            "XPCServices/Downloader.xpc",
+            "Versions/B/Autoupdate",
+            "Versions/B/Updater.app",
+            "Sparkle.framework",
+        ] {
+            #expect(
+                script.contains(helper),
+                "build-dmg.sh must re-sign Sparkle helper \(helper) for Developer ID notarization")
+        }
+        #expect(
+            script.contains("--preserve-metadata=entitlements"),
+            "Sparkle's Downloader.xpc and the app must preserve their expanded entitlements when re-signed"
+        )
+        let signingLines = script.components(separatedBy: .newlines).filter {
+            $0.contains("codesign") && $0.contains("--sign")
+        }
+        #expect(
+            signingLines.allSatisfy { !$0.contains("--deep") },
+            "Sparkle's nested helpers must be signed explicitly; --deep would smear entitlements across helpers"
+        )
+    }
+
     // MARK: - Acceptance: notarization with notarytool or App Store Connect API credentials
 
     @Test func notarizationUsesNotarytoolWithEitherCredentialStyle() throws {

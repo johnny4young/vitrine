@@ -86,6 +86,7 @@ if [ "$SIGNED" -eq 1 ]; then
 		-derivedDataPath "$DERIVED" \
 		CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
 		CODE_SIGN_STYLE=Manual \
+		CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
 		ENABLE_HARDENED_RUNTIME=YES \
 		OTHER_CODE_SIGN_FLAGS="--timestamp" \
 		${MACOS_SIGN_TEAM_ID:+DEVELOPMENT_TEAM="$MACOS_SIGN_TEAM_ID"} \
@@ -105,6 +106,65 @@ fi
 if [ ! -d "$APP" ]; then
 	echo "error: $APP not found" >&2
 	exit 1
+fi
+
+resign_sparkle_for_distribution() {
+	local sparkle="$APP/Contents/Frameworks/Sparkle.framework"
+
+	if [ ! -d "$sparkle" ]; then
+		echo "    Sparkle.framework not embedded; skipping Sparkle helper re-signing"
+		return 0
+	fi
+
+	# Sparkle's binary framework intentionally ships helper tools and XPC services
+	# with ad-hoc signatures. Xcode's Code Sign on Copy re-signs the framework but
+	# not those nested helpers in this non-Archive workflow, so notarization rejects
+	# them unless we sign each nested bundle explicitly. Do not use --deep here:
+	# Sparkle's Downloader service may carry its own entitlements, which must not be
+	# applied to every other nested binary.
+	echo "==> Re-signing Sparkle helpers for Developer ID notarization"
+	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime \
+		"$sparkle/Versions/B/XPCServices/Installer.xpc"
+	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime \
+		--preserve-metadata=entitlements \
+		"$sparkle/Versions/B/XPCServices/Downloader.xpc"
+	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime \
+		"$sparkle/Versions/B/Autoupdate"
+	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime \
+		"$sparkle/Versions/B/Updater.app"
+	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime \
+		"$sparkle"
+
+	# Re-seal the outer app after mutating the nested framework signatures. The
+	# app entitlements came from Xcode's expanded .xcent, so preserve them rather
+	# than feeding the source entitlements file back to codesign (it still contains
+	# build-setting placeholders like $(PRODUCT_BUNDLE_IDENTIFIER)).
+	echo "==> Re-signing the app after Sparkle helper signatures changed"
+	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime \
+		--preserve-metadata=entitlements \
+		"$APP"
+}
+
+assert_distribution_entitlements() {
+	local entitlements="$DERIVED/Vitrine-app-entitlements.plist"
+	local get_task_allow
+
+	codesign -d --entitlements :- "$APP" > "$entitlements" 2>/dev/null
+	get_task_allow="$("$PLIST_BUDDY" -c "Print :com.apple.security.get-task-allow" "$entitlements" 2>/dev/null || true)"
+	if [ "$get_task_allow" = "true" ]; then
+		echo "error: distribution app requests com.apple.security.get-task-allow; Apple notarization rejects this entitlement" >&2
+		plutil -p "$entitlements" || cat "$entitlements"
+		return 1
+	fi
+}
+
+# This script uses Xcode's build action instead of Archive/Export so the CI job can
+# produce a signed DMG directly from the tag. Compensate for the distribution work
+# Archive/Export normally performs: re-sign Sparkle's nested helpers and reject any
+# leaked development entitlements before submitting to Apple.
+if [ "$SIGNED" -eq 1 ]; then
+	resign_sparkle_for_distribution
+	assert_distribution_entitlements
 fi
 
 # --- Signature verification (Developer ID builds only) ----------------------

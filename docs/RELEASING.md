@@ -87,11 +87,19 @@ What the script does for a signed build:
    for the signed Xcode build. Apple notarization requires a secure timestamp; a
    headless build that signs with `--timestamp=none` can pass local `codesign`
    verification and still be rejected by the notary service.
-4. **Verifies** the signature with `codesign --verify --deep --strict --verbose=2`.
-5. **Notarizes** with `notarytool` (App Store Connect API key **or** Apple ID
+4. **Repairs distribution-only signing gaps** from the direct build path: disables
+   Xcode's base entitlement injection (`CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO`) so
+   `com.apple.security.get-task-allow` cannot leak into the app, then explicitly
+   re-signs Sparkle's nested helpers (`Installer.xpc`, `Downloader.xpc`,
+   `Autoupdate`, and `Updater.app`) with Developer ID + timestamp before re-sealing
+   the outer app. This mirrors the work Xcode Archive/Export normally does; do not
+   use `--deep` for this Sparkle repair because the helpers have different
+   entitlement requirements.
+5. **Verifies** the signature with `codesign --verify --deep --strict --verbose=2`.
+6. **Notarizes** with `notarytool` (App Store Connect API key **or** Apple ID
    credentials — see below), then **staples** the ticket to the app, signs the DMG,
    and staples the DMG too so first launch validates offline.
-6. **Assesses Gatekeeper** with `spctl -a -vv` on the app and the DMG.
+7. **Assesses Gatekeeper** with `spctl -a -vv` on the app and the DMG.
 
 If Apple returns anything other than `Accepted`, the script now fetches and prints the
 structured `notarytool log` before it tries to staple. That log is the source of truth
@@ -270,9 +278,11 @@ mechanism, and a third-party updater is disallowed there) — see
 
 ### How it is wired
 
-- **SPM package.** `Sparkle` (2.x) is added in `project.yml` and linked into the app
-  target with `embed: true`, so the framework and its Installer/Downloader XPC services
-  ship inside the DMG's app bundle.
+- **Local binary framework.** `Sparkle` (2.x) is fetched and checksum-verified by
+  `scripts/fetch-sparkle.sh` into `Vendor/Sparkle.framework`, then embedded by
+  `project.yml` with `embed: true`. This avoids the SPM binary-artifact resolution
+  hangs seen on cold GitHub-hosted runners while still shipping Sparkle's
+  Installer/Downloader XPC services inside the DMG's app bundle.
 - **Compilation gate.** Every Sparkle call site is behind `#if VITRINE_DIRECT_DOWNLOAD`.
   The normal build sets that flag (`SWIFT_ACTIVE_COMPILATION_CONDITIONS` in `project.yml`),
   so the DMG includes Sparkle and a user-visible **Check for Updates…** command (App menu).
