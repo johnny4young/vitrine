@@ -42,7 +42,7 @@ struct DiagnosticsBundle: Equatable {
     /// builder guarantees no user code appears here.
     let settings: [SettingLine]
     /// The logging categories the app uses, so a reader knows what to look for in
-    /// `log stream --subsystem app.vitrine`.
+    /// `log stream --subsystem com.johnny4young.vitrine`.
     let logCategories: [String]
     /// Recent log lines from the app's own subsystem. These are safe to include
     /// because every Vitrine log statement is non-PII by construction (CS-048);

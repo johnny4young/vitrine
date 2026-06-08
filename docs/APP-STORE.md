@@ -33,7 +33,7 @@ already-shipping identity of the app, listed here so a submission is reproducibl
 
 | Field | Value | Source of truth |
 | --- | --- | --- |
-| Bundle identifier | `app.vitrine` | `project.yml` → `PRODUCT_BUNDLE_IDENTIFIER` (the `Info.plist` `CFBundleIdentifier` expands from it). |
+| Bundle identifier | `com.johnny4young.vitrine` | `project.yml` → `PRODUCT_BUNDLE_IDENTIFIER` (the `Info.plist` `CFBundleIdentifier` expands from it). |
 | App name (display) | `Vitrine` | `Info.plist` → `CFBundleDisplayName`; `CFBundleName` expands from `PRODUCT_NAME`. |
 | Primary category | Developer Tools (`public.app-category.developer-tools`) | `Info.plist` → `LSApplicationCategoryType`. |
 | Marketing version | `0.1.0` | `project.yml` → `MARKETING_VERSION` (the `Info.plist` `CFBundleShortVersionString` expands from it). |

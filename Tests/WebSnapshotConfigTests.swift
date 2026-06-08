@@ -355,7 +355,7 @@ struct WebCaptureConfigCompositionTests {
     /// A throwaway, uniquely-named defaults suite so a test never touches real app
     /// data and never collides with another test's settings.
     private static func isolatedDefaults() -> UserDefaults {
-        let suite = "app.vitrine.web-config-tests.\(UUID().uuidString)"
+        let suite = "com.johnny4young.vitrine.web-config-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         return defaults
@@ -369,7 +369,7 @@ struct WebCaptureSettingsPersistenceTests {
     @Test func theWebCaptureChoicesSurviveAReload() {
         // The user's viewport/mode/wait choices round-trip through `UserDefaults`, so
         // the picker shows the same selection on the next launch.
-        let suite = "app.vitrine.web-persist-tests.\(UUID().uuidString)"
+        let suite = "com.johnny4young.vitrine.web-persist-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
 
@@ -391,7 +391,7 @@ struct WebCaptureSettingsPersistenceTests {
     }
 
     @Test func resetReturnsTheWebCaptureChoicesToTheirDefaults() {
-        let suite = "app.vitrine.web-reset-tests.\(UUID().uuidString)"
+        let suite = "com.johnny4young.vitrine.web-reset-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
 
@@ -411,7 +411,7 @@ struct WebCaptureSettingsPersistenceTests {
     @Test func aGarbagePersistedValueFallsBackToTheDocumentedDefault() {
         // The defensive-read posture (CS-050): an unrecognized raw value resolves to
         // the default rather than trapping or producing an invalid setting.
-        let suite = "app.vitrine.web-garbage-tests.\(UUID().uuidString)"
+        let suite = "com.johnny4young.vitrine.web-garbage-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         defaults.set("not-a-real-kind", forKey: "webViewportKind")
@@ -437,7 +437,7 @@ struct WebCaptureSettingsPersistenceTests {
         // ceiling reads back as the ceiling, so the picker can never seed a wait that
         // would always blow past the hard timeout cap. The negative case is covered
         // above; this proves the upper bound is enforced on read, not just the lower.
-        let suite = "app.vitrine.web-wait-ceiling-tests.\(UUID().uuidString)"
+        let suite = "com.johnny4young.vitrine.web-wait-ceiling-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         defaults.set(99_999, forKey: "webWaitSeconds")
@@ -455,7 +455,7 @@ struct WebCaptureSettingsPersistenceTests {
         // can reach the composed preset as a degenerate value. The width path is
         // covered above; this closes the symmetric gap on height.
         let range = WebSnapshotConfig.ViewportPreset.customDimensionRange
-        let suite = "app.vitrine.web-custom-height-tests.\(UUID().uuidString)"
+        let suite = "com.johnny4young.vitrine.web-custom-height-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         defaults.set(-7, forKey: "webCustomViewportHeight")
@@ -469,7 +469,7 @@ struct WebCaptureSettingsPersistenceTests {
         // CS-044 adds additive keys with documented defaults: a store written by the
         // current build reads back at the current schema version, and the new web
         // keys do not disturb an unrelated existing value.
-        let suite = "app.vitrine.web-schema-tests.\(UUID().uuidString)"
+        let suite = "com.johnny4young.vitrine.web-schema-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
 

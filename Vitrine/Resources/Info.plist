@@ -84,7 +84,7 @@
 			</array>
 			<!-- A short, stable identifier for this service. -->
 			<key>NSUserData</key>
-			<string>app.vitrine.render-code-image</string>
+			<string>com.johnny4young.vitrine.render-code-image</string>
 		</dict>
 	</array>
 	<!-- Sparkle auto-update channel (CS-064, see docs/RELEASING.md). These keys

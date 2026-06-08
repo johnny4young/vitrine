@@ -195,18 +195,19 @@ Decide deliberately now.
 
 | Surface | Current value | Changeable later? | Action |
 | --- | --- | --- | --- |
-| Bundle identifier | `app.vitrine` | ❌ **Immutable** once installed/on the App Store | **Decide now.** Register it as an **App ID** in the Developer portal; if taken, pick an alternative (e.g. `app.vitrine.mac`, or `com.<you>.vitrine`). |
+| Bundle identifier | `com.johnny4young.vitrine` | ❌ **Immutable** once installed/on the App Store | **Decided.** Register it as an **App ID** (Developer portal ▸ Identifiers ▸ +) so the App Store recognizes it. Follows your `com.johnny4young.*` scheme, distinct from your other apps. |
 | App display name | `Vitrine` | App Store: hard; binary: easy | App Store names are **globally unique** — confirm "Vitrine" is free when you create the App Store record; keep a fallback like **"Vitrine — Code to Image"**. |
 | Homebrew cask token | `vitrine` | Cheap pre-adoption | Keep. |
 | Tap repo | `johnny4young/homebrew-tap` | — | Create (§5b). |
 | Sparkle feed host | `johnny4young.github.io/vitrine` | tied to repo name | Keep, or move to a custom domain later. |
-| Marketing domain | _(none)_ | — | **Optional but recommended:** grab `vitrine.app` (the reverse-DNS your bundle ID implies) for a landing page + a stable Sparkle/download URL. |
+| Marketing domain | _(none)_ | — | **Optional:** grab `vitrine.app` for a landing page + a stable download URL (not required — the bundle ID no longer implies a domain). |
 
-**On `app.vitrine`:** the reverse-DNS convention implies the domain `vitrine.app`. You do
-**not** have to own that domain for the bundle ID to work, but owning it future-proofs the
-identity and gives you a home for the landing page and `appcast.xml`. The bundle ID is the
-one truly irreversible choice — changing it after release orphans every installed copy and
-forces a new App Store listing.
+**On `com.johnny4young.vitrine`:** this follows your account's `com.johnny4young.*`
+reverse-DNS scheme, so Vitrine sits cleanly alongside your other apps while sharing no
+identity with them. It is reused as the app's **log subsystem**, **App Intent id**, and
+**Sparkle XPC names**, so it is already wired consistently across the repo. The bundle ID is
+the one truly irreversible choice — changing it after release orphans every installed copy
+and forces a new App Store listing.
 
 **Trademark sanity check:** "Vitrine" is a common word (French/architectural for *display
 case/showcase*), so trademark risk is low, but do a quick search for an existing macOS dev

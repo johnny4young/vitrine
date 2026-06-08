@@ -36,7 +36,7 @@
 
 	<!-- Sparkle XPC mach-lookup exceptions, required so a sandboxed app can talk to Sparkle's
 	     own Installer/Downloader services. $(PRODUCT_BUNDLE_IDENTIFIER) is substituted at build
-	     time (app.vitrine), yielding app.vitrine-spks / app.vitrine-spki. These name only
+	     time (com.johnny4young.vitrine), yielding com.johnny4young.vitrine-spks / com.johnny4young.vitrine-spki. These name only
 	     Sparkle's per-app services — they grant no general mach-lookup access. -->
 	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
 	<array>

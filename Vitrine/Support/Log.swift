@@ -3,7 +3,7 @@ import OSLog
 /// Structured logging for Vitrine (CS-048).
 ///
 /// Everything goes through Apple's unified logging system (`os.Logger`) under a
-/// single subsystem — `app.vitrine` — split into a fixed set of categories so a
+/// single subsystem — `com.johnny4young.vitrine` — split into a fixed set of categories so a
 /// developer can filter the stream in Console.app or `log stream` by feature.
 /// There is **no** telemetry: nothing is sent off the Mac, and the only way a log
 /// excerpt ever leaves the machine is the user-initiated diagnostics export
@@ -21,8 +21,8 @@ import OSLog
 /// content in.
 enum Log {
     /// The single subsystem all categories share. Matches the bundle identifier so
-    /// the unified-logging stream is easy to find (`log stream --subsystem app.vitrine`).
-    static let subsystem = "app.vitrine"
+    /// the unified-logging stream is easy to find (`log stream --subsystem com.johnny4young.vitrine`).
+    static let subsystem = "com.johnny4young.vitrine"
 
     /// The fixed set of logging categories, one per feature area (CS-048 design).
     /// Keeping these as an enum — rather than ad-hoc category strings scattered

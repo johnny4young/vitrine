@@ -255,7 +255,7 @@ final class AppSettings: ObservableObject {
     )
         -> AppSettings
     {
-        let suiteName = "app.vitrine.editor-session.\(UUID().uuidString)"
+        let suiteName = "com.johnny4young.vitrine.editor-session.\(UUID().uuidString)"
         guard let volatile = UserDefaults(suiteName: suiteName) else {
             return AppSettings(defaults: .standard)
         }

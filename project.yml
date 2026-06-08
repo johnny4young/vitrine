@@ -5,7 +5,7 @@
 name: Vitrine
 
 options:
-  bundleIdPrefix: app.vitrine
+  bundleIdPrefix: com.johnny4young.vitrine
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
@@ -114,7 +114,7 @@ targets:
     # App Store distribution readiness (CS-062, see docs/APP-STORE.md). The metadata an
     # App Store submission needs is the app's existing identity, sourced here and in
     # Vitrine/Resources/Info.plist (no App Store-only settings are invented):
-    #   - Bundle identifier: PRODUCT_BUNDLE_IDENTIFIER below (app.vitrine).
+    #   - Bundle identifier: PRODUCT_BUNDLE_IDENTIFIER below (com.johnny4young.vitrine).
     #   - Primary category: LSApplicationCategoryType in Info.plist (Developer Tools).
     #   - Versioning: MARKETING_VERSION + CURRENT_PROJECT_VERSION (project-wide `settings`
     #     above). App Store Connect requires the build number to increase per marketing
@@ -129,7 +129,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Vitrine
-        PRODUCT_BUNDLE_IDENTIFIER: app.vitrine
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Vitrine/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: Vitrine/Resources/Vitrine.entitlements
@@ -196,7 +196,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: vitrine
-        PRODUCT_BUNDLE_IDENTIFIER: app.vitrine.cli
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.cli
         # A tool is not a sandboxed .app: render is fully local and needs no
         # entitlements, network, screen recording, or Accessibility (CS-033). The
         # font-staging build phase also writes next to the binary, so user-script
@@ -229,7 +229,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: app.vitrine.VitrineTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.VitrineTests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Vitrine.app/Contents/MacOS/Vitrine"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
@@ -244,7 +244,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: app.vitrine.VitrineUITests
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.VitrineUITests
         # XCTestCase's Objective-C lifecycle is nonisolated; keep this target
         # nonisolated and mark XCUIAutomation test methods as @MainActor.
         ENABLE_HARDENED_RUNTIME: NO

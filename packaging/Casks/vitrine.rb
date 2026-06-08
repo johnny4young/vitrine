@@ -32,8 +32,8 @@ cask "vitrine" do
 
   zap trash: [
     "~/Library/Application Support/Vitrine",
-    "~/Library/Caches/app.vitrine",
-    "~/Library/HTTPStorages/app.vitrine",
-    "~/Library/Preferences/app.vitrine.plist",
+    "~/Library/Caches/com.johnny4young.vitrine",
+    "~/Library/HTTPStorages/com.johnny4young.vitrine",
+    "~/Library/Preferences/com.johnny4young.vitrine.plist",
   ]
 end

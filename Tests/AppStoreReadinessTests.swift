@@ -102,9 +102,11 @@ struct AppStoreReadinessTests {
 
         // Bundle identifier — documented and matching project.yml's PRODUCT_BUNDLE_IDENTIFIER.
         #expect(doc.localizedCaseInsensitiveContains("bundle identifier"))
-        #expect(doc.contains("app.vitrine"), "APP-STORE.md must document the bundle identifier")
         #expect(
-            project.contains("PRODUCT_BUNDLE_IDENTIFIER: app.vitrine"),
+            doc.contains("com.johnny4young.vitrine"),
+            "APP-STORE.md must document the bundle identifier")
+        #expect(
+            project.contains("PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine"),
             "the documented bundle identifier must match project.yml")
 
         // Category — documented and matching the Info.plist LSApplicationCategoryType.
