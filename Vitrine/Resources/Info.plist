@@ -105,10 +105,10 @@
 	     produced by Sparkle's `sign_update` at release time. A build whose download
 	     does not verify against this key is rejected, which is what makes a
 	     direct-download update safe against tampering and man-in-the-middle attacks.
-	     This is a placeholder; docs/RELEASING.md documents generating the real key
-	     pair with Sparkle's `generate_keys` and pasting the public half here. -->
+	     The key pair was generated with Sparkle's `generate_keys` (docs/RELEASING.md);
+	     the public half is below; the private half is the SPARKLE_EDDSA_PRIVATE_KEY secret. -->
 	<key>SUPublicEDKey</key>
-	<string>REPLACE_WITH_SPARKLE_EDDSA_PUBLIC_KEY</string>
+	<string>Y5DOypMB7sZ04Ffw2gkLr9BlZRHKGWgWu0bB9jEsqmU=</string>
 	<!-- Privacy: Sparkle's optional anonymous system-profiling feature is OFF, so an
 	     update check sends no usage data — only the request needed to fetch the
 	     appcast and the chosen download. This keeps the app's no-analytics, no-
