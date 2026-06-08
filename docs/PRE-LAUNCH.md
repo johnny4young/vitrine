@@ -233,14 +233,11 @@ tool of the same name before you print it on a release.
 Three committed placeholders currently keep the repo building **without** an Apple account.
 Fill them as you complete the steps above (each is a small, explicit edit):
 
-| Placeholder | File | Replace with | After step |
+| Placeholder | File | What to do | After step |
 | --- | --- | --- | --- |
-| `DEVELOPMENT_TEAM: ""` | `project.yml` | Your 10-char Team ID | §1 |
-| `SUPublicEDKey` = `REPLACE_WITH_SPARKLE_EDDSA_PUBLIC_KEY` | `Vitrine/Resources/Info.plist` | Sparkle public key | §3 |
-| cask `sha256` = all-zeros | `packaging/Casks/vitrine.rb` (template) | _leave as-is_ — the **tap** copy gets the real checksum per release | §5b |
-
-> Bumping `DEVELOPMENT_TEAM` is also available via the `MACOS_NOTARY_TEAM_ID` secret for
-> CI signing; set the `project.yml` value only if you also build/sign locally.
+| `DEVELOPMENT_TEAM: ""` | `project.yml` | **Leave as-is.** The signed build injects the Team ID at build time from the **`MACOS_NOTARY_TEAM_ID` secret** (`build-dmg.sh` → `DEVELOPMENT_TEAM=$MACOS_SIGN_TEAM_ID`). There is **no** `DEVELOPMENT_TEAM` GitHub secret — the Team ID's secret is `MACOS_NOTARY_TEAM_ID`. Only hardcode it here if you sign **locally** without that env var. | §1 |
+| `SUPublicEDKey` | `Vitrine/Resources/Info.plist` | ✅ Set to the real Sparkle public key. | §3 |
+| cask `sha256` = all-zeros | `packaging/Casks/vitrine.rb` (template) | _Leave as-is_ — the **tap** copy gets the real checksum per release. | §5b |
 
 ---
 
