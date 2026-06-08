@@ -49,7 +49,7 @@ enum ReleaseNotes {
                 "A focused editor with curated themes, developer fonts, and adjustable padding, "
                     + "corner radius, window chrome, and line numbers.",
                 "Destination and style presets, plus custom solid, gradient, and image backgrounds.",
-                "Copy or save as PNG, JPEG, or PDF — with rich-text and data-URI copy options.",
+                "Copy or save as PNG or PDF — with rich-text and data-URI copy options.",
                 "Private by design: rendering is fully local, with no account, no network, and no "
                     + "screen-recording or Accessibility permission.",
             ])
