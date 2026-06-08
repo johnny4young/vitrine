@@ -24,6 +24,14 @@ SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 # invocation is unchanged.
 RESULT_BUNDLE_FLAG := $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)")
 
+# Ad-hoc code signing for the headless compile-check (`build`, `cli`). Sparkle
+# (CS-064) embeds a dynamic framework with CodeSignOnCopy, which hangs under a
+# no-signing compile-check on a headless CI runner with no identity to satisfy
+# the copy. Ad-hoc ("-") gives a deterministic identity so the embed signs
+# without hanging; the distributable build (scripts/build-dmg.sh) re-signs with
+# the real Developer ID. `test`/`build-ui-tests` already use default ad-hoc.
+ADHOC_SIGN := CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGN_STYLE=Manual
+
 .DEFAULT_GOAL := all
 .PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens gallery format lint icon clean
 
@@ -44,12 +52,12 @@ project: bootstrap
 open: project
 	open $(PROJECT)
 
-## build: headless Debug compile-check via xcodebuild (no signing)
+## build: headless Debug compile-check via xcodebuild (ad-hoc signing)
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle (CS-060).
 build: project
 	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO $(RESULT_BUNDLE_FLAG) build
+		-destination 'platform=macOS' $(ADHOC_SIGN) $(RESULT_BUNDLE_FLAG) build
 
 ## cli: build the command-line renderer `vitrine` (CS-033). The built binary lands
 ## in DerivedData next to its bundled Fonts/ and the Highlightr resource bundle; the
