@@ -83,11 +83,20 @@ What the script does for a signed build:
 1. **Signs** the app with the Developer ID Application identity.
 2. **Keeps the hardened runtime on** (`ENABLE_HARDENED_RUNTIME=YES`, set in
    `project.yml` and re-asserted on the signed build) — required for notarization.
-3. **Verifies** the signature with `codesign --verify --deep --strict --verbose=2`.
-4. **Notarizes** with `notarytool` (App Store Connect API key **or** Apple ID
+3. **Requests secure code-signing timestamps** (`OTHER_CODE_SIGN_FLAGS=--timestamp`)
+   for the signed Xcode build. Apple notarization requires a secure timestamp; a
+   headless build that signs with `--timestamp=none` can pass local `codesign`
+   verification and still be rejected by the notary service.
+4. **Verifies** the signature with `codesign --verify --deep --strict --verbose=2`.
+5. **Notarizes** with `notarytool` (App Store Connect API key **or** Apple ID
    credentials — see below), then **staples** the ticket to the app, signs the DMG,
    and staples the DMG too so first launch validates offline.
-5. **Assesses Gatekeeper** with `spctl -a -vv` on the app and the DMG.
+6. **Assesses Gatekeeper** with `spctl -a -vv` on the app and the DMG.
+
+If Apple returns anything other than `Accepted`, the script now fetches and prints the
+structured `notarytool log` before it tries to staple. That log is the source of truth
+for signing defects; a stapler-only `Record not found` error just means there was no
+accepted ticket to attach.
 
 ### Credentials (repository secrets)
 

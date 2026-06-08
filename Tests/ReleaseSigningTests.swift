@@ -134,6 +134,23 @@ struct ReleaseSigningTests {
             "build-dmg.sh must pass ENABLE_HARDENED_RUNTIME=YES on the signed build (CS-061)")
     }
 
+    /// Apple notarization requires a secure timestamp on Developer ID signatures.
+    /// Xcode's headless build path can otherwise emit `--timestamp=none`, which
+    /// still passes local `codesign --verify` but comes back from notarytool as
+    /// Invalid. Pin the explicit flag in the signed xcodebuild invocation so every
+    /// nested code-sign step (the app, Sparkle, helpers, and Swift libraries) gets
+    /// a timestamp before submission.
+    @Test func signedBuildRequestsSecureTimestampForNotarization() throws {
+        let script = try Self.script()
+        #expect(
+            script.contains("OTHER_CODE_SIGN_FLAGS=\"--timestamp\""),
+            "Developer ID release builds must request secure timestamps before notarization (CS-061)"
+        )
+        #expect(
+            script.localizedCaseInsensitiveContains("secure timestamp"),
+            "build-dmg.sh should explain why the timestamp flag is required")
+    }
+
     // MARK: - Acceptance: notarization with notarytool or App Store Connect API credentials
 
     @Test func notarizationUsesNotarytoolWithEitherCredentialStyle() throws {
@@ -161,6 +178,27 @@ struct ReleaseSigningTests {
         #expect(
             script.contains("--key ") && script.contains("--issuer"),
             "build-dmg.sh must pass the App Store Connect API key to notarytool (CS-061)")
+    }
+
+    /// A rejected notary submission is not staplable; the script must parse the
+    /// `notarytool submit --output-format plist` result, fetch the detailed notary
+    /// log, and stop before attempting `stapler`. Otherwise GitHub Actions only
+    /// shows "Record not found" from stapler and hides the real signing issue.
+    @Test func scriptSurfacesRejectedNotarySubmissionsBeforeStapling() throws {
+        let script = try Self.script()
+        #expect(
+            script.contains("--output-format plist"),
+            "build-dmg.sh must capture structured notarytool output (CS-061)")
+        #expect(
+            script.contains("notarytool log"),
+            "build-dmg.sh must fetch the notary log when Apple rejects a submission")
+        #expect(
+            script.contains("status") && script.contains("Accepted"),
+            "build-dmg.sh must parse and require an Accepted notarization status before stapling")
+        #expect(
+            script.contains("submit_for_notarization \"$ZIP\" \"app\"")
+                && script.contains("xcrun stapler staple \"$APP\""),
+            "app stapling must happen only after the accepted-submission helper returns")
     }
 
     /// The release workflow must thread both credential styles through to the script
@@ -339,6 +377,13 @@ struct ReleaseSigningTests {
         #expect(
             doc.localizedCaseInsensitiveContains("hardened runtime"),
             "RELEASING.md must note the hardened runtime requirement")
+        #expect(
+            doc.localizedCaseInsensitiveContains("secure timestamp"),
+            "RELEASING.md must document the secure timestamp requirement for notarization")
+        #expect(
+            doc.contains("notarytool log"),
+            "RELEASING.md must document that rejected submissions are diagnosed with the notary log"
+        )
         #expect(
             doc.contains("codesign --verify --deep --strict --verbose=2"),
             "RELEASING.md must document the codesign verification command (CS-061)")

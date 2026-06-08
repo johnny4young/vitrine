@@ -40,6 +40,7 @@ VERSION="${VERSION:-${GITHUB_REF_NAME:-dev}}"
 VERSION="${VERSION#v}"
 DERIVED="build"
 APP="$DERIVED/Build/Products/Release/Vitrine.app"
+PLIST_BUDDY="/usr/libexec/PlistBuddy"
 
 # Direct-download channel entitlements (CS-064). The DMG is the direct-download
 # build, so it signs with the SUPERSET entitlements that add the network-client and
@@ -77,6 +78,7 @@ echo "==> Building Release ($VERSION)"
 if [ "$SIGNED" -eq 1 ]; then
 	echo "    Signing identity: $SIGN_IDENTITY (hardened runtime on)"
 	echo "    Entitlements: $DIRECT_DOWNLOAD_ENTITLEMENTS (network + Sparkle XPC for auto-update)"
+	echo "    Code-signing timestamp: secure timestamp required for notarization"
 	xcodebuild \
 		-project Vitrine.xcodeproj \
 		-scheme Vitrine \
@@ -85,6 +87,7 @@ if [ "$SIGNED" -eq 1 ]; then
 		CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
 		CODE_SIGN_STYLE=Manual \
 		ENABLE_HARDENED_RUNTIME=YES \
+		OTHER_CODE_SIGN_FLAGS="--timestamp" \
 		${MACOS_SIGN_TEAM_ID:+DEVELOPMENT_TEAM="$MACOS_SIGN_TEAM_ID"} \
 		build
 else
@@ -140,13 +143,68 @@ elif [ -n "${MACOS_NOTARY_APPLE_ID:-}" ] \
 	)
 fi
 
+notary_plist_value() {
+	local plist="$1"
+	local key="$2"
+	"$PLIST_BUDDY" -c "Print :$key" "$plist" 2>/dev/null || true
+}
+
+print_notary_log() {
+	local submission_id="$1"
+	local label="$2"
+
+	if [ -z "$submission_id" ]; then
+		echo "    No notary submission id was returned; cannot fetch the notary log." >&2
+		return 0
+	fi
+
+	local log_path="$DERIVED/notary-$label-log.json"
+	echo "==> Fetching notary log for $label ($submission_id)"
+	if xcrun notarytool log "${notary_args[@]}" "$submission_id" "$log_path"; then
+		cat "$log_path"
+	else
+		echo "    Failed to fetch notary log for $submission_id" >&2
+	fi
+}
+
+submit_for_notarization() {
+	local artifact="$1"
+	local label="$2"
+	local result_plist="$DERIVED/notary-$label.plist"
+
+	rm -f "$result_plist"
+	if ! xcrun notarytool submit "$artifact" "${notary_args[@]}" --wait \
+		--output-format plist > "$result_plist"; then
+		echo "error: notarytool submit failed for $label" >&2
+		if [ -s "$result_plist" ]; then
+			plutil -p "$result_plist" || cat "$result_plist"
+			print_notary_log "$(notary_plist_value "$result_plist" id)" "$label"
+		fi
+		return 1
+	fi
+
+	local submission_id
+	local status
+	submission_id="$(notary_plist_value "$result_plist" id)"
+	status="$(notary_plist_value "$result_plist" status)"
+	echo "    Notary submission id: ${submission_id:-unknown}"
+	echo "    Notary status: ${status:-unknown}"
+
+	if [ "$status" != "Accepted" ]; then
+		echo "error: notarization for $label was not accepted (status: ${status:-unknown})" >&2
+		plutil -p "$result_plist" || cat "$result_plist"
+		print_notary_log "$submission_id" "$label"
+		return 1
+	fi
+}
+
 NOTARIZED=0
 if [ "$SIGNED" -eq 1 ] && [ "${#notary_args[@]}" -gt 0 ]; then
 	echo "==> Notarizing the app (notarytool submit --wait)"
 	ZIP="$DERIVED/Vitrine.zip"
 	rm -f "$ZIP"
 	ditto -c -k --keepParent "$APP" "$ZIP"
-	xcrun notarytool submit "$ZIP" "${notary_args[@]}" --wait
+	submit_for_notarization "$ZIP" "app"
 	echo "==> Stapling the notarization ticket to the app"
 	xcrun stapler staple "$APP"
 	xcrun stapler validate "$APP"
@@ -178,7 +236,7 @@ if [ "$SIGNED" -eq 1 ]; then
 		# The app inside is already notarized + stapled; submit the DMG too so the
 		# container itself carries a stapled ticket. Best-effort: a freshly created
 		# DMG of an already-notarized app is normally accepted quickly.
-		xcrun notarytool submit "$DMG" "${notary_args[@]}" --wait || \
+		submit_for_notarization "$DMG" "dmg" || \
 			echo "    (DMG notarization submission skipped/failed; the app inside is already notarized + stapled)"
 		xcrun stapler staple "$DMG" || \
 			echo "    (DMG stapling skipped; the stapled app inside remains valid)"
