@@ -29,7 +29,7 @@ jobs:
     # to log exact versions before building.
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -68,7 +68,7 @@ jobs:
       # for the package dependencies (the resolved project is generated, not
       # committed).
       - name: Cache Swift Package Manager
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/Library/Caches/org.swift.swiftpm
           key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
@@ -108,7 +108,7 @@ jobs:
       # .xcresult is a directory bundle.
       - name: Upload .xcresult bundles
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: xcresults
           path: |
@@ -143,7 +143,7 @@ jobs:
           fi
       - name: Upload gallery design-review artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: launch-gallery
           path: ${{ runner.temp }}/vitrine-gallery-review
@@ -194,7 +194,7 @@ jobs:
       # stable temp directory; collect that path on failure.
       - name: Upload golden diff artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: golden-diffs
           path: ${{ runner.temp }}/vitrine-golden-diffs
