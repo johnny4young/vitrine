@@ -90,7 +90,7 @@ final class VitrineUITests: XCTestCase {
             element("copy-button", in: app).waitForExistence(timeout: 3),
             "Editor control is missing after off-screen recovery")
         assertHittable(
-            element("copy-button", in: app), in: app,
+            "copy-button", in: app,
             "Editor window was not recovered onto a visible screen")
     }
 
@@ -129,9 +129,7 @@ final class VitrineUITests: XCTestCase {
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         assertExists(element("make-default-button", in: app), in: app, timeout: 3)
-        assertHittable(
-            element("make-default-button", in: app), in: app,
-            "Make Default action is not reachable")
+        assertHittable("make-default-button", in: app, "Make Default action is not reachable")
     }
 
     @MainActor
@@ -145,9 +143,8 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
-        let button = element("format-button", in: app)
-        assertExists(button, in: app, timeout: 3)
-        assertHittable(button, in: app, "Format Code action is not reachable")
+        assertExists(element("format-button", in: app), in: app, timeout: 3)
+        assertHittable("format-button", in: app, "Format Code action is not reachable")
     }
 
     @MainActor
@@ -211,14 +208,9 @@ final class VitrineUITests: XCTestCase {
         // automatable proxy for reachability without scripting Full Keyboard Access.
         assertExists(element("editor-style-preset-picker", in: app), in: app, timeout: 8)
         assertHittable(
-            element("editor-style-preset-picker", in: app), in: app,
-            "Style preset picker is not reachable")
-        assertHittable(
-            element("editor-inspector", in: app), in: app,
-            "Inspector is not reachable")
-        assertHittable(
-            element("copy-button", in: app), in: app,
-            "Export toolbar copy action is not reachable")
+            "editor-style-preset-picker", in: app, "Style preset picker is not reachable")
+        assertHittable("editor-inspector", in: app, "Inspector is not reachable")
+        assertHittable("copy-button", in: app, "Export toolbar copy action is not reachable")
     }
 
     @MainActor
@@ -517,12 +509,14 @@ final class VitrineUITests: XCTestCase {
             "editor-preset-strip", "editor-preview-stage", "editor-inspector", "copy-button",
             "save-button", "share-button",
         ] {
-            let control = element(identifier, in: app)
             XCTAssertTrue(
-                control.waitForExistence(timeout: 3),
+                element(identifier, in: app).waitForExistence(timeout: 3),
                 "Editor control \(identifier) is missing under the RTL pseudolocale")
-            XCTAssertTrue(
-                control.isHittable,
+            // Through assertHittable because the toolbar ids can resolve to nested
+            // wrapper+button pairs — a single-element `.isHittable` read would raise
+            // "multiple matching elements" (see matches(_:in:)).
+            assertHittable(
+                identifier, in: app,
                 "Editor control \(identifier) is clipped or unreachable under RTL")
         }
     }
@@ -581,31 +575,49 @@ final class VitrineUITests: XCTestCase {
                 + "(visible frames: \(visible)); hittability cannot be asserted here.")
     }
 
-    /// Asserts `element` becomes hittable, polling briefly so a window still being
-    /// positioned (centered, or pulled back on-screen by the recovery pass) is not a
-    /// flake. On failure it attaches the screen/window/element geometry and the full
-    /// accessibility hierarchy, so a display-geometry regression — e.g. on a small CI
-    /// virtual display — can be triaged from the .xcresult alone.
+    /// Every AX element carrying `identifier`, resolved fresh on each call. A single
+    /// identifier can legitimately match nested elements: an AppKit toolbar item
+    /// wraps the SwiftUI button it hosts and both expose the same identifier
+    /// (observed on the macOS 15 CI image once the editor window fits the display),
+    /// so reading a property through a single-element query would raise "multiple
+    /// matching elements found".
+    @MainActor
+    private func matches(_ identifier: String, in app: XCUIApplication) -> [XCUIElement] {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", identifier))
+            .allElementsBoundByIndex
+    }
+
+    /// Asserts some element carrying `identifier` becomes hittable, polling briefly
+    /// so a window still being positioned (centered, or pulled back on-screen by the
+    /// recovery pass) is not a flake. The control is reachable when *any* of the
+    /// identifier's matches is hittable — see `matches(_:in:)` for why there can be
+    /// more than one. On failure it attaches the screen/window/match geometry and the
+    /// full accessibility hierarchy, so a display-geometry regression — e.g. on a
+    /// small CI virtual display — can be triaged from the .xcresult alone.
     @MainActor
     private func assertHittable(
-        _ element: XCUIElement,
+        _ identifier: String,
         in app: XCUIApplication,
         _ message: String,
         timeout: TimeInterval = 3,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let hittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isHittable == true"), object: element)
-        if XCTWaiter().wait(for: [hittable], timeout: timeout) == .completed { return }
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if matches(identifier, in: app).contains(where: { $0.isHittable }) { return }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
 
-        let screens = NSScreen.screens
-            .map { "screen frame=\($0.frame) visible=\($0.visibleFrame)" }
+        let found = matches(identifier, in: app)
+            .map { "match frame=\($0.frame) hittable=\($0.isHittable)" }
         let windows = app.windows.allElementsBoundByIndex
             .map { "window \"\($0.title)\" frame=\($0.frame)" }
-        let geometry =
-            (["element frame: \(element.exists ? "\(element.frame)" : "(element missing)")"]
-            + windows + screens).joined(separator: "\n")
+        let screens = NSScreen.screens
+            .map { "screen frame=\($0.frame) visible=\($0.visibleFrame)" }
+        let geometry = (["matches for '\(identifier)': \(found.count)"] + found + windows + screens)
+            .joined(separator: "\n")
         let attachment = XCTAttachment(string: geometry + "\n\n" + app.debugDescription)
         attachment.name = "Hittability diagnostics"
         attachment.lifetime = .keepAlways
