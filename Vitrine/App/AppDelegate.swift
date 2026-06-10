@@ -93,11 +93,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
             else { continue }
             view.cacheDisplay(in: view.bounds, to: rep)
-            guard let png = rep.representation(using: .png, properties: [:]) else { continue }
+            guard let png = flattenedPNG(rep, over: window) else { continue }
             let safe = (window.title.isEmpty ? "window" : window.title)
                 .replacingOccurrences(of: " ", with: "-")
             try? png.write(to: dir.appendingPathComponent("ui-\(safe)-\(tag).png"))
         }
+    }
+
+    /// Flattens a `cacheDisplay` capture over the window's background color.
+    ///
+    /// Material chrome (the editor's preset strip and inspector) is composited by
+    /// the window server, so a raw `cacheDisplay` bitmap leaves those regions
+    /// semi-transparent — image viewers then show an alpha checkerboard that the
+    /// live window never has. Filling the window background underneath (resolved
+    /// in the window's own appearance) yields an opaque PNG matching the on-screen
+    /// look, minus the blur — still without Screen Recording permission, which
+    /// this helper deliberately avoids.
+    private static func flattenedPNG(_ rep: NSBitmapImageRep, over window: NSWindow) -> Data? {
+        guard
+            let canvas = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: rep.pixelsWide,
+                pixelsHigh: rep.pixelsHigh,
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .calibratedRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0),
+            let graphics = NSGraphicsContext(bitmapImageRep: canvas)
+        else { return nil }
+
+        let pixelRect = NSRect(x: 0, y: 0, width: rep.pixelsWide, height: rep.pixelsHigh)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = graphics
+        window.effectiveAppearance.performAsCurrentDrawingAppearance {
+            NSColor.windowBackgroundColor.setFill()
+            pixelRect.fill()
+            // Explicit source-over: `NSImageRep.draw(in:)` composites with .copy,
+            // which would replace the just-filled background — alpha included —
+            // and leave the capture translucent again.
+            rep.draw(
+                in: pixelRect, from: .zero, operation: .sourceOver, fraction: 1,
+                respectFlipped: false, hints: nil)
+        }
+        graphics.flushGraphics()
+        NSGraphicsContext.restoreGraphicsState()
+        return canvas.representation(using: .png, properties: [:])
     }
 
     private func handleHotkey() {

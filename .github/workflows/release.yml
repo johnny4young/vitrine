@@ -233,11 +233,16 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
 
           # Fetch Sparkle's binary tools (generate_appcast, which signs each entry with the
-          # EdDSA key). Pinned to the same 2.x line the app links via SPM (project.yml
-          # resolves Sparkle 2.9.x) so the appcast format matches the runtime.
-          SPARKLE_VERSION="2.9.2"
+          # EdDSA key). Pinned to the same version the app embeds from Vendor/ (fetched and
+          # checksum-verified by scripts/fetch-sparkle.sh) so the appcast format matches the
+          # runtime. The tarball is checksum-verified here too — this binary receives the
+          # EdDSA private key on stdin, so it must never run unverified. Keep the version
+          # and sha256 in sync with scripts/fetch-sparkle.sh.
+          SPARKLE_VERSION="2.9.3"
+          SPARKLE_TARBALL_SHA256="74a07da821f92b79310009954c0e15f350173374a3abe39095b4fc5096916be6"
           curl -fsSL -o "${RUNNER_TEMP}/Sparkle.tar.xz" \
             "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          echo "${SPARKLE_TARBALL_SHA256}  ${RUNNER_TEMP}/Sparkle.tar.xz" | shasum -a 256 -c -
           mkdir -p "${RUNNER_TEMP}/sparkle"
           tar -xf "${RUNNER_TEMP}/Sparkle.tar.xz" -C "${RUNNER_TEMP}/sparkle"
           GENERATE_APPCAST="${RUNNER_TEMP}/sparkle/bin/generate_appcast"

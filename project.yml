@@ -53,7 +53,9 @@ packages:
     from: "2.3.0"
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
-    from: "1.10.0"
+    # 2.x drops the deprecated `on()` handler API (we use `events(_:for:)`) and
+    # tightens strict-concurrency annotations — both aligned with this codebase.
+    from: "2.4.0"
   Settings:
     url: https://github.com/sindresorhus/Settings
     from: "3.0.0"

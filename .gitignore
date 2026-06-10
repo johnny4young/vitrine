@@ -13,6 +13,8 @@ build/
 DerivedData/
 # Packaged release artifacts (scripts/build-dmg.sh writes DMGs here; CS-061).
 dist/
+# Session evidence from audit/validation runs (screenshots, reports) — local only.
+.audit/
 *.moved-aside
 *.hmap
 *.ipa

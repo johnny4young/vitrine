@@ -231,7 +231,7 @@ CaptureEngine → NSPasteboard.general.string(forType: .string)
     ↓
 RenderEngine (Product Phase 1: code; Product Phase 2: URL/HTML/social cards)
   ├── SyntaxHighlighter (Highlightr — 160+ languages via Highlight.js)
-  ├── ThemeManager (@AppStorage — theme persists across sessions)
+  ├── Theme catalog (Theme + CustomThemeStore — selection persists via AppSettings)
   ├── BackgroundRenderer (gradients, solid, transparent)
   └── WindowChrome (decorative traffic lights, optional)
     ↓
@@ -323,7 +323,7 @@ Vitrine/
 ├── Settings/
 │   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)
 │   ├── SettingsWindow.swift   # preferences window (Settings package)
-│   └── ThemeManager.swift     # predefined themes
+│   └── CustomThemeStore.swift # built-in + user theme catalog (CS-031)
 ├── Models/
 │   ├── Theme.swift
 │   ├── Language.swift

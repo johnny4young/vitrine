@@ -455,3 +455,42 @@ private struct Catalog: Decodable {
         var stringUnit: StringUnit
     }
 }
+
+// MARK: - App language picker model (CS-047)
+
+/// The Settings language picker's model: persisted-value resolution and the
+/// autonym labels. This is the contract the picker and the relaunch flow rely on,
+/// independent of any UI.
+@Suite("App language model resolves and labels correctly · CS-047")
+struct AppLanguageTests {
+    @Test func resolveDefaultsToSystemForMissingOrGarbageValues() {
+        // CS-050 defensive read: a missing or hand-edited defaults value must
+        // never crash or mis-pin a language — it falls back to following macOS.
+        #expect(AppLanguage.resolve(nil) == .system)
+        #expect(AppLanguage.resolve("") == .system)
+        #expect(AppLanguage.resolve("klingon") == .system)
+        #expect(AppLanguage.resolve("English") == .system, "Raw values are case-sensitive")
+    }
+
+    @Test func resolveRoundTripsEveryCase() {
+        for language in AppLanguage.allCases {
+            #expect(AppLanguage.resolve(language.rawValue) == language)
+        }
+    }
+
+    @Test func localeCodesMatchTheShippedLocalizations() {
+        // The codes written into AppleLanguages must be exactly the locales the
+        // bundle ships (en/es), and `.system` must write none at all.
+        #expect(AppLanguage.system.localeCode == nil)
+        #expect(AppLanguage.english.localeCode == "en")
+        #expect(AppLanguage.spanish.localeCode == "es")
+    }
+
+    @Test func concreteLanguagesDisplayTheirCapitalizedAutonym() {
+        // System Settings convention: a language is always recognizable to its own
+        // speakers. Locale returns "español" lowercased; the picker must show
+        // "Español".
+        #expect(AppLanguage.english.displayName == "English")
+        #expect(AppLanguage.spanish.displayName == "Español")
+    }
+}

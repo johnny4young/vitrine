@@ -228,6 +228,20 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testInputPaneExposesReindentOnPasteToggle() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-settings"])
+        defer { app.terminate() }
+
+        // The Input pane surfaces the paste re-indent preference (CS-049), the
+        // switch behind the editor's tidy-on-paste behavior.
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        app.toolbars.buttons["Input"].click()
+        assertExists(element("settings-input-pane", in: app), in: app, timeout: 3)
+        assertExists(element("reindent-on-paste-toggle", in: app), in: app, timeout: 3)
+    }
+
+    @MainActor
     func testStylePaneExposesAccessibleMetadataControls() {
         continueAfterFailure = false
         let app = launch(arguments: ["--open-settings"])

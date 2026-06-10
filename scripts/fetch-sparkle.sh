@@ -12,11 +12,11 @@
 # or a prior local run), the fetch is skipped.
 set -euo pipefail
 
-SPARKLE_VERSION="2.9.2"
+SPARKLE_VERSION="2.9.3"
 # sha256 of Sparkle-<version>.tar.xz from the official GitHub release. Bump together
 # with SPARKLE_VERSION; a mismatch fails the build rather than embedding an unverified
-# binary.
-SPARKLE_TARBALL_SHA256="1cb340cbbef04c6c0d162078610c25e2221031d794a3449d89f2f56f4df77c95"
+# binary. Keep in sync with the appcast tooling pin in .github/workflows/release.yml.
+SPARKLE_TARBALL_SHA256="74a07da821f92b79310009954c0e15f350173374a3abe39095b4fc5096916be6"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VENDOR="$REPO_ROOT/Vendor"
