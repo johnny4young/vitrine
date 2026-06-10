@@ -82,7 +82,7 @@ extension Color {
     var hexColor: HexColor {
         let components = sRGBComponents
         // The components are always finite and in 0...1, so the canonical hex string
-        // parses back; the `?? black` is an unreachable belt-and-suspenders fallback.
+        // parses back; the `?? .black` is an unreachable belt-and-suspenders fallback.
         return HexColor(
             String(
                 format: "#%02X%02X%02X%02X",
@@ -90,7 +90,7 @@ extension Color {
                 Int((components.green * 255).rounded()),
                 Int((components.blue * 255).rounded()),
                 Int((components.opacity * 255).rounded())))
-            ?? HexColor("#000000")!
+            ?? .black
     }
 }
 

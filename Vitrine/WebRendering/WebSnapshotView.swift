@@ -20,9 +20,16 @@ import WebKit
 /// 1. **No base URL.** HTML loads with `baseURL: nil` (unless the caller opts into
 ///    a `localBaseURL`), so relative references like `<img src="logo.png">` cannot
 ///    resolve to anything — there is no document origin to resolve them against.
-/// 2. **Remote loads are cancelled.** A navigation delegate cancels any request to
-///    a remote scheme/host, so even an absolute `https://…` subresource or a
-///    top-level redirect is blocked unless the caller explicitly allows network.
+/// 2. **Remote loads are blocked in the web process.** A compiled
+///    `WKContentRuleList` (see `RemoteBlockRules`) blocks every `http(s)`/`ws(s)`
+///    request — subresources (`<img>`, `<script>`, stylesheets), `fetch`/XHR from
+///    scripts, and frame loads alike. A navigation delegate additionally cancels
+///    remote top-level redirects. The rule list is the load-bearing layer: a
+///    navigation delegate alone only sees *frame navigations*, never subresource
+///    requests, so it could not keep an absolute `https://…` image off the wire on
+///    a build that carries the network entitlement (the direct-download channel,
+///    CS-064). If the rule list cannot be compiled the render fails closed with
+///    `.networkIsolationUnavailable` rather than rendering unisolated.
 ///
 /// The data store is always `WKWebsiteDataStore.nonPersistent()`, so nothing the
 /// page touches (cookies, caches, local storage) is written to disk or shared with
@@ -110,6 +117,15 @@ struct WebSnapshotView {
         let configuration = WKWebViewConfiguration()
         // Never persist anything the page touches (cookies, caches, storage).
         configuration.websiteDataStore = .nonPersistent()
+
+        if !request.allowsNetwork {
+            // The content rule list is what actually keeps pasted HTML off the
+            // network: it blocks remote subresources and script-initiated requests
+            // inside the web process, which the navigation delegate below never
+            // sees. Failing to obtain it fails the render (closed), preserving the
+            // CS-042 promise even on the network-entitled direct-download build.
+            configuration.userContentController.add(try await Self.remoteBlockList())
+        }
 
         let frame = CGRect(origin: .zero, size: request.viewport)
         let webView = WKWebView(frame: frame, configuration: configuration)
@@ -207,6 +223,62 @@ struct WebSnapshotView {
 }
 
 extension WebSnapshotView {
+    /// The content rules that keep pasted HTML off the network (CS-042).
+    ///
+    /// `WKNavigationDelegate` only decides *frame navigations*; subresource loads
+    /// (`<img>`, `<script>`, stylesheets) and script-initiated requests
+    /// (`fetch`/XHR/WebSocket) never reach it. This compiled rule list runs inside
+    /// the web process and blocks every request to a network scheme, which is the
+    /// only supported way to guarantee "pasted HTML cannot reach the network" on a
+    /// build that carries the network entitlement (the direct-download DMG,
+    /// CS-064). Local schemes (`file`, `data`, `blob`, `about`) are untouched, so
+    /// inline images and a user-selected local base URL keep working.
+    enum RemoteBlockRules {
+        /// The store identifier for the compiled rules. Versioned so a future rule
+        /// change recompiles instead of reusing a stale cached list.
+        static let identifier = "vitrine-block-remote-v1"
+
+        /// The rule source: block everything that can reach the wire. WebKit can
+        /// only load remote content over `http(s)`/`ws(s)`, so matching those
+        /// schemes blocks the entire network surface without touching local ones.
+        static let json = """
+            [
+              { "trigger": { "url-filter": "^https?://" }, "action": { "type": "block" } },
+              { "trigger": { "url-filter": "^wss?://" }, "action": { "type": "block" } }
+            ]
+            """
+    }
+
+    /// The compiled remote-block rule list, compiled at most once per process.
+    private static var cachedRemoteBlockList: WKContentRuleList?
+
+    /// Returns the compiled remote-block rule list, compiling and caching it on
+    /// first use. Throws `.networkIsolationUnavailable` when WebKit cannot provide
+    /// a compiled list — the caller must fail the render rather than proceed
+    /// without isolation.
+    static func remoteBlockList() async throws -> WKContentRuleList {
+        if let cachedRemoteBlockList { return cachedRemoteBlockList }
+        guard let store = WKContentRuleListStore.default() else {
+            throw WebSnapshotError.networkIsolationUnavailable
+        }
+        do {
+            guard
+                let list = try await store.compileContentRuleList(
+                    forIdentifier: RemoteBlockRules.identifier,
+                    encodedContentRuleList: RemoteBlockRules.json)
+            else {
+                throw WebSnapshotError.networkIsolationUnavailable
+            }
+            cachedRemoteBlockList = list
+            return list
+        } catch {
+            Log.render.error(
+                "Remote-block rule list failed to compile (\((error as NSError).domain, privacy: .public))"
+            )
+            throw WebSnapshotError.networkIsolationUnavailable
+        }
+    }
+
     /// The pure load-policy decision behind the navigation delegate: given a
     /// request's scheme and whether the caller allowed network, should the load
     /// proceed or be cancelled?
@@ -270,6 +342,11 @@ enum WebSnapshotError: Error, Equatable {
 
     /// The page loaded but `takeSnapshot` yielded no usable image.
     case snapshotFailed
+
+    /// The remote-block content rule list could not be compiled, so the engine
+    /// refused to render pasted HTML without its network isolation (CS-042). The
+    /// render fails closed instead of loading the page unisolated.
+    case networkIsolationUnavailable
 }
 
 /// Drives one offscreen load: enforces the network policy and signals when the
@@ -350,11 +427,12 @@ private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
 
     // MARK: WKNavigationDelegate
 
-    /// Gates every request. The first load is the `loadHTMLString` document itself
-    /// (an `about:blank`-style main-frame navigation with no URL), which is always
-    /// allowed; any request to a remote scheme/host is cancelled unless the request
-    /// opted into network. This is what blocks an absolute `https://…` subresource
-    /// or a top-level redirect for pasted HTML.
+    /// Gates every *frame navigation* — the `loadHTMLString` document itself (an
+    /// `about:blank`-style main-frame navigation with no URL, always allowed),
+    /// remote top-level redirects, and iframe loads. Subresource requests never
+    /// reach a navigation delegate; those are blocked by the compiled
+    /// `RemoteBlockRules` content rule list installed on the configuration. This
+    /// delegate is the second, navigation-level layer of the same policy.
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,

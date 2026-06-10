@@ -156,8 +156,13 @@ struct CodeEditorView: NSViewRepresentable {
         /// through the text view's native edit cycle so the change lands on the undo stack
         /// (⌘Z reverts it) and `textDidChange` writes it back to the binding (CS-049). A
         /// no-op (already tidy, or a `.leaveAlone` language) registers no edit.
-        func reindentAfterPaste(_ textView: NSTextView) {
-            guard AppSettings.shared.reindentOnPaste else { return }
+        ///
+        /// `isEnabled` defaults to the live global preference; tests pass it explicitly
+        /// so the behavior is assertable without touching shared defaults.
+        func reindentAfterPaste(
+            _ textView: NSTextView, isEnabled: Bool = AppSettings.shared.reindentOnPaste
+        ) {
+            guard isEnabled else { return }
             let original = textView.string
             let tidied = CodeFormatter.tidy(original, language: parent.language)
             guard tidied != original else { return }

@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 
 /// Relaunches Vitrine in a fresh process and quits the current one.
 ///
@@ -17,7 +18,18 @@ enum AppRelauncher {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.createsNewApplicationInstance = true
         Task {
-            _ = try? await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+            do {
+                _ = try await NSWorkspace.shared.openApplication(
+                    at: url, configuration: configuration)
+            } catch {
+                // Keep this instance alive: terminating after a failed launch would
+                // leave the user with no running app, breaking the guarantee above.
+                // Log only the error domain/code, never a path (CS-048).
+                Log.app.error(
+                    "Relaunch failed; staying in the current instance (\((error as NSError).domain, privacy: .public) \((error as NSError).code, privacy: .public))"
+                )
+                return
+            }
             NSApp.terminate(nil)
         }
     }

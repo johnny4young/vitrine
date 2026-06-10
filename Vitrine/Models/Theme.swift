@@ -406,6 +406,19 @@ struct HexColor: Hashable, Sendable {
         }
     }
 
+    /// Opaque black, constructed directly from components so it cannot fail — the
+    /// safe fallback for "unreachable" formatting paths without a force unwrap.
+    static let black = HexColor(red: 0, green: 0, blue: 0, alpha: 1)
+
+    /// Builds a color from already-validated components. Private so every public
+    /// construction path remains the validating hex parser above.
+    private init(red: Double, green: Double, blue: Double, alpha: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.alpha = alpha
+    }
+
     /// The canonical `#RRGGBB` (or `#RRGGBBAA` when not fully opaque) string, used
     /// for stylesheet synthesis and as the stable serialized form.
     var hexString: String {

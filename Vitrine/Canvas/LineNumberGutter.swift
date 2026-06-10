@@ -186,7 +186,10 @@ struct CodeLinesView: View {
         let isHighlighted = LineHighlight.contains(highlightedRanges, line: lineNumber)
         HStack(alignment: .firstTextBaseline, spacing: 0) {
             if showLineNumbers {
-                Text("\(lineNumber)")
+                // Verbatim: a line number is a locale-neutral numeral, not catalog
+                // copy — and this also keeps Xcode's extractor from emitting a bare
+                // "%@" key into the String Catalog (CS-047).
+                Text(verbatim: "\(lineNumber)")
                     .font(Font(font))
                     .monospacedDigit()
                     .foregroundStyle(textColor.opacity(isHighlighted ? 0.85 : 0.4))
@@ -211,7 +214,9 @@ struct CodeLinesView: View {
     /// occupies a full row (a zero-width space placeholder) so blank lines keep
     /// the gutter numbering and vertical rhythm intact rather than collapsing.
     private func lineText(_ line: AttributedString) -> Text {
-        if line.characters.isEmpty { return Text("\u{200B}").font(Font(font)) }
+        // Verbatim: the zero-width space is a layout placeholder, not user copy, so
+        // it must not become a String Catalog key (CS-047).
+        if line.characters.isEmpty { return Text(verbatim: "\u{200B}").font(Font(font)) }
         return Text(line)
     }
 }

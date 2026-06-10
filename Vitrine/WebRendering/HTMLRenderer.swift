@@ -98,6 +98,7 @@ extension WebSnapshotError {
         case .loadFailed: "load-failed"
         case .timedOut: "timed-out"
         case .snapshotFailed: "snapshot-failed"
+        case .networkIsolationUnavailable: "network-isolation-unavailable"
         }
     }
 }

@@ -192,9 +192,10 @@ struct WebSnapshotRenderTests {
     })
 struct WebSnapshotNetworkTests {
     @Test func remoteSubresourceIsBlockedButTheDocumentStillRenders() async throws {
-        // A remote <img> is cancelled by the navigation policy, yet the document
-        // loads and snapshots — a blocked subresource must not fail the render or
-        // yield a blank image.
+        // A remote <img> is blocked in the web process by the compiled content
+        // rule list (a navigation delegate never sees subresource loads), yet the
+        // document loads and snapshots — a blocked subresource must not fail the
+        // render or yield a blank image.
         let engine = WebSnapshotView()
         let image = try await engine.snapshot(
             of: .init(
@@ -209,11 +210,25 @@ struct WebSnapshotNetworkTests {
     @Test func networkIsBlockedByDefault() async throws {
         // The default request blocks network: the same fixture renders without the
         // caller having to opt out, proving `allowsNetwork` defaults to false.
+        // Scale is pinned to 1 so the pixel assertion is exact — the request's
+        // default scale is 2, which doubles the bitmap (CS-042 determinism).
         let engine = WebSnapshotView()
         let image = try await engine.snapshot(
-            of: .init(html: HTMLFixture.remoteImage, viewport: CGSize(width: 400, height: 240)))
+            of: .init(
+                html: HTMLFixture.remoteImage, viewport: CGSize(width: 400, height: 240),
+                scale: 1))
         #expect(image.width == 400)
         #expect(image.height == 240)
+    }
+
+    @Test func remoteBlockRulesCompileIntoAUsableRuleList() async throws {
+        // The rule list is the load-bearing isolation layer for pasted HTML on a
+        // network-entitled build (CS-064 DMG): subresources and script-initiated
+        // requests never reach the navigation delegate, so blocking happens in the
+        // web process. This proves the committed rule JSON actually compiles —
+        // a malformed rule source would otherwise fail every HTML render closed.
+        let list = try await WebSnapshotView.remoteBlockList()
+        #expect(list.identifier == WebSnapshotView.RemoteBlockRules.identifier)
     }
 }
 
@@ -235,6 +250,7 @@ struct WebSnapshotLocalAssetTests {
             of: .init(
                 html: HTMLFixture.relativeAsset,
                 viewport: CGSize(width: 480, height: 300),
+                scale: 1,
                 localBaseURL: nil))
         #expect(image.width == 480)
         #expect(image.height == 300)
@@ -250,6 +266,7 @@ struct WebSnapshotLocalAssetTests {
             of: .init(
                 html: HTMLFixture.minimal,
                 viewport: CGSize(width: 300, height: 200),
+                scale: 1,
                 localBaseURL: base))
         #expect(image.width == 300)
         #expect(image.height == 200)
@@ -309,6 +326,7 @@ struct WebSnapshotErrorTests {
         #expect(WebSnapshotError.loadFailed != .timedOut)
         #expect(WebSnapshotError.timedOut != .snapshotFailed)
         #expect(WebSnapshotError.snapshotFailed != .invalidViewport)
+        #expect(WebSnapshotError.networkIsolationUnavailable != .snapshotFailed)
         // Sanity: identical cases remain equal (what `#expect(throws:)` relies on).
         #expect(WebSnapshotError.timedOut == .timedOut)
     }
@@ -322,6 +340,7 @@ struct WebSnapshotErrorTests {
             WebSnapshotError.loadFailed.diagnosticReason,
             WebSnapshotError.timedOut.diagnosticReason,
             WebSnapshotError.snapshotFailed.diagnosticReason,
+            WebSnapshotError.networkIsolationUnavailable.diagnosticReason,
         ]
         #expect(Set(reasons).count == reasons.count)
         #expect(reasons.allSatisfy { !$0.isEmpty })
