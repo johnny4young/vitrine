@@ -243,14 +243,25 @@ struct WindowFrameSolverTests {
         #expect(laptop.contains(recovered))
     }
 
-    @Test func aWindowLargerThanTheScreenIsCentered() {
-        // A window taller and wider than the only screen cannot fit; it is centered so
-        // equal margins spill off all edges rather than pinning a corner.
+    @Test func aWindowLargerThanTheScreenIsResizedToFitIt() {
+        // A window taller and wider than the only screen cannot fit at its saved size;
+        // it is shrunk to the screen so every control ends up reachable — an
+        // overhanging window would leave its far-edge controls permanently off-screen
+        // (the small-display failure mode seen on CI's 1024x768 virtual display).
         let huge = CGRect(x: 5000, y: 5000, width: 2000, height: 1400)
         let recovered = WindowFrameSolver.onScreenFrame(for: huge, visibleFrames: [laptop])
-        #expect(recovered.size == huge.size)
-        #expect(abs(recovered.midX - laptop.midX) < 0.5)
-        #expect(abs(recovered.midY - laptop.midY) < 0.5)
+        #expect(recovered.size == laptop.size)
+        #expect(laptop.contains(recovered))
+    }
+
+    @Test func aStrandedOversizedWindowShrinksOnlyTheOverflowingAxis() {
+        // Only the width exceeds the screen: the height is preserved while the width
+        // is brought down to fit, so recovery never shrinks more than it must.
+        let wide = CGRect(x: 4000, y: 2000, width: 1600, height: 700)
+        let recovered = WindowFrameSolver.onScreenFrame(for: wide, visibleFrames: [laptop])
+        #expect(recovered.width == laptop.width)
+        #expect(recovered.height == 700)
+        #expect(laptop.contains(recovered))
     }
 
     @Test func withNoVisibleScreensTheFrameIsLeftToTheCallerFallback() {
