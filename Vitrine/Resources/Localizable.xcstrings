@@ -463,6 +463,17 @@
         }
       }
     },
+    "Bring All to Front" : {
+      "comment" : "Window menu: standard arrange command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traer todo al frente"
+          }
+        }
+      }
+    },
     "Built-in" : {
       "comment" : "Picker section header for built-in themes or presets.",
       "localizations" : {
@@ -683,6 +694,17 @@
         }
       }
     },
+    "Close" : {
+      "comment" : "File menu: standard close-window command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar"
+          }
+        }
+      }
+    },
     "Close Help" : {
       "comment" : "Help text for the Help window Done button.",
       "localizations" : {
@@ -745,6 +767,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Continuar"
+          }
+        }
+      }
+    },
+    "Copy" : {
+      "comment" : "Edit menu: standard copy command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar"
           }
         }
       }
@@ -943,6 +976,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Personalizado…"
+          }
+        }
+      }
+    },
+    "Cut" : {
+      "comment" : "Edit menu: standard cut command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cortar"
           }
         }
       }
@@ -1168,6 +1212,17 @@
         }
       }
     },
+    "Edit" : {
+      "comment" : "Menu bar: Edit menu title (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edición"
+          }
+        }
+      }
+    },
     "Edit Custom Theme" : {
       "comment" : "Custom theme editor title when editing.",
       "localizations" : {
@@ -1197,6 +1252,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Editar…"
+          }
+        }
+      }
+    },
+    "Enter Full Screen" : {
+      "comment" : "View menu: standard full-screen command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar pantalla completa"
           }
         }
       }
@@ -1252,6 +1318,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Espera adicional"
+          }
+        }
+      }
+    },
+    "File" : {
+      "comment" : "Menu bar: File menu title (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivo"
           }
         }
       }
@@ -1476,6 +1553,17 @@
         }
       }
     },
+    "Help" : {
+      "comment" : "Menu bar: Help menu title (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda"
+          }
+        }
+      }
+    },
     "help.topic.editor.body" : {
       "comment" : "Help topic body: the editor.",
       "localizations" : {
@@ -1642,6 +1730,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Captura rápida"
+          }
+        }
+      }
+    },
+    "Hide Others" : {
+      "comment" : "App menu: standard hide-other-apps command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar los demás"
           }
         }
       }
@@ -2054,6 +2153,17 @@
         }
       }
     },
+    "Minimize" : {
+      "comment" : "Window menu: standard minimize command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minimizar"
+          }
+        }
+      }
+    },
     "Mobile (390 × 844)" : {
       "comment" : "Input pane viewport preset: an iPhone-class responsive width (CS-044).",
       "localizations" : {
@@ -2373,6 +2483,17 @@
         }
       }
     },
+    "Paste" : {
+      "comment" : "Edit menu: standard paste command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegar"
+          }
+        }
+      }
+    },
     "Paste Code" : {
       "comment" : "Editor empty-state primary action: paste code from the clipboard.",
       "localizations" : {
@@ -2545,6 +2666,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Galería de recientes…"
+          }
+        }
+      }
+    },
+    "Redo" : {
+      "comment" : "Edit menu: standard redo command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rehacer"
           }
         }
       }
@@ -2824,6 +2956,17 @@
         }
       }
     },
+    "Select All" : {
+      "comment" : "Edit menu: standard select-all command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleccionar todo"
+          }
+        }
+      }
+    },
     "Selected preset" : {
       "comment" : "Labeled row for the selected preset's actions.",
       "localizations" : {
@@ -2842,6 +2985,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tema seleccionado"
+          }
+        }
+      }
+    },
+    "Services" : {
+      "comment" : "App menu: standard Services submenu title (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Servicios"
           }
         }
       }
@@ -2930,6 +3084,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Muestra un margen con números de línea y resalta líneas o rangos específicos."
+          }
+        }
+      }
+    },
+    "Show All" : {
+      "comment" : "App menu: standard unhide-all command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar todo"
           }
         }
       }
@@ -3297,6 +3462,17 @@
         }
       }
     },
+    "Undo" : {
+      "comment" : "Edit menu: standard undo command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer"
+          }
+        }
+      }
+    },
     "Use this custom theme for the current snapshot." : {
       "comment" : "Help text for the Apply theme button.",
       "localizations" : {
@@ -3337,6 +3513,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Versión %@"
+          }
+        }
+      }
+    },
+    "View" : {
+      "comment" : "Menu bar: View menu title (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visualización"
           }
         }
       }
@@ -3589,6 +3776,17 @@
         }
       }
     },
+    "Window" : {
+      "comment" : "Menu bar: Window menu title (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ventana"
+          }
+        }
+      }
+    },
     "Window chrome" : {
       "comment" : "Style control toggle: window chrome.",
       "localizations" : {
@@ -3607,6 +3805,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tu código sigue sin salir de tu Mac; esto solo carga la página web que pediste."
+          }
+        }
+      }
+    },
+    "Zoom" : {
+      "comment" : "Window menu: standard zoom command (CS-047).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
           }
         }
       }

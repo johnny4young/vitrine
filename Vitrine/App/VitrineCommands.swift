@@ -315,8 +315,10 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         session.makeDefault()
     }
 
-    /// Tidies the key editor's code in place (CS-049): JSON is re-indented, every other
-    /// language is dedented. The edit goes through the text view's native edit cycle
+    /// Tidies the key editor's code in place (CS-049): JSON is pretty-printed, brace and
+    /// JSX/tag languages are re-indented by structure, indentation-significant languages
+    /// are dedented, and diff/plain text is left alone (see `CodeFormatter.tidy`). The
+    /// edit goes through the text view's native edit cycle
     /// (`shouldChangeText` / `replaceCharacters` / `didChangeText`) instead of mutating the
     /// model directly, so it lands on the editor's own undo stack — ⌘Z reverts a surprising
     /// reformat, exactly like undoing a paste — and `textDidChange` writes the result back
@@ -507,7 +509,8 @@ enum AppMenu {
 
         // Standard Services submenu, so system Services are available like any
         // other Mac app.
-        let services = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
+        let services = NSMenuItem(
+            title: String(localized: "Services"), action: nil, keyEquivalent: "")
         let servicesMenu = NSMenu()
         services.submenu = servicesMenu
         NSApp.servicesMenu = servicesMenu
@@ -519,12 +522,14 @@ enum AppMenu {
             action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"
         )
         let hideOthers = NSMenuItem(
-            title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)),
+            title: String(localized: "Hide Others"),
+            action: #selector(NSApplication.hideOtherApplications(_:)),
             keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
         menu.addItem(hideOthers)
         menu.addItem(
-            withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)),
+            withTitle: String(localized: "Show All"),
+            action: #selector(NSApplication.unhideAllApplications(_:)),
             keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(
@@ -540,7 +545,7 @@ enum AppMenu {
 
     private static func fileMenuItem() -> NSMenuItem {
         let fileMenuItem = NSMenuItem()
-        let menu = NSMenu(title: "File")
+        let menu = NSMenu(title: String(localized: "File"))
 
         menu.addItem(
             item(
@@ -585,7 +590,8 @@ enum AppMenu {
         menu.addItem(.separator())
 
         let close = NSMenuItem(
-            title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+            title: String(localized: "Close"), action: #selector(NSWindow.performClose(_:)),
+            keyEquivalent: "w")
         menu.addItem(close)
 
         fileMenuItem.submenu = menu
@@ -596,23 +602,30 @@ enum AppMenu {
 
     private static func editMenuItem() -> NSMenuItem {
         let editMenuItem = NSMenuItem()
-        let menu = NSMenu(title: "Edit")
+        let menu = NSMenu(title: String(localized: "Edit"))
 
         // First-responder targets (`nil`): AppKit routes these to the focused
         // text view, giving the code editor real Undo/Cut/Copy/Paste/Select All
         // with their conventional shortcuts.
         menu.addItem(
-            withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+            withTitle: String(localized: "Undo"), action: Selector(("undo:")), keyEquivalent: "z")
         let redo = NSMenuItem(
-            title: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+            title: String(localized: "Redo"), action: Selector(("redo:")), keyEquivalent: "z")
         redo.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(redo)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        menu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        menu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         menu.addItem(
-            withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+            withTitle: String(localized: "Cut"), action: #selector(NSText.cut(_:)),
+            keyEquivalent: "x")
+        menu.addItem(
+            withTitle: String(localized: "Copy"), action: #selector(NSText.copy(_:)),
+            keyEquivalent: "c")
+        menu.addItem(
+            withTitle: String(localized: "Paste"), action: #selector(NSText.paste(_:)),
+            keyEquivalent: "v")
+        menu.addItem(
+            withTitle: String(localized: "Select All"), action: #selector(NSText.selectAll(_:)),
+            keyEquivalent: "a")
         menu.addItem(.separator())
         // Format Code (CS-049). Unlike the first-responder text actions above, this is an
         // editor command with an explicit target + validation; it mirrors the editor
@@ -630,9 +643,10 @@ enum AppMenu {
 
     private static func viewMenuItem() -> NSMenuItem {
         let viewMenuItem = NSMenuItem()
-        let menu = NSMenu(title: "View")
+        let menu = NSMenu(title: String(localized: "View"))
         let fullScreen = NSMenuItem(
-            title: "Enter Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)),
+            title: String(localized: "Enter Full Screen"),
+            action: #selector(NSWindow.toggleFullScreen(_:)),
             keyEquivalent: "f")
         fullScreen.keyEquivalentModifierMask = [.command, .control]
         menu.addItem(fullScreen)
@@ -644,15 +658,17 @@ enum AppMenu {
 
     private static func windowMenuItem() -> NSMenuItem {
         let windowMenuItem = NSMenuItem()
-        let menu = NSMenu(title: "Window")
+        let menu = NSMenu(title: String(localized: "Window"))
         menu.addItem(
-            withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)),
+            withTitle: String(localized: "Minimize"),
+            action: #selector(NSWindow.performMiniaturize(_:)),
             keyEquivalent: "m")
         menu.addItem(
-            withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+            withTitle: String(localized: "Zoom"), action: #selector(NSWindow.performZoom(_:)),
+            keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(
-            withTitle: "Bring All to Front",
+            withTitle: String(localized: "Bring All to Front"),
             action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         windowMenuItem.submenu = menu
         // AppKit auto-populates and manages the Window menu's window list.
@@ -664,7 +680,7 @@ enum AppMenu {
 
     private static func helpMenuItem() -> NSMenuItem {
         let helpMenuItem = NSMenuItem()
-        let menu = NSMenu(title: "Help")
+        let menu = NSMenu(title: String(localized: "Help"))
         menu.addItem(
             item(
                 for: .help, action: #selector(AppCommandResponder.showHelp(_:)),

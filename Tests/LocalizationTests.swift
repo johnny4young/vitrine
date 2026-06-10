@@ -93,6 +93,12 @@ struct LocalizationTests {
                 "El portapapeles está vacío; copia algo de código primero",
             "Nothing to show yet": "Aún no hay nada que mostrar",
             "help.topic.editor.title": "El editor",
+            // The AppKit main-menu chrome: NSMenu/NSMenuItem titles are plain
+            // strings that AppKit never auto-localizes, so they must resolve
+            // through the catalog like any other copy (CS-047).
+            "Edit": "Edición",
+            "Services": "Servicios",
+            "Bring All to Front": "Traer todo al frente",
         ]
         for (key, value) in expected {
             let resolved = spanish.localizedString(forKey: key, value: "\u{0}MISSING", table: nil)
