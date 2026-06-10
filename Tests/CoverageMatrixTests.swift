@@ -292,6 +292,22 @@ struct FontLigatureTests {
         return glyphs
     }
 
+    /// Compares rendered pixels with the same tolerance as the golden-image suite.
+    /// ImageIO may encode visually identical renders to different PNG byte streams,
+    /// and Swift Testing is very expensive when diffing large `Data` values.
+    /// Keeping ligature assertions at the normalized-pixel layer makes them stable
+    /// and keeps failure output small.
+    static func compareRenderedPixels(
+        _ lhs: CGImage, _ rhs: CGImage
+    ) throws -> GoldenComparator.Result {
+        switch GoldenComparator.compare(lhs, rhs) {
+        case .success(let result):
+            return result
+        case .failure(let failure):
+            throw failure
+        }
+    }
+
     @Test func ligaturesAreOffByDefault() {
         #expect(SnapshotConfig().fontLigatures == false)
     }
@@ -330,8 +346,8 @@ struct FontLigatureTests {
 
     /// Toggling ligatures on must change the *rendered pixels* end to end, not just
     /// the font object: the same code exported with ligatures off vs on differs
-    /// byte-for-byte (CS-052 acceptance), while the canvas size is unchanged because
-    /// a ligature is a glyph swap, not a reflow.
+    /// beyond the golden-image pixel tolerance (CS-052 acceptance), while the
+    /// canvas size is unchanged because a ligature is a glyph swap, not a reflow.
     @Test func ligaturesChangeRenderedPixelsButNotImageSize() throws {
         var off = SnapshotConfig()
         off.fontName = "Fira Code"
@@ -343,10 +359,9 @@ struct FontLigatureTests {
 
         let offImage = try #require(ExportManager.renderCGImage(off, scale: 2))
         let onImage = try #require(ExportManager.renderCGImage(on, scale: 2))
-        let offPNG = try #require(ExportManager.pngData(from: offImage))
-        let onPNG = try #require(ExportManager.pngData(from: onImage))
 
-        #expect(offPNG != onPNG, "ligature toggle did not change the rendered image")
+        let comparison = try Self.compareRenderedPixels(offImage, onImage)
+        #expect(!comparison.matches, "ligature toggle did not change the rendered image")
         #expect(offImage.width == onImage.width)
         #expect(offImage.height == onImage.height)
     }
@@ -364,9 +379,12 @@ struct FontLigatureTests {
 
         let offImage = try #require(ExportManager.renderCGImage(off, scale: 2))
         let onImage = try #require(ExportManager.renderCGImage(on, scale: 2))
-        let offPNG = try #require(ExportManager.pngData(from: offImage))
-        let onPNG = try #require(ExportManager.pngData(from: onImage))
-        #expect(offPNG == onPNG)
+
+        let comparison = try Self.compareRenderedPixels(offImage, onImage)
+        #expect(
+            comparison.matches,
+            "non-ligature font changed \(comparison.differingPixels) of \(comparison.pixelCount) pixels"
+        )
     }
 }
 

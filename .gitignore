@@ -52,14 +52,22 @@ Icon
 # Working docs (kept local — detailed implementation spec, not tracked)
 # ---------------------------------------------------------------------------
 docs/ROADMAP.md
+# Maintainer-only pre-launch runbook (credential setup + go-to-market notes).
+docs/PRE-LAUNCH.md
 
 # ---------------------------------------------------------------------------
 # Claude Code
 # ---------------------------------------------------------------------------
-# Shared project config (.claude/settings.json) IS committed; machine-local
-# overrides (DEVELOPER_DIR, etc.) are not.
+# Shared project config (.claude/settings.json), the reviewer agents
+# (.claude/agents/), and the release skill (.claude/skills/release/) ARE
+# committed; machine-local overrides and per-session plugin installs are not.
 .claude/settings.local.json
-
+# Plugin skills are fetched into .claude/skills/ per session — ignore them all
+# but keep the committed `release` skill tracked.
+.claude/skills/*
+!.claude/skills/release/
+.agents/
+skills-lock.json
 # ---------------------------------------------------------------------------
 # Tooling / misc
 # ---------------------------------------------------------------------------

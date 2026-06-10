@@ -235,11 +235,12 @@ struct AppMenuTests {
     }
 
     @Test func exportCommandsTargetTheEditorResponder() {
-        // Copy/Save/Share must dispatch to the editor command responder so they
-        // mirror the toolbar; a wrong target would silently no-op.
-        let file = submenu(named: "File")
+        // Editor commands must dispatch to the editor command responder so they mirror the
+        // toolbar; a wrong target would silently no-op. Copy/Save/Share/Make Default live in
+        // the File menu and Format Code in the Edit menu, so search the whole main menu.
+        let items = AppMenu.make().items.compactMap(\.submenu).flatMap(\.items)
         for command in VitrineCommand.editorCommands {
-            let item = file.items.first {
+            let item = items.first {
                 $0.accessibilityIdentifier() == command.accessibilityIdentifier
             }
             #expect(item?.target is EditorCommandResponder, "\(command) is not editor-targeted")
@@ -253,6 +254,20 @@ struct AppMenuTests {
         }
         #expect(save?.keyEquivalent == "s")
         #expect(save?.keyEquivalentModifierMask == [.command])
+    }
+
+    /// Format Code lives in the Edit menu (it is a text-edit operation, not an export),
+    /// carries ⌥⌘F, and dispatches to the editor responder so the menu and the editor
+    /// toolbar button stay in lockstep (CS-032/CS-049).
+    @Test func formatCodeIsInTheEditMenuWithItsShortcut() {
+        let edit = submenu(named: "Edit")
+        let item = edit.items.first {
+            $0.accessibilityIdentifier() == VitrineCommand.formatCode.accessibilityIdentifier
+        }
+        #expect(item != nil, "Format Code must be in the Edit menu")
+        #expect(item?.keyEquivalent == "f")
+        #expect(item?.keyEquivalentModifierMask == [.command, .option])
+        #expect(item?.target is EditorCommandResponder)
     }
 
     // MARK: Helpers

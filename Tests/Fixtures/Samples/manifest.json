@@ -46,23 +46,23 @@
     "preset-docs" : {
       "caption" : "Docs \/ Blog",
       "category" : "preset",
-      "configFingerprint" : "11c1abd70db26dfaa1b899aa6ba6ef8f22c6371670b92424dcbebfe2a53d212d",
-      "height" : 796,
-      "width" : 889
+      "configFingerprint" : "e8543c826d268eaca306715a32197622d72dff0a4cf78c871204a4d4a7f9ee5b",
+      "height" : 800,
+      "width" : 1200
     },
     "preset-keynote" : {
       "caption" : "Keynote",
       "category" : "preset",
-      "configFingerprint" : "a121777c801fa1cff6f188c9217e5b9416f34976140717e05ba3c3676b511080",
-      "height" : 924,
-      "width" : 1017
+      "configFingerprint" : "06209c2163d4b69d06d08aa9b6c6ac8d27d1fadaf212c4e082660b6903f02bfc",
+      "height" : 1080,
+      "width" : 1920
     },
     "preset-linkedin" : {
       "caption" : "LinkedIn",
       "category" : "preset",
-      "configFingerprint" : "d942430f075d6da742d5c5a492483914ee9b47f518adeada06ef3771608ef1c0",
-      "height" : 860,
-      "width" : 953
+      "configFingerprint" : "31c3197a7f32d831ee1b6b0ed5395cd6d532f5f1f330bac9aa9674f6f6b72491",
+      "height" : 628,
+      "width" : 1200
     },
     "preset-opengraph" : {
       "caption" : "OpenGraph 1200×630",
@@ -74,16 +74,16 @@
     "preset-transparent-slide" : {
       "caption" : "Transparent Slide",
       "category" : "preset",
-      "configFingerprint" : "4c1579d8e55a19c985eac4b24da6ffd21ed243d0e66b076b6081c79d4a0c0444",
-      "height" : 892,
-      "width" : 985
+      "configFingerprint" : "3ac034d88db0c0eea09de11d4fe86b1ff757c8695a833ec3a364c46c7cf79b17",
+      "height" : 1080,
+      "width" : 1920
     },
     "preset-twitter" : {
       "caption" : "X \/ Twitter",
       "category" : "preset",
-      "configFingerprint" : "b6dd6d8f99faad506508575bf2731e1c5c90b69c1ef6650bff3006d710d5a02b",
-      "height" : 860,
-      "width" : 953
+      "configFingerprint" : "58cba46eb8a46bcd80606388a9a07973461ca15b24eedf4841e2935d0ed3d315",
+      "height" : 900,
+      "width" : 1600
     },
     "theme-dracula" : {
       "caption" : "Dracula theme",

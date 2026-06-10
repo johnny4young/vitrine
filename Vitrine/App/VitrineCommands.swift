@@ -36,6 +36,10 @@ enum VitrineCommand: String, CaseIterable {
     case saveImage
     case shareImage
     case makeDefault
+    // Tidy the editor's code — re-indent JSON / strip the common leading indentation
+    // (CS-049). Editor-scoped and code-requiring; mirrors the editor toolbar's Format
+    // button so the menu command and the button stay in lockstep (CS-032).
+    case formatCode
 
     // Editor copy-submenu options (CS-054 rich export): reached from the editor's
     // copy-options menu; no global key equivalent.
@@ -64,6 +68,7 @@ enum VitrineCommand: String, CaseIterable {
         case .saveImage: String(localized: "Save Image…")
         case .shareImage: String(localized: "Share Image…")
         case .makeDefault: String(localized: "Make This Window the Default")
+        case .formatCode: String(localized: "Format Code")
         case .copyDataURI: String(localized: "Copy as Data URI")
         case .copyHighlightedCode: String(localized: "Copy Highlighted Code")
         }
@@ -86,6 +91,7 @@ enum VitrineCommand: String, CaseIterable {
         case .saveImage: "square.and.arrow.down"
         case .shareImage: "square.and.arrow.up"
         case .makeDefault: "star"
+        case .formatCode: "text.alignleft"
         case .copyDataURI: "curlybraces"
         case .copyHighlightedCode: "chevron.left.forwardslash.chevron.right"
         }
@@ -105,6 +111,7 @@ enum VitrineCommand: String, CaseIterable {
         case .copyImage: "c"  // ⇧⌘C — copy the rendered image (plain ⌘C stays text copy)
         case .saveImage: "s"  // ⌘S — save the rendered image
         case .shareImage: nil  // Share opens a picker; no reserved shortcut
+        case .formatCode: "f"  // ⌥⌘F — tidy the code (⌘F stays free for find)
         // Submenu/window/explicit-action commands with no reserved shortcut.
         case .copyDataURI, .copyHighlightedCode, .whatsNew, .makeDefault, .checkForUpdates: nil
         }
@@ -118,6 +125,7 @@ enum VitrineCommand: String, CaseIterable {
         switch self {
         case .newCapture: [.command, .shift]
         case .copyImage: [.command, .shift]
+        case .formatCode: [.command, .option]
         case .openEditor, .newEditorWindow, .settings, .help, .saveImage: [.command]
         case .about, .shareImage, .makeDefault, .copyDataURI, .copyHighlightedCode, .whatsNew,
             .checkForUpdates:
@@ -147,6 +155,7 @@ enum VitrineCommand: String, CaseIterable {
         case .saveImage: String(localized: "Save image to a file")
         case .shareImage: String(localized: "Share image")
         case .makeDefault: String(localized: "Make this window's style the default")
+        case .formatCode: String(localized: "Format the code")
         case .copyDataURI: String(localized: "Copy image as a base64 data URI")
         case .copyHighlightedCode: String(localized: "Copy syntax-highlighted code")
         }
@@ -159,18 +168,23 @@ extension VitrineCommand {
     /// empty editor leaves them disabled.
     static let editorRenderCommands: [VitrineCommand] = [.copyImage, .saveImage, .shareImage]
 
+    /// Editor commands that need code present to act: the render commands (which turn the
+    /// document into an image) plus Format Code, which has nothing to tidy on an empty
+    /// buffer (CS-049). Both are disabled when the editor is empty.
+    static let codeRequiringCommands: [VitrineCommand] = editorRenderCommands + [.formatCode]
+
     /// All editor/document-scoped commands, enabled only when an editor window is key.
     /// "Make Default" is editor-scoped but code-independent: adopting a window's style
     /// as the app default is meaningful even before any code is typed (CS-053).
-    static let editorCommands: [VitrineCommand] = editorRenderCommands + [.makeDefault]
+    static let editorCommands: [VitrineCommand] = codeRequiringCommands + [.makeDefault]
 
     /// Whether this command acts on the editor and so is enabled only when an editor is
     /// the key window.
     var isEditorScoped: Bool { Self.editorCommands.contains(self) }
 
     /// Whether this command additionally requires the editor to hold code (the render
-    /// commands), as opposed to merely requiring an editor to be key.
-    var requiresCode: Bool { Self.editorRenderCommands.contains(self) }
+    /// commands and Format Code), as opposed to merely requiring an editor to be key.
+    var requiresCode: Bool { Self.codeRequiringCommands.contains(self) }
 }
 
 // MARK: - Editor command target
@@ -199,6 +213,13 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     static let shared = EditorCommandResponder()
 
     private let settings: AppSettings
+
+    /// Small snippets format synchronously so the menu command feels instant. Larger
+    /// snippets do the pure string work off the main actor and only return to AppKit
+    /// for the final text replacement; beyond this cap, formatting is refused instead
+    /// of risking an unresponsive editor.
+    private static let asyncFormatThresholdBytes = 64 * 1024
+    private static let maxInteractiveFormatBytes = 1 * 1024 * 1024
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
@@ -236,6 +257,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(saveRenderedImage(_:)): canPerform(.saveImage)
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
         case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
+        case #selector(formatCode(_:)): canPerform(.formatCode)
         default: true
         }
     }
@@ -291,6 +313,70 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             let session = EditorWindowController.shared.keyWindowSession
         else { return }
         session.makeDefault()
+    }
+
+    /// Tidies the key editor's code in place (CS-049): JSON is re-indented, every other
+    /// language is dedented. The edit goes through the text view's native edit cycle
+    /// (`shouldChangeText` / `replaceCharacters` / `didChangeText`) instead of mutating the
+    /// model directly, so it lands on the editor's own undo stack — ⌘Z reverts a surprising
+    /// reformat, exactly like undoing a paste — and `textDidChange` writes the result back
+    /// into `config.code`. A no-op (already tidy) changes nothing and registers no undo.
+    @objc func formatCode(_ sender: Any?) {
+        guard canPerform(.formatCode),
+            let textView = Self.editorTextView(in: NSApp.keyWindow ?? NSApp.mainWindow)
+        else { return }
+        let original = textView.string
+        let byteCount = original.utf8.count
+        guard byteCount <= Self.maxInteractiveFormatBytes else {
+            CaptureHUDController.shared.present(
+                Notifier.failure(String(localized: "Code is too large to format interactively")))
+            return
+        }
+
+        let language = activeSettings.config.language
+        if byteCount > Self.asyncFormatThresholdBytes {
+            Task { [weak textView] in
+                let tidied = await Task.detached(priority: .userInitiated) {
+                    CodeFormatter.tidy(original, language: language)
+                }.value
+                guard let textView, textView.string == original else { return }
+                Self.applyFormattedCode(tidied, original: original, to: textView)
+            }
+            return
+        }
+
+        let tidied = CodeFormatter.tidy(original, language: language)
+        Self.applyFormattedCode(tidied, original: original, to: textView)
+    }
+
+    /// Applies an already-computed format result through the text view's native edit
+    /// cycle, preserving delegate updates and undo behavior.
+    private static func applyFormattedCode(
+        _ tidied: String, original: String, to textView: NSTextView
+    ) {
+        guard tidied != original else { return }
+        let whole = NSRange(location: 0, length: (original as NSString).length)
+        guard textView.shouldChangeText(in: whole, replacementString: tidied) else { return }
+        textView.textStorage?.replaceCharacters(in: whole, with: tidied)
+        textView.didChangeText()  // fires the delegate → writes back to config.code
+        textView.undoManager?.setActionName(String(localized: "Format Code"))
+    }
+
+    /// The code editor's `NSTextView` in `window`, found by the accessibility identifier
+    /// `CodeEditorView` assigns it. Used so Format Code edits the real text view (and its
+    /// undo stack) rather than mutating the model behind its back.
+    private static func editorTextView(in window: NSWindow?) -> NSTextView? {
+        guard let root = window?.contentView else { return nil }
+        var stack: [NSView] = [root]
+        while let view = stack.popLast() {
+            if let textView = view as? NSTextView,
+                textView.accessibilityIdentifier() == "code-editor-text-view"
+            {
+                return textView
+            }
+            stack.append(contentsOf: view.subviews)
+        }
+        return nil
     }
 }
 
@@ -527,6 +613,14 @@ enum AppMenu {
         menu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         menu.addItem(
             withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        menu.addItem(.separator())
+        // Format Code (CS-049). Unlike the first-responder text actions above, this is an
+        // editor command with an explicit target + validation; it mirrors the editor
+        // toolbar's Format button so the menu and toolbar stay in lockstep (CS-032).
+        menu.addItem(
+            item(
+                for: .formatCode, action: #selector(EditorCommandResponder.formatCode(_:)),
+                target: EditorCommandResponder.shared))
 
         editMenuItem.submenu = menu
         return editMenuItem

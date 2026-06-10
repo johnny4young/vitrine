@@ -4,10 +4,13 @@ import SwiftUI
 /// to (CS-020).
 ///
 /// A preset is **presentation/output only**: applying one mutates the snapshot's
-/// look (padding, background) and recommends an output size and scale, but it
+/// look (padding, background) and pins an exact output size and scale, but it
 /// never touches `code` or `language`. The user's source is sacred; a preset
 /// only reframes how it is rendered. This keeps switching presets a safe,
-/// reversible operation that never risks the thing being captured.
+/// reversible operation that never risks the thing being captured. Every shipped
+/// destination pins a `.fixed` canvas at its platform's native pixels, so the
+/// export is exactly the shape its name promises (e.g. X / Twitter is 1600×900);
+/// the code card is centered and the background fills the frame (see SnapshotCanvas).
 struct ExportPreset: Identifiable, Hashable {
     /// Stable identifier persisted in preferences and used for menu tags.
     let id: String
@@ -32,8 +35,9 @@ struct ExportPreset: Identifiable, Hashable {
         /// fills this frame precisely; OpenGraph uses 1200×630.
         case fixed(width: Double, height: Double)
         /// Recommend an aspect ratio (width : height) without forcing a size; the
-        /// canvas still hugs its content. Used where the destination cares about
-        /// shape, not exact pixels.
+        /// canvas still hugs its content. The content-hugging alternative to
+        /// `.fixed` — no shipped destination uses it (they all pin exact pixels), but
+        /// it stays available for a future "shape only" preset.
         case aspect(width: Double, height: Double)
 
         /// The exact logical pixel size to render, when the preset pins one.
@@ -77,35 +81,36 @@ struct ExportPreset: Identifiable, Hashable {
 }
 
 extension ExportPreset {
-    /// X / Twitter timeline image — a 16:9 card at retina scale (CS-020).
+    /// X / Twitter timeline image — the 16:9 in-stream card at its native
+    /// 1600×900 pixels, so the export is exactly the shape the timeline shows (CS-020).
     static let twitter = ExportPreset(
         id: "twitter",
         displayName: "X / Twitter",
-        summary: "16:9 card sized for the timeline, at retina scale.",
-        sizing: .aspect(width: 16, height: 9),
-        scale: 2,
+        summary: "1600×900 (16:9) in-stream card.",
+        sizing: .fixed(width: 1600, height: 900),
+        scale: 1,
         background: .gradient(.aurora),
         padding: 40
     )
 
-    /// LinkedIn feed image — the platform's 1.91:1 link-card shape (CS-020).
+    /// LinkedIn feed image — the platform's 1.91:1 link-card shape at 1200×628 (CS-020).
     static let linkedIn = ExportPreset(
         id: "linkedin",
         displayName: "LinkedIn",
-        summary: "1.91:1 feed image at retina scale.",
-        sizing: .aspect(width: 1.91, height: 1),
-        scale: 2,
+        summary: "1200×628 (1.91:1) feed image.",
+        sizing: .fixed(width: 1200, height: 628),
+        scale: 1,
         background: .gradient(.ocean),
         padding: 40
     )
 
-    /// Keynote / slide deck — a roomy 16:9 surface for presentations (CS-020).
+    /// Keynote / slide deck — a full 1920×1080 (16:9) surface for presentations (CS-020).
     static let keynote = ExportPreset(
         id: "keynote",
         displayName: "Keynote",
-        summary: "16:9 slide surface with generous padding.",
-        sizing: .aspect(width: 16, height: 9),
-        scale: 2,
+        summary: "1920×1080 (16:9) slide with generous padding.",
+        sizing: .fixed(width: 1920, height: 1080),
+        scale: 1,
         background: .gradient(.night),
         padding: 56
     )
@@ -115,9 +120,9 @@ extension ExportPreset {
     static let docs = ExportPreset(
         id: "docs",
         displayName: "Docs / Blog",
-        summary: "Compact image for inline docs and blog posts.",
-        sizing: .aspect(width: 3, height: 2),
-        scale: 2,
+        summary: "1200×800 (3:2) image for inline docs and blog posts.",
+        sizing: .fixed(width: 1200, height: 800),
+        scale: 1,
         background: nil,
         padding: 24
     )
@@ -127,9 +132,9 @@ extension ExportPreset {
     static let transparentSlide = ExportPreset(
         id: "transparent-slide",
         displayName: "Transparent Slide",
-        summary: "Transparent background to layer onto any slide.",
-        sizing: .aspect(width: 16, height: 9),
-        scale: 2,
+        summary: "1920×1080 (16:9) transparent layer for any slide.",
+        sizing: .fixed(width: 1920, height: 1080),
+        scale: 1,
         background: .transparent,
         padding: 48
     )

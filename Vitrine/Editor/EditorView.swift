@@ -220,6 +220,26 @@ struct EditorView: View {
             .accessibilityIdentifier("language-picker")
         }
 
+        ToolbarItem(placement: .navigation) {
+            Button {
+                // Route through the shared editor command so the toolbar button and the
+                // ⌥⌘F menu command share one undo-aware implementation (CS-049/CS-032).
+                EditorCommandResponder.shared.formatCode(nil)
+            } label: {
+                Label(
+                    VitrineCommand.formatCode.title,
+                    systemImage: VitrineCommand.formatCode.systemImageName)
+            }
+            .labelStyle(.iconOnly)
+            .help("Tidy the code: re-indent JSON, or strip the indentation shared by every line.")
+            .accessibilityLabel(VitrineCommand.formatCode.accessibilityLabel)
+            .accessibilityIdentifier("format-button")
+            .disabled(settings.config.code.isEmpty)
+            // The keyboard route (⌥⌘F) is owned by the Edit-menu's Format Code item, which
+            // fires app-wide when an editor is key; this button is the mouse route to the
+            // same shared command (CS-032/CS-049).
+        }
+
         ToolbarItemGroup {
             toolbarButton(
                 .copyImage, "copy-button", help: "Render and copy the image to the clipboard"
@@ -332,8 +352,12 @@ struct EditorView: View {
         guard let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else {
             return
         }
-        settings.config.code = text
-        settings.config.language = LanguageDetector.detect(text)
+        let language = LanguageDetector.detect(text)
+        settings.config.language = language
+        // Tidy the indentation on paste when the user opts in (CS-049); the global
+        // preference (not the per-window session) owns this behavior.
+        settings.config.code =
+            AppSettings.shared.reindentOnPaste ? CodeFormatter.tidy(text, language: language) : text
     }
 
     // MARK: - Drag-and-drop input (CS-028)

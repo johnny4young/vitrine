@@ -14,8 +14,27 @@ struct CodeEditorView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        let scrollView = NSScrollView()
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.drawsBackground = false
+
+        // A `CodeTextView` (an `NSTextView` subclass) so a native ⌘V paste can be
+        // intercepted for auto re-indent (CS-049); the rest mirrors the standard
+        // `NSTextView.scrollableTextView()` setup.
+        let textView = CodeTextView(frame: NSRect(origin: .zero, size: scrollView.contentSize))
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(
+            width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+        scrollView.documentView = textView
 
         textView.delegate = context.coordinator
         textView.isRichText = false
@@ -31,6 +50,13 @@ struct CodeEditorView: NSViewRepresentable {
         textView.setAccessibilityIdentifier("code-editor-text-view")
         textView.setAccessibilityLabel("Code editor")
         scrollView.setAccessibilityIdentifier("code-editor-scroll-view")
+
+        // After a native ⌘V paste, re-indent through the coordinator (CS-049); the
+        // coordinator checks the user's preference and uses the undo-aware edit cycle.
+        textView.onPaste = { [weak textView] in
+            guard let textView else { return }
+            context.coordinator.reindentAfterPaste(textView)
+        }
 
         context.coordinator.configure(textView)
         context.coordinator.applyHighlight(to: textView)
@@ -126,6 +152,22 @@ struct CodeEditorView: NSViewRepresentable {
             }
         }
 
+        /// Re-indents the whole document after a paste, when the user's preference is on,
+        /// through the text view's native edit cycle so the change lands on the undo stack
+        /// (⌘Z reverts it) and `textDidChange` writes it back to the binding (CS-049). A
+        /// no-op (already tidy, or a `.leaveAlone` language) registers no edit.
+        func reindentAfterPaste(_ textView: NSTextView) {
+            guard AppSettings.shared.reindentOnPaste else { return }
+            let original = textView.string
+            let tidied = CodeFormatter.tidy(original, language: parent.language)
+            guard tidied != original else { return }
+            let whole = NSRange(location: 0, length: (original as NSString).length)
+            guard textView.shouldChangeText(in: whole, replacementString: tidied) else { return }
+            textView.textStorage?.replaceCharacters(in: whole, with: tidied)
+            textView.didChangeText()  // fires the delegate → writes back to the binding
+            textView.undoManager?.setActionName(String(localized: "Format Code"))
+        }
+
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertTab(_:)) {
                 textView.insertText("    ", replacementRange: textView.selectedRange())
@@ -133,5 +175,20 @@ struct CodeEditorView: NSViewRepresentable {
             }
             return false
         }
+    }
+}
+
+/// `NSTextView` subclass that notifies after a paste so the editor can re-indent the
+/// result (CS-049). Paste is the one mutation with no `NSTextViewDelegate` hook, so it
+/// is overridden here; every other edit flows through the coordinator's delegate
+/// callbacks. `super.paste` honors `isRichText = false`, so it inserts plain text.
+final class CodeTextView: NSTextView {
+    /// Invoked right after a paste lands so the coordinator can tidy the indentation
+    /// when the user's preference is on.
+    var onPaste: (() -> Void)?
+
+    override func paste(_ sender: Any?) {
+        super.paste(sender)
+        onPaste?()
     }
 }

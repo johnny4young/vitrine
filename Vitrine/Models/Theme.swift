@@ -125,11 +125,12 @@ struct Theme: Identifiable, Hashable, Sendable {
         id: "solarized-light", displayName: "Solarized Light", hlJsTheme: "solarized-light",
         appearance: .light)
 
-    /// All bundled (built-in) themes, in menu order (dark set first, then light).
+    /// All bundled (built-in) themes, listed alphabetically by display name so the
+    /// menu and theme pickers are predictable to scan (CS-031). Appearance (dark/light)
+    /// is metadata only and does not affect this order.
     nonisolated static let builtIns: [Theme] = [
-        .oneDark, .nightOwl, .dracula, .monokai, .nord, .gruvbox, .tokyoNight,
-        .solarized, .githubDark, .xcodeDark,
-        .github, .oneLight, .solarizedLight,
+        .dracula, .github, .githubDark, .gruvbox, .monokai, .nightOwl, .nord,
+        .oneDark, .oneLight, .solarized, .solarizedLight, .tokyoNight, .xcodeDark,
     ]
 
     /// The set of ids reserved for built-in themes, used to recompute `isBuiltIn`

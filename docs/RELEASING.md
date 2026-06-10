@@ -2,9 +2,9 @@
 
 > **First time shipping?** Opening the Apple Developer account, generating the signing
 > certificate and notary/Sparkle keys, picking the names, and creating the GitHub
-> Pages/Homebrew-tap infra is a one-time **manual** job — see
-> [`PRE-LAUNCH.md`](PRE-LAUNCH.md). This file assumes those credentials exist and covers
-> running the pipeline.
+> Pages/Homebrew-tap infra is a one-time **manual** job, kept in a maintainer-only local
+> runbook. This file assumes those credentials already exist and covers running the
+> pipeline.
 
 Vitrine ships as a Developer ID-signed, notarized DMG attached to a GitHub release,
 installable via a Homebrew cask. The pipeline degrades gracefully: without signing

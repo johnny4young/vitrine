@@ -367,6 +367,25 @@ struct LanguageDetectorInterpretTests {
         #expect(result.language == .plaintext)
         #expect(result.blockCount == 0)
     }
+
+    /// A bare http(s) URL renders as plain text, not source: neither keyword scoring
+    /// nor a trailing extension in the URL path may color it like code (CS-004). The
+    /// `…/v0.1.0` form (digits that look like numeric literals) and a `.css`/`.rb`
+    /// path suffix (which would otherwise hint a language) both stay plaintext.
+    @Test func bareURLRendersAsPlainText() {
+        for url in [
+            "https://github.com/johnny4young/vitrine/releases/tag/v0.1.0",
+            "https://example.com/assets/styles.css",
+            "http://example.org/app.rb",
+        ] {
+            let result = LanguageDetector.interpret(url)
+            #expect(result.code == url)
+            #expect(result.language == .plaintext, "\(url) must interpret as plaintext")
+            #expect(result.blockCount == 0)
+            // The direct detection entry point (editor auto-detect, file loader) agrees.
+            #expect(LanguageDetector.detect(url) == .plaintext)
+        }
+    }
 }
 
 // MARK: - QuickCapture wiring

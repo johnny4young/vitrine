@@ -384,7 +384,7 @@ struct SnapshotConfig {
     var fontName:     String = "JetBrains Mono"
     var fontSize:     Double = 14
     var padding:      Double = 32
-    var background:   BackgroundStyle = .gradient(.ocean)
+    var background:   BackgroundStyle = .gradient(.aurora)
     var showChrome:   Bool = true
     var cornerRadius: Double = 8
     var shadowRadius: Double = 20
@@ -393,16 +393,20 @@ struct SnapshotConfig {
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }
 
 enum GradientPreset: String, CaseIterable {
-    case ocean = "Ocean", sunset = "Sunset", forest = "Forest", night = "Night", carbon = "Carbon"
+    // `aurora` is the signature default; see docs/DESIGN-SYSTEM.md.
+    case aurora = "Aurora", ocean = "Ocean", sunset = "Sunset",
+         forest = "Forest", night = "Night", carbon = "Carbon"
 }
 
 struct Theme: Identifiable, Hashable {
     let id: String, displayName: String, hlJsTheme: String
-    let background: Color
+    let appearance: Appearance      // .dark / .light — metadata only
     static let oneDark = Theme(id: "one-dark", displayName: "One Dark",
-                               hlJsTheme: "atom-one-dark", background: .init(hex: "#282C34"))
-    // github, nightOwl, dracula, monokai, solarized…
-    static let all: [Theme] = [.oneDark, .github, .nightOwl, .dracula, .monokai, .solarized]
+                               hlJsTheme: "atom-one-dark", appearance: .dark)
+    // 13 built-ins, listed alphabetically by display name (Models/Theme.swift):
+    // Dracula, GitHub, GitHub Dark, Gruvbox, Monokai, Night Owl, Nord, One Dark,
+    // One Light, Solarized, Solarized Light, Tokyo Night, Xcode Dark.
+    static let builtIns: [Theme] = [.dracula, .github, .githubDark, /* … */]
 }
 ```
 

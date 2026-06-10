@@ -471,6 +471,24 @@ struct AppLanguagePersistenceTests {
     private static let languageKey = "appLanguage"
     private static let appleLanguagesKey = "AppleLanguages"
 
+    /// Creates a named suite for tests that must inspect the suite's persisted domain
+    /// directly, bypassing the host's NSArgumentDomain language pin.
+    private static func freshLanguageDefaults() -> (suite: String, defaults: UserDefaults) {
+        let suite = "VitrineMigrationTests-\(UUID().uuidString)"
+        return (suite, UserDefaults(suiteName: suite)!)
+    }
+
+    /// Reads only what this app stored in its own preferences suite. `array(forKey:)`
+    /// also sees the test scheme's `AppleLanguages=(en)` argument-domain override, which
+    /// can mask whether CS-047 actually wrote or cleared the app-level override.
+    private static func persistedAppleLanguages(
+        in defaults: UserDefaults, suite: String
+    )
+        -> [String]?
+    {
+        defaults.persistentDomain(forName: suite)?[appleLanguagesKey] as? [String]
+    }
+
     /// A clean install defaults to `.system` and persists nothing: construction reads the
     /// absent value without writing a choice or an app-level override back, so the app
     /// simply follows the system language order until the user picks otherwise. (`.system`
@@ -489,12 +507,17 @@ struct AppLanguagePersistenceTests {
     /// a fresh instance reads the choice back. This is the "persisted when the app is
     /// closed and reopened" guarantee the picker's footnote promises.
     @Test func spanishPersistsAndOverridesAppleLanguages() {
-        let defaults = freshDefaults()
+        let (suite, defaults) = Self.freshLanguageDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
         let first = AppSettings(defaults: defaults)
 
         first.appLanguage = .spanish
         #expect(defaults.string(forKey: Self.languageKey) == "spanish")
-        #expect(defaults.array(forKey: Self.appleLanguagesKey) as? [String] == ["es"])
+        // Read the suite's *persisted* override, not `array(forKey:)`: the test scheme
+        // pins `AppleLanguages=(en)` in the host's NSArgumentDomain (project.yml), which
+        // would otherwise mask what the app wrote. The persistent domain has only what
+        // was stored in this suite.
+        #expect(Self.persistedAppleLanguages(in: defaults, suite: suite) == ["es"])
 
         let reloaded = AppSettings(defaults: defaults)
         #expect(reloaded.appLanguage == .spanish, "language choice was lost across reload")
@@ -503,10 +526,11 @@ struct AppLanguagePersistenceTests {
     /// Pinning English writes the `en` override — the symmetric case to Spanish — so the
     /// app opens in English even when the system prefers another language.
     @Test func englishOverridesAppleLanguages() {
-        let defaults = freshDefaults()
+        let (suite, defaults) = Self.freshLanguageDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
         let settings = AppSettings(defaults: defaults)
         settings.appLanguage = .english
-        #expect(defaults.array(forKey: Self.appleLanguagesKey) as? [String] == ["en"])
+        #expect(Self.persistedAppleLanguages(in: defaults, suite: suite) == ["en"])
     }
 
     /// Returning to System clears the per-app override so the app follows the system
@@ -514,17 +538,21 @@ struct AppLanguagePersistenceTests {
     /// captured before any override so the assertion holds regardless of the host's
     /// language list (`AppleLanguages` is inherited from the global domain).
     @Test func systemClearsTheOverrideAndPersists() {
-        let defaults = freshDefaults()
-        let inherited = defaults.array(forKey: Self.appleLanguagesKey) as? [String]
+        let (suite, defaults) = Self.freshLanguageDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        // Read the suite's persisted override directly, bypassing the host-locale pin the
+        // test scheme writes into the NSArgumentDomain (project.yml). A fresh suite has
+        // stored no override yet (nil).
+        let inherited = Self.persistedAppleLanguages(in: defaults, suite: suite)
         let first = AppSettings(defaults: defaults)
 
         first.appLanguage = .spanish
-        #expect(defaults.array(forKey: Self.appleLanguagesKey) as? [String] == ["es"])
+        #expect(Self.persistedAppleLanguages(in: defaults, suite: suite) == ["es"])
 
         first.appLanguage = .system
         #expect(
-            defaults.array(forKey: Self.appleLanguagesKey) as? [String] == inherited,
-            "clearing the override should fall back to the inherited system list")
+            Self.persistedAppleLanguages(in: defaults, suite: suite) == inherited,
+            "clearing the override should remove it, falling back to the system list")
 
         let reloaded = AppSettings(defaults: defaults)
         #expect(reloaded.appLanguage == .system)
@@ -533,13 +561,14 @@ struct AppLanguagePersistenceTests {
     /// `resetToDefaults()` returns the language to `.system`, removes the override, and
     /// the reset persists so a fresh instance also sees System (CS-047/CS-050).
     @Test func resetReturnsLanguageToSystem() {
-        let defaults = freshDefaults()
-        let inherited = defaults.array(forKey: Self.appleLanguagesKey) as? [String]
+        let (suite, defaults) = Self.freshLanguageDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let inherited = Self.persistedAppleLanguages(in: defaults, suite: suite)
         let first = AppSettings(defaults: defaults)
         first.appLanguage = .spanish
         first.resetToDefaults()
         #expect(first.appLanguage == .system)
-        #expect(defaults.array(forKey: Self.appleLanguagesKey) as? [String] == inherited)
+        #expect(Self.persistedAppleLanguages(in: defaults, suite: suite) == inherited)
 
         let reloaded = AppSettings(defaults: defaults)
         #expect(reloaded.appLanguage == .system)

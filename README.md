@@ -11,7 +11,7 @@ and [Carbon](https://carbon.now.sh), but **native, instant, and fully local**.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-WIP%20·%20v0.1-yellow.svg)](docs/ROADMAP.md)
+[![Status](https://img.shields.io/badge/status-v0.1.0%20shipped-brightgreen.svg)](#status)
 
 </div>
 
@@ -81,13 +81,13 @@ on every release.
 - 🍫 Native **menu-bar app** (`MenuBarExtra`, `LSUIElement` — no Dock icon, no app switcher).
 - ⌨️ Configurable **global hotkey** (`⌘⇧S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
-- 🎨 Themes (One Dark, GitHub, Night Owl, Dracula, Monokai, Solarized), gradients, window chrome, padding, fonts.
+- 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
 - ⚙️ **Settings** with live preview, powered by [Settings](https://github.com/sindresorhus/Settings).
 - 🖥️ **Command-line renderer** — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app (no network, screen recording, or Accessibility needed).
 - 🔒 Sandboxed, no network by default — your code **never leaves your Mac**.
 
-See the full ticket breakdown in [**docs/ROADMAP.md**](docs/ROADMAP.md).
+See the [**Status**](#status) section for what's shipped and what's deferred.
 
 ## Privacy
 
@@ -149,11 +149,11 @@ Or step by step:
 make project    # xcodegen generate  → Vitrine.xcodeproj
 make open       # open Vitrine.xcodeproj in Xcode
 make build      # headless xcodebuild (Debug)
-make cli        # build the `vitrine` command-line renderer (CS-033)
+make cli        # build the `vitrine` command-line renderer
 make test       # run the Swift Testing suite
 make build-ui-tests # compile UI tests without automation permission
 make test-ui    # run UI smoke tests (requires local XCTest automation permission)
-make gallery    # (re)generate the launch-gallery design-QA samples (CS-039)
+make gallery    # (re)generate the launch-gallery design-QA samples
 make format     # swift-format in place
 make lint       # swift-format lint (CI gate)
 make icon       # regenerate the app icon set
@@ -227,7 +227,7 @@ to leave the repo:
 
 🟢 **v0.1 feature-complete.** Menu-bar app (`LSUIElement`) with global hotkey, the
 live-highlight editor, WYSIWYG canvas, PNG/PDF export to clipboard/file, the macOS
-share sheet, Recents history, a five-pane Settings window, launch-at-login, a privacy
+share sheet, Recents history, a six-pane Settings window, launch-at-login, a privacy
 manifest, a reproducible app icon, and a tagged-release pipeline (DMG + Homebrew cask).
 Covered by a Swift Testing unit suite plus XCTest UI smoke tests. CI runs lint, build,
 the UI-test build, and the unit tests; `make test-ui` runs locally (it needs XCTest

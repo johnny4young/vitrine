@@ -50,10 +50,12 @@ See [AGENTS.md](AGENTS.md). In short:
 ## Adding a theme
 
 Themes live in `Vitrine/Models/Theme.swift` (metadata + Highlight.js theme name) and
-`Vitrine/Settings/ThemeManager.swift`. Add the `Theme` value, include it in
-`Theme.all`, and make sure the `hlJsTheme` matches a bundled Highlight.js theme name.
+`Vitrine/Models/Theme.swift`. Add the `Theme` value, include it in
+`Theme.builtIns` (kept alphabetical by display name), and make sure the `hlJsTheme`
+matches a bundled Highlight.js theme name.
 
 ## Roadmap
 
-Work is tracked as `CS-0xx` tickets in [docs/ROADMAP.md](docs/ROADMAP.md). Picking up
-an unimplemented `// TODO: CS-0xx` is a great first contribution.
+Unimplemented work is marked in the source with `// TODO: CS-0xx` comments (the detailed
+ticket spec is kept as a local working document). Picking up one of those markers is a
+great first contribution.

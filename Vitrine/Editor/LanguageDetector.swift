@@ -24,6 +24,10 @@ enum LanguageDetector {
 
     /// Detects the most likely language via weighted keyword scoring.
     static func detect(_ raw: String) -> Language {
+        // A bare http(s) URL is not source code: render it as plain text rather than
+        // letting keyword scoring color it like a program (e.g. the digits in
+        // `…/v0.1.0` highlighted as numeric literals). CS-004.
+        if isURL(raw) { return .plaintext }
         let code = raw.lowercased()
         guard !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return .plaintext
@@ -204,6 +208,13 @@ enum LanguageDetector {
     /// `blockCount` reports the count so the caller can defer to the editor.
     /// Plain text with no fence is returned unchanged, preserving prior behavior.
     static func interpret(_ raw: String) -> Interpretation {
+        // A bare http(s) URL is plain text, not source — return it before any fence,
+        // path, or keyword hint runs so a trailing extension in the URL path
+        // (`…/styles.css`, `…/v0.1.0`) is never mistaken for a source language (CS-004).
+        if isURL(raw) {
+            return Interpretation(code: raw, language: .plaintext, blockCount: 0)
+        }
+
         let blocks = MarkdownFence.codeBlocks(in: raw)
 
         if blocks.isEmpty {

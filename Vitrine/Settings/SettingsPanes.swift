@@ -530,10 +530,29 @@ struct StylePresetsSection: View {
     }
 }
 
+/// Library pane (CS-010): the reusable save-and-manage surfaces split out of the Style
+/// pane so neither grows an exaggerated height — saved **style presets** (CS-030) and
+/// user **custom themes** (CS-031). Each renders its own section(s), hosted in one Form.
+struct LibrarySettingsView: View {
+    @ObservedObject var settings: AppSettings
+    @ObservedObject var presets: PresetStore
+    @ObservedObject var themes: CustomThemeStore
+
+    var body: some View {
+        Form {
+            StylePresetsSection(settings: settings, store: presets)
+            CustomThemesSection(settings: settings, store: themes)
+        }
+        .formStyle(.grouped)
+        .frame(width: 460)
+        .padding()
+        .accessibilityIdentifier("settings-library-pane")
+    }
+}
+
 /// Style pane: theme, background, padding, font, chrome, shadow + live preview (CS-006/010).
 struct StyleSettingsView: View {
     @ObservedObject var settings: AppSettings
-    @ObservedObject var presets: PresetStore
     @ObservedObject var themes: CustomThemeStore
 
     var body: some View {
@@ -546,13 +565,9 @@ struct StyleSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            StylePresetsSection(settings: settings, store: presets)
-
             Section {
                 CoreStyleControls(settings: settings, themes: themes)
             }
-
-            CustomThemesSection(settings: settings, store: themes)
 
             Section {
                 Toggle("Line numbers", isOn: $settings.config.showLineNumbers)
@@ -616,13 +631,26 @@ struct StyleSettingsView: View {
     }
 
     private var previewImage: NSImage? {
-        // Reflect a fixed-size preset's exact framing (e.g. OpenGraph 1200×630)
-        // in the live preview; scale stays at 2 for a crisp thumbnail since the
-        // image is scaled to fit the preview box (CS-020).
-        ExportManager.renderNSImage(
-            previewConfig, scale: 2, fixedSize: settings.effectiveFixedSize,
+        // Reflect a fixed-size preset's exact framing (e.g. Keynote 1920×1080) in the
+        // live preview without rasterizing a full export canvas on every Settings change.
+        // The renderer still lays out at the preset's logical size, but fixed-size
+        // previews use a fractional thumbnail scale capped below; real Copy/Save/Share
+        // paths keep `effectiveExportScale` and exact output dimensions (CS-020).
+        return ExportManager.renderNSImage(
+            previewConfig, scale: previewRenderScale, fixedSize: settings.effectiveFixedSize,
             profile: settings.colorProfile)
     }
+
+    private var previewRenderScale: CGFloat {
+        guard let fixedSize = settings.effectiveFixedSize else { return 2 }
+        let longestSide = max(fixedSize.width, fixedSize.height)
+        guard longestSide > 0 else { return 1 }
+        return max(0.1, min(1, Self.maximumPreviewPixels / longestSide))
+    }
+
+    /// Largest raster side for the Settings thumbnail. The on-screen preview is capped
+    /// at 300 pt tall, so rendering more pixels only burns main-thread time.
+    private static let maximumPreviewPixels: CGFloat = 600
 
     /// Shown when a render is not available yet (e.g. a font is still loading or
     /// the renderer returns nil) so the Preview section degrades to a labeled
@@ -1139,6 +1167,17 @@ struct InputSettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                Toggle("Re-indent code on paste", isOn: $settings.reindentOnPaste)
+                    .accessibilityIdentifier("reindent-on-paste-toggle")
+            } footer: {
+                Text(
+                    "Pasting tidies the indentation automatically. Undo with ⌘Z, or format anytime with ⌥⌘F."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            }
+
             Section {
                 Toggle(
                     "Treat copied URLs as a screenshot target",

@@ -10,7 +10,9 @@ final class SettingsWindowManager {
     static let shared = SettingsWindowManager()
 
     private lazy var windowController = SettingsWindowController(
-        panes: [generalPane(), stylePane(), outputPane(), inputPane(), aboutPane()],
+        panes: [
+            generalPane(), stylePane(), libraryPane(), outputPane(), inputPane(), aboutPane(),
+        ],
         style: .toolbarItems,
         animated: true,
         hidesToolbarForSingleItem: true
@@ -47,7 +49,17 @@ final class SettingsWindowManager {
             identifier: .style, title: String(localized: "Style"),
             toolbarIcon: icon("paintpalette", String(localized: "Style"))
         ) {
-            StyleSettingsView(settings: .shared, presets: .shared, themes: .shared)
+            StyleSettingsView(settings: .shared, themes: .shared)
+        }
+        return Settings.PaneHostingController(pane: pane)
+    }
+
+    private func libraryPane() -> SettingsPane {
+        let pane = Settings.Pane(
+            identifier: .library, title: String(localized: "Library"),
+            toolbarIcon: icon("books.vertical", String(localized: "Library"))
+        ) {
+            LibrarySettingsView(settings: .shared, presets: .shared, themes: .shared)
         }
         return Settings.PaneHostingController(pane: pane)
     }
@@ -86,6 +98,7 @@ final class SettingsWindowManager {
 extension Settings.PaneIdentifier {
     static let general = Self("general")
     static let style = Self("style")
+    static let library = Self("library")
     static let output = Self("output")
     static let input = Self("input")
     static let about = Self("about")

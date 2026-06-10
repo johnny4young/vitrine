@@ -54,12 +54,33 @@ struct ExportPresetCatalogTests {
         #expect(openGraph.sizing.fixedSize == CGSize(width: 1200, height: 630))
     }
 
-    @Test func onlyOpenGraphPinsAFixedSize() {
-        // The non-OpenGraph presets recommend a shape, not exact pixels, so the
-        // canvas can still hug its content.
-        for preset in ExportPreset.all where preset.id != "opengraph" {
-            #expect(preset.sizing.fixedSize == nil)
+    @Test func everyDestinationPinsItsExactSize() {
+        // Every shipped destination pins a `.fixed` canvas so the export is exactly
+        // the shape its name promises (CS-020) — the code card is centered and the
+        // background fills the frame.
+        let expected: [String: CGSize] = [
+            "twitter": CGSize(width: 1600, height: 900),
+            "linkedin": CGSize(width: 1200, height: 628),
+            "keynote": CGSize(width: 1920, height: 1080),
+            "docs": CGSize(width: 1200, height: 800),
+            "transparent-slide": CGSize(width: 1920, height: 1080),
+            "opengraph": CGSize(width: 1200, height: 630),
+        ]
+        for preset in ExportPreset.all {
+            #expect(
+                preset.sizing.fixedSize == expected[preset.id],
+                "\(preset.id) must pin its exact canvas size")
+            // Fixed-size destinations pin scale to 1 so logical and pixel sizes match.
+            #expect(preset.scale == 1, "\(preset.id) should export at 1× (logical == pixels)")
         }
+    }
+
+    /// The aspect ratio each destination pins matches the shape its name implies.
+    @Test func destinationAspectRatiosMatchTheirNames() {
+        #expect(abs(ExportPreset.twitter.sizing.aspectRatio - 16.0 / 9.0) < 0.001)
+        #expect(abs(ExportPreset.keynote.sizing.aspectRatio - 16.0 / 9.0) < 0.001)
+        #expect(abs(ExportPreset.linkedIn.sizing.aspectRatio - 1.91) < 0.01)
+        #expect(abs(ExportPreset.docs.sizing.aspectRatio - 3.0 / 2.0) < 0.001)
     }
 
     @Test func transparentSlidePresetUsesRealTransparency() {
@@ -226,12 +247,12 @@ struct AppSettingsPresetTests {
         settings.selectPreset(.openGraph)  // scale 1, fixed 1200×630, aurora
         #expect(settings.selectedPresetID == "opengraph")
 
-        settings.selectPreset(.keynote)  // scale 2, no fixed size, night
+        settings.selectPreset(.keynote)  // scale 1, fixed 1920×1080, night
 
         #expect(settings.selectedPresetID == "keynote")
         #expect(settings.selectedPreset == .keynote)
-        #expect(settings.exportScale == 2)
-        #expect(settings.effectiveFixedSize == nil)  // keynote does not pin a size
+        #expect(settings.exportScale == 1)
+        #expect(settings.effectiveFixedSize == CGSize(width: 1920, height: 1080))
         #expect(settings.config.background == .gradient(.night))
         #expect(
             settings.config.padding == SettingsDefaults.clampPadding(ExportPreset.keynote.padding))

@@ -10,6 +10,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
         assertExists(element("language-picker", in: app), in: app)
+        assertExists(element("format-button", in: app), in: app)
         // The editor's destination preset picker carries its own identifier so it
         // never collides with the Settings panes' picker (CS-032).
         assertExists(element("editor-destination-preset-picker", in: app), in: app)
@@ -126,6 +127,21 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(
             element("make-default-button", in: app).isHittable,
             "Make Default action is not reachable")
+    }
+
+    @MainActor
+    func testEditorExposesFormatCodeToolbarAction() {
+        continueAfterFailure = false
+        // Format Code is a primary editor affordance (CS-049) and should be reachable
+        // by mouse as well as the Edit-menu shortcut. The pure formatting behavior is
+        // covered by CodeFormatterTests; this UI smoke pins the accessible toolbar route.
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let button = element("format-button", in: app)
+        assertExists(button, in: app, timeout: 3)
+        XCTAssertTrue(button.isHittable, "Format Code action is not reachable")
     }
 
     @MainActor
@@ -445,12 +461,13 @@ final class VitrineUITests: XCTestCase {
 
         // The toolbar tab titles are themselves localized (they pseudo-localize under
         // en-XA), so the tabs are selected by their stable order — General(0),
-        // Style(1), Output(2), Input(3), About(4) — rather than by visible title.
+        // Style(1), Library(2), Output(3), Input(4), About(5) — rather than by visible title.
         let toolbarButtons = app.toolbars.buttons
         for (tabIndex, paneIdentifier, control) in [
             (1, "settings-style-pane", "style-theme-picker"),
-            (2, "settings-output-pane", "output-format-picker"),
-            (4, "settings-about-pane", "export-diagnostics-button"),
+            (2, "settings-library-pane", "style-preset-picker"),
+            (3, "settings-output-pane", "output-format-picker"),
+            (5, "settings-about-pane", "export-diagnostics-button"),
         ] {
             toolbarButtons.element(boundBy: tabIndex).click()
             assertExists(element(paneIdentifier, in: app), in: app, timeout: 3)

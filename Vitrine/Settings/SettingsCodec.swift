@@ -36,6 +36,7 @@ enum SettingsCodec {
         static let hotkeyAction = "hotkeyAction"
         static let appLanguage = "appLanguage"
         static let treatURLs = "treatURLsAsScreenshot"
+        static let reindentOnPaste = "reindentOnPaste"
         /// Web URL-capture viewport/wait settings (CS-044). All additive keys with
         /// documented defaults, so an older store simply reads the defaults.
         static let webViewportKind = "webViewportKind"
@@ -69,6 +70,7 @@ enum SettingsCodec {
             showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, exportScale, exportFormat,
             colorProfile, richClipboard, hotkeyAction, appLanguage, treatURLs,
+            reindentOnPaste,
             webViewportKind, webCustomViewportWidth, webCustomViewportHeight,
             webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
             fontName, fontLigatures, selectedPreset, hasSeenWelcome,

@@ -91,6 +91,16 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(treatURLsAsScreenshot, forKey: Keys.treatURLs) }
     }
 
+    /// Re-indent pasted code automatically (CS-049 · Input). When on, a paste into the
+    /// editor is tidied through ``CodeFormatter/tidy(_:language:)`` — brace/JSX languages
+    /// are re-indented, whitespace-significant ones only dedented — so a snippet copied
+    /// with broken indentation lands clean. The edit is undoable (⌘Z), and the same tidy
+    /// is always available on demand via ⌥⌘F. Read globally (it is a behavior preference,
+    /// not a per-window style), so it applies in every editor window.
+    @Published var reindentOnPaste: Bool {
+        didSet { defaults.set(reindentOnPaste, forKey: Keys.reindentOnPaste) }
+    }
+
     /// The viewport preset a URL capture lays the page out in (CS-044). Stored as a
     /// flat discriminant; the custom size rides in `webCustomViewportWidth/Height`.
     @Published var webViewportKind: WebSnapshotConfig.ViewportPreset.Kind {
@@ -211,6 +221,9 @@ final class AppSettings: ObservableObject {
             ExportPreset.preset(withID: defaults.string(forKey: Keys.selectedPreset))?
             .id
         treatURLsAsScreenshot = defaults.object(forKey: Keys.treatURLs) as? Bool ?? false
+        // Default on: a fresh install tidies pastes by default (CS-049), the behavior the
+        // editor's "paste a snippet to screenshot it" flow expects; the toggle opts out.
+        reindentOnPaste = defaults.object(forKey: Keys.reindentOnPaste) as? Bool ?? true
         // Web URL-capture viewport/wait settings (CS-044). Each read tolerates a
         // missing or garbage value by falling back to the documented default and
         // clamping numeric values into the safe range (CS-050 posture).
@@ -432,6 +445,7 @@ final class AppSettings: ObservableObject {
         hotkeyAction = .fallback
         appLanguage = .system
         treatURLsAsScreenshot = false
+        reindentOnPaste = true
         webViewportKind = WebDefaults.viewportKind
         webCustomViewportWidth = WebDefaults.customViewportWidth
         webCustomViewportHeight = WebDefaults.customViewportHeight

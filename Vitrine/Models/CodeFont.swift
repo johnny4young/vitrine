@@ -46,12 +46,15 @@ enum CodeFont {
     /// `ligatures` is false (the default), common ligatures are explicitly turned
     /// **off** so a ligature font renders discrete glyphs; when true, they are
     /// turned on. Non-ligature fonts are unaffected either way. Falls back to the
-    /// system monospaced font when `family` is unavailable, applying the same
-    /// ligature setting so the fallback matches the request.
+    /// system monospaced font when `family` is unavailable. OpenType feature
+    /// overrides are applied only to known ligature-capable programming fonts; plain
+    /// monospaced fonts such as Menlo stay byte-for-byte stable whether the setting is
+    /// on or off.
     static func resolved(family: String, size: CGFloat, ligatures: Bool) -> NSFont {
-        let base =
-            NSFont(name: family, size: size)
-            ?? .monospacedSystemFont(ofSize: size, weight: .regular)
+        let requested = NSFont(name: family, size: size)
+        let base = requested ?? .monospacedSystemFont(ofSize: size, weight: .regular)
+        let resolvedFamily = requested?.familyName ?? family
+        guard hasLigatures(resolvedFamily) else { return base }
         return applyingLigatures(ligatures, to: base)
     }
 

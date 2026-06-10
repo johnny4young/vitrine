@@ -156,8 +156,11 @@ targets:
           # Local HTML rendering (CS-042) drives an offscreen WKWebView, which needs
           # a window-server connection at runtime that this headless tool does not
           # have. The CLI renders code, not web content, so it neither links WebKit
-          # nor compiles the web-rendering surface.
+          # nor compiles the WebKit renderers. The value-only WebSnapshotConfig below
+          # is included explicitly because shared AppSettings/WebDefaults persist URL
+          # capture preferences even though the CLI never renders webpages.
           - "WebRendering"
+      - path: Vitrine/WebRendering/WebSnapshotConfig.swift
       - path: VitrineCLI
     dependencies:
       - package: Highlightr
@@ -256,6 +259,17 @@ schemes:
     test:
       config: Debug
       gatherCoverageData: true
+      # Pin the unit-test host to English so the suite is deterministic regardless of the
+      # developer's app-language preference. The app persists its UI language in
+      # `AppleLanguages` under its own domain (CS-047 language switcher) and the XCTest
+      # host (Vitrine.app) inherits it — so running the app in Spanish would make every
+      # English-string assertion (Notifier, Privacy, Localization) fail locally while CI
+      # stays green. This writes `AppleLanguages=(en)` into the host's NSArgumentDomain;
+      # the `es`-specific tests load the `es` bundle explicitly, and the language-override
+      # persistence tests read the suite's persistent domain (bypassing the argument
+      # domain) so neither is masked by this pin.
+      language: en
+      region: US
       targets:
         - VitrineTests
       # Forward the opt-in generator flags into the test runner's environment.
@@ -293,5 +307,11 @@ schemes:
         VitrineUITests: [test]
     test:
       config: Debug
+      # Match the unit-test host pin above: the UI smoke suite asserts English menu
+      # and toolbar labels unless a test explicitly opts into a pseudolocale. Without
+      # this, a developer who last ran Vitrine in another app language (for example
+      # Spanish) gets localized menu-bar and Settings titles while CI stays green.
+      language: en
+      region: US
       targets:
         - VitrineUITests
