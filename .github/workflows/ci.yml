@@ -225,3 +225,110 @@ jobs:
             fi
             echo "Comparator correctly reported a mismatch."
           fi
+
+  # Full XCUITest execution (CS-060 follow-up). Compile-only `build-ui-tests`
+  # kept UI-test failures invisible on main; this job actually runs the suite on
+  # every PR/push. Driving the menu-bar app through XCUIAutomation needs the
+  # macOS automation authorization, which is interactive on a dev machine — but
+  # GitHub's hosted macOS images are provisioned for headless UI automation
+  # (DevToolsSecurity, automation mode without authentication, SIP disabled), so
+  # the suite executes here, verified empirically on the macos-15-arm64 image
+  # (20260527) — see docs/RELEASING.md (Running the UI tests).
+  # A separate job so it parallelizes with the build gate and a UI flake never
+  # blocks the build job's artifacts.
+  ui-test:
+    name: UI tests
+    runs-on: macos-latest
+    # The suite hangs (rather than fails) if automation init wedges; cap the job
+    # so a wedged run surfaces in minutes, not after the 6-hour default.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Export DEVELOPER_DIR
+        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+
+      # Same toolchain anchor as the build job (CS-060): tie this job's result to
+      # the exact image/Xcode it ran against.
+      - name: Toolchain versions
+        run: |
+          {
+            echo "### Toolchain — UI tests (CS-060)"
+            echo '```'
+            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
+            sw_vers
+            xcodebuild -version
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Diagnostic only — never a gate. Empirically (macos-15-arm64 image
+      # 20260527) the suite executes even while `automationmodetool` reports
+      # "Automation Mode is disabled": the image runs with SIP disabled and is
+      # provisioned for headless automation, so that output does not predict
+      # whether XCUITest can drive the UI. Record the posture next to the result
+      # so an image regression can be triaged from the log.
+      - name: Log automation authorization state
+        run: |
+          {
+            echo "### Automation authorization (diagnostic)"
+            echo '```'
+            echo "automationmodetool: $(automationmodetool || true)"
+            echo "DevToolsSecurity: $(DevToolsSecurity -status || true)"
+            echo "csrutil: $(csrutil status || true)"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      # Four tests assert display-geometry-sensitive properties — toolbar
+      # hittability and off-screen window recovery — that fail on the runner's
+      # 1024x768 virtual display even after bumping it to 1920x1080 with
+      # displayplacer (verified: runs 27308930312 and 27309687088). They are
+      # skipped here pending test-side hardening and annotated on every run so
+      # the skip stays visible; run them locally via `make test-ui`.
+      - name: Run UI tests
+        env:
+          TEST_UI_SKIP: >-
+            testEditorExposesMakeDefaultToolbarAction
+            testEditorExposesFormatCodeToolbarAction
+            testEditorKeyboardCanReachPresetStripAndInspector
+            testEditorWindowRecoversFromOffScreenFrame
+        run: |
+          set -o pipefail
+          for t in ${TEST_UI_SKIP}; do
+            echo "::warning title=UI test skipped on CI (display-sensitive)::${t} cannot pass on the hosted runner's small virtual display; it only runs locally (make test-ui). See docs/RELEASING.md (Running the UI tests)."
+          done
+          make test-ui TEST_UI_SKIP="${TEST_UI_SKIP}" RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
+
+      # Tell an automation-authorization failure apart from an ordinary test
+      # failure: the former is a runner-image regression (it has happened —
+      # actions/runner-images#7621, #8546), not a product bug, and should be
+      # read as such.
+      - name: Classify automation failure
+        if: failure()
+        run: |
+          if [ -f test-ui.log ] && grep -q "failed to initialize for UI testing" test-ui.log; then
+            echo "::error title=UI automation blocked on this image::The XCUITest session could not initialize. The runner image has likely lost its pre-authorized automation state (cf. actions/runner-images#7621) — an infrastructure regression, not a test failure. See docs/RELEASING.md (Running the UI tests)."
+          fi
+
+      - name: Upload .xcresult bundle
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-test-xcresult
+          path: ${{ runner.temp }}/test-ui.xcresult
+          if-no-files-found: ignore

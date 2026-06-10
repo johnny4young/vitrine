@@ -43,6 +43,8 @@ CI is a release gate, not just a compile check.
   `make lint`, `make build`, `make build-ui-tests`, and `make test`. The Swift
   Package Manager download cache is restored between runs (keyed on `project.yml`,
   the dependency source of truth) to cut build time without risking a stale build.
+  A parallel **`UI tests` job** executes the full XCUITest suite (`make test-ui`)
+  on the same triggers — see *Running the UI tests* below.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
@@ -59,15 +61,43 @@ CI is a release gate, not just a compile check.
 
 ### Running the UI tests
 
-`make build-ui-tests` (compile only) runs on every PR and in the release gate, and
-needs no special permission. **Running the full UI suite (`make test-ui`) is a
-local/manual or self-hosted-runner step**, not part of the GitHub-hosted PR gate:
-driving the menu-bar app through XCUIAutomation requires the Accessibility /
-Automation permission to be granted to the test runner, which is not reliably
-available on ephemeral GitHub-hosted macOS runners. Run it locally before a release
-(grant the prompt the first time), or wire it into a self-hosted runner that has the
-permission pre-granted. Keep this split until GitHub-hosted runners support that
-automation permission reliably.
+**The full UI suite (`make test-ui`) runs in CI on every PR and push to `main`**,
+as the dedicated `UI tests` job in `ci.yml`, alongside the compile-only
+`make build-ui-tests` step that also remains in the build job and the release gate.
+
+Driving the menu-bar app through XCUIAutomation requires the macOS
+"automation permission" — the interactive UI-automation consent that the first
+local `make test-ui` prompts for; grant it once. GitHub-hosted macOS runners need
+no prompt: the images are provisioned for headless UI automation
+(`DevToolsSecurity --enable`, `automationmodetool
+enable-automationmode-without-authentication`, SIP disabled — see
+`images/macos/scripts/build/configure-machine.sh` in `actions/runner-images`),
+verified empirically on the `macos-15-arm64` image (20260527.0100.1): the suite
+executes end to end. One sharp edge from that verification: `automationmodetool`
+*reports* "Automation Mode is disabled" on that image even though automation
+works, so the CI job records the authorization state as a diagnostic instead of
+gating on it. When the job fails because the XCUITest session could not
+initialize — a runner-image regression, which has happened before
+(actions/runner-images#7621, #8546) — a dedicated step annotates the run as an
+infrastructure failure rather than a product bug.
+
+**Four display-sensitive tests are skipped on CI** (passed as `TEST_UI_SKIP` to
+`make test-ui`, and annotated as warnings on every run so the skip is never
+silent): `testEditorExposesMakeDefaultToolbarAction`,
+`testEditorExposesFormatCodeToolbarAction`,
+`testEditorKeyboardCanReachPresetStripAndInspector`, and
+`testEditorWindowRecoversFromOffScreenFrame`. They assert toolbar hittability and
+off-screen-recovery geometry that cannot hold on the runner's small virtual
+display (natively 1024x768; still failing after a `displayplacer` bump to
+1920x1080). They pass locally and run in every local `make test-ui`. If you
+harden them against small displays (resize the window first, or
+`XCTSkipUnless` a minimum screen size), remove them from `TEST_UI_SKIP` in
+`ci.yml`.
+
+The release gate (`release.yml`) still only *compiles* the UI tests: every commit
+on `main` has already had the full suite executed by `ci.yml`, and a UI-level
+flake should not block an urgent tag. Run `make test-ui` locally before tagging if
+the release includes UI changes that never went through a PR.
 
 ## Signing, notarization & Gatekeeper (CS-061)
 
@@ -461,7 +491,7 @@ interactive items above are the manual half.
       matches `MARKETING_VERSION`), and `docs/HELP.md` updated if Help content changed
 - [ ] **Visual review against the launch gallery** done (re-run `make gallery` if a
       visual change landed; review the `Tests/Fixtures/Samples/` diff) — see DESIGN-QA.md
-- [ ] `make test-ui` run locally (or on a self-hosted runner) — not in the hosted gate
+- [ ] `UI tests` CI job green on the release commit (or `make test-ui` run locally)
 - [ ] Tag pushed; release workflow `verify` gate and DMG publish both green
 - [ ] Tap PR opened: cask `version` + `sha256` set from the release's
       `vitrine-cask-update.txt`, `brew audit --cask --strict` green in the tap, and
