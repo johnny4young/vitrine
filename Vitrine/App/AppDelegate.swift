@@ -28,15 +28,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        handleLaunchArguments()
+        // First-run surfaces on a normal launch (CS-035/CS-049): onboarding owns the
+        // first launch; once it has been seen, What's New surfaces on a version
+        // upgrade — never both. Skipped when a dev launch hook already opened a window
+        // so the manual/UI-test surfaces above are not pre-empted or stacked over.
+        if !handleLaunchArguments() {
+            if !WelcomeWindowController.shared.presentIfFirstRun() {
+                WhatsNewWindowController.shared.presentIfNewVersion()
+            }
+        }
     }
 
-    /// Development launch hooks: `--demo` preloads sample code, `--open-editor` /
-    /// `--open-settings` open a window on launch, and the multi-window hooks
-    /// (`--open-second-editor`, `--force-offscreen-editor`) drive the CS-053 UI smoke
-    /// tests. All are handy for manual UI testing.
-    private func handleLaunchArguments() {
+    /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
+    /// none of these run on a normal user launch. `--demo` preloads sample code;
+    /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
+    /// `--show-help` / `--show-welcome` force those windows open past their gates;
+    /// `--seen-old-version` seeds an older last-seen version and then presents What's
+    /// New through its real version gate; `--skip-onboarding` just marks the
+    /// quick-start as seen; the multi-window hooks (`--open-second-editor`,
+    /// `--force-offscreen-editor`) drive the CS-053 UI smoke tests.
+    ///
+    /// - Returns: whether a hook opened a window, so the normal first-run surfaces
+    ///   (`presentIfFirstRun` / `presentIfNewVersion`) are not stacked on top of one.
+    private func handleLaunchArguments() -> Bool {
         let arguments = ProcessInfo.processInfo.arguments
+        var didOpenWindow = false
+        if arguments.contains("--skip-onboarding") {
+            AppSettings.shared.hasSeenWelcome = true
+        }
+        // Run as a regular app (Dock icon, owns the menu bar when active) so the
+        // screenshot tour can realize and open the main menus; an accessory app's
+        // menu-bar items stay zero-sized under synthetic activation.
+        if arguments.contains("--standard-activation") {
+            NSApp.setActivationPolicy(.regular)
+        }
         if arguments.contains("--demo") {
             AppSettings.shared.config.code = """
                 import SwiftUI
@@ -53,14 +78,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 """
         }
-        if arguments.contains("--open-editor") { EditorWindowController.shared.show() }
-        if arguments.contains("--open-settings") { SettingsWindowManager.shared.show() }
+        if arguments.contains("--open-editor") {
+            EditorWindowController.shared.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--open-settings") {
+            SettingsWindowManager.shared.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--open-recents") {
+            RecentsGalleryWindowController.shared.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--show-help") {
+            HelpWindowController.shared.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--show-welcome") {
+            WelcomeWindowController.shared.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--seen-old-version") {
+            AppSettings.shared.hasSeenWelcome = true
+            AppSettings.shared.lastSeenWhatsNewVersion = "0.0.1"
+            WhatsNewWindowController.shared.presentIfNewVersion()
+            didOpenWindow = true
+        }
 
         // Open two independent editor windows so the multi-window UI smoke (CS-053) can
         // assert both exist and that closing one leaves the other.
         if arguments.contains("--open-second-editor") {
             EditorWindowController.shared.show()
             EditorWindowController.shared.openNewWindow()
+            didOpenWindow = true
         }
 
         // Open the editor and force it off-screen so the off-screen-recovery UI smoke
@@ -68,6 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if arguments.contains("--force-offscreen-editor") {
             EditorWindowController.shared.show()
             EditorWindowController.shared.moveKeyEditorOffScreenForTesting()
+            didOpenWindow = true
         }
 
         if arguments.contains("--snapshot-loop") {
@@ -79,6 +130,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.terminate(nil)
             }
         }
+
+        return didOpenWindow
     }
 
     /// Dev/CI helper: periodically snapshots every open window's content view via
