@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 final class VitrineUITests: XCTestCase {
@@ -70,8 +71,9 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testEditorWindowRecoversFromOffScreenFrame() {
+    func testEditorWindowRecoversFromOffScreenFrame() throws {
         continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
         // `--force-offscreen-editor` opens the editor, shoves it far off the visible
         // screens, and runs the recovery pass, so a window saved on an unplugged
         // monitor is pulled back on-screen rather than stranded (CS-053 "behaves
@@ -80,13 +82,15 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         // After recovery the window and its controls are reachable (hittable), which is
-        // only true when the frame sits on a visible display.
+        // only true when the frame sits on a visible display. On a display smaller than
+        // the editor's default size the recovery pass also shrinks the window to fit,
+        // so this holds on a small CI display (1024x768) too.
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         XCTAssertTrue(
             element("copy-button", in: app).waitForExistence(timeout: 3),
             "Editor control is missing after off-screen recovery")
-        XCTAssertTrue(
-            element("copy-button", in: app).isHittable,
+        assertHittable(
+            element("copy-button", in: app), in: app,
             "Editor window was not recovered onto a visible screen")
     }
 
@@ -114,8 +118,9 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testEditorExposesMakeDefaultToolbarAction() {
+    func testEditorExposesMakeDefaultToolbarAction() throws {
         continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
         // The editor surfaces an explicit "Make Default" affordance so promoting a
         // window's style to the app default is discoverable in the editor, not only in
         // the menu (CS-053 "make default is explicit").
@@ -124,14 +129,15 @@ final class VitrineUITests: XCTestCase {
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         assertExists(element("make-default-button", in: app), in: app, timeout: 3)
-        XCTAssertTrue(
-            element("make-default-button", in: app).isHittable,
+        assertHittable(
+            element("make-default-button", in: app), in: app,
             "Make Default action is not reachable")
     }
 
     @MainActor
-    func testEditorExposesFormatCodeToolbarAction() {
+    func testEditorExposesFormatCodeToolbarAction() throws {
         continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
         // Format Code is a primary editor affordance (CS-049) and should be reachable
         // by mouse as well as the Edit-menu shortcut. The pure formatting behavior is
         // covered by CodeFormatterTests; this UI smoke pins the accessible toolbar route.
@@ -141,7 +147,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         let button = element("format-button", in: app)
         assertExists(button, in: app, timeout: 3)
-        XCTAssertTrue(button.isHittable, "Format Code action is not reachable")
+        assertHittable(button, in: app, "Format Code action is not reachable")
     }
 
     @MainActor
@@ -192,8 +198,9 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testEditorKeyboardCanReachPresetStripAndInspector() {
+    func testEditorKeyboardCanReachPresetStripAndInspector() throws {
         continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
         let app = launch(arguments: ["--demo", "--open-editor"])
         defer { app.terminate() }
 
@@ -203,14 +210,14 @@ final class VitrineUITests: XCTestCase {
         // and export toolbar"). Asserting the elements are hittable is the
         // automatable proxy for reachability without scripting Full Keyboard Access.
         assertExists(element("editor-style-preset-picker", in: app), in: app, timeout: 8)
-        XCTAssertTrue(
-            element("editor-style-preset-picker", in: app).isHittable,
+        assertHittable(
+            element("editor-style-preset-picker", in: app), in: app,
             "Style preset picker is not reachable")
-        XCTAssertTrue(
-            element("editor-inspector", in: app).isHittable,
+        assertHittable(
+            element("editor-inspector", in: app), in: app,
             "Inspector is not reachable")
-        XCTAssertTrue(
-            element("copy-button", in: app).isHittable,
+        assertHittable(
+            element("copy-button", in: app), in: app,
             "Export toolbar copy action is not reachable")
     }
 
@@ -555,6 +562,55 @@ final class VitrineUITests: XCTestCase {
             "VitrineUITests-\(name)-\(UUID().uuidString)"
         app.launch()
         return app
+    }
+
+    /// Skips a display-geometry-sensitive test when no attached display can hold the
+    /// editor at its minimum supported size (`EditorView`'s 940x520 root frame plus
+    /// window chrome, with a small margin). Below that, control hittability cannot
+    /// hold no matter what the app does, so the assertion would be testing the
+    /// display, not the product. The hosted CI runners' 1024x768 virtual display
+    /// passes this guard — these tests are expected to *run* there, not skip.
+    @MainActor
+    private func skipUnlessADisplayFitsTheEditor() throws {
+        let required = CGSize(width: 960, height: 600)
+        let visible = NSScreen.screens.map(\.visibleFrame)
+        try XCTSkipUnless(
+            visible.contains { $0.width >= required.width && $0.height >= required.height },
+            "No display fits the editor's minimum "
+                + "\(Int(required.width))x\(Int(required.height)) window "
+                + "(visible frames: \(visible)); hittability cannot be asserted here.")
+    }
+
+    /// Asserts `element` becomes hittable, polling briefly so a window still being
+    /// positioned (centered, or pulled back on-screen by the recovery pass) is not a
+    /// flake. On failure it attaches the screen/window/element geometry and the full
+    /// accessibility hierarchy, so a display-geometry regression — e.g. on a small CI
+    /// virtual display — can be triaged from the .xcresult alone.
+    @MainActor
+    private func assertHittable(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        _ message: String,
+        timeout: TimeInterval = 3,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"), object: element)
+        if XCTWaiter().wait(for: [hittable], timeout: timeout) == .completed { return }
+
+        let screens = NSScreen.screens
+            .map { "screen frame=\($0.frame) visible=\($0.visibleFrame)" }
+        let windows = app.windows.allElementsBoundByIndex
+            .map { "window \"\($0.title)\" frame=\($0.frame)" }
+        let geometry =
+            (["element frame: \(element.exists ? "\(element.frame)" : "(element missing)")"]
+            + windows + screens).joined(separator: "\n")
+        let attachment = XCTAttachment(string: geometry + "\n\n" + app.debugDescription)
+        attachment.name = "Hittability diagnostics"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTFail(message, file: file, line: line)
     }
 
     @MainActor

@@ -81,18 +81,23 @@ initialize — a runner-image regression, which has happened before
 (actions/runner-images#7621, #8546) — a dedicated step annotates the run as an
 infrastructure failure rather than a product bug.
 
-**Four display-sensitive tests are skipped on CI** (passed as `TEST_UI_SKIP` to
-`make test-ui`, and annotated as warnings on every run so the skip is never
-silent): `testEditorExposesMakeDefaultToolbarAction`,
+**The display-geometry-sensitive tests run on CI too.** Four tests
+(`testEditorExposesMakeDefaultToolbarAction`,
 `testEditorExposesFormatCodeToolbarAction`,
 `testEditorKeyboardCanReachPresetStripAndInspector`, and
-`testEditorWindowRecoversFromOffScreenFrame`. They assert toolbar hittability and
-off-screen-recovery geometry that cannot hold on the runner's small virtual
-display (natively 1024x768; still failing after a `displayplacer` bump to
-1920x1080). They pass locally and run in every local `make test-ui`. If you
-harden them against small displays (resize the window first, or
-`XCTSkipUnless` a minimum screen size), remove them from `TEST_UI_SKIP` in
-`ci.yml`.
+`testEditorWindowRecoversFromOffScreenFrame`) assert toolbar hittability and
+off-screen-recovery geometry, which used to fail on the runner's small 1024x768
+virtual display: the editor's 1180-point default window overhung the screen
+edges, leaving its trailing toolbar actions unhittable. The product now sizes
+brand-new and recovered editor windows to fit the screen they open on
+(`WindowFrameSolver`), so the suite passes on that display, and the tests
+`XCTSkipUnless` (with an explanatory message) only when no display can hold the
+editor's minimum supported window — smaller than anything CI uses. On a
+hittability failure the tests attach the screen/window/element geometry plus the
+accessibility hierarchy to the `.xcresult`. Should a future runner image shrink
+the display again, individual tests can still be excluded with
+`make test-ui TEST_UI_SKIP="<test> <test>"` — if you reintroduce that in `ci.yml`,
+annotate every skipped test on every run so the skip stays visible.
 
 The release gate (`release.yml`) still only *compiles* the UI tests: every commit
 on `main` has already had the full suite executed by `ci.yml`, and a UI-level

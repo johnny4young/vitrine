@@ -294,25 +294,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      # Four tests assert display-geometry-sensitive properties — toolbar
-      # hittability and off-screen window recovery — that fail on the runner's
-      # 1024x768 virtual display even after bumping it to 1920x1080 with
-      # displayplacer (verified: runs 27308930312 and 27309687088). They are
-      # skipped here pending test-side hardening and annotated on every run so
-      # the skip stays visible; run them locally via `make test-ui`.
+      # The whole suite runs here, including the four display-geometry-sensitive
+      # tests that used to be skipped on the runner's 1024x768 virtual display:
+      # the editor now sizes new/recovered windows to fit the screen, and the
+      # tests skip themselves (with a clear message) only below the editor's
+      # minimum supported display — see docs/RELEASING.md (Running the UI tests).
       - name: Run UI tests
-        env:
-          TEST_UI_SKIP: >-
-            testEditorExposesMakeDefaultToolbarAction
-            testEditorExposesFormatCodeToolbarAction
-            testEditorKeyboardCanReachPresetStripAndInspector
-            testEditorWindowRecoversFromOffScreenFrame
         run: |
           set -o pipefail
-          for t in ${TEST_UI_SKIP}; do
-            echo "::warning title=UI test skipped on CI (display-sensitive)::${t} cannot pass on the hosted runner's small virtual display; it only runs locally (make test-ui). See docs/RELEASING.md (Running the UI tests)."
-          done
-          make test-ui TEST_UI_SKIP="${TEST_UI_SKIP}" RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
+          make test-ui RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
 
       # Tell an automation-authorization failure apart from an ordinary test
       # failure: the former is a runner-image regression (it has happened —
