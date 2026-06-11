@@ -11,7 +11,7 @@ and [Carbon](https://carbon.now.sh), but **native, instant, and fully local**.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v0.1.0%20shipped-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v0.3.0%20shipped-brightgreen.svg)](#status)
 
 </div>
 
@@ -40,7 +40,7 @@ Works **offline**, **100% local**, no account, no server. MIT-licensed.
 ## The flow you'll actually use
 
 1. **Copy** what you want to share — a snippet of code today, and URLs in Product Phase 2.
-2. **Trigger Vitrine** — global hotkey (`⌘⇧S`) or the menu-bar icon.
+2. **Trigger Vitrine** — global hotkey (`⇧⌘S`) or the menu-bar icon.
 3. **Vitrine detects the content type** and picks the renderer:
    - **Code** → format + syntax highlight → a beautiful image, using the theme and
      style you preset in **Settings** (no questions asked).
@@ -57,16 +57,19 @@ Two modes, one engine:
 
 ### The app
 
-Captured from the real v0.1.0 build (regenerate with the opt-in screenshot tour in
+Captured from the real build (regenerate with the opt-in screenshot tour in
 [`UITests/ScreenshotTourUITests.swift`](UITests/ScreenshotTourUITests.swift)).
+The whole app follows one design system — a token layer
+([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) shared by every surface, in
+light and dark.
 
 <div align="center">
 
-<img src="docs/screenshots/editor.png" alt="The editor: preset strip, code pane, live preview on the neutral stage, and the style inspector" width="760">
+<img src="docs/screenshots/editor.png" alt="The editor: glass toolbar with the gradient Copy image action, code pane, the preview floating in ambient light cast by its background, and the style inspector" width="760">
 
-| First-run quick-start | Settings | Menu bar, with all themes |
+| First-run quick-start | Settings | Menu-bar panel |
 | --- | --- | --- |
-| <img src="docs/screenshots/welcome.png" alt="Onboarding quick-start with a sample capture and the privacy badge" width="250"> | <img src="docs/screenshots/settings.png" alt="Settings — General pane with the global hotkey and launch-at-login" width="250"> | <img src="docs/screenshots/menu-bar.png" alt="The status-item menu with the Theme submenu listing all built-in themes" width="250"> |
+| <img src="docs/screenshots/welcome.png" alt="Onboarding quick-start: numbered steps, a live sample card you can restyle, and the privacy promise" width="250"> | <img src="docs/screenshots/settings.png" alt="Settings — Style pane with the pinned live preview, sub-tabs, and theme and font chip pickers" width="250"> | <img src="docs/screenshots/menu-bar.png" alt="The menu-bar panel: gradient capture action, recent captures, theme chips, and explicit command rows" width="250"> |
 
 </div>
 
@@ -93,15 +96,16 @@ on every release.
 > How the gallery is generated, what it covers, and the design-QA process live in
 > [**docs/DESIGN-QA.md**](docs/DESIGN-QA.md).
 
-## Features (v0.1)
+## Features
 
 - 🍫 Native **menu-bar app** (`MenuBarExtra`, `LSUIElement` — no Dock icon, no app switcher).
-- ⌨️ Configurable **global hotkey** (`⌘⇧S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
+- ⌨️ Configurable **global hotkey** (`⇧⌘S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
-- ⚙️ **Settings** with live preview, powered by [Settings](https://github.com/sindresorhus/Settings).
+- ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
+- ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
 - 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar.
 - 🚀 **First-run quick-start**, offline in-app **Help**, and a **What's New** window on upgrades.
 - ⚡ **Shortcuts / App Intents** — render a code image or open the editor from Shortcuts and Spotlight.
@@ -145,7 +149,6 @@ entitlement-by-entitlement audit table (per phase and per distribution channel) 
 | UI                | **SwiftUI** + AppKit (`MenuBarExtra`, `NSTextView`, `NSPasteboard`) |
 | Highlighting      | [Highlightr](https://github.com/raspu/Highlightr)            |
 | Global hotkey     | [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) |
-| Preferences       | [Settings](https://github.com/sindresorhus/Settings)         |
 | Auto-updates      | [Sparkle](https://sparkle-project.org) (direct-download channel) |
 | View → image      | `ImageRenderer` (built-in)                                    |
 | Project gen       | [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`project.yml`) |
@@ -223,7 +226,7 @@ vitrine/
 │   ├── App/               # @main, MenuBarExtra scene, AppDelegate, main menu, window controllers
 │   ├── MenuBar/           # status-item menu + quick capture (no-UI mode)
 │   ├── Onboarding/        # first-run quick-start
-│   ├── Editor/            # code editor, preset strip, inspector, language detection
+│   ├── Editor/            # code editor, ambient-light stage, inspector, language detection
 │   ├── Canvas/            # the SwiftUI views that become the exported image
 │   ├── Rendering/         # capture input → code render pipeline
 │   ├── WebRendering/      # local URL/HTML snapshots (Product Phase 2)
@@ -233,7 +236,7 @@ vitrine/
 │   ├── Help/              # offline Help + What's New release notes
 │   ├── Feedback/          # capture HUD, notifications, diagnostics bundle
 │   ├── Settings/          # six-pane Settings window, presets, custom themes
-│   ├── DesignSystem/      # Brand tokens: palette, gradient, spacing, radii, shadows
+│   ├── DesignSystem/      # token layer (VitrineTokens) + shared chrome components
 │   ├── AppIntents/        # Shortcuts / App Intents surface
 │   ├── Updates/           # Sparkle auto-update integration (DMG channel)
 │   ├── Services/          # macOS Services registration
@@ -264,12 +267,14 @@ to leave the repo:
 
 ## Status
 
-🟢 **v0.1 feature-complete.** Menu-bar app (`LSUIElement`) with global hotkey, the
-live-highlight editor, WYSIWYG canvas, PNG/PDF export to clipboard/file, the macOS
-share sheet, a Recents gallery, a six-pane Settings window, first-run onboarding with
-offline Help and What's New, Shortcuts/App Intents, launch-at-login, English + Spanish
-localization, Sparkle auto-updates on the DMG channel, a privacy manifest, a
-reproducible app icon, and a tagged-release pipeline (DMG + Homebrew cask).
+🟢 **v0.3.0 shipped, fully redesigned.** Menu-bar app (`LSUIElement`) with global
+hotkey, the live-highlight editor on its ambient-light stage, WYSIWYG canvas, PNG/PDF
+export to clipboard/file, the macOS share sheet, a Recents gallery, a six-pane sidebar
+Settings window, first-run onboarding with offline Help and What's New, Shortcuts/App
+Intents, launch-at-login, English + Spanish localization, Sparkle auto-updates on the
+DMG channel, a privacy manifest, a reproducible app icon, and a tagged-release
+pipeline (DMG + Homebrew cask). The entire UI is driven by one design-token system
+([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)), light and dark.
 Covered by a Swift Testing unit suite plus XCTest UI smoke tests. CI runs lint, build,
 the unit tests, and the full UI suite (GitHub's hosted macOS runners pre-authorize
 XCTest UI automation; see docs/RELEASING.md).
