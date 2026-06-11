@@ -40,9 +40,10 @@ struct WhatsNewView: View {
                 .padding(.horizontal, Brand.Spacing.xl)
                 .padding(.bottom, Brand.Spacing.xl)
         }
-        .frame(width: 480)
+        .frame(width: 520)
         .frame(minHeight: 420)
-        .background(Brand.Palette.stage.color)
+        .background(VitrineTokens.Surface.window)
+        .tint(VitrineTokens.Accent.base)
         // Become a container element *before* taking the identifier: on a plain
         // (non-element) view the identifier propagates down and overrides the
         // descendants' own identifiers — the footer buttons would report
@@ -55,15 +56,18 @@ struct WhatsNewView: View {
     // MARK: - Sections
 
     private var header: some View {
-        HStack(alignment: .center, spacing: Brand.Spacing.md) {
-            BrandMark(size: 40)
-            VStack(alignment: .leading, spacing: Brand.Spacing.xxs) {
+        HStack(alignment: .center, spacing: VitrineTokens.Spacing.sm) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 48, height: 48)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
                 Text("What's New")
-                    .font(.title2.bold())
-                    .foregroundStyle(Brand.Palette.textPrimary.color)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(VitrineTokens.Text.primary)
                 Text("\(note.headline) · Version \(note.version)")
-                    .font(.subheadline)
-                    .foregroundStyle(Brand.Palette.textSecondary.color)
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
             }
         }
         // The mark is decorative; read the title, headline, and version together.
@@ -72,29 +76,38 @@ struct WhatsNewView: View {
     }
 
     private var highlights: some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
+        VStack(alignment: .leading, spacing: 14) {
             ForEach(Array(note.highlights.enumerated()), id: \.offset) { _, highlight in
-                Label {
+                HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
+                    Circle()
+                        .fill(VitrineTokens.Accent.base)
+                        .frame(width: 18, height: 18)
+                        .overlay(
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                        )
+                        .padding(.top, 1)
+                        .accessibilityHidden(true)
                     Text(highlight)
-                        .font(.callout)
-                        .foregroundStyle(Brand.Palette.textPrimary.color)
+                        .font(.system(size: VitrineTokens.FontSize.body))
+                        .foregroundStyle(VitrineTokens.Text.primary)
+                        .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Brand.Gradient.signature)
                 }
                 .accessibilityElement(children: .combine)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Brand.Spacing.md)
+        .padding(.vertical, 18)
+        .padding(.horizontal, VitrineTokens.Spacing.xl - 12)
         .background(
-            RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
-                .fill(Brand.Surface.glass)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
+                .fill(VitrineTokens.Surface.card)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
-                .strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
+                .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
         )
         // The list reads as one "what changed" region, then each highlight as a row.
         .accessibilityElement(children: .contain)

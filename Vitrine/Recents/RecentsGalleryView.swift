@@ -48,6 +48,9 @@ struct RecentsGalleryView: View {
         }
         .frame(minWidth: 560, minHeight: 420)
         .background(Brand.Palette.stage.color)
+        // The redesign's controls tint with the brand accent, not the user's
+        // system accent.
+        .tint(VitrineTokens.Accent.base)
         // Become a container element *before* taking the identifier: on a plain
         // (non-element) view the identifier propagates down and overrides the
         // descendants' own identifiers (same gotcha as WelcomeView/WhatsNewView).

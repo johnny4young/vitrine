@@ -354,7 +354,8 @@ struct EditorView: View {
                         message:
                             "Paste code, or drop a source file, to turn it into a beautiful image.",
                         actionTitle: "Paste Code",
-                        action: pasteFromClipboard
+                        action: pasteFromClipboard,
+                        compact: true
                     )
                 }
             }
