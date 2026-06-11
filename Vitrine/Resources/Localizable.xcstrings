@@ -364,6 +364,23 @@
         }
       }
     },
+    "App" : {
+      "comment" : "Settings General pane: app-level group title (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        }
+      }
+    },
     "App language" : {
       "comment" : "Settings General pane: app UI language picker label (CS-047).",
       "localizations" : {
@@ -371,6 +388,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Idioma"
+          }
+        }
+      }
+    },
+    "Appearance" : {
+      "comment" : "Style pane sub-tab (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appearance"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apariencia"
           }
         }
       }
@@ -404,6 +438,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aplica un estilo guardado o incorporado —tema, fondo y diseño— en un solo paso."
+          }
+        }
+      }
+    },
+    "Apply a saved style in one click" : {
+      "comment" : "Library pane: preset row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply a saved style in one click"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplica un estilo guardado con un clic"
           }
         }
       }
@@ -514,6 +565,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cancelar"
+          }
+        }
+      }
+    },
+    "Canvas" : {
+      "comment" : "Style pane: canvas group title (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canvas"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lienzo"
           }
         }
       }
@@ -936,6 +1004,23 @@
         }
       }
     },
+    "Custom background" : {
+      "comment" : "Accessibility label of the dashed + background swatch (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom background"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fondo personalizado"
+          }
+        }
+      }
+    },
     "Custom theme" : {
       "comment" : "Picker label: custom theme.",
       "localizations" : {
@@ -958,6 +1043,23 @@
         }
       }
     },
+    "Custom themes" : {
+      "comment" : "Library pane: custom themes group title (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom themes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temas personalizados"
+          }
+        }
+      }
+    },
     "Custom themes are your own syntax palettes. Built-in themes can't be changed. Theme files are JSON and never leave your Mac." : {
       "comment" : "Custom themes section footer.",
       "localizations" : {
@@ -965,6 +1067,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Los temas personalizados son tus propias paletas de sintaxis. Los temas incorporados no se pueden cambiar. Los archivos de tema son JSON y nunca salen de tu Mac."
+          }
+        }
+      }
+    },
+    "Custom — solid color or image" : {
+      "comment" : "Help on the dashed + background swatch (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom — solid color or image"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personalizado: color sólido o imagen"
           }
         }
       }
@@ -1002,6 +1121,23 @@
         }
       }
     },
+    "Delay" : {
+      "comment" : "Web capture wait-strategy segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delay"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espera"
+          }
+        }
+      }
+    },
     "Delete" : {
       "comment" : "Button: delete the selected preset or theme.",
       "localizations" : {
@@ -1031,6 +1167,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Elimina este ajuste preestablecido guardado. Los incorporados no se pueden eliminar."
+          }
+        }
+      }
+    },
+    "Desktop" : {
+      "comment" : "Web capture viewport segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desktop"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escritorio"
           }
         }
       }
@@ -1245,6 +1398,23 @@
         }
       }
     },
+    "Editor" : {
+      "comment" : "General pane: hotkey-runs segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        }
+      }
+    },
     "Edit…" : {
       "comment" : "Button: edit the selected custom theme.",
       "localizations" : {
@@ -1274,6 +1444,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Todo lo que necesitas para convertir código en imágenes."
+          }
+        }
+      }
+    },
+    "Export" : {
+      "comment" : "Output pane: export group title (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportación"
           }
         }
       }
@@ -1509,6 +1696,23 @@
         }
       }
     },
+    "Global hotkey" : {
+      "comment" : "General pane: hotkey row label (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global hotkey"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajo global"
+          }
+        }
+      }
+    },
     "Global hotkey:" : {
       "comment" : "Label for the global hotkey recorder.",
       "localizations" : {
@@ -1520,6 +1724,23 @@
         }
       }
     },
+    "Gradient" : {
+      "comment" : "Background kind segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gradient"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gradiente"
+          }
+        }
+      }
+    },
     "Gradient direction in degrees" : {
       "comment" : "Help text for the gradient angle slider.",
       "localizations" : {
@@ -1527,6 +1748,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dirección del degradado en grados"
+          }
+        }
+      }
+    },
+    "Gradient preset" : {
+      "comment" : "Background group title and swatch-row label (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gradient preset"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preset de gradiente"
+          }
+        }
+      }
+    },
+    "Gradient preset, solid color, or image" : {
+      "comment" : "Background kind row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gradient preset, solid color, or image"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preset de gradiente, color sólido o imagen"
           }
         }
       }
@@ -1767,6 +2022,23 @@
         }
       }
     },
+    "Highlight specific lines or ranges" : {
+      "comment" : "Lines group: highlight row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Highlight specific lines or ranges"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resalta líneas o rangos específicos"
+          }
+        }
+      }
+    },
     "Hotkey runs" : {
       "comment" : "General pane picker label: what the hotkey triggers.",
       "localizations" : {
@@ -1785,6 +2057,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cómo funciona: copia el código, presiona el atajo, pega la imagen."
+          }
+        }
+      }
+    },
+    "Idle" : {
+      "comment" : "Web capture wait-strategy segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idle"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inactiva"
+          }
+        }
+      }
+    },
+    "Image" : {
+      "comment" : "Background kind segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen"
           }
         }
       }
@@ -1932,6 +2238,23 @@
         }
       }
     },
+    "Keeps colors and font when pasting; the image is always included" : {
+      "comment" : "Output pane: rich clipboard row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keeps colors and font when pasting; the image is always included"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conserva colores y fuente al pegar; la imagen siempre se incluye"
+          }
+        }
+      }
+    },
     "Keywords" : {
       "comment" : "Custom theme editor color label: keywords.",
       "localizations" : {
@@ -2053,6 +2376,23 @@
         }
       }
     },
+    "Lines & header" : {
+      "comment" : "Style pane sub-tab (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lines & header"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas y encabezado"
+          }
+        }
+      }
+    },
     "Lines or ranges to highlight, e.g. 3, 7-9, 12" : {
       "comment" : "Help text for the highlight-lines field.",
       "localizations" : {
@@ -2116,6 +2456,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Carga esta página web localmente en WebKit y captúrala."
+          }
+        }
+      }
+    },
+    "Loaded" : {
+      "comment" : "Web capture wait-strategy segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loaded"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargada"
           }
         }
       }
@@ -2259,6 +2616,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tema nuevo…"
+          }
+        }
+      }
+    },
+    "No custom themes yet" : {
+      "comment" : "Library pane: custom themes empty-state row label (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No custom themes yet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay temas personalizados"
           }
         }
       }
@@ -2527,6 +2901,23 @@
         }
       }
     },
+    "Pasting" : {
+      "comment" : "Input pane: pasting group title (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasting"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegado"
+          }
+        }
+      }
+    },
     "Pasting tidies the indentation automatically. Undo with ⌘Z, or format anytime with ⌥⌘F." : {
       "comment" : "Settings · Input: footnote under the re-indent-on-paste toggle (CS-049).",
       "localizations" : {
@@ -2534,6 +2925,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Al pegar, la indentación se ordena automáticamente. Deshaz con ⌘Z, o formatea cuando quieras con ⌥⌘F."
+          }
+        }
+      }
+    },
+    "Phone" : {
+      "comment" : "Web capture viewport segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teléfono"
           }
         }
       }
@@ -2578,6 +2986,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajustes preestablecidos importados"
+          }
+        }
+      }
+    },
+    "Presets set the image size and resolution for a destination" : {
+      "comment" : "Output pane: destination row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presets set the image size and resolution for a destination"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los presets definen el tamaño y la resolución de la imagen para un destino"
           }
         }
       }
@@ -2824,6 +3249,23 @@
         }
       }
     },
+    "Restores every preference to its default" : {
+      "comment" : "General pane: reset row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restores every preference to its default"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaura todas las preferencias a su valor predeterminado"
+          }
+        }
+      }
+    },
     "Restores every preference to its default, including your recent languages." : {
       "comment" : "General pane footer for the reset action.",
       "localizations" : {
@@ -2831,6 +3273,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restaura cada preferencia a su valor predeterminado, incluidos tus lenguajes recientes."
+          }
+        }
+      }
+    },
+    "Rich-text code on copy" : {
+      "comment" : "Output pane: rich clipboard row label (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rich-text code on copy"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código con formato al copiar"
           }
         }
       }
@@ -2941,6 +3400,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Guarda el estilo actual como un ajuste preestablecido y luego exporta o importa ajustes en JSON."
+          }
+        }
+      }
+    },
+    "Save the current style, then export or import as JSON" : {
+      "comment" : "Library pane: selected preset row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save the current style, then export or import as JSON"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda el estilo actual y luego expórtalo o impórtalo como JSON"
           }
         }
       }
@@ -3110,6 +3586,23 @@
         }
       }
     },
+    "Sizes and styles the image for a place to post it" : {
+      "comment" : "Style pane: destination row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sizes and styles the image for a place to post it"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajusta el tamaño y el estilo de la imagen para el lugar donde la publicarás"
+          }
+        }
+      }
+    },
     "Skip" : {
       "comment" : "Welcome button: skip onboarding.",
       "localizations" : {
@@ -3132,6 +3625,23 @@
         }
       }
     },
+    "Social" : {
+      "comment" : "Web capture viewport segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Social"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Social"
+          }
+        }
+      }
+    },
     "Social card (1200 × 630)" : {
       "comment" : "Input pane viewport preset: the OpenGraph social-card size (CS-044).",
       "localizations" : {
@@ -3150,6 +3660,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suaviza la imagen para que el código resalte"
+          }
+        }
+      }
+    },
+    "Solid" : {
+      "comment" : "Background kind segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solid"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sólido"
           }
         }
       }
@@ -3330,6 +3857,23 @@
         }
       }
     },
+    "Theme files are JSON and never leave your Mac" : {
+      "comment" : "Library pane: custom themes caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theme files are JSON and never leave your Mac"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos de tema son JSON y nunca salen de tu Mac"
+          }
+        }
+      }
+    },
     "Themes Imported" : {
       "comment" : "Alert title: themes imported successfully.",
       "localizations" : {
@@ -3392,6 +3936,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Título"
+          }
+        }
+      }
+    },
+    "Transparent" : {
+      "comment" : "Background kind segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transparent"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transparente"
           }
         }
       }
@@ -3462,6 +4023,23 @@
         }
       }
     },
+    "Typography" : {
+      "comment" : "Style pane: typography group title (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typography"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tipografía"
+          }
+        }
+      }
+    },
     "Undo" : {
       "comment" : "Edit menu: standard undo command (CS-047).",
       "localizations" : {
@@ -3469,6 +4047,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deshacer"
+          }
+        }
+      }
+    },
+    "Undo with ⌘Z, or format anytime with ⌥⌘F" : {
+      "comment" : "Input pane: re-indent row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo with ⌘Z, or format anytime with ⌥⌘F"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshaz con ⌘Z o formatea cuando quieras con ⌥⌘F"
           }
         }
       }
@@ -3517,6 +4112,23 @@
         }
       }
     },
+    "Version %@ · MIT" : {
+      "comment" : "About pane: version line with the license tag (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@ · MIT"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión %@ · MIT"
+          }
+        }
+      }
+    },
     "View" : {
       "comment" : "Menu bar: View menu title (CS-047).",
       "localizations" : {
@@ -3546,6 +4158,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Viewport"
+          }
+        }
+      }
+    },
+    "Visible" : {
+      "comment" : "Web capture mode segment (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visible"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visible"
           }
         }
       }
@@ -3605,6 +4234,23 @@
         }
       }
     },
+    "Vitrine reopens in the selected language next launch" : {
+      "comment" : "General pane: app language row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine reopens in the selected language next launch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine se reabrirá en el idioma seleccionado en el próximo inicio"
+          }
+        }
+      }
+    },
     "Vitrine reopens in the selected language the next time you launch it." : {
       "comment" : "Settings General pane: footnote under the app language picker (CS-047).",
       "localizations" : {
@@ -3656,6 +4302,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Espera, hasta el tiempo elegido, a que la página deje de cargar contenido antes de capturar. Mejor esfuerzo: una página que nunca se aquieta se captura cuando se agota el tiempo."
+          }
+        }
+      }
+    },
+    "Web capture (Phase 2)" : {
+      "comment" : "Input pane: web capture group title (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Web capture (Phase 2)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura web (Fase 2)"
           }
         }
       }
@@ -3739,6 +4402,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Novedades de Vitrine"
+          }
+        }
+      }
+    },
+    "When off, a copied URL is rendered as text" : {
+      "comment" : "Input pane: URL row caption (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When off, a copied URL is rendered as text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si está desactivado, una URL copiada se renderiza como texto"
           }
         }
       }

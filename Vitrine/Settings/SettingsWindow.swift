@@ -1,105 +1,54 @@
 import AppKit
-import Settings
+import SwiftUI
 
-// NOTE: imports only AppKit + the `Settings` package (NOT SwiftUI) to avoid the
-// name clash between SwiftUI's `Settings` scene and the package's `Settings`
-// namespace. The SwiftUI pane views live in `SettingsPanes.swift`.
-
-/// Owns and presents the preferences window, backed by the Settings package (CS-010).
+/// Owns and presents the redesigned preferences window (design/handoff).
+///
+/// The window is a fixed 720×600 card hosting `SettingsRootView` — a sidebar
+/// of panes on the left and the active pane on the right. The title bar is
+/// transparent and merged into the content (the sidebar runs to the top, under
+/// the traffic lights), matching the handoff reference while keeping the
+/// standard close control.
 final class SettingsWindowManager {
     static let shared = SettingsWindowManager()
 
-    private lazy var windowController = SettingsWindowController(
-        panes: [
-            generalPane(), stylePane(), libraryPane(), outputPane(), inputPane(), aboutPane(),
-        ],
-        style: .toolbarItems,
-        animated: true,
-        hidesToolbarForSingleItem: true
-    )
+    private var window: NSWindow?
 
     private init() {}
 
     /// Shows the preferences window and brings the app forward.
     func show() {
-        windowController.show()
+        let window = self.window ?? makeWindow()
+        self.window = window
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func icon(_ symbol: String, _ description: String) -> NSImage {
-        NSImage(systemSymbolName: symbol, accessibilityDescription: description)
-            ?? NSImage(size: NSSize(width: 1, height: 1))
+    private func makeWindow() -> NSWindow {
+        // Built directly (not via `NSWindow(contentViewController:)`) so the
+        // hosting view never re-derives the frame: with the transparent,
+        // full-size title bar the content IS the whole 720×600 window.
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 600),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = NSHostingView(
+            rootView: SettingsRootView(settings: .shared, presets: .shared, themes: .shared)
+                .ignoresSafeArea())
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        // The visible title is hidden; this names the window for the window
+        // menu, Mission Control, and accessibility.
+        window.title = String(localized: "Settings")
+        window.isMovableByWindowBackground = true
+        // Kept alive for reuse: closing hides it, reopening shows the same
+        // window with its pane selection intact.
+        window.isReleasedWhenClosed = false
+        // The root view is width-fixed but height-flexible, so the frame set
+        // here is authoritative: 720×600 of content with the title bar overlaid.
+        window.setFrame(NSRect(x: 0, y: 0, width: 720, height: 600), display: false)
+        window.center()
+        return window
     }
-
-    // Pane titles label the preferences toolbar tabs, so they are localized through
-    // the String Catalog (CS-047). The `PaneIdentifier`s below stay non-localized —
-    // they are stable keys, not user-facing copy.
-    private func generalPane() -> SettingsPane {
-        let pane = Settings.Pane(
-            identifier: .general, title: String(localized: "General"),
-            toolbarIcon: icon("gearshape", String(localized: "General"))
-        ) {
-            GeneralSettingsView(settings: .shared, presets: .shared)
-        }
-        return Settings.PaneHostingController(pane: pane)
-    }
-
-    private func stylePane() -> SettingsPane {
-        let pane = Settings.Pane(
-            identifier: .style, title: String(localized: "Style"),
-            toolbarIcon: icon("paintpalette", String(localized: "Style"))
-        ) {
-            StyleSettingsView(settings: .shared, themes: .shared)
-        }
-        return Settings.PaneHostingController(pane: pane)
-    }
-
-    private func libraryPane() -> SettingsPane {
-        let pane = Settings.Pane(
-            identifier: .library, title: String(localized: "Library"),
-            toolbarIcon: icon("books.vertical", String(localized: "Library"))
-        ) {
-            LibrarySettingsView(settings: .shared, presets: .shared, themes: .shared)
-        }
-        return Settings.PaneHostingController(pane: pane)
-    }
-
-    private func outputPane() -> SettingsPane {
-        let pane = Settings.Pane(
-            identifier: .output, title: String(localized: "Output"),
-            toolbarIcon: icon("square.and.arrow.up.on.square", String(localized: "Output"))
-        ) {
-            OutputSettingsView(settings: .shared)
-        }
-        return Settings.PaneHostingController(pane: pane)
-    }
-
-    private func inputPane() -> SettingsPane {
-        let pane = Settings.Pane(
-            identifier: .input, title: String(localized: "Input"),
-            toolbarIcon: icon("doc.on.clipboard", String(localized: "Input"))
-        ) {
-            InputSettingsView(settings: .shared)
-        }
-        return Settings.PaneHostingController(pane: pane)
-    }
-
-    private func aboutPane() -> SettingsPane {
-        let pane = Settings.Pane(
-            identifier: .about, title: String(localized: "About"),
-            toolbarIcon: icon("info.circle", String(localized: "About"))
-        ) {
-            AboutSettingsView(settings: .shared)
-        }
-        return Settings.PaneHostingController(pane: pane)
-    }
-}
-
-extension Settings.PaneIdentifier {
-    static let general = Self("general")
-    static let style = Self("style")
-    static let library = Self("library")
-    static let output = Self("output")
-    static let input = Self("input")
-    static let about = Self("about")
 }
