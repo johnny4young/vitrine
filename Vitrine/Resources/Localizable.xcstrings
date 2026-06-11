@@ -4277,6 +4277,23 @@
         }
       }
     },
+    "View history →" : {
+      "comment" : "Menu-bar panel: link to the Recents gallery (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View history →"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver historial →"
+          }
+        }
+      }
+    },
     "Viewport" : {
       "comment" : "Input pane picker label: the viewport size a web capture lays the page out in.",
       "localizations" : {
