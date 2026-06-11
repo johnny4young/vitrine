@@ -86,6 +86,12 @@ struct WelcomeView: View {
         .frame(width: 560)
         .frame(minHeight: 560)
         .background(stageBackground)
+        // Become a container element *before* taking the identifier: on a plain
+        // (non-element) view the identifier propagates down and overrides the
+        // descendants' own identifiers — every control here would report
+        // "welcome-view" instead of e.g. `welcome-skip-button`, breaking the
+        // CS-035 UI tests.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("welcome-view")
     }
 

@@ -61,7 +61,11 @@ struct EditorView: View {
         // preview stranded (the stage column expands to absorb extra width).
         .frame(minWidth: 940, minHeight: 520)
         .toolbar { toolbar }
-        .accessibilityIdentifier("editor-root")
+        // No identifier on this root: the VStack is not an accessibility element,
+        // so an identifier here would propagate down and *override* the nearest
+        // descendant elements' identifiers (the preset strip would report the
+        // root's name instead of `editor-preset-strip`), breaking the CS-037 and
+        // CS-047 UI tests. The window itself is tagged `editor-window`.
         // A rejected file (binary, too large, unreadable) explains why in plain
         // language rather than failing silently (CS-028).
         .alert(

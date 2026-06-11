@@ -440,10 +440,51 @@ final class AppCommandResponder: NSObject {
 /// (Undo/Cut/Copy/Paste/Select All) whose first-responder actions drive the code
 /// text view — so every important command is discoverable and keyboard-reachable.
 enum AppMenu {
-    /// Assembles and assigns the main menu. Safe to call once at launch.
+    /// The menu most recently assembled by `install()`, kept so
+    /// `reinstallIfDisplaced()` can tell "still ours" from "replaced" on the hot
+    /// `applicationWillUpdate(_:)` path.
+    private(set) static var installed: NSMenu?
+
+    /// The first top-level item of `installed`. SwiftUI's scene bring-up does not
+    /// swap `NSApp.mainMenu` for its own instance — it replaces the *items* of
+    /// whatever menu is installed (see `reinstallIfDisplaced()`), which an identity
+    /// check on the menu alone cannot detect. When that happens this item is
+    /// removed from the menu, so `sentinel?.menu !== installed` flags the takeover.
+    private static var sentinel: NSMenuItem?
+
+    /// Assembles and assigns the main menu. Called at launch, and again by
+    /// `reinstallIfDisplaced()` whenever something has taken the menu over.
     @MainActor
     static func install() {
-        NSApp.mainMenu = make()
+        let menu = make()
+        installed = menu
+        sentinel = menu.items.first
+        NSApp.mainMenu = menu
+    }
+
+    /// Puts the designed menu back when SwiftUI has taken `NSApp.mainMenu` over.
+    ///
+    /// SwiftUI's `MenuBarExtra` scene bring-up installs its own default main menu
+    /// *after* `applicationDidFinishLaunching` — and it does so by replacing the
+    /// items of the currently installed menu in place, not by assigning a new
+    /// `NSMenu`. That silently drops the designed File and Edit menus and kills the
+    /// key equivalents that route through them, while `NSApp.mainMenu` still
+    /// compares identical to the menu `install()` assigned. The takeover is
+    /// detected instead by `sentinel`, the designed menu's first item, which the
+    /// in-place replacement evicts.
+    ///
+    /// Called from `applicationWillUpdate(_:)` on every event-loop pass, so the
+    /// common case is two pointer comparisons; the rebuild runs only on an actual
+    /// takeover (once, at scene bring-up). A no-op until the launch-time
+    /// `install()` has run, so it cannot install a menu before the delegate meant
+    /// to. Rebuilding (rather than re-adding the old items) also re-points
+    /// `NSApp.servicesMenu`/`windowsMenu`/`helpMenu`, which SwiftUI re-claimed.
+    @MainActor
+    static func reinstallIfDisplaced() {
+        guard let installed else { return }
+        if NSApp.mainMenu === installed, sentinel?.menu === installed { return }
+        Log.app.notice("Main menu was taken over; reinstalling the designed menu")
+        install()
     }
 
     /// Builds the menu tree. Separated from `install()` so its structure can be
