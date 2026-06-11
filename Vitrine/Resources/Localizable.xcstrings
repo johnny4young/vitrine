@@ -76,6 +76,47 @@
         }
       }
     },
+    "%lld lines" : {
+      "comment" : "Editor code panel: live line count (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld línea"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld líneas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld seconds" : {
       "comment" : "Input pane extra-wait value, in seconds; count-aware (CS-047).",
       "localizations" : {
@@ -784,6 +825,23 @@
         }
       }
     },
+    "Code" : {
+      "comment" : "Editor code panel: uppercase header label (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código"
+          }
+        }
+      }
+    },
     "Code is too large to format interactively" : {
       "comment" : "Editor Format Code feedback when the buffer exceeds the interactive formatter limit (CS-049).",
       "localizations" : {
@@ -905,6 +963,23 @@
         }
       }
     },
+    "Copy image" : {
+      "comment" : "Editor toolbar: the gradient CTA (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy image"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar imagen"
+          }
+        }
+      }
+    },
     "Copy image as a base64 data URI" : {
       "comment" : "VoiceOver label for the Copy as Data URI command.",
       "localizations" : {
@@ -934,6 +1009,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar código con resaltado de sintaxis"
+          }
+        }
+      }
+    },
+    "Copy the highlighted code as rich text, or the image as a data URI" : {
+      "comment" : "Editor toolbar: copy-options menu help (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the highlighted code as rich text, or the image as a data URI"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el código resaltado como texto con formato, o la imagen como data URI"
           }
         }
       }
@@ -3183,6 +3275,23 @@
         }
       }
     },
+    "Render and copy the image to the clipboard" : {
+      "comment" : "Editor toolbar: Copy image CTA help (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Render and copy the image to the clipboard"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza y copia la imagen al portapapeles"
+          }
+        }
+      }
+    },
     "Render as Text" : {
       "comment" : "Recovery action label: render the detected URL as plain text (CS-038).",
       "localizations" : {
@@ -3936,6 +4045,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Título"
+          }
+        }
+      }
+    },
+    "Toolbar" : {
+      "comment" : "Editor toolbar: accessibility container label (design/handoff).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toolbar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra de herramientas"
           }
         }
       }

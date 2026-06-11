@@ -44,8 +44,10 @@ struct CodeEditorView: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isGrammarCheckingEnabled = false
         textView.allowsUndo = true
-        textView.backgroundColor = .textBackgroundColor
-        textView.textContainerInset = NSSize(width: 8, height: 8)
+        // Transparent over the code panel's glass (design/handoff): the panel
+        // material shows through behind the highlighted text.
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 14, height: 12)
         textView.string = text
         textView.setAccessibilityIdentifier("code-editor-text-view")
         textView.setAccessibilityLabel("Code editor")

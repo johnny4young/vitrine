@@ -203,7 +203,13 @@ final class EditorWindowController: NSObject {
                 .environmentObject(session))
         let window = NSWindow(contentViewController: hosting)
         window.title = identity.windowTitle
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.styleMask = [
+            .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView,
+        ]
+        // The redesign merges the title bar into the editor's glass toolbar:
+        // the traffic lights float over its leading edge (design/handoff).
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
         window.setContentSize(Self.defaultContentSize)
         window.isReleasedWhenClosed = false
 

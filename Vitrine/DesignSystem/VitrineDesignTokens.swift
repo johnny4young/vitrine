@@ -215,6 +215,12 @@ enum VitrineTokens {
         /// The selected segment's lift (`0 1px 3px rgba(0,0,0,0.3)`).
         static let segmentShadow = Brand.ShadowStyle(
             color: .black.opacity(0.3), radius: 1.5, x: 0, y: 1)
+        /// The gradient CTA's accent halo (`0 4px 14px rgba(79,70,229,0.45)`).
+        static let ctaShadow = Brand.ShadowStyle(
+            color: Color(hex: "#4F46E5").opacity(0.45), radius: 7, x: 0, y: 4)
+        /// The stage's floating status capsule — a fixed dark wash in both
+        /// appearances (`rgba(34,35,43,0.7)` in the editor kit).
+        static let statusCapsule = Color(hex: "#22232B").opacity(0.7)
         /// The sticky style-header drop (`0 10px 18px -14px rgba(0,0,0,0.55)`);
         /// SwiftUI has no shadow spread, so this is the closest tight underline.
         static let stickyHeaderShadow = Brand.ShadowStyle(

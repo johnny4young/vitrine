@@ -2,61 +2,10 @@ import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
-/// A reusable picker for destination presets, shared by the editor and the
-/// Style/Output settings panes (CS-020). The selection reflects the active
-/// preset and offers an explicit "Custom" row for the user's own settings.
-///
-/// Selecting a preset applies its presentation/output guidance and persists the
-/// choice; selecting "Custom" clears the selection without altering the style.
-///
-/// The accessibility identifier is a parameter because more than one instance can
-/// be on screen at once (the editor header plus a settings pane). The default keeps
-/// the settings panes' stable identifier; the editor passes its own so each live
-/// instance resolves to a unique element (CS-032).
-struct DestinationPresetPicker: View {
-    @ObservedObject var settings: AppSettings
-
-    /// The accessibility identifier for this instance. Defaults to the settings
-    /// panes' value; callers that show a second instance pass a distinct one.
-    var identifier: String = "destination-preset-picker"
-
-    /// Sentinel tag for the "Custom" row (no preset). Not a valid preset id.
-    private static let customTag = ""
-
-    var body: some View {
-        Picker("Destination", selection: selectionBinding) {
-            Text("Custom").tag(Self.customTag)
-            ForEach(ExportPreset.all) { preset in
-                Text(preset.displayName).tag(preset.id)
-            }
-        }
-        .help(presetHelp)
-        .accessibilityLabel("Destination preset")
-        .accessibilityIdentifier(identifier)
-    }
-
-    private var presetHelp: String {
-        settings.selectedPreset?.summary
-            ?? "Custom: your own size and style, with no destination preset applied."
-    }
-
-    private var selectionBinding: Binding<String> {
-        Binding(
-            get: { settings.selectedPresetID ?? Self.customTag },
-            set: { id in
-                if let preset = ExportPreset.preset(withID: id) {
-                    settings.selectPreset(preset)
-                } else {
-                    settings.clearPreset()
-                }
-            }
-        )
-    }
-}
-
 /// The destination preset as the redesign's segmented pill row: "Custom"
-/// leading, then the presets under the handoff's short labels. The settings
-/// panes use this; the editor keeps the popup `DestinationPresetPicker`.
+/// leading, then the presets under the handoff's short labels (CS-020). The
+/// settings panes use this; the editor's Output disclosure carries its own
+/// two-row variant with the full preset list.
 struct DestinationSegmentedPicker: View {
     @ObservedObject var settings: AppSettings
 
@@ -300,87 +249,6 @@ struct MetadataFields: View {
             get: { settings.config.metadata[keyPath: keyPath] ?? "" },
             set: { settings.config.metadata[keyPath: keyPath] = SnapshotMetadata.normalized($0) }
         )
-    }
-}
-
-/// The core style controls — theme, font, ligatures, padding, font size, window
-/// chrome, and drop shadow — as one reusable, labeled cluster (CS-006/052).
-///
-/// Extracted so the Style settings pane and the editor's inspector (CS-037) share
-/// a single accessible set of controls instead of each spelling out (and drifting
-/// on) the same pickers, sliders, and toggles. It draws plain rows with no
-/// `Section`/`Form` chrome of its own, so a host can drop it inside whichever
-/// container it already uses — a grouped `Form` section in Settings, or the
-/// inspector's disclosure group — and the row chrome comes from that host.
-///
-/// The theme picker resolves ids through `CustomThemeStore` so a custom theme
-/// (CS-031) round-trips, and the ligature toggle gates itself on whether the
-/// selected font actually ships ligatures (CS-052).
-struct CoreStyleControls: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var themes: CustomThemeStore
-
-    var body: some View {
-        Picker("Theme", selection: themeBinding) {
-            Section("Built-in") {
-                ForEach(Theme.builtIns) { theme in
-                    Text(theme.displayName).tag(theme.id)
-                }
-            }
-            if !themes.customThemes.isEmpty {
-                Section("Custom") {
-                    ForEach(themes.customThemes) { theme in
-                        Text(theme.displayName).tag(theme.id)
-                    }
-                }
-            }
-        }
-        .help("Choose a built-in or custom syntax theme.")
-        .accessibilityIdentifier("style-theme-picker")
-
-        Picker("Font", selection: $settings.config.fontName) {
-            ForEach(CodeFont.all, id: \.self) { font in
-                Text(font).tag(font)
-            }
-        }
-        .accessibilityIdentifier("style-font-picker")
-
-        Toggle("Ligatures", isOn: $settings.config.fontLigatures)
-            .help(ligatureHelp)
-            .disabled(!fontHasLigatures)
-            .accessibilityIdentifier("ligatures-toggle")
-
-        Slider(value: $settings.config.padding, in: 16...64, step: 4) { Text("Padding") }
-            .accessibilityIdentifier("padding-slider")
-        Slider(value: $settings.config.fontSize, in: 10...20, step: 1) { Text("Font size") }
-            .accessibilityIdentifier("font-size-slider")
-
-        Toggle("Window chrome", isOn: $settings.config.showChrome)
-            .accessibilityIdentifier("window-chrome-toggle")
-        Toggle("Drop shadow", isOn: $settings.config.showShadow)
-            .accessibilityIdentifier("drop-shadow-toggle")
-    }
-
-    private var themeBinding: Binding<String> {
-        Binding(
-            get: { settings.config.theme.id },
-            // Resolve through the store so a custom theme id (CS-031) maps to its
-            // palette-backed theme; a built-in or unknown id falls back to the
-            // built-in lookup.
-            set: { settings.config.theme = themes.theme(withID: $0) }
-        )
-    }
-
-    /// Whether the selected font ships programming ligatures, gating the toggle so
-    /// it reads as inert for a font that has none (CS-052).
-    private var fontHasLigatures: Bool {
-        CodeFont.hasLigatures(settings.config.fontName)
-    }
-
-    private var ligatureHelp: String {
-        fontHasLigatures
-            ? "Render programming ligatures (->, =>, !=) for this font."
-            : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
     }
 }
 
