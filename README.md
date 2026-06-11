@@ -284,7 +284,8 @@ The URL→screenshot path and OG cards are deliberately deferred (see RENDER-PHA
 ## Contributing
 
 Themes and language tweaks are especially welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
-and the conventions in [AGENTS.md](AGENTS.md).
+and the conventions in [AGENTS.md](AGENTS.md). Security issues go privately through
+[SECURITY.md](SECURITY.md).
 
 ## License
 
