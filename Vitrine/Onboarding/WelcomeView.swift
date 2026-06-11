@@ -31,12 +31,12 @@ struct WelcomeView: View {
     /// worked without leaving the window. `nil` until the user runs it.
     @State private var sampleStatus: SampleStatus?
 
-    /// The chosen starting style preset's id (CS-035). Defaults to the first
-    /// built-in so the picker always shows a concrete choice; changing it applies
-    /// that preset to the live config, and that change alone is what writes the
-    /// user's style — a returning user's existing style is never overwritten just by
-    /// opening the quick-start.
-    @State private var selectedStyleID: String = StylePreset.builtIns.first?.id ?? ""
+    /// The chosen starting background (CS-035 "a style choice"). Mirrors the live
+    /// config so the swatch row reads the user's current preset; picking one
+    /// applies it, and that change alone is what writes the user's style — a
+    /// returning user's existing style is never overwritten just by opening the
+    /// quick-start.
+    @State private var selectedBackground: GradientPreset = .aurora
 
     /// Outcome of the in-window sample capture, for an inline status line.
     private enum SampleStatus: Equatable {
@@ -73,19 +73,23 @@ struct WelcomeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.lg) {
-            header
-            stepRow
-            sampleCard
-            privacyBadge
-            setupControls
-            Spacer(minLength: 0)
-            footer
+        VStack(alignment: .leading, spacing: 0) {
+            hero
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
+                stepRow
+                sampleCard
+                privacyLine
+                setupControls
+                footer
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, VitrineTokens.Spacing.xl)
         }
-        .padding(Brand.Spacing.xl)
-        .frame(width: 560)
-        .frame(minHeight: 560)
-        .background(stageBackground)
+        .frame(width: 700)
+        .background(VitrineTokens.Surface.window)
+        // The redesign's controls tint with the brand accent, not the user's
+        // system accent.
+        .tint(VitrineTokens.Accent.base)
         // Become a container element *before* taking the identifier: on a plain
         // (non-element) view the identifier propagates down and overrides the
         // descendants' own identifiers — every control here would report
@@ -93,37 +97,60 @@ struct WelcomeView: View {
         // CS-035 UI tests.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("welcome-view")
+        .onAppear {
+            if case .gradient(let preset) = settings.config.background {
+                selectedBackground = preset
+            }
+        }
     }
 
     // MARK: - Sections
 
-    private var header: some View {
-        HStack(alignment: .center, spacing: Brand.Spacing.md) {
-            BrandMark(size: 40)
-            VStack(alignment: .leading, spacing: Brand.Spacing.xxs) {
+    /// The hero: app icon + title over a soft accent radial wash (design/handoff).
+    private var hero: some View {
+        HStack(alignment: .center, spacing: VitrineTokens.Spacing.md) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 64, height: 64)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xxs) {
                 Text("Welcome to Vitrine")
-                    .font(.title2.bold())
-                    .foregroundStyle(Brand.Palette.textPrimary.color)
+                    .font(.system(size: 30, weight: .bold))
+                    .foregroundStyle(VitrineTokens.Text.primary)
                 Text("Turn code into beautiful images, right from your menu bar.")
-                    .font(.subheadline)
-                    .foregroundStyle(Brand.Palette.textSecondary.color)
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
             }
         }
-        // Read the identity and tagline as a single VoiceOver announcement; the mark
-        // itself is already decorative (hidden) inside `BrandMark`.
+        .padding(.top, 44)
+        .padding(.horizontal, 40)
+        .padding(.bottom, 30)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            ZStack {
+                RadialGradient(
+                    colors: [VitrineTokens.Accent.base.opacity(0.22), .clear],
+                    center: UnitPoint(x: 0.3, y: 0),
+                    startRadius: 0, endRadius: 420)
+                RadialGradient(
+                    colors: [VitrineTokens.Accent.secondary.opacity(0.14), .clear],
+                    center: UnitPoint(x: 0.85, y: 0.2),
+                    startRadius: 0, endRadius: 380)
+            }
+            .accessibilityHidden(true)
+        )
+        // Read the identity and tagline as a single VoiceOver announcement.
         .accessibilityElement(children: .combine)
     }
 
-    /// The three-step core loop, shown as labeled chips with connectors so the user
-    /// learns "copy code → press hotkey → paste image" at a glance (CS-035).
+    /// The three-step core loop as numbered glass tiles, so the user learns
+    /// "copy code → press hotkey → paste image" at a glance (CS-035).
     private var stepRow: some View {
-        HStack(alignment: .top, spacing: Brand.Spacing.xs) {
-            stepChip(
+        HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
+            stepTile(
                 index: 1, symbol: "doc.on.clipboard", title: "Copy code", caption: "from anywhere")
-            stepConnector
-            stepChip(index: 2, symbol: "command", title: "Press the hotkey", caption: hotkeyCaption)
-            stepConnector
-            stepChip(
+            stepTile(index: 2, symbol: "command", title: "Press the hotkey", caption: hotkeyCaption)
+            stepTile(
                 index: 3, symbol: "photo.on.rectangle", title: "Paste the image",
                 caption: "into your doc")
         }
@@ -132,35 +159,48 @@ struct WelcomeView: View {
         .accessibilityLabel("How it works: copy code, press the hotkey, paste the image.")
     }
 
-    private func stepChip(
+    /// One numbered step tile: a mono index in the corner, a gradient icon
+    /// badge, a semibold title, and a secondary caption (design/handoff).
+    private func stepTile(
         index: Int, symbol: String, title: LocalizedStringKey, caption: LocalizedStringKey
     ) -> some View {
-        VStack(spacing: Brand.Spacing.xs) {
-            Image(systemName: symbol)
-                .font(.system(size: 22, weight: .regular))
-                .foregroundStyle(Brand.Gradient.signature)
-                .frame(height: 26)
+        VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous)
+                .fill(VitrineTokens.Gradients.signature)
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Image(systemName: symbol)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white)
+                )
                 .accessibilityHidden(true)
             Text(title)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(Brand.Palette.textPrimary.color)
-                .multilineTextAlignment(.center)
+                .font(.system(size: VitrineTokens.FontSize.body, weight: .semibold))
+                .foregroundStyle(VitrineTokens.Text.primary)
+                .padding(.top, 2)
             Text(caption)
-                .font(.caption)
-                .foregroundStyle(Brand.Palette.textSecondary.color)
-                .multilineTextAlignment(.center)
+                .font(.system(size: VitrineTokens.FontSize.subhead))
+                .foregroundStyle(VitrineTokens.Text.secondary)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Brand.Spacing.sm)
-        .padding(.horizontal, Brand.Spacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, VitrineTokens.Spacing.md)
+        .padding(.horizontal, 14)
         .background(
-            RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                .fill(Brand.Surface.raised)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
+                .fill(VitrineTokens.Chrome.tile)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                .strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
+                .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
         )
+        .overlay(alignment: .topTrailing) {
+            Text(verbatim: String(format: "%02d", index))
+                .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .padding(.top, VitrineTokens.Spacing.sm)
+                .padding(.trailing, 14)
+                .accessibilityHidden(true)
+        }
         .accessibilityElement(children: .combine)
         // Built from localized `Text` pieces so the spoken label is localized too
         // (a `LocalizedStringKey` can't be interpolated into another) (CS-047).
@@ -168,40 +208,31 @@ struct WelcomeView: View {
             Text("Step \(index): ") + Text(title) + Text(verbatim: ", ") + Text(caption))
     }
 
-    private var stepConnector: some View {
-        Image(systemName: "arrow.right")
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(Brand.Palette.textSecondary.color)
-            .padding(.top, Brand.Spacing.md)
-            .accessibilityHidden(true)
-    }
-
-    /// A live sample: the placeholder snippet, a style picker, and a one-click
-    /// capture that needs **no clipboard content** (CS-035 acceptance: "run a sample
-    /// capture without needing external clipboard content").
+    /// The live sample: a swatch row that restyles the rendered card on the
+    /// spot, plus a one-click capture that needs **no clipboard content**
+    /// (CS-035 acceptance: "run a sample capture without needing external
+    /// clipboard content").
     private var sampleCard: some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Try it now")
-                    .font(.headline)
-                    .foregroundStyle(Brand.Palette.textPrimary.color)
+        VStack(alignment: .leading, spacing: VitrineTokens.Spacing.sm) {
+            HStack {
+                TokenGroupLabel(title: Text("Try it now"))
                 Spacer()
-                stylePicker
+                HStack(spacing: 7) {
+                    ForEach(GradientPreset.allCases) { preset in
+                        GradientSwatch(preset: preset, isSelected: selectedBackground == preset) {
+                            selectedBackground = preset
+                            settings.config.background = .gradient(preset)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Background")
+                .accessibilityIdentifier("welcome-background-swatches")
             }
 
-            Text(EditorPreview.sampleCode)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(Brand.Palette.textPrimary.color)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(Brand.Spacing.sm)
-                .background(
-                    RoundedRectangle(cornerRadius: Brand.Radius.sm, style: .continuous)
-                        .fill(.quaternary)
-                )
-                .accessibilityLabel("Sample code snippet")
-                .accessibilityIdentifier("welcome-sample-snippet")
+            sampleCardImage
 
-            HStack(spacing: Brand.Spacing.sm) {
+            HStack(spacing: VitrineTokens.Spacing.sm) {
                 Button(action: runSampleCapture) {
                     Label("Try a sample capture", systemImage: "wand.and.stars")
                 }
@@ -212,65 +243,88 @@ struct WelcomeView: View {
                     EditorWindowController.shared.showWithSample()
                 }
                 .accessibilityIdentifier("welcome-open-editor-button")
-            }
 
-            if let sampleStatus {
-                Label(sampleStatus.message, systemImage: sampleStatus.systemImage)
-                    .font(.callout)
-                    .foregroundStyle(sampleStatus.tint)
-                    .accessibilityIdentifier("welcome-sample-status")
+                Spacer(minLength: 0)
+
+                if let sampleStatus {
+                    Label(sampleStatus.message, systemImage: sampleStatus.systemImage)
+                        .font(.system(size: VitrineTokens.FontSize.subhead))
+                        .foregroundStyle(sampleStatus.tint)
+                        .accessibilityIdentifier("welcome-sample-status")
+                }
             }
         }
-        .padding(Brand.Spacing.md)
+        .padding(VitrineTokens.Spacing.md)
         .background(
-            RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
-                .fill(Brand.Surface.glass)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
+                .fill(VitrineTokens.Chrome.tile)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
-                .strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
+                .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
         )
     }
 
-    /// Picks a starting style preset and applies it to the live config so the sample
-    /// (and every later capture) reflects it (CS-035 "a style preset choice").
-    private var stylePicker: some View {
-        Picker("Style", selection: $selectedStyleID) {
-            ForEach(StylePreset.builtIns) { preset in
-                Text(preset.name).tag(preset.id)
+    /// The sample snippet rendered as a real card on the chosen gradient, so
+    /// the first thing the user touches already looks like the product.
+    @ViewBuilder private var sampleCardImage: some View {
+        if let image = sampleImage {
+            HStack {
+                Spacer(minLength: 0)
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    // An explicit height (not a max) so the card keeps its size
+                    // during the window's ideal-size pass — a max-only frame
+                    // collapses to zero when the hosting window measures.
+                    .frame(height: 190)
+                    .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.sm, style: .continuous))
+                Spacer(minLength: 0)
             }
+            .accessibilityLabel("Sample code snippet")
+            .accessibilityIdentifier("welcome-sample-snippet")
+        } else {
+            Text(EditorPreview.sampleCode)
+                .font(.system(.callout, design: .monospaced))
+                .foregroundStyle(VitrineTokens.Text.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(VitrineTokens.Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: Brand.Radius.sm, style: .continuous)
+                        .fill(.quaternary)
+                )
+                .accessibilityLabel("Sample code snippet")
+                .accessibilityIdentifier("welcome-sample-snippet")
         }
-        .pickerStyle(.menu)
-        .labelsHidden()
-        .fixedSize()
-        .help("Pick a starting look. You can fine-tune everything later in the editor.")
-        .accessibilityLabel("Starting style")
-        .accessibilityIdentifier("welcome-style-picker")
-        .onChange(of: selectedStyleID) { _, id in
-            if let preset = StylePreset.builtIns.first(where: { $0.id == id }) {
-                settings.applyStylePreset(preset)
-            }
-        }
+    }
+
+    /// The sample render: the bundled snippet, One Dark, the chosen gradient,
+    /// compact padding — preview-only, never the user's live document.
+    private var sampleImage: NSImage? {
+        var config = SnapshotConfig()
+        config.code = EditorPreview.sampleCode
+        config.language = .swift
+        config.theme = .oneDark
+        config.background = .gradient(selectedBackground)
+        config.padding = 24
+        config.fontSize = 12.5
+        return ExportManager.renderNSImage(config, scale: 2, profile: .sRGB)
     }
 
     /// The local-only privacy promise, shown before the first capture (CS-035). The
     /// wording matches the privacy posture in `docs/ARCHITECTURE.md` and the README.
-    private var privacyBadge: some View {
-        Label {
+    private var privacyLine: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "lock.shield")
+                .font(.system(size: 12))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
             // Long copy lives in the String Catalog under a stable key (CS-047) so
             // it localizes and does not push the source past the line limit.
             Text("welcome.privacy.badge")
-        } icon: {
-            Image(systemName: "lock.shield")
+                .font(.system(size: VitrineTokens.FontSize.subhead))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
         }
-        .font(.footnote)
-        .foregroundStyle(Brand.Palette.textSecondary.color)
-        .padding(Brand.Spacing.sm)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                .fill(Brand.Gradient.signatureWash(opacity: 0.12))
-        )
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("welcome-privacy-badge")
     }
@@ -278,42 +332,43 @@ struct WelcomeView: View {
     /// Optional setup: a hotkey recorder and launch-at-login. Both are offered, not
     /// forced — the user can dismiss the quick-start without setting either (CS-035).
     private var setupControls: some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
-            HStack {
-                KeyboardShortcuts.Recorder("Global hotkey:", name: .quickCapture)
+        HStack(spacing: VitrineTokens.Spacing.md) {
+            HStack(spacing: VitrineTokens.Spacing.xs) {
+                Text("Global hotkey:")
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .foregroundStyle(VitrineTokens.Text.primary)
+                KeyboardShortcuts.Recorder(for: .quickCapture)
+                    .accessibilityLabel("Global hotkey")
                     .accessibilityIdentifier("welcome-hotkey-recorder")
-                Spacer()
             }
 
+            Spacer(minLength: 0)
+
             Toggle("Launch Vitrine at login", isOn: $launchAtLogin)
-                .toggleStyle(.checkbox)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .font(.system(size: VitrineTokens.FontSize.body))
                 .accessibilityIdentifier("welcome-launch-at-login-toggle")
                 .onChange(of: launchAtLogin) { _, newValue in
                     LaunchAtLogin.setEnabled(newValue)
                 }
-
-            Text("Optional — you can set these any time in Settings.")
-                .font(.caption)
-                .foregroundStyle(Brand.Palette.textSecondary.color)
         }
+        .padding(.vertical, VitrineTokens.Spacing.xs)
     }
 
     private var footer: some View {
-        HStack(spacing: Brand.Spacing.sm) {
-            Button("Skip") { finish() }
+        HStack(spacing: VitrineTokens.Spacing.sm) {
+            GhostPillButton(title: Text("Skip")) { finish() }
                 .accessibilityIdentifier("welcome-skip-button")
             Spacer()
-            Button("Get Started") { finish() }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .accessibilityIdentifier("welcome-get-started-button")
+            GradientCTAButton {
+                Text("Get Started")
+            } action: {
+                finish()
+            }
+            .keyboardShortcut(.defaultAction)
+            .accessibilityIdentifier("welcome-get-started-button")
         }
-    }
-
-    // MARK: - Backing state
-
-    private var stageBackground: some View {
-        Brand.Palette.stage.color
     }
 
     /// The recorded hotkey rendered as a short caption (e.g. "⌃⌘V"), or localized
@@ -390,8 +445,12 @@ final class WelcomeWindowController {
             let window = NSWindow(contentViewController: hosting)
             window.title = String(localized: "Welcome to Vitrine")
             // No resize/minimize: the quick-start is a fixed, compact first-run
-            // surface, not a working window.
-            window.styleMask = [.titled, .closable]
+            // surface, not a working window. The title bar merges into the
+            // hero so the card reads as one surface (design/handoff); the
+            // hero's 44 pt top padding clears the traffic lights.
+            window.styleMask = [.titled, .closable, .fullSizeContentView]
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
             window.isReleasedWhenClosed = false
             window.setAccessibilityIdentifier("welcome-window")
             window.center()

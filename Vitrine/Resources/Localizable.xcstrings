@@ -4488,13 +4488,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Private by design: your code never leaves your Mac. No account, no network, no screen recording or Accessibility permission."
+            "value" : "Private by design — your code never leaves your Mac. No account, no network."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Privado por diseño: tu código nunca sale de tu Mac. Sin cuenta, sin red, sin grabación de pantalla ni permiso de Accesibilidad."
+            "value" : "Privado por diseño: tu código nunca sale de tu Mac. Sin cuenta y sin red."
           }
         }
       }
