@@ -248,11 +248,14 @@ enum WindowFrameSolver {
         }
     }
 
-    /// Returns `frame` unchanged when it is already reachable, otherwise a frame of
-    /// the same size moved fully inside the screen whose visible area it overlaps most
-    /// (or, with no overlap at all, the largest screen), centering when the window is
-    /// larger than that screen. With no visible screens the frame is returned as-is —
-    /// the caller owns the "no displays" fallback.
+    /// Returns `frame` unchanged when it is already reachable, otherwise a frame moved
+    /// fully inside the screen whose visible area it overlaps most (or, with no overlap
+    /// at all, the largest screen). The size is preserved when it fits that screen and
+    /// shrunk to the screen's size when it does not — a recovered window must be fully
+    /// usable, and controls along the far edge of an overhanging window would stay
+    /// unreachable (the small-display failure mode this guards against). With no
+    /// visible screens the frame is returned as-is — the caller owns the "no displays"
+    /// fallback.
     static func onScreenFrame(for frame: CGRect, visibleFrames: [CGRect]) -> CGRect {
         guard !visibleFrames.isEmpty else { return frame }
         if isReachable(frame, on: visibleFrames) { return frame }
@@ -260,25 +263,17 @@ enum WindowFrameSolver {
         return clamp(frame, into: target)
     }
 
-    /// Moves `frame` so it sits fully within `screen`, keeping its size. If the window
-    /// is wider or taller than the screen it is centered on that axis so equal margins
-    /// spill off both edges rather than pinning one corner.
+    /// Moves `frame` so it sits fully within `screen`, keeping its size when it fits.
+    /// A frame wider or taller than the screen is resized down to the screen's extent
+    /// on that axis, so the result never overhangs an edge.
     static func clamp(_ frame: CGRect, into screen: CGRect) -> CGRect {
-        var origin = frame.origin
-
-        if frame.width <= screen.width {
-            origin.x = min(max(origin.x, screen.minX), screen.maxX - frame.width)
-        } else {
-            origin.x = screen.midX - frame.width / 2
-        }
-
-        if frame.height <= screen.height {
-            origin.y = min(max(origin.y, screen.minY), screen.maxY - frame.height)
-        } else {
-            origin.y = screen.midY - frame.height / 2
-        }
-
-        return CGRect(origin: origin, size: frame.size)
+        let size = CGSize(
+            width: min(frame.width, screen.width),
+            height: min(frame.height, screen.height))
+        let origin = CGPoint(
+            x: min(max(frame.minX, screen.minX), screen.maxX - size.width),
+            y: min(max(frame.minY, screen.minY), screen.maxY - size.height))
+        return CGRect(origin: origin, size: size)
     }
 
     /// The screen whose visible area `frame` overlaps the most; with no overlap on any

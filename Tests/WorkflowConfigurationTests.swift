@@ -299,25 +299,85 @@ struct WorkflowConfigurationTests {
             "the .xcresult upload must live in the verify gate (CS-060)")
     }
 
-    // MARK: - Acceptance: full `make test-ui` documented as local/manual or self-hosted only
+    // MARK: - Acceptance: CI executes the full UI suite
+
+    /// Compile-only `build-ui-tests` let UI-test failures accumulate silently on
+    /// `main`; CI must actually execute the XCUITest suite. Assert `ci.yml` declares
+    /// a dedicated job that probes the image's pre-authorized automation mode before
+    /// running, executes `make test-ui` with `.xcresult` capture, bounds the job with
+    /// a timeout (a blocked automation session hangs rather than fails), and uploads
+    /// the bundle on failure.
+    @Test func ciExecutesTheFullUITestSuite() throws {
+        let ci = try Self.ci()
+
+        let uiJobMarker = try #require(
+            ci.range(of: "\n  ui-test:"),
+            "ci.yml must declare the dedicated UI-test job")
+        let uiJob = String(ci[uiJobMarker.lowerBound...])
+
+        #expect(
+            uiJob.contains("automationmodetool"),
+            "the UI-test job must probe the image's automation authorization before the suite"
+        )
+        let invocation = try #require(
+            uiJob.components(separatedBy: .newlines).first {
+                $0.trimmingCharacters(in: .whitespaces).hasPrefix("make test-ui")
+            },
+            "the UI-test job must run `make test-ui`")
+        #expect(
+            invocation.contains("RESULT_BUNDLE="),
+            "the UI-test run must capture an .xcresult bundle (CS-060)")
+        #expect(
+            uiJob.contains("timeout-minutes:"),
+            "the UI-test job must bound its runtime — a blocked automation session hangs rather than fails"
+        )
+        #expect(
+            uiJob.contains("if: failure()"),
+            "the UI-test job must upload its .xcresult bundle on failure (CS-060)")
+
+        // Skips must never be silent: if the job excludes tests (the
+        // display-geometry-sensitive set), every run must annotate them, mirroring
+        // the GOLDEN SKIP discipline of the golden-image suite.
+        if uiJob.contains("TEST_UI_SKIP") {
+            #expect(
+                uiJob.contains("::warning"),
+                "CI-skipped UI tests must be surfaced as warning annotations on every run")
+        }
+    }
+
+    /// The `test-ui` Makefile target must honor `RESULT_BUNDLE` like the other
+    /// xcodebuild targets, since that is how the CI UI-test job captures its bundle.
+    @Test func makefileSupportsResultBundleCaptureForUITests() throws {
+        let make = try Self.makefile()
+        let target = try #require(
+            make.range(of: "test-ui: project"),
+            "Makefile must define the test-ui target")
+        let body = String(make[target.lowerBound...])
+        #expect(
+            body.contains("$(RESULT_BUNDLE_FLAG)"),
+            "the test-ui target must pass RESULT_BUNDLE_FLAG so CI can capture an .xcresult bundle (CS-060)"
+        )
+    }
+
+    // MARK: - Acceptance: the UI-test execution policy is documented
 
     @Test func releasingDocExplainsTheUITestPolicy() throws {
         let doc = try Self.releasingDoc()
-        // The compile-only check is the hosted-PR step…
+        // The compile-only check still runs in the build job and the release gate…
         #expect(
             doc.contains("make build-ui-tests"),
             "RELEASING.md must document the UI-test compile step")
-        // …while the full run is documented as local/manual or self-hosted-only.
+        // …and the full suite executes in CI on the hosted runners.
         #expect(
             doc.contains("make test-ui"),
             "RELEASING.md must document the full UI suite command")
         #expect(
-            doc.localizedCaseInsensitiveContains("self-hosted"),
-            "RELEASING.md must say the full UI suite is local/manual or self-hosted-runner-only (CS-060)"
+            doc.contains("automationmodetool"),
+            "RELEASING.md must explain the pre-authorized automation mode that lets hosted runners execute the suite (CS-060)"
         )
         #expect(
             doc.localizedCaseInsensitiveContains("automation permission"),
-            "RELEASING.md must explain the automation-permission reason the UI suite is not in the hosted gate"
+            "RELEASING.md must explain the automation-permission requirement (interactive locally, pre-authorized in CI)"
         )
     }
 

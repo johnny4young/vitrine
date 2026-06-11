@@ -17,8 +17,8 @@ XCODEBUILD := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcodebuild
 SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 
 # Optional .xcresult capture (CS-060). Set RESULT_BUNDLE=<path> on the `make`
-# command line and the `build`, `build-ui-tests`, and `test` targets append
-# `-resultBundlePath` so CI can upload the bundle on failure. xcodebuild requires
+# command line and the `build`, `build-ui-tests`, `test`, and `test-ui` targets
+# append `-resultBundlePath` so CI can upload the bundle on failure. xcodebuild requires
 # the path to not already exist, so each target removes a stale bundle first.
 # Unset (a normal local `make`), RESULT_BUNDLE_FLAG expands to nothing and the
 # invocation is unchanged.
@@ -95,9 +95,18 @@ build-ui-tests: project
 		-destination 'platform=macOS' $(RESULT_BUNDLE_FLAG) build-for-testing
 
 ## test-ui: run the UI smoke tests (XCTest/XCUIAutomation)
+## The first local run prompts for the macOS automation permission (grant it
+## once); the hosted CI images are provisioned for headless automation, so the
+## `UI tests` job in ci.yml runs this on every PR/push — see docs/RELEASING.md.
+## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle (CS-060).
+## Set TEST_UI_SKIP="<test> <test>" to skip named tests; CI uses it for the
+## display-geometry-sensitive tests that cannot pass on the runner's small
+## virtual display (each skip is annotated on the run — never silent).
+TEST_UI_SKIP_FLAGS = $(foreach t,$(TEST_UI_SKIP),-skip-testing:VitrineUITests/VitrineUITests/$(t))
 test-ui: project
+	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(UI_SCHEME) -configuration Debug \
-		-destination 'platform=macOS' test
+		-destination 'platform=macOS' $(RESULT_BUNDLE_FLAG) $(TEST_UI_SKIP_FLAGS) test
 
 ## perf: run only the render-latency performance budget (CS-026)
 ## Documented budget: default render target 300 ms after warm-up (PERF WARN past

@@ -234,9 +234,18 @@ final class EditorWindowController: NSObject {
             .sink { [weak window] _ in window?.invalidateRestorableState() }
 
         // A freshly-minted (never-before-saved) window has no autosaved frame to
-        // restore, so center it; one with a saved frame keeps the restored position
-        // and only needs the off-screen recovery pass in `showWindow(for:)`.
+        // restore. Cap the default size to the screen it opens on — the 1180-point
+        // default is wider than a small display (e.g. 1024x768), and a window that
+        // overhangs the screen edge leaves its trailing toolbar actions unreachable
+        // (CS-053) — then center it. The SwiftUI root's own minimum still applies, so
+        // the cap never squeezes the editor below its supported layout. One with a
+        // saved frame keeps the restored position and only needs the off-screen
+        // recovery pass in `showWindow(for:)`.
         if !window.setFrameUsingName(identity.frameAutosaveName) {
+            if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
+                window.setFrame(
+                    WindowFrameSolver.clamp(window.frame, into: visible), display: false)
+            }
             window.center()
         }
         return window
