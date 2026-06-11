@@ -275,6 +275,40 @@ struct PressScaleButtonStyle: ButtonStyle {
     }
 }
 
+/// The quiet pill button (`.ghost`): hairline border, secondary label that
+/// lifts to primary on hover. The understated counterpart to the gradient CTA.
+struct GhostPillButton: View {
+    let title: Text
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            title
+                .font(.system(size: VitrineTokens.FontSize.body, weight: .medium))
+                .foregroundStyle(
+                    isHovered ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
+                )
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.vertical, VitrineTokens.Spacing.xs)
+                .padding(.horizontal, 18)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(
+                            isHovered ? VitrineTokens.Text.tertiary : VitrineTokens.Line.border,
+                            lineWidth: Brand.Stroke.hairline
+                        )
+                )
+                .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .animation(.easeInOut(duration: 0.12), value: isHovered)
+    }
+}
+
 /// A bordered 30×30 icon button on a glass panel (`.ibtn`): hairline border,
 /// secondary glyph that lifts to primary on hover.
 struct GlassIconButton: View {
