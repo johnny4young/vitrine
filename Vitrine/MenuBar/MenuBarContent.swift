@@ -155,7 +155,7 @@ struct MenuBarContent: View {
         VStack(alignment: .leading, spacing: 6) {
             TokenGroupLabel(title: Text("Theme"))
             ChipScroll(topPadding: 2, bottomPadding: 4) {
-                ForEach(Theme.all) { theme in
+                ForEach(ThemeChipColors.orderedBuiltIns) { theme in
                     themeChip(for: theme)
                 }
             }

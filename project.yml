@@ -56,9 +56,6 @@ packages:
     # 2.x drops the deprecated `on()` handler API (we use `events(_:for:)`) and
     # tightens strict-concurrency annotations — both aligned with this codebase.
     from: "2.4.0"
-  Settings:
-    url: https://github.com/sindresorhus/Settings
-    from: "3.0.0"
 
 targets:
   Vitrine:
@@ -83,7 +80,6 @@ targets:
     dependencies:
       - package: Highlightr
       - package: KeyboardShortcuts
-      - package: Settings
       # Sparkle auto-update (CS-064): embedded as a LOCAL framework fetched by
       # scripts/fetch-sparkle.sh into Vendor/ (gitignored), NOT via the SPM binary
       # artifact — its resolution hung intermittently on headless CI runners. Every
@@ -167,7 +163,6 @@ targets:
     dependencies:
       - package: Highlightr
       - package: KeyboardShortcuts
-      - package: Settings
     # A command-line tool has no Contents/Resources, so a "Copy Bundle Resources"
     # phase cannot stage the bundled fonts. Copy the Fonts folder next to the binary
     # instead, where CLIEnvironment locates and registers it at launch (CS-033). This

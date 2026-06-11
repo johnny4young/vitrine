@@ -364,6 +364,26 @@ enum ThemeChipColors {
         "xcode-dark": ("#1F1F24", "#FC5FA3", "#FC6A5D", "#5DD8FF"),
     ]
 
+    /// The kits' chip display order: the signature One Dark / One Light pair
+    /// leads (they are the default and its light twin), then the rest of the
+    /// catalog. Pickers elsewhere stay alphabetical; the chip strips follow
+    /// the handoff exactly.
+    private static let displayOrder: [String] = [
+        "one-dark", "one-light", "dracula", "github", "github-dark", "gruvbox",
+        "monokai", "night-owl", "nord", "solarized", "solarized-light",
+        "tokyo-night", "xcode-dark",
+    ]
+
+    /// The built-in catalog in the kits' chip order. Any built-in missing from
+    /// the order list (a future addition) is appended rather than dropped.
+    static var orderedBuiltIns: [Theme] {
+        let byID = Dictionary(uniqueKeysWithValues: Theme.builtIns.map { ($0.id, $0) })
+        var ordered = displayOrder.compactMap { byID[$0] }
+        let listed = Set(displayOrder)
+        ordered.append(contentsOf: Theme.builtIns.filter { !listed.contains($0.id) })
+        return ordered
+    }
+
     /// The chip quartet for a theme: the kit-specified colors for a built-in,
     /// or the palette-derived ones for a custom theme. A theme with neither
     /// (not expected) falls back to the One Dark chip so the strip never gaps.
@@ -452,7 +472,7 @@ struct ThemeChipPicker: View {
 
     var body: some View {
         ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
-            ForEach(Theme.builtIns) { theme in
+            ForEach(ThemeChipColors.orderedBuiltIns) { theme in
                 chip(for: theme)
             }
             ForEach(themes.customThemes) { theme in

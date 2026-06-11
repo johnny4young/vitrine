@@ -50,18 +50,18 @@ final class ScreenshotTourUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.5)
         save(
             window.screenshot(), as: "10-editor",
-            note: "Editor: preset strip, code pane, hero preview, inspector")
+            note: "Editor: glass toolbar, code pane, ambient-light stage, inspector")
 
-        let background = app.disclosureTriangles["Background"]
-        if background.waitForExistence(timeout: 3) {
-            background.click()
-            _ = element("background-kind-picker", in: app).waitForExistence(timeout: 3)
+        let output = element("inspector-disclosure-output", in: app)
+        if output.waitForExistence(timeout: 3) {
+            output.click()
+            _ = element("editor-destination-preset-picker", in: app).waitForExistence(timeout: 3)
             Thread.sleep(forTimeInterval: 0.5)
             save(
-                window.screenshot(), as: "11-editor-inspector-background",
-                note: "Editor inspector with the Background section disclosed")
+                window.screenshot(), as: "11-editor-inspector-output",
+                note: "Editor inspector with the Output disclosure open")
         } else {
-            miss("11-editor-inspector-background", reason: "Background disclosure not found")
+            miss("11-editor-inspector-output", reason: "Output disclosure not found")
         }
     }
 
@@ -215,41 +215,22 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let statusItem = app.statusItems.firstMatch
         guard statusItem.waitForExistence(timeout: 8) else {
-            miss("50-menubar-menu", reason: "status item not exposed to automation")
+            miss("50-menubar-panel", reason: "status item not exposed to automation")
             return
         }
+        // The redesigned status surface is a MenuBarExtra window panel, not an
+        // NSMenu: clicking the item opens a panel window (design/handoff).
         statusItem.click()
-        let menu = app.menus.firstMatch
-        if menu.waitForExistence(timeout: 3) {
-            Thread.sleep(forTimeInterval: 0.3)
-            save(menu.screenshot(), as: "50-menubar-menu", note: "Menu-bar (status item) menu")
-
-            for (title, slug, note) in [
-                ("Recents", "51-menubar-recents-submenu", "Recents ▸ submenu"),
-                ("Theme", "52-menubar-theme-submenu", "Theme ▸ submenu"),
-            ] {
-                let item = app.menuItems[title]
-                guard item.exists else {
-                    miss(slug, reason: "menu item \(title) not found")
-                    continue
-                }
-                item.hover()
-                let submenu = item.menus.firstMatch
-                if submenu.waitForExistence(timeout: 3) {
-                    Thread.sleep(forTimeInterval: 0.3)
-                    save(submenu.screenshot(), as: slug, note: note)
-                } else {
-                    miss(slug, reason: "submenu \(title) did not open")
-                }
-            }
-            app.typeKey(.escape, modifierFlags: [])
+        let panel = element("menubar-panel", in: app)
+        if panel.waitForExistence(timeout: 3) {
+            Thread.sleep(forTimeInterval: 0.5)
+            save(panel.screenshot(), as: "50-menubar-panel", note: "Menu-bar panel (.window)")
         } else {
-            miss("50-menubar-menu", reason: "status menu did not open")
+            miss("50-menubar-panel", reason: "status panel did not open")
         }
 
         // The standard About panel, branded with the Settings About pane's identity copy.
         let about = element("command-about", in: app)
-        statusItem.click()
         if about.waitForExistence(timeout: 3) {
             about.click()
             let aboutWindow = app.windows.firstMatch
@@ -260,7 +241,7 @@ final class ScreenshotTourUITests: XCTestCase {
                 miss("53-about-panel", reason: "About panel did not appear")
             }
         } else {
-            miss("53-about-panel", reason: "About command not reachable from status menu")
+            miss("53-about-panel", reason: "About command not reachable from status panel")
         }
     }
 
