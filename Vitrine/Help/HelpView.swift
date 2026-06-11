@@ -51,35 +51,42 @@ struct HelpView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Brand.Spacing.lg) {
+            VStack(alignment: .leading, spacing: 14) {
                 header
+                    .padding(.bottom, 4)
                 ForEach(topics) { topic in
                     topicCard(topic)
                 }
                 hotkeyControl
                 footer
             }
-            .padding(Brand.Spacing.xl)
+            .padding(.top, 22)
+            .padding(.horizontal, VitrineTokens.Spacing.lg)
+            .padding(.bottom, 26)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(width: 520)
         .frame(minHeight: 560)
-        .background(Brand.Palette.stage.color)
+        .background(VitrineTokens.Surface.window)
+        .tint(VitrineTokens.Accent.base)
         .accessibilityIdentifier("help-view")
     }
 
     // MARK: - Sections
 
     private var header: some View {
-        HStack(alignment: .center, spacing: Brand.Spacing.md) {
-            BrandMark(size: 40)
-            VStack(alignment: .leading, spacing: Brand.Spacing.xxs) {
+        HStack(alignment: .center, spacing: VitrineTokens.Spacing.sm) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 48, height: 48)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
                 Text("Vitrine Help")
-                    .font(.title2.bold())
-                    .foregroundStyle(Brand.Palette.textPrimary.color)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(VitrineTokens.Text.primary)
                 Text("Everything you need to turn code into images.")
-                    .font(.subheadline)
-                    .foregroundStyle(Brand.Palette.textSecondary.color)
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
             }
         }
         // The mark is decorative; read the title and tagline as one announcement.
@@ -87,31 +94,34 @@ struct HelpView: View {
     }
 
     private func topicCard(_ topic: HelpTopic) -> some View {
-        HStack(alignment: .top, spacing: Brand.Spacing.md) {
+        HStack(alignment: .top, spacing: 14) {
             Image(systemName: topic.symbol)
                 .font(.system(size: 20, weight: .regular))
-                .foregroundStyle(Brand.Gradient.signature)
+                .foregroundStyle(VitrineTokens.Accent.base)
                 .frame(width: 26)
+                .padding(.top, 2)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: Brand.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(topic.title)
-                    .font(.headline)
-                    .foregroundStyle(Brand.Palette.textPrimary.color)
+                    .font(.system(size: VitrineTokens.FontSize.headline, weight: .semibold))
+                    .foregroundStyle(VitrineTokens.Text.primary)
                 Text(topic.body)
-                    .font(.callout)
-                    .foregroundStyle(Brand.Palette.textSecondary.color)
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+                    .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Brand.Spacing.md)
+        .padding(.vertical, VitrineTokens.Spacing.md)
+        .padding(.horizontal, 18)
         .background(
-            RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
-                .fill(Brand.Surface.glass)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
+                .fill(VitrineTokens.Surface.card)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
-                .strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
+                .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
         )
         // Combine the icon-less title and body into one VoiceOver element per topic
         // so navigation reads each card as a single, coherent passage. The label is
@@ -126,10 +136,10 @@ struct HelpView: View {
     /// A live hotkey recorder so Help is also actionable: a user reading "set the
     /// hotkey" can set it without leaving the window (mirrors Settings ▸ General).
     private var hotkeyControl: some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.xs) {
+        VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
             Text("Set your hotkey")
-                .font(.headline)
-                .foregroundStyle(Brand.Palette.textPrimary.color)
+                .font(.system(size: VitrineTokens.FontSize.headline, weight: .semibold))
+                .foregroundStyle(VitrineTokens.Text.primary)
             HStack {
                 KeyboardShortcuts.Recorder("Global hotkey:", name: .quickCapture)
                     .accessibilityIdentifier("help-hotkey-recorder")
@@ -137,9 +147,10 @@ struct HelpView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Brand.Spacing.md)
+        .padding(.vertical, VitrineTokens.Spacing.md)
+        .padding(.horizontal, 18)
         .background(
-            RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
                 .fill(Brand.Gradient.signatureWash(opacity: 0.12))
         )
     }

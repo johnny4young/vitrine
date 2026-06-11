@@ -273,7 +273,7 @@ struct MenuBarContent: View {
         // copyright line is a stable legal/brand string left as-is.
         let tagline = String(localized: "Turn code into beautiful images, from your menu bar.")
         return NSAttributedString(
-            string: "\(tagline)\n© 2026 johnny4young · MIT",
+            string: "\(tagline)\n© 2026 johnny4young · MIT-licensed.",
             attributes: attributes)
     }
 

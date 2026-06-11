@@ -15,6 +15,9 @@ struct EmptyStateView: View {
     let message: LocalizedStringKey
     var actionTitle: LocalizedStringKey?
     var action: (() -> Void)?
+    /// The editor's narrow code column uses the compact metrics; full windows
+    /// (the recents gallery) use the regular ones (design/handoff).
+    var compact = false
 
     var body: some View {
         VStack(spacing: Brand.Spacing.md) {
@@ -26,14 +29,19 @@ struct EmptyStateView: View {
             // and the caret can land — the copy invites typing as well as
             // pasting.
             Group {
-                BrandMark(size: 44)
+                BrandMark(size: compact ? 44 : 56)
                 Text(title)
-                    .font(.headline)
+                    .font(.system(size: compact ? 15 : 17, weight: .bold))
                     .foregroundStyle(Brand.Palette.textPrimary.color)
                 Text(message)
-                    .font(.subheadline)
+                    .font(
+                        .system(
+                            size: compact
+                                ? VitrineTokens.FontSize.subhead : VitrineTokens.FontSize.body)
+                    )
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Brand.Palette.textSecondary.color)
+                    .frame(maxWidth: 420)
             }
             .accessibilityElement(children: .combine)
             .allowsHitTesting(false)
