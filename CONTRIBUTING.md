@@ -1,7 +1,8 @@
 # Contributing to Vitrine
 
 Thanks for your interest! Vitrine is MIT-licensed and contributions are welcome —
-**themes and language tweaks especially.**
+**themes and language tweaks especially.** Security issues go through
+[SECURITY.md](SECURITY.md) (privately), never a public issue.
 
 ## Prerequisites
 
@@ -28,9 +29,19 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make project`  | `xcodegen generate` → `Vitrine.xcodeproj`                    |
 | `make open`     | open the generated project in Xcode                          |
 | `make build`    | headless `xcodebuild` compile-check (Debug)                  |
+| `make test`     | run the Swift Testing unit suite (~25 s)                     |
+| `make build-ui-tests` | compile the UI tests (no automation permission needed) |
+| `make test-ui`  | run the XCUITest smokes (first run asks for UI automation)   |
+| `make cli`      | build the `vitrine` command-line renderer                    |
+| `make gallery`  | regenerate the launch-gallery design-QA samples              |
+| `make record-goldens` | regenerate the golden-image baseline (deliberate visual changes only) |
 | `make format`   | format Swift sources in place (Apple `swift-format`)         |
 | `make lint`     | lint Swift sources (fails on issues); run in CI              |
 | `make clean`    | remove the generated project and build artifacts             |
+
+README screenshots are regenerated with the opt-in tour in
+[`UITests/ScreenshotTourUITests.swift`](UITests/ScreenshotTourUITests.swift)
+(set `TEST_RUNNER_VITRINE_SCREENSHOT_DIR` when running `make test-ui`).
 
 > `make` auto-detects full Xcode via `DEVELOPER_DIR` even when `xcode-select` points at
 > the Command Line Tools.
@@ -44,6 +55,10 @@ See [AGENTS.md](AGENTS.md). In short:
   [`Vitrine/`](Vitrine) module layout. No deprecated APIs.
 - Run `make format` before committing; `make lint` must pass.
 - All committed prose (including UI strings and comments) is in **clean English**.
+- New user-facing strings go in the String Catalog **with an `es` translation**
+  (`LocalizationTests` enforces it).
+- App-chrome styling reads the token layer in
+  [`Vitrine/DesignSystem/`](Vitrine/DesignSystem) — never hard-code a hex in a view.
 - Conventional, imperative commit subjects; reference `CS-0xx` tickets where relevant.
 - **No AI co-authorship / "generated-by" trailers** in commits or PRs.
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/johnny4young/vitrine/security/advisories/new
+    about: Please report security issues privately through GitHub Security Advisories — see SECURITY.md.
+  - name: 📚 Project documentation
+    url: https://github.com/johnny4young/vitrine/tree/main/docs
+    about: Architecture, permissions, releasing, and the design-QA process.

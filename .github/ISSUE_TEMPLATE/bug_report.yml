@@ -1,0 +1,69 @@
+name: 🐛 Bug report
+description: Something in Vitrine doesn't work the way it should.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! A precise report usually
+        gets fixed fast. Vitrine never sees your code or clipboard contents,
+        so everything we learn about the problem comes from this form.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: |
+        1. Copied a Swift snippet
+        2. Pressed ⇧⌘S
+        3. Expected a PNG on the clipboard, got …
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence of steps that triggers the problem.
+      placeholder: |
+        1. Open the editor
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Vitrine version
+      description: Settings ▸ About, or the About Vitrine panel (e.g. 0.3.0).
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "macOS 15.5 (Sequoia)"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-channel
+    attributes:
+      label: How did you install Vitrine?
+      options:
+        - DMG from GitHub Releases
+        - Homebrew cask
+        - Built from source
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics (optional)
+      description: |
+        Settings ▸ About ▸ **Export Diagnostics…** writes a privacy-safe report
+        (no code or clipboard contents). Paste it here or attach the file.
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots (optional)
+      description: If it's a visual bug, a screenshot (and your appearance — light/dark) helps a lot.
