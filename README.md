@@ -11,7 +11,7 @@ and [Carbon](https://carbon.now.sh), but **native, instant, and fully local**.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v0.3.0%20shipped-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v0.4.0%20shipped-brightgreen.svg)](#status)
 
 </div>
 
@@ -267,7 +267,7 @@ to leave the repo:
 
 ## Status
 
-🟢 **v0.3.0 shipped, fully redesigned.** Menu-bar app (`LSUIElement`) with global
+🟢 **v0.4.0 shipped, fully redesigned.** Menu-bar app (`LSUIElement`) with global
 hotkey, the live-highlight editor on its ambient-light stage, WYSIWYG canvas, PNG/PDF
 export to clipboard/file, the macOS share sheet, a Recents gallery, a six-pane sidebar
 Settings window, first-run onboarding with offline Help and What's New, Shortcuts/App
