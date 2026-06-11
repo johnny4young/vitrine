@@ -214,8 +214,10 @@ final class ScreenshotTourUITests: XCTestCase {
         defer { app.terminate() }
 
         let statusItem = app.statusItems.firstMatch
-        guard statusItem.waitForExistence(timeout: 8) else {
-            miss("50-menubar-panel", reason: "status item not exposed to automation")
+        guard statusItem.waitForExistence(timeout: 8), statusItem.isHittable else {
+            // Off-screen/negative frames happen under some display arrangements;
+            // the tour records a miss instead of failing (it is an audit, not a gate).
+            miss("50-menubar-panel", reason: "status item not exposed or not hittable")
             return
         }
         // The redesigned status surface is a MenuBarExtra window panel, not an

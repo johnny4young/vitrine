@@ -374,6 +374,11 @@ struct EditorView: View {
             return true
         }
         .overlay { dropAffordance }
+        // Become a container element *before* taking the identifier: on a plain
+        // (non-element) view the identifier propagates down and overrides the
+        // descendants' own identifiers (the header's format-button would report
+        // "editor-drop-target"), breaking the editor UI smokes.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("editor-drop-target")
     }
 
