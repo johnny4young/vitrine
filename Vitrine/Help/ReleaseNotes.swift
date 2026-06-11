@@ -42,6 +42,21 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.4.0",
+            headline: "A fresh new look",
+            highlights: [
+                "Vitrine is redesigned end to end: the editor, Settings, Welcome, and "
+                    + "the menu-bar panel now share one design language, light and dark.",
+                "The editor preview floats in ambient light cast by your background "
+                    + "and always scales to fit the window.",
+                "Settings is a sidebar window with a pinned live preview and chip "
+                    + "pickers for themes, fonts, and backgrounds.",
+                "The menu-bar panel shows your recent captures with thumbnails — "
+                    + "reopen one, or copy its image again, in a click.",
+                "The Welcome tour now renders a real sample card you can restyle "
+                    + "before your first capture.",
+            ]),
+        ReleaseNote(
             version: "0.3.0",
             headline: "Smarter windows, smarter paste",
             highlights: [
