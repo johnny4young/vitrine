@@ -53,6 +53,43 @@ Two modes, one engine:
 - **Quick mode** — trigger → detect → render with your saved settings → clipboard. Zero or one click.
 - **Editor mode** — opens a window with live preview and controls when you want to tweak before exporting.
 
+## Install
+
+Requires macOS **14.0+** (Sonoma or later). Every build is signed with a
+Developer ID and notarized by Apple, and updates itself through Sparkle.
+
+### Homebrew (recommended)
+
+```bash
+brew install --cask johnny4young/tap/vitrine
+```
+
+Homebrew downloads the DMG from the latest GitHub release, verifies its
+SHA-256, and moves **Vitrine.app** into `/Applications`. Upgrades arrive
+in-app ("Check for Updates…"), or via `brew upgrade --cask vitrine`.
+
+### Direct download
+
+Grab `Vitrine-x.y.z.dmg` from the
+[latest release](https://github.com/johnny4young/vitrine/releases/latest),
+open it, and drag **Vitrine** into **Applications**. Each DMG ships with a
+`.sha256` sidecar if you want to verify the download:
+
+```bash
+shasum -a 256 -c Vitrine-x.y.z.dmg.sha256
+```
+
+### Build from source
+
+```bash
+git clone https://github.com/johnny4young/vitrine.git && cd vitrine && make
+```
+
+See [Getting started](#getting-started) for the full developer setup.
+
+After launch, Vitrine lives in your **menu bar** (📸) — there is no Dock icon,
+by design.
+
 ## Gallery
 
 ### The app
