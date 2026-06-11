@@ -12,8 +12,11 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
         assertExists(element("language-picker", in: app), in: app)
         assertExists(element("format-button", in: app), in: app)
-        // The editor's destination preset picker carries its own identifier so it
-        // never collides with the Settings panes' picker (CS-032).
+        // The editor's destination preset picker lives in the inspector's
+        // Output disclosure in the redesigned layout; open it first. It keeps
+        // its own identifier so it never collides with the Settings panes'
+        // picker (CS-032).
+        element("inspector-disclosure-output", in: app).click()
         assertExists(element("editor-destination-preset-picker", in: app), in: app)
         assertExists(element("copy-button", in: app), in: app)
         assertExists(element("save-button", in: app), in: app)
@@ -150,23 +153,21 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testEditorIsPresetFirstWithStripInspectorAndPreviewStage() {
+    func testEditorShowsToolbarInspectorAndPreviewStage() {
         continueAfterFailure = false
         let app = launch(arguments: ["--demo", "--open-editor"])
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
 
-        // The preset-first command strip leads the editor: it carries both the
-        // destination preset picker and the style preset picker (CS-037 "the first
-        // visible editor controls are preset/style choices").
-        assertExists(element("editor-preset-strip", in: app), in: app, timeout: 3)
-        assertExists(element("editor-destination-preset-picker", in: app), in: app)
+        // The glass toolbar leads the editor: the style-preset star and the
+        // primary export actions live there (design/handoff).
+        assertExists(element("editor-toolbar", in: app), in: app, timeout: 3)
         assertExists(element("editor-style-preset-picker", in: app), in: app)
 
-        // The hero preview sits on its own neutral stage so it reads as the focus
-        // of the window, not a small settings thumbnail (CS-037 "preview gets
-        // visual priority").
+        // The hero preview sits on its own ambient-lit stage so it reads as the
+        // focus of the window, not a small settings thumbnail (CS-037 "preview
+        // gets visual priority").
         assertExists(element("editor-preview-stage", in: app), in: app)
 
         // The focused inspector is present with its primary style controls surfaced
@@ -185,38 +186,31 @@ final class VitrineUITests: XCTestCase {
         let inspector = element("editor-inspector", in: app)
         assertExists(inspector, in: app, timeout: 8)
 
-        // Advanced controls live behind collapsible inspector sections that start
-        // closed (CS-037 "advanced controls remain available but are grouped behind
-        // an inspector section or disclosure"). A collapsible `Section`'s disclosure
-        // triangle is anonymous form chrome — the section title is a separate
-        // sibling StaticText — so the triangle cannot be addressed by name: find
-        // the "Background" header, then click the triangle that shares its row.
-        let header = inspector.staticTexts["Background"]
+        // Advanced controls live behind collapsible inspector disclosures that
+        // start closed (CS-037 "advanced controls remain available but are
+        // grouped behind an inspector section or disclosure"). The redesigned
+        // disclosures carry stable identifiers; the Output one reveals the
+        // destination presets, resolution, and format.
+        let disclosure = element("inspector-disclosure-output", in: app)
         XCTAssertTrue(
-            header.waitForExistence(timeout: 3),
-            "Inspector is missing the collapsible Background section")
-        let rowY = header.frame.midY
-        let triangle = inspector.disclosureTriangles.allElementsBoundByIndex
-            .min { abs($0.frame.midY - rowY) < abs($1.frame.midY - rowY) }
-        guard let triangle else {
-            XCTFail("Inspector has no disclosure triangles")
-            return
-        }
-        triangle.click()
-        assertExists(element("background-kind-picker", in: app), in: app, timeout: 3)
+            disclosure.waitForExistence(timeout: 3),
+            "Inspector is missing the collapsible Output disclosure")
+        disclosure.click()
+        assertExists(element("editor-destination-preset-picker", in: app), in: app, timeout: 3)
+        assertExists(element("inspector-resolution-picker", in: app), in: app)
+        assertExists(element("inspector-format-picker", in: app), in: app)
     }
 
     @MainActor
-    func testEditorKeyboardCanReachPresetStripAndInspector() throws {
+    func testEditorKeyboardCanReachToolbarAndInspector() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
         let app = launch(arguments: ["--demo", "--open-editor"])
         defer { app.terminate() }
 
-        // The preset strip, inspector, and export toolbar are all standard
-        // focusable controls, so keyboard navigation can reach each region
-        // (CS-037 "keyboard navigation can reach editor, preset strip, inspector,
-        // and export toolbar"). Asserting the elements are hittable is the
+        // The toolbar's style star, the inspector, and the export CTA are all
+        // standard focusable controls, so keyboard navigation can reach each
+        // region (CS-037). Asserting the elements are hittable is the
         // automatable proxy for reachability without scripting Full Keyboard Access.
         assertExists(element("editor-style-preset-picker", in: app), in: app, timeout: 8)
         assertHittable(
@@ -516,15 +510,15 @@ final class VitrineUITests: XCTestCase {
         continueAfterFailure = false
         // Under the right-to-left pseudolocale (`ar`, forced RTL) the editor should
         // still lay out and expose every primary control — mirrored, but never
-        // dropped or stranded. Reachability of the preset strip, preview stage,
-        // inspector, and export toolbar is the automatable proxy for "layout is sane
+        // dropped or stranded. Reachability of the toolbar, preview stage,
+        // inspector, and export actions is the automatable proxy for "layout is sane
         // under RTL, mirrored where appropriate" (CS-047 acceptance).
         let app = launch(arguments: ["--demo", "--open-editor"], locale: .rightToLeftPseudo)
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         for identifier in [
-            "editor-preset-strip", "editor-preview-stage", "editor-inspector", "copy-button",
+            "editor-toolbar", "editor-preview-stage", "editor-inspector", "copy-button",
             "save-button", "share-button",
         ] {
             XCTAssertTrue(

@@ -202,6 +202,7 @@ struct KeyChip: View {
 /// A horizontally scrolling chip strip (`.hscroll`): 7 pt gaps, hidden
 /// scroller, and a 26 pt fade-out mask on the trailing edge hinting at more.
 struct ChipScroll<Content: View>: View {
+    var topPadding: CGFloat = 12
     var bottomPadding: CGFloat = 12
     @ViewBuilder var content: Content
 
@@ -210,7 +211,7 @@ struct ChipScroll<Content: View>: View {
             HStack(spacing: 7) {
                 content
             }
-            .padding(.top, 12)
+            .padding(.top, topPadding)
             .padding(.bottom, bottomPadding)
             .padding(.horizontal, 2)
         }
@@ -228,6 +229,80 @@ struct ChipScroll<Content: View>: View {
                 )
             }
         )
+    }
+}
+
+// MARK: - Buttons
+
+/// The signature gradient call-to-action capsule (`.cta`): white semibold
+/// label on the brand gradient, accent halo, +10 % brightness on hover and a
+/// 0.98 press scale. Shared by the editor toolbar, the menu-bar panel, and the
+/// Welcome window.
+struct GradientCTAButton<Label: View>: View {
+    @ViewBuilder var label: Label
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                label
+            }
+            .font(.system(size: VitrineTokens.FontSize.body, weight: .semibold))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.vertical, VitrineTokens.Spacing.xs)
+            .padding(.horizontal, 18)
+            .background(Capsule(style: .continuous).fill(VitrineTokens.Gradients.signature))
+            .brandShadow(VitrineTokens.Chrome.ctaShadow)
+            .brightness(isHovered ? 0.06 : 0)
+            .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(PressScaleButtonStyle())
+        .onHover { isHovered = $0 }
+        .animation(.easeInOut(duration: 0.12), value: isHovered)
+    }
+}
+
+/// Scales the pressed control to 0.98 — the kits' universal press affordance.
+struct PressScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+/// A bordered 30×30 icon button on a glass panel (`.ibtn`): hairline border,
+/// secondary glyph that lifts to primary on hover.
+struct GlassIconButton: View {
+    let systemImage: String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(
+                    isHovered ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
+                )
+                .frame(width: 30, height: 30)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(
+                            isHovered ? VitrineTokens.Text.tertiary : VitrineTokens.Line.border,
+                            lineWidth: Brand.Stroke.hairline
+                        )
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .animation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
 
@@ -279,11 +354,14 @@ enum ThemeChipColors {
     }
 }
 
-/// One selectable theme chip: a 50×32 card in the theme's background with
+/// One selectable theme chip: a small card in the theme's background with
 /// three palette dots, the name underneath, and the accent ring when selected.
+/// Sized 50×32 in the Settings kit and 52×34 in the editor inspector.
 struct ThemeChip: View {
     let theme: Theme
     let isSelected: Bool
+    var chipSize: CGSize = CGSize(width: 50, height: 32)
+    var dotSize: CGFloat = 5.5
     let action: () -> Void
 
     var body: some View {
@@ -292,11 +370,11 @@ struct ThemeChip: View {
             VStack(spacing: 5) {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(colors.bg)
-                    .frame(width: 50, height: 32)
+                    .frame(width: chipSize.width, height: chipSize.height)
                     .overlay(
                         HStack(spacing: 4) {
                             ForEach(Array(colors.dots.enumerated()), id: \.offset) { _, dot in
-                                Circle().fill(dot).frame(width: 5.5, height: 5.5)
+                                Circle().fill(dot).frame(width: dotSize, height: dotSize)
                             }
                         }
                     )
@@ -333,9 +411,13 @@ struct ThemeChip: View {
 struct ThemeChipPicker: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var themes: CustomThemeStore
+    var chipSize: CGSize = CGSize(width: 50, height: 32)
+    var dotSize: CGFloat = 5.5
+    var topPadding: CGFloat = 12
+    var bottomPadding: CGFloat = 12
 
     var body: some View {
-        ChipScroll {
+        ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
             ForEach(Theme.builtIns) { theme in
                 chip(for: theme)
             }
@@ -348,7 +430,10 @@ struct ThemeChipPicker: View {
     }
 
     private func chip(for theme: Theme) -> some View {
-        ThemeChip(theme: theme, isSelected: settings.config.theme.id == theme.id) {
+        ThemeChip(
+            theme: theme, isSelected: settings.config.theme.id == theme.id,
+            chipSize: chipSize, dotSize: dotSize
+        ) {
             settings.config.theme = themes.theme(withID: theme.id)
         }
     }
@@ -357,20 +442,24 @@ struct ThemeChipPicker: View {
 // MARK: - Font chips
 
 /// One selectable font pill, rendered in its own face (`.pill` in the kits).
+/// 11 pt / 5×12 padding in Settings; 11.5 pt / 6×13 in the editor inspector.
 struct FontChip: View {
     let family: String
     let isSelected: Bool
+    var fontSize: CGFloat = 11
+    var verticalPadding: CGFloat = 5
+    var horizontalPadding: CGFloat = 12
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Text(verbatim: family)
-                .font(.custom(family, size: 11))
+                .font(.custom(family, size: fontSize))
                 .foregroundStyle(VitrineTokens.Text.primary)
                 .lineLimit(1)
                 .fixedSize()
-                .padding(.vertical, 5)
-                .padding(.horizontal, 12)
+                .padding(.vertical, verticalPadding)
+                .padding(.horizontal, horizontalPadding)
                 .background(
                     Capsule(style: .continuous)
                         .fill(isSelected ? VitrineTokens.Chrome.pillSelectedFill : .clear)
@@ -394,11 +483,20 @@ struct FontChip: View {
 /// system monospace family, each shown in its own face.
 struct FontChipPicker: View {
     @ObservedObject var settings: AppSettings
+    var fontSize: CGFloat = 11
+    var verticalPadding: CGFloat = 5
+    var horizontalPadding: CGFloat = 12
+    var topPadding: CGFloat = 12
+    var bottomPadding: CGFloat = 6
 
     var body: some View {
-        ChipScroll(bottomPadding: 6) {
+        ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
             ForEach(CodeFont.all, id: \.self) { family in
-                FontChip(family: family, isSelected: settings.config.fontName == family) {
+                FontChip(
+                    family: family, isSelected: settings.config.fontName == family,
+                    fontSize: fontSize, verticalPadding: verticalPadding,
+                    horizontalPadding: horizontalPadding
+                ) {
                     settings.config.fontName = family
                 }
             }
@@ -410,11 +508,12 @@ struct FontChipPicker: View {
 
 // MARK: - Gradient swatches
 
-/// One 26×26 gradient swatch (`.swatch`): rounded, hover-scaled, with the
-/// selected border + focus ring.
+/// One gradient swatch (`.swatch`): rounded, hover-scaled, with the selected
+/// border + focus ring. 26 pt in Settings, 28 pt in the editor inspector.
 struct GradientSwatch: View {
     let preset: GradientPreset
     let isSelected: Bool
+    var size: CGFloat = 26
     let action: () -> Void
 
     @State private var isHovered = false
@@ -423,7 +522,7 @@ struct GradientSwatch: View {
         Button(action: action) {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .fill(preset.gradient)
-                .frame(width: 26, height: 26)
+                .frame(width: size, height: size)
                 .overlay(
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .strokeBorder(
@@ -449,6 +548,7 @@ struct GradientSwatch: View {
 
 /// The dashed "+" swatch that leads to the custom background kinds.
 struct CustomBackgroundSwatch: View {
+    var size: CGFloat = 26
     let action: () -> Void
 
     @State private var isHovered = false
@@ -460,7 +560,7 @@ struct CustomBackgroundSwatch: View {
                     VitrineTokens.Line.border,
                     style: StrokeStyle(lineWidth: 1.5, dash: [3, 2.5])
                 )
-                .frame(width: 26, height: 26)
+                .frame(width: size, height: size)
                 .overlay(
                     Image(systemName: "plus")
                         .font(.system(size: 11))
