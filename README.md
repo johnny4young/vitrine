@@ -176,7 +176,7 @@ make build      # headless xcodebuild (Debug)
 make cli        # build the `vitrine` command-line renderer
 make test       # run the Swift Testing suite
 make build-ui-tests # compile UI tests without automation permission
-make test-ui    # run UI smoke tests (requires local XCTest automation permission)
+make test-ui    # run UI smoke tests (first local run prompts for automation permission)
 make gallery    # (re)generate the launch-gallery design-QA samples
 make format     # swift-format in place
 make lint       # swift-format lint (CI gate)
@@ -271,8 +271,8 @@ offline Help and What's New, Shortcuts/App Intents, launch-at-login, English + S
 localization, Sparkle auto-updates on the DMG channel, a privacy manifest, a
 reproducible app icon, and a tagged-release pipeline (DMG + Homebrew cask).
 Covered by a Swift Testing unit suite plus XCTest UI smoke tests. CI runs lint, build,
-the UI-test build, and the unit tests; `make test-ui` runs locally (it needs XCTest
-automation permission that GitHub-hosted runners don't grant).
+the unit tests, and the full UI suite (GitHub's hosted macOS runners pre-authorize
+XCTest UI automation; see docs/RELEASING.md).
 The URL→screenshot path and OG cards are deliberately deferred (see RENDER-PHASES,
 "Product Phase 2").
 
