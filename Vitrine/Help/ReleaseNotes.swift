@@ -42,6 +42,20 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.3.0",
+            headline: "Smarter windows, smarter paste",
+            highlights: [
+                "New and restored editor windows now size themselves to fit the screen, "
+                    + "so nothing opens half off a smaller display.",
+                "Pasted code is re-indented by structure, so snippets copied from deep "
+                    + "nesting land clean.",
+                "The Welcome tour and version-aware What's New now greet you on regular "
+                    + "launches, not just from the Help menu.",
+                "The main menu is fully localized, matching the rest of the app in Spanish.",
+                "Pasted-HTML snapshots no longer load remote resources, keeping every "
+                    + "render fully local.",
+            ]),
+        ReleaseNote(
             version: "0.1.0",
             headline: "Welcome to Vitrine",
             highlights: [
@@ -52,7 +66,7 @@ enum ReleaseNotes {
                 "Copy or save as PNG or PDF — with rich-text and data-URI copy options.",
                 "Private by design: rendering is fully local, with no account, no network, and no "
                     + "screen-recording or Accessibility permission.",
-            ])
+            ]),
     ]
 
     /// The newest bundled release note, or `nil` if none are bundled. Callers gate
