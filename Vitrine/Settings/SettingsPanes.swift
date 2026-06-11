@@ -54,6 +54,59 @@ struct DestinationPresetPicker: View {
     }
 }
 
+/// The destination preset as the redesign's segmented pill row: "Custom"
+/// leading, then the presets under the handoff's short labels. The settings
+/// panes use this; the editor keeps the popup `DestinationPresetPicker`.
+struct DestinationSegmentedPicker: View {
+    @ObservedObject var settings: AppSettings
+
+    /// Sentinel tag for the "Custom" segment (no preset). Not a valid preset id.
+    private static let customTag = ""
+
+    /// Preset ids in the handoff's display order with their short chip labels.
+    /// The labels are product/brand tokens shown verbatim in every locale.
+    /// Transparent Slide is deliberately absent (the handoff's list is final
+    /// and the row only fits six segments); it stays selectable through the
+    /// editor header's popup picker.
+    private static let segments: [(id: String, label: String)] = [
+        ("twitter", "X"),
+        ("linkedin", "LinkedIn"),
+        ("opengraph", "OG"),
+        ("keynote", "Keynote"),
+        ("docs", "Docs"),
+    ]
+
+    var body: some View {
+        TokenSegmentedPicker(options: options, selection: selectionBinding)
+            .help(presetHelp)
+            .accessibilityLabel("Destination preset")
+            .accessibilityIdentifier("destination-preset-picker")
+    }
+
+    private var options: [(String, Text)] {
+        [(Self.customTag, Text("Custom"))]
+            + Self.segments.map { ($0.id, Text(verbatim: $0.label)) }
+    }
+
+    private var presetHelp: String {
+        settings.selectedPreset?.summary
+            ?? "Custom: your own size and style, with no destination preset applied."
+    }
+
+    private var selectionBinding: Binding<String> {
+        Binding(
+            get: { settings.selectedPresetID ?? Self.customTag },
+            set: { id in
+                if let preset = ExportPreset.preset(withID: id) {
+                    settings.selectPreset(preset)
+                } else {
+                    settings.clearPreset()
+                }
+            }
+        )
+    }
+}
+
 /// General pane: hotkey, what it triggers, launch at login (CS-002/010/014),
 /// plus a "Reset all settings" action that restores defaults (CS-050).
 struct GeneralSettingsView: View {
@@ -63,56 +116,69 @@ struct GeneralSettingsView: View {
     @State private var showResetConfirmation = false
 
     var body: some View {
-        Form {
-            KeyboardShortcuts.Recorder("Global hotkey:", name: .quickCapture)
-
-            Picker("Hotkey runs", selection: $settings.hotkeyAction) {
-                ForEach(HotkeyAction.allCases) { action in
-                    Text(action.displayName).tag(action)
+        SettingsPaneScroll {
+            TokenGroup(title: Text("Capture")) {
+                TokenRow(label: Text("Global hotkey")) {
+                    KeyboardShortcuts.Recorder(for: .quickCapture)
+                        .accessibilityLabel("Global hotkey")
+                }
+                TokenRow(label: Text("Hotkey runs")) {
+                    TokenSegmentedPicker(
+                        options: [
+                            (HotkeyAction.quickCapture, Text("Capture")),
+                            (HotkeyAction.openEditor, Text("Editor")),
+                        ],
+                        selection: $settings.hotkeyAction
+                    )
+                    .accessibilityLabel("Hotkey runs")
+                }
+                TokenRow(label: Text("Launch at login")) {
+                    Toggle("Launch at login", isOn: $launchAtLogin)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("launch-at-login-toggle")
+                        .onChange(of: launchAtLogin) { _, newValue in
+                            LaunchAtLogin.setEnabled(newValue)
+                        }
                 }
             }
 
-            Toggle("Launch at login", isOn: $launchAtLogin)
-                .accessibilityIdentifier("launch-at-login-toggle")
-                .onChange(of: launchAtLogin) { _, newValue in
-                    LaunchAtLogin.setEnabled(newValue)
+            TokenGroup(title: Text("App")) {
+                TokenRow(
+                    label: Text("App language"),
+                    caption: Text("Vitrine reopens in the selected language next launch")
+                ) {
+                    TokenSegmentedPicker(
+                        options: AppLanguage.allCases.map {
+                            ($0, Text(verbatim: $0.displayName))
+                        },
+                        selection: $settings.appLanguage
+                    )
+                    .accessibilityLabel("App language")
+                    .accessibilityIdentifier("app-language-picker")
                 }
-
-            Section {
-                Picker("App language", selection: $settings.appLanguage) {
-                    ForEach(AppLanguage.allCases) { language in
-                        Text(language.displayName).tag(language)
-                    }
-                }
-                .accessibilityIdentifier("app-language-picker")
 
                 // Shown only once the choice differs from the language the app is
                 // running in, so the user can apply it now instead of quitting and
                 // reopening a Dock-less menu-bar agent by hand (CS-047).
                 if settings.languageChangePendingRelaunch {
-                    Button("Relaunch to Apply") { AppRelauncher.relaunch() }
-                        .accessibilityIdentifier("relaunch-to-apply-button")
+                    TokenRow {
+                        Button("Relaunch to Apply") { AppRelauncher.relaunch() }
+                            .accessibilityIdentifier("relaunch-to-apply-button")
+                    }
                 }
-            } footer: {
-                Text("Vitrine reopens in the selected language the next time you launch it.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
 
-            Section {
-                Button("Reset All Settings…", role: .destructive) {
-                    showResetConfirmation = true
+                TokenRow(
+                    label: Text("Reset"),
+                    caption: Text("Restores every preference to its default")
+                ) {
+                    Button("Reset All Settings…", role: .destructive) {
+                        showResetConfirmation = true
+                    }
+                    .accessibilityIdentifier("reset-all-settings-button")
                 }
-                .accessibilityIdentifier("reset-all-settings-button")
-            } footer: {
-                Text("Restores every preference to its default, including your recent languages.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
-        .formStyle(.grouped)
-        .frame(width: 420)
-        .padding()
         .accessibilityIdentifier("settings-general-pane")
         .confirmationDialog(
             "Reset all settings to their defaults?",
@@ -147,10 +213,7 @@ struct HighlightedLinesField: View {
     @State private var text: String = ""
 
     var body: some View {
-        // No explicit textFieldStyle: inside a grouped Form the row supplies its
-        // own inset chrome, so the field matches the sibling Toggle/Picker/Slider
-        // rows. Forcing `.roundedBorder` here would double-bezel it (HIG).
-        TextField("Highlight lines", text: $text, prompt: Text("e.g. 3, 7-9, 12"))
+        TokenTextField(prompt: Text("e.g. 3, 7-9, 12"), text: $text)
             .help("Lines or ranges to highlight, e.g. 3, 7-9, 12")
             // Match the visible row label so VoiceOver and the title agree.
             .accessibilityLabel("Highlight lines")
@@ -185,25 +248,35 @@ struct MetadataFields: View {
 
     var body: some View {
         Group {
-            TextField("Filename", text: filenameBinding, prompt: Text("e.g. ContentView.swift"))
-                .help("Optional filename shown as a chip in the header")
-                .accessibilityLabel("Filename")
-                .accessibilityIdentifier("metadata-filename-field")
+            TokenRow(label: Text("Filename")) {
+                TokenTextField(prompt: Text("e.g. ContentView.swift"), text: filenameBinding)
+                    .help("Optional filename shown as a chip in the header")
+                    .accessibilityLabel("Filename")
+                    .accessibilityIdentifier("metadata-filename-field")
+            }
 
-            TextField("Title", text: titleBinding, prompt: Text("e.g. Aurora gradient"))
-                .help("Optional title shown above the code")
-                .accessibilityLabel("Title")
-                .accessibilityIdentifier("metadata-title-field")
+            TokenRow(label: Text("Title")) {
+                TokenTextField(prompt: Text("e.g. Aurora gradient"), text: titleBinding)
+                    .help("Optional title shown above the code")
+                    .accessibilityLabel("Title")
+                    .accessibilityIdentifier("metadata-title-field")
+            }
 
-            TextField("Caption", text: captionBinding, prompt: Text("e.g. A SwiftUI gradient"))
-                .help("Optional one-line caption shown under the title")
-                .accessibilityLabel("Caption")
-                .accessibilityIdentifier("metadata-caption-field")
+            TokenRow(label: Text("Caption")) {
+                TokenTextField(prompt: Text("e.g. A SwiftUI gradient"), text: captionBinding)
+                    .help("Optional one-line caption shown under the title")
+                    .accessibilityLabel("Caption")
+                    .accessibilityIdentifier("metadata-caption-field")
+            }
 
-            Toggle("Language badge", isOn: $settings.config.metadata.showLanguageBadge)
-                .help("Show the current language as a badge in the header")
-                .accessibilityLabel("Language badge")
-                .accessibilityIdentifier("metadata-language-badge-toggle")
+            TokenRow(label: Text("Language badge")) {
+                Toggle("Language badge", isOn: $settings.config.metadata.showLanguageBadge)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .help("Show the current language as a badge in the header")
+                    .accessibilityLabel("Language badge")
+                    .accessibilityIdentifier("metadata-language-badge-toggle")
+            }
         }
     }
 
@@ -338,57 +411,65 @@ struct StylePresetsSection: View {
     private static let noneTag = "__none__"
 
     var body: some View {
-        Section {
-            Picker("Preset", selection: pickerBinding) {
-                Text("Choose a preset…").tag(Self.noneTag)
-                Section("Built-in") {
-                    ForEach(StylePreset.builtIns) { preset in
-                        Text(preset.name).tag(preset.id)
-                    }
-                }
-                if !store.userPresets.isEmpty {
-                    Section("Saved") {
-                        ForEach(store.userPresets) { preset in
+        TokenGroup(title: Text("Presets")) {
+            TokenRow(
+                label: Text("Preset"),
+                caption: Text("Apply a saved style in one click")
+            ) {
+                Picker("Preset", selection: pickerBinding) {
+                    Text("Choose a preset…").tag(Self.noneTag)
+                    Section("Built-in") {
+                        ForEach(StylePreset.builtIns) { preset in
                             Text(preset.name).tag(preset.id)
                         }
                     }
+                    if !store.userPresets.isEmpty {
+                        Section("Saved") {
+                            ForEach(store.userPresets) { preset in
+                                Text(preset.name).tag(preset.id)
+                            }
+                        }
+                    }
                 }
+                .labelsHidden()
+                .fixedSize()
+                .help(
+                    "Choose a preset to apply, duplicate, rename, or delete. Selecting does not change your current style."
+                )
+                .accessibilityLabel("Preset")
+                .accessibilityIdentifier("style-preset-picker")
             }
-            .help(
-                "Choose a preset to apply, duplicate, rename, or delete. Selecting does not change your current style."
-            )
-            .accessibilityIdentifier("style-preset-picker")
+
+            TokenRow(
+                label: Text("Selected preset"),
+                caption: Text("Save the current style, then export or import as JSON")
+            ) {
+                HStack(spacing: VitrineTokens.Spacing.xs) {
+                    Button("Save Current Style…") {
+                        saveName = settings.config.theme.displayName
+                        showSavePrompt = true
+                    }
+                    .help("Save the current style as a new named preset you can reuse.")
+                    .accessibilityIdentifier("save-style-preset-button")
+
+                    Button("Import…") { runImport() }
+                        .help("Add presets from a Vitrine preset file (.json).")
+                        .accessibilityIdentifier("import-presets-button")
+                    Button("Export…") {
+                        PresetFileExchange.exportWithSavePanel(store: store)
+                    }
+                    .disabled(store.userPresets.isEmpty)
+                    .help(
+                        store.userPresets.isEmpty
+                            ? "Save a preset first to export your presets."
+                            : "Export your saved presets to a JSON file."
+                    )
+                    .accessibilityIdentifier("export-presets-button")
+                }
+                .fixedSize()
+            }
 
             presetRowActions
-
-            HStack {
-                Button("Save Current Style…") {
-                    saveName = settings.config.theme.displayName
-                    showSavePrompt = true
-                }
-                .help("Save the current style as a new named preset you can reuse.")
-                .accessibilityIdentifier("save-style-preset-button")
-
-                Spacer()
-
-                Button("Import…") { runImport() }
-                    .help("Add presets from a Vitrine preset file (.json).")
-                    .accessibilityIdentifier("import-presets-button")
-                Button("Export…") {
-                    PresetFileExchange.exportWithSavePanel(store: store)
-                }
-                .disabled(store.userPresets.isEmpty)
-                .help(
-                    store.userPresets.isEmpty
-                        ? "Save a preset first to export your presets."
-                        : "Export your saved presets to a JSON file."
-                )
-                .accessibilityIdentifier("export-presets-button")
-            }
-        } header: {
-            Text("Presets")
-        } footer: {
-            presetFooter
         }
         .alert("Save Preset", isPresented: $showSavePrompt) {
             TextField("Name", text: $saveName)
@@ -429,18 +510,17 @@ struct StylePresetsSection: View {
 
     /// The Apply / Duplicate / Rename / Delete row for the selected preset.
     ///
-    /// The row is always present and reads as a labeled form row ("Selected
-    /// preset") so the section's layout and semantics stay steady rather than
-    /// appearing and disappearing as the selection changes (HIG: controls in a
-    /// grouped form should read as labeled rows). With nothing selected the
-    /// buttons are disabled; the destructive Rename/Delete pair stays disabled —
-    /// not hidden — for an immutable built-in, so the available actions read as a
-    /// stable set the user can see but not invoke.
+    /// The row is always present so the group's layout and semantics stay
+    /// steady rather than appearing and disappearing as the selection changes.
+    /// With nothing selected the buttons are disabled; the destructive
+    /// Rename/Delete pair stays disabled — not hidden — for an immutable
+    /// built-in, so the available actions read as a stable set the user can
+    /// see but not invoke.
     private var presetRowActions: some View {
         let preset = selectedPreset
         let canEdit = preset.map { !$0.isBuiltIn } ?? false
-        return LabeledContent("Selected preset") {
-            HStack {
+        return TokenRow {
+            HStack(spacing: VitrineTokens.Spacing.xs) {
                 Button("Apply") {
                     if let preset { settings.applyStylePreset(preset) }
                 }
@@ -453,9 +533,6 @@ struct StylePresetsSection: View {
                 .help("Make an editable copy of this preset.")
                 .disabled(preset == nil)
                 .accessibilityIdentifier("duplicate-style-preset-button")
-
-                Spacer()
-
                 Button("Rename") {
                     if let preset {
                         renameName = preset.name
@@ -475,18 +552,7 @@ struct StylePresetsSection: View {
                 .disabled(!canEdit)
                 .accessibilityIdentifier("delete-style-preset-button")
             }
-        }
-    }
-
-    @ViewBuilder private var presetFooter: some View {
-        if let preset = selectedPreset, preset.isBuiltIn {
-            Text("Built-in presets can't be changed — duplicate one to make it your own.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        } else {
-            Text("Save the current style as a preset, then export or import presets as JSON.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            .fixedSize()
         }
     }
 
@@ -539,85 +605,291 @@ struct LibrarySettingsView: View {
     @ObservedObject var themes: CustomThemeStore
 
     var body: some View {
-        Form {
+        SettingsPaneScroll {
             StylePresetsSection(settings: settings, store: presets)
             CustomThemesSection(settings: settings, store: themes)
         }
-        .formStyle(.grouped)
-        .frame(width: 460)
-        .padding()
         .accessibilityIdentifier("settings-library-pane")
     }
 }
 
-/// Style pane: theme, background, padding, font, chrome, shadow + live preview (CS-006/010).
+/// Style pane: theme, background, padding, font, chrome, shadow + live preview
+/// (CS-006/010), in the redesign's sticky-header layout — the live preview and
+/// the segmented sub-tabs (Appearance / Lines & header / Background) stay
+/// pinned while the groups beneath scroll.
 struct StyleSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var themes: CustomThemeStore
 
+    /// The active sub-tab, remembered across openings (and seedable by the
+    /// design-audit tooling) through the app's defaults store.
+    @AppStorage("settings.styleSubTab", store: AppDefaults.current)
+    private var subTab: StyleSubTab = .appearance
+
+    /// The Style pane's segmented sub-tabs.
+    private enum StyleSubTab: String, CaseIterable {
+        case appearance, linesAndHeader, background
+    }
+
     var body: some View {
-        Form {
-            Section {
-                DestinationPresetPicker(settings: settings)
-            } footer: {
-                Text("A destination preset sizes and styles the image for a place to post it.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                CoreStyleControls(settings: settings, themes: themes)
-            }
-
-            Section {
-                Toggle("Line numbers", isOn: $settings.config.showLineNumbers)
-                    .accessibilityIdentifier("line-numbers-toggle")
-                HighlightedLinesField(settings: settings)
-            } header: {
-                Text("Lines")
-            } footer: {
-                Text("Show a line-number gutter and highlight specific lines or ranges.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                MetadataFields(settings: settings)
-            } header: {
-                Text("Header")
-            } footer: {
-                Text("Add an optional filename, title, caption, or language badge above the code.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Background") {
-                BackgroundEditor(background: $settings.config.background)
-            }
-
-            Section("Preview") {
-                if let image = previewImage {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .frame(maxHeight: 300)
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                        )
-                        .brandShadow(Brand.Shadow.card)
-                        .help("Live preview of the current style")
-                        .accessibilityLabel("Live preview")
-                        .accessibilityIdentifier("settings-style-preview")
-                } else {
-                    previewPlaceholder
+        ScrollView {
+            LazyVStack(
+                alignment: .leading, spacing: VitrineTokens.Spacing.md,
+                pinnedViews: [.sectionHeaders]
+            ) {
+                Section {
+                    VStack(alignment: .leading, spacing: VitrineTokens.Spacing.md) {
+                        switch subTab {
+                        case .appearance: appearanceGroups
+                        case .linesAndHeader: linesAndHeaderGroups
+                        case .background: backgroundGroup
+                        }
+                    }
+                    .padding(.horizontal, 26)
+                } header: {
+                    stickyHeader
                 }
             }
+            .padding(.bottom, 28)
         }
-        .formStyle(.grouped)
-        .frame(width: 460)
-        .padding()
         .accessibilityIdentifier("settings-style-pane")
+    }
+
+    /// The pinned header: live preview + sub-tab segments over the window
+    /// fill, with a soft drop so scrolled content reads as sliding beneath.
+    private var stickyHeader: some View {
+        VStack(spacing: VitrineTokens.Spacing.sm) {
+            preview
+            TokenSegmentedPicker(
+                options: [
+                    (StyleSubTab.appearance, Text("Appearance")),
+                    (.linesAndHeader, Text("Lines & header")),
+                    (.background, Text("Background")),
+                ],
+                selection: $subTab,
+                fillsWidth: true,
+                optionIdentifiers: [
+                    "style-subtab-appearance", "style-subtab-lines", "style-subtab-background",
+                ]
+            )
+        }
+        .padding(.top, 18)
+        .padding(.horizontal, 26)
+        .padding(.bottom, VitrineTokens.Spacing.sm)
+        .background(
+            Rectangle()
+                .fill(VitrineTokens.Surface.window)
+                .brandShadow(VitrineTokens.Chrome.stickyHeaderShadow)
+        )
+    }
+
+    @ViewBuilder private var preview: some View {
+        if let image = previewImage {
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .frame(maxHeight: 150)
+                .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
+                .help("Live preview of the current style")
+                .accessibilityLabel("Live preview")
+                .accessibilityIdentifier("settings-style-preview")
+        } else {
+            previewPlaceholder
+        }
+    }
+
+    // MARK: Appearance
+
+    @ViewBuilder private var appearanceGroups: some View {
+        TokenGroup(title: Text("Destination")) {
+            TokenRow(
+                label: Text("Destination"),
+                caption: Text("Sizes and styles the image for a place to post it")
+            ) {
+                DestinationSegmentedPicker(settings: settings)
+            }
+        }
+
+        TokenGroup(title: Text("Theme")) {
+            ThemeChipPicker(settings: settings, themes: themes)
+                .accessibilityIdentifier("style-theme-picker")
+        }
+
+        TokenGroup(title: Text("Typography")) {
+            FontChipPicker(settings: settings)
+                .accessibilityIdentifier("style-font-picker")
+            TokenRow(label: Text("Ligatures")) {
+                Toggle("Ligatures", isOn: $settings.config.fontLigatures)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .help(ligatureHelp)
+                    .disabled(!fontHasLigatures)
+                    .accessibilityIdentifier("ligatures-toggle")
+            }
+            TokenRow(label: Text("Font size")) {
+                Slider(value: $settings.config.fontSize, in: 10...20, step: 1)
+                    .frame(width: 130)
+                    .accessibilityLabel("Font size")
+                    .accessibilityIdentifier("font-size-slider")
+            }
+        }
+
+        TokenGroup(title: Text("Canvas")) {
+            TokenRow(label: Text("Padding")) {
+                Slider(value: $settings.config.padding, in: 16...64, step: 4)
+                    .frame(width: 130)
+                    .accessibilityLabel("Padding")
+                    .accessibilityIdentifier("padding-slider")
+            }
+            TokenRow(label: Text("Window chrome")) {
+                Toggle("Window chrome", isOn: $settings.config.showChrome)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("window-chrome-toggle")
+            }
+            TokenRow(label: Text("Drop shadow")) {
+                Toggle("Drop shadow", isOn: $settings.config.showShadow)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("drop-shadow-toggle")
+            }
+        }
+    }
+
+    /// Whether the selected font ships programming ligatures, gating the toggle
+    /// so it reads as inert for a font that has none (CS-052).
+    private var fontHasLigatures: Bool {
+        CodeFont.hasLigatures(settings.config.fontName)
+    }
+
+    private var ligatureHelp: String {
+        fontHasLigatures
+            ? "Render programming ligatures (->, =>, !=) for this font."
+            : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
+    }
+
+    // MARK: Lines & header
+
+    @ViewBuilder private var linesAndHeaderGroups: some View {
+        TokenGroup(title: Text("Lines")) {
+            TokenRow(label: Text("Line numbers")) {
+                Toggle("Line numbers", isOn: $settings.config.showLineNumbers)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("line-numbers-toggle")
+            }
+            TokenRow(
+                label: Text("Highlight lines"),
+                caption: Text("Highlight specific lines or ranges")
+            ) {
+                HighlightedLinesField(settings: settings)
+            }
+        }
+
+        TokenGroup(title: Text("Header")) {
+            MetadataFields(settings: settings)
+        }
+    }
+
+    // MARK: Background
+
+    @ViewBuilder private var backgroundGroup: some View {
+        TokenGroup(title: Text("Gradient preset")) {
+            HStack(spacing: VitrineTokens.Spacing.xs) {
+                ForEach(GradientPreset.allCases) { preset in
+                    GradientSwatch(
+                        preset: preset, isSelected: selectedGradientPreset == preset
+                    ) {
+                        settings.config.background = .gradient(preset)
+                    }
+                }
+                CustomBackgroundSwatch {
+                    settings.config.background = BackgroundKind.solid.makeDefault(
+                        from: settings.config.background, imageStore: .container)
+                }
+            }
+            .padding(.vertical, VitrineTokens.Spacing.sm)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Gradient preset")
+            .accessibilityIdentifier("background-gradient-preset")
+
+            TokenRow(
+                label: Text("Kind"),
+                caption: Text("Gradient preset, solid color, or image")
+            ) {
+                TokenSegmentedPicker(
+                    options: [
+                        (BackgroundKind.gradient, Text("Gradient")),
+                        (.customGradient, Text("Custom")),
+                        (.solid, Text("Solid")),
+                        (.image, Text("Image")),
+                        (.transparent, Text("Transparent")),
+                    ],
+                    selection: backgroundKindBinding
+                )
+                .accessibilityLabel("Kind")
+                .accessibilityIdentifier("background-kind-picker")
+            }
+
+            backgroundDetail
+        }
+    }
+
+    /// The controls for the active background kind, hosted as tile rows.
+    @ViewBuilder private var backgroundDetail: some View {
+        switch settings.config.background {
+        case .gradient:
+            EmptyView()
+        case .customGradient(let gradient):
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
+                CustomGradientEditor(
+                    gradient: Binding(
+                        get: { gradient },
+                        set: { settings.config.background = .customGradient($0) }))
+            }
+            .padding(.vertical, 9)
+        case .solid(let color):
+            TokenRow(label: Text("Color")) {
+                ColorPicker(
+                    "Color",
+                    selection: Binding(
+                        get: { color }, set: { settings.config.background = .solid($0) }),
+                    supportsOpacity: true
+                )
+                .labelsHidden()
+                .accessibilityIdentifier("background-solid-color")
+            }
+        case .image(let image):
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
+                ImageBackgroundEditor(
+                    image: Binding(
+                        get: { image }, set: { settings.config.background = .image($0) }),
+                    imageStore: .container)
+            }
+            .padding(.vertical, 9)
+        case .transparent:
+            TokenRow(caption: Text("Exports with a real transparent (alpha) background.")) {
+                EmptyView()
+            }
+        }
+    }
+
+    /// The active background kind; switching seeds a sensible default from the
+    /// current style, mirroring `BackgroundEditor`'s behavior.
+    private var backgroundKindBinding: Binding<BackgroundKind> {
+        Binding(
+            get: { BackgroundKind(settings.config.background) },
+            set: {
+                settings.config.background = $0.makeDefault(
+                    from: settings.config.background, imageStore: .container)
+            }
+        )
+    }
+
+    private var selectedGradientPreset: GradientPreset? {
+        if case .gradient(let preset) = settings.config.background { return preset }
+        return nil
     }
 
     /// Config used for the preview — falls back to a sample snippet when the editor
@@ -696,52 +968,34 @@ struct CustomThemesSection: View {
     private static let noneTag = "__none__"
 
     var body: some View {
-        Section {
+        TokenGroup(title: Text("Custom themes")) {
             if store.customThemes.isEmpty {
-                Text("No custom themes yet. Create one, or import a theme file.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } else {
-                Picker("Custom theme", selection: pickerBinding) {
-                    Text("Choose a theme…").tag(Self.noneTag)
-                    ForEach(store.customThemes) { theme in
-                        Text(theme.displayName).tag(theme.id)
-                    }
+                TokenRow(
+                    label: Text("No custom themes yet"),
+                    caption: Text("Theme files are JSON and never leave your Mac")
+                ) {
+                    themeActionButtons
                 }
-                .accessibilityIdentifier("custom-theme-picker")
+            } else {
+                TokenRow(label: Text("Custom theme")) {
+                    Picker("Custom theme", selection: pickerBinding) {
+                        Text("Choose a theme…").tag(Self.noneTag)
+                        ForEach(store.customThemes) { theme in
+                            Text(theme.displayName).tag(theme.id)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    .accessibilityLabel("Custom theme")
+                    .accessibilityIdentifier("custom-theme-picker")
+                }
 
                 rowActions
-            }
 
-            HStack {
-                Button("New Theme…") { editorDraft = CustomThemeDraft() }
-                    .help("Create a custom syntax theme with a live preview.")
-                    .accessibilityIdentifier("new-custom-theme-button")
-
-                Spacer()
-
-                Button("Import…") { runImport() }
-                    .help("Add custom themes from a Vitrine theme file (.json).")
-                    .accessibilityIdentifier("import-themes-button")
-                Button("Export…") {
-                    CustomThemeFileExchange.exportWithSavePanel(store: store)
+                TokenRow(caption: Text("Theme files are JSON and never leave your Mac")) {
+                    themeActionButtons
                 }
-                .disabled(store.customThemes.isEmpty)
-                .help(
-                    store.customThemes.isEmpty
-                        ? "Create a theme first to export your themes."
-                        : "Export your custom themes to a JSON file."
-                )
-                .accessibilityIdentifier("export-themes-button")
             }
-        } header: {
-            Text("Custom Themes")
-        } footer: {
-            Text(
-                "Custom themes are your own syntax palettes. Built-in themes can't be changed. Theme files are JSON and never leave your Mac."
-            )
-            .font(.footnote)
-            .foregroundStyle(.secondary)
         }
         .sheet(item: $editorDraft) { draft in
             CustomThemeEditor(
@@ -789,11 +1043,36 @@ struct CustomThemesSection: View {
         }
     }
 
+    /// The New / Import / Export actions, shown both for the empty state and
+    /// under the populated list.
+    private var themeActionButtons: some View {
+        HStack(spacing: VitrineTokens.Spacing.xs) {
+            Button("New Theme…") { editorDraft = CustomThemeDraft() }
+                .help("Create a custom syntax theme with a live preview.")
+                .accessibilityIdentifier("new-custom-theme-button")
+
+            Button("Import…") { runImport() }
+                .help("Add custom themes from a Vitrine theme file (.json).")
+                .accessibilityIdentifier("import-themes-button")
+            Button("Export…") {
+                CustomThemeFileExchange.exportWithSavePanel(store: store)
+            }
+            .disabled(store.customThemes.isEmpty)
+            .help(
+                store.customThemes.isEmpty
+                    ? "Create a theme first to export your themes."
+                    : "Export your custom themes to a JSON file."
+            )
+            .accessibilityIdentifier("export-themes-button")
+        }
+        .fixedSize()
+    }
+
     /// Apply / Edit / Rename / Delete for the selected custom theme.
     private var rowActions: some View {
         let theme = selectedTheme
-        return LabeledContent("Selected theme") {
-            HStack {
+        return TokenRow(label: Text("Selected theme")) {
+            HStack(spacing: VitrineTokens.Spacing.xs) {
                 Button("Apply") {
                     if let theme { settings.config.theme = store.theme(withID: theme.id) }
                 }
@@ -809,8 +1088,6 @@ struct CustomThemesSection: View {
                 .help("Edit this custom theme's colors with a live preview.")
                 .disabled(theme == nil)
                 .accessibilityIdentifier("edit-custom-theme-button")
-
-                Spacer()
 
                 Button("Rename") {
                     if let theme {
@@ -831,6 +1108,7 @@ struct CustomThemesSection: View {
                 .disabled(theme == nil)
                 .accessibilityIdentifier("delete-custom-theme-button")
             }
+            .fixedSize()
         }
     }
 
@@ -1085,77 +1363,86 @@ struct OutputSettingsView: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
-        Form {
-            Section {
-                DestinationPresetPicker(settings: settings)
-            } footer: {
-                Text("Presets set the image size and resolution for a destination.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Copy to clipboard automatically", isOn: $settings.autoCopy)
-                Toggle("Also save to a file", isOn: $settings.alsoSaveToFile)
-
-                Picker("Resolution", selection: $settings.exportScale) {
-                    Text("1×").tag(1)
-                    Text("2× (Retina)").tag(2)
-                    Text("3×").tag(3)
+        SettingsPaneScroll {
+            TokenGroup(title: Text("Export")) {
+                TokenRow(
+                    label: Text("Destination"),
+                    caption: Text("Presets set the image size and resolution for a destination")
+                ) {
+                    DestinationSegmentedPicker(settings: settings)
                 }
-                .accessibilityIdentifier("output-resolution-picker")
-
-                Picker("Format", selection: $settings.exportFormat) {
-                    ForEach(ExportFormat.allCases) { format in
-                        Text(format.displayName).tag(format)
-                    }
+                TokenRow(label: Text("Copy to clipboard automatically")) {
+                    Toggle("Copy to clipboard automatically", isOn: $settings.autoCopy)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
                 }
-                .accessibilityIdentifier("output-format-picker")
-            } footer: {
-                // State honestly which output is vector: PDF is the supported
-                // scalable format; PNG is raster (CS-023).
-                Text(settings.exportFormat.summary)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                TokenRow(label: Text("Also save to a file")) {
+                    Toggle("Also save to a file", isOn: $settings.alsoSaveToFile)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                TokenRow(label: Text("Resolution")) {
+                    TokenSegmentedPicker(
+                        options: [
+                            (1, Text(verbatim: "1×")),
+                            (2, Text(verbatim: "2×")),
+                            (3, Text(verbatim: "3×")),
+                        ],
+                        selection: $settings.exportScale
+                    )
+                    .accessibilityLabel("Resolution")
+                    .accessibilityIdentifier("output-resolution-picker")
+                }
+                // The caption states honestly which output is vector: PDF is the
+                // supported scalable format; PNG is raster (CS-023).
+                TokenRow(label: Text("Format"), caption: Text(settings.exportFormat.summary)) {
+                    TokenSegmentedPicker(
+                        options: ExportFormat.allCases.map {
+                            ($0, Text(verbatim: $0.displayName))
+                        },
+                        selection: $settings.exportFormat
+                    )
+                    .accessibilityLabel("Format")
+                    .accessibilityIdentifier("output-format-picker")
+                }
             }
 
             // Rich clipboard is opt-in so the default copy stays a plain image; the
             // explicit "Copy as Data URI" and "Copy Highlighted Code" actions in the
             // editor remain available regardless of this toggle (CS-054).
-            Section {
-                Toggle("Add highlighted code as rich text", isOn: $settings.richClipboard)
-                    .accessibilityIdentifier("rich-clipboard-toggle")
-            } header: {
-                Text("Clipboard")
-            } footer: {
-                Text(
-                    "When on, Copy also places the highlighted code as rich text, so pasting into a document keeps the colors and font. The image is always included."
-                )
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            TokenGroup(title: Text("Clipboard")) {
+                TokenRow(
+                    label: Text("Rich-text code on copy"),
+                    caption: Text(
+                        "Keeps colors and font when pasting; the image is always included")
+                ) {
+                    Toggle("Rich-text code on copy", isOn: $settings.richClipboard)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("rich-clipboard-toggle")
+                }
             }
 
-            // Color management lives in its own "Advanced" section so the default
+            // Color management lives in its own "Advanced" group so the default
             // (sRGB) stays the obvious choice and Display P3 reads as a deliberate
             // opt-in (CS-024).
-            Section {
-                Picker("Color profile", selection: $settings.colorProfile) {
-                    ForEach(ColorProfile.allCases) { profile in
-                        Text(profile.displayName).tag(profile)
-                    }
+            TokenGroup(title: Text("Advanced")) {
+                TokenRow(
+                    label: Text("Color profile"),
+                    caption: Text(settings.colorProfile.summary)
+                ) {
+                    TokenSegmentedPicker(
+                        options: [
+                            (ColorProfile.sRGB, Text(verbatim: "sRGB")),
+                            (.displayP3, Text(verbatim: "P3")),
+                        ],
+                        selection: $settings.colorProfile
+                    )
+                    .accessibilityLabel("Color profile")
+                    .accessibilityIdentifier("color-profile-picker")
                 }
-                .accessibilityIdentifier("color-profile-picker")
-            } header: {
-                Text("Advanced")
-            } footer: {
-                Text(settings.colorProfile.summary)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
-        .formStyle(.grouped)
-        .frame(width: 420)
-        .padding()
         .accessibilityIdentifier("settings-output-pane")
     }
 }
@@ -1166,35 +1453,34 @@ struct InputSettingsView: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
-        Form {
-            Section {
-                Toggle("Re-indent code on paste", isOn: $settings.reindentOnPaste)
-                    .accessibilityIdentifier("reindent-on-paste-toggle")
-            } footer: {
-                Text(
-                    "Pasting tidies the indentation automatically. Undo with ⌘Z, or format anytime with ⌥⌘F."
-                )
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        SettingsPaneScroll {
+            TokenGroup(title: Text("Pasting")) {
+                TokenRow(
+                    label: Text("Re-indent code on paste"),
+                    caption: Text("Undo with ⌘Z, or format anytime with ⌥⌘F")
+                ) {
+                    Toggle("Re-indent code on paste", isOn: $settings.reindentOnPaste)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("reindent-on-paste-toggle")
+                }
+                TokenRow(
+                    label: Text("Treat copied URLs as a screenshot target"),
+                    caption: Text("When off, a copied URL is rendered as text")
+                ) {
+                    Toggle(
+                        "Treat copied URLs as a screenshot target",
+                        isOn: $settings.treatURLsAsScreenshot
+                    )
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                }
             }
 
-            Section {
-                Toggle(
-                    "Treat copied URLs as a screenshot target",
-                    isOn: $settings.treatURLsAsScreenshot)
-            } footer: {
-                Text(
-                    "When off, a copied URL is rendered as text. URL screenshots arrive in Product Phase 2."
-                )
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            TokenGroup(title: Text("Web capture (Phase 2)")) {
+                WebCaptureControls(settings: settings)
             }
-
-            WebCaptureControls(settings: settings)
         }
-        .formStyle(.grouped)
-        .frame(width: 460)
-        .padding()
         .accessibilityIdentifier("settings-input-pane")
     }
 }
@@ -1211,89 +1497,93 @@ struct WebCaptureControls: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
-        Section {
-            Picker("Viewport", selection: $settings.webViewportKind) {
-                ForEach(WebSnapshotConfig.ViewportPreset.Kind.allCases, id: \.self) { kind in
-                    Text(viewportLabel(for: kind)).tag(kind)
-                }
-            }
+        TokenRow(label: Text("Viewport")) {
+            TokenSegmentedPicker(
+                options: WebSnapshotConfig.ViewportPreset.Kind.allCases.map {
+                    ($0, viewportSegmentLabel(for: $0))
+                },
+                selection: $settings.webViewportKind
+            )
+            .accessibilityLabel("Viewport")
             .accessibilityIdentifier("web-viewport-picker")
+        }
 
-            if settings.webViewportKind == .custom {
+        if settings.webViewportKind == .custom {
+            TokenRow(label: Text("Width")) {
                 Stepper(
                     value: $settings.webCustomViewportWidth,
                     in: customDimensionRange, step: 10
                 ) {
-                    LabeledContent("Width", value: "\(settings.webCustomViewportWidth) pt")
+                    Text(verbatim: "\(settings.webCustomViewportWidth) pt")
+                        .font(.system(size: VitrineTokens.FontSize.subhead))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
                 }
+                .accessibilityLabel("Width")
                 .accessibilityIdentifier("web-custom-width-stepper")
+            }
 
+            TokenRow(label: Text("Height")) {
                 Stepper(
                     value: $settings.webCustomViewportHeight,
                     in: customDimensionRange, step: 10
                 ) {
-                    LabeledContent("Height", value: "\(settings.webCustomViewportHeight) pt")
+                    Text(verbatim: "\(settings.webCustomViewportHeight) pt")
+                        .font(.system(size: VitrineTokens.FontSize.subhead))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
                 }
+                .accessibilityLabel("Height")
                 .accessibilityIdentifier("web-custom-height-stepper")
             }
-
-            Picker("Capture", selection: $settings.webCaptureMode) {
-                ForEach(WebSnapshotConfig.CaptureMode.allCases, id: \.self) { mode in
-                    Text(mode.displayName).tag(mode)
-                }
-            }
-            .accessibilityIdentifier("web-capture-mode-picker")
-        } header: {
-            Text("Web capture (Product Phase 2)")
-        } footer: {
-            Text(captureFooter)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
 
-        Section {
-            Picker("Wait until", selection: $settings.webWaitKind) {
-                ForEach(WebSnapshotConfig.WaitStrategy.Kind.allCases, id: \.self) { kind in
-                    Text(waitLabel(for: kind)).tag(kind)
-                }
-            }
-            .accessibilityIdentifier("web-wait-strategy-picker")
+        TokenRow(label: Text("Capture"), caption: Text(captureFooter)) {
+            TokenSegmentedPicker(
+                options: [
+                    (WebSnapshotConfig.CaptureMode.visibleViewport, Text("Visible")),
+                    (.fullPage, Text("Full page")),
+                ],
+                selection: $settings.webCaptureMode
+            )
+            .accessibilityLabel("Capture")
+            .accessibilityIdentifier("web-capture-mode-picker")
+        }
 
-            if settings.webWaitKind != .domContentLoaded {
-                Stepper(
-                    value: $settings.webWaitSeconds,
-                    in: waitSecondsRange, step: 1
-                ) {
-                    LabeledContent("Extra wait", value: waitSecondsLabel)
+        TokenRow(label: Text("Wait until"), caption: Text(waitFooter)) {
+            TokenSegmentedPicker(
+                options: [
+                    (WebSnapshotConfig.WaitStrategy.Kind.domContentLoaded, Text("Loaded")),
+                    (.networkQuiet, Text("Idle")),
+                    (.fixedDelay, Text("Delay")),
+                ],
+                selection: $settings.webWaitKind
+            )
+            .accessibilityLabel("Wait until")
+            .accessibilityIdentifier("web-wait-strategy-picker")
+        }
+
+        if settings.webWaitKind != .domContentLoaded {
+            TokenRow(label: Text("Extra wait")) {
+                Stepper(value: $settings.webWaitSeconds, in: waitSecondsRange, step: 1) {
+                    Text(waitSecondsLabel)
+                        .font(.system(size: VitrineTokens.FontSize.subhead))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
                 }
+                .accessibilityLabel("Extra wait")
                 .accessibilityIdentifier("web-wait-seconds-stepper")
             }
-        } footer: {
-            Text(waitFooter)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
     }
 
-    /// The picker label for a viewport kind. The custom row reads "Custom…" rather
-    /// than echoing the stored size, because the size is set by the fields below it.
-    private func viewportLabel(for kind: WebSnapshotConfig.ViewportPreset.Kind) -> String {
+    /// The segment label for a viewport kind — the handoff's short names. The
+    /// custom segment reads "Custom…" rather than echoing the stored size,
+    /// because the size is set by the rows below it.
+    private func viewportSegmentLabel(for kind: WebSnapshotConfig.ViewportPreset.Kind) -> Text {
         switch kind {
-        case .openGraph: WebSnapshotConfig.ViewportPreset.openGraph.displayName
-        case .desktop: WebSnapshotConfig.ViewportPreset.desktop.displayName
-        case .fullHD: WebSnapshotConfig.ViewportPreset.fullHD.displayName
-        case .mobile: WebSnapshotConfig.ViewportPreset.mobile.displayName
-        case .custom: String(localized: "Custom…")
-        }
-    }
-
-    /// The picker label for a wait-strategy kind, derived from a representative value
-    /// of that kind so the picker and the engine share one set of names.
-    private func waitLabel(for kind: WebSnapshotConfig.WaitStrategy.Kind) -> String {
-        switch kind {
-        case .domContentLoaded: WebSnapshotConfig.WaitStrategy.domContentLoaded.displayName
-        case .fixedDelay: WebSnapshotConfig.WaitStrategy.fixedDelay(.zero).displayName
-        case .networkQuiet: WebSnapshotConfig.WaitStrategy.networkQuiet(budget: .zero).displayName
+        case .openGraph: Text("Social")
+        case .desktop: Text("Desktop")
+        case .fullHD: Text(verbatim: "Full HD")
+        case .mobile: Text("Phone")
+        case .custom: Text("Custom…")
         }
     }
 
@@ -1350,21 +1640,29 @@ struct AboutSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Brand.Spacing.sm) {
+            VStack(spacing: 6) {
                 // Identity cluster: who/what the app is.
-                BrandMark(size: 48)
-                Text(verbatim: "Vitrine").font(.title.bold())
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 76, height: 76)
+                    .accessibilityHidden(true)
+                Text(verbatim: "Vitrine")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(VitrineTokens.Text.primary)
+                    .padding(.top, 10)
                 // The version line's template is localized through the catalog
                 // (CS-047); the version value itself is a semver, inserted verbatim.
-                Text("Version \(appVersion)").foregroundStyle(.secondary)
+                Text("Version \(appVersion) · MIT")
+                    .font(.system(size: VitrineTokens.FontSize.subhead))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
                 Text("Turn code into beautiful images, from your menu bar.")
+                    .font(.system(size: VitrineTokens.FontSize.body))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VitrineTokens.Text.secondary)
                 Link("GitHub", destination: URL(string: "https://github.com/johnny4young/vitrine")!)
-
-                // Separate the interactive action from the identity/informational
-                // text above so it does not read as just another line of copy.
-                Divider().padding(.vertical, Brand.Spacing.xs)
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .foregroundStyle(VitrineTokens.Accent.base)
+                    .padding(.top, 4)
 
                 Button("Export Diagnostics…") {
                     DiagnosticsExporter.exportWithSavePanel(settings: settings)
@@ -1373,21 +1671,20 @@ struct AboutSettingsView: View {
                 .help(
                     "Save a privacy-safe report (no code or clipboard contents) to a file you choose."
                 )
+                .padding(.top, 14)
 
                 // A stable legal/brand string, shown verbatim like the "Vitrine"
                 // wordmark above so it bypasses the String Catalog (CS-047).
                 Text(verbatim: "© 2026 johnny4young · MIT")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.system(size: VitrineTokens.FontSize.caption))
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .padding(.top, 6)
             }
             .frame(maxWidth: .infinity)
-            .padding(Brand.Spacing.xl)
+            .padding(.top, 30 + 22)
+            .padding(.horizontal, 26)
+            .padding(.bottom, 28)
         }
-        // A minimum height keeps the default layout looking the same, while letting
-        // the pane grow (and the ScrollView scroll) at larger Dynamic Type sizes
-        // instead of clipping the button/copyright.
-        .frame(width: 460)
-        .frame(minHeight: 360)
-        .background(Color(nsColor: .windowBackgroundColor))
         .accessibilityIdentifier("settings-about-pane")
     }
 

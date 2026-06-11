@@ -84,29 +84,29 @@ final class ScreenshotTourUITests: XCTestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(element("settings-general-pane", in: app).waitForExistence(timeout: 8))
-        let panes: [(index: Int, identifier: String, slug: String)] = [
-            (0, "settings-general-pane", "20-settings-general"),
-            (1, "settings-style-pane", "21-settings-style"),
-            (2, "settings-library-pane", "22-settings-library"),
-            (3, "settings-output-pane", "23-settings-output"),
-            (4, "settings-input-pane", "24-settings-input"),
-            (5, "settings-about-pane", "25-settings-about"),
+        let panes: [(nav: String, identifier: String, slug: String)] = [
+            ("settings-nav-general", "settings-general-pane", "20-settings-general"),
+            ("settings-nav-style", "settings-style-pane", "21-settings-style"),
+            ("settings-nav-library", "settings-library-pane", "22-settings-library"),
+            ("settings-nav-output", "settings-output-pane", "23-settings-output"),
+            ("settings-nav-input", "settings-input-pane", "24-settings-input"),
+            ("settings-nav-about", "settings-about-pane", "25-settings-about"),
         ]
         let window = app.windows.firstMatch
         for pane in panes {
-            app.toolbars.buttons.element(boundBy: pane.index).click()
+            element(pane.nav, in: app).click()
             guard element(pane.identifier, in: app).waitForExistence(timeout: 4) else {
                 miss(pane.slug, reason: "pane \(pane.identifier) did not appear")
                 continue
             }
-            // The Settings window animates its resize between panes.
+            // Give the pane transition a beat to settle before capturing.
             Thread.sleep(forTimeInterval: 0.8)
             save(window.screenshot(), as: pane.slug, note: "Settings pane: \(pane.identifier)")
         }
 
-        // The custom-theme editor sheet hangs off the Style pane.
-        app.toolbars.buttons.element(boundBy: 1).click()
-        _ = element("settings-style-pane", in: app).waitForExistence(timeout: 4)
+        // The custom-theme editor sheet hangs off the Library pane.
+        element("settings-nav-library", in: app).click()
+        _ = element("settings-library-pane", in: app).waitForExistence(timeout: 4)
         let newTheme = element("new-custom-theme-button", in: app)
         if newTheme.waitForExistence(timeout: 3) {
             newTheme.click()
@@ -114,7 +114,7 @@ final class ScreenshotTourUITests: XCTestCase {
                 Thread.sleep(forTimeInterval: 0.5)
                 save(
                     window.screenshot(), as: "26-settings-custom-theme-editor",
-                    note: "Custom theme editor sheet (Style pane)")
+                    note: "Custom theme editor sheet (Library pane)")
                 app.typeKey(.escape, modifierFlags: [])
             } else {
                 miss("26-settings-custom-theme-editor", reason: "theme editor never appeared")

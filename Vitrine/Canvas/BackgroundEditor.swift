@@ -152,7 +152,7 @@ enum BackgroundKind: String, CaseIterable, Identifiable {
 /// Editor for a custom gradient: an angle slider plus per-stop color wells, with
 /// add/remove for stops (CS-051). Keeps at least two stops so the gradient stays
 /// well-defined.
-private struct CustomGradientEditor: View {
+struct CustomGradientEditor: View {
     @Binding var gradient: CustomGradient
 
     var body: some View {
@@ -233,7 +233,7 @@ private struct CustomGradientEditor: View {
 /// Editor for an image background: the chosen image, a button to pick another,
 /// and fit/blur/dimming controls (CS-051). Picking uses an `NSOpenPanel`
 /// (user-selected access) and imports the file into the app container.
-private struct ImageBackgroundEditor: View {
+struct ImageBackgroundEditor: View {
     @Binding var image: ImageBackground
     var imageStore: BackgroundImageStore
 

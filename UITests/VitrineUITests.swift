@@ -233,7 +233,7 @@ final class VitrineUITests: XCTestCase {
 
         // The Style pane surfaces the destination preset picker (CS-020).
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
-        app.toolbars.buttons["Style"].click()
+        element("settings-nav-style", in: app).click()
         assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
         assertExists(element("destination-preset-picker", in: app), in: app, timeout: 3)
     }
@@ -247,7 +247,7 @@ final class VitrineUITests: XCTestCase {
         // The Input pane surfaces the paste re-indent preference (CS-049), the
         // switch behind the editor's tidy-on-paste behavior.
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
-        app.toolbars.buttons["Input"].click()
+        element("settings-nav-input", in: app).click()
         assertExists(element("settings-input-pane", in: app), in: app, timeout: 3)
         assertExists(element("reindent-on-paste-toggle", in: app), in: app, timeout: 3)
     }
@@ -259,10 +259,12 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         // The Header section's metadata controls are present and carry stable
-        // accessibility identifiers/labels (CS-022 acceptance).
+        // accessibility identifiers/labels (CS-022 acceptance). They live under
+        // the Style pane's "Lines & header" sub-tab in the redesigned window.
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
-        app.toolbars.buttons["Style"].click()
+        element("settings-nav-style", in: app).click()
         assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
+        element("style-subtab-lines", in: app).click()
         assertExists(element("metadata-filename-field", in: app), in: app, timeout: 3)
         assertExists(element("metadata-title-field", in: app), in: app)
         assertExists(element("metadata-caption-field", in: app), in: app)
@@ -465,7 +467,7 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
-        assertExists(app.staticTexts["Global hotkey:"], in: app, timeout: 3)
+        assertExists(app.staticTexts["Global hotkey"], in: app, timeout: 3)
         assertExists(app.staticTexts["Hotkey runs"], in: app, timeout: 3)
         assertExists(element("launch-at-login-toggle", in: app), in: app)
     }
@@ -489,17 +491,16 @@ final class VitrineUITests: XCTestCase {
             element("reset-all-settings-button", in: app).isHittable,
             "General pane control is clipped or unreachable under en-XA")
 
-        // The toolbar tab titles are themselves localized (they pseudo-localize under
-        // en-XA), so the tabs are selected by their stable order — General(0),
-        // Style(1), Library(2), Output(3), Input(4), About(5) — rather than by visible title.
-        let toolbarButtons = app.toolbars.buttons
-        for (tabIndex, paneIdentifier, control) in [
-            (1, "settings-style-pane", "style-theme-picker"),
-            (2, "settings-library-pane", "style-preset-picker"),
-            (3, "settings-output-pane", "output-format-picker"),
-            (5, "settings-about-pane", "export-diagnostics-button"),
+        // The sidebar row titles are themselves localized (they pseudo-localize under
+        // en-XA), so the rows are selected by their stable `settings-nav-*`
+        // identifiers rather than by visible title.
+        for (navIdentifier, paneIdentifier, control) in [
+            ("settings-nav-style", "settings-style-pane", "style-theme-picker"),
+            ("settings-nav-library", "settings-library-pane", "style-preset-picker"),
+            ("settings-nav-output", "settings-output-pane", "output-format-picker"),
+            ("settings-nav-about", "settings-about-pane", "export-diagnostics-button"),
         ] {
-            toolbarButtons.element(boundBy: tabIndex).click()
+            element(navIdentifier, in: app).click()
             assertExists(element(paneIdentifier, in: app), in: app, timeout: 3)
             XCTAssertTrue(
                 element(control, in: app).waitForExistence(timeout: 3),

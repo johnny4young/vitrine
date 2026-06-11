@@ -64,6 +64,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if arguments.contains("--standard-activation") {
             NSApp.setActivationPolicy(.regular)
         }
+        // Pin the app to one appearance regardless of the system setting, so
+        // design audits can capture light and dark deterministically.
+        if arguments.contains("--appearance-dark") {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+        if arguments.contains("--appearance-light") {
+            NSApp.appearance = NSAppearance(named: .aqua)
+        }
         if arguments.contains("--demo") {
             AppSettings.shared.config.code = """
                 import SwiftUI
