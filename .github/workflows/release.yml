@@ -29,6 +29,28 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Version guard (CS-064): Sparkle decides "is this newer?" from the bundle's
+      # CFBundleVersion, so tagging a release without bumping project.yml publishes
+      # a DMG that self-identifies as the previous version and an appcast that never
+      # offers it as an update (v0.2.0 shipped this way, advertising 0.1.0/build 1).
+      # Refuse to publish when the tag and MARKETING_VERSION disagree, or when the
+      # bundled What's New notes lack an entry for the tagged version (release
+      # checklist, docs/RELEASING.md).
+      - name: Verify tag matches project version
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          MARKETING_VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9][0-9A-Za-z.\-]*)"?[[:space:]]*$/\1/p' project.yml | head -n1)"
+          if [ "${TAG_VERSION}" != "${MARKETING_VERSION}" ]; then
+            echo "::error::Tag v${TAG_VERSION} does not match MARKETING_VERSION ${MARKETING_VERSION} in project.yml — bump the version (and CURRENT_PROJECT_VERSION) before tagging."
+            exit 1
+          fi
+          if ! grep -q "version: \"${TAG_VERSION}\"" Vitrine/Help/ReleaseNotes.swift; then
+            echo "::error::Vitrine/Help/ReleaseNotes.swift has no entry for ${TAG_VERSION} — add the What's New note (newest first) before tagging."
+            exit 1
+          fi
+          echo "Tag v${TAG_VERSION} matches project.yml and has bundled release notes." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
