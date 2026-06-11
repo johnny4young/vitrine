@@ -93,12 +93,14 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testFileMenuExposesNewEditorWindowAndMakeDefault() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: ["--demo", "--open-editor", "--standard-activation"])
         defer { app.terminate() }
 
         // The File menu carries the multi-window commands (CS-053): "New Editor
         // Window" (always available) and "Make This Window the Default" (editor-scoped).
-        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let editor = element("editor-window", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        makeFrontmostForMenuBarAccess(app, clicking: editor)
         let menuBar = app.menuBars.firstMatch
         XCTAssertTrue(menuBar.waitForExistence(timeout: 5), "Main menu bar is missing")
 
@@ -177,17 +179,27 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: ["--demo", "--open-editor"])
         defer { app.terminate() }
 
-        assertExists(element("editor-inspector", in: app), in: app, timeout: 8)
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
 
         // Advanced controls live behind collapsible inspector sections that start
         // closed (CS-037 "advanced controls remain available but are grouped behind
-        // an inspector section or disclosure"). The disclosure headers are present
-        // and reachable; expanding "Background" reveals its kind picker.
-        let background = app.disclosureTriangles["Background"]
+        // an inspector section or disclosure"). A collapsible `Section`'s disclosure
+        // triangle is anonymous form chrome — the section title is a separate
+        // sibling StaticText — so the triangle cannot be addressed by name: find
+        // the "Background" header, then click the triangle that shares its row.
+        let header = inspector.staticTexts["Background"]
         XCTAssertTrue(
-            background.waitForExistence(timeout: 3),
+            header.waitForExistence(timeout: 3),
             "Inspector is missing the collapsible Background section")
-        background.click()
+        let rowY = header.frame.midY
+        let triangle = inspector.disclosureTriangles.allElementsBoundByIndex
+            .min { abs($0.frame.midY - rowY) < abs($1.frame.midY - rowY) }
+        guard let triangle else {
+            XCTFail("Inspector has no disclosure triangles")
+            return
+        }
+        triangle.click()
         assertExists(element("background-kind-picker", in: app), in: app, timeout: 3)
     }
 
@@ -261,12 +273,14 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMainMenuExposesPrimaryCommands() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: ["--demo", "--open-editor", "--standard-activation"])
         defer { app.terminate() }
 
         // The editor window makes the app active, so its agent-app main menu bar
         // (CS-032) is shown. Assert the standard top-level menus exist.
-        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let editor = element("editor-window", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        makeFrontmostForMenuBarAccess(app, clicking: editor)
         let menuBar = app.menuBars.firstMatch
         XCTAssertTrue(menuBar.waitForExistence(timeout: 5), "Main menu bar is missing")
 
@@ -423,11 +437,14 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testHelpMenuExposesHelpAndWhatsNewCommands() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo", "--open-editor", "--standard-activation"])
         defer { app.terminate() }
 
         // The editor makes the app active, so its main menu bar (CS-032) is shown.
-        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let editor = element("editor-window", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        makeFrontmostForMenuBarAccess(app, clicking: editor)
         let menuBar = app.menuBars.firstMatch
         XCTAssertTrue(menuBar.waitForExistence(timeout: 5), "Main menu bar is missing")
 
@@ -555,6 +572,23 @@ final class VitrineUITests: XCTestCase {
             "VitrineUITests-\(name)-\(UUID().uuidString)"
         app.launch()
         return app
+    }
+
+    /// Brings the app genuinely frontmost so its main-menu bar realizes.
+    ///
+    /// An LSUIElement app's menu-bar items exist in the accessibility tree but keep
+    /// zero-sized frames under synthetic activation, so they can never be clicked
+    /// (see `ScreenshotTourUITests.testMainMenuTour`). The main-menu tests therefore
+    /// launch with `--standard-activation` (the dev hook that runs the app as a
+    /// regular app) and call this before touching the menus: a real click on one of
+    /// the app's windows is what makes macOS hand it the menu bar.
+    @MainActor
+    private func makeFrontmostForMenuBarAccess(
+        _ app: XCUIApplication, clicking window: XCUIElement
+    ) {
+        app.activate()
+        window.click()
+        Thread.sleep(forTimeInterval: 1.5)
     }
 
     @MainActor

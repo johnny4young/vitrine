@@ -48,6 +48,10 @@ struct RecentsGalleryView: View {
         }
         .frame(minWidth: 560, minHeight: 420)
         .background(Brand.Palette.stage.color)
+        // Become a container element *before* taking the identifier: on a plain
+        // (non-element) view the identifier propagates down and overrides the
+        // descendants' own identifiers (same gotcha as WelcomeView/WhatsNewView).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recents-gallery")
     }
 

@@ -270,6 +270,51 @@ struct AppMenuTests {
         #expect(item?.target is EditorCommandResponder)
     }
 
+    /// While the designed menu is the main menu, the displacement check must not
+    /// rebuild it: `reinstallIfDisplaced()` runs on every event-loop pass via
+    /// `applicationWillUpdate(_:)`, so a spurious rebuild there would churn the menu
+    /// bar (and re-run menu construction) continuously.
+    @Test func reinstallIsANoOpWhileTheDesignedMenuIsStillInstalled() {
+        AppMenu.install()
+        let installed = NSApp.mainMenu
+        AppMenu.reinstallIfDisplaced()
+        #expect(NSApp.mainMenu === installed)
+    }
+
+    /// The takeover check must catch a wholesale `NSApp.mainMenu` swap and put the
+    /// full designed menu back, or File/Edit (and their key equivalents) silently
+    /// disappear from the running app.
+    @Test func reinstallRestoresTheDesignedMenuAfterAMenuSwap() {
+        AppMenu.install()
+        NSApp.mainMenu = NSMenu()
+        AppMenu.reinstallIfDisplaced()
+        #expect(NSApp.mainMenu === AppMenu.installed)
+        let titles = NSApp.mainMenu?.items.compactMap(\.submenu?.title) ?? []
+        #expect(titles.contains("File"))
+        #expect(titles.contains("Edit"))
+        #expect(titles.contains("Help"))
+    }
+
+    /// SwiftUI's `MenuBarExtra` scene bring-up takes the main menu over after
+    /// `applicationDidFinishLaunching` by replacing the installed menu's *items in
+    /// place* — `NSApp.mainMenu` still compares identical to the designed menu, so
+    /// only a content-aware check catches it. This reproduces that takeover exactly
+    /// and proves the designed menu comes back.
+    @Test func reinstallRestoresTheDesignedMenuAfterAnInPlaceItemReplacement() {
+        AppMenu.install()
+        let menu = AppMenu.installed
+        menu?.removeAllItems()
+        let swiftUIDefault = NSMenuItem()
+        swiftUIDefault.submenu = NSMenu(title: "View")
+        menu?.addItem(swiftUIDefault)
+
+        AppMenu.reinstallIfDisplaced()
+        let titles = NSApp.mainMenu?.items.compactMap(\.submenu?.title) ?? []
+        #expect(titles.contains("File"))
+        #expect(titles.contains("Edit"))
+        #expect(titles.contains("Help"))
+    }
+
     // MARK: Helpers
 
     private func submenu(named title: String) -> NSMenu {

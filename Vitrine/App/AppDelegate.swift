@@ -15,9 +15,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         // Install the application main menu (CS-032). An agent app with only a
-        // `MenuBarExtra` scene gets no menu bar from SwiftUI; assigning one here
-        // gives the editor and settings windows a complete, keyboard-accessible
-        // menu bar (App ▸, File ▸, Edit ▸, View ▸, Window ▸, Help ▸).
+        // `MenuBarExtra` scene gets no designed menu bar from SwiftUI; assigning one
+        // here gives the editor and settings windows a complete, keyboard-accessible
+        // menu bar (App ▸, File ▸, Edit ▸, View ▸, Window ▸, Help ▸). SwiftUI's scene
+        // bring-up overwrites this menu with its own default after this method
+        // returns, so `applicationWillUpdate(_:)` below re-asserts it.
         AppMenu.install()
 
         // Global hotkey (CS-002): consume the key-up event stream on the main actor
@@ -205,6 +207,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .openEditor:
             EditorWindowController.shared.show()
         }
+    }
+
+    /// SwiftUI's `MenuBarExtra` scene bring-up installs its default main menu shortly
+    /// after `applicationDidFinishLaunching` — by replacing the installed menu's items
+    /// in place — wiping the designed menu installed above (File and Edit vanish from
+    /// the menu bar, and main-menu key equivalents like ⌘E and ⌘S go dead). Re-assert
+    /// the AppKit menu whenever it has been taken over; the pointer checks inside keep
+    /// this effectively free on this hot every-event path.
+    func applicationWillUpdate(_ notification: Notification) {
+        AppMenu.reinstallIfDisplaced()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
