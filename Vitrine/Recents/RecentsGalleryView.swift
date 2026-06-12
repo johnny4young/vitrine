@@ -51,11 +51,7 @@ struct RecentsGalleryView: View {
         // The redesign's controls tint with the brand accent, not the user's
         // system accent.
         .tint(VitrineTokens.Accent.base)
-        // Become a container element *before* taking the identifier: on a plain
-        // (non-element) view the identifier propagates down and overrides the
-        // descendants' own identifiers (same gotcha as WelcomeView/WhatsNewView).
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("recents-gallery")
+        .accessibilityContainerIdentifier("recents-gallery")
     }
 
     // MARK: - Gallery

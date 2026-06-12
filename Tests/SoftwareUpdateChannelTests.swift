@@ -205,13 +205,15 @@ struct SoftwareUpdateChannelTests {
             VitrineCommand.checkForUpdates.title.localizedCaseInsensitiveContains("update"),
             "the Check for Updates command title must mention updates")
 
-        // The menu wiring routes it to the updater, and only on a build that ships Sparkle.
+        // The responder routes it to the updater, and the menu exposes it only on a build
+        // that ships Sparkle.
         let commands = try Self.text("Vitrine", "App", "VitrineCommands.swift")
         #expect(
             commands.contains("SoftwareUpdater.shared.checkForUpdates()"),
             "the Check for Updates command must invoke the updater (CS-064)")
+        let menu = try Self.text("Vitrine", "App", "AppMenu.swift")
         #expect(
-            commands.contains("SoftwareUpdater.isSupported"),
+            menu.contains("SoftwareUpdater.isSupported"),
             "the menu must add the update command only when Sparkle is supported (CS-064)")
     }
 

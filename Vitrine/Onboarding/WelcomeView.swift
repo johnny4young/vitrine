@@ -90,13 +90,7 @@ struct WelcomeView: View {
         // The redesign's controls tint with the brand accent, not the user's
         // system accent.
         .tint(VitrineTokens.Accent.base)
-        // Become a container element *before* taking the identifier: on a plain
-        // (non-element) view the identifier propagates down and overrides the
-        // descendants' own identifiers — every control here would report
-        // "welcome-view" instead of e.g. `welcome-skip-button`, breaking the
-        // CS-035 UI tests.
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("welcome-view")
+        .accessibilityContainerIdentifier("welcome-view")
         .onAppear {
             if case .gradient(let preset) = settings.config.background {
                 selectedBackground = preset

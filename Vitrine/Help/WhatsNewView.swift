@@ -44,13 +44,7 @@ struct WhatsNewView: View {
         .frame(minHeight: 420)
         .background(VitrineTokens.Surface.window)
         .tint(VitrineTokens.Accent.base)
-        // Become a container element *before* taking the identifier: on a plain
-        // (non-element) view the identifier propagates down and overrides the
-        // descendants' own identifiers — the footer buttons would report
-        // "whats-new-view" instead of e.g. `whats-new-continue-button`, breaking
-        // the CS-049 UI tests.
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("whats-new-view")
+        .accessibilityContainerIdentifier("whats-new-view")
     }
 
     // MARK: - Sections

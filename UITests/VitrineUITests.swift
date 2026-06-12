@@ -570,90 +570,6 @@ final class VitrineUITests: XCTestCase {
         return app
     }
 
-    /// Brings the app genuinely frontmost so its main-menu bar realizes.
-    ///
-    /// An LSUIElement app's menu-bar items exist in the accessibility tree but keep
-    /// zero-sized frames under synthetic activation, so they can never be clicked
-    /// (see `ScreenshotTourUITests.testMainMenuTour`). The main-menu tests therefore
-    /// launch with `--standard-activation` (the dev hook that runs the app as a
-    /// regular app) and call this before touching the menus: a real click on one of
-    /// the app's windows is what makes macOS hand it the menu bar.
-    @MainActor
-    private func makeFrontmostForMenuBarAccess(
-        _ app: XCUIApplication, clicking window: XCUIElement
-    ) {
-        app.activate()
-        window.click()
-        Thread.sleep(forTimeInterval: 1.5)
-    }
-
-    /// Skips a display-geometry-sensitive test when no attached display can hold the
-    /// editor at its minimum supported size (`EditorView`'s 940x520 root frame plus
-    /// window chrome, with a small margin). Below that, control hittability cannot
-    /// hold no matter what the app does, so the assertion would be testing the
-    /// display, not the product. The hosted CI runners' 1024x768 virtual display
-    /// passes this guard — these tests are expected to *run* there, not skip.
-    @MainActor
-    private func skipUnlessADisplayFitsTheEditor() throws {
-        let required = CGSize(width: 960, height: 600)
-        let visible = NSScreen.screens.map(\.visibleFrame)
-        try XCTSkipUnless(
-            visible.contains { $0.width >= required.width && $0.height >= required.height },
-            "No display fits the editor's minimum "
-                + "\(Int(required.width))x\(Int(required.height)) window "
-                + "(visible frames: \(visible)); hittability cannot be asserted here.")
-    }
-
-    /// Every AX element carrying `identifier`, resolved fresh on each call. A single
-    /// identifier can legitimately match nested elements: an AppKit toolbar item
-    /// wraps the SwiftUI button it hosts and both expose the same identifier
-    /// (observed on the macOS 15 CI image once the editor window fits the display),
-    /// so reading a property through a single-element query would raise "multiple
-    /// matching elements found".
-    @MainActor
-    private func matches(_ identifier: String, in app: XCUIApplication) -> [XCUIElement] {
-        app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier == %@", identifier))
-            .allElementsBoundByIndex
-    }
-
-    /// Asserts some element carrying `identifier` becomes hittable, polling briefly
-    /// so a window still being positioned (centered, or pulled back on-screen by the
-    /// recovery pass) is not a flake. The control is reachable when *any* of the
-    /// identifier's matches is hittable — see `matches(_:in:)` for why there can be
-    /// more than one. On failure it attaches the screen/window/match geometry and the
-    /// full accessibility hierarchy, so a display-geometry regression — e.g. on a
-    /// small CI virtual display — can be triaged from the .xcresult alone.
-    @MainActor
-    private func assertHittable(
-        _ identifier: String,
-        in app: XCUIApplication,
-        _ message: String,
-        timeout: TimeInterval = 3,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) {
-        let deadline = Date().addingTimeInterval(timeout)
-        repeat {
-            if matches(identifier, in: app).contains(where: { $0.isHittable }) { return }
-            Thread.sleep(forTimeInterval: 0.25)
-        } while Date() < deadline
-
-        let found = matches(identifier, in: app)
-            .map { "match frame=\($0.frame) hittable=\($0.isHittable)" }
-        let windows = app.windows.allElementsBoundByIndex
-            .map { "window \"\($0.title)\" frame=\($0.frame)" }
-        let screens = NSScreen.screens
-            .map { "screen frame=\($0.frame) visible=\($0.visibleFrame)" }
-        let geometry = (["matches for '\(identifier)': \(found.count)"] + found + windows + screens)
-            .joined(separator: "\n")
-        let attachment = XCTAttachment(string: geometry + "\n\n" + app.debugDescription)
-        attachment.name = "Hittability diagnostics"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-        XCTFail(message, file: file, line: line)
-    }
-
     @MainActor
     private func assertExists(
         _ element: XCUIElement,
@@ -672,8 +588,4 @@ final class VitrineUITests: XCTestCase {
         }
     }
 
-    @MainActor
-    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any)[identifier]
-    }
 }
