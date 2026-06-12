@@ -240,9 +240,30 @@ built. It:
 
 So the checksum is never hand-copied off a terminal: it lives on the release.
 
-### Updating the cask in the tap (PR)
+### Updating the cask in the tap — automated
 
-After the release publishes, open a PR against `johnny4young/homebrew-tap`:
+`release.yml`'s **Update the Homebrew tap cask** step runs right after the GitHub
+release publishes: it regenerates the cask from this repo's template (header
+comment stripped, `version`/`sha256` substituted from the just-built DMG) and
+pushes it straight to `johnny4young/homebrew-tap`. It authenticates with the
+`TAP_DEPLOY_KEY` repo secret — a **write-enabled deploy key on the tap** (the
+default `GITHUB_TOKEN` cannot reach other repositories). To rotate it:
+
+```bash
+ssh-keygen -t ed25519 -C "vitrine-release-tap-updater" -f tap_deploy_key -N ""
+gh api -X POST repos/johnny4young/homebrew-tap/keys \
+  -f title="vitrine release tap updater" -f key="$(cat tap_deploy_key.pub)" -F read_only=false
+gh secret set TAP_DEPLOY_KEY --repo johnny4young/vitrine < tap_deploy_key
+rm tap_deploy_key tap_deploy_key.pub
+```
+
+When the secret is absent the step warns and the release still publishes — fall
+back to the manual flow below.
+
+### Updating the cask in the tap (manual fallback)
+
+If the automated step was skipped or failed, open a PR against
+`johnny4young/homebrew-tap`:
 
 1. In the tap's `Casks/vitrine.rb`, paste the two lines from the release's
    `vitrine-cask-update.txt` (or copy them from the run summary) — i.e. set `version`

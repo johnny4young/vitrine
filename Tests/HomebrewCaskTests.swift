@@ -142,6 +142,27 @@ struct HomebrewCaskTests {
             "the cask must install Vitrine.app via the `app` stanza (CS-063)")
     }
 
+    /// The release workflow pushes the regenerated cask to the tap right after
+    /// publishing (CS-063), so the tap can never silently fall behind a release
+    /// again (it sat at 0.1.0 while 0.3.0 shipped). The step must stay wired to
+    /// the deploy-key secret and the template, and must degrade to a warning —
+    /// never a failed release — when the secret is absent.
+    @Test func releaseWorkflowUpdatesTheTapCask() throws {
+        let release = try Self.release()
+        #expect(
+            release.contains("Update the Homebrew tap cask"),
+            "release.yml must push the regenerated cask to the tap after publishing (CS-063)")
+        #expect(
+            release.contains("TAP_DEPLOY_KEY"),
+            "the tap update must authenticate with the TAP_DEPLOY_KEY deploy-key secret")
+        #expect(
+            release.contains("packaging/Casks/vitrine.rb"),
+            "the tap update must regenerate the cask from the repo's source template")
+        #expect(
+            release.contains("::warning::TAP_DEPLOY_KEY is not configured"),
+            "a missing deploy key must warn, not fail the release")
+    }
+
     /// The `vitrine` CLI ships embedded in the app bundle (CS-033) under the
     /// collision-safe name `vitrine-cli` (a `vitrine` sibling of the `Vitrine`
     /// executable would clash on case-insensitive APFS); the cask surfaces it on
