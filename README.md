@@ -254,10 +254,11 @@ Defaults match the app (One Dark, JetBrains Mono, aurora background); `--theme`,
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)
 symlinks it onto your PATH as `vitrine` automatically (from v0.5.0). With a
-DMG install, link it yourself:
+DMG install, use **Settings ▸ General ▸ Command-line tool ▸ Install…** — or
+link it yourself:
 
 ```bash
-ln -s /Applications/Vitrine.app/Contents/MacOS/vitrine-cli /usr/local/bin/vitrine
+sudo ln -sf /Applications/Vitrine.app/Contents/MacOS/vitrine-cli /usr/local/bin/vitrine
 ```
 
 When building from source, the dev binary lands in DerivedData next to its
