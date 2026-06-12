@@ -173,13 +173,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let editor = element("editor-window", in: app)
         XCTAssertTrue(editor.waitForExistence(timeout: 8))
-        // An accessory (LSUIElement) app only owns the on-screen menu bar while it is
-        // truly frontmost. `XCUIApplication.activate()` alone leaves the menu-bar
-        // items with zero-size frames here, so click the editor window — a real
-        // synthetic click is what makes macOS hand the menu bar to the accessory app.
-        app.activate()
-        editor.click()
-        Thread.sleep(forTimeInterval: 1.5)
+        makeFrontmostForMenuBarAccess(app, clicking: editor)
         let menuBar = app.menuBars.firstMatch
         XCTAssertTrue(menuBar.waitForExistence(timeout: 5))
 
@@ -257,11 +251,6 @@ final class ScreenshotTourUITests: XCTestCase {
             "VitrineScreenshotTour-\(name)-\(UUID().uuidString)"
         app.launch()
         return app
-    }
-
-    @MainActor
-    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any)[identifier]
     }
 
     private var outputDirectory: URL {

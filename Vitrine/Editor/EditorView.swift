@@ -177,9 +177,8 @@ struct EditorView: View {
                 .fill(VitrineTokens.Line.border)
                 .frame(height: Brand.Stroke.hairline)
         }
-        .accessibilityElement(children: .contain)
+        .accessibilityContainerIdentifier("editor-toolbar")
         .accessibilityLabel("Toolbar")
-        .accessibilityIdentifier("editor-toolbar")
     }
 
     /// The gradient "Copy image" capsule — the window's primary action. Bound
@@ -374,12 +373,7 @@ struct EditorView: View {
             return true
         }
         .overlay { dropAffordance }
-        // Become a container element *before* taking the identifier: on a plain
-        // (non-element) view the identifier propagates down and overrides the
-        // descendants' own identifiers (the header's format-button would report
-        // "editor-drop-target"), breaking the editor UI smokes.
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("editor-drop-target")
+        .accessibilityContainerIdentifier("editor-drop-target")
     }
 
     /// The line count shown beside the CODE label, or an em dash when empty.
