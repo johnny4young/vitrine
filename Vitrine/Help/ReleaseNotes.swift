@@ -42,6 +42,17 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.5.0",
+            headline: "The command line, included",
+            highlights: [
+                "The vitrine command-line renderer now ships inside the app — "
+                    + "Homebrew installs put it on your PATH automatically.",
+                "Installed from the DMG? Settings ▸ General ▸ Command-line tool "
+                    + "links the command for you.",
+                "vitrine render input.swift --out image.png — output "
+                    + "pixel-identical to the app, fully offline.",
+            ]),
+        ReleaseNote(
             version: "0.4.0",
             headline: "A fresh new look",
             highlights: [
