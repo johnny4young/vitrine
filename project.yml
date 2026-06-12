@@ -109,14 +109,14 @@ targets:
       - name: Embed the vitrine CLI in the app bundle
         basedOnDependencyAnalysis: true
         inputFiles:
-          - "$(BUILT_PRODUCTS_DIR)/vitrine"
+          - "$(BUILT_PRODUCTS_DIR)/vitrine-cli"
         outputFiles:
           - "$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/vitrine-cli"
         script: |
           set -euo pipefail
           # Plain cp: the sandboxed script may only write the declared output
           # path itself (ditto stages through a temporary name and is denied).
-          cp -f "${BUILT_PRODUCTS_DIR}/vitrine" \
+          cp -f "${BUILT_PRODUCTS_DIR}/vitrine-cli" \
             "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/vitrine-cli"
           chmod 755 "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/vitrine-cli"
     # App Store distribution readiness (CS-062, see docs/APP-STORE.md). The metadata an
@@ -210,7 +210,13 @@ targets:
           cp "${SRCROOT}/Vitrine/Resources/Fonts/"*.ttf "${DEST}/"
     settings:
       base:
-        PRODUCT_NAME: vitrine
+        # `vitrine-cli`, not `vitrine`: on the default case-insensitive APFS a
+        # `vitrine` binary in BUILT_PRODUCTS_DIR collides with the app's
+        # `Vitrine` module during explicit-module dependency scanning, which
+        # breaks the test target's `@testable import Vitrine` on clean builds.
+        # The Homebrew cask and the Settings installer expose it on PATH under
+        # its real name, `vitrine`.
+        PRODUCT_NAME: vitrine-cli
         PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.cli
         # A tool is not a sandboxed .app: render is fully local and needs no
         # entitlements, network, screen recording, or Accessibility (CS-033). The
