@@ -66,7 +66,8 @@ brew install --cask johnny4young/tap/vitrine
 
 Homebrew downloads the DMG from the latest GitHub release, verifies its
 SHA-256, and moves **Vitrine.app** into `/Applications`. Upgrades arrive
-in-app ("Check for Updates…"), or via `brew upgrade --cask vitrine`.
+in-app ("Check for Updates…"), or via `brew upgrade --cask vitrine`. The cask
+also puts the [`vitrine` CLI](#command-line-renderer) on your PATH (from v0.5.0).
 
 ### Direct download
 
@@ -248,10 +249,21 @@ vitrine render --help
 
 Defaults match the app (One Dark, JetBrains Mono, aurora background); `--theme`,
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`), `--profile`
-(`srgb`/`p3`), and `--transparent` override individual choices. To distribute the
-binary, keep its adjacent `Fonts/` folder and `Highlightr_Highlightr.bundle` beside it.
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ("Command-line renderer") for the
-hosting strategy and bundling details.
+(`srgb`/`p3`), and `--transparent` override individual choices.
+
+The CLI ships **inside the app bundle**
+(`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)
+symlinks it onto your PATH as `vitrine` automatically (from v0.5.0). With a
+DMG install, link it yourself:
+
+```bash
+ln -s /Applications/Vitrine.app/Contents/MacOS/vitrine-cli /usr/local/bin/vitrine
+```
+
+When building from source, the dev binary lands in DerivedData next to its
+`Fonts/` folder and `Highlightr_Highlightr.bundle` — keep them adjacent if you
+relocate it. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ("Command-line
+renderer") for the hosting strategy and bundling details.
 
 ## Project layout
 

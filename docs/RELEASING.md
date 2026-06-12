@@ -211,9 +211,17 @@ There are two copies of the cask, and the distinction matters:
 
 - **`packaging/Casks/vitrine.rb`** (this repo) is the **source template**. It is the
   single place to evolve the stanzas (name, desc, homepage, URL pattern, livecheck,
-  `depends_on`, the `app` artifact, and the `zap` cleanup). It carries a
+  `depends_on`, the `app` artifact, the `binary` stanza that puts the embedded
+  `vitrine` CLI on PATH, and the `zap` cleanup). It carries a
   **placeholder `sha256`** (all zeros) so it stays valid for `brew style`/`brew audit`
   without claiming to match any real DMG.
+
+  > The `binary` stanza points at `Contents/MacOS/vitrine-cli` (named so it
+  > cannot collide with the `Vitrine` app executable on case-insensitive APFS;
+  > `target:` surfaces it on PATH as `vitrine`). The file exists in DMGs from
+  > **v0.5.0** onward (embedded by the app target's post-build script and
+  > signed by `build-dmg.sh`). Do not sync that stanza into the tap while it
+  > still serves an older DMG — the install would fail on the missing file.
 - **`Casks/vitrine.rb`** in the tap (`johnny4young/homebrew-tap`) is what users install.
   It is this template with `version` bumped and `sha256` set to the **published DMG's**
   checksum.

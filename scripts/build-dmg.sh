@@ -145,6 +145,24 @@ resign_sparkle_for_distribution() {
 		"$APP"
 }
 
+sign_embedded_cli_for_distribution() {
+	local cli="$APP/Contents/MacOS/vitrine-cli"
+
+	if [ ! -f "$cli" ]; then
+		echo "error: embedded vitrine CLI not found at Contents/MacOS/vitrine-cli" >&2
+		return 1
+	fi
+
+	# The CLI is copied into the bundle by a build phase, so Xcode's signing pass
+	# leaves it with the build-time (ad-hoc/development) signature. Notarization
+	# requires every nested Mach-O to carry a Developer ID signature with the
+	# hardened runtime, and the cask symlinks this exact binary onto PATH. Must
+	# run BEFORE resign_sparkle_for_distribution, whose final app re-sign seals
+	# the bundle over this signature.
+	echo "==> Signing the embedded vitrine CLI for Developer ID notarization"
+	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime "$cli"
+}
+
 assert_distribution_entitlements() {
 	local entitlements="$DERIVED/Vitrine-app-entitlements.plist"
 	local get_task_allow
@@ -160,9 +178,10 @@ assert_distribution_entitlements() {
 
 # This script uses Xcode's build action instead of Archive/Export so the CI job can
 # produce a signed DMG directly from the tag. Compensate for the distribution work
-# Archive/Export normally performs: re-sign Sparkle's nested helpers and reject any
-# leaked development entitlements before submitting to Apple.
+# Archive/Export normally performs: sign the embedded CLI, re-sign Sparkle's nested
+# helpers, and reject any leaked development entitlements before submitting to Apple.
 if [ "$SIGNED" -eq 1 ]; then
+	sign_embedded_cli_for_distribution
 	resign_sparkle_for_distribution
 	assert_distribution_entitlements
 fi
