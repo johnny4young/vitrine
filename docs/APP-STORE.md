@@ -103,6 +103,18 @@ and the App Store provisioning profile at archive/export time (manually in Xcode
 or via the `ExportOptions.plist` `method: app-store` flow described below). No account
 credentials are committed.
 
+### Embedded CLI — App Store archive must address it (CS-033)
+
+The app bundle embeds the `vitrine` command-line renderer at
+`Contents/MacOS/vitrine-cli` (for the Homebrew cask's `binary` stanza). App Store
+review requires **every** executable in the bundle to opt into the App Sandbox,
+and the CLI is signed without sandbox entitlements on the direct-download
+channel. Before an actual App Store submission, the archive step must either
+**strip `Contents/MacOS/vitrine-cli`** (the App Store install has no PATH
+integration, so the CLI adds no value there — mirroring how Sparkle is
+stripped), or re-sign it with `com.apple.security.app-sandbox` +
+`com.apple.security.inherit`. The DMG channel is unaffected.
+
 ## App Sandbox and entitlements (App Store-compatible)
 
 **The App Sandbox stays enabled and the entitlement set is minimal and justified.** The Mac

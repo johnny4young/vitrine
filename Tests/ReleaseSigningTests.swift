@@ -151,6 +151,30 @@ struct ReleaseSigningTests {
             "build-dmg.sh should explain why the timestamp flag is required")
     }
 
+    /// The embedded `vitrine` CLI (Contents/MacOS/vitrine-cli) is copied into the
+    /// bundle by a build phase, so Xcode's signing pass leaves it with its
+    /// build-time signature. Notarization requires every nested Mach-O to carry a
+    /// Developer ID signature with the hardened runtime, so the signed path must
+    /// re-sign it explicitly — and before the outer app is re-sealed.
+    @Test func signedBuildSignsTheEmbeddedCLI() throws {
+        let script = try Self.script()
+        #expect(
+            script.contains("sign_embedded_cli_for_distribution"),
+            "build-dmg.sh must sign the embedded vitrine CLI for notarization (CS-033/CS-061)")
+        #expect(
+            script.contains("Contents/MacOS/vitrine-cli"),
+            "build-dmg.sh must sign the CLI at the path the embed build phase produces")
+        let cliSign = try #require(
+            script.range(of: "sign_embedded_cli_for_distribution\n"),
+            "the signed path must invoke the CLI signing step")
+        let sparkleReseal = try #require(
+            script.range(of: "resign_sparkle_for_distribution\n"),
+            "the signed path must invoke the Sparkle re-signing step")
+        #expect(
+            cliSign.lowerBound < sparkleReseal.lowerBound,
+            "the CLI must be signed before the Sparkle step's final app re-seal (CS-061)")
+    }
+
     /// The tag workflow builds and packages directly instead of using Xcode's
     /// Archive/Export path. In that mode Xcode can leak development entitlements
     /// into the signed app and can leave Sparkle's nested helpers ad-hoc signed, so

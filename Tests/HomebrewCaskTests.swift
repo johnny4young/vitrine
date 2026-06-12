@@ -142,6 +142,24 @@ struct HomebrewCaskTests {
             "the cask must install Vitrine.app via the `app` stanza (CS-063)")
     }
 
+    /// The `vitrine` CLI ships embedded in the app bundle (CS-033) under the
+    /// collision-safe name `vitrine-cli` (a `vitrine` sibling of the `Vitrine`
+    /// executable would clash on case-insensitive APFS); the cask surfaces it on
+    /// PATH under its real name via `target:`. The stanza must track the path the
+    /// app target's embed script produces, or installs break on a missing file.
+    @Test func caskLinksTheEmbeddedCLIOntoPATH() throws {
+        let cask = try Self.cask()
+        #expect(
+            cask.contains(
+                "binary \"#{appdir}/Vitrine.app/Contents/MacOS/vitrine-cli\", target: \"vitrine\""
+            ),
+            "the cask must symlink the embedded CLI onto PATH as `vitrine` (CS-033/CS-063)")
+        let project = try Self.projectYAML()
+        #expect(
+            project.contains("$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/vitrine-cli"),
+            "project.yml must embed the CLI at the path the cask's binary stanza points to")
+    }
+
     /// The cask must carry a real 64-hex-digit `sha256`, not `:no_check`. `:no_check`
     /// disables checksum verification (and `brew audit --cask --strict` flags it for a
     /// non-`:latest` version), so the committed template uses a syntactically valid

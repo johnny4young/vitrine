@@ -90,6 +90,35 @@ targets:
       # appintentsmetadataprocessor extract the Shortcuts actions and enums so they
       # appear in Shortcuts/Spotlight/Siri.
       - sdk: AppIntents.framework
+      # The `vitrine` CLI ships inside the app bundle so a Homebrew/DMG install
+      # gets the command-line renderer too — the cask symlinks it onto PATH as
+      # `vitrine` via its `binary … target:` stanza. Build-ordering dependency
+      # only; the copy itself is the post-build script below (a tool product has
+      # no XcodeGen-embeddable container).
+      - target: VitrineCLI
+        embed: false
+    # Copies the built CLI next to the app executable as `vitrine-cli`. The name
+    # differs from the tool's own on purpose: the default APFS volume is
+    # case-insensitive, so `Contents/MacOS/vitrine` would collide with (and
+    # clobber) the app's `Vitrine` executable. Runs before code signing, so
+    # Xcode's signing pass sees it in place; the distribution path re-signs it
+    # explicitly with the hardened runtime (scripts/build-dmg.sh). Input/output
+    # files are declared for the sandboxed-user-script build (project-wide
+    # ENABLE_USER_SCRIPT_SANDBOXING).
+    postBuildScripts:
+      - name: Embed the vitrine CLI in the app bundle
+        basedOnDependencyAnalysis: true
+        inputFiles:
+          - "$(BUILT_PRODUCTS_DIR)/vitrine"
+        outputFiles:
+          - "$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/vitrine-cli"
+        script: |
+          set -euo pipefail
+          # Plain cp: the sandboxed script may only write the declared output
+          # path itself (ditto stages through a temporary name and is denied).
+          cp -f "${BUILT_PRODUCTS_DIR}/vitrine" \
+            "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/vitrine-cli"
+          chmod 755 "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/vitrine-cli"
     # App Store distribution readiness (CS-062, see docs/APP-STORE.md). The metadata an
     # App Store submission needs is the app's existing identity, sourced here and in
     # Vitrine/Resources/Info.plist (no App Store-only settings are invented):

@@ -26,9 +26,18 @@ cask "vitrine" do
     strategy :github_latest
   end
 
+  # Sparkle keeps the installed app current in place (CS-064), so Homebrew
+  # should not flag user-updated copies as outdated.
+  auto_updates true
   depends_on macos: :sonoma
 
   app "Vitrine.app"
+  # The `vitrine` command-line renderer ships embedded in the app bundle
+  # (CS-033); this symlinks it onto PATH so a cask install gets the CLI too.
+  # It is named `vitrine-cli` inside the bundle (a `vitrine` sibling would
+  # collide with the `Vitrine` app executable on case-insensitive APFS) and
+  # surfaces on PATH under its real name via `target:`.
+  binary "#{appdir}/Vitrine.app/Contents/MacOS/vitrine-cli", target: "vitrine"
 
   zap trash: [
     "~/Library/Application Support/Vitrine",
