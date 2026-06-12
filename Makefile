@@ -59,11 +59,11 @@ build: project
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO $(RESULT_BUNDLE_FLAG) build
 
-## cli: build the command-line renderer `vitrine` (CS-033). The built binary lands
+## cli: build the command-line renderer (CS-033). The built `vitrine-cli` binary lands
 ## in DerivedData next to its bundled Fonts/ and the Highlightr resource bundle; the
 ## xcodebuild log's final line prints CODESIGNING_FOLDER_PATH, or use:
 ##   xcodebuild -project $(PROJECT) -scheme $(CLI_SCHEME) -showBuildSettings | \
-##     awk '/ BUILT_PRODUCTS_DIR /{print $$3"/vitrine"}'
+##     awk '/ BUILT_PRODUCTS_DIR /{print $$3"/vitrine-cli"}'
 cli: project
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(CLI_SCHEME) -configuration Debug \
 		-destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build

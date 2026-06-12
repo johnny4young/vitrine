@@ -261,10 +261,11 @@ link it yourself:
 sudo ln -sf /Applications/Vitrine.app/Contents/MacOS/vitrine-cli /usr/local/bin/vitrine
 ```
 
-When building from source, the dev binary lands in DerivedData next to its
-`Fonts/` folder and `Highlightr_Highlightr.bundle` — keep them adjacent if you
-relocate it. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ("Command-line
-renderer") for the hosting strategy and bundling details.
+When building from source (`make cli`), the dev binary lands in DerivedData as
+`vitrine-cli` next to its `Fonts/` folder and `Highlightr_Highlightr.bundle` —
+keep them adjacent if you relocate it. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ("Command-line renderer") for the
+hosting strategy and bundling details.
 
 ## Project layout
 
