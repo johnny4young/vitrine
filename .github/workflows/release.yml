@@ -300,6 +300,50 @@ jobs:
             dist/appcast.xml
           generate_release_notes: true
 
+      # Keep the Homebrew tap in lockstep with the release (CS-063): regenerate
+      # the cask from the repo's source template (packaging/Casks/vitrine.rb,
+      # minus its repo-only header comment) with this release's version and
+      # SHA-256, and push it to johnny4young/homebrew-tap over the
+      # TAP_DEPLOY_KEY deploy key (a write-enabled deploy key on the tap,
+      # stored as a repo secret — the default GITHUB_TOKEN is scoped to this
+      # repository only). Fails soft with a warning when the secret is absent,
+      # so a fork can still publish a release; the manual fallback stays
+      # documented in docs/RELEASING.md.
+      - name: Update the Homebrew tap cask
+        env:
+          TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+          CASK_VERSION: ${{ steps.checksum.outputs.version }}
+          CASK_SHA256: ${{ steps.checksum.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TAP_DEPLOY_KEY}" ]; then
+            echo "::warning::TAP_DEPLOY_KEY is not configured; update the tap manually (docs/RELEASING.md)."
+            exit 0
+          fi
+          KEY_FILE="$(mktemp)"
+          printf '%s\n' "${TAP_DEPLOY_KEY}" > "${KEY_FILE}"
+          chmod 600 "${KEY_FILE}"
+          export GIT_SSH_COMMAND="ssh -i ${KEY_FILE} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone --depth 1 git@github.com:johnny4young/homebrew-tap.git tap
+          # The tap copy is the template from the cask line down (the header
+          # comment is repo guidance, not cask content), with the published
+          # version and checksum substituted for the placeholders.
+          awk '/^cask "vitrine"/,0' packaging/Casks/vitrine.rb \
+            | sed -e "s/^  version \".*\"/  version \"${CASK_VERSION}\"/" \
+                  -e "s/^  sha256 \".*\"/  sha256 \"${CASK_SHA256}\"/" \
+            > tap/Casks/vitrine.rb
+          cd tap
+          if git diff --quiet; then
+            echo "Tap already serves ${CASK_VERSION}; nothing to push."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/vitrine.rb
+          git commit -m "vitrine ${CASK_VERSION}"
+          git push origin HEAD:main
+          echo "Homebrew tap updated to \`${CASK_VERSION}\`." >> "$GITHUB_STEP_SUMMARY"
+
       # Deploy the signed appcast to GitHub Pages so the SUFeedURL in Info.plist resolves.
       # Skipped when no appcast was produced (no EdDSA key secret), so the release still
       # publishes without it.
