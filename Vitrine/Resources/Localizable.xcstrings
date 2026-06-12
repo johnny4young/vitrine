@@ -1,6 +1,23 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ System folders need an administrator: run the copied command in Terminal instead." : {
+      "comment" : "Settings General: CLI install failure alert message (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ System folders need an administrator: run the copied command in Terminal instead."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Las carpetas del sistema requieren un administrador: ejecuta el comando copiado en la Terminal."
+          }
+        }
+      }
+    },
     "%@ · Version %@" : {
       "comment" : "What's New row: release headline · version number (CS-047).",
       "localizations" : {
@@ -726,6 +743,23 @@
         }
       }
     },
+    "Choose a folder on your PATH for the vitrine command — for example /opt/homebrew/bin." : {
+      "comment" : "Open-panel message for the CLI install (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a folder on your PATH for the vitrine command — for example /opt/homebrew/bin."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una carpeta de tu PATH para el comando vitrine — por ejemplo /opt/homebrew/bin."
+          }
+        }
+      }
+    },
     "Choose a preset to apply, duplicate, rename, or delete. Selecting does not change your current style." : {
       "comment" : "Help text for the style preset picker.",
       "localizations" : {
@@ -875,6 +909,23 @@
         }
       }
     },
+    "Command-line tool" : {
+      "comment" : "Settings General: CLI install row label (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command-line tool"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramienta de línea de comandos"
+          }
+        }
+      }
+    },
     "Comments" : {
       "comment" : "Custom theme editor color label: comments.",
       "localizations" : {
@@ -937,6 +988,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copia código"
+          }
+        }
+      }
+    },
+    "Copy Command" : {
+      "comment" : "Settings General: copy the Terminal install command (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Command"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar comando"
           }
         }
       }
@@ -1013,6 +1081,23 @@
         }
       }
     },
+    "Copy the equivalent Terminal command, for system folders that need sudo." : {
+      "comment" : "Settings General: help on the Copy Command button (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the equivalent Terminal command, for system folders that need sudo."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el comando de Terminal equivalente, para carpetas del sistema que requieren sudo."
+          }
+        }
+      }
+    },
     "Copy the highlighted code as rich text, or the image as a data URI" : {
       "comment" : "Editor toolbar: copy-options menu help (design/handoff).",
       "localizations" : {
@@ -1048,6 +1133,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No se pudo copiar la imagen"
+          }
+        }
+      }
+    },
+    "Couldn't Install the Command" : {
+      "comment" : "Settings General: CLI install failure alert title (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't Install the Command"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo instalar el comando"
           }
         }
       }
@@ -2319,6 +2421,40 @@
         }
       }
     },
+    "Install" : {
+      "comment" : "Open-panel prompt for the CLI install (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instalar"
+          }
+        }
+      }
+    },
+    "Install…" : {
+      "comment" : "Settings General: CLI install button (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instalar…"
+          }
+        }
+      }
+    },
     "into your doc" : {
       "comment" : "Onboarding step 3 caption.",
       "localizations" : {
@@ -2492,6 +2628,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Líneas o rangos para resaltar, p. ej. 3, 7-9, 12"
+          }
+        }
+      }
+    },
+    "Link the vitrine command onto your PATH so scripts can render images." : {
+      "comment" : "Settings General: help on the Install button (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link the vitrine command onto your PATH so scripts can render images."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlaza el comando vitrine en tu PATH para renderizar imágenes desde scripts."
+          }
+        }
+      }
+    },
+    "Linked at %@" : {
+      "comment" : "Settings General: CLI row caption once installed (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linked at %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlazada en %@"
           }
         }
       }
@@ -3299,6 +3469,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Generar como texto"
+          }
+        }
+      }
+    },
+    "Render images from scripts with the vitrine command" : {
+      "comment" : "Settings General: CLI row caption before installing (CS-033).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Render images from scripts with the vitrine command"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza imágenes desde scripts con el comando vitrine"
           }
         }
       }

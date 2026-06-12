@@ -64,6 +64,11 @@ struct GeneralSettingsView: View {
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var showResetConfirmation = false
 
+    /// Where the `vitrine` CLI is currently linked, if anywhere (CS-033).
+    @State private var cliInstalledAt: URL?
+    /// A failed install attempt's message; drives the fallback alert.
+    @State private var cliInstallError: String?
+
     var body: some View {
         SettingsPaneScroll {
             TokenGroup(title: Text("Capture")) {
@@ -117,6 +122,28 @@ struct GeneralSettingsView: View {
                     }
                 }
 
+                // The DMG-install counterpart of the Homebrew cask's `binary`
+                // stanza (CS-033): link the embedded CLI onto PATH from here.
+                if let cli = CLIToolInstaller.embeddedCLI {
+                    TokenRow(label: Text("Command-line tool"), caption: cliToolCaption) {
+                        HStack(spacing: VitrineTokens.Spacing.xs) {
+                            Button("Install…") { installCLITool(cli) }
+                                .help(
+                                    "Link the vitrine command onto your PATH so scripts can render images."
+                                )
+                                .accessibilityIdentifier("install-cli-button")
+                            Button("Copy Command") {
+                                copyToClipboard(CLIToolInstaller.terminalCommand(for: cli))
+                            }
+                            .help(
+                                "Copy the equivalent Terminal command, for system folders that need sudo."
+                            )
+                            .accessibilityIdentifier("copy-cli-command-button")
+                        }
+                        .fixedSize()
+                    }
+                }
+
                 TokenRow(
                     label: Text("Reset"),
                     caption: Text("Restores every preference to its default")
@@ -127,6 +154,28 @@ struct GeneralSettingsView: View {
                     .accessibilityIdentifier("reset-all-settings-button")
                 }
             }
+        }
+        .onAppear {
+            if let cli = CLIToolInstaller.embeddedCLI {
+                cliInstalledAt = CLIToolInstaller.installedLocation(of: cli)
+            }
+        }
+        .alert(
+            "Couldn't Install the Command",
+            isPresented: Binding(
+                get: { cliInstallError != nil }, set: { if !$0 { cliInstallError = nil } })
+        ) {
+            Button("Copy Command") {
+                if let cli = CLIToolInstaller.embeddedCLI {
+                    copyToClipboard(CLIToolInstaller.terminalCommand(for: cli))
+                }
+                cliInstallError = nil
+            }
+            Button("OK", role: .cancel) { cliInstallError = nil }
+        } message: {
+            Text(
+                "\(cliInstallError ?? "") System folders need an administrator: run the copied command in Terminal instead."
+            )
         }
         .accessibilityIdentifier("settings-general-pane")
         .confirmationDialog(
@@ -146,6 +195,50 @@ struct GeneralSettingsView: View {
         } message: {
             Text("This cannot be undone. Your recent languages and saved presets are also cleared.")
         }
+    }
+
+    // MARK: - Command-line tool (CS-033)
+
+    /// The CLI row's caption: where the link lives once installed, otherwise
+    /// what installing gets you.
+    private var cliToolCaption: Text {
+        if let cliInstalledAt {
+            return Text("Linked at \(cliInstalledAt.path)")
+        }
+        return Text("Render images from scripts with the vitrine command")
+    }
+
+    /// Runs the sandbox-true install flow: the user picks the destination
+    /// folder (the panel's grant is what authorizes the write), then the
+    /// symlink is created inside it. A refusal (e.g. root-owned
+    /// /usr/local/bin) surfaces the copyable Terminal fallback.
+    private func installCLITool(_ cli: URL) {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.message = String(
+            localized:
+                "Choose a folder on your PATH for the vitrine command — for example /opt/homebrew/bin."
+        )
+        panel.prompt = String(localized: "Install")
+        panel.directoryURL = CLIToolInstaller.knownBinDirectories.first {
+            FileManager.default.fileExists(atPath: $0.path)
+        }
+        guard panel.runModal() == .OK, let directory = panel.url else { return }
+        switch CLIToolInstaller.install(cli, into: directory) {
+        case .installed(let link):
+            cliInstalledAt = link
+            cliInstallError = nil
+        case .failed(let message):
+            cliInstallError = message
+        }
+    }
+
+    /// Places `command` on the general pasteboard (the Copy Command actions).
+    private func copyToClipboard(_ command: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(command, forType: .string)
     }
 }
 
