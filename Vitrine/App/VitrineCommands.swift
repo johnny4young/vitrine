@@ -444,8 +444,7 @@ final class AppCommandResponder: NSObject {
     }
 
     @objc func showAbout(_ sender: Any?) {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.orderFrontStandardAboutPanel(options: [:])
+        AboutPanel.present()
     }
 
     /// Starts a user-initiated update check on the direct-download build (CS-064). The

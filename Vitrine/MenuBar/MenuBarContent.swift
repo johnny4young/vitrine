@@ -214,8 +214,7 @@ struct MenuBarContent: View {
                 HelpWindowController.shared.show()
             }
             commandRow(.about) {
-                NSApp.activate(ignoringOtherApps: true)
-                NSApp.orderFrontStandardAboutPanel(options: [.credits: Self.aboutCredits])
+                AboutPanel.present()
             }
             quitRow
         }
@@ -252,28 +251,6 @@ struct MenuBarContent: View {
         }
         .keyboardShortcut("q", modifiers: .command)
         .accessibilityIdentifier("command-quit")
-    }
-
-    /// Branded credits for the standard About panel, so the system "About
-    /// Vitrine" surface echoes the Settings About pane's identity copy instead
-    /// of drifting to bare system text (CS-036). The panel supplies the app
-    /// icon, name, and version; these credits add the matching tagline and
-    /// license line.
-    private static var aboutCredits: NSAttributedString {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        paragraph.lineSpacing = 2
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-            .foregroundColor: NSColor(Brand.Palette.textSecondary.color),
-            .paragraphStyle: paragraph,
-        ]
-        // The tagline is localized through the String Catalog (CS-047); the
-        // copyright line is a stable legal/brand string left as-is.
-        let tagline = String(localized: "Turn code into beautiful images, from your menu bar.")
-        return NSAttributedString(
-            string: "\(tagline)\n© 2026 johnny4young · MIT-licensed.",
-            attributes: attributes)
     }
 
     // MARK: - Actions
