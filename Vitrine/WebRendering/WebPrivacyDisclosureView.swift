@@ -28,19 +28,15 @@ import SwiftUI
 /// disabled and an explicit "arrives in Product Phase 2" note, so the UI never
 /// implies a capability the build does not have.
 ///
-/// ## Presented by Product Phase 2
+/// ## Presentation
 ///
-/// This is the user-facing half of the URL-capture flow, which is **deliberately
-/// deferred to Product Phase 2** along with the network entitlement it gates on
-/// (see `docs/PROJECT.md`, "Product Phase 2 — URL capture"). In Phase 1 the renderer
-/// short-circuits a URL to a typed `deferredToPhase2` outcome and the app ships
-/// without `com.apple.security.network.client`, so there is no live capture to gate
-/// yet and nothing presents this view. The disclosure is built ahead of its presenter
-/// on purpose: when Phase 2 turns on the entitlement, the URL-capture entry point
-/// hosts this in a modal `.sheet`, persists a "first capture confirmed" flag, and lets
-/// `onConfirm` gate the load. Until then it is intentionally unwired, and its copy is
-/// still pinned by tests so the reviewable privacy sentence cannot drift before it
-/// ships.
+/// The Web Snapshot window hosts this in a modal `.sheet` on the first URL capture,
+/// persists the confirmation in `AppSettings.urlCaptureConsentGiven`, and lets
+/// `onConfirm` gate the load. URL capture itself stays gated on the network
+/// entitlement (`NetworkCapability`): the App Store build ships without
+/// `com.apple.security.network.client`, so there the confirm action is disabled and
+/// the disclosure explains that capture is only available in the direct-download
+/// build.
 struct WebPrivacyDisclosureView: View {
     /// Called when the user confirms; the caller proceeds with the capture. Only
     /// reachable when the build can reach the network.

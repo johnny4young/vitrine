@@ -28,9 +28,9 @@ struct RenderedAsset {
 }
 
 /// Why a render did not produce an asset, as a typed error rather than a `nil`
-/// image or a blank picture (CS-040). Distinguishing *deferred* (a Phase 2 input
-/// whose renderer has not shipped) from *failed* (a renderer that tried and could
-/// not encode) lets the capture layer offer the right recovery and lets tests
+/// image or a blank picture (CS-040). Distinguishing *failed* (a renderer that
+/// tried and could not encode) from *disabled* (URL capture without the network
+/// entitlement) lets the capture layer offer the right recovery and lets tests
 /// assert on the specific reason.
 enum RenderError: Error, Equatable {
     /// No registered renderer accepts this input. Carries the input kind for
@@ -38,21 +38,14 @@ enum RenderError: Error, Equatable {
     /// user's content.
     case noRendererFor(kind: String)
 
-    /// The input is a Product Phase 2 kind (URL, HTML, social card) whose renderer
-    /// is an explicit stub until that phase ships. Carries the ticket that will
-    /// implement it so the deferral is traceable.
-    case deferredToPhase2(ticket: String)
-
     /// A renderer accepted the input but could not produce an image (e.g. the
-    /// underlying `ImageRenderer` returned no `CGImage`). This is a genuine
-    /// failure, distinct from a deferred Phase 2 stub.
+    /// underlying `ImageRenderer` returned no `CGImage`). This is a genuine failure.
     case renderFailed
 
     /// A URL capture was requested in a build that does not carry the network
-    /// client entitlement (CS-043). URL capture is disabled until the app target
-    /// includes `com.apple.security.network.client`, so this is the typed refusal a
-    /// Phase 1 build returns — distinct from a render that tried and failed and from
-    /// a Phase 2 stub that has not shipped at all.
+    /// client entitlement (CS-043). The App Store build ships without
+    /// `com.apple.security.network.client`, so the `URLRenderer` refuses early with
+    /// this typed reason — distinct from a render that tried and failed.
     case urlCaptureDisabled
 }
 
@@ -73,22 +66,6 @@ protocol Renderer {
     /// `RenderError`. Implementations should not be called for an input they
     /// reject; doing so throws `RenderError.noRendererFor`.
     func render(_ input: CaptureInput, config: SnapshotConfig) async throws -> RenderedAsset
-
-    /// The ticket whose work would make this renderer actually render `input`, when
-    /// the renderer is an explicit Phase 2 stub that defers it; `nil` for a
-    /// renderer that renders the input today.
-    ///
-    /// This lets the capture layer name a deferral *synchronously* — without
-    /// kicking off an `async` render just to read the reason — so the existing
-    /// non-async `QuickCapture` path can report a typed deferred outcome. It has a
-    /// default of `nil`, so a real renderer (like `CodeRenderer`) need not
-    /// implement it.
-    func deferralTicket(for input: CaptureInput) -> String?
-}
-
-extension Renderer {
-    /// Renderers that actually render their inputs defer nothing.
-    func deferralTicket(for input: CaptureInput) -> String? { nil }
 }
 
 /// Picks the first registered renderer that accepts an input and delegates to it
@@ -109,18 +86,9 @@ struct RenderCoordinator {
         renderers.first { $0.canRender(input) }
     }
 
-    /// The Phase 2 ticket that the accepting renderer defers `input` to, or `nil`
-    /// when the input renders today (or no renderer accepts it). This is the
-    /// synchronous probe the capture path uses to name a typed deferred outcome
-    /// without starting a render.
-    func deferralReason(for input: CaptureInput) -> String? {
-        renderer(for: input)?.deferralTicket(for: input)
-    }
-
     /// Routes `input` to the first accepting renderer and returns its asset.
     /// Throws `RenderError.noRendererFor` when nothing accepts the input, and
-    /// otherwise propagates the chosen renderer's error (including a Phase 2
-    /// stub's `deferredToPhase2`).
+    /// otherwise propagates the chosen renderer's error.
     func render(_ input: CaptureInput, config: SnapshotConfig) async throws -> RenderedAsset {
         guard let renderer = renderer(for: input) else {
             throw RenderError.noRendererFor(kind: input.diagnosticKind)

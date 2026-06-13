@@ -525,10 +525,9 @@ struct WebSnapshotSizingTests {
 
 // MARK: - HTMLRenderer routing (pure logic, no web process needed)
 
-/// Routing, acceptance, and the deferral contract are decided without rendering, so
-/// this suite always runs: `HTMLRenderer` is the real renderer that replaces the
-/// `DeferredWebRenderer` HTML stub, and these tests pin that it accepts only HTML,
-/// defers nothing, and throws — never returns a blank image — for an input it rejects.
+/// Routing and acceptance are decided without rendering, so this suite always runs:
+/// these tests pin that `HTMLRenderer` accepts only HTML and throws — never returns a
+/// blank image — for an input it rejects.
 @MainActor
 @Suite("HTMLRenderer routing · CS-042")
 struct HTMLRendererRoutingTests {
@@ -537,11 +536,6 @@ struct HTMLRendererRoutingTests {
         #expect(renderer.canRender(.html("<b>x</b>")))
         #expect(!renderer.canRender(.code("x", languageHint: nil)))
         #expect(!renderer.canRender(.url(try #require(URL(string: "https://example.com")))))
-    }
-
-    @Test func htmlRendererDefersNothing() {
-        // It is a real renderer, not a Phase 2 stub: it reports no deferral ticket.
-        #expect(HTMLRenderer().deferralTicket(for: .html("<b>x</b>")) == nil)
     }
 
     @Test func nonHTMLInputThrowsNoRendererForFromHTMLRenderer() async throws {
@@ -553,13 +547,10 @@ struct HTMLRendererRoutingTests {
         }
     }
 
-    @Test func htmlRendererInACoordinatorReportsNoDeferral() throws {
-        // Wired into a coordinator, HTML renders today instead of deferring — the
-        // seam CS-040 documented for when CS-042 ships. The synchronous probe says
-        // so without starting a render.
+    @Test func htmlRendererInACoordinatorRoutesToIt() throws {
+        // Wired into a coordinator, HTML routes to the real renderer.
         let coordinator = RenderCoordinator(renderers: [HTMLRenderer()])
         #expect(coordinator.renderer(for: .html("<b>x</b>")) is HTMLRenderer)
-        #expect(coordinator.deferralReason(for: .html("<b>x</b>")) == nil)
     }
 }
 

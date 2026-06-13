@@ -4,9 +4,8 @@ import OSLog
 
 /// Renders a `.html` input to an image locally through `WKWebView` (CS-042).
 ///
-/// This is the real renderer that replaces `DeferredWebRenderer`'s HTML stub: it
-/// slots into the existing `Renderer` abstraction (CS-040) so a coordinator can
-/// route HTML to it exactly as it routes code to `CodeRenderer`. Rendering is fully
+/// It slots into the `Renderer` abstraction (CS-040) so a coordinator routes HTML
+/// to it exactly as it routes code to `CodeRenderer`. Rendering is fully
 /// local — the offscreen `WebSnapshotView` it delegates to blocks remote loads for
 /// pasted HTML and never touches the screen — so an HTML snapshot needs neither the
 /// network entitlement nor Screen Recording permission.

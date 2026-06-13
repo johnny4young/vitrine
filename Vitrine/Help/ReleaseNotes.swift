@@ -42,6 +42,17 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.6.0",
+            headline: "Social cards and web snapshots",
+            highlights: [
+                "Compose a 1200×630 social card from your code — pick a template, "
+                    + "theme, and background, then copy, save, or share it.",
+                "Render pasted HTML to an image locally in the new Web Snapshot "
+                    + "window — fully on your Mac, with no network.",
+                "On the direct-download build, capture a webpage to an image: "
+                    + "Vitrine loads it locally in WebKit, with a privacy disclosure first.",
+            ]),
+        ReleaseNote(
             version: "0.5.0",
             headline: "The command line, included",
             highlights: [

@@ -32,19 +32,3 @@ enum CaptureInput: Equatable {
     /// the input itself.
     case html(String)
 }
-
-extension CaptureInput {
-    /// Whether this input is part of Product Phase 2 (URL, HTML, social cards) and
-    /// therefore not yet renderable. The code path is Phase 1 and renders today;
-    /// everything else is an explicit deferred stub until its renderer ships.
-    ///
-    /// This is a property of the *input kind*, independent of which renderers are
-    /// registered, so the capture layer can name a deferred outcome without first
-    /// running the coordinator.
-    var isDeferredToPhase2: Bool {
-        switch self {
-        case .code: false
-        case .url, .html: true
-        }
-    }
-}

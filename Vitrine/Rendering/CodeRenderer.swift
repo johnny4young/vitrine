@@ -23,7 +23,7 @@ struct CodeRenderer: Renderer {
     var profile: ColorProfile = .sRGB
 
     /// Accepts only the code input; URL and HTML are handled by their own
-    /// renderers (the Phase 2 stubs today).
+    /// renderers (`URLRenderer` / `HTMLRenderer`).
     func canRender(_ input: CaptureInput) -> Bool {
         if case .code = input { return true }
         return false
@@ -57,44 +57,5 @@ struct CodeRenderer: Renderer {
             throw RenderError.renderFailed
         }
         return RenderedAsset(cgImage: cgImage, profile: profile)
-    }
-}
-
-/// The explicit Phase 2 stub for URL and HTML inputs (CS-040). It accepts both
-/// kinds so the coordinator routes them here, then throws a typed
-/// `RenderError.deferredToPhase2` naming the ticket that will implement the real
-/// renderer — never a blank image and never a `noRendererFor` that would imply the
-/// input was unclassifiable.
-///
-/// Keeping the deferral *inside* a renderer (rather than as a special case in the
-/// coordinator) means the seam stays uniform: when CS-042/CS-043 ship, the real
-/// `HTMLRenderer` and `URLRenderer` simply replace this stub in the renderer list.
-struct DeferredWebRenderer: Renderer {
-    func canRender(_ input: CaptureInput) -> Bool {
-        switch input {
-        case .url, .html: true
-        case .code: false
-        }
-    }
-
-    /// The Phase 2 ticket each web input is deferred to — the single source of
-    /// truth shared by both the synchronous probe (`deferralTicket`) and the error
-    /// `render` throws, so they can never drift.
-    ///
-    // TODO: CS-043 — WKWebView snapshot of the URL.
-    // TODO: CS-042 — local WKWebView render of HTML/CSS.
-    func deferralTicket(for input: CaptureInput) -> String? {
-        switch input {
-        case .url: "CS-043"
-        case .html: "CS-042"
-        case .code: nil
-        }
-    }
-
-    func render(_ input: CaptureInput, config: SnapshotConfig) async throws -> RenderedAsset {
-        guard let ticket = deferralTicket(for: input) else {
-            throw RenderError.noRendererFor(kind: input.diagnosticKind)
-        }
-        throw RenderError.deferredToPhase2(ticket: ticket)
     }
 }
