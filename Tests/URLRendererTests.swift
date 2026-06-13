@@ -364,12 +364,6 @@ struct URLRendererRoutingTests {
         #expect(!renderer.canRender(.html("<b>x</b>")))
     }
 
-    @Test func urlRendererDefersNothing() throws {
-        // It is the real renderer, not the Phase 2 stub: it reports no deferral
-        // ticket, so wiring it into a coordinator renders URLs instead of deferring.
-        #expect(URLRenderer().deferralTicket(for: .url(try URLFixture.valid())) == nil)
-    }
-
     @Test func nonURLInputThrowsNoRendererForFromURLRenderer() async throws {
         // Handed an input it rejects (a routing mistake), it throws rather than
         // producing an image — never a blank picture. The gate is on so this is not
@@ -380,13 +374,11 @@ struct URLRendererRoutingTests {
         }
     }
 
-    @Test func urlRendererInACoordinatorReportsNoDeferral() throws {
-        // Wired into a coordinator, a URL renders today instead of deferring — the
-        // seam CS-040 documented for when CS-043 ships.
+    @Test func urlRendererInACoordinatorRoutesToIt() throws {
+        // Wired into a coordinator, a URL routes to the real renderer.
         let coordinator = RenderCoordinator(renderers: [URLRenderer()])
         let url = CaptureInput.url(try URLFixture.valid())
         #expect(coordinator.renderer(for: url) is URLRenderer)
-        #expect(coordinator.deferralReason(for: url) == nil)
     }
 }
 
@@ -447,7 +439,6 @@ struct URLRendererValidationTests {
         // asserting the disabled gate would pass against an unrelated failure.
         #expect(RenderError.urlCaptureDisabled != .renderFailed)
         #expect(RenderError.urlCaptureDisabled != .noRendererFor(kind: "url"))
-        #expect(RenderError.urlCaptureDisabled != .deferredToPhase2(ticket: "CS-043"))
         #expect(RenderError.urlCaptureDisabled == .urlCaptureDisabled)
     }
 }

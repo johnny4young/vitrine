@@ -109,8 +109,6 @@ final class WebSnapshotModel: ObservableObject {
             String(localized: "Couldn't load or render that — check the input and try again.")
         case .noRendererFor:
             String(localized: "That input can't be rendered here.")
-        case .deferredToPhase2:
-            String(localized: "That input isn't available in this build.")
         }
     }
 }

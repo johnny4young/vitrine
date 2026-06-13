@@ -19,13 +19,6 @@ import Testing
 
 @Suite("CaptureInput · CS-040")
 struct CaptureInputTests {
-    @Test func codeIsPhase1AndEverythingElseIsDeferred() throws {
-        #expect(CaptureInput.code("let x = 1", languageHint: .swift).isDeferredToPhase2 == false)
-        #expect(
-            CaptureInput.url(try #require(URL(string: "https://example.com"))).isDeferredToPhase2)
-        #expect(CaptureInput.html("<b>hi</b>").isDeferredToPhase2)
-    }
-
     @Test func diagnosticKindIsAStableNonPIILabel() throws {
         // The label names the *kind*, never the user's content.
         #expect(CaptureInput.code("secret token", languageHint: nil).diagnosticKind == "code")
@@ -48,17 +41,10 @@ struct RenderCoordinatorRoutingTests {
         #expect(!renderer.canRender(.html("<b>x</b>")))
     }
 
-    @Test func deferredWebRendererAcceptsOnlyURLAndHTML() throws {
-        let renderer = DeferredWebRenderer()
-        #expect(renderer.canRender(.url(try #require(URL(string: "https://example.com")))))
-        #expect(renderer.canRender(.html("<b>x</b>")))
-        #expect(!renderer.canRender(.code("x", languageHint: nil)))
-    }
-
     @Test func standardCoordinatorRoutesEachInputToTheRightRenderer() throws {
         // Phase 2 is wired: HTML routes to the local HTMLRenderer and URL to the
         // URLRenderer (the latter still gated on the network entitlement at render
-        // time). The DeferredWebRenderer stub is no longer in the standard set.
+        // time).
         let coordinator = RenderCoordinator.standard
         #expect(coordinator.renderer(for: .code("x", languageHint: nil)) is CodeRenderer)
         #expect(coordinator.renderer(for: .html("<b>x</b>")) is HTMLRenderer)
@@ -69,9 +55,9 @@ struct RenderCoordinatorRoutingTests {
 
     @Test func firstAcceptingRendererWins() throws {
         // Routing is "first that accepts", so order is priority: a code-accepting
-        // stub placed before `CodeRenderer` would intercept code. Verify the
+        // renderer placed before `CodeRenderer` would intercept code. Verify the
         // documented order by putting `CodeRenderer` first.
-        let coordinator = RenderCoordinator(renderers: [CodeRenderer(), DeferredWebRenderer()])
+        let coordinator = RenderCoordinator(renderers: [CodeRenderer(), HTMLRenderer()])
         let chosen = coordinator.renderer(for: .code("x", languageHint: nil))
         #expect(chosen is CodeRenderer)
     }
@@ -91,27 +77,24 @@ struct RenderCoordinatorRoutingTests {
 @MainActor
 @Suite("Phase 2 rendering · CS-040")
 struct Phase2RenderingTests {
-    @Test func htmlRoutesToTheLocalRendererWithNoDeferral() throws {
-        // HTML now renders locally; the standard coordinator routes it to the real
-        // HTMLRenderer and reports no Phase 2 deferral.
+    @Test func htmlRoutesToTheLocalRenderer() throws {
+        // HTML renders locally; the standard coordinator routes it to the real
+        // HTMLRenderer.
         let coordinator = RenderCoordinator.standard
-        let input = CaptureInput.html("<h1>Hello</h1>")
-        #expect(coordinator.renderer(for: input) is HTMLRenderer)
-        #expect(coordinator.deferralReason(for: input) == nil)
+        #expect(coordinator.renderer(for: .html("<h1>Hello</h1>")) is HTMLRenderer)
     }
 
-    @Test func urlRoutesToTheURLRendererWithNoDeferral() throws {
-        // URL routes to the real URLRenderer (no deferral); whether a capture can run
-        // is decided at render time by the network entitlement, not by routing.
+    @Test func urlRoutesToTheURLRenderer() throws {
+        // URL routes to the real URLRenderer; whether a capture can run is decided at
+        // render time by the network entitlement, not by routing.
         let coordinator = RenderCoordinator.standard
         let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
         #expect(coordinator.renderer(for: input) is URLRenderer)
-        #expect(coordinator.deferralReason(for: input) == nil)
     }
 
     @Test func urlCaptureWithoutTheEntitlementThrowsTypedNotABlankImage() async throws {
-        // The "never a blank image" contract now covers the entitlement gate: on a
-        // build without the network entitlement, a URL render throws a typed
+        // The "never a blank image" contract covers the entitlement gate: on a build
+        // without the network entitlement, a URL render throws a typed
         // urlCaptureDisabled before touching WebKit — never an empty asset (CS-038).
         let renderer = URLRenderer(isNetworkCaptureEnabled: false)
         let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
@@ -120,55 +103,20 @@ struct Phase2RenderingTests {
         }
     }
 
-    @Test func codeRendererDefersNothing() {
-        // A real renderer reports no deferral ticket for the input it renders.
-        #expect(CodeRenderer().deferralTicket(for: .code("x", languageHint: nil)) == nil)
-    }
-
-    @Test func coordinatorReasonIsNilForRenderableAndUnroutableInputs() throws {
-        // Every registered renderer renders its input today and defers nothing, so the
-        // synchronous probe is nil for code, HTML, and URL alike (Phase 2 is wired).
-        let coordinator = RenderCoordinator.standard
-        #expect(coordinator.deferralReason(for: .code("x", languageHint: nil)) == nil)
-        #expect(coordinator.deferralReason(for: .html("<b>x</b>")) == nil)
-        #expect(
-            coordinator.deferralReason(for: .url(try #require(URL(string: "https://example.com"))))
-                == nil)
-        // An input no renderer accepts also yields nil (no accepting renderer to name
-        // a ticket), never a stray deferral string.
-        let bare = RenderCoordinator(renderers: [])
-        #expect(
-            bare.deferralReason(for: .url(try #require(URL(string: "https://example.com")))) == nil)
-    }
-
-    @Test func deferredWebRendererRejectsCodeSymmetrically() async throws {
-        // The web stub is the mirror of `CodeRenderer`: handed the input it does
-        // not accept, it defers nothing and — if called anyway (a routing mistake)
-        // — throws `noRendererFor`, not a Phase 2 deferral and not a blank image.
-        let renderer = DeferredWebRenderer()
-        #expect(renderer.deferralTicket(for: .code("x", languageHint: nil)) == nil)
-        await #expect(throws: RenderError.noRendererFor(kind: "code")) {
-            try await renderer.render(.code("x", languageHint: nil), config: SnapshotConfig())
-        }
-    }
-
     @Test func renderErrorCasesAreDistinct() throws {
-        // The typed-error contract (deferred vs. failed vs. unroutable) only holds
-        // if the cases are not interchangeable: a routing test that asserts a
-        // *specific* error would silently pass against the wrong one if these
-        // collapsed. Pin the distinctions, including associated-value identity.
-        #expect(RenderError.deferredToPhase2(ticket: "CS-043") != .renderFailed)
-        #expect(RenderError.deferredToPhase2(ticket: "CS-043") != .noRendererFor(kind: "url"))
+        // The typed-error contract (failed vs. unroutable vs. disabled) only holds if
+        // the cases are not interchangeable: a test asserting a *specific* error would
+        // silently pass against the wrong one if these collapsed.
+        #expect(RenderError.urlCaptureDisabled != .renderFailed)
         #expect(RenderError.noRendererFor(kind: "url") != .renderFailed)
-        // Associated values participate in equality, so a drifted ticket/kind is
-        // not equal to the right one.
-        #expect(
-            RenderError.deferredToPhase2(ticket: "CS-043") != .deferredToPhase2(ticket: "CS-042"))
+        #expect(RenderError.noRendererFor(kind: "url") != .urlCaptureDisabled)
+        // Associated values participate in equality, so a drifted kind is not equal to
+        // the right one.
         #expect(RenderError.noRendererFor(kind: "url") != .noRendererFor(kind: "html"))
-        // Sanity: identical cases with identical payloads remain equal (the
-        // property `await #expect(throws:)` relies on).
-        #expect(
-            RenderError.deferredToPhase2(ticket: "CS-043") == .deferredToPhase2(ticket: "CS-043"))
+        // Sanity: identical cases with identical payloads remain equal (what
+        // `#expect(throws:)` relies on).
+        #expect(RenderError.noRendererFor(kind: "url") == .noRendererFor(kind: "url"))
+        #expect(RenderError.urlCaptureDisabled == .urlCaptureDisabled)
     }
 }
 
@@ -272,7 +220,10 @@ struct QuickCaptureClassificationTests {
     @Test func urlClassifiesAsURLOnlyWhenScreenshotEnabled() throws {
         // With the opt-in off, a URL stays on the code path (rendered as text).
         let asCode = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: false)
-        #expect(asCode.isDeferredToPhase2 == false)
+        guard case .code = asCode else {
+            Issue.record("Expected a code input with the opt-in off, got \(asCode)")
+            return
+        }
 
         // With the opt-in on, the same text classifies as a URL input.
         let asURL = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: true)
@@ -287,7 +238,10 @@ struct QuickCaptureClassificationTests {
         // Plain code with the URL opt-in on still classifies as code: only a single
         // http(s) URL trips the URL branch.
         let input = QuickCapture.classify("let x = 1", treatURLsAsScreenshot: true)
-        #expect(input.isDeferredToPhase2 == false)
+        guard case .code = input else {
+            Issue.record("Expected a code input, got \(input)")
+            return
+        }
     }
 
     @Test func classifyURLReturnsNilForNonURL() {
@@ -317,17 +271,16 @@ struct QuickCaptureClassificationTests {
             return
         }
         #expect(code == "https://example.com")
-        #expect(input.isDeferredToPhase2 == false)
     }
 
-    @Test func quickCaptureReturnsDeferredURLOutcomeWhenEnabled() {
+    @Test func quickCaptureReportsAURLOutcomeWhenEnabled() {
         let settings = AppSettings(defaults: freshDefaults())
         settings.treatURLsAsScreenshot = true
         let recents = RecentsStore(defaults: freshDefaults())
         let outcome = QuickCapture.run(
             settings: settings, recents: recents, clipboard: { "https://example.com" })
-        // The user-facing outcome is the deferred URL; nothing is rendered, copied,
-        // or recorded for it.
+        // `run` reports the URL outcome; nothing is rendered, copied, or recorded for
+        // it here (the Web Snapshot window, opened by `perform`, owns the capture).
         #expect(outcome == .url("https://example.com"))
         #expect(recents.captures.isEmpty)
     }
