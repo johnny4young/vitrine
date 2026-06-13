@@ -99,6 +99,13 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
         .padding(3)
         .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.segmentTrack))
         .accessibilityElement(children: .contain)
+        .accessibilityValue(selectedLabel)
+    }
+
+    /// The selected option's label, surfaced as the control's accessibility value so
+    /// VoiceOver announces "<label>: <selection>" like a native segmented control.
+    private var selectedLabel: Text {
+        options.first { $0.value == selection }?.label ?? Text(verbatim: "")
     }
 
     private func identifier(at index: Int) -> String {
@@ -243,6 +250,7 @@ struct GradientCTAButton<Label: View>: View {
     let action: () -> Void
 
     @State private var isHovered = false
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         Button(action: action) {
@@ -256,11 +264,19 @@ struct GradientCTAButton<Label: View>: View {
             .padding(.vertical, VitrineTokens.Spacing.xs)
             .padding(.horizontal, 18)
             .background(Capsule(style: .continuous).fill(VitrineTokens.Gradients.signature))
+            // Keyboard focus ring (Full Keyboard Access): an accent halo shown only
+            // while focused, so the unfocused CTA is unchanged.
+            .overlay(
+                Capsule(style: .continuous)
+                    .inset(by: -2.5)
+                    .stroke(isFocused ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
+            )
             .brandShadow(VitrineTokens.Chrome.ctaShadow)
             .brightness(isHovered ? 0.06 : 0)
             .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(PressScaleButtonStyle())
+        .focused($isFocused)
         .onHover { isHovered = $0 }
         .animation(.easeInOut(duration: 0.12), value: isHovered)
     }
@@ -316,6 +332,7 @@ struct GlassIconButton: View {
     let action: () -> Void
 
     @State private var isHovered = false
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         Button(action: action) {
@@ -328,13 +345,24 @@ struct GlassIconButton: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .strokeBorder(
-                            isHovered ? VitrineTokens.Text.tertiary : VitrineTokens.Line.border,
-                            lineWidth: Brand.Stroke.hairline
+                            isFocused
+                                ? VitrineTokens.Line.focusRing
+                                : (isHovered
+                                    ? VitrineTokens.Text.tertiary : VitrineTokens.Line.border),
+                            lineWidth: isFocused ? Brand.Stroke.focus : Brand.Stroke.hairline
                         )
+                )
+                // The keyboard focus ring (Full Keyboard Access): a soft accent glow,
+                // shown only while focused so the unfocused look is unchanged.
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .inset(by: -1.5)
+                        .stroke(isFocused ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
         .buttonStyle(.plain)
+        .focused($isFocused)
         .onHover { isHovered = $0 }
         .animation(.easeInOut(duration: 0.12), value: isHovered)
     }

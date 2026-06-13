@@ -321,21 +321,49 @@ private struct SocialCardInspector: View {
                     }
                 }
                 CustomBackgroundSwatch(size: 28) {
-                    settings.socialCard.background = .solid(.white)
+                    settings.socialCard.background = BackgroundKind.solid.makeDefault(
+                        from: card.background, imageStore: .container)
                 }
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Background")
             .accessibilityIdentifier("social-card-background-swatches")
-            backgroundDetail
+
+            // Once the background is no longer a stock gradient preset, expose the full
+            // kind picker (custom gradient, solid, image, transparent) and its controls.
+            if selectedGradient == nil {
+                row("Kind") {
+                    TokenSegmentedPicker(
+                        options: [
+                            (BackgroundKind.gradient, Text("Gradient")),
+                            (.customGradient, Text("Custom")),
+                            (.solid, Text("Solid")),
+                            (.image, Text("Image")),
+                            (.transparent, Text("Transparent")),
+                        ],
+                        selection: backgroundKindBinding
+                    )
+                    .accessibilityLabel("Kind")
+                    .accessibilityIdentifier("social-card-background-kind-picker")
+                }
+                backgroundDetail
+            }
         }
     }
 
-    /// The control for the active non-gradient background. A solid color gets a color
-    /// well (with opacity, so a near-transparent card is reachable); a transparent
-    /// card gets a one-line note. Gradient presets need no extra control.
+    /// The control for the active non-gradient-preset background, mirroring the editor
+    /// inspector: a custom gradient editor, a color well, an image picker, or the
+    /// transparent note.
     @ViewBuilder private var backgroundDetail: some View {
-        if case .solid(let color) = card.background {
+        switch card.background {
+        case .gradient:
+            EmptyView()
+        case .customGradient(let gradient):
+            CustomGradientEditor(
+                gradient: Binding(
+                    get: { gradient },
+                    set: { settings.socialCard.background = .customGradient($0) }))
+        case .solid(let color):
             row("Color") {
                 ColorPicker(
                     "Color",
@@ -346,11 +374,27 @@ private struct SocialCardInspector: View {
                 .labelsHidden()
                 .accessibilityIdentifier("social-card-background-color")
             }
-        } else if case .transparent = card.background {
+        case .image(let image):
+            ImageBackgroundEditor(
+                image: Binding(
+                    get: { image }, set: { settings.socialCard.background = .image($0) }),
+                imageStore: .container)
+        case .transparent:
             Text("Exports with a real transparent (alpha) background.")
                 .font(.system(size: VitrineTokens.FontSize.caption))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
         }
+    }
+
+    /// The active background kind; switching seeds a sensible default from the current
+    /// style, mirroring the editor inspector.
+    private var backgroundKindBinding: Binding<BackgroundKind> {
+        Binding(
+            get: { BackgroundKind(card.background) },
+            set: {
+                settings.socialCard.background = $0.makeDefault(
+                    from: card.background, imageStore: .container)
+            })
     }
 
     private var selectedGradient: GradientPreset? {

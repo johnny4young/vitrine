@@ -108,6 +108,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             WebSnapshotPresenter.show()
             didOpenWindow = true
         }
+        if arguments.contains("--show-about") {
+            AboutPanel.present()
+            didOpenWindow = true
+        }
         if arguments.contains("--show-help") {
             HelpWindowController.shared.show()
             didOpenWindow = true
