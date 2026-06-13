@@ -9,9 +9,9 @@ import Testing
 ///
 /// 1. **Routing** — a `RenderCoordinator` picks the first renderer that accepts an
 ///    input, and `CodeRenderer` handles the Phase 1 code case only.
-/// 2. **Deferred URL/HTML** — Phase 2 inputs resolve to a *typed*
-///    `RenderError.deferredToPhase2` (never a blank image), and quick capture
-///    returns a deferred outcome for a clipboard URL.
+/// 2. **Phase 2 rendering** — HTML routes to the local `HTMLRenderer` and URL to
+///    the `URLRenderer`; URL capture is gated on the network entitlement, and a
+///    gated capture throws a *typed* error, never a blank image.
 /// 3. **No-network code path** — code rendering produces a real asset without any
 ///    URL configuration, and the app target ships with no network entitlement.
 
@@ -56,12 +56,15 @@ struct RenderCoordinatorRoutingTests {
     }
 
     @Test func standardCoordinatorRoutesEachInputToTheRightRenderer() throws {
+        // Phase 2 is wired: HTML routes to the local HTMLRenderer and URL to the
+        // URLRenderer (the latter still gated on the network entitlement at render
+        // time). The DeferredWebRenderer stub is no longer in the standard set.
         let coordinator = RenderCoordinator.standard
         #expect(coordinator.renderer(for: .code("x", languageHint: nil)) is CodeRenderer)
+        #expect(coordinator.renderer(for: .html("<b>x</b>")) is HTMLRenderer)
         #expect(
             coordinator.renderer(for: .url(try #require(URL(string: "https://example.com"))))
-                is DeferredWebRenderer)
-        #expect(coordinator.renderer(for: .html("<b>x</b>")) is DeferredWebRenderer)
+                is URLRenderer)
     }
 
     @Test func firstAcceptingRendererWins() throws {
@@ -83,40 +86,37 @@ struct RenderCoordinatorRoutingTests {
     }
 }
 
-// MARK: - Deferred URL / HTML (Phase 2 stubs)
+// MARK: - Phase 2 rendering (HTML local, URL gated)
 
 @MainActor
-@Suite("Deferred Phase 2 rendering · CS-040")
-struct DeferredRenderingTests {
-    @Test func urlRoutesToATypedPhase2Deferral() async throws {
-        let coordinator = RenderCoordinator.standard
-        let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
-        await #expect(throws: RenderError.deferredToPhase2(ticket: "CS-043")) {
-            try await coordinator.render(input, config: SnapshotConfig())
-        }
-        // The synchronous probe agrees with the thrown error (single source of truth).
-        #expect(coordinator.deferralReason(for: input) == "CS-043")
-    }
-
-    @Test func htmlRoutesToATypedPhase2Deferral() async throws {
+@Suite("Phase 2 rendering · CS-040")
+struct Phase2RenderingTests {
+    @Test func htmlRoutesToTheLocalRendererWithNoDeferral() throws {
+        // HTML now renders locally; the standard coordinator routes it to the real
+        // HTMLRenderer and reports no Phase 2 deferral.
         let coordinator = RenderCoordinator.standard
         let input = CaptureInput.html("<h1>Hello</h1>")
-        await #expect(throws: RenderError.deferredToPhase2(ticket: "CS-042")) {
-            try await coordinator.render(input, config: SnapshotConfig())
-        }
-        #expect(coordinator.deferralReason(for: input) == "CS-042")
+        #expect(coordinator.renderer(for: input) is HTMLRenderer)
+        #expect(coordinator.deferralReason(for: input) == nil)
     }
 
-    @Test func deferralIsTypedNotABlankImage() async throws {
-        // The contract: a deferred input never silently yields an empty asset; it
-        // throws so callers can offer recovery (CS-038).
+    @Test func urlRoutesToTheURLRendererWithNoDeferral() throws {
+        // URL routes to the real URLRenderer (no deferral); whether a capture can run
+        // is decided at render time by the network entitlement, not by routing.
         let coordinator = RenderCoordinator.standard
         let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
-        do {
-            _ = try await coordinator.render(input, config: SnapshotConfig())
-            Issue.record("Expected a deferral error, but a render succeeded")
-        } catch let error as RenderError {
-            #expect(error == .deferredToPhase2(ticket: "CS-043"))
+        #expect(coordinator.renderer(for: input) is URLRenderer)
+        #expect(coordinator.deferralReason(for: input) == nil)
+    }
+
+    @Test func urlCaptureWithoutTheEntitlementThrowsTypedNotABlankImage() async throws {
+        // The "never a blank image" contract now covers the entitlement gate: on a
+        // build without the network entitlement, a URL render throws a typed
+        // urlCaptureDisabled before touching WebKit — never an empty asset (CS-038).
+        let renderer = URLRenderer(isNetworkCaptureEnabled: false)
+        let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
+        await #expect(throws: RenderError.urlCaptureDisabled) {
+            try await renderer.render(input, config: SnapshotConfig())
         }
     }
 
@@ -126,13 +126,16 @@ struct DeferredRenderingTests {
     }
 
     @Test func coordinatorReasonIsNilForRenderableAndUnroutableInputs() throws {
-        // The synchronous probe distinguishes "renders today" (a registered
-        // renderer accepts it and defers nothing) from "deferred to Phase 2": code
-        // returns nil because `CodeRenderer` renders it now…
+        // Every registered renderer renders its input today and defers nothing, so the
+        // synchronous probe is nil for code, HTML, and URL alike (Phase 2 is wired).
         let coordinator = RenderCoordinator.standard
         #expect(coordinator.deferralReason(for: .code("x", languageHint: nil)) == nil)
-        // …and an input no renderer accepts also yields nil (no accepting renderer
-        // to name a ticket), never a stray deferral string.
+        #expect(coordinator.deferralReason(for: .html("<b>x</b>")) == nil)
+        #expect(
+            coordinator.deferralReason(for: .url(try #require(URL(string: "https://example.com"))))
+                == nil)
+        // An input no renderer accepts also yields nil (no accepting renderer to name
+        // a ticket), never a stray deferral string.
         let bare = RenderCoordinator(renderers: [])
         #expect(
             bare.deferralReason(for: .url(try #require(URL(string: "https://example.com")))) == nil)

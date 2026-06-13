@@ -57,19 +57,14 @@ enum QuickCapture {
         }
 
         // URL → screenshot is Product Phase 2; only branch off when the user opted in.
-        if settings.treatURLsAsScreenshot, let input = classifyURL(text) {
-            // Route the classified URL input through the renderer abstraction
-            // (CS-040). The standard coordinator's web renderer is an explicit
-            // Phase 2 stub, so this resolves to a *typed* deferred outcome
-            // (`RenderError.deferredToPhase2`) rather than a blank render — the
-            // proof that the URL path is deferred behind the abstraction, not the
-            // code path. The user-facing `Outcome` stays `.url(text)` so the
-            // feedback layer can offer "Render as Text" recovery (CS-038).
+        // The classified URL becomes a `.url` outcome: the app's `perform()` opens the
+        // Web Snapshot window (which owns the privacy disclosure and the async render),
+        // while a headless caller can offer the "Render as Text" recovery (CS-038).
+        // `capture()` stays synchronous and UI-free — it only classifies and reports
+        // the outcome, so it carries no dependency on the windowed render path.
+        if settings.treatURLsAsScreenshot, classifyURL(text) != nil {
             // Never log the URL itself; record only that the branch was taken.
-            let deferral = RenderCoordinator.standard.deferralReason(for: input)
-            Log.capture.info(
-                "Quick capture: URL detected (deferred: \(deferral ?? "unknown", privacy: .public))"
-            )
+            Log.capture.info("Quick capture: URL detected")
             return .nonProducing(.url(text))
         }
 
@@ -217,13 +212,22 @@ enum QuickCapture {
     /// call this so behavior is consistent across entry points.
     static func perform(settings: AppSettings = .shared) {
         let result = capture(settings: settings)
-        if case .deferredToEditor = result.outcome {
+        switch result.outcome {
+        case .deferredToEditor:
             // `capture` has already written the combined multi-block source into
             // `settings.config`; load that into the primary editor window so the user
             // sees it even if the editor was already open (CS-027 + CS-053: a plain
             // `show()` no longer clobbers an open window's per-window document).
             EditorWindowController.shared.loadIntoPrimary(settings.config)
+            CaptureFeedbackPresenter.shared.present(result, settings: settings)
+        case .url(let text):
+            // A clipboard URL opens the Web Snapshot window preloaded with it — where
+            // the privacy disclosure and the local capture live (CS-043) — rather than
+            // the old deferred dead-end. `WebSnapshotPresenter` keeps this free of any
+            // WebKit dependency, so the menu-bar path stays CLI-safe.
+            WebSnapshotPresenter.show(prefillURL: text)
+        default:
+            CaptureFeedbackPresenter.shared.present(result, settings: settings)
         }
-        CaptureFeedbackPresenter.shared.present(result, settings: settings)
     }
 }

@@ -4829,6 +4829,468 @@
           }
         }
       }
+    },
+    "Social Card" : {
+      "comment" : "Social-card editor window title (CS-041).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta social"
+          }
+        }
+      }
+    },
+    "New Social Card" : {
+      "comment" : "File-menu command that opens the social-card editor (CS-041).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva tarjeta social"
+          }
+        }
+      }
+    },
+    "New social card" : {
+      "comment" : "Accessibility label for the New Social Card command (CS-041).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva tarjeta social"
+          }
+        }
+      }
+    },
+    "Copy card" : {
+      "comment" : "Social-card toolbar: primary action, copy the rendered card.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar tarjeta"
+          }
+        }
+      }
+    },
+    "Render and copy the card to the clipboard" : {
+      "comment" : "Social-card toolbar: copy button help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza y copia la tarjeta al portapapeles"
+          }
+        }
+      }
+    },
+    "Render and save the card as a file" : {
+      "comment" : "Social-card toolbar: save button help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza y guarda la tarjeta como archivo"
+          }
+        }
+      }
+    },
+    "Render and share the card" : {
+      "comment" : "Social-card toolbar: share button help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza y comparte la tarjeta"
+          }
+        }
+      }
+    },
+    "Add a title or a code excerpt to compose your card." : {
+      "comment" : "Social-card preview: empty-state prompt.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega un título o un fragmento de código para componer tu tarjeta."
+          }
+        }
+      }
+    },
+    "Template" : {
+      "comment" : "Social-card inspector: template section title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plantilla"
+          }
+        }
+      }
+    },
+    "Content" : {
+      "comment" : "Social-card inspector: content section title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contenido"
+          }
+        }
+      }
+    },
+    "Footer" : {
+      "comment" : "Social-card inspector: footer section title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pie de página"
+          }
+        }
+      }
+    },
+    "Subtitle" : {
+      "comment" : "Social-card inspector: subtitle field prompt.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subtítulo"
+          }
+        }
+      }
+    },
+    "Author" : {
+      "comment" : "Social-card inspector: author field prompt.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autor"
+          }
+        }
+      }
+    },
+    "Project" : {
+      "comment" : "Social-card inspector: project field prompt.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proyecto"
+          }
+        }
+      }
+    },
+    "Show logo" : {
+      "comment" : "Social-card inspector: toggle to draw the brand logo.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar logo"
+          }
+        }
+      }
+    },
+    "New Web Snapshot" : {
+      "comment" : "File-menu command that opens the Web Snapshot editor (CS-042/043).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva captura web"
+          }
+        }
+      }
+    },
+    "New web snapshot" : {
+      "comment" : "Accessibility label for the New Web Snapshot command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva captura web"
+          }
+        }
+      }
+    },
+    "Web Snapshot" : {
+      "comment" : "Web Snapshot editor window title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura web"
+          }
+        }
+      }
+    },
+    "Enter a valid http or https URL." : {
+      "comment" : "Web Snapshot: invalid-URL message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingresa una URL http o https válida."
+          }
+        }
+      }
+    },
+    "URL capture is only available in the direct-download build." : {
+      "comment" : "Web Snapshot: URL capture disabled (no network entitlement).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura de URL solo está disponible en la versión de descarga directa."
+          }
+        }
+      }
+    },
+    "Couldn't load or render that — check the input and try again." : {
+      "comment" : "Web Snapshot: render-failed message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar ni renderizar — revisa la entrada e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "That input can't be rendered here." : {
+      "comment" : "Web Snapshot: unroutable-input message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa entrada no se puede renderizar aquí."
+          }
+        }
+      }
+    },
+    "That input isn't available in this build." : {
+      "comment" : "Web Snapshot: deferred-input message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa entrada no está disponible en esta versión."
+          }
+        }
+      }
+    },
+    "The render didn't complete." : {
+      "comment" : "Web Snapshot: generic render failure.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El render no se completó."
+          }
+        }
+      }
+    },
+    "Copy the snapshot to the clipboard" : {
+      "comment" : "Web Snapshot toolbar: copy button help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia la captura al portapapeles"
+          }
+        }
+      }
+    },
+    "Save the snapshot as a file" : {
+      "comment" : "Web Snapshot toolbar: save button help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda la captura como archivo"
+          }
+        }
+      }
+    },
+    "Share the snapshot" : {
+      "comment" : "Web Snapshot toolbar: share button help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparte la captura"
+          }
+        }
+      }
+    },
+    "Loading the page locally in WebKit…" : {
+      "comment" : "Web Snapshot: URL loading state.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando la página localmente en WebKit…"
+          }
+        }
+      }
+    },
+    "Rendering locally…" : {
+      "comment" : "Web Snapshot: HTML rendering state.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderizando localmente…"
+          }
+        }
+      }
+    },
+    "Enter a URL, then Capture to snapshot the page." : {
+      "comment" : "Web Snapshot: URL empty-state prompt.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingresa una URL y pulsa Capturar para tomar la captura de la página."
+          }
+        }
+      }
+    },
+    "Paste HTML, then Render to snapshot it." : {
+      "comment" : "Web Snapshot: HTML empty-state prompt.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega HTML y pulsa Renderizar para capturarlo."
+          }
+        }
+      }
+    },
+    "Render" : {
+      "comment" : "Web Snapshot: render (HTML) button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderizar"
+          }
+        }
+      }
+    },
+    "Source" : {
+      "comment" : "Web Snapshot inspector: input source section title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fuente"
+          }
+        }
+      }
+    },
+    "URL capture runs only in the direct-download build. HTML rendering works here." : {
+      "comment" : "Web Snapshot: URL-mode unavailable note.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura de URL solo funciona en la versión de descarga directa. El renderizado de HTML sí funciona aquí."
+          }
+        }
+      }
+    },
+    "Loads the page locally in WebKit — nothing is sent to a server." : {
+      "comment" : "Web Snapshot: capture privacy reassurance.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carga la página localmente en WebKit; no se envía nada a un servidor."
+          }
+        }
+      }
+    },
+    "Network use" : {
+      "comment" : "Settings web capture: network-use row label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uso de red"
+          }
+        }
+      }
+    },
+    "URL capture loads the page you ask for locally in WebKit — no Vitrine server, no analytics. Your code never leaves your Mac." : {
+      "comment" : "Settings web capture: network transparency caption (CS-045).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura de URL carga la página que pides localmente en WebKit; sin servidor de Vitrine ni analíticas. Tu código nunca sale de tu Mac."
+          }
+        }
+      }
+    },
+    "Direct-download only" : {
+      "comment" : "Settings web capture: capture unavailable on this build.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo descarga directa"
+          }
+        }
+      }
+    },
+    "Not used yet" : {
+      "comment" : "Settings web capture: consent not yet given.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún sin usar"
+          }
+        }
+      }
+    },
+    "Revoke" : {
+      "comment" : "Settings web capture: revoke URL-capture consent.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revocar"
+          }
+        }
+      }
+    },
+    "Web capture" : {
+      "comment" : "Settings input: web capture group title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura web"
+          }
+        }
+      }
+    },
+    "Couldn't share the image" : {
+      "comment" : "Social card: share-failure HUD.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo compartir la imagen"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

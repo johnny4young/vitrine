@@ -100,6 +100,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             RecentsGalleryWindowController.shared.show()
             didOpenWindow = true
         }
+        if arguments.contains("--open-social-card") {
+            SocialCardWindowController.shared.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--open-web-snapshot") {
+            WebSnapshotPresenter.show()
+            didOpenWindow = true
+        }
         if arguments.contains("--show-help") {
             HelpWindowController.shared.show()
             didOpenWindow = true

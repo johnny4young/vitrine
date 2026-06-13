@@ -99,13 +99,10 @@ struct RenderCoordinator {
     /// Renderers in priority order, e.g. `[CodeRenderer(), URLRenderer(), …]`.
     let renderers: [any Renderer]
 
-    /// The default coordinator wired with the renderers Vitrine ships today: the
-    /// Phase 1 `CodeRenderer`, followed by the explicit Phase 2 stubs so a URL or
-    /// HTML input resolves to a typed `deferredToPhase2` error rather than
-    /// `noRendererFor`.
-    static var standard: RenderCoordinator {
-        RenderCoordinator(renderers: [CodeRenderer(), DeferredWebRenderer()])
-    }
+    // `RenderCoordinator.standard` — the production coordinator wired with the code
+    // and web renderers — lives in `WebRendering/RenderCoordinator+Standard.swift`,
+    // which the CLI target excludes (the headless tool ships no WebKit). This struct
+    // stays platform-neutral so both the app and the CLI compile it.
 
     /// Returns the first renderer that accepts `input`, or `nil` when none do.
     func renderer(for input: CaptureInput) -> (any Renderer)? {

@@ -1438,11 +1438,51 @@ struct InputSettingsView: View {
                 }
             }
 
-            TokenGroup(title: Text("Web capture (Phase 2)")) {
+            TokenGroup(title: Text("Web capture")) {
                 WebCaptureControls(settings: settings)
+                WebCaptureConsentRow(settings: settings)
             }
         }
         .accessibilityIdentifier("settings-input-pane")
+    }
+}
+
+/// The Web-capture transparency + consent row (CS-045): states plainly what URL
+/// capture does to the network, reflects the first-use consent state, and lets the
+/// user revoke it (re-arming the disclosure) — or shows that capture is unavailable on
+/// this build. The network model lives here so it is always consultable in Settings,
+/// not only at the first-use sheet.
+struct WebCaptureConsentRow: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        TokenRow(
+            label: Text("Network use"),
+            caption: Text(
+                "URL capture loads the page you ask for locally in WebKit — no Vitrine server, no analytics. Your code never leaves your Mac."
+            )
+        ) {
+            trailing
+        }
+    }
+
+    @ViewBuilder private var trailing: some View {
+        if !NetworkCapability.isURLCaptureEnabled {
+            Text("Direct-download only")
+                .font(.system(size: VitrineTokens.FontSize.subhead))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+        } else if settings.urlCaptureConsentGiven {
+            Button("Revoke") {
+                settings.urlCaptureConsentGiven = false
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(VitrineTokens.Accent.base)
+            .accessibilityIdentifier("web-capture-revoke-consent-button")
+        } else {
+            Text("Not used yet")
+                .font(.system(size: VitrineTokens.FontSize.subhead))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+        }
     }
 }
 

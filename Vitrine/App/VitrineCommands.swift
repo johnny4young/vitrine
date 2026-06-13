@@ -21,6 +21,12 @@ enum VitrineCommand: String, CaseIterable {
     case newCapture
     case openEditor
     case newEditorWindow
+    // Opens the social-card editor — a local, deterministic 1200×630 card composed
+    // from the same theme/background/font vocabulary as a snapshot (CS-041).
+    case newSocialCard
+    // Opens the Web Snapshot editor — local HTML rendering and (on a build with the
+    // network entitlement) URL capture (CS-042/CS-043).
+    case newWebSnapshot
     case settings
     case help
     case about
@@ -59,6 +65,10 @@ enum VitrineCommand: String, CaseIterable {
         case .newCapture: String(localized: "New Capture from Clipboard")
         case .openEditor: String(localized: "Open Editor")
         case .newEditorWindow: String(localized: "New Editor Window")
+        // No ellipsis: like Open Editor, it opens its window directly (the card is
+        // composed in that window, not behind a further dialog).
+        case .newSocialCard: String(localized: "New Social Card")
+        case .newWebSnapshot: String(localized: "New Web Snapshot")
         case .settings: String(localized: "Settings…")
         case .help: String(localized: "Vitrine Help")
         case .about: String(localized: "About Vitrine")
@@ -82,6 +92,8 @@ enum VitrineCommand: String, CaseIterable {
         case .newCapture: "camera.viewfinder"
         case .openEditor: "macwindow"
         case .newEditorWindow: "macwindow.badge.plus"
+        case .newSocialCard: "photo.artframe"
+        case .newWebSnapshot: "globe"
         case .settings: "gearshape"
         case .help: "questionmark.circle"
         case .about: "info.circle"
@@ -113,7 +125,9 @@ enum VitrineCommand: String, CaseIterable {
         case .shareImage: nil  // Share opens a picker; no reserved shortcut
         case .formatCode: "f"  // ⌥⌘F — tidy the code (⌘F stays free for find)
         // Submenu/window/explicit-action commands with no reserved shortcut.
-        case .copyDataURI, .copyHighlightedCode, .whatsNew, .makeDefault, .checkForUpdates: nil
+        case .copyDataURI, .copyHighlightedCode, .whatsNew, .makeDefault, .checkForUpdates,
+            .newSocialCard, .newWebSnapshot:
+            nil
         }
     }
 
@@ -128,7 +142,7 @@ enum VitrineCommand: String, CaseIterable {
         case .formatCode: [.command, .option]
         case .openEditor, .newEditorWindow, .settings, .help, .saveImage: [.command]
         case .about, .shareImage, .makeDefault, .copyDataURI, .copyHighlightedCode, .whatsNew,
-            .checkForUpdates:
+            .checkForUpdates, .newSocialCard, .newWebSnapshot:
             []
         }
     }
@@ -146,6 +160,8 @@ enum VitrineCommand: String, CaseIterable {
         case .newCapture: String(localized: "New capture from clipboard")
         case .openEditor: String(localized: "Open editor")
         case .newEditorWindow: String(localized: "Open a new editor window")
+        case .newSocialCard: String(localized: "New social card")
+        case .newWebSnapshot: String(localized: "New web snapshot")
         case .settings: String(localized: "Settings")
         case .help: String(localized: "Vitrine help")
         case .about: String(localized: "About Vitrine")
@@ -401,6 +417,18 @@ final class AppCommandResponder: NSObject {
     /// Opens an additional, independent editor window (CS-053).
     @objc func newEditorWindow(_ sender: Any?) {
         EditorWindowController.shared.openNewWindow()
+    }
+
+    /// Opens the social-card editor — the local 1200×630 card composer (CS-041).
+    @objc func openSocialCardEditor(_ sender: Any?) {
+        SocialCardWindowController.shared.show()
+    }
+
+    /// Opens the Web Snapshot editor — local HTML rendering and gated URL capture
+    /// (CS-042/CS-043). Routed through `WebSnapshotPresenter` so this command surface
+    /// carries no dependency on the WebKit-backed window (which the CLI excludes).
+    @objc func openWebSnapshotEditor(_ sender: Any?) {
+        WebSnapshotPresenter.show()
     }
 
     @objc func openSettings(_ sender: Any?) {
