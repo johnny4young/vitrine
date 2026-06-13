@@ -49,6 +49,14 @@ enum SettingsCodec {
         static let fontName = "fontName"
         static let fontLigatures = "fontLigatures"
         static let selectedPreset = "selectedPreset"
+        /// The last-edited social card (CS-041), stored as a JSON-encoded
+        /// `SocialCardModel`. App-global (there is one working card, like the
+        /// working document), so it is not part of `editorSessionSeed`.
+        static let socialCard = "socialCard"
+        /// Whether the user has confirmed the first-use URL-capture privacy
+        /// disclosure (CS-045). Defaults false; URL capture shows the disclosure once
+        /// until confirmed, and the Settings transparency row can revoke it.
+        static let urlCaptureConsent = "urlCaptureConsentGiven"
         /// First-run quick-start completion flag (CS-035).
         static let hasSeenWelcome = "hasSeenWelcome"
         /// Last app version whose "What's New" the user has seen (CS-049).
@@ -73,8 +81,8 @@ enum SettingsCodec {
             reindentOnPaste,
             webViewportKind, webCustomViewportWidth, webCustomViewportHeight,
             webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
-            fontName, fontLigatures, selectedPreset, hasSeenWelcome,
-            lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
+            fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
+            hasSeenWelcome, lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
         ]
 
         /// The keys an editor window seeds from the app-wide defaults when it opens
@@ -184,6 +192,18 @@ enum SettingsCodec {
         return nil
     }
 
+    /// Reads the persisted social card, tolerating a missing or corrupt value
+    /// (CS-041 / CS-050). Stored as a JSON-encoded `SocialCardModel`; a garbage
+    /// blob yields a fresh default card. The model's decoder re-normalizes its
+    /// text fields, re-truncates the excerpt, and re-clamps the font size, so an
+    /// out-of-range or hand-edited value can never reach the renderer.
+    static func readSocialCard(from defaults: UserDefaults) -> SocialCardModel {
+        guard let data = defaults.data(forKey: Keys.socialCard),
+            let decoded = try? JSONDecoder().decode(SocialCardModel.self, from: data)
+        else { return SocialCardModel() }
+        return decoded
+    }
+
     /// Reads the export scale, clamping a stored value into the supported set and
     /// falling back to the default for a missing or non-integer value.
     static func readExportScale(from defaults: UserDefaults) -> Int {
@@ -244,5 +264,17 @@ enum SettingsCodec {
             return
         }
         defaults.set(data, forKey: Keys.backgroundStyle)
+    }
+
+    /// Persists the social card as a JSON-encoded `SocialCardModel` so every field
+    /// round-trips (CS-041). An encode failure drops the key so a later read restores
+    /// a fresh default card rather than leaving a stale blob behind.
+    static func persistSocialCard(_ card: SocialCardModel, to defaults: UserDefaults) {
+        guard let data = try? JSONEncoder().encode(card) else {
+            defaults.removeObject(forKey: Keys.socialCard)
+            Log.settings.error("Social card encode failed; persisting default on next change")
+            return
+        }
+        defaults.set(data, forKey: Keys.socialCard)
     }
 }

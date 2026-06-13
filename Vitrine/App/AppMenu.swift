@@ -174,6 +174,18 @@ enum AppMenu {
                 for: .newEditorWindow,
                 action: #selector(AppCommandResponder.newEditorWindow(_:)),
                 target: AppCommandResponder.shared))
+        // Open the social-card editor — the local 1200×630 card composer (CS-041).
+        menu.addItem(
+            item(
+                for: .newSocialCard,
+                action: #selector(AppCommandResponder.openSocialCardEditor(_:)),
+                target: AppCommandResponder.shared))
+        // Open the Web Snapshot editor — local HTML + gated URL capture (CS-042/043).
+        menu.addItem(
+            item(
+                for: .newWebSnapshot,
+                action: #selector(AppCommandResponder.openWebSnapshotEditor(_:)),
+                target: AppCommandResponder.shared))
         menu.addItem(.separator())
 
         // Editor-scoped export commands. They mirror the editor toolbar and are

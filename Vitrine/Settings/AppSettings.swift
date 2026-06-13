@@ -21,6 +21,14 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    /// The working social card (CS-041): the document of the social-card editor,
+    /// persisted like `config` so the user's card survives across launches. It is
+    /// app-global — there is one working card — so it is shared rather than seeded
+    /// per editor window.
+    @Published var socialCard: SocialCardModel {
+        didSet { SettingsCodec.persistSocialCard(socialCard, to: defaults) }
+    }
+
     /// Copy the rendered image to the clipboard automatically (quick mode).
     @Published var autoCopy: Bool { didSet { defaults.set(autoCopy, forKey: Keys.autoCopy) } }
 
@@ -137,6 +145,16 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(webWaitSeconds, forKey: Keys.webWaitSeconds) }
     }
 
+    /// Whether the user has confirmed the first-use URL-capture privacy disclosure
+    /// (CS-045). URL capture loads a webpage over the network, so the first attempt
+    /// shows `WebPrivacyDisclosureView` and only proceeds once this is set. The
+    /// Settings transparency row revokes it (back to `false`), re-arming the
+    /// disclosure. Defaults off so a fresh install always discloses before the first
+    /// network capture.
+    @Published var urlCaptureConsentGiven: Bool {
+        didSet { defaults.set(urlCaptureConsentGiven, forKey: Keys.urlCaptureConsent) }
+    }
+
     /// The composed viewport preset for a URL capture (CS-044): the persisted
     /// discriminant resolved with the stored custom size, defensively clamped so a
     /// custom preset is always a usable, memory-safe size.
@@ -233,6 +251,9 @@ final class AppSettings: ObservableObject {
         webCaptureMode = WebDefaults.captureMode(from: defaults)
         webWaitKind = WebDefaults.waitKind(from: defaults)
         webWaitSeconds = WebDefaults.waitSeconds(from: defaults)
+        // Off on a fresh suite, so the first URL capture always shows the privacy
+        // disclosure before reaching the network (CS-045).
+        urlCaptureConsentGiven = defaults.object(forKey: Keys.urlCaptureConsent) as? Bool ?? false
         recentLanguages =
             (defaults.array(forKey: Keys.recentLanguages) as? [String] ?? [])
             .compactMap(Language.init(rawValue:))
@@ -243,6 +264,10 @@ final class AppSettings: ObservableObject {
         // run (CS-049). A non-string (hand-edited/corrupt) value also resolves to nil
         // rather than trapping, so the gate falls back safely (CS-050 posture).
         lastSeenWhatsNewVersion = defaults.string(forKey: Keys.lastSeenWhatsNewVersion)
+
+        // The working social card (CS-041), read defensively: a missing or corrupt
+        // blob yields a fresh default card, and the model re-validates every field.
+        socialCard = SettingsCodec.readSocialCard(from: defaults)
 
         config = SettingsCodec.readConfig(from: defaults)
     }
@@ -452,6 +477,8 @@ final class AppSettings: ObservableObject {
         webCaptureMode = WebDefaults.captureMode
         webWaitKind = WebDefaults.waitKind
         webWaitSeconds = WebDefaults.waitSeconds
+        // A full reset returns to the pre-consent state, re-arming the disclosure.
+        urlCaptureConsentGiven = false
         recentLanguages = []
         selectedPresetID = nil
         // Returns the user to a first-run experience after a full reset (CS-035).
@@ -459,6 +486,7 @@ final class AppSettings: ObservableObject {
         // Clearing this restores the clean-install What's New behavior (CS-049): the
         // next launch stamps the current version as seen rather than showing notes.
         lastSeenWhatsNewVersion = nil
+        socialCard = SocialCardModel()
         config = SnapshotConfig()
     }
 

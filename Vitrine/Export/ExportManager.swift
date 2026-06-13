@@ -140,6 +140,23 @@ enum ExportManager {
         return produced ? data as Data : nil
     }
 
+    /// Wraps a finished `CGImage` in single-page PDF data at its own pixel size — the
+    /// `CGImage` analogue of the view-based `pdfData(_:proposedSize:)`, for export
+    /// paths (web snapshots) that already hold a rasterized bitmap rather than a SwiftUI
+    /// view. Returns nil if the PDF page context cannot be created.
+    static func pdfData(from cgImage: CGImage) -> Data? {
+        let data = NSMutableData()
+        var mediaBox = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
+        guard let consumer = CGDataConsumer(data: data as CFMutableData),
+            let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
+        else { return nil }
+        context.beginPDFPage(nil)
+        context.draw(cgImage, in: mediaBox)
+        context.endPDFPage()
+        context.closePDF()
+        return data as Data
+    }
+
     /// The single PNG/PDF format ladder shared by every save/encode path
     /// (CS-007/041). Given a render strategy for each branch — a `png` producer of a
     /// `CGImage` and a `pdf` producer of finished `Data` — it picks the branch for
