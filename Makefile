@@ -32,7 +32,7 @@ RESULT_BUNDLE_FLAG := $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)"
 export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens gallery format lint icon clean
+.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens gallery format lint changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -148,6 +148,15 @@ format:
 ## lint: lint Swift sources without modifying them (fails on issues)
 lint:
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI Tests UITests
+
+## changelog-check: assert CHANGELOG.md's newest version matches MARKETING_VERSION (release gate)
+changelog-check:
+	@cl=$$(grep -m1 -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'); \
+	mv=$$(grep -m1 -oE 'MARKETING_VERSION: *"?[0-9][0-9A-Za-z.-]*' project.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'); \
+	grep -q '^## \[Unreleased\]' CHANGELOG.md || { echo "✗ CHANGELOG.md is missing an [Unreleased] section"; exit 1; }; \
+	[ -n "$$cl" ] || { echo "✗ no released '## [x.y.z]' heading in CHANGELOG.md"; exit 1; }; \
+	[ "$$cl" = "$$mv" ] || { echo "✗ CHANGELOG top ($$cl) != MARKETING_VERSION ($$mv)"; exit 1; }; \
+	echo "✓ CHANGELOG $$cl matches MARKETING_VERSION $$mv"
 
 ## icon: regenerate the app icon set (scripts/make-appicon.swift)
 icon:

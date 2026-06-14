@@ -332,6 +332,28 @@ What's New appears once when the bundled version is newer than the version the u
 last saw, and never on a clean first run (onboarding owns that). Keep `docs/HELP.md`
 in step if the change also affects in-app Help.
 
+## Changelog (CHANGELOG.md)
+
+`CHANGELOG.md` at the repo root is the full, developer-facing history, in
+[Keep a Changelog](https://keepachangelog.com) form — the granular record behind the
+curated in-app notes above. During development, add a bullet under `## [Unreleased]`
+(categorized `Added` / `Changed` / `Fixed` / `Removed` / `Security`) whenever a notable
+change lands.
+
+At release time:
+
+1. Rename `## [Unreleased]` to `## [x.y.z] - YYYY-MM-DD`, and add a fresh empty
+   `## [Unreleased]` above it.
+2. Update the link references at the bottom of the file (the `[Unreleased]` compare and a
+   new `[x.y.z]` compare line).
+3. Curate the top few entries into the new `ReleaseNote` (above).
+
+`make changelog-check` asserts the newest `## [x.y.z]` equals `MARKETING_VERSION` and
+that an `[Unreleased]` section still exists, and the `AppStoreReadinessTests` suite pins
+the changelog's newest version to both `MARKETING_VERSION` and `ReleaseNotes.latest` — so
+the three can never drift. That version's section is also what you paste into the GitHub
+Release body and the Sparkle appcast description.
+
 ## Auto-update (Sparkle) — CS-064
 
 The **direct-download** build updates itself with [Sparkle](https://sparkle-project.org):
@@ -521,6 +543,8 @@ interactive items above are the manual half.
 - [ ] `make test` green (includes the launch-gallery render regression + artifact checks)
 - [ ] `make icon` up to date
 - [ ] Version bumped in `project.yml` (`MARKETING_VERSION`) and the cask
+- [ ] `CHANGELOG.md` updated: promote `[Unreleased]` to `## [x.y.z] - YYYY-MM-DD`, open a
+      fresh `[Unreleased]`, refresh the compare links, then `make changelog-check`
 - [ ] Release note added to `Vitrine/Help/ReleaseNotes.swift` (newest first; version
       matches `MARKETING_VERSION`), and `docs/HELP.md` updated if Help content changed
 - [ ] **Visual review against the launch gallery** done (re-run `make gallery` if a

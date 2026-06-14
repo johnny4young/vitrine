@@ -168,6 +168,50 @@ struct AppStoreReadinessTests {
             "APP-STORE.md must document the build number \(buildNumber) from project.yml")
     }
 
+    /// The changelog's newest released entry stays in lockstep with the shipped version:
+    /// the top `## [x.y.z]` in `CHANGELOG.md`, the `MARKETING_VERSION` in `project.yml`, and
+    /// the bundled `ReleaseNotes.latest` must all name the same version, and an
+    /// `## [Unreleased]` section must exist to collect the next release. A bump that forgets
+    /// the changelog (or a changelog edit that forgets the bump) fails the suite rather than
+    /// shipping a stale history.
+    @Test func changelogNewestEntryMatchesTheShippedVersion() throws {
+        let changelog = try Self.text("CHANGELOG.md")
+        let project = try Self.projectYAML()
+
+        // MARKETING_VERSION from project.yml — the same source of truth the version-doc
+        // test reads.
+        let mvRegex = try NSRegularExpression(
+            pattern: #"(?m)^\s*MARKETING_VERSION:\s*"?([0-9][0-9A-Za-z.\-]*)"?\s*$"#)
+        let mvMatch = try #require(
+            mvRegex.firstMatch(
+                in: project, range: NSRange(project.startIndex..<project.endIndex, in: project)),
+            "project.yml must set MARKETING_VERSION")
+        let marketingVersion = String(
+            project[try #require(Range(mvMatch.range(at: 1), in: project))])
+
+        // The newest *released* heading — `## [1.2.3]` — skipping the `## [Unreleased]`
+        // collector, which carries no version number.
+        let headingRegex = try NSRegularExpression(
+            pattern: #"(?m)^##\s*\[([0-9]+\.[0-9]+\.[0-9]+)\]"#)
+        let topMatch = try #require(
+            headingRegex.firstMatch(
+                in: changelog,
+                range: NSRange(changelog.startIndex..<changelog.endIndex, in: changelog)),
+            "CHANGELOG.md must list at least one released version as `## [x.y.z]`")
+        let topVersion = String(
+            changelog[try #require(Range(topMatch.range(at: 1), in: changelog))])
+
+        #expect(
+            changelog.contains("## [Unreleased]"),
+            "CHANGELOG.md must keep an `## [Unreleased]` section for the next release")
+        #expect(
+            topVersion == marketingVersion,
+            "CHANGELOG.md's newest version must match MARKETING_VERSION in project.yml")
+        #expect(
+            topVersion == ReleaseNotes.latestVersion,
+            "CHANGELOG.md's newest version must match the bundled ReleaseNotes.latest")
+    }
+
     // MARK: - Acceptance: App Sandbox remains enabled; entitlements minimal and justified
 
     /// The App Sandbox stays enabled and the entitlement set is the minimal Phase 1 set —

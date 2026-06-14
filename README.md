@@ -1,17 +1,19 @@
 <div align="center">
 
-# 📸 Vitrine
+<img src="docs/vitrine-icon.png" alt="" width="116" height="116">
+
+# Vitrine
 
 ### Turn code into beautiful images — straight from your menu bar.
 
-**Vitrine** is a native macOS menu-bar app that turns code (and, later, URLs and
-HTML) into gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so)
-and [Carbon](https://carbon.now.sh), but **native, instant, and fully local**.
+**Vitrine** is a native macOS menu-bar app that turns code (and URLs and HTML) into
+gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so) and
+[Carbon](https://carbon.now.sh), but **native, instant, and fully local**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v0.4.0%20shipped-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v0.7.0%20shipped-brightgreen.svg)](#status)
 
 </div>
 
@@ -39,14 +41,14 @@ Works **offline**, **100% local**, no account, no server. MIT-licensed.
 
 ## The flow you'll actually use
 
-1. **Copy** what you want to share — a snippet of code today, and URLs in Product Phase 2.
+1. **Copy** what you want to share — a snippet of code, or a URL.
 2. **Trigger Vitrine** — global hotkey (`⇧⌘S`) or the menu-bar icon.
 3. **Vitrine detects the content type** and picks the renderer:
    - **Code** → format + syntax highlight → a beautiful image, using the theme and
      style you preset in **Settings** (no questions asked).
-   - **URL** → detected today and deliberately deferred; Product Phase 2 will snapshot
-     the page locally with `WKWebView` (see [Product Phase 2](docs/RENDER-PHASES.md)).
-4. **The code screenshot lands on your clipboard**, ready to paste anywhere — or save to a file.
+   - **URL** → snapshot the page **locally** with `WKWebView` on the direct-download
+     build, with a first-use privacy disclosure (see [Render phases](docs/RENDER-PHASES.md)).
+4. **The screenshot lands on your clipboard**, ready to paste anywhere — or save to a file.
 
 Two modes, one engine:
 
@@ -129,6 +131,10 @@ on every release.
 | --- | --- |
 | <img src="Tests/Fixtures/Samples/lang-python.png" alt="Python highlighted on Dracula" width="380"> | <img src="Tests/Fixtures/Samples/a11y-high-contrast.png" alt="WCAG AA high-contrast palette" width="380"> |
 
+| Annotated markup (counter, box, blur, arrow) | GitHub-style diff coloring |
+| --- | --- |
+| <img src="docs/screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur/redaction box over a secret, an arrow, and a text callout" width="380"> | <img src="docs/screenshots/diff.png" alt="A unified diff with + lines banded green and − lines banded red, GitHub-style, with line numbers" width="380"> |
+
 </div>
 
 > How the gallery is generated, what it covers, and the design-QA process live in
@@ -136,12 +142,70 @@ on every release.
 
 ## Features
 
+Vitrine does one thing — turn code into an image worth sharing — and does it without
+ever leaving your Mac.
+
+### Capture
+
+Lives in the menu bar (`LSUIElement`, no Dock icon) and opens from anywhere with a
+global hotkey (`⇧⌘S`). It reads the clipboard, detects whether you copied **code, a
+URL, or HTML**, and picks the renderer for you — one-step Quick mode using your saved
+style, or the editor when you want to fine-tune.
+
+### Style
+
+Thirteen built-in themes (plus your own), 160+ languages of real syntax highlighting,
+developer fonts, and solid / gradient / image backgrounds. **Focus mode** dims
+everything but the lines that matter; **diff coloring** bands `+`/`−` lines
+GitHub-style; window chrome, padding, corner radius, and shadow are all yours to tune.
+
+### Annotate
+
+A CleanShot-style palette in the title bar — arrows, lines, rectangles, text callouts,
+a highlighter, blur/redaction boxes, and numbered counters. Draw them on the live
+preview, move and resize with handles, undo with ⌘Z; they are baked into the export.
+
+### Export & share
+
+Retina **PNG** and **PDF** to the clipboard, a file, or the Share Sheet — sRGB by
+default (Display P3 on demand), with real alpha for transparent backgrounds.
+Destination presets cover **OpenGraph** (1200×630), an **Instagram Story**, and a
+**GitHub banner**, and the bundled **`vitrine` CLI** renders the same pixels from your
+terminal.
+
+### Crafted & private
+
+One design-token system drives every surface in light and dark. Localized in English
+and Spanish, updated over Sparkle on the direct-download build, and reachable from
+Shortcuts and App Intents.
+
+> [!NOTE]
+> **Private by design.** Rendering is fully local and sandboxed — no account, no
+> network by default, no telemetry. Your code never leaves your Mac.
+
+**At a glance**
+
+| Area | What you get |
+| --- | --- |
+| **Capture** | Menu-bar app, global hotkey, clipboard auto-detect (code · URL · HTML), Quick and editor modes |
+| **Style** | 13 themes + custom, 160+ languages, fonts, gradient & image backgrounds, focus mode, diff coloring |
+| **Annotate** | Arrows, lines, boxes, text, highlighter, blur, numbered counters — on the live preview, with undo/redo |
+| **Export** | Retina PNG/PDF, clipboard · file · Share Sheet, OpenGraph · Story · GitHub-banner presets, `vitrine` CLI |
+| **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, Shortcuts/App Intents, recents |
+
+<details>
+<summary>Everything, in detail</summary>
+
 - 🍫 Native **menu-bar app** (`MenuBarExtra`, `LSUIElement` — no Dock icon, no app switcher).
 - ⌨️ Configurable **global hotkey** (`⇧⌘S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
+- ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows, lines, rectangles, text callouts, a highlighter, blur/redaction boxes, and numbered counters. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
+- 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
+- 🪧 **Social cards** — compose a 1200×630 card from your code (template, theme, background) to copy, save, or share, with **Instagram Story** and **GitHub banner** export presets.
+- 🌐 **Web snapshots** — render pasted **HTML** to an image, or capture a **webpage** (direct-download build) — entirely locally in WebKit, with a first-use privacy disclosure.
 - ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
 - 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar.
@@ -152,7 +216,7 @@ on every release.
 - 🖥️ **Command-line renderer** — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app (no network, screen recording, or Accessibility needed).
 - 🔒 Sandboxed, no network by default — your code **never leaves your Mac**.
 
-See the [**Status**](#status) section for what's shipped and what's deferred.
+</details>
 
 ## Privacy
 
@@ -305,6 +369,7 @@ vitrine/
 Everything from the original product spec lives in [`docs/`](docs/) so you never need
 to leave the repo:
 
+- [**CHANGELOG.md**](CHANGELOG.md) — the complete, versioned change history ([Keep a Changelog](https://keepachangelog.com)).
 - [**docs/PROJECT.md**](docs/PROJECT.md) — vision, positioning, naming, distribution, risks.
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
 - [**docs/RENDER-PHASES.md**](docs/RENDER-PHASES.md) — "beyond code": OG cards, HTML/URL snapshots, and the optional web render service.
@@ -318,19 +383,18 @@ to leave the repo:
 
 ## Status
 
-🟢 **v0.4.0 shipped, fully redesigned.** Menu-bar app (`LSUIElement`) with global
-hotkey, the live-highlight editor on its ambient-light stage, WYSIWYG canvas, PNG/PDF
-export to clipboard/file, the macOS share sheet, a Recents gallery, a six-pane sidebar
-Settings window, first-run onboarding with offline Help and What's New, Shortcuts/App
-Intents, launch-at-login, English + Spanish localization, Sparkle auto-updates on the
-DMG channel, a privacy manifest, a reproducible app icon, and a tagged-release
-pipeline (DMG + Homebrew cask). The entire UI is driven by one design-token system
-([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)), light and dark.
-Covered by a Swift Testing unit suite plus XCTest UI smoke tests. CI runs lint, build,
-the unit tests, and the full UI suite (GitHub's hosted macOS runners pre-authorize
-XCTest UI automation; see docs/RELEASING.md).
-The URL→screenshot path and OG cards are deliberately deferred (see RENDER-PHASES,
-"Product Phase 2").
+🟢 **v0.7.0 — shipped and stable.** Everything under [Features](#features) is built and
+driven by one design-token system ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in
+light and dark. It is covered by a Swift Testing unit suite plus XCTest UI smokes; CI
+runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
+(which pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md)).
+The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release
+also ships an in-app **What's New**.
+
+What's deliberately parked — arbitrary screen/window capture (Screen Recording
+trade-offs) and a hosted web-render service — is written up in
+[docs/SCREEN-CAPTURE-DISCOVERY.md](docs/SCREEN-CAPTURE-DISCOVERY.md) and
+[docs/RENDER-PHASES.md](docs/RENDER-PHASES.md).
 
 ## Contributing
 
