@@ -44,6 +44,16 @@ struct EditorInspectorView: View {
                         InspectorRow(label: Text("Highlight lines")) {
                             HighlightedLinesField(settings: settings)
                         }
+                        InspectorRow(label: Text("Focus highlighted")) {
+                            Toggle(
+                                "Focus highlighted", isOn: $settings.config.focusHighlightedLines
+                            )
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                            .disabled(settings.config.highlightedLineRanges.isEmpty)
+                            .help("Dim the lines outside the highlight so it stands out.")
+                            .accessibilityIdentifier("focus-lines-toggle")
+                        }
                     }
 
                     InspectorDisclosure(

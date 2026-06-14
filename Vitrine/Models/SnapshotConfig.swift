@@ -37,6 +37,11 @@ struct SnapshotConfig: Equatable {
     /// ordering.
     var highlightedLineRanges: [ClosedRange<Int>] = []
 
+    /// Dim the non-highlighted lines so the highlighted ones stand out — the "focus"
+    /// mode (CS-021). Off by default, and has no effect without a highlight, so the
+    /// default render is unchanged.
+    var focusHighlightedLines: Bool = false
+
     /// Optional header context — filename, title, caption, and a language badge
     /// (CS-022). Empty by default, so the header is omitted and the signature look
     /// is unchanged until the user adds context.

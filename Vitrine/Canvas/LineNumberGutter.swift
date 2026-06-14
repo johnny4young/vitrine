@@ -154,6 +154,9 @@ struct CodeLinesView: View {
     let textColor: Color
     /// The band color drawn behind a highlighted row.
     let highlightColor: Color
+    /// Fade the rows that are not highlighted, so the highlighted ones read as the
+    /// subject — the "focus" mode. No effect without a highlight.
+    var dimsUnfocused: Bool = false
 
     /// The code split into rows once, each keeping its syntax colors. Computed in
     /// `body` and passed down so the split runs a single time per render rather
@@ -208,6 +211,9 @@ struct CodeLinesView: View {
         // Negative inset cancels the horizontal padding so highlighted and plain
         // rows share the same left edge; the band simply extends past the text.
         .padding(.horizontal, -Brand.Spacing.xs)
+        // Focus mode: fade the rows outside the highlight so the highlighted ones
+        // read as the subject. A no-op when focus is off or this row is highlighted.
+        .opacity(dimsUnfocused && !isHighlighted ? 0.34 : 1)
     }
 
     /// One code line as text, preserving its syntax colors. An empty line still
