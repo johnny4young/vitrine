@@ -24,8 +24,8 @@ options:
 # Project-wide build settings.
 settings:
   base:
-    MARKETING_VERSION: "0.6.0"
-    CURRENT_PROJECT_VERSION: "5"
+    MARKETING_VERSION: "0.7.0"
+    CURRENT_PROJECT_VERSION: "6"
     # Latest Swift language mode + Swift 6.2 "approachable concurrency": the whole
     # module defaults to @MainActor isolation (the recommended model for an app),
     # which removes the need for scattered @MainActor / nonisolated(unsafe).
@@ -321,6 +321,9 @@ schemes:
           isEnabled: true
         - variable: VITRINE_RECORD_SOCIAL_CARD
           value: $(VITRINE_RECORD_SOCIAL_CARD)
+          isEnabled: true
+        - variable: VITRINE_REVIEW_SHOTS
+          value: $(VITRINE_REVIEW_SHOTS)
           isEnabled: true
     profile:
       config: Release
