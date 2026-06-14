@@ -17,6 +17,12 @@ struct SnapshotConfig: Equatable {
     var padding: Double = 32
     var background: BackgroundStyle = .gradient(.aurora)
     var showChrome: Bool = true
+
+    /// Optional text shown centered in the window-chrome bar (e.g. `ContentView.swift`),
+    /// like ray.so / Snappify. Empty by default, so the default chrome (dots only) and
+    /// every golden render are unchanged until the user types a title.
+    var windowTitle: String = ""
+
     var showShadow: Bool = true
     var cornerRadius: Double = Brand.Radius.card
     var shadowRadius: Double = Brand.Shadow.elevated.radius

@@ -5291,6 +5291,28 @@
           }
         }
       }
+    },
+    "Corner radius" : {
+      "comment" : "Editor canvas: corner-radius slider label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio de esquina"
+          }
+        }
+      }
+    },
+    "Shadow depth" : {
+      "comment" : "Editor canvas: shadow-radius slider label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profundidad de sombra"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"
