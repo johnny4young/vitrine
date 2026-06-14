@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitrine — turn code into beautiful images, from your menu bar</title>
+<meta name="description" content="A native macOS menu-bar app that turns code, URLs, and HTML into gorgeous, share-ready images — instant, fully local, and free.">
+<link rel="icon" href="vitrine-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Vitrine — turn code into beautiful images">
+<meta property="og:description" content="A native macOS menu-bar app that turns code into gorgeous, share-ready images. Instant, fully local, free.">
+<meta property="og:url" content="https://johnny4young.github.io/vitrine/">
+<meta property="og:image" content="https://johnny4young.github.io/vitrine/screenshots/editor.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Vitrine — turn code into beautiful images">
+<meta name="twitter:description" content="A native macOS menu-bar app that turns code into gorgeous, share-ready images. Instant, fully local, free.">
+<meta name="twitter:image" content="https://johnny4young.github.io/vitrine/screenshots/editor.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<style>
+  :root {
+    --bg: #0b0a16;
+    --surface: #15132a;
+    --surface-2: #1b1836;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text: #f4f3fb;
+    --muted: rgba(244, 243, 251, 0.66);
+    --faint: rgba(244, 243, 251, 0.42);
+    --violet: #8b7bff;
+    --violet-strong: #7c5cff;
+    --teal: #5dccd0;
+    --maxw: 1080px;
+    --radius: 16px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    color: var(--text);
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(124, 92, 255, 0.30), transparent 60%),
+      radial-gradient(900px 520px at 92% 4%, rgba(40, 200, 210, 0.18), transparent 60%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  .muted { color: var(--muted); }
+
+  nav {
+    position: sticky; top: 0; z-index: 20;
+    backdrop-filter: saturate(140%) blur(14px);
+    background: rgba(11, 10, 22, 0.72);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; }
+  .brand img { width: 28px; height: 28px; border-radius: 8px; }
+  nav .links { margin-left: auto; display: flex; align-items: center; gap: 22px; }
+  nav .links a { color: var(--muted); font-size: 14.5px; }
+  nav .links a:hover { color: var(--text); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14.5px; font-weight: 500; padding: 9px 16px; border-radius: 11px;
+    border: 1px solid transparent; cursor: pointer; transition: transform .08s ease, background .15s ease;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--violet-strong); color: #fff; box-shadow: 0 10px 30px -10px rgba(124, 92, 255, 0.7); }
+  .btn-primary:hover { background: #8b6dff; }
+  .btn-ghost { border-color: var(--border-strong); color: var(--text); }
+  .btn-ghost:hover { background: rgba(255, 255, 255, 0.06); }
+  nav .btn { padding: 7px 14px; }
+
+  header.hero { text-align: center; padding: 84px 0 36px; position: relative; }
+  .hero .icon { width: 92px; height: 92px; border-radius: 22px; box-shadow: 0 24px 60px -18px rgba(124, 92, 255, 0.8); }
+  .hero h1 { font-size: clamp(40px, 6vw, 62px); line-height: 1.04; letter-spacing: -0.02em; margin: 22px 0 0; font-weight: 600; }
+  .hero .tag { font-size: clamp(17px, 2.4vw, 21px); color: var(--muted); margin: 16px auto 0; max-width: 620px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+  .subtle { margin-top: 14px; font-size: 13.5px; color: var(--faint); }
+  .subtle b { color: var(--muted); font-weight: 500; }
+
+  .codecard {
+    margin: 52px auto 0; max-width: 560px; text-align: left;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: 0 40px 90px -30px rgba(124, 92, 255, 0.6), 0 8px 30px -12px rgba(0, 0, 0, 0.6);
+  }
+  .codecard .bar { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .codecard .bar i { margin-left: auto; color: var(--faint); font-size: 15px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .codecard pre { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 14px; line-height: 1.75; overflow-x: auto; }
+  .k { color: #c792ea; } .t { color: #82aaff; } .n { color: #f78c6c; } .s { color: #c3e88d; } .c { color: #6b6a86; }
+
+  section { padding: 60px 0; }
+  .eyebrow { color: var(--violet); font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  h2.title { font-size: clamp(26px, 4vw, 36px); letter-spacing: -0.02em; margin: 10px 0 0; font-weight: 600; }
+  .lead { color: var(--muted); margin: 12px 0 0; max-width: 640px; font-size: 17px; }
+
+  .grid { display: grid; gap: 16px; margin-top: 34px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+  .card .ic { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; font-size: 21px; background: rgba(124, 92, 255, 0.14); color: var(--violet); }
+  .card h3 { margin: 16px 0 6px; font-size: 17px; font-weight: 600; }
+  .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+  .shots { display: grid; gap: 18px; margin-top: 34px; }
+  .shots .big { grid-column: 1 / -1; }
+  .shots .row { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; }
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { padding: 13px 18px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--border); }
+  @media (max-width: 640px) { .shots .row { grid-template-columns: 1fr; } }
+
+  .changelog { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 28px 24px; margin-top: 30px; }
+  .changelog .ver { font-size: 18px; font-weight: 600; margin: 20px 0 2px; }
+  .changelog .cat { font-size: 12.5px; font-weight: 600; color: var(--violet); text-transform: uppercase; letter-spacing: 0.07em; margin: 16px 0 4px; }
+  .changelog ul { padding-left: 20px; margin: 4px 0; }
+  .changelog li { color: var(--muted); margin: 6px 0; }
+  .changelog strong { color: var(--text); font-weight: 600; }
+  .changelog code { font-family: var(--mono); font-size: 13px; background: rgba(255, 255, 255, 0.07); padding: 1px 6px; border-radius: 6px; }
+  .changelog a.more { display: inline-block; margin-top: 18px; color: var(--violet); font-weight: 500; }
+
+  .install { text-align: center; }
+  .terminal {
+    max-width: 560px; margin: 26px auto 0; display: flex; align-items: center; gap: 12px;
+    background: #0e0d1d; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    font-family: var(--mono); font-size: 14px; text-align: left;
+  }
+  .terminal .prompt { color: var(--teal); }
+  .terminal code { flex: 1; overflow-x: auto; white-space: nowrap; }
+  .terminal button { background: transparent; border: 1px solid var(--border-strong); color: var(--muted); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+  .terminal button:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+
+  footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 40px 0 60px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 18px 30px; align-items: center; }
+  footer .links { display: flex; flex-wrap: wrap; gap: 22px; }
+  footer a { color: var(--muted); font-size: 14.5px; }
+  footer a:hover { color: var(--text); }
+  footer .note { width: 100%; color: var(--faint); font-size: 13.5px; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 5px 13px; }
+  .pill i { color: var(--teal); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="vitrine-icon.png" alt="">Vitrine</a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#whats-new">Changelog</a>
+      <a href="https://github.com/johnny4young/vitrine">GitHub</a>
+      <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><i class="ti ti-download" aria-hidden="true"></i>Download</a>
+    </div>
+  </div>
+</nav>
+
+<a id="top"></a>
+<header class="hero">
+  <div class="wrap">
+    <img class="icon" src="vitrine-icon.png" alt="Vitrine app icon">
+    <h1>Turn code into beautiful images.</h1>
+    <p class="tag">A native macOS menu-bar app that turns code, URLs, and HTML into gorgeous, share-ready images — instant, and fully local.</p>
+    <div class="cta">
+      <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><i class="ti ti-brand-apple" aria-hidden="true"></i>Download for macOS</a>
+      <a class="btn btn-ghost" href="https://github.com/johnny4young/vitrine"><i class="ti ti-brand-github" aria-hidden="true"></i>View on GitHub</a>
+    </div>
+    <p class="subtle">Latest <b data-version>release</b> · requires macOS 14+ · free &amp; open source · <span data-version-note>your code never leaves your Mac</span></p>
+
+    <div class="codecard" aria-hidden="true">
+      <div class="bar">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+        <i class="ti ti-camera"></i>
+      </div>
+<pre><span class="k">struct</span> <span class="t">Counter</span> {
+  <span class="k">private(set) var</span> value = <span class="n">0</span>
+
+  <span class="k">mutating func</span> <span class="t">increment</span>(by step: <span class="t">Int</span> = <span class="n">1</span>) {
+    value += step
+  }
+}</pre>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <span class="eyebrow">What it does</span>
+    <h2 class="title">One thing, done without leaving your Mac.</h2>
+    <p class="lead">Copy code, hit a hotkey, and Vitrine renders a polished image with your saved style — or open the editor when you want to fine-tune.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="ic"><i class="ti ti-click" aria-hidden="true"></i></div>
+        <h3>Capture</h3>
+        <p>Lives in the menu bar with a global hotkey. Reads the clipboard and detects code, a URL, or HTML — then picks the renderer for you.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><i class="ti ti-palette" aria-hidden="true"></i></div>
+        <h3>Style</h3>
+        <p>13 themes plus your own, 160+ languages, developer fonts, gradient and image backgrounds, focus mode, and GitHub-style diff coloring.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><i class="ti ti-pencil" aria-hidden="true"></i></div>
+        <h3>Annotate</h3>
+        <p>A CleanShot-style palette: arrows, boxes, text, a highlighter, blur/redaction, and numbered counters — drawn on the live preview.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><i class="ti ti-photo" aria-hidden="true"></i></div>
+        <h3>Export &amp; share</h3>
+        <p>Retina PNG/PDF to clipboard, file, or the Share Sheet. OpenGraph, Instagram Story, and GitHub-banner presets, plus a <code>vitrine</code> CLI.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><i class="ti ti-shield-lock" aria-hidden="true"></i></div>
+        <h3>Private by design</h3>
+        <p>Rendering is fully local and sandboxed — no account, no network by default, no telemetry. Your code never leaves your Mac.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><i class="ti ti-sparkles" aria-hidden="true"></i></div>
+        <h3>Crafted</h3>
+        <p>One design-token system across every surface, light and dark. English &amp; Spanish, Sparkle auto-updates, Shortcuts and App Intents.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="gallery">
+  <div class="wrap">
+    <span class="eyebrow">See it</span>
+    <h2 class="title">Exactly what you'd export.</h2>
+    <p class="lead">Captured from the real build — the editor, and images rendered by Vitrine's own engine.</p>
+    <div class="shots">
+      <figure class="big">
+        <img src="screenshots/editor.png" alt="The Vitrine editor: a code pane, the preview on its ambient-light stage, and the style inspector" loading="lazy">
+        <figcaption>The editor — annotation tools in the title bar, the preview floating in ambient light, and the style inspector.</figcaption>
+      </figure>
+      <div class="row">
+        <figure>
+          <img src="screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur box, and an arrow" loading="lazy">
+          <figcaption>Annotate — counters, boxes, blur, arrows.</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots/diff.png" alt="A unified diff with added lines banded green and removed lines banded red" loading="lazy">
+          <figcaption>Diff coloring — GitHub-style + and − bands.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="whats-new">
+  <div class="wrap">
+    <span class="eyebrow">Changelog</span>
+    <h2 class="title">What's new</h2>
+    <p class="lead">Pulled live from the project's <code>CHANGELOG.md</code> — always current, nothing to maintain.</p>
+    <div class="changelog" id="changelog-body">
+      <p class="muted">Loading the latest release notes…</p>
+    </div>
+  </div>
+</section>
+
+<section id="install" class="install">
+  <div class="wrap">
+    <span class="eyebrow">Install</span>
+    <h2 class="title">Two commands away.</h2>
+    <p class="lead" style="margin-inline:auto">Install with Homebrew, or grab the signed, notarized DMG. Either way, the <code>vitrine</code> CLI lands on your PATH.</p>
+    <div class="terminal">
+      <span class="prompt">$</span>
+      <code id="brew-cmd">brew install --cask johnny4young/tap/vitrine</code>
+      <button id="copy-brew" aria-label="Copy install command"><i class="ti ti-copy" aria-hidden="true"></i> Copy</button>
+    </div>
+    <div class="cta" style="margin-top:22px">
+      <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><i class="ti ti-download" aria-hidden="true"></i>Download the DMG</a>
+      <a class="btn btn-ghost" href="https://github.com/johnny4young/vitrine#getting-started"><i class="ti ti-terminal-2" aria-hidden="true"></i>Build from source</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="vitrine-icon.png" alt="" style="width:24px;height:24px">Vitrine</a>
+    <div class="links">
+      <a href="https://github.com/johnny4young/vitrine">GitHub</a>
+      <a href="https://github.com/johnny4young/vitrine/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/johnny4young/vitrine/blob/main/docs/PERMISSIONS.md">Privacy</a>
+      <a href="https://github.com/johnny4young/vitrine/blob/main/LICENSE">License</a>
+    </div>
+    <span class="pill" style="margin-left:auto"><i class="ti ti-lock" aria-hidden="true"></i> No account · no network by default · no telemetry</span>
+    <p class="note">Vitrine is open source under the MIT license. Built by <a href="https://github.com/johnny4young" style="color:var(--violet)">johnny4young</a>.</p>
+  </div>
+</footer>
+
+<script>
+  const REPO = "johnny4young/vitrine";
+
+  function renderChangelog(section) {
+    function inline(s) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    }
+    var out = [], inList = false;
+    section.split("\n").forEach(function (raw) {
+      var line = raw.replace(/\s+$/, "");
+      if (/^##\s+/.test(line)) {
+        if (inList) { out.push("</ul>"); inList = false; }
+        out.push('<div class="ver">' + inline(line.replace(/^##\s+/, "")) + "</div>");
+      } else if (/^###\s+/.test(line)) {
+        if (inList) { out.push("</ul>"); inList = false; }
+        out.push('<div class="cat">' + inline(line.replace(/^###\s+/, "")) + "</div>");
+      } else if (/^\s*-\s+/.test(line)) {
+        if (!inList) { out.push("<ul>"); inList = true; }
+        out.push("<li>" + inline(line.replace(/^\s*-\s+/, "")) + "</li>");
+      } else if (inList && /^\s+\S/.test(line)) {
+        out[out.length - 1] = out[out.length - 1].replace(/<\/li>$/, " " + inline(line.trim()) + "</li>");
+      } else if (line.trim() !== "") {
+        if (inList) { out.push("</ul>"); inList = false; }
+        out.push("<p>" + inline(line) + "</p>");
+      }
+    });
+    if (inList) out.push("</ul>");
+    return out.join("");
+  }
+
+  fetch("https://api.github.com/repos/" + REPO + "/releases/latest")
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function (rel) {
+      var tag = rel.tag_name || "";
+      document.querySelectorAll("[data-version]").forEach(function (el) { if (tag) el.textContent = tag; });
+      var dmg = (rel.assets || []).find(function (a) { return /\.dmg$/i.test(a.name); });
+      var url = dmg ? dmg.browser_download_url : rel.html_url;
+      document.querySelectorAll("[data-download]").forEach(function (el) { el.href = url; });
+    })
+    .catch(function () { /* keep the fallback link to /releases/latest */ });
+
+  fetch("https://raw.githubusercontent.com/" + REPO + "/main/CHANGELOG.md")
+    .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+    .then(function (md) {
+      var lines = md.split("\n");
+      var start = lines.findIndex(function (l) { return /^##\s*\[[0-9]/.test(l); });
+      if (start < 0) return;
+      var end = -1;
+      for (var i = start + 1; i < lines.length; i++) {
+        if (/^##\s*\[/.test(lines[i])) { end = i; break; }
+      }
+      if (end < 0) end = lines.length;
+      var section = lines.slice(start, end).join("\n");
+      document.getElementById("changelog-body").innerHTML =
+        renderChangelog(section) +
+        '<a class="more" href="https://github.com/' + REPO + '/blob/main/CHANGELOG.md">Full changelog →</a>';
+    })
+    .catch(function () {
+      document.getElementById("changelog-body").innerHTML =
+        '<a class="more" href="https://github.com/' + REPO + '/blob/main/CHANGELOG.md">Read the changelog on GitHub →</a>';
+    });
+
+  document.getElementById("copy-brew").addEventListener("click", function () {
+    var btn = this;
+    navigator.clipboard.writeText("brew install --cask johnny4young/tap/vitrine").then(function () {
+      btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copied';
+      setTimeout(function () { btn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i> Copy'; }, 1800);
+    });
+  });
+</script>
+</body>
+</html>
