@@ -42,6 +42,22 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.7.0",
+            headline: "Annotate your screenshots",
+            highlights: [
+                "Mark up a snapshot from a new toolbar — arrows, lines, rectangles, text, "
+                    + "a highlighter, blur boxes, and numbered counters — drawn right on the preview.",
+                "Pick a tool and drag to draw, move and resize with handles, restyle the "
+                    + "color and size, and undo or redo with ⌘Z.",
+                "Two new export shapes — an Instagram Story (1080×1920) and a GitHub README "
+                    + "banner — plus a View ▸ Theme quick menu and searchable theme and font pickers.",
+                "Focus mode dims the lines outside your highlight, diff coloring paints + and − "
+                    + "lines (automatic for the Diff language), and you can add a window title and "
+                    + "tune corner radius and shadow.",
+                "Drop an image background straight from a URL, and the editor now closes itself "
+                    + "after you copy (with a Settings toggle).",
+            ]),
+        ReleaseNote(
             version: "0.6.0",
             headline: "Social cards and web snapshots",
             highlights: [
