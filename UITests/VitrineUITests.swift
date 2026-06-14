@@ -202,6 +202,51 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testEditorShowsAnnotationToolbar() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-toolbar", in: app), in: app, timeout: 8)
+
+        // The annotation tool palette lives in the title bar (CS-085); every tool is
+        // present and addressable.
+        for tool in ["select", "arrow", "rectangle", "highlighter", "counter"] {
+            XCTAssertTrue(
+                element("annotation-tool-\(tool)", in: app).waitForExistence(timeout: 3),
+                "Annotation toolbar is missing the \(tool) tool")
+        }
+
+        // Activating a draw tool reveals its options — the color swatch and the size
+        // slider — which the Select pointer hides.
+        assertHittable("annotation-tool-arrow", in: app, "Arrow tool is not reachable")
+        element("annotation-tool-arrow", in: app).click()
+        assertExists(element("annotation-color-swatch", in: app), in: app, timeout: 3)
+        assertExists(element("annotation-thickness-slider", in: app), in: app)
+
+        element("annotation-tool-select", in: app).click()
+    }
+
+    @MainActor
+    func testCopyImageClosesTheEditorWhenEnabled() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        // Close-after-copy is on by default (CS-084), so clicking the primary CTA both
+        // copies the image and closes the window.
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        let copyButton = element("copy-button", in: app)
+        assertExists(copyButton, in: app, timeout: 8)
+        copyButton.click()
+
+        XCTAssertTrue(
+            element("editor-window", in: app).waitForNonExistence(timeout: 4),
+            "The editor window should close after Copy image when close-after-copy is on")
+    }
+
+    @MainActor
     func testEditorKeyboardCanReachToolbarAndInspector() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()

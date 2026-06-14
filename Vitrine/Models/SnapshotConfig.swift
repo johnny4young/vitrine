@@ -47,6 +47,12 @@ struct SnapshotConfig: Equatable {
     /// to the row layout to band each changed line.
     var diffDecorations: Bool = false
 
+    /// Freeform marks drawn over the snapshot — arrows, text callouts, and
+    /// blur/redaction boxes (CS-083). Empty by default, so the default render and
+    /// every golden are unchanged until the user adds one. Stored in normalized
+    /// canvas coordinates so a mark maps identically across every canvas size.
+    var annotations: [Annotation] = []
+
     /// Optional header context — filename, title, caption, and a language badge
     /// (CS-022). Empty by default, so the header is omitted and the signature look
     /// is unchanged until the user adds context.

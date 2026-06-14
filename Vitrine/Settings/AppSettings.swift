@@ -37,6 +37,14 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(alsoSaveToFile, forKey: Keys.alsoSaveToFile) }
     }
 
+    /// Close the editor window after a successful "Copy image" (CS-084). On by
+    /// default: the window's job is done once the image is on the clipboard, so it
+    /// gets out of the way like a focused capture utility. Users who copy repeatedly
+    /// can turn it off in Settings.
+    @Published var closeAfterCopy: Bool {
+        didSet { defaults.set(closeAfterCopy, forKey: Keys.closeAfterCopy) }
+    }
+
     /// Export resolution multiplier: 1, 2 (retina), or 3.
     @Published var exportScale: Int {
         didSet { defaults.set(exportScale, forKey: Keys.exportScale) }
@@ -223,6 +231,7 @@ final class AppSettings: ObservableObject {
 
         autoCopy = defaults.object(forKey: Keys.autoCopy) as? Bool ?? true
         alsoSaveToFile = defaults.object(forKey: Keys.alsoSaveToFile) as? Bool ?? false
+        closeAfterCopy = defaults.object(forKey: Keys.closeAfterCopy) as? Bool ?? true
         exportScale = SettingsCodec.readExportScale(from: defaults)
         exportFormat = ExportFormat.resolve(defaults.string(forKey: Keys.exportFormat))
         colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
@@ -463,6 +472,7 @@ final class AppSettings: ObservableObject {
 
         autoCopy = true
         alsoSaveToFile = false
+        closeAfterCopy = true
         exportScale = SettingsDefaults.exportScale
         exportFormat = .fallback
         colorProfile = .fallback

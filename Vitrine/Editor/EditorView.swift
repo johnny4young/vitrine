@@ -47,9 +47,33 @@ struct EditorView: View {
     /// can scale it to always fit (design/handoff "scale-to-fit").
     @State private var cardSize: CGSize = .zero
 
+    /// The currently selected annotation, shared between the preview's interactive
+    /// overlay and the inspector's annotation controls (CS-083). `nil` when nothing
+    /// is selected. Editor-only UI state, not persisted.
+    @State private var selectedAnnotationID: UUID?
+
+    /// The active annotation tool (CS-085). `.select` moves/resizes existing marks;
+    /// any other tool puts the preview into draw mode. Editor-only UI state.
+    @State private var activeTool: AnnotationTool = .select
+
+    /// The color and size the next drawn mark inherits. When a mark is selected, the
+    /// toolbar edits *its* color/size instead (see `annotationStyleColor`).
+    @State private var newDrawColor: Color = Annotation.defaultColor.color
+    @State private var newDrawThickness: Double = Annotation.defaultThickness
+
+    /// Undo/redo history for annotation edits (CS-086): each entry is a full snapshot
+    /// of `config.annotations` captured just before a draw/move/resize/delete. Bounded
+    /// so a long session never grows without limit.
+    @State private var annotationUndo: [[Annotation]] = []
+    @State private var annotationRedo: [[Annotation]] = []
+
     /// True while the save-style-preset prompt is up (the toolbar star).
     @State private var showSavePresetPrompt = false
     @State private var savePresetName = ""
+
+    /// This editor's own `NSWindow`, captured via `WindowAccessor`, so actions like
+    /// close-after-copy target it directly instead of guessing at `keyWindow`.
+    @State private var editorWindow: NSWindow?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,9 +86,16 @@ struct EditorView: View {
                     .frame(width: 302)
             }
         }
+        // Merge the toolbar into the title bar: the window is `fullSizeContentView`
+        // with a hidden, transparent title bar, but SwiftUI still insets its content
+        // below the title bar by default, leaving an empty strip above the toolbar.
+        // Extending into the top safe area pulls the glass toolbar up to the window
+        // edge, with the traffic lights floating over its leading 86 pt (CS-037).
+        .ignoresSafeArea(.container, edges: .top)
         // A comfortable minimum that still fits the three columns on the smallest
         // supported window; the stage column absorbs all extra width.
         .frame(minWidth: 940, minHeight: 520)
+        .background(WindowAccessor { editorWindow = $0 })
         // The redesign's controls tint with the brand accent regardless of the
         // user's system accent (`--control-on: var(--accent)`).
         .tint(VitrineTokens.Accent.base)
@@ -127,14 +158,12 @@ struct EditorView: View {
     /// sharing the command's VoiceOver label and keyboard shortcut.
     private var editorToolbar: some View {
         HStack(spacing: 14) {
-            HStack(spacing: VitrineTokens.Spacing.xs) {
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable()
-                    .frame(width: 22, height: 22)
-                Text(verbatim: "Vitrine Editor")
-                    .font(.system(size: VitrineTokens.FontSize.headline, weight: .bold))
-                    .foregroundStyle(VitrineTokens.Text.primary)
-            }
+            // Just the app mark — the "Vitrine Editor" wordmark was redundant next to
+            // the window and only crowded the toolbar (CS-087).
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 22, height: 22)
+                .accessibilityLabel("Vitrine Editor")
 
             Picker("Language", selection: $settings.config.language) {
                 ForEach(settings.orderedLanguages) { language in
@@ -146,8 +175,39 @@ struct EditorView: View {
             .help("The language used to syntax-highlight the code.")
             .accessibilityLabel("Language")
             .accessibilityIdentifier("language-picker")
+            // Picking the Diff language is an unambiguous "I want diff rendering", so
+            // turn the +/− bands (and the line gutter they read best with) on
+            // automatically — the feature was previously undiscoverable behind an
+            // inspector toggle (CS-084). The toggle stays as a manual override.
+            .onChange(of: settings.config.language) { _, newValue in
+                if newValue == .diff {
+                    settings.config.diffDecorations = true
+                    settings.config.showLineNumbers = true
+                }
+            }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
+
+            // The annotation tool palette lives in the title bar (CS-085), so marks
+            // are drawn with the cursor like a dedicated screenshot tool. Picking a
+            // draw tool deselects any mark so its options show the new-draw style.
+            AnnotationToolbar(
+                activeTool: $activeTool,
+                color: annotationStyleColor,
+                thickness: annotationStyleThickness,
+                showsColor: annotationStyleUsesColor,
+                showsThickness: annotationStyleUsesThickness,
+                canUndo: !annotationUndo.isEmpty,
+                canRedo: !annotationRedo.isEmpty,
+                shortcutsActive: annotationContextActive,
+                onUndo: undoAnnotations,
+                onRedo: redoAnnotations
+            )
+            .onChange(of: activeTool) { _, newTool in
+                if newTool != .select { selectedAnnotationID = nil }
+            }
+
+            Spacer(minLength: 8)
 
             copyOptionsMenu
             iconButton(
@@ -189,10 +249,7 @@ struct EditorView: View {
                 .font(.system(size: 12, weight: .semibold))
             Text("Copy image")
         } action: {
-            ExportManager.copyToPasteboard(
-                settings.config, scale: CGFloat(settings.effectiveExportScale),
-                fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
-                richText: settings.richClipboard)
+            copyImage()
         }
         .help("Render and copy the image to the clipboard")
         .disabled(settings.config.code.isEmpty)
@@ -204,6 +261,24 @@ struct EditorView: View {
         } else {
             button
         }
+    }
+
+    /// Renders and copies the image, then — by default — closes the editor window so
+    /// it gets out of the way once its job is done (CS-084). Users who copy more than
+    /// once can keep it open from Settings.
+    private func copyImage() {
+        ExportManager.copyToPasteboard(
+            settings.config, scale: CGFloat(settings.effectiveExportScale),
+            fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
+            richText: settings.richClipboard)
+        // `closeAfterCopy` is an app-global behavior preference, so it is read from the
+        // shared settings (what the Settings toggle edits) rather than this window's
+        // per-session copy. Close *this* window — captured via `WindowAccessor`, so it
+        // never depends on `keyWindow` being right — deferred past the button's action,
+        // and `close()` (not `performClose`) so it is unconditional.
+        guard AppSettings.shared.closeAfterCopy else { return }
+        let target = editorWindow ?? NSApp.keyWindow
+        DispatchQueue.main.async { target?.close() }
     }
 
     /// The explicit alternative copy targets behind the rich-text icon
@@ -278,7 +353,7 @@ struct EditorView: View {
             }
             .accessibilityIdentifier("editor-save-style-preset-button")
         } label: {
-            Image(systemName: "star")
+            Image(systemName: "paintpalette")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(VitrineTokens.Text.secondary)
                 .frame(width: 30, height: 30)
@@ -291,8 +366,8 @@ struct EditorView: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Apply a saved or built-in style — theme, background, and layout — in one step.")
-        .accessibilityLabel("Style preset")
+        .help("Style presets — apply a saved or built-in look, or save the current style.")
+        .accessibilityLabel("Style presets")
         .accessibilityIdentifier("editor-style-preset-picker")
     }
 
@@ -416,19 +491,33 @@ struct EditorView: View {
     private var previewStage: some View {
         GeometryReader { proxy in
             let scale = fitScale(in: proxy.size)
+            // The preview mirrors the active preset's framing, so selecting a
+            // fixed-size preset (e.g. OpenGraph 1200×630) updates the canvas
+            // immediately (CS-020). The interactive annotation overlay is a sibling at
+            // the canvas's natural size, so it shares the canvas coordinate space and
+            // scales with it (CS-083) — a pointer drag maps straight to normalized
+            // annotation coordinates.
             ZStack {
-                // The preview mirrors the active preset's framing, so selecting a
-                // fixed-size preset (e.g. OpenGraph 1200×630) updates the canvas
-                // immediately (CS-020).
                 SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
                     .fixedSize()
                     .onGeometryChange(for: CGSize.self, of: \.size) { cardSize = $0 }
                     .compositingGroup()
                     .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
-                    .scaleEffect(scale)
-                    .animation(.easeInOut(duration: 0.25), value: scale)
+                AnnotationEditingOverlay(
+                    settings: settings, selection: $selectedAnnotationID,
+                    canvasSize: cardSize, activeTool: activeTool,
+                    drawColor: newDrawColor, drawThickness: newDrawThickness,
+                    onBeginEdit: recordAnnotationUndo)
             }
+            .scaleEffect(scale)
+            // `scaleEffect` does not shrink the layout footprint, so without this the
+            // unscaled (often very wide) card stays full-width in layout and its
+            // centered overflow is clipped on the right. Pinning the footprint to the
+            // *scaled* size centers the card on its visible bounds and keeps it fully
+            // inside the stage at every window size (usability fix).
+            .frame(width: cardSize.width * scale, height: cardSize.height * scale)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(.easeInOut(duration: 0.25), value: scale)
         }
         .onGeometryChange(for: CGSize.self, of: \.size) { stageSize = $0 }
         .clipped()
@@ -446,6 +535,89 @@ struct EditorView: View {
             1,
             (stage.width - 72) / cardSize.width,
             (stage.height - 72) / cardSize.height)
+    }
+
+    // MARK: - Annotation toolbar style (CS-085)
+
+    /// The annotation currently selected in Select mode, if any.
+    private var selectedAnnotation: Annotation? {
+        guard let id = selectedAnnotationID else { return nil }
+        return settings.config.annotations.first { $0.id == id }
+    }
+
+    /// The toolbar color: the selected mark's color when one is selected, otherwise
+    /// the new-draw default. Writing it updates whichever target is active.
+    private var annotationStyleColor: Binding<Color> {
+        Binding(
+            get: { selectedAnnotation?.color.color ?? newDrawColor },
+            set: { newValue in
+                newDrawColor = newValue
+                if let id = selectedAnnotationID,
+                    let index = settings.config.annotations.firstIndex(where: { $0.id == id })
+                {
+                    settings.config.annotations[index].color = RGBAColor(newValue)
+                }
+            })
+    }
+
+    /// The toolbar size slider, mirroring `annotationStyleColor`'s selected-vs-default
+    /// targeting.
+    private var annotationStyleThickness: Binding<Double> {
+        Binding(
+            get: { selectedAnnotation?.thickness ?? newDrawThickness },
+            set: { newValue in
+                newDrawThickness = newValue
+                if let id = selectedAnnotationID,
+                    let index = settings.config.annotations.firstIndex(where: { $0.id == id })
+                {
+                    settings.config.annotations[index].thickness = newValue
+                }
+            })
+    }
+
+    /// Whether the color swatch applies to the current context (the selected mark, or
+    /// the active draw tool). Blur has no color.
+    private var annotationStyleUsesColor: Bool {
+        if let selected = selectedAnnotation { return selected.kind != .blur }
+        return activeTool.usesColor
+    }
+
+    /// Whether the size slider applies (the highlighter fill and blur have no stroke).
+    private var annotationStyleUsesThickness: Bool {
+        if let selected = selectedAnnotation {
+            return selected.kind != .blur && selected.kind != .highlighter
+        }
+        return activeTool.usesThickness
+    }
+
+    // MARK: - Annotation undo/redo (CS-086)
+
+    /// Whether the user is in an annotation context (a draw tool is active or a mark
+    /// is selected). The undo/redo keyboard shortcut is gated on this so it never
+    /// hijacks the code editor's own Cmd-Z while you are typing code.
+    private var annotationContextActive: Bool {
+        activeTool != .select || selectedAnnotationID != nil
+    }
+
+    /// Snapshots the current marks just before a discrete edit, so it can be undone.
+    private func recordAnnotationUndo() {
+        annotationRedo.removeAll()
+        annotationUndo.append(settings.config.annotations)
+        if annotationUndo.count > 60 { annotationUndo.removeFirst() }
+    }
+
+    private func undoAnnotations() {
+        guard !annotationUndo.isEmpty else { return }
+        annotationRedo.append(settings.config.annotations)
+        settings.config.annotations = annotationUndo.removeLast()
+        selectedAnnotationID = nil
+    }
+
+    private func redoAnnotations() {
+        guard !annotationRedo.isEmpty else { return }
+        annotationUndo.append(settings.config.annotations)
+        settings.config.annotations = annotationRedo.removeLast()
+        selectedAnnotationID = nil
     }
 
     /// The neutral stage washed by two radial glows in the background's stop
@@ -576,7 +748,7 @@ struct EditorView: View {
             session.makeDefault()
         }
         .help(
-            "Use this window's style — theme, font, background, and output — for new windows and captures."
+            "Make this window's style the default — theme, font, background, and output — for new windows and captures."
         )
         .accessibilityLabel(VitrineCommand.makeDefault.accessibilityLabel)
         .accessibilityIdentifier("make-default-button")
@@ -762,5 +934,36 @@ extension VitrineCommand {
     var swiftUIShortcut: KeyboardShortcut? {
         guard let key = keyEquivalent, let character = key.first else { return nil }
         return KeyboardShortcut(KeyEquivalent(character), modifiers: swiftUIEventModifiers)
+    }
+}
+
+/// Captures the hosting `NSWindow` of a SwiftUI view, so AppKit-level actions (e.g.
+/// close-after-copy, CS-084) can target *this* window rather than guessing at
+/// `NSApp.keyWindow`. Resolves once the view joins the window, and again if it moves.
+private struct WindowAccessor: NSViewRepresentable {
+    let onResolve: (NSWindow?) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        // Poll the next few run loops until the view has joined its window, then stop.
+        // (A one-shot resolve can miss it if the view isn't in the window yet; a
+        // per-`updateNSView` resolve churns on every editor re-render and can slow
+        // launch enough to flake the multi-window UI test — this captures once,
+        // reliably, without the churn.)
+        capture(from: view, attempt: 0)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private func capture(from view: NSView, attempt: Int) {
+        DispatchQueue.main.async { [weak view] in
+            guard let view else { return }
+            if let window = view.window {
+                onResolve(window)
+            } else if attempt < 30 {
+                capture(from: view, attempt: attempt + 1)
+            }
+        }
     }
 }

@@ -54,6 +54,7 @@
     },
     "%lld code blocks found — opening the editor to choose one" : {
       "comment" : "Capture feedback when several code blocks are detected and handed to the editor (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -95,6 +96,7 @@
     },
     "%lld lines" : {
       "comment" : "Editor code panel: live line count (design/handoff).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -136,6 +138,7 @@
     },
     "%lld seconds" : {
       "comment" : "Input pane extra-wait value, in seconds; count-aware (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -177,6 +180,7 @@
     },
     "1×" : {
       "comment" : "Output resolution option: 1x scale.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -188,6 +192,7 @@
     },
     "2× (Retina)" : {
       "comment" : "Output resolution option: 2x (Retina) scale.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -199,6 +204,7 @@
     },
     "3×" : {
       "comment" : "Output resolution option: 3x scale.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -210,6 +216,7 @@
     },
     "A destination preset sizes and styles the image for a place to post it." : {
       "comment" : "Style pane footer explaining destination presets.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -232,6 +239,7 @@
     },
     "About Vitrine" : {
       "comment" : "Menu command title and VoiceOver label for the About panel.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -243,6 +251,7 @@
     },
     "Add an optional filename, title, caption, or language badge above the code." : {
       "comment" : "Style pane Header section footer.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -254,6 +263,7 @@
     },
     "Add color stop" : {
       "comment" : "Button: add a gradient color stop.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -265,6 +275,7 @@
     },
     "Add custom themes from a Vitrine theme file (.json)." : {
       "comment" : "Help text for the Import themes button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -276,6 +287,7 @@
     },
     "Add Dropped Text" : {
       "comment" : "Drop confirmation title when plain text (not a file) is dropped.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -287,6 +299,7 @@
     },
     "Add highlighted code as rich text" : {
       "comment" : "Output pane toggle: include highlighted code as rich text on copy.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -298,6 +311,7 @@
     },
     "Add presets from a Vitrine preset file (.json)." : {
       "comment" : "Help text for the Import presets button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -309,6 +323,7 @@
     },
     "Added %lld presets" : {
       "comment" : "Confirmation after importing style presets; count-aware (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -350,6 +365,7 @@
     },
     "Added %lld themes" : {
       "comment" : "Confirmation after importing custom themes; count-aware (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -469,6 +485,7 @@
     },
     "Append" : {
       "comment" : "Drop confirmation: append the dropped content to existing code.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -480,6 +497,7 @@
     },
     "Apply" : {
       "comment" : "Button: apply the selected preset or theme.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -491,6 +509,7 @@
     },
     "Apply a saved or built-in style — theme, background, and layout — in one step." : {
       "comment" : "Help text for the editor style preset picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -519,6 +538,7 @@
     },
     "Apply this preset's style to the current snapshot." : {
       "comment" : "Help text for the Apply preset button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -530,6 +550,7 @@
     },
     "Attributes" : {
       "comment" : "Custom theme editor color label: attributes.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -552,6 +573,7 @@
     },
     "Base" : {
       "comment" : "Custom theme editor section: base colors.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -574,6 +596,7 @@
     },
     "Bring All to Front" : {
       "comment" : "Window menu: standard arrange command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -585,6 +608,7 @@
     },
     "Built-in" : {
       "comment" : "Picker section header for built-in themes or presets.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -596,6 +620,7 @@
     },
     "Built-in presets can't be changed — duplicate one to make it your own." : {
       "comment" : "Presets footer for a built-in selection.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -607,6 +632,7 @@
     },
     "Can't Load That File" : {
       "comment" : "Alert title when a dropped file is rejected.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -618,6 +644,7 @@
     },
     "Cancel" : {
       "comment" : "Standard cancel button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -668,6 +695,7 @@
     },
     "Capture a webpage?" : {
       "comment" : "URL capture first-use disclosure title (CS-043).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -679,6 +707,7 @@
     },
     "Captures exactly the viewport size. URL capture loads the page locally in WebKit and arrives in Product Phase 2." : {
       "comment" : "Input pane footer for the visible-area web capture mode.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -690,6 +719,7 @@
     },
     "Captures the whole page at the viewport width, down to a bounded maximum height. Lazy-loaded content is given a chance to appear by scrolling the page a limited number of times." : {
       "comment" : "Input pane footer for the full-page web capture mode; explains the bounded lazy-load scroll.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -701,6 +731,7 @@
     },
     "Captures you make appear here as previews. Copy some code and press the capture hotkey to get started." : {
       "comment" : "Recents gallery empty-state message.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -712,6 +743,7 @@
     },
     "Check for app updates" : {
       "comment" : "VoiceOver label for the Check for Updates command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -723,6 +755,7 @@
     },
     "Check for Updates…" : {
       "comment" : "Menu command: check for an app update (Sparkle, direct-download build).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -734,6 +767,7 @@
     },
     "Choose a built-in or custom syntax theme." : {
       "comment" : "Help text for the theme picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -745,6 +779,7 @@
     },
     "Choose a folder on your PATH for the vitrine command — for example /opt/homebrew/bin." : {
       "comment" : "Open-panel message for the CLI install (CS-033).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -762,6 +797,7 @@
     },
     "Choose a preset to apply, duplicate, rename, or delete. Selecting does not change your current style." : {
       "comment" : "Help text for the style preset picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -795,6 +831,7 @@
     },
     "Clear Recents" : {
       "comment" : "Menu action that empties the recent-captures list.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -806,6 +843,7 @@
     },
     "Clear Recents?" : {
       "comment" : "Clear Recents confirmation dialog title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -828,6 +866,7 @@
     },
     "Clipboard is empty — copy some code first" : {
       "comment" : "Capture feedback when the clipboard has nothing to render.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -839,6 +878,7 @@
     },
     "Close" : {
       "comment" : "File menu: standard close-window command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -850,6 +890,7 @@
     },
     "Close Help" : {
       "comment" : "Help text for the Help window Done button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -878,6 +919,7 @@
     },
     "Code is too large to format interactively" : {
       "comment" : "Editor Format Code feedback when the buffer exceeds the interactive formatter limit (CS-049).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -928,6 +970,7 @@
     },
     "Comments" : {
       "comment" : "Custom theme editor color label: comments.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -939,6 +982,7 @@
     },
     "Continue" : {
       "comment" : "What's New button: dismiss and continue.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -950,6 +994,7 @@
     },
     "Copy" : {
       "comment" : "Edit menu: standard copy command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -961,6 +1006,7 @@
     },
     "Copy as a data URI, or copy the highlighted code as rich text" : {
       "comment" : "Help text for the editor's copy-options menu.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -972,6 +1018,7 @@
     },
     "Copy as Data URI" : {
       "comment" : "Menu/toolbar command: copy the image as a base64 data URI.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -983,6 +1030,7 @@
     },
     "Copy code" : {
       "comment" : "Onboarding step 1 title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -994,6 +1042,7 @@
     },
     "Copy Command" : {
       "comment" : "Settings General: copy the Terminal install command (CS-033).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1011,6 +1060,7 @@
     },
     "Copy Highlighted Code" : {
       "comment" : "Menu/toolbar command: copy syntax-highlighted code as rich text.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1022,6 +1072,7 @@
     },
     "Copy Image" : {
       "comment" : "Menu/toolbar command: copy the rendered image.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1050,6 +1101,7 @@
     },
     "Copy image as a base64 data URI" : {
       "comment" : "VoiceOver label for the Copy as Data URI command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1061,6 +1113,7 @@
     },
     "Copy image to clipboard" : {
       "comment" : "VoiceOver label for the Copy Image command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1072,6 +1125,7 @@
     },
     "Copy syntax-highlighted code" : {
       "comment" : "VoiceOver label for the Copy Highlighted Code command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1083,6 +1137,7 @@
     },
     "Copy the equivalent Terminal command, for system folders that need sudo." : {
       "comment" : "Settings General: help on the Copy Command button (CS-033).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1100,6 +1155,7 @@
     },
     "Copy the highlighted code as rich text, or the image as a data URI" : {
       "comment" : "Editor toolbar: copy-options menu help (design/handoff).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1128,6 +1184,7 @@
     },
     "Couldn't copy the image" : {
       "comment" : "Editor menu: Copy Image failure feedback (CS-038).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1139,6 +1196,7 @@
     },
     "Couldn't Install the Command" : {
       "comment" : "Settings General: CLI install failure alert title (CS-033).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1156,6 +1214,7 @@
     },
     "Couldn't save the image" : {
       "comment" : "Editor menu: Save Image failure feedback (CS-038).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1167,6 +1226,7 @@
     },
     "Create a custom syntax theme with a live preview." : {
       "comment" : "Help text for the New theme button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1189,6 +1249,7 @@
     },
     "Custom (%lld × %lld)" : {
       "comment" : "Input pane viewport picker label for a custom width × height (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1200,6 +1261,7 @@
     },
     "Custom background" : {
       "comment" : "Accessibility label of the dashed + background swatch (design/handoff).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1228,6 +1290,7 @@
     },
     "Custom Themes" : {
       "comment" : "Style pane section header: custom themes.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1256,6 +1319,7 @@
     },
     "Custom themes are your own syntax palettes. Built-in themes can't be changed. Theme files are JSON and never leave your Mac." : {
       "comment" : "Custom themes section footer.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1267,6 +1331,7 @@
     },
     "Custom — solid color or image" : {
       "comment" : "Help on the dashed + background swatch (design/handoff).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1295,6 +1360,7 @@
     },
     "Cut" : {
       "comment" : "Edit menu: standard cut command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1306,6 +1372,7 @@
     },
     "Darken the image to keep code readable" : {
       "comment" : "Help text for the dimming slider.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1334,6 +1401,7 @@
     },
     "Delete" : {
       "comment" : "Button: delete the selected preset or theme.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1345,6 +1413,7 @@
     },
     "Delete this custom theme." : {
       "comment" : "Help text for the Delete theme button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1356,6 +1425,7 @@
     },
     "Delete this saved preset. Built-in presets can't be deleted." : {
       "comment" : "Help text for the Delete preset button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1384,6 +1454,7 @@
     },
     "Desktop (1440 × 900)" : {
       "comment" : "Input pane viewport preset: a common laptop logical resolution (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1406,6 +1477,7 @@
     },
     "Destination preset" : {
       "comment" : "Accessibility label for the destination preset picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1428,6 +1500,7 @@
     },
     "Dismiss and continue" : {
       "comment" : "Help text for the What's New Continue button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1451,6 +1524,7 @@
     },
     "Done" : {
       "comment" : "Dismiss button for the Help window.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1462,6 +1536,7 @@
     },
     "Done — the sample image is on your clipboard. Paste it anywhere." : {
       "comment" : "Onboarding sample-capture success when the image was copied.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1473,6 +1548,7 @@
     },
     "Done — the sample image was rendered with your current style." : {
       "comment" : "Onboarding sample-capture success when the image was rendered only.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1495,6 +1571,7 @@
     },
     "Drop to load" : {
       "comment" : "Editor drop affordance label shown while dragging a file.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1506,6 +1583,7 @@
     },
     "Duplicate" : {
       "comment" : "Button: duplicate the selected preset.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1561,6 +1639,7 @@
     },
     "Edit" : {
       "comment" : "Menu bar: Edit menu title (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1572,6 +1651,7 @@
     },
     "Edit Custom Theme" : {
       "comment" : "Custom theme editor title when editing.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1583,6 +1663,7 @@
     },
     "Edit this custom theme's colors with a live preview." : {
       "comment" : "Help text for the Edit theme button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1611,6 +1692,7 @@
     },
     "Edit…" : {
       "comment" : "Button: edit the selected custom theme.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1622,6 +1704,7 @@
     },
     "Enter Full Screen" : {
       "comment" : "View menu: standard full-screen command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1661,6 +1744,7 @@
     },
     "Export Diagnostics…" : {
       "comment" : "About pane button: export a diagnostics report.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1672,6 +1756,7 @@
     },
     "Export…" : {
       "comment" : "Button: export presets or themes to a file.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1705,6 +1790,7 @@
     },
     "File" : {
       "comment" : "Menu bar: File menu title (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1727,6 +1813,7 @@
     },
     "Fit" : {
       "comment" : "Background editor picker label: image fit mode.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1738,6 +1825,7 @@
     },
     "Fixed delay" : {
       "comment" : "Input pane wait-strategy picker label: wait a fixed time after load (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1749,6 +1837,7 @@
     },
     "Font" : {
       "comment" : "Style control picker label: font.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1771,6 +1860,7 @@
     },
     "Foreground" : {
       "comment" : "Custom theme editor color label: foreground.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1793,6 +1883,7 @@
     },
     "Format Code" : {
       "comment" : "Editor toolbar + Edit menu: tidy/format the current code (CS-049).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1804,6 +1895,7 @@
     },
     "Format the code" : {
       "comment" : "VoiceOver label for the Format Code command (CS-049).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1815,6 +1907,7 @@
     },
     "from anywhere" : {
       "comment" : "Onboarding step 1 caption.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1826,6 +1919,7 @@
     },
     "Full HD (1920 × 1080)" : {
       "comment" : "Input pane viewport preset: a wide full-HD desktop capture (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1848,6 +1942,7 @@
     },
     "Functions" : {
       "comment" : "Custom theme editor color label: functions.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1881,6 +1976,7 @@
     },
     "GitHub" : {
       "comment" : "About pane link to the GitHub repository (brand name).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1937,6 +2033,7 @@
     },
     "Gradient direction in degrees" : {
       "comment" : "Help text for the gradient angle slider.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2004,6 +2101,7 @@
     },
     "Help" : {
       "comment" : "Menu bar: Help menu title (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2015,6 +2113,7 @@
     },
     "help.topic.editor.body" : {
       "comment" : "Help topic body: the editor.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2032,6 +2131,7 @@
     },
     "help.topic.editor.title" : {
       "comment" : "Help topic title: the editor.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2049,6 +2149,7 @@
     },
     "help.topic.hotkey.body" : {
       "comment" : "Help topic body: the global hotkey.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2066,6 +2167,7 @@
     },
     "help.topic.hotkey.title" : {
       "comment" : "Help topic title: the global hotkey.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2083,6 +2185,7 @@
     },
     "help.topic.presets.body" : {
       "comment" : "Help topic body: presets.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2100,6 +2203,7 @@
     },
     "help.topic.presets.title" : {
       "comment" : "Help topic title: presets.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2117,6 +2221,7 @@
     },
     "help.topic.privacy.body" : {
       "comment" : "Help topic body: privacy.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2134,6 +2239,7 @@
     },
     "help.topic.privacy.title" : {
       "comment" : "Help topic title: privacy.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2151,6 +2257,7 @@
     },
     "help.topic.quick-capture.body" : {
       "comment" : "Help topic body: quick capture.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2168,6 +2275,7 @@
     },
     "help.topic.quick-capture.title" : {
       "comment" : "Help topic title: quick capture.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2185,6 +2293,7 @@
     },
     "Hide Others" : {
       "comment" : "App menu: standard hide-other-apps command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2196,6 +2305,7 @@
     },
     "Hide Vitrine" : {
       "comment" : "App menu item that hides the application.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2246,6 +2356,7 @@
     },
     "How it works: copy code, press the hotkey, paste the image." : {
       "comment" : "Accessibility label for the welcome step row.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2291,6 +2402,7 @@
     },
     "Image copied to clipboard" : {
       "comment" : "Editor menu: Copy Image success feedback (CS-038).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2302,6 +2414,7 @@
     },
     "Image copied to the clipboard" : {
       "comment" : "Success feedback: the image was copied only.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2313,6 +2426,7 @@
     },
     "Image copied to the clipboard and saved to a file" : {
       "comment" : "Success feedback: the image was both copied and saved.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2324,6 +2438,7 @@
     },
     "Image rendered" : {
       "comment" : "Success feedback: the image was rendered without copy or save.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2335,6 +2450,7 @@
     },
     "Image saved" : {
       "comment" : "Editor menu: Save Image success feedback (CS-038).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2346,6 +2462,7 @@
     },
     "Image saved to a file" : {
       "comment" : "Success feedback: the image was saved only.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2368,6 +2485,7 @@
     },
     "Import Presets" : {
       "comment" : "Alert title: result of importing presets.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2379,6 +2497,7 @@
     },
     "Import Themes" : {
       "comment" : "Alert title: result of importing themes.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2390,6 +2509,7 @@
     },
     "Import…" : {
       "comment" : "Button: import presets or themes from a file.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2412,6 +2532,7 @@
     },
     "Inspector" : {
       "comment" : "Accessibility label for the editor inspector panel.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2423,6 +2544,7 @@
     },
     "Install" : {
       "comment" : "Open-panel prompt for the CLI install (CS-033).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2440,6 +2562,7 @@
     },
     "Install…" : {
       "comment" : "Settings General: CLI install button (CS-033).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2457,6 +2580,7 @@
     },
     "into your doc" : {
       "comment" : "Onboarding step 3 caption.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2485,6 +2609,7 @@
     },
     "Keywords" : {
       "comment" : "Custom theme editor color label: keywords.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2507,6 +2632,7 @@
     },
     "Language" : {
       "comment" : "Editor toolbar language picker label.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2529,6 +2655,7 @@
     },
     "Last capture: %@" : {
       "comment" : "Menu-bar status line echoing the last capture's outcome message.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2551,6 +2678,7 @@
     },
     "Launch Vitrine at login" : {
       "comment" : "Welcome toggle: launch at login.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2623,6 +2751,7 @@
     },
     "Lines or ranges to highlight, e.g. 3, 7-9, 12" : {
       "comment" : "Help text for the highlight-lines field.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2634,6 +2763,7 @@
     },
     "Link the vitrine command onto your PATH so scripts can render images." : {
       "comment" : "Settings General: help on the Install button (CS-033).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2668,6 +2798,7 @@
     },
     "Live preview" : {
       "comment" : "Accessibility label for the style live preview image.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2679,6 +2810,7 @@
     },
     "Live preview of the current style" : {
       "comment" : "Help text for the style preview.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2690,6 +2822,7 @@
     },
     "Load “%@”" : {
       "comment" : "Drop confirmation title naming the dropped file by name.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2701,6 +2834,7 @@
     },
     "Load and Capture" : {
       "comment" : "URL capture first-use disclosure confirm button (CS-043).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2741,6 +2875,7 @@
     },
     "Make an editable copy of this preset." : {
       "comment" : "Help text for the Duplicate preset button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2752,6 +2887,7 @@
     },
     "Make This Window the Default" : {
       "comment" : "File-menu command and editor toolbar action that promotes the active editor window's style to the app-wide default (CS-053).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2763,6 +2899,7 @@
     },
     "Make this window's style the default" : {
       "comment" : "VoiceOver label for the Make Default command (CS-053).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2774,6 +2911,7 @@
     },
     "Minimize" : {
       "comment" : "Window menu: standard minimize command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2785,6 +2923,7 @@
     },
     "Mobile (390 × 844)" : {
       "comment" : "Input pane viewport preset: an iPhone-class responsive width (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2796,6 +2935,7 @@
     },
     "More copy options" : {
       "comment" : "Editor toolbar overflow menu label / accessibility label.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2807,6 +2947,7 @@
     },
     "Name" : {
       "comment" : "Text field label: name (preset, theme).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2818,6 +2959,7 @@
     },
     "Network quiet (best effort)" : {
       "comment" : "Input pane wait-strategy picker label: best-effort network-idle settle (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2829,6 +2971,7 @@
     },
     "New capture from clipboard" : {
       "comment" : "VoiceOver label for the New Capture command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2840,6 +2983,7 @@
     },
     "New Capture from Clipboard" : {
       "comment" : "Menu command: render whatever code is on the clipboard.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2851,6 +2995,7 @@
     },
     "New Custom Theme" : {
       "comment" : "Custom theme editor title when creating.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2862,6 +3007,7 @@
     },
     "New Editor Window" : {
       "comment" : "File-menu command that opens an additional, independent editor window (CS-053).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2873,6 +3019,7 @@
     },
     "New Theme…" : {
       "comment" : "Button: create a new custom theme.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2901,6 +3048,7 @@
     },
     "No custom themes yet. Create one, or import a theme file." : {
       "comment" : "Empty-state text for the custom themes section.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2923,6 +3071,7 @@
     },
     "Nothing to show yet" : {
       "comment" : "Editor empty-state title before any code is pasted.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2934,6 +3083,7 @@
     },
     "Numbers" : {
       "comment" : "Custom theme editor color label: numbers.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2945,6 +3095,7 @@
     },
     "OK" : {
       "comment" : "Standard acknowledge button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2956,6 +3107,7 @@
     },
     "Open a new editor window" : {
       "comment" : "VoiceOver label for the New Editor Window command (CS-053).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2967,6 +3119,7 @@
     },
     "Open editor" : {
       "comment" : "VoiceOver label for the Open Editor command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2978,6 +3131,7 @@
     },
     "Open Editor" : {
       "comment" : "Menu command title and the 'open the editor' recovery action label (CS-038).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2989,6 +3143,7 @@
     },
     "Open Help" : {
       "comment" : "What's New button: open the Help window.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3000,6 +3155,7 @@
     },
     "Open the editor" : {
       "comment" : "Welcome button: open the editor with a sample.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3011,6 +3167,7 @@
     },
     "Open the Vitrine documentation on GitHub" : {
       "comment" : "Help text for the documentation link.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3022,6 +3179,7 @@
     },
     "Open this capture in the editor" : {
       "comment" : "Help text for a recent capture tile.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3033,6 +3191,7 @@
     },
     "Open Vitrine Help" : {
       "comment" : "Help text for the What's New Open Help button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3044,6 +3203,7 @@
     },
     "Optional — you can set these any time in Settings." : {
       "comment" : "Welcome setup hint under the optional controls.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3055,6 +3215,7 @@
     },
     "Optional filename shown as a chip in the header" : {
       "comment" : "Help text for the filename metadata field.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3066,6 +3227,7 @@
     },
     "Optional one-line caption shown under the title" : {
       "comment" : "Help text for the caption metadata field.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3077,6 +3239,7 @@
     },
     "Optional title shown above the code" : {
       "comment" : "Help text for the title metadata field.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3110,6 +3273,7 @@
     },
     "Page loaded" : {
       "comment" : "Input pane wait-strategy picker label: snapshot as soon as the page loads (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3121,6 +3285,7 @@
     },
     "Paste" : {
       "comment" : "Edit menu: standard paste command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3132,6 +3297,7 @@
     },
     "Paste Code" : {
       "comment" : "Editor empty-state primary action: paste code from the clipboard.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3143,6 +3309,7 @@
     },
     "Paste code, or drop a source file, to turn it into a beautiful image." : {
       "comment" : "Editor empty-state message.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3154,6 +3321,7 @@
     },
     "Paste the image" : {
       "comment" : "Onboarding step 3 title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3182,6 +3350,7 @@
     },
     "Pasting tidies the indentation automatically. Undo with ⌘Z, or format anytime with ⌥⌘F." : {
       "comment" : "Settings · Input: footnote under the re-indent-on-paste toggle (CS-049).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3210,6 +3379,7 @@
     },
     "Pick a starting look. You can fine-tune everything later in the editor." : {
       "comment" : "Help text for the welcome style picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3243,6 +3413,7 @@
     },
     "Presets Imported" : {
       "comment" : "Alert title: presets imported successfully.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3271,6 +3442,7 @@
     },
     "Presets set the image size and resolution for a destination." : {
       "comment" : "Output pane footer explaining presets.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3282,6 +3454,7 @@
     },
     "Press the hotkey" : {
       "comment" : "Onboarding step 2 title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3315,6 +3488,7 @@
     },
     "Quit Vitrine" : {
       "comment" : "Menu command: quit the application.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3348,6 +3522,7 @@
     },
     "Recents Gallery…" : {
       "comment" : "Menu action: open the visual recents gallery window.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3359,6 +3534,7 @@
     },
     "Redo" : {
       "comment" : "Edit menu: standard redo command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3370,6 +3546,7 @@
     },
     "Relaunch to Apply" : {
       "comment" : "Settings General pane: button that relaunches the app so a language change takes effect now (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3381,6 +3558,7 @@
     },
     "Remove every recent capture and its cached preview" : {
       "comment" : "Help text for the Clear Recents button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3392,6 +3570,7 @@
     },
     "Rename" : {
       "comment" : "Button: rename the selected preset or theme.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3403,6 +3582,7 @@
     },
     "Rename Preset" : {
       "comment" : "Alert title: rename a style preset.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3414,6 +3594,7 @@
     },
     "Rename Theme" : {
       "comment" : "Alert title: rename a custom theme.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3425,6 +3606,7 @@
     },
     "Rename this custom theme." : {
       "comment" : "Help text for the Rename theme button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3436,6 +3618,7 @@
     },
     "Rename this saved preset. Built-in presets can't be renamed." : {
       "comment" : "Help text for the Rename preset button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3447,6 +3630,7 @@
     },
     "Render and copy the image to the clipboard" : {
       "comment" : "Editor toolbar: Copy image CTA help (design/handoff).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3464,6 +3648,7 @@
     },
     "Render as Text" : {
       "comment" : "Recovery action label: render the detected URL as plain text (CS-038).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3492,6 +3677,7 @@
     },
     "Replace" : {
       "comment" : "Drop confirmation: replace existing code with the dropped content.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3514,6 +3700,7 @@
     },
     "Reset all settings to their defaults?" : {
       "comment" : "Reset confirmation dialog title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3525,6 +3712,7 @@
     },
     "Reset All Settings…" : {
       "comment" : "General pane destructive button: reset all settings.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3564,6 +3752,7 @@
     },
     "Restores every preference to its default, including your recent languages." : {
       "comment" : "General pane footer for the reset action.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3592,6 +3781,7 @@
     },
     "Sample code snippet" : {
       "comment" : "Accessibility label for the welcome sample snippet.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3603,6 +3793,7 @@
     },
     "Save" : {
       "comment" : "Button: save (a preset, a custom theme).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3614,6 +3805,7 @@
     },
     "Save a privacy-safe report (no code or clipboard contents) to a file you choose." : {
       "comment" : "Help text for the Export diagnostics button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3625,6 +3817,7 @@
     },
     "Save Current Style…" : {
       "comment" : "Button: save the current style as a preset.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3636,6 +3829,7 @@
     },
     "Save image to a file" : {
       "comment" : "VoiceOver label for the Save Image command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3647,6 +3841,7 @@
     },
     "Save Image…" : {
       "comment" : "Menu/toolbar command: save the rendered image to a file.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3658,6 +3853,7 @@
     },
     "Save Preset" : {
       "comment" : "Alert title: save a style preset.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3680,6 +3876,7 @@
     },
     "Save the current style as a new named preset you can reuse." : {
       "comment" : "Help text for the Save current style button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3691,6 +3888,7 @@
     },
     "Save the current style as a preset, then export or import presets as JSON." : {
       "comment" : "Presets footer for a user selection.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3719,6 +3917,7 @@
     },
     "Saved" : {
       "comment" : "Picker section header for the user's saved presets.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3730,6 +3929,7 @@
     },
     "Select All" : {
       "comment" : "Edit menu: standard select-all command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3763,6 +3963,7 @@
     },
     "Services" : {
       "comment" : "App menu: standard Services submenu title (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3774,6 +3975,7 @@
     },
     "Set as the default style" : {
       "comment" : "HUD confirmation shown after promoting an editor window's style to the app-wide default (CS-053).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3785,6 +3987,7 @@
     },
     "set one below" : {
       "comment" : "Onboarding step 2 caption when no hotkey is set yet.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3818,6 +4021,7 @@
     },
     "Settings…" : {
       "comment" : "Menu command: open Settings.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3829,6 +4033,7 @@
     },
     "Share image" : {
       "comment" : "VoiceOver label for the Share Image command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3840,6 +4045,7 @@
     },
     "Share Image…" : {
       "comment" : "Menu/toolbar command: share the rendered image.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3851,6 +4057,7 @@
     },
     "Show a line-number gutter and highlight specific lines or ranges." : {
       "comment" : "Style pane Lines section footer.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3862,6 +4069,7 @@
     },
     "Show All" : {
       "comment" : "App menu: standard unhide-all command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3873,6 +4081,7 @@
     },
     "Show the current language as a badge in the header" : {
       "comment" : "Help text for the language badge toggle.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3912,6 +4121,7 @@
     },
     "Snapshots as soon as the page finishes loading." : {
       "comment" : "Input pane footer for the DOM-loaded wait strategy.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3940,6 +4150,7 @@
     },
     "Social card (1200 × 630)" : {
       "comment" : "Input pane viewport preset: the OpenGraph social-card size (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3951,6 +4162,7 @@
     },
     "Soften the image so code stands out" : {
       "comment" : "Help text for the blur slider.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3979,6 +4191,7 @@
     },
     "Starting style" : {
       "comment" : "Accessibility label for the welcome style picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4001,6 +4214,7 @@
     },
     "Step %lld: " : {
       "comment" : "Accessibility label prefix for a welcome step (count-aware).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4012,6 +4226,7 @@
     },
     "Strings" : {
       "comment" : "Custom theme editor color label: strings.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4034,6 +4249,7 @@
     },
     "Style preset" : {
       "comment" : "Accessibility label for the style preset picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4045,6 +4261,7 @@
     },
     "Style…" : {
       "comment" : "Editor style preset picker prompt row.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4056,6 +4273,7 @@
     },
     "Syntax" : {
       "comment" : "Custom theme editor section: syntax colors.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4067,6 +4285,7 @@
     },
     "System" : {
       "comment" : "Settings General pane: app language option that follows the system language order (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4078,6 +4297,7 @@
     },
     "That file couldn't be read. Check that it still exists and that you have permission to open it." : {
       "comment" : "Load error: the file's bytes could not be read.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4089,6 +4309,7 @@
     },
     "That file doesn't look like text. Vitrine renders source code, so binary files like images or archives can't be loaded." : {
       "comment" : "Load error: the file appears to be binary.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4100,6 +4321,7 @@
     },
     "That file is too large to load. Try a smaller source file (up to 5 MB)." : {
       "comment" : "Load error: the file exceeds the size limit.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4111,6 +4333,7 @@
     },
     "That looks like a URL — screenshot capture is coming soon" : {
       "comment" : "Capture feedback when the clipboard holds a URL (CS-038).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4122,6 +4345,7 @@
     },
     "That sample could not be rendered. Your settings are unchanged." : {
       "comment" : "Onboarding sample-capture failure message.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4133,6 +4357,7 @@
     },
     "The language used to syntax-highlight the code." : {
       "comment" : "Help text for the editor language picker.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4172,6 +4397,7 @@
     },
     "Themes Imported" : {
       "comment" : "Alert title: themes imported successfully.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4216,6 +4442,7 @@
     },
     "Tidy the code: re-indent JSON, or strip the indentation shared by every line." : {
       "comment" : "Editor toolbar: Format Code button help (CS-049).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4238,6 +4465,7 @@
     },
     "Toolbar" : {
       "comment" : "Editor toolbar: accessibility container label (design/handoff).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4283,6 +4511,7 @@
     },
     "Try a sample capture" : {
       "comment" : "Welcome button: run a sample capture.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4327,6 +4556,7 @@
     },
     "Types" : {
       "comment" : "Custom theme editor color label: types.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4355,6 +4585,7 @@
     },
     "Undo" : {
       "comment" : "Edit menu: standard undo command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4383,6 +4614,7 @@
     },
     "Use this custom theme for the current snapshot." : {
       "comment" : "Help text for the Apply theme button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4394,6 +4626,7 @@
     },
     "Use this window's style — theme, font, background, and output — for new windows and captures." : {
       "comment" : "Help tooltip on the editor's Make Default toolbar button (CS-053).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4405,6 +4638,7 @@
     },
     "Variables" : {
       "comment" : "Custom theme editor color label: variables.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4416,6 +4650,7 @@
     },
     "Version %@" : {
       "comment" : "About pane version line; the value is the marketing version string.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4444,6 +4679,7 @@
     },
     "View" : {
       "comment" : "Menu bar: View menu title (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4455,6 +4691,7 @@
     },
     "View documentation on GitHub" : {
       "comment" : "Help window link to documentation.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4511,6 +4748,7 @@
     },
     "Visible area" : {
       "comment" : "Input pane capture-mode picker label: capture only the visible viewport (CS-044).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4522,6 +4760,7 @@
     },
     "Vitrine Editor" : {
       "comment" : "Title of an editor window (CS-053).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4533,6 +4772,7 @@
     },
     "Vitrine Editor %lld" : {
       "comment" : "Title of an additional editor window, disambiguated by its index in the Window menu (CS-053).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4544,6 +4784,7 @@
     },
     "Vitrine help" : {
       "comment" : "VoiceOver label for the Help command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4583,6 +4824,7 @@
     },
     "Vitrine reopens in the selected language the next time you launch it." : {
       "comment" : "Settings General pane: footnote under the app language picker (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4594,6 +4836,7 @@
     },
     "Vitrine will load this webpage locally in WebKit on your Mac and turn it into an image. The page is rendered on-device — Vitrine never sends the URL to a remote screenshot service." : {
       "comment" : "URL capture first-use disclosure body explaining local WebKit rendering (CS-043).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4616,6 +4859,7 @@
     },
     "Waits a fixed time after the page loads before snapshotting, so content added by scripts has time to appear." : {
       "comment" : "Input pane footer for the fixed-delay wait strategy.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4627,6 +4871,7 @@
     },
     "Waits, up to the chosen time, for the page to stop loading content before snapshotting. Best effort: a page that never goes quiet is captured when the time runs out." : {
       "comment" : "Input pane footer for the best-effort network-quiet wait strategy.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4638,6 +4883,7 @@
     },
     "Web capture (Phase 2)" : {
       "comment" : "Input pane: web capture group title (design/handoff).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4655,6 +4901,7 @@
     },
     "Web capture (Product Phase 2)" : {
       "comment" : "Input pane section header for the web URL-capture settings; Product Phase 2 feature.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4716,6 +4963,7 @@
     },
     "What's new in Vitrine" : {
       "comment" : "VoiceOver label for the What's New command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4727,6 +4975,7 @@
     },
     "What's New in Vitrine" : {
       "comment" : "What's New window title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4755,6 +5004,7 @@
     },
     "When off, a copied URL is rendered as text. URL screenshots arrive in Product Phase 2." : {
       "comment" : "Input pane footer.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4766,6 +5016,7 @@
     },
     "When on, Copy also places the highlighted code as rich text, so pasting into a document keeps the colors and font. The image is always included." : {
       "comment" : "Output pane clipboard section footer.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4788,6 +5039,7 @@
     },
     "Window" : {
       "comment" : "Menu bar: Window menu title (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4821,6 +5073,7 @@
     },
     "Zoom" : {
       "comment" : "Window menu: standard zoom command (CS-047).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4832,6 +5085,7 @@
     },
     "Social Card" : {
       "comment" : "Social-card editor window title (CS-041).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4843,6 +5097,7 @@
     },
     "New Social Card" : {
       "comment" : "File-menu command that opens the social-card editor (CS-041).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4854,6 +5109,7 @@
     },
     "New social card" : {
       "comment" : "Accessibility label for the New Social Card command (CS-041).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4876,6 +5132,7 @@
     },
     "Render and copy the card to the clipboard" : {
       "comment" : "Social-card toolbar: copy button help.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4887,6 +5144,7 @@
     },
     "Render and save the card as a file" : {
       "comment" : "Social-card toolbar: save button help.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4898,6 +5156,7 @@
     },
     "Render and share the card" : {
       "comment" : "Social-card toolbar: share button help.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4920,6 +5179,7 @@
     },
     "Template" : {
       "comment" : "Social-card inspector: template section title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4931,6 +5191,7 @@
     },
     "Content" : {
       "comment" : "Social-card inspector: content section title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4942,6 +5203,7 @@
     },
     "Footer" : {
       "comment" : "Social-card inspector: footer section title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4953,6 +5215,7 @@
     },
     "Subtitle" : {
       "comment" : "Social-card inspector: subtitle field prompt.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4964,6 +5227,7 @@
     },
     "Author" : {
       "comment" : "Social-card inspector: author field prompt.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4975,6 +5239,7 @@
     },
     "Project" : {
       "comment" : "Social-card inspector: project field prompt.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4986,6 +5251,7 @@
     },
     "Show logo" : {
       "comment" : "Social-card inspector: toggle to draw the brand logo.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4997,6 +5263,7 @@
     },
     "New Web Snapshot" : {
       "comment" : "File-menu command that opens the Web Snapshot editor (CS-042/043).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5008,6 +5275,7 @@
     },
     "New web snapshot" : {
       "comment" : "Accessibility label for the New Web Snapshot command.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5019,6 +5287,7 @@
     },
     "Web Snapshot" : {
       "comment" : "Web Snapshot editor window title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5030,6 +5299,7 @@
     },
     "Enter a valid http or https URL." : {
       "comment" : "Web Snapshot: invalid-URL message.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5041,6 +5311,7 @@
     },
     "URL capture is only available in the direct-download build." : {
       "comment" : "Web Snapshot: URL capture disabled (no network entitlement).",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5052,6 +5323,7 @@
     },
     "Couldn't load or render that — check the input and try again." : {
       "comment" : "Web Snapshot: render-failed message.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5063,6 +5335,7 @@
     },
     "That input can't be rendered here." : {
       "comment" : "Web Snapshot: unroutable-input message.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5074,6 +5347,7 @@
     },
     "That input isn't available in this build." : {
       "comment" : "Web Snapshot: deferred-input message.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5085,6 +5359,7 @@
     },
     "The render didn't complete." : {
       "comment" : "Web Snapshot: generic render failure.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5096,6 +5371,7 @@
     },
     "Copy the snapshot to the clipboard" : {
       "comment" : "Web Snapshot toolbar: copy button help.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5107,6 +5383,7 @@
     },
     "Save the snapshot as a file" : {
       "comment" : "Web Snapshot toolbar: save button help.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5118,6 +5395,7 @@
     },
     "Share the snapshot" : {
       "comment" : "Web Snapshot toolbar: share button help.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5129,6 +5407,7 @@
     },
     "Loading the page locally in WebKit…" : {
       "comment" : "Web Snapshot: URL loading state.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5140,6 +5419,7 @@
     },
     "Rendering locally…" : {
       "comment" : "Web Snapshot: HTML rendering state.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5151,6 +5431,7 @@
     },
     "Enter a URL, then Capture to snapshot the page." : {
       "comment" : "Web Snapshot: URL empty-state prompt.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5162,6 +5443,7 @@
     },
     "Paste HTML, then Render to snapshot it." : {
       "comment" : "Web Snapshot: HTML empty-state prompt.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5173,6 +5455,7 @@
     },
     "Render" : {
       "comment" : "Web Snapshot: render (HTML) button.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5184,6 +5467,7 @@
     },
     "Source" : {
       "comment" : "Web Snapshot inspector: input source section title.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5261,6 +5545,7 @@
     },
     "Revoke" : {
       "comment" : "Settings web capture: revoke URL-capture consent.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5283,6 +5568,7 @@
     },
     "Couldn't share the image" : {
       "comment" : "Social card: share-failure HUD.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5327,6 +5613,7 @@
     },
     "Dim the lines outside the highlight so it stands out." : {
       "comment" : "Editor lines: focus-mode toggle help.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5349,6 +5636,7 @@
     },
     "Color + lines green and − lines red, GitHub-style." : {
       "comment" : "Editor lines: diff-decorations toggle help.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5360,6 +5648,7 @@
     },
     "Clear filter" : {
       "comment" : "Chip filter: clear-button accessibility label.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5371,6 +5660,7 @@
     },
     "Filter themes" : {
       "comment" : "Theme chip picker: search-field placeholder.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5382,6 +5672,7 @@
     },
     "Filter fonts" : {
       "comment" : "Font chip picker: search-field placeholder.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5393,6 +5684,7 @@
     },
     "Image URL" : {
       "comment" : "Background editor: remote-image URL field label.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5404,6 +5696,7 @@
     },
     "Download image" : {
       "comment" : "Background editor: download-from-URL button accessibility label.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5426,6 +5719,7 @@
     },
     "That image is too large to use as a background." : {
       "comment" : "Background editor: URL download too-large error.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5437,6 +5731,7 @@
     },
     "That URL didn't return a usable image." : {
       "comment" : "Background editor: URL download not-an-image error.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5448,11 +5743,263 @@
     },
     "Couldn't download an image from that URL." : {
       "comment" : "Background editor: URL download generic failure.",
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "No se pudo descargar una imagen desde esa URL."
+          }
+        }
+      }
+    },
+    "Add an arrow, text, or blur box, then drag it on the preview." : {
+      "comment" : "Annotations inspector: empty-state hint.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega una flecha, texto o caja de desenfoque y arrástrala en la vista previa."
+          }
+        }
+      }
+    },
+    "Annotation color" : {
+      "comment" : "Annotation toolbar: color swatch accessibility label.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color de anotación"
+          }
+        }
+      }
+    },
+    "Annotation size" : {
+      "comment" : "Annotation toolbar: size slider accessibility label.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño de anotación"
+          }
+        }
+      }
+    },
+    "Annotations" : {
+      "comment" : "Inspector: annotations section title.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anotaciones"
+          }
+        }
+      }
+    },
+    "Arrow" : {
+      "comment" : "Annotation kind: arrow.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flecha"
+          }
+        }
+      }
+    },
+    "Blur box" : {
+      "comment" : "Annotation kind: blur box (list label).",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caja de desenfoque"
+          }
+        }
+      }
+    },
+    "Close the editor after copying" : {
+      "comment" : "Settings: close-editor-after-copy toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar el editor al copiar"
+          }
+        }
+      }
+    },
+    "Color lines that start with + green and − red, GitHub-style. Choosing the Diff language turns this on for you." : {
+      "comment" : "Inspector: diff-bands toggle tooltip.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colorea en verde las líneas que empiezan con + y en rojo las que empiezan con −, estilo GitHub. Elegir el lenguaje Diff lo activa por ti."
+          }
+        }
+      }
+    },
+    "Counter" : {
+      "comment" : "Annotation tool: numbered counter.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contador"
+          }
+        }
+      }
+    },
+    "Custom color" : {
+      "comment" : "Annotation toolbar: custom color picker.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color personalizado"
+          }
+        }
+      }
+    },
+    "Delete annotation" : {
+      "comment" : "Annotation inspector: delete button.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar anotación"
+          }
+        }
+      }
+    },
+    "Highlighter" : {
+      "comment" : "Annotation tool: highlighter.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltador"
+          }
+        }
+      }
+    },
+    "Line" : {
+      "comment" : "Annotation tool: line.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea"
+          }
+        }
+      }
+    },
+    "Make this window's style the default — theme, font, background, and output — for new windows and captures." : {
+      "comment" : "Editor toolbar: make-default button tooltip.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convierte el estilo de esta ventana en el predeterminado —tema, fuente, fondo y salida— para nuevas ventanas y capturas."
+          }
+        }
+      }
+    },
+    "Note" : {
+      "comment" : "Annotation: default/placeholder callout text.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nota"
+          }
+        }
+      }
+    },
+    "Rectangle" : {
+      "comment" : "Annotation tool: rectangle.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rectángulo"
+          }
+        }
+      }
+    },
+    "Select" : {
+      "comment" : "Annotation tool: select/move pointer.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleccionar"
+          }
+        }
+      }
+    },
+    "Stroke and badge size" : {
+      "comment" : "Annotation toolbar: size slider tooltip.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño de trazo y badge"
+          }
+        }
+      }
+    },
+    "Style presets" : {
+      "comment" : "Editor toolbar: style-presets button label.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilos predefinidos"
+          }
+        }
+      }
+    },
+    "Style presets — apply a saved or built-in look, or save the current style." : {
+      "comment" : "Editor toolbar: style-presets button tooltip.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilos predefinidos: aplica un look guardado o incorporado, o guarda el estilo actual."
+          }
+        }
+      }
+    },
+    "Text" : {
+      "comment" : "Annotation kind: text callout.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto"
           }
         }
       }

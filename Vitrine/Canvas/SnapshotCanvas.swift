@@ -17,21 +17,115 @@ struct SnapshotCanvas: View {
     var fixedSize: CGSize?
 
     var body: some View {
+        // The default (no annotations) path is left byte-for-byte unchanged so every
+        // golden render is unaffected; annotations only restructure the canvas when
+        // the user has actually added one (CS-083).
+        if config.annotations.isEmpty {
+            plainCanvas
+        } else {
+            annotatedCanvas
+        }
+    }
+
+    /// The original canvas: background filling the frame with the code card centered
+    /// (fixed-size) or hugging its content (CS-005/CS-020).
+    @ViewBuilder
+    private var plainCanvas: some View {
         if let fixedSize {
             // The background fills the whole frame; the code card is centered
             // within it. `.clipped()` guarantees the render never exceeds the
             // requested size even if the card is larger than the frame.
-            codeCard
-                .padding(config.padding)
+            styledContent
                 .frame(width: fixedSize.width, height: fixedSize.height)
                 .background(BackgroundView(style: config.background))
                 .clipped()
         } else {
-            codeCard
-                .padding(config.padding)
+            styledContent
                 .background(BackgroundView(style: config.background))
                 .fixedSize()
         }
+    }
+
+    /// The padded code card — the shared content both canvas paths frame and back.
+    private var styledContent: some View {
+        codeCard.padding(config.padding)
+    }
+
+    /// The canvas with annotations composited on top (CS-083): the sharp canvas, a
+    /// blurred copy of it masked to the blur boxes (so each redaction box shows the
+    /// content beneath it softened), and the arrow/text marks last. The blurred copy
+    /// is the same view value, so it lays out identically and aligns exactly.
+    @ViewBuilder
+    private var annotatedCanvas: some View {
+        let composite = ZStack {
+            framedCanvas
+            if hasBlurAnnotations {
+                framedCanvas
+                    .blur(radius: Self.blurRadius)
+                    .mask { blurMask }
+            }
+        }
+        .overlay { annotationMarks }
+
+        if fixedSize != nil {
+            composite.clipped()
+        } else {
+            composite.fixedSize()
+        }
+    }
+
+    /// The framed-and-backed canvas (sharp), reused for the blurred copy so both
+    /// layers share one layout.
+    @ViewBuilder
+    private var framedCanvas: some View {
+        if let fixedSize {
+            styledContent
+                .frame(width: fixedSize.width, height: fixedSize.height)
+                .background(BackgroundView(style: config.background))
+        } else {
+            styledContent
+                .background(BackgroundView(style: config.background))
+        }
+    }
+
+    /// Whether any annotation is a blur box (drives the extra blurred-copy layer).
+    private var hasBlurAnnotations: Bool {
+        config.annotations.contains { $0.kind == .blur }
+    }
+
+    /// The Gaussian radius applied to the blurred copy behind each redaction box.
+    private static let blurRadius: CGFloat = 14
+
+    /// A mask that is opaque only inside the blur boxes, so masking the blurred copy
+    /// reveals softened content exactly there. Sized to the canvas via geometry so
+    /// the normalized box coordinates denormalize correctly at any output size.
+    private var blurMask: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            Path { path in
+                for annotation in config.annotations where annotation.kind == .blur {
+                    path.addRoundedRect(
+                        in: annotation.rect(in: size),
+                        cornerSize: CGSize(width: 10, height: 10))
+                }
+            }
+            .fill(Color.black)
+        }
+    }
+
+    /// The arrow and text marks, drawn last so they sit above the code and any blur.
+    /// Hit testing is disabled — in the export they are pure visuals, and in the
+    /// editor the interactive overlay handles manipulation separately.
+    private var annotationMarks: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            ZStack {
+                ForEach(config.annotations) { annotation in
+                    AnnotationMarkView(annotation: annotation, size: size)
+                }
+            }
+        }
+        .allowsHitTesting(false)
     }
 
     /// The per-line vertical gap, shared by the single-`Text` path

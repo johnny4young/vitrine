@@ -58,7 +58,9 @@ struct EditorInspectorView: View {
                             Toggle("Diff bands", isOn: $settings.config.diffDecorations)
                                 .toggleStyle(.switch)
                                 .labelsHidden()
-                                .help("Color + lines green and − lines red, GitHub-style.")
+                                .help(
+                                    "Color lines that start with + green and − red, GitHub-style. Choosing the Diff language turns this on for you."
+                                )
                                 .accessibilityIdentifier("diff-decorations-toggle")
                         }
                     }
@@ -395,7 +397,9 @@ private struct InspectorSection<Content: View>: View {
 }
 
 /// One label + trailing control inspector row.
-private struct InspectorRow<Content: View>: View {
+/// A labeled inspector row (label on the left, control on the right). Internal so
+/// sibling inspector panels share one row metric.
+struct InspectorRow<Content: View>: View {
     let label: Text
     @ViewBuilder var content: Content
 
