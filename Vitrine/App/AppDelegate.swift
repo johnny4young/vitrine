@@ -88,6 +88,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 """
         }
+        // A richer demo that exercises the window title, diff bands, and line numbers
+        // at once — for screenshots / visual QA of the editor's newer styling.
+        if arguments.contains("--demo-showcase") {
+            var demo = AppSettings.shared.config
+            demo.code = """
+                @@ -1,4 +1,5 @@
+                 func greet(_ name: String) -> String {
+                -    return "Hello, " + name
+                +    let trimmed = name.trimmingCharacters(in: .whitespaces)
+                +    return "Hello, \\(trimmed)!"
+                 }
+                """
+            demo.language = .diff
+            demo.windowTitle = "Greeter.swift"
+            demo.diffDecorations = true
+            demo.showLineNumbers = true
+            demo.cornerRadius = 16
+            AppSettings.shared.config = demo
+            EditorWindowController.shared.show()
+            didOpenWindow = true
+        }
         if arguments.contains("--open-editor") {
             EditorWindowController.shared.show()
             didOpenWindow = true
