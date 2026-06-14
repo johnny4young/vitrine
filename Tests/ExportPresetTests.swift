@@ -13,10 +13,14 @@ private func freshDefaults() -> UserDefaults {
 @Suite("ExportPreset catalog")
 struct ExportPresetCatalogTests {
     @Test func catalogCoversEverySocialSurface() {
-        // The ticket names six destinations; each must be present with a stable id.
+        // The ticket names six core destinations; Phase 4 added two more (Instagram
+        // Story and the GitHub README banner). Each must be present with a stable id.
         let ids = Set(ExportPreset.all.map(\.id))
         #expect(
-            ids == ["twitter", "linkedin", "keynote", "docs", "transparent-slide", "opengraph"])
+            ids == [
+                "twitter", "linkedin", "keynote", "docs", "transparent-slide", "opengraph",
+                "instagram-story", "github-banner",
+            ])
     }
 
     @Test func idsAreUnique() {
@@ -65,6 +69,8 @@ struct ExportPresetCatalogTests {
             "docs": CGSize(width: 1200, height: 800),
             "transparent-slide": CGSize(width: 1920, height: 1080),
             "opengraph": CGSize(width: 1200, height: 630),
+            "instagram-story": CGSize(width: 1080, height: 1920),
+            "github-banner": CGSize(width: 1280, height: 640),
         ]
         for preset in ExportPreset.all {
             #expect(

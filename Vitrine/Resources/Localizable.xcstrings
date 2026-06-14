@@ -5357,6 +5357,105 @@
           }
         }
       }
+    },
+    "Clear filter" : {
+      "comment" : "Chip filter: clear-button accessibility label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limpiar filtro"
+          }
+        }
+      }
+    },
+    "Filter themes" : {
+      "comment" : "Theme chip picker: search-field placeholder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtrar temas"
+          }
+        }
+      }
+    },
+    "Filter fonts" : {
+      "comment" : "Font chip picker: search-field placeholder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtrar fuentes"
+          }
+        }
+      }
+    },
+    "Image URL" : {
+      "comment" : "Background editor: remote-image URL field label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL de imagen"
+          }
+        }
+      }
+    },
+    "Download image" : {
+      "comment" : "Background editor: download-from-URL button accessibility label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descargar imagen"
+          }
+        }
+      }
+    },
+    "Vitrine downloads the image directly from the URL you enter — nothing else is sent." : {
+      "comment" : "Background editor: URL-download privacy note.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine descarga la imagen directamente desde la URL que ingresas; no se envía nada más."
+          }
+        }
+      }
+    },
+    "That image is too large to use as a background." : {
+      "comment" : "Background editor: URL download too-large error.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa imagen es demasiado grande para usarla como fondo."
+          }
+        }
+      }
+    },
+    "That URL didn't return a usable image." : {
+      "comment" : "Background editor: URL download not-an-image error.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa URL no devolvió una imagen utilizable."
+          }
+        }
+      }
+    },
+    "Couldn't download an image from that URL." : {
+      "comment" : "Background editor: URL download generic failure.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo descargar una imagen desde esa URL."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

@@ -148,6 +148,8 @@ enum SnapshotPresetAppEnum: String, AppEnum, CaseIterable {
     case docs
     case transparentSlide = "transparent-slide"
     case openGraph = "opengraph"
+    case instagramStory = "instagram-story"
+    case githubBanner = "github-banner"
 
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Destination Preset")
 
@@ -163,6 +165,8 @@ enum SnapshotPresetAppEnum: String, AppEnum, CaseIterable {
             .docs: "Docs / Blog",
             .transparentSlide: "Transparent Slide",
             .openGraph: "OpenGraph 1200×630",
+            .instagramStory: "Instagram Story",
+            .githubBanner: "GitHub Banner",
         ]
     }
 

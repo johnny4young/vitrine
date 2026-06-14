@@ -50,6 +50,20 @@
       "height" : 800,
       "width" : 1200
     },
+    "preset-github-banner" : {
+      "caption" : "GitHub Banner",
+      "category" : "preset",
+      "configFingerprint" : "9c251b333d31ab460f79a2eaa94e669253c4cb9df13cb41383a485e8ffae6171",
+      "height" : 640,
+      "width" : 1280
+    },
+    "preset-instagram-story" : {
+      "caption" : "Instagram Story",
+      "category" : "preset",
+      "configFingerprint" : "b491b8b4f3ee81020e5dcbf60eda24b84a2d27067fbd65d4cbde4a981791c841",
+      "height" : 1920,
+      "width" : 1080
+    },
     "preset-keynote" : {
       "caption" : "Keynote",
       "category" : "preset",

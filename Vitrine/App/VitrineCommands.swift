@@ -447,6 +447,17 @@ final class AppCommandResponder: NSObject {
         AboutPanel.present()
     }
 
+    /// Restyles the key editor window's theme from the View ▸ Theme submenu (or the
+    /// app-wide default when no editor is key), so a theme is one click from the menu
+    /// bar. The chosen theme id rides on the menu item's `representedObject`.
+    @objc func selectTheme(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem, let themeID = item.representedObject as? String
+        else { return }
+        let theme = CustomThemeStore.shared.theme(withID: themeID)
+        let target = EditorWindowController.shared.keyWindowSession?.settings ?? .shared
+        target.config.theme = theme
+    }
+
     /// Starts a user-initiated update check on the direct-download build (CS-064). The
     /// menu item that targets this is only added on a build that ships Sparkle, so on the
     /// App Store build (which excludes Sparkle) there is no item and `checkForUpdates()`

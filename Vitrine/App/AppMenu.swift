@@ -268,6 +268,25 @@ enum AppMenu {
     private static func viewMenuItem() -> NSMenuItem {
         let viewMenuItem = NSMenuItem()
         let menu = NSMenu(title: String(localized: "View"))
+
+        // Quick theme switch: a submenu of the built-in themes that restyles the key
+        // editor window (or the app default when no editor is key) in one click.
+        let themeItem = NSMenuItem(
+            title: String(localized: "Theme"), action: nil, keyEquivalent: "")
+        themeItem.setAccessibilityIdentifier("menu-theme-submenu")
+        let themeMenu = NSMenu(title: String(localized: "Theme"))
+        for theme in Theme.builtIns {
+            let item = NSMenuItem(
+                title: theme.displayName,
+                action: #selector(AppCommandResponder.selectTheme(_:)), keyEquivalent: "")
+            item.representedObject = theme.id
+            item.target = AppCommandResponder.shared
+            themeMenu.addItem(item)
+        }
+        themeItem.submenu = themeMenu
+        menu.addItem(themeItem)
+        menu.addItem(.separator())
+
         let fullScreen = NSMenuItem(
             title: String(localized: "Enter Full Screen"),
             action: #selector(NSWindow.toggleFullScreen(_:)),

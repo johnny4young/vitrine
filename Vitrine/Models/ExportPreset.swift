@@ -151,9 +151,32 @@ extension ExportPreset {
         padding: 56
     )
 
+    /// Instagram Story / Reels cover — the 9:16 vertical canvas at 1080×1920 (CS-020).
+    static let instagramStory = ExportPreset(
+        id: "instagram-story",
+        displayName: "Instagram Story",
+        summary: "1080×1920 (9:16) vertical story.",
+        sizing: .fixed(width: 1080, height: 1920),
+        scale: 1,
+        background: .gradient(.sunset),
+        padding: 64
+    )
+
+    /// GitHub README banner — a wide 2:1 header image at 1280×640 (CS-020).
+    static let githubBanner = ExportPreset(
+        id: "github-banner",
+        displayName: "GitHub Banner",
+        summary: "1280×640 (2:1) README header image.",
+        sizing: .fixed(width: 1280, height: 640),
+        scale: 1,
+        background: .gradient(.carbon),
+        padding: 48
+    )
+
     /// All presets, in picker order.
     static let all: [ExportPreset] = [
         .twitter, .linkedIn, .keynote, .docs, .transparentSlide, .openGraph,
+        .instagramStory, .githubBanner,
     ]
 
     /// Looks up a preset by id, returning `nil` for an unknown or absent id so

@@ -673,12 +673,12 @@ struct StyleSettingsView: View {
         }
 
         TokenGroup(title: Text("Theme")) {
-            ThemeChipPicker(settings: settings, themes: themes)
+            ThemeChipPicker(settings: settings, themes: themes, searchable: true)
                 .accessibilityIdentifier("style-theme-picker")
         }
 
         TokenGroup(title: Text("Typography")) {
-            FontChipPicker(settings: settings)
+            FontChipPicker(settings: settings, searchable: true)
                 .accessibilityIdentifier("style-font-picker")
             TokenRow(label: Text("Ligatures")) {
                 Toggle("Ligatures", isOn: $settings.config.fontLigatures)
