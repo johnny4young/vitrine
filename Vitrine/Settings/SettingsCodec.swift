@@ -21,6 +21,7 @@ enum SettingsCodec {
         static let padding = "padding"
         static let cornerRadius = "cornerRadius"
         static let showChrome = "showChrome"
+        static let windowTitle = "windowTitle"
         static let showShadow = "showShadow"
         static let showLineNumbers = "showLineNumbers"
         static let highlightedLines = "highlightedLines"
@@ -74,7 +75,7 @@ enum SettingsCodec {
         /// store without an app reinstall. The schema version key is reset by
         /// the migration step that runs afterward.
         static let all = [
-            themeID, languageID, fontSize, padding, cornerRadius, showChrome,
+            themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
             showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, exportScale, exportFormat,
             colorProfile, richClipboard, hotkeyAction, appLanguage, treatURLs,
@@ -94,7 +95,7 @@ enum SettingsCodec {
         /// what lets a new window open looking like the user's default while editing
         /// its own copy.
         static let editorSessionSeed = [
-            themeID, languageID, fontSize, padding, cornerRadius, showChrome,
+            themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
             showShadow, showLineNumbers, highlightedLines, metadata, gradientPreset,
             backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
             colorProfile, richClipboard, selectedPreset,
@@ -135,6 +136,11 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.showChrome) as? Bool {
             config.showChrome = value
+        }
+        // Window-title text is normalized on the way into the renderer, so an
+        // all-whitespace stored value reads as "no title".
+        if let value = defaults.string(forKey: Keys.windowTitle) {
+            config.windowTitle = value
         }
         if let value = defaults.object(forKey: Keys.showShadow) as? Bool {
             config.showShadow = value
@@ -227,6 +233,7 @@ enum SettingsCodec {
         defaults.set(config.padding, forKey: Keys.padding)
         defaults.set(config.cornerRadius, forKey: Keys.cornerRadius)
         defaults.set(config.showChrome, forKey: Keys.showChrome)
+        defaults.set(config.windowTitle, forKey: Keys.windowTitle)
         defaults.set(config.showShadow, forKey: Keys.showShadow)
         defaults.set(config.showLineNumbers, forKey: Keys.showLineNumbers)
         defaults.set(

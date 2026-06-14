@@ -167,17 +167,40 @@ struct EditorInspectorView: View {
                     .accessibilityLabel("Padding")
                     .accessibilityIdentifier("padding-slider")
             }
+            InspectorRow(label: Text("Corner radius")) {
+                Slider(value: $settings.config.cornerRadius, in: 0...32, step: 2)
+                    .frame(width: 120)
+                    .accessibilityLabel("Corner radius")
+                    .accessibilityIdentifier("corner-radius-slider")
+            }
             InspectorRow(label: Text("Window chrome")) {
                 Toggle("Window chrome", isOn: $settings.config.showChrome)
                     .toggleStyle(.switch)
                     .labelsHidden()
                     .accessibilityIdentifier("window-chrome-toggle")
             }
+            if settings.config.showChrome {
+                InspectorRow(label: Text("Title")) {
+                    TokenTextField(
+                        prompt: Text(verbatim: "ContentView.swift"),
+                        text: $settings.config.windowTitle
+                    )
+                    .accessibilityIdentifier("window-title-field")
+                }
+            }
             InspectorRow(label: Text("Drop shadow")) {
                 Toggle("Drop shadow", isOn: $settings.config.showShadow)
                     .toggleStyle(.switch)
                     .labelsHidden()
                     .accessibilityIdentifier("drop-shadow-toggle")
+            }
+            if settings.config.showShadow {
+                InspectorRow(label: Text("Shadow depth")) {
+                    Slider(value: $settings.config.shadowRadius, in: 0...40, step: 2)
+                        .frame(width: 120)
+                        .accessibilityLabel("Shadow depth")
+                        .accessibilityIdentifier("shadow-radius-slider")
+                }
             }
         }
     }

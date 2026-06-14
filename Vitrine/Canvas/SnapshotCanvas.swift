@@ -42,7 +42,9 @@ struct SnapshotCanvas: View {
     private var codeCard: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
             if config.showChrome {
-                WindowChrome()
+                WindowChrome(
+                    title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines),
+                    titleColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
             }
             // Optional metadata header (filename/title/caption/language badge),
             // shown only when configured so the default render is unchanged
