@@ -98,6 +98,42 @@ final class EditorSession: ObservableObject {
 ///   ``WindowFrameSolver`` when displays change, so a window saved on an
 ///   now-unplugged monitor never opens off-screen.
 ///
+/// An editor window that vertically centers the traffic lights with the tall glass
+/// toolbar (CS-087).
+///
+/// macOS pins the close/minimize/zoom buttons to the top of a standard-height title
+/// bar, but the editor merges a taller unified toolbar into the title bar (the
+/// language picker, annotation tools, and the Copy-image CTA are all bigger than a
+/// 28-pt title bar). Left alone, the traffic lights float too high above the toolbar
+/// controls. Re-centering them on every layout keeps them aligned with the toolbar at
+/// any window size, the way unified-toolbar apps (Xcode, CleanShot) do.
+final class EditorWindow: NSWindow {
+    /// The vertical center of the traffic lights, in points below the window's top
+    /// edge — tuned to sit on the toolbar's control center. One knob so the alignment
+    /// is trivial to nudge.
+    var trafficLightCenterY: CGFloat = 24
+
+    override func layoutIfNeeded() {
+        super.layoutIfNeeded()
+        alignTrafficLights()
+    }
+
+    private func alignTrafficLights() {
+        let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
+            .compactMap { standardWindowButton($0) }
+        for button in buttons {
+            guard let container = button.superview else { continue }
+            // The title bar container is non-flipped (origin at the bottom-left), so a
+            // larger `origin.y` is higher. Place the button so its center lands
+            // `trafficLightCenterY` below the container's top edge.
+            let targetY = container.bounds.height - trafficLightCenterY - button.bounds.height / 2
+            if abs(button.frame.origin.y - targetY) > 0.5 {
+                button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: targetY))
+            }
+        }
+    }
+}
+
 /// `EditorWindowController` is a `NSObject` so it can serve as each window's delegate
 /// (to clean up on close) and observe screen-arrangement changes.
 @MainActor
@@ -201,7 +237,7 @@ final class EditorWindowController: NSObject {
             rootView: EditorView()
                 .environmentObject(session.settings)
                 .environmentObject(session))
-        let window = NSWindow(contentViewController: hosting)
+        let window = EditorWindow(contentViewController: hosting)
         window.title = identity.windowTitle
         window.styleMask = [
             .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView,

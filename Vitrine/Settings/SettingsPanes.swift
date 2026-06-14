@@ -1342,6 +1342,12 @@ struct OutputSettingsView: View {
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }
+                TokenRow(label: Text("Close the editor after copying")) {
+                    Toggle("Close the editor after copying", isOn: $settings.closeAfterCopy)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("close-after-copy-toggle")
+                }
                 TokenRow(label: Text("Resolution")) {
                     TokenSegmentedPicker(
                         options: [

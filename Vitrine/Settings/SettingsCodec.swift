@@ -27,11 +27,15 @@ enum SettingsCodec {
         static let highlightedLines = "highlightedLines"
         static let focusHighlightedLines = "focusHighlightedLines"
         static let diffDecorations = "diffDecorations"
+        /// Snapshot annotations (CS-083), stored as a JSON-encoded `[Annotation]`.
+        /// Part of the document/style, so it seeds new editor windows.
+        static let annotations = "annotations"
         static let metadata = "metadata"
         static let gradientPreset = "gradientPreset"
         static let backgroundStyle = "backgroundStyle"
         static let autoCopy = "autoCopy"
         static let alsoSaveToFile = "alsoSaveToFile"
+        static let closeAfterCopy = "closeAfterCopy"
         static let exportScale = "exportScale"
         static let exportFormat = "exportFormat"
         static let colorProfile = "colorProfile"
@@ -79,8 +83,8 @@ enum SettingsCodec {
         static let all = [
             themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
             showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
-            diffDecorations, metadata, gradientPreset,
-            backgroundStyle, autoCopy, alsoSaveToFile, exportScale, exportFormat,
+            diffDecorations, annotations, metadata, gradientPreset,
+            backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
             colorProfile, richClipboard, hotkeyAction, appLanguage, treatURLs,
             reindentOnPaste,
             webViewportKind, webCustomViewportWidth, webCustomViewportHeight,
@@ -100,7 +104,7 @@ enum SettingsCodec {
         static let editorSessionSeed = [
             themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
             showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
-            diffDecorations, metadata, gradientPreset,
+            diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
             colorProfile, richClipboard, selectedPreset,
         ]
@@ -164,6 +168,7 @@ enum SettingsCodec {
         if let spec = defaults.string(forKey: Keys.highlightedLines) {
             config.highlightedLineRanges = LineHighlight.parse(spec)
         }
+        config.annotations = readAnnotations(from: defaults)
         if let metadata = readMetadata(from: defaults) {
             config.metadata = metadata
         }
@@ -171,6 +176,18 @@ enum SettingsCodec {
             config.background = background
         }
         return config
+    }
+
+    /// Reads the persisted annotations, tolerating a missing or corrupt value
+    /// (CS-083 / CS-050). Stored as a JSON-encoded `[Annotation]`; a garbage blob
+    /// (or any single un-decodable element) yields the empty default — annotations
+    /// are non-critical chrome, so a bad store degrades to "no marks" rather than
+    /// failing the whole read.
+    static func readAnnotations(from defaults: UserDefaults) -> [Annotation] {
+        guard let data = defaults.data(forKey: Keys.annotations),
+            let decoded = try? JSONDecoder().decode([Annotation].self, from: data)
+        else { return [] }
+        return decoded
     }
 
     /// Reads the persisted metadata header, tolerating a missing or corrupt value
@@ -250,8 +267,22 @@ enum SettingsCodec {
         defaults.set(config.diffDecorations, forKey: Keys.diffDecorations)
         defaults.set(
             LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
+        persistAnnotations(config.annotations, to: defaults)
         persistMetadata(config.metadata, to: defaults)
         persistBackground(config.background, to: defaults)
+    }
+
+    /// Persists the annotations as a JSON-encoded `[Annotation]` so every mark's
+    /// kind, normalized geometry, text, and color round-trip (CS-083). An empty
+    /// array clears the key so the store has no stale value and a later read
+    /// restores the default (no marks); an unexpected encode failure also drops the
+    /// key rather than leaving a stale blob behind.
+    static func persistAnnotations(_ annotations: [Annotation], to defaults: UserDefaults) {
+        guard !annotations.isEmpty, let data = try? JSONEncoder().encode(annotations) else {
+            defaults.removeObject(forKey: Keys.annotations)
+            return
+        }
+        defaults.set(data, forKey: Keys.annotations)
     }
 
     /// Persists the metadata header as a JSON-encoded `SnapshotMetadata` so its
