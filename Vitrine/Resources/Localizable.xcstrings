@@ -5335,6 +5335,28 @@
           }
         }
       }
+    },
+    "Diff bands" : {
+      "comment" : "Editor lines: diff-decorations toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bandas de diff"
+          }
+        }
+      }
+    },
+    "Color + lines green and − lines red, GitHub-style." : {
+      "comment" : "Editor lines: diff-decorations toggle help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colorea las líneas + en verde y las − en rojo, estilo GitHub."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

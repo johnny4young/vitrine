@@ -26,6 +26,7 @@ enum SettingsCodec {
         static let showLineNumbers = "showLineNumbers"
         static let highlightedLines = "highlightedLines"
         static let focusHighlightedLines = "focusHighlightedLines"
+        static let diffDecorations = "diffDecorations"
         static let metadata = "metadata"
         static let gradientPreset = "gradientPreset"
         static let backgroundStyle = "backgroundStyle"
@@ -77,8 +78,8 @@ enum SettingsCodec {
         /// the migration step that runs afterward.
         static let all = [
             themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
-            showShadow, showLineNumbers, highlightedLines, focusHighlightedLines, metadata,
-            gradientPreset,
+            showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
+            diffDecorations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, exportScale, exportFormat,
             colorProfile, richClipboard, hotkeyAction, appLanguage, treatURLs,
             reindentOnPaste,
@@ -98,8 +99,8 @@ enum SettingsCodec {
         /// its own copy.
         static let editorSessionSeed = [
             themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
-            showShadow, showLineNumbers, highlightedLines, focusHighlightedLines, metadata,
-            gradientPreset,
+            showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
+            diffDecorations, metadata, gradientPreset,
             backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
             colorProfile, richClipboard, selectedPreset,
         ]
@@ -153,6 +154,9 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.focusHighlightedLines) as? Bool {
             config.focusHighlightedLines = value
+        }
+        if let value = defaults.object(forKey: Keys.diffDecorations) as? Bool {
+            config.diffDecorations = value
         }
         // Highlighted lines persist as the canonical spec string ("3, 7-9"); a
         // missing or malformed value parses to no highlight rather than trapping
@@ -243,6 +247,7 @@ enum SettingsCodec {
         defaults.set(config.showShadow, forKey: Keys.showShadow)
         defaults.set(config.showLineNumbers, forKey: Keys.showLineNumbers)
         defaults.set(config.focusHighlightedLines, forKey: Keys.focusHighlightedLines)
+        defaults.set(config.diffDecorations, forKey: Keys.diffDecorations)
         defaults.set(
             LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
         persistMetadata(config.metadata, to: defaults)
