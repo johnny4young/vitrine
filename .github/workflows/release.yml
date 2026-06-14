@@ -344,6 +344,18 @@ jobs:
           git push origin HEAD:main
           echo "Homebrew tap updated to \`${CASK_VERSION}\`." >> "$GITHUB_STEP_SUMMARY"
 
+      # Stage the marketing landing page (docs/) into the same Pages artifact as the
+      # appcast, so a single deploy serves both: the signed appcast.xml at the SUFeedURL
+      # and the site at the Pages root. The page fetches its version, download link, and
+      # What's New live from the Releases API and CHANGELOG.md, so it stays current
+      # between releases without redeploying.
+      - name: Stage the landing page for Pages
+        if: ${{ steps.appcast.outcome == 'success' }}
+        run: |
+          mkdir -p _site/screenshots
+          cp docs/index.html docs/vitrine-icon.png _site/
+          cp docs/screenshots/editor.png docs/screenshots/annotated.png docs/screenshots/diff.png _site/screenshots/
+
       # Deploy the signed appcast to GitHub Pages so the SUFeedURL in Info.plist resolves.
       # Skipped when no appcast was produced (no EdDSA key secret), so the release still
       # publishes without it.
