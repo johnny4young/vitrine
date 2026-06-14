@@ -41,6 +41,16 @@ struct BackgroundTests {
     /// Writes a small solid-color PNG to a temporary file and returns its URL,
     /// standing in for a user-selected image.
     private static func makeSamplePNG(_ color: NSColor = .systemBlue) throws -> URL {
+        let data = try makeSamplePNGData(color)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).png")
+        try data.write(to: url)
+        return url
+    }
+
+    /// The PNG bytes of a small solid-color image, standing in for a downloaded
+    /// image payload.
+    private static func makeSamplePNGData(_ color: NSColor = .systemBlue) throws -> Data {
         let size = NSSize(width: 8, height: 8)
         let image = NSImage(size: size)
         image.lockFocus()
@@ -49,11 +59,18 @@ struct BackgroundTests {
         image.unlockFocus()
         let tiff = try #require(image.tiffRepresentation)
         let rep = try #require(NSBitmapImageRep(data: tiff))
-        let data = try #require(rep.representation(using: .png, properties: [:]))
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(UUID().uuidString).png")
-        try data.write(to: url)
-        return url
+        return try #require(rep.representation(using: .png, properties: [:]))
+    }
+
+    /// An `HTTPURLResponse` (typed as `URLResponse`) for stubbing the download
+    /// loader with a given status and optional content type.
+    private static func httpResponse(
+        for url: URL, status: Int = 200, mime: String? = "image/png"
+    ) -> URLResponse {
+        var headers: [String: String] = [:]
+        if let mime { headers["Content-Type"] = mime }
+        return HTTPURLResponse(
+            url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)!
     }
 
     private static func encoded(_ style: BackgroundStyle) throws -> BackgroundStyle {
@@ -343,6 +360,104 @@ struct BackgroundTests {
         try Data("not an image".utf8).write(to: notImage)
         #expect(throws: BackgroundImageStore.ImportError.self) {
             try store.importImage(from: notImage)
+        }
+    }
+
+    // MARK: - Image store: download from URL (CS-082, Phase 4)
+
+    @Test func downloadingFromURLImportsAndResolves() async throws {
+        // A stubbed loader returns valid PNG bytes with a 200; the image imports
+        // into the container and resolves like a picked file.
+        let store = Self.tempStore()
+        let bytes = try Self.makeSamplePNGData()
+        let url = URL(string: "https://example.com/banner.png")!
+        let reference = try await store.importImage(downloadedFrom: url) { url in
+            (bytes, Self.httpResponse(for: url))
+        }
+        let resolved = try #require(store.url(for: reference))
+        #expect(resolved.path.hasPrefix(store.directory.path))
+        #expect(store.image(for: reference) != nil)
+    }
+
+    @Test func downloadedAndLocalImportOfSameBytesDedupe() async throws {
+        // A file picked from disk and the same bytes fetched from a URL are
+        // content-addressed to one stored file — the shared store path.
+        let store = Self.tempStore()
+        let color = NSColor.systemTeal
+        let local = try store.importImage(from: Self.makeSamplePNG(color))
+        let bytes = try Self.makeSamplePNGData(color)
+        let remote = try await store.importImage(
+            downloadedFrom: URL(string: "https://example.com/x.png")!
+        ) { url in (bytes, Self.httpResponse(for: url)) }
+        #expect(local == remote)
+    }
+
+    @Test func downloadDerivesExtensionFromMIMEWhenURLHasNone() async throws {
+        // An endpoint that serves an image from a query carries no path extension;
+        // the stored name picks the extension up from the response content type.
+        let store = Self.tempStore()
+        let bytes = try Self.makeSamplePNGData()
+        let url = URL(string: "https://example.com/avatar?id=7")!
+        let reference = try await store.importImage(downloadedFrom: url) { url in
+            (bytes, Self.httpResponse(for: url, mime: "image/png"))
+        }
+        #expect(reference.fileName.hasSuffix(".png"))
+    }
+
+    @Test func downloadRejectsNonHTTPScheme() async {
+        // A non-http(s) URL is refused before any fetch, so the field can never be
+        // used to read a local file path.
+        let store = Self.tempStore()
+        await #expect(throws: BackgroundImageStore.ImportError.downloadFailed) {
+            _ = try await store.importImage(downloadedFrom: URL(string: "file:///etc/passwd")!) {
+                _ in (Data(), Self.httpResponse(for: URL(string: "file:///x")!))
+            }
+        }
+    }
+
+    @Test func downloadRejectsNonSuccessStatus() async throws {
+        let store = Self.tempStore()
+        let bytes = try Self.makeSamplePNGData()
+        await #expect(throws: BackgroundImageStore.ImportError.downloadFailed) {
+            _ = try await store.importImage(
+                downloadedFrom: URL(string: "https://example.com/missing.png")!
+            ) { url in (bytes, Self.httpResponse(for: url, status: 404)) }
+        }
+    }
+
+    @Test func downloadRejectsOversizedPayload() async {
+        // A payload past the cap is rejected before decoding, bounding memory/disk
+        // against a hostile URL.
+        let store = Self.tempStore()
+        let huge = Data(count: BackgroundImageStore.maxRemoteImageBytes + 1)
+        await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try await store.importImage(
+                downloadedFrom: URL(string: "https://example.com/big.png")!
+            ) { url in (huge, Self.httpResponse(for: url)) }
+        }
+    }
+
+    @Test func downloadRejectsNonImageBytes() async {
+        // Content type is not trusted: bytes that do not decode as an image are
+        // refused even with an image MIME and a 200.
+        let store = Self.tempStore()
+        let notImage = Data("<html>nope</html>".utf8)
+        await #expect(throws: BackgroundImageStore.ImportError.notAnImage) {
+            _ = try await store.importImage(
+                downloadedFrom: URL(string: "https://example.com/page.png")!
+            ) { url in (notImage, Self.httpResponse(for: url)) }
+        }
+    }
+
+    @Test func downloadSurfacesLoaderFailureAsDownloadFailed() async {
+        // A thrown network error (offline, DNS, sandbox-blocked) maps to one clear
+        // failure rather than leaking the underlying URLError.
+        struct Boom: Error {}
+        let store = Self.tempStore()
+        await #expect(throws: BackgroundImageStore.ImportError.downloadFailed) {
+            _ = try await store.importImage(
+                downloadedFrom: URL(string: "https://example.com/x.png")!
+            ) { _ in throw Boom() }
         }
     }
 

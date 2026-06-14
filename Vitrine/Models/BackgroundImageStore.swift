@@ -19,13 +19,23 @@ import UniformTypeIdentifiers
 /// The base directory is injectable so the import/resolve/missing-file behavior
 /// is unit-testable without touching the real container.
 struct BackgroundImageStore {
-    /// Errors surfaced while importing a user-selected image.
+    /// Errors surfaced while importing an image.
     enum ImportError: Error, Equatable {
-        /// The chosen file was not a decodable image.
+        /// The chosen file or downloaded bytes were not a decodable image.
         case notAnImage
         /// The bytes could not be read or written into the container.
         case copyFailed
+        /// A remote image could not be downloaded — an unsupported URL scheme, a
+        /// network failure, or a non-success HTTP status.
+        case downloadFailed
+        /// A downloaded image exceeded `maxRemoteImageBytes`.
+        case tooLarge
     }
+
+    /// The largest remote image Vitrine will download as a background, guarding
+    /// against a pathological or hostile URL. 25 MB comfortably covers a
+    /// high-resolution photo while bounding memory and disk use.
+    static let maxRemoteImageBytes = 25 * 1024 * 1024
 
     /// The directory holding copied background images. Created on demand.
     let directory: URL
@@ -67,7 +77,57 @@ struct BackgroundImageStore {
         // extension alone.
         guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
 
-        let ext = sanitizedExtension(for: sourceURL)
+        return try store(data, preferredExtension: sanitizedExtension(for: sourceURL))
+    }
+
+    /// Downloads the image at a remote `url` and imports it into the container,
+    /// returning a stable reference to the copy (CS-082, Phase 4 polish).
+    ///
+    /// This is the network sibling of `importImage(from:)`: the user types an image
+    /// URL into the background editor and Vitrine fetches it **directly from that
+    /// host** — nothing is uploaded and nothing routes through a Vitrine service.
+    /// The fetch is only ever reachable from a build that carries
+    /// `com.apple.security.network.client`; without it the App Sandbox blocks the
+    /// connection outright, so the entitlement is the real boundary (the editor also
+    /// hides the field). The `load` closure is injectable so the fetch → validate →
+    /// store path is unit-testable without a live network.
+    ///
+    /// The bytes are validated as a decodable image and capped at
+    /// `maxRemoteImageBytes` before being written through the same content-addressed
+    /// store as a user-picked file, so an identical remote and local image dedupe to
+    /// one file.
+    func importImage(
+        downloadedFrom url: URL,
+        using load: (URL) async throws -> (Data, URLResponse) = {
+            try await URLSession.shared.data(from: $0)
+        }
+    ) async throws -> ImageReference {
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+            throw ImportError.downloadFailed
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await load(url)
+        } catch {
+            throw ImportError.downloadFailed
+        }
+
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            throw ImportError.downloadFailed
+        }
+        guard data.count <= Self.maxRemoteImageBytes else { throw ImportError.tooLarge }
+        guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
+
+        return try store(
+            data, preferredExtension: sanitizedExtension(for: url, mimeType: response.mimeType))
+    }
+
+    /// Writes validated image `data` into the container under a content-addressed
+    /// name and returns its reference. Shared by the file-picker and URL-download
+    /// import paths, so identical bytes always collapse to a single stored file.
+    private func store(_ data: Data, preferredExtension ext: String) throws -> ImageReference {
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         let fileName = ext.isEmpty ? digest : "\(digest).\(ext)"
         let destination = directory.appendingPathComponent(fileName, isDirectory: false)
@@ -116,6 +176,20 @@ struct BackgroundImageStore {
         guard !ext.isEmpty,
             let type = UTType(filenameExtension: ext),
             type.conforms(to: .image)
+        else { return "" }
+        return ext
+    }
+
+    /// Like `sanitizedExtension(for:)` but falls back to the response MIME type when
+    /// the URL has no usable image path extension — common for endpoints that serve
+    /// an image from a query (e.g. `…/avatar?id=7`).
+    private func sanitizedExtension(for url: URL, mimeType: String?) -> String {
+        let fromPath = sanitizedExtension(for: url)
+        if !fromPath.isEmpty { return fromPath }
+        guard let mimeType,
+            let type = UTType(mimeType: mimeType),
+            type.conforms(to: .image),
+            let ext = type.preferredFilenameExtension
         else { return "" }
         return ext
     }

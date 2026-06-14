@@ -488,6 +488,41 @@ struct ThemeChip: View {
     }
 }
 
+/// A compact filter field shown above a chip strip when searchable, so a long
+/// theme/font catalog is filterable instead of scroll-only.
+struct ChipFilterField: View {
+    @Binding var query: String
+    let prompt: LocalizedStringKey
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+            TextField(prompt, text: $query)
+                .textFieldStyle(.plain)
+                .font(.system(size: VitrineTokens.FontSize.subhead))
+                .foregroundStyle(VitrineTokens.Text.primary)
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear filter")
+            }
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(VitrineTokens.Chrome.fieldFill))
+    }
+}
+
 /// The horizontally scrolling theme-chip picker shared by the Style settings
 /// pane and the editor inspector. Built-ins lead; custom themes follow.
 struct ThemeChipPicker: View {
@@ -497,18 +532,31 @@ struct ThemeChipPicker: View {
     var dotSize: CGFloat = 5.5
     var topPadding: CGFloat = 12
     var bottomPadding: CGFloat = 12
+    /// Show a filter field above the strip (for the roomier Settings pane).
+    var searchable: Bool = false
+
+    @State private var query = ""
 
     var body: some View {
-        ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
-            ForEach(ThemeChipColors.orderedBuiltIns) { theme in
-                chip(for: theme)
+        VStack(alignment: .leading, spacing: 2) {
+            if searchable {
+                ChipFilterField(query: $query, prompt: "Filter themes")
+                    .accessibilityIdentifier("theme-filter-field")
             }
-            ForEach(themes.customThemes) { theme in
-                chip(for: theme)
+            ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
+                ForEach(filteredThemes) { theme in
+                    chip(for: theme)
+                }
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Theme")
+    }
+
+    private var filteredThemes: [Theme] {
+        let all = ThemeChipColors.orderedBuiltIns + themes.customThemes
+        guard !query.isEmpty else { return all }
+        return all.filter { $0.displayName.localizedCaseInsensitiveContains(query) }
     }
 
     private func chip(for theme: Theme) -> some View {
@@ -570,21 +618,36 @@ struct FontChipPicker: View {
     var horizontalPadding: CGFloat = 12
     var topPadding: CGFloat = 12
     var bottomPadding: CGFloat = 6
+    /// Show a filter field above the strip (for the roomier Settings pane).
+    var searchable: Bool = false
+
+    @State private var query = ""
 
     var body: some View {
-        ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
-            ForEach(CodeFont.all, id: \.self) { family in
-                FontChip(
-                    family: family, isSelected: settings.config.fontName == family,
-                    fontSize: fontSize, verticalPadding: verticalPadding,
-                    horizontalPadding: horizontalPadding
-                ) {
-                    settings.config.fontName = family
+        VStack(alignment: .leading, spacing: 2) {
+            if searchable {
+                ChipFilterField(query: $query, prompt: "Filter fonts")
+                    .accessibilityIdentifier("font-filter-field")
+            }
+            ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
+                ForEach(filteredFonts, id: \.self) { family in
+                    FontChip(
+                        family: family, isSelected: settings.config.fontName == family,
+                        fontSize: fontSize, verticalPadding: verticalPadding,
+                        horizontalPadding: horizontalPadding
+                    ) {
+                        settings.config.fontName = family
+                    }
                 }
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Font")
+    }
+
+    private var filteredFonts: [String] {
+        guard !query.isEmpty else { return CodeFont.all }
+        return CodeFont.all.filter { $0.localizedCaseInsensitiveContains(query) }
     }
 }
 

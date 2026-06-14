@@ -238,6 +238,8 @@ struct ImageBackgroundEditor: View {
     var imageStore: BackgroundImageStore
 
     @State private var importError: String?
+    @State private var urlText = ""
+    @State private var isDownloading = false
 
     var body: some View {
         Button {
@@ -246,6 +248,37 @@ struct ImageBackgroundEditor: View {
             Label(hasImage ? "Replace image…" : "Choose image…", systemImage: "photo")
         }
         .accessibilityIdentifier("background-choose-image")
+
+        // Downloading from a URL is a network action, so it appears only in a build
+        // that carries the network-client entitlement (the direct-download DMG). In
+        // the App Store build the App Sandbox would block the request anyway, so the
+        // field is hidden rather than shown disabled.
+        if NetworkCapability.isURLCaptureEnabled {
+            HStack(spacing: 6) {
+                TextField("Image URL", text: $urlText, prompt: Text(verbatim: "https://…"))
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .onSubmit(startDownload)
+                    .accessibilityIdentifier("background-image-url-field")
+
+                Button(action: startDownload) {
+                    if isDownloading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                }
+                .disabled(isDownloading || parsedURL == nil)
+                .accessibilityLabel("Download image")
+                .accessibilityIdentifier("background-image-url-add")
+            }
+
+            Text(
+                "Vitrine downloads the image directly from the URL you enter — nothing else is sent."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
 
         if let message = importError {
             Text(message)
@@ -304,6 +337,44 @@ struct ImageBackgroundEditor: View {
             importError = nil
         } catch {
             importError = "That file could not be used as a background image."
+        }
+    }
+
+    /// The entered text parsed into a fetchable image URL, or `nil` when it is not a
+    /// well-formed `http(s)` URL — also the disabled state for the download button.
+    private var parsedURL: URL? {
+        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let url = URL(string: trimmed),
+            let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
+            url.host?.isEmpty == false
+        else { return nil }
+        return url
+    }
+
+    private func startDownload() {
+        guard let url = parsedURL, !isDownloading else { return }
+        isDownloading = true
+        importError = nil
+        Task {
+            defer { isDownloading = false }
+            do {
+                image.reference = try await imageStore.importImage(downloadedFrom: url)
+                urlText = ""
+            } catch {
+                importError = Self.downloadErrorMessage(for: error)
+            }
+        }
+    }
+
+    /// Maps a download failure to a short, plain-language reason for the inspector.
+    private static func downloadErrorMessage(for error: Error) -> String {
+        switch error {
+        case BackgroundImageStore.ImportError.tooLarge:
+            return String(localized: "That image is too large to use as a background.")
+        case BackgroundImageStore.ImportError.notAnImage:
+            return String(localized: "That URL didn't return a usable image.")
+        default:
+            return String(localized: "Couldn't download an image from that URL.")
         }
     }
 }
