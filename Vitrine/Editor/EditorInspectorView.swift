@@ -54,6 +54,13 @@ struct EditorInspectorView: View {
                             .help("Dim the lines outside the highlight so it stands out.")
                             .accessibilityIdentifier("focus-lines-toggle")
                         }
+                        InspectorRow(label: Text("Diff bands")) {
+                            Toggle("Diff bands", isOn: $settings.config.diffDecorations)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                                .help("Color + lines green and − lines red, GitHub-style.")
+                                .accessibilityIdentifier("diff-decorations-toggle")
+                        }
                     }
 
                     InspectorDisclosure(

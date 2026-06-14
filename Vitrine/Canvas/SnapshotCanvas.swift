@@ -92,7 +92,8 @@ struct SnapshotCanvas: View {
                 lineSpacing: Self.codeLineSpacing,
                 textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme),
                 highlightColor: HighlightManager.shared.lineHighlightColor(for: config.theme),
-                dimsUnfocused: config.focusHighlightedLines
+                dimsUnfocused: config.focusHighlightedLines,
+                diffDecorations: config.diffDecorations
             )
             .textSelection(.enabled)
         } else {

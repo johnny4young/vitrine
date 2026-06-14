@@ -42,6 +42,11 @@ struct SnapshotConfig: Equatable {
     /// default render is unchanged.
     var focusHighlightedLines: Bool = false
 
+    /// Paint added (`+`) lines green and removed (`-`) lines red, GitHub-style, for
+    /// diffs. Off by default so the default render is unchanged; when on it switches
+    /// to the row layout to band each changed line.
+    var diffDecorations: Bool = false
+
     /// Optional header context — filename, title, caption, and a language badge
     /// (CS-022). Empty by default, so the header is omitted and the signature look
     /// is unchanged until the user adds context.
@@ -50,10 +55,12 @@ struct SnapshotConfig: Equatable {
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 
-    /// Whether the row-by-row code layout (gutter and/or highlight bands) is
-    /// active. When neither feature is on, the canvas keeps drawing the code as a
-    /// single `Text`, so the default render is byte-for-byte unchanged (CS-021).
-    var usesLineRows: Bool { showLineNumbers || !highlightedLineRanges.isEmpty }
+    /// Whether the row-by-row code layout (gutter, highlight bands, and/or diff
+    /// bands) is active. When none of these are on, the canvas keeps drawing the code
+    /// as a single `Text`, so the default render is byte-for-byte unchanged (CS-021).
+    var usesLineRows: Bool {
+        showLineNumbers || !highlightedLineRanges.isEmpty || diffDecorations
+    }
 }
 
 extension SnapshotConfig {

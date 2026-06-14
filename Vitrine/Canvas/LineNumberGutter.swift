@@ -157,6 +157,9 @@ struct CodeLinesView: View {
     /// Fade the rows that are not highlighted, so the highlighted ones read as the
     /// subject — the "focus" mode. No effect without a highlight.
     var dimsUnfocused: Bool = false
+    /// Band added (`+`) lines green and removed (`-`) lines red, GitHub-style. When
+    /// on, the diff band takes precedence over the plain highlight band.
+    var diffDecorations: Bool = false
 
     /// The code split into rows once, each keeping its syntax colors. Computed in
     /// `body` and passed down so the split runs a single time per render rather
@@ -207,7 +210,7 @@ struct CodeLinesView: View {
         // whole card width, behind both the gutter number and the code.
         .padding(.horizontal, Brand.Spacing.xs)
         .padding(.vertical, lineSpacing / 2)
-        .background(isHighlighted ? highlightColor : Color.clear)
+        .background(rowBackground(line: line, isHighlighted: isHighlighted))
         // Negative inset cancels the horizontal padding so highlighted and plain
         // rows share the same left edge; the band simply extends past the text.
         .padding(.horizontal, -Brand.Spacing.xs)
@@ -224,6 +227,23 @@ struct CodeLinesView: View {
         // it must not become a String Catalog key (CS-047).
         if line.characters.isEmpty { return Text(verbatim: "\u{200B}").font(Font(font)) }
         return Text(line)
+    }
+
+    /// The band drawn behind a row: a diff add/remove band when diff decorations are
+    /// on and the line is a change, otherwise the plain highlight band (or nothing).
+    private func rowBackground(line: AttributedString, isHighlighted: Bool) -> Color {
+        if diffDecorations, let diff = diffBand(of: line) { return diff }
+        return isHighlighted ? highlightColor : Color.clear
+    }
+
+    /// A green band for an added (`+`) line, red for a removed (`-`) line, `nil`
+    /// otherwise — the GitHub-style diff coloring (the first glyph is the diff marker).
+    private func diffBand(of line: AttributedString) -> Color? {
+        switch line.characters.first {
+        case "+": Color(hex: "#2EA043").opacity(0.18)
+        case "-": Color(hex: "#F85149").opacity(0.18)
+        default: nil
+        }
     }
 }
 
