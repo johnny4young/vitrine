@@ -249,8 +249,11 @@ extension WebSnapshotView {
             """
     }
 
-    /// The compiled remote-block rule list, compiled at most once per process.
-    private static var cachedRemoteBlockList: WKContentRuleList?
+    /// The compiled remote-block rule list, compiled at most once per process. Explicitly
+    /// `@MainActor` so the isolation of this shared mutable cache is stated, not merely
+    /// inferred from the module default — a future refactor can't silently make it racy
+    /// (audit P2-5).
+    @MainActor private static var cachedRemoteBlockList: WKContentRuleList?
 
     /// Returns the compiled remote-block rule list, compiling and caching it on
     /// first use. Throws `.networkIsolationUnavailable` when WebKit cannot provide
