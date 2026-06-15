@@ -62,6 +62,17 @@ enum ExportManager {
             Log.render.error("Color space unavailable; exporting render untagged")
             return cgImage
         }
+        // Skip the full-bitmap allocate+draw+copy when the render is already in the exact
+        // output format (same color space, 8 bpc, premultiplied-last alpha) — the common
+        // default-sRGB path otherwise pays a no-op conversion on every export and thumbnail
+        // (audit P1-Perf-2). The redraw still runs for a real sRGB↔P3 conversion or any other
+        // pixel format, so the produced bytes are unchanged.
+        if let space = cgImage.colorSpace, space.name == colorSpace.name,
+            cgImage.bitsPerComponent == 8,
+            cgImage.alphaInfo == .premultipliedLast
+        {
+            return cgImage
+        }
         let width = cgImage.width
         let height = cgImage.height
         guard

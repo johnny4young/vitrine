@@ -76,6 +76,16 @@ final class WebSnapshotModel: ObservableObject {
         return url.host
     }
 
+    /// Releases the large rendered images — a multi-viewport batch can hold several
+    /// full-resolution `CGImage`s (~100 MB) — when the window closes. The input text, mode,
+    /// and settings stay, so reopening resumes ready to re-capture (audit P1-Perf-6).
+    func discardRenderedAssets() {
+        renderedAsset = nil
+        results = []
+        boardAsset = nil
+        errorMessage = nil
+    }
+
     /// Renders the current input at every selected viewport, publishing the captured
     /// set or a typed error. Safe to call repeatedly; each call replaces the results.
     ///
@@ -213,7 +223,7 @@ final class WebSnapshotModel: ObservableObject {
 /// all of which live in `App/` and must not link WebKit — present it through that seam
 /// rather than naming this WebKit-backed controller directly.
 @MainActor
-final class WebSnapshotWindowController: NSObject {
+final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSnapshotWindowController()
 
     /// The window's working document, shared with the hosted SwiftUI view.
@@ -268,6 +278,7 @@ final class WebSnapshotWindowController: NSObject {
         window.setContentSize(Self.defaultContentSize)
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
+        window.delegate = self
         window.setAccessibilityIdentifier(Self.windowIdentifier)
 
         window.setFrameAutosaveName(Self.frameAutosaveName)
@@ -279,5 +290,12 @@ final class WebSnapshotWindowController: NSObject {
             window.center()
         }
         return window
+    }
+
+    /// Frees the large rendered images when the window closes. The window is reused
+    /// (`isReleasedWhenClosed = false`), so without this a multi-viewport batch's
+    /// full-resolution captures would stay resident for the app's lifetime (audit P1-Perf-6).
+    func windowWillClose(_ notification: Notification) {
+        model.discardRenderedAssets()
     }
 }

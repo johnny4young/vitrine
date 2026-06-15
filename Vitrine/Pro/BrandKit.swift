@@ -117,6 +117,10 @@ final class BrandKitStore: ObservableObject {
     /// render/preview hot path. Refreshed whenever the logo changes.
     private var cachedLogoData: Data?
 
+    /// The decoded logo image, cached so the Settings preview doesn't re-read and re-decode
+    /// the file from disk on every SwiftUI body pass (audit P1-Perf-5).
+    private var cachedLogoImage: NSImage?
+
     private enum Keys {
         static let kit = "brandKit"
         static let enabled = "brandKitEnabled"
@@ -140,6 +144,7 @@ final class BrandKitStore: ObservableObject {
         return Watermark(
             text: text,
             logoImageData: cachedLogoData,
+            logoIdentity: brandKit.logo?.fileName,
             tint: brandKit.accent,
             placement: brandKit.placement)
     }
@@ -162,9 +167,8 @@ final class BrandKitStore: ObservableObject {
     /// Clears the logo, leaving the rest of the kit intact.
     func removeLogo() { brandKit.logo = nil }
 
-    /// The resolved logo image for the Settings preview, or `nil` when none is set
-    /// or the file is missing.
-    var logoImage: NSImage? { brandKit.logo.flatMap { imageStore.image(for: $0) } }
+    /// The resolved logo image for the Settings preview (cached; see `cachedLogoImage`).
+    var logoImage: NSImage? { cachedLogoImage }
 
     /// Re-reads the kit from the backing store (used after an external reset).
     func reload() {
@@ -176,6 +180,7 @@ final class BrandKitStore: ObservableObject {
         cachedLogoData = brandKit.logo.flatMap { reference in
             imageStore.url(for: reference).flatMap { try? Data(contentsOf: $0) }
         }
+        cachedLogoImage = cachedLogoData.flatMap { NSImage(data: $0) }
     }
 
     private func persist() {

@@ -97,6 +97,12 @@ struct Watermark: Equatable {
     /// text-only mark. Carried inline so the canvas needs no file/store access.
     var logoImageData: Data?
 
+    /// A cheap, stable identity for the logo (its content-addressed file name) used by
+    /// `==` so a SwiftUI diff of `SnapshotConfig` doesn't byte-compare the whole logo `Data`
+    /// on every render (audit P1-Perf-4). `nil` for a text-only or hand-built mark, where
+    /// `==` falls back to the bytes.
+    var logoIdentity: String?
+
     /// The accent tint for the text, or `nil` to use the legible default.
     var tint: RGBAColor?
 
@@ -130,6 +136,19 @@ struct Watermark: Equatable {
 
     /// Whether the mark has anything to draw — at least a logo or a non-empty line.
     var hasContent: Bool { logoImageData != nil || !text.isEmpty }
+
+    /// Equality compares the logo by its cheap content identity rather than its bytes, so a
+    /// SwiftUI diff of `SnapshotConfig` stays O(1) on every render (audit P1-Perf-4). When
+    /// neither side has an identity (a text-only or hand-built mark) it falls back to the
+    /// bytes, so correctness is unchanged.
+    static func == (lhs: Watermark, rhs: Watermark) -> Bool {
+        guard lhs.text == rhs.text, lhs.tint == rhs.tint, lhs.placement == rhs.placement
+        else { return false }
+        if lhs.logoIdentity != nil || rhs.logoIdentity != nil {
+            return lhs.logoIdentity == rhs.logoIdentity
+        }
+        return lhs.logoImageData == rhs.logoImageData
+    }
 }
 
 extension SnapshotConfig {
