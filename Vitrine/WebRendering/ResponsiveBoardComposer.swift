@@ -22,6 +22,14 @@ enum ResponsiveBoardComposer {
     /// The reserved height for a card's size label below its image.
     static let labelHeight: CGFloat = 38
 
+    /// The board's backing gradient, hard-coded (not theme-derived) so the composite stays
+    /// deterministic for the golden suite. Named so the two anchor colors live in one place
+    /// rather than as inline literals (audit P2-4).
+    static let boardGradientColors: [Color] = [
+        Color(red: 0.07, green: 0.06, blue: 0.13),
+        Color(red: 0.10, green: 0.08, blue: 0.20),
+    ]
+
     /// Composes `captures` into a single board asset, or `nil` when the set is empty or
     /// the render fails. Main-actor bound (`ImageRenderer` requirement).
     @MainActor
@@ -92,10 +100,7 @@ enum ResponsiveBoardComposer {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
                 LinearGradient(
-                    colors: [
-                        Color(red: 0.07, green: 0.06, blue: 0.13),
-                        Color(red: 0.10, green: 0.08, blue: 0.20),
-                    ],
+                    colors: ResponsiveBoardComposer.boardGradientColors,
                     startPoint: .topLeading, endPoint: .bottomTrailing))
         }
     }

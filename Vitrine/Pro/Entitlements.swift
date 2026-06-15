@@ -60,30 +60,21 @@ final class Entitlements: ObservableObject {
         Task { await refresh() }
     }
 
-    /// Starts a PRO purchase on the App Store build and reports the outcome (so the paywall
-    /// can surface a failure instead of silently clearing), refreshing after. A no-op on the
-    /// direct-download build (which unlocks via a license key instead).
+    /// Starts a PRO purchase and reports the outcome (so the paywall can surface a failure
+    /// instead of silently clearing), refreshing after. Delegates to the active provider —
+    /// the StoreKit provider buys; the license-key/free/debug providers no-op (audit P2-3).
     @discardableResult
     func purchase() async -> PurchaseOutcome {
-        #if !VITRINE_DIRECT_DOWNLOAD
-            if let storeKit = provider as? StoreKitProvider {
-                let outcome = await storeKit.purchase()
-                await refresh()
-                return outcome
-            }
-        #endif
+        let outcome = await provider.purchase()
         await refresh()
-        return .cancelled
+        return outcome
     }
 
-    /// Restore Purchases (an App Store requirement): syncs with the App Store, then
-    /// refreshes so a prior purchase re-grants on a clean install.
+    /// Restore Purchases (an App Store requirement): asks the provider to restore, then
+    /// refreshes so a prior purchase re-grants on a clean install. A no-op for providers
+    /// without a purchase flow.
     func restorePurchases() async {
-        #if !VITRINE_DIRECT_DOWNLOAD
-            if let storeKit = provider as? StoreKitProvider {
-                _ = await storeKit.restore()
-            }
-        #endif
+        _ = await provider.restore()
         await refresh()
     }
 
@@ -168,6 +159,17 @@ protocol EntitlementProvider {
     var cachedIsPro: Bool { get }
     /// The freshly-resolved PRO state, awaited on a refresh.
     func currentIsPro() async -> Bool
+    /// Starts a purchase (the App Store IAP). Providers without a purchase flow no-op.
+    func purchase() async -> PurchaseOutcome
+    /// Restores prior purchases (the App Store requirement). Providers without one no-op.
+    func restore() async -> Bool
+}
+
+extension EntitlementProvider {
+    /// Default no-ops, so only the StoreKit provider implements a real purchase/restore and
+    /// `Entitlements` need not downcast to it (audit P2-3).
+    func purchase() async -> PurchaseOutcome { .cancelled }
+    func restore() async -> Bool { cachedIsPro }
 }
 
 /// The default provider until the real ones land (CS-089/CS-090): PRO is locked. A build
