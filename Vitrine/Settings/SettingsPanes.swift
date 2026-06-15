@@ -597,6 +597,9 @@ struct StyleSettingsView: View {
     /// True while the Brand Kit upsell's paywall sheet is presented (CS-092).
     @State private var showingBrandKitPaywall = false
 
+    /// True when the last brand-kit logo pick failed to import (audit P1-UX-3).
+    @State private var brandKitLogoError = false
+
     /// The Style pane's segmented sub-tabs.
     private enum StyleSubTab: String, CaseIterable {
         case appearance, linesAndHeader, background, brandKit
@@ -801,10 +804,19 @@ struct StyleSettingsView: View {
                 TokenTextField(prompt: Text(verbatim: "vitrine"), text: brandKitProject)
                     .accessibilityIdentifier("brand-kit-project-field")
             }
-            TokenRow(label: Text("Accent")) {
-                ColorPicker("Accent", selection: brandKitAccent, supportsOpacity: false)
-                    .labelsHidden()
-                    .accessibilityIdentifier("brand-kit-accent-picker")
+            TokenRow(label: Text("Accent"), caption: Text("Tints the mark's text")) {
+                HStack(spacing: 8) {
+                    // A way back to the legible default — the model's `nil` accent (audit P1-UX-2).
+                    if brandKit.brandKit.accent != nil {
+                        Button("Reset") { brandKit.brandKit.accent = nil }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(VitrineTokens.Accent.base)
+                            .accessibilityIdentifier("brand-kit-accent-reset")
+                    }
+                    ColorPicker("Accent", selection: brandKitAccent, supportsOpacity: false)
+                        .labelsHidden()
+                        .accessibilityIdentifier("brand-kit-accent-picker")
+                }
             }
             TokenRow(label: Text("Placement")) {
                 Picker("Placement", selection: brandKitPlacement) {
@@ -813,7 +825,7 @@ struct StyleSettingsView: View {
                     }
                 }
                 .labelsHidden()
-                .frame(width: 160)
+                .fixedSize()
                 .accessibilityIdentifier("brand-kit-placement-picker")
             }
         }
@@ -836,6 +848,11 @@ struct StyleSettingsView: View {
             }
             Button(brandKit.logoImage == nil ? "Choose…" : "Replace…") { pickBrandKitLogo() }
                 .accessibilityIdentifier("brand-kit-choose-logo-button")
+            if brandKitLogoError {
+                Text("Couldn't load that image")
+                    .font(.system(size: VitrineTokens.FontSize.caption))
+                    .foregroundStyle(.red)
+            }
         }
     }
 
@@ -882,7 +899,7 @@ struct StyleSettingsView: View {
         panel.message = String(localized: "Choose a logo image for your brand kit.")
         panel.prompt = String(localized: "Choose")
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        brandKit.importLogo(from: url)
+        brandKitLogoError = !brandKit.importLogo(from: url)
     }
 
     // Bindings into the app-global brand kit; mutating a field reassigns the whole
@@ -1754,7 +1771,9 @@ struct WebCaptureControls: View {
         } label: {
             viewportSegmentLabel(for: kind)
                 .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
-                .foregroundStyle(isOn ? Color.white : VitrineTokens.Text.secondary)
+                .foregroundStyle(
+                    isOn ? VitrineTokens.Accent.contrast : VitrineTokens.Text.secondary
+                )
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(Capsule().fill(isOn ? VitrineTokens.Accent.base : Color.clear))

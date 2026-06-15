@@ -119,10 +119,19 @@ struct MultiSizeExportView: View {
         let result = ExportManager.exportPresetSizes(
             baseConfig, presets: presets, to: directory, format: format, profile: profile)
         if result.failed == 0 {
+            // Confirm and reveal the folder so the export doesn't finish silently — the
+            // feedback convention every other export follows (audit P1-UX-1).
+            CaptureHUDController.shared.present(
+                Notifier.confirmation(String(localized: "Images exported")))
+            NSWorkspace.shared.activateFileViewerSelecting([directory])
             dismiss()
         } else {
-            failureNote = String(
-                localized: "Some images couldn't be written. Check the folder and try again.")
+            // Keep the sheet open so the user can retry. The count rides in a verbatim
+            // prefix so the localized sentence stays a plain (non-format) catalog key.
+            failureNote =
+                "\(result.written)/\(selected.count) — "
+                + String(
+                    localized: "Some images couldn't be written. Check the folder and try again.")
         }
     }
 }

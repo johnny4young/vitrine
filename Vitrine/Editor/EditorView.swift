@@ -353,7 +353,7 @@ struct EditorView: View {
             multiSizeSheet = entitlements.isUnlocked(.multiSizeExport) ? .export : .paywall
         }
         .overlay(alignment: .topTrailing) {
-            if !entitlements.isUnlocked(.multiSizeExport) { ProBadge() }
+            if !entitlements.isUnlocked(.multiSizeExport) { ProBadge().accessibilityHidden(true) }
         }
         .help("Export this snapshot to several platform sizes at once")
         .disabled(settings.config.code.isEmpty)
