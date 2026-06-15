@@ -584,12 +584,18 @@ extension WebSnapshotConfig {
     static let allowedSchemes: Set<String> = ["http", "https"]
 
     /// Whether `host` is local, private, or link-local — refused for capture as the
-    /// SSRF defense for CS-043. Covers `localhost`/`.local`, IPv4 loopback `127.0.0.0/8`,
-    /// the RFC1918 private ranges (`10/8`, `172.16/12`, `192.168/16`), link-local
-    /// `169.254.0.0/16` (including the `169.254.169.254` cloud-metadata endpoint),
+    /// SSRF defense for CS-043. Covers `localhost`/`.local`, `0.0.0.0/8`, IPv4 loopback
+    /// `127.0.0.0/8`, the RFC1918 private ranges (`10/8`, `172.16/12`, `192.168/16`),
+    /// CGNAT/Tailscale `100.64.0.0/10`, link-local `169.254.0.0/16` (including the
+    /// `169.254.169.254` cloud-metadata endpoint), reserved `240.0.0.0/4` + broadcast,
     /// IPv6 loopback `::1`, link-local `fe80::/10`, unique-local `fc00::/7`, and
     /// IPv4-mapped IPv6 (`::ffff:a.b.c.d`). A public hostname or address passes through.
-    static func isPrivateLocalhost(host: String) -> Bool {
+    ///
+    /// This is a pre-resolution host blocklist, so **DNS rebinding** (a public hostname
+    /// that resolves to a private address) is a known residual risk; the first-use consent
+    /// disclosure is the primary mitigation for that vector, and the page is loaded locally
+    /// in WebKit with a compiled content-rule blocklist.
+    nonisolated static func isPrivateLocalhost(host: String) -> Bool {
         let lowered = host.lowercased()
         // Strip the brackets WebKit/URL use around an IPv6 literal host.
         let bare = lowered.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
@@ -613,11 +619,14 @@ extension WebSnapshotConfig {
         let octets = ipv4.split(separator: ".").compactMap { UInt8($0) }
         guard octets.count == 4 else { return false }  // a hostname, not an IPv4 literal
         switch (octets[0], octets[1]) {
-        case (127, _): return true  // 127.0.0.0/8 loopback
+        case (0, _): return true  // 0.0.0.0/8 "this host" (a 0.x address can route locally)
         case (10, _): return true  // 10.0.0.0/8 private
+        case (100, 64...127): return true  // 100.64.0.0/10 CGNAT / Tailscale (RFC 6598)
+        case (127, _): return true  // 127.0.0.0/8 loopback
         case (169, 254): return true  // 169.254/16 link-local + cloud metadata
         case (172, 16...31): return true  // 172.16.0.0/12 private
         case (192, 168): return true  // 192.168.0.0/16 private
+        case (240...255, _): return true  // 240.0.0.0/4 reserved + 255.255.255.255 broadcast
         default: return false
         }
     }

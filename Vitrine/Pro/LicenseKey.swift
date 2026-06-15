@@ -43,9 +43,15 @@ struct LicenseVerifier {
         return decoded
     }
 
-    /// The verifier built from the embedded public key. The placeholder uses a throwaway
-    /// random key (its private half is discarded), so until the real Lemon Squeezy key is
-    /// embedded no token can validate and the direct-download build is free by default.
+    /// The verifier built from the embedded public key.
+    ///
+    /// ⚠️ PRODUCTION TODO (before the first PRO release): replace this placeholder with the
+    /// real Lemon Squeezy signing key's public half as a fixed byte literal, e.g.
+    /// `try! Curve25519.Signing.PublicKey(rawRepresentation: Data([0x..., …]))`. The
+    /// placeholder uses a throwaway **random** key whose private half is immediately
+    /// discarded — deliberately unforgeable (no one can mint a token for it) and so the
+    /// direct-download build is free by default until the real key ships. The guardrail test
+    /// `embeddedVerifierRejectsForeignTokens` pins that no externally-minted token validates.
     static let embedded = LicenseVerifier(
         publicKey: Curve25519.Signing.PrivateKey().publicKey)
 }

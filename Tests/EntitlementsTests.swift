@@ -119,6 +119,19 @@ struct LicenseKeyTests {
         #expect(wrongKey.verify(token) == nil)
     }
 
+    @Test func embeddedVerifierRejectsForeignTokens() throws {
+        // The placeholder embedded key must accept no externally-minted token, so the
+        // direct-download build is free by default and a forged/foreign token can't unlock
+        // PRO (audit P1-Security-6). Replace the placeholder with the production key before
+        // the first PRO release — until then this guards that it stays inert.
+        let foreignKey = Curve25519.Signing.PrivateKey()
+        let token = try LicenseSigner.sign(
+            LicenseToken(
+                licenseID: "FOREIGN", issuedAt: Date(timeIntervalSince1970: 1_700_000_000)),
+            with: foreignKey)
+        #expect(LicenseVerifier.embedded.verify(token) == nil)
+    }
+
     #if VITRINE_DIRECT_DOWNLOAD
         /// An in-memory token store so the provider round-trip is tested without touching the
         /// real Keychain (CS-090; the Keychain store itself is exercised manually).
