@@ -40,7 +40,7 @@ struct ProBadge: View {
     var body: some View {
         Text(verbatim: "PRO")
             .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(Color.white)
+            .foregroundStyle(VitrineTokens.Accent.contrast)
             .padding(.horizontal, 5)
             .padding(.vertical, 1.5)
             .background(Capsule().fill(VitrineTokens.Accent.base))
@@ -95,6 +95,7 @@ struct PaywallSheet: View {
                     .foregroundStyle(VitrineTokens.Text.secondary)
             }
             .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
 
             Text("One-time purchase. The free version keeps every feature it has today.")
                 .font(.system(size: VitrineTokens.FontSize.caption))
@@ -131,6 +132,7 @@ struct PaywallSheet: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(working || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityIdentifier("pro-activate-button")
+                .keyboardShortcut(.defaultAction)
                 if activationFailed {
                     Text("That license key couldn't be activated. Check it and try again.")
                         .font(.system(size: VitrineTokens.FontSize.caption))
@@ -153,6 +155,7 @@ struct PaywallSheet: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(working)
                 .accessibilityIdentifier("pro-buy-button")
+                .keyboardShortcut(.defaultAction)
                 Button {
                     Task {
                         working = true
@@ -162,7 +165,7 @@ struct PaywallSheet: View {
                 } label: {
                     Text("Restore Purchases")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.link)
                 .disabled(working)
                 .accessibilityIdentifier("pro-restore-button")
                 if purchaseFailed {

@@ -6870,6 +6870,40 @@
           }
         }
       }
+    },
+    "Tints the mark's text" : {
+      "comment" : "CS-092: Brand Kit accent caption.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tints the mark's text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiñe el texto de la marca"
+          }
+        }
+      }
+    },
+    "Couldn't load that image" : {
+      "comment" : "CS-092: Brand Kit logo import error.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load that image"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar esa imagen"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"
