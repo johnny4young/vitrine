@@ -347,6 +347,19 @@ Vitrine/
 ├── Services/                  # macOS Services menu action, app-only (CS-034)
 │   ├── CodeImageService.swift # provider: selected text → rendered PNG on pasteboard
 │   └── ServiceRegistration.swift # NSApp.servicesProvider + send/return types
+├── Pro/                       # Vitrine PRO open-core gate (CS-088–094) — see docs/PRO.md
+│   ├── Entitlements.swift / StoreKitProvider.swift / LicenseKey.swift
+│   └── BrandKit.swift / ProGate.swift   # (CLI side: CLI/CLIEntitlement.swift)
+├── WebRendering/              # URL/HTML capture via WKWebView, app-only (CS-043/044)
+│   ├── URLRenderer / HTMLRenderer / CodeRenderer / WebSnapshotView
+│   ├── WebSnapshot{WindowController,EditorView}.swift
+│   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode + SSRF host validation
+│   └── ResponsiveBoardComposer.swift # multi-viewport board (deterministic)
+├── SocialCards/               # social-card editor + renderer (CS-041); Canvas/SocialCardCanvas
+├── Rendering/                 # shared Renderer / RenderedAsset abstractions
+├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
+├── State/                     # RecentsStore + pure window-state model (CS-053)
+├── Recents/ · Updates/ · Help/ # recents gallery; SoftwareUpdater (Sparkle on DMG); Help/What's New
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
 │   └── Log.swift              # os.Logger per subsystem + render signposts (CS-048)
@@ -366,8 +379,12 @@ VitrineCLI/                    # the `vitrine` executable target (CS-033)
 | ------------------- | ------------------------------------------------------------ | ----------------------------------------------------- |
 | `Highlightr`        | SPM ([raspu/Highlightr](https://github.com/raspu/Highlightr)) | Syntax highlighting (Highlight.js — 160+ languages)   |
 | `KeyboardShortcuts` | SPM ([sindresorhus/KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)) | Configurable global hotkey                             |
-| `Settings`          | SPM ([sindresorhus/Settings](https://github.com/sindresorhus/Settings)) | The standard macOS Preferences pattern                |
-| AppKit / SwiftUI / `ImageRenderer` | Built-in                                      | `NSStatusItem`, `NSTextView`, `NSPasteboard`, UI, View→PNG |
+| `Sparkle`           | Vendored framework (`scripts/fetch-sparkle.sh`, checksum-pinned) | Auto-update on the direct-download build only (stripped from the App Store binary; CS-064) |
+| AppKit / SwiftUI / `ImageRenderer` / `CryptoKit` / `WebKit` | Built-in | `NSStatusItem`, View→PNG, Ed25519 license verify (CS-090), URL/HTML capture (CS-043) |
+
+> The Settings window is now a custom SwiftUI shell (`Settings/SettingsRootView.swift`, the
+> design/handoff redesign), not the `sindresorhus/Settings` package, which has been removed.
+> The Vitrine PRO monetization subsystem is documented in **`docs/PRO.md`**.
 
 **Why Highlightr and not swift-syntax:** swift-syntax only covers Swift; Highlightr
 supports 160+ languages via Highlight.js (battle-tested). Enough for v0.1; later it

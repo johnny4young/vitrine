@@ -46,7 +46,11 @@ enum SettingsSchema {
     ///   `webCaptureMode`, `webWaitKind`, `webWaitSeconds`). All brand-new keys with
     ///   documented defaults; an older store simply has no value for them and reads
     ///   the defaults, so this step only advances the version.
-    static let current = 8
+    /// - `9`: CS-044 (multi-resolution) — adds the `webViewports` multi-capture set.
+    ///   A brand-new key with a documented default (falls back to the single
+    ///   `webViewportKind`); an older store has no value for it and falls back, so this
+    ///   step only advances the version.
+    static let current = 9
 
     /// The `UserDefaults` key that stores the persisted schema version.
     static let versionKey = "settingsSchemaVersion"
@@ -163,6 +167,11 @@ enum SettingsSchema {
         // documented defaults; an older store simply has no value for them and reads
         // the defaults via `WebDefaults`, so there is nothing to transform.
         Migration(from: 7, to: 8) { _ in },
+        // v8 → v9: CS-044 (multi-resolution) adds the `webViewports` multi-capture set.
+        // A brand-new key with a documented default (falls back to the single
+        // viewport); an older store has no value for it, so there is nothing to
+        // transform.
+        Migration(from: 8, to: 9) { _ in },
     ]
 
     /// Whether the store holds any key this app is known to write. Used to tell a

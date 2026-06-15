@@ -45,6 +45,16 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     DEAD_CODE_STRIPPING: YES
+  configs:
+    # Define DEBUG in dev builds so the `#if DEBUG` local PRO unlock
+    # (`DebugUnlockProvider`, gated by `VITRINE_PRO_UNLOCK`) and SwiftUI `#Preview`s
+    # are compiled in for manual QA — XcodeGen does not add DEBUG on its own. The value
+    # is spelled out (a config-level setting REPLACES the base rather than extending it,
+    # even with `$(inherited)`), so Debug keeps the direct-download flavor AND gains
+    # DEBUG. Release stays bare (`VITRINE_DIRECT_DOWNLOAD` only), so the unlock is
+    # physically absent from a shipped binary (the `EntitlementsTests` guardrail holds).
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: VITRINE_DIRECT_DOWNLOAD DEBUG
 
 # Swift Package Manager dependencies.
 packages:
@@ -220,9 +230,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.cli
         # A tool is not a sandboxed .app: render is fully local and needs no
         # entitlements, network, screen recording, or Accessibility (CS-033). The
-        # font-staging build phase also writes next to the binary, so user-script
-        # sandboxing (on for the shipping app) is off for this dev tool target.
-        ENABLE_HARDENED_RUNTIME: NO
+        # font-staging build phase writes next to the binary, so user-script sandboxing
+        # (on for the shipping app) is off — but the Hardened Runtime stays ON: the CLI
+        # verifies the PRO license token, so its runtime integrity (resisting dylib
+        # injection / debugger attach on the verification path) matters most here
+        # (audit P1-Security-2). The two settings are independent.
+        ENABLE_HARDENED_RUNTIME: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         CODE_SIGN_STYLE: Automatic
         # The CLI is neither the direct-download app nor an App Store build — it is a
@@ -232,6 +245,12 @@ targets:
         # Sparkle (which this target does not depend on). Overriding without
         # $(inherited) replaces the base value rather than extending it.
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+      configs:
+        # Debug still defines DEBUG (but NOT VITRINE_DIRECT_DOWNLOAD) so the CLI's
+        # `#if DEBUG` `VITRINE_PRO_UNLOCK` bypass is available for local QA; Release
+        # stays bare, so a shipped `vitrine` unlocks only via a signature-valid token.
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
 
   VitrineTests:
     type: bundle.unit-test

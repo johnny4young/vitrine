@@ -93,6 +93,11 @@ struct RenderCodeImageIntent: AppIntent {
     /// the Shortcut receives a real image it can save, share, or copy.
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<IntentFile> {
+        // Automation requires PRO (CS-094): fail with a clear Shortcuts message before
+        // building or rendering anything.
+        guard Entitlements.shared.isUnlocked(.automation) else {
+            throw IntentRenderError(message: ProFeature.automation.paywallBlurb)
+        }
         let request = SnapshotRenderRequest(
             code: code,
             language: language.language,
@@ -105,8 +110,10 @@ struct RenderCodeImageIntent: AppIntent {
             profile: .sRGB,
             transparent: transparentBackground,
             // Start from the user's live style so the action honors their saved look
-            // unless a parameter overrides it.
-            baseStyle: AppSettings.shared.config)
+            // unless a parameter overrides it — and from `exportConfig`, so a PRO user's
+            // enabled Brand Kit watermark marks the Shortcuts output too (CS-092), exactly
+            // as it does an editor or quick-capture export. Free/disabled → no watermark.
+            baseStyle: AppSettings.shared.exportConfig)
 
         let data: Data
         do {

@@ -98,6 +98,12 @@ enum QuickCapture {
             "Quick capture: detected \(config.language.rawValue, privacy: .public), \(config.code.count, privacy: .public) chars"
         )
 
+        // Apply the PRO brand-kit watermark to the rendered image (CS-092). Set here,
+        // on the export path only: the multi-block "load into editor" branch above
+        // returns first, so the stored `settings.config` is never watermarked.
+        config.watermark = BrandKitStore.shared.resolvedWatermark(
+            isPro: Entitlements.shared.isPro)
+
         // Honor the active destination preset's framing (size/scale) so quick
         // capture produces the same image the editor would (CS-020).
         let scale = CGFloat(settings.effectiveExportScale)
@@ -178,6 +184,9 @@ enum QuickCapture {
         config.code = text
         config.language = language
         settings.noteLanguageUsed(language)
+        // Apply the PRO brand-kit watermark to the rendered image (CS-092).
+        config.watermark = BrandKitStore.shared.resolvedWatermark(
+            isPro: Entitlements.shared.isPro)
 
         let scale = CGFloat(settings.effectiveExportScale)
         let fixedSize = settings.effectiveFixedSize

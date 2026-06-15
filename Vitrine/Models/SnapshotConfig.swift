@@ -58,6 +58,16 @@ struct SnapshotConfig: Equatable {
     /// is unchanged until the user adds context.
     var metadata = SnapshotMetadata()
 
+    /// An optional brand watermark composited onto the exported image — the PRO
+    /// Brand Kit (CS-092). `nil` by default, so the default render and every golden
+    /// are byte-for-byte unchanged; the canvas only adds the overlay when a
+    /// watermark is present. It is *derived* presentation, never part of the saved
+    /// style: it is resolved from the app-global brand kit at the export/preview
+    /// seam (`AppSettings.exportConfig`) and is never persisted into the document or
+    /// fed to the golden suite, exactly like `annotations` leaves the default path
+    /// untouched.
+    var watermark: Watermark?
+
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 
@@ -67,6 +77,59 @@ struct SnapshotConfig: Equatable {
     var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || diffDecorations
     }
+}
+
+/// A brand watermark composited onto an exported snapshot — the render-ready form
+/// of the PRO Brand Kit (CS-092).
+///
+/// It is deliberately **self-contained**: it carries the resolved logo *bytes*
+/// (not a store reference) and a plain tint, so `SnapshotCanvas` draws it
+/// deterministically with no dependency on the brand-kit store, `SnapshotConfig`
+/// stays `Equatable`, and the value renders identically on any machine. The store
+/// (`BrandKitStore`) is what turns the user's brand kit into this value; the render
+/// core only ever consumes it.
+struct Watermark: Equatable {
+    /// The handle/project line, e.g. `@jane · vitrine`. May be empty when the user
+    /// supplied only a logo.
+    var text: String
+
+    /// The brand logo's image bytes (any `NSImage`-decodable format), or `nil` for a
+    /// text-only mark. Carried inline so the canvas needs no file/store access.
+    var logoImageData: Data?
+
+    /// The accent tint for the text, or `nil` to use the legible default.
+    var tint: RGBAColor?
+
+    /// Which corner the mark sits in.
+    var placement: Placement = .bottomTrailing
+
+    /// The corner a watermark is anchored to.
+    enum Placement: String, CaseIterable, Codable, Sendable {
+        case bottomTrailing, bottomLeading, topTrailing, topLeading
+
+        /// A human-readable name for the picker.
+        var label: String {
+            switch self {
+            case .bottomTrailing: String(localized: "Bottom right")
+            case .bottomLeading: String(localized: "Bottom left")
+            case .topTrailing: String(localized: "Top right")
+            case .topLeading: String(localized: "Top left")
+            }
+        }
+
+        /// The SwiftUI alignment used to pin the mark to its corner.
+        var alignment: Alignment {
+            switch self {
+            case .bottomTrailing: .bottomTrailing
+            case .bottomLeading: .bottomLeading
+            case .topTrailing: .topTrailing
+            case .topLeading: .topLeading
+            }
+        }
+    }
+
+    /// Whether the mark has anything to draw — at least a logo or a non-empty line.
+    var hasContent: Bool { logoImageData != nil || !text.isEmpty }
 }
 
 extension SnapshotConfig {

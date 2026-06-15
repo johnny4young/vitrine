@@ -1,0 +1,52 @@
+import Foundation
+
+/// The out-of-process PRO entitlement check for the `vitrine` CLI (CS-094).
+///
+/// The CLI is a separate process from the app and a direct-download/Homebrew feature
+/// (the sandboxed App Store build can't symlink a binary onto PATH), so it cannot read
+/// the app's in-process `Entitlements` and there is no StoreKit↔CLI bridge. Instead the
+/// app writes an **Ed25519-signed activation token** to a shared file on activation, and
+/// the CLI re-verifies that signature itself against the embedded public key — it never
+/// trusts a plain boolean (Resolved decision #1). Verification is fully offline and
+/// reuses the same `LicenseVerifier` the app uses (CS-090).
+///
+/// A **Debug-only** env bypass (`VITRINE_PRO_UNLOCK=1`) unlocks the CLI for local
+/// development. It is wrapped in `#if DEBUG`, so it is physically absent from a release
+/// binary — the shipped CLI has no path to PRO except a signature-valid token. This is
+/// the "bypass locally, never in releases" rule the app's `DebugUnlockProvider` follows.
+enum CLIEntitlement {
+    /// Whether PRO automation is unlocked for this CLI invocation.
+    ///
+    /// `tokenURL`, `verifier`, and `environment` are injectable so the verification is
+    /// unit-testable with a minted token and a known key, without a real activation.
+    static func isProUnlocked(
+        tokenURL: URL = defaultTokenURL,
+        verifier: LicenseVerifier = .embedded,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Bool {
+        #if DEBUG
+            if environment["VITRINE_PRO_UNLOCK"] == "1" { return true }
+        #endif
+        guard let raw = try? String(contentsOf: tokenURL, encoding: .utf8) else { return false }
+        return verifier.verify(raw.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+    }
+
+    /// The shared file the app writes the signed activation token to and the CLI reads
+    /// it from. Under Application Support so a PATH-installed CLI and the app resolve a
+    /// stable location.
+    ///
+    /// TODO(CS-094 · real activation): wire the app (`LicenseKeyProvider.setToken`) to
+    /// write/remove this file on activate/deactivate, and finalize the exact path so a
+    /// sandboxed app and the non-sandboxed CLI agree on it. Deferred with the Lemon
+    /// Squeezy account + the embedded production key; until then the CLI is free (no
+    /// token verifies against the placeholder embedded key) except under the Debug
+    /// bypass — the correct "locked in releases until accounts exist" state.
+    static var defaultTokenURL: URL {
+        let base =
+            (try? FileManager.default.url(
+                for: .applicationSupportDirectory, in: .userDomainMask,
+                appropriateFor: nil, create: false))
+            ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("Vitrine/pro-license.token", isDirectory: false)
+    }
+}
