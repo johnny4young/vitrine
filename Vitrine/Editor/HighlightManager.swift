@@ -22,6 +22,33 @@ final class HighlightManager {
     /// is only spun up once a custom theme is actually used.
     private lazy var customRenderer = CustomThemeRenderer()
 
+    /// Per-built-in-theme cached chrome (background color + luminance), derived from the
+    /// Highlight.js stylesheet. The four color accessors all need only this, so resolving
+    /// it once per theme avoids re-running `setTheme` (a full CSS reparse) ~5× per canvas
+    /// render — `body` re-runs on every keystroke. The cached value is identical to what the
+    /// uncached path returns, so output is byte-for-byte unchanged. Only **built-in** themes
+    /// are cached (immutable → the theme id is a stable key); a custom theme's palette can
+    /// change under a stable id, so it resolves directly (and is cheap — no engine call).
+    private struct ThemeChrome {
+        let background: NSColor
+        let isDark: Bool
+    }
+    private var builtInChrome: [String: ThemeChrome] = [:]
+
+    /// Cache of highlighted output for built-in themes, keyed on every input that affects the
+    /// pixels, so a re-render that did not change the code/theme/font (an inspector tweak —
+    /// padding, background, shadow) does not re-tokenize the whole document. FIFO-bounded.
+    /// Custom themes are not cached (their palette can change under a stable id).
+    private struct HighlightKey: Hashable {
+        let code: String
+        let language: Language
+        let themeID: String
+        let font: NSFont
+    }
+    private var highlightCache: [HighlightKey: NSAttributedString] = [:]
+    private var highlightOrder: [HighlightKey] = []
+    private static let highlightCacheLimit = 8
+
     private init() {}
 
     /// Highlights `code` for `language`, using `theme` and the given `font`. Falls
@@ -47,11 +74,30 @@ final class HighlightManager {
         }
 
         guard let highlightr else { return fallback }
+        // Built-in theme: serve from cache when nothing affecting the pixels changed, so a
+        // re-render driven by an inspector tweak (padding/background/shadow) does not
+        // re-tokenize the whole document. The cached value is identical to a fresh render.
+        let cacheKey = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
+        if let cached = highlightCache[cacheKey] { return cached }
+
         highlightr.setTheme(to: theme.hlJsTheme ?? Theme.oneDark.hlJsTheme ?? "atom-one-dark")
         highlightr.theme.codeFont = font
-
         let languageHint = language == .plaintext ? nil : language.hljsName
-        return highlightr.highlight(code, as: languageHint, fastRender: true) ?? fallback
+        let highlighted = highlightr.highlight(code, as: languageHint, fastRender: true) ?? fallback
+        cacheHighlight(highlighted, for: cacheKey)
+        return highlighted
+    }
+
+    /// Inserts a highlighted result into the FIFO-bounded built-in cache, evicting the
+    /// oldest entry past the limit so a long session never grows without bound.
+    private func cacheHighlight(_ value: NSAttributedString, for key: HighlightKey) {
+        if highlightCache[key] == nil {
+            highlightOrder.append(key)
+            if highlightOrder.count > Self.highlightCacheLimit {
+                highlightCache.removeValue(forKey: highlightOrder.removeFirst())
+            }
+        }
+        highlightCache[key] = value
     }
 
     /// The Highlight.js language identifiers the bundled engine recognizes, or
@@ -73,7 +119,7 @@ final class HighlightManager {
     /// theme it is the palette's own `background`, resolved with no engine round-trip
     /// so it is fully deterministic.
     func backgroundColor(for theme: Theme) -> Color {
-        Color(nsColor: backgroundNSColor(for: theme))
+        Color(nsColor: themeChrome(for: theme).background)
     }
 
     /// A neutral foreground color for gutter line numbers that stays legible on a
@@ -84,7 +130,7 @@ final class HighlightManager {
     /// near-white on a dark theme, near-black on a light theme. Callers dim it
     /// further so the numbers read as chrome beside the code.
     func gutterForegroundColor(for theme: Theme) -> Color {
-        isDark(backgroundNSColor(for: theme)) ? .white : .black
+        themeChrome(for: theme).isDark ? .white : .black
     }
 
     /// The band color drawn behind a highlighted (selected) code row (CS-021).
@@ -95,8 +141,7 @@ final class HighlightManager {
     /// the theme's opaque card background — not the canvas background — it stays
     /// correct even when the canvas background is transparent (CS-024).
     func lineHighlightColor(for theme: Theme) -> Color {
-        let background = backgroundNSColor(for: theme)
-        return isDark(background)
+        themeChrome(for: theme).isDark
             ? Color.white.opacity(0.10)
             : Color.black.opacity(0.07)
     }
@@ -109,10 +154,24 @@ final class HighlightManager {
     /// sits on the opaque card background, so it stays legible even when the canvas
     /// background is transparent (CS-024).
     func metadataBadgeColor(for theme: Theme) -> Color {
-        let background = backgroundNSColor(for: theme)
-        return isDark(background)
+        themeChrome(for: theme).isDark
             ? Color.white.opacity(0.10)
             : Color.black.opacity(0.06)
+    }
+
+    /// The theme's chrome (background + luminance), served from `builtInChrome` for a
+    /// built-in theme and resolved directly for a custom one (its palette can change under
+    /// a stable id, and resolving it is cheap — no engine call).
+    private func themeChrome(for theme: Theme) -> ThemeChrome {
+        if theme.palette != nil {
+            let background = backgroundNSColor(for: theme)
+            return ThemeChrome(background: background, isDark: isDark(background))
+        }
+        if let cached = builtInChrome[theme.id] { return cached }
+        let background = backgroundNSColor(for: theme)
+        let chrome = ThemeChrome(background: background, isDark: isDark(background))
+        builtInChrome[theme.id] = chrome
+        return chrome
     }
 
     /// The theme's background as an `NSColor`.

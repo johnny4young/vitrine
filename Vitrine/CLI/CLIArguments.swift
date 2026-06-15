@@ -30,6 +30,9 @@ nonisolated enum CLIError: Error, Equatable {
     case renderFailed
     /// Encoding or writing the output file failed.
     case writeFailed(path: String)
+    /// The PRO tier is required for command-line/automation rendering but is not
+    /// active (CS-094). Reported before any file work so a free build never renders.
+    case proRequired
 
     /// A short, human-readable explanation suitable for stderr.
     var message: String {
@@ -37,7 +40,7 @@ nonisolated enum CLIError: Error, Equatable {
         case .helpRequested:
             CLIUsage.text
         case .unknownCommand(let command):
-            "Unknown command \"\(command)\". The only command is \"render\"."
+            "Unknown command \"\(command)\". The commands are \"render\" and \"batch\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
         case .missingValue(let flag):
@@ -54,6 +57,9 @@ nonisolated enum CLIError: Error, Equatable {
             "Rendering failed to produce an image."
         case .writeFailed(let path):
             "Could not write the output to \"\(path)\"."
+        case .proRequired:
+            "Vitrine PRO is required for command-line and automation rendering. "
+                + "Activate PRO in the Vitrine app to unlock it."
         }
     }
 
@@ -95,7 +101,12 @@ enum CLIArguments {
         // A bare invocation, or a top-level help request, shows usage.
         guard let command = remaining.first else { throw CLIError.helpRequested }
         if command == "--help" || command == "-h" { throw CLIError.helpRequested }
-        guard command == "render" else { throw CLIError.unknownCommand(command) }
+        let mode: CLIOptions.Command
+        switch command {
+        case "render": mode = .render
+        case "batch": mode = .batch
+        default: throw CLIError.unknownCommand(command)
+        }
         remaining = remaining.dropFirst()
 
         var inputPath: String?
@@ -147,10 +158,16 @@ enum CLIArguments {
             }
         }
 
-        guard let inputPath else { throw CLIError.missingRequired("input file") }
-        guard let outputPath else { throw CLIError.missingRequired("--out output path") }
+        guard let inputPath else {
+            throw CLIError.missingRequired(mode == .batch ? "input folder" : "input file")
+        }
+        guard let outputPath else {
+            throw CLIError.missingRequired(
+                mode == .batch ? "--out output folder" : "--out output path")
+        }
 
         return CLIOptions(
+            command: mode,
             inputPath: inputPath,
             outputPath: outputPath,
             themeID: themeID,
@@ -229,6 +246,7 @@ nonisolated enum CLIUsage {
 
         USAGE:
           vitrine render <input-file> --out <image> [options]
+          vitrine batch <input-folder> --out <output-folder> [options]
 
         OPTIONS:
           -o, --out <path>       Output image path (required).

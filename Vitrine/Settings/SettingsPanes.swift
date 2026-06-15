@@ -1,6 +1,7 @@
 import AppKit
 import KeyboardShortcuts
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The destination preset as the redesign's segmented pill row: "Custom"
 /// leading, then the presets under the handoff's short labels (CS-020). The
@@ -582,14 +583,23 @@ struct StyleSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var themes: CustomThemeStore
 
+    /// The PRO brand kit + entitlement (CS-092): observed so the Brand Kit sub-tab's
+    /// controls and the live preview track changes, and so the locked/unlocked split
+    /// re-renders the instant PRO unlocks.
+    @ObservedObject private var brandKit = BrandKitStore.shared
+    @ObservedObject private var entitlements = Entitlements.shared
+
     /// The active sub-tab, remembered across openings (and seedable by the
     /// design-audit tooling) through the app's defaults store.
     @AppStorage("settings.styleSubTab", store: AppDefaults.current)
     private var subTab: StyleSubTab = .appearance
 
+    /// True while the Brand Kit upsell's paywall sheet is presented (CS-092).
+    @State private var showingBrandKitPaywall = false
+
     /// The Style pane's segmented sub-tabs.
     private enum StyleSubTab: String, CaseIterable {
-        case appearance, linesAndHeader, background
+        case appearance, linesAndHeader, background, brandKit
     }
 
     var body: some View {
@@ -604,6 +614,7 @@ struct StyleSettingsView: View {
                         case .appearance: appearanceGroups
                         case .linesAndHeader: linesAndHeaderGroups
                         case .background: backgroundGroup
+                        case .brandKit: brandKitGroups
                         }
                     }
                     .padding(.horizontal, 26)
@@ -626,11 +637,13 @@ struct StyleSettingsView: View {
                     (StyleSubTab.appearance, Text("Appearance")),
                     (.linesAndHeader, Text("Lines & header")),
                     (.background, Text("Background")),
+                    (.brandKit, Text("Brand Kit")),
                 ],
                 selection: $subTab,
                 fillsWidth: true,
                 optionIdentifiers: [
                     "style-subtab-appearance", "style-subtab-lines", "style-subtab-background",
+                    "style-subtab-brandkit",
                 ]
             )
         }
@@ -753,6 +766,142 @@ struct StyleSettingsView: View {
         }
     }
 
+    // MARK: Brand Kit (PRO · CS-092)
+
+    /// The Brand Kit sub-tab: the configuration controls when PRO is unlocked, or a
+    /// compact upsell that opens the paywall when it is locked. Either way the kit can
+    /// be inspected; it only marks an export once PRO is active and the user enables it.
+    @ViewBuilder private var brandKitGroups: some View {
+        if entitlements.isUnlocked(.brandKit) {
+            brandKitControls
+        } else {
+            brandKitUpsell
+        }
+    }
+
+    private var brandKitControls: some View {
+        TokenGroup(title: Text("Brand Kit")) {
+            TokenRow(
+                label: Text("Apply to captures"),
+                caption: Text("Adds your mark to every exported image")
+            ) {
+                Toggle("Apply to captures", isOn: $brandKit.isEnabled)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("brand-kit-enabled-toggle")
+            }
+            TokenRow(label: Text("Logo"), caption: Text("Shown small in the chosen corner")) {
+                brandKitLogoControl
+            }
+            TokenRow(label: Text("Handle")) {
+                TokenTextField(prompt: Text(verbatim: "@jane"), text: brandKitHandle)
+                    .accessibilityIdentifier("brand-kit-handle-field")
+            }
+            TokenRow(label: Text("Project")) {
+                TokenTextField(prompt: Text(verbatim: "vitrine"), text: brandKitProject)
+                    .accessibilityIdentifier("brand-kit-project-field")
+            }
+            TokenRow(label: Text("Accent")) {
+                ColorPicker("Accent", selection: brandKitAccent, supportsOpacity: false)
+                    .labelsHidden()
+                    .accessibilityIdentifier("brand-kit-accent-picker")
+            }
+            TokenRow(label: Text("Placement")) {
+                Picker("Placement", selection: brandKitPlacement) {
+                    ForEach(Watermark.Placement.allCases, id: \.self) { placement in
+                        Text(placement.label).tag(placement)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 160)
+                .accessibilityIdentifier("brand-kit-placement-picker")
+            }
+        }
+        .accessibilityIdentifier("settings-brand-kit-controls")
+    }
+
+    /// The logo thumbnail (when set) plus Choose/Replace and Remove actions.
+    @ViewBuilder private var brandKitLogoControl: some View {
+        HStack(spacing: 8) {
+            if let logo = brandKit.logoImage {
+                Image(nsImage: logo)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 26, height: 26)
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                Button("Remove") { brandKit.removeLogo() }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+                    .accessibilityIdentifier("brand-kit-remove-logo-button")
+            }
+            Button(brandKit.logoImage == nil ? "Choose…" : "Replace…") { pickBrandKitLogo() }
+                .accessibilityIdentifier("brand-kit-choose-logo-button")
+        }
+    }
+
+    /// The locked state: a crown + PRO badge, the value blurb, and an unlock button
+    /// that presents the shared `PaywallSheet` for the brand-kit feature (CS-091/092).
+    private var brandKitUpsell: some View {
+        TokenGroup(title: Text("Brand Kit")) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    Image(systemName: "crown.fill")
+                        .foregroundStyle(VitrineTokens.Accent.base)
+                    Text("Brand Kit")
+                        .font(.system(size: VitrineTokens.FontSize.body, weight: .semibold))
+                        .foregroundStyle(VitrineTokens.Text.primary)
+                    ProBadge()
+                }
+                Text("Add your logo, handle, and accent color to every snapshot.")
+                    .font(.system(size: VitrineTokens.FontSize.subhead))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    showingBrandKitPaywall = true
+                } label: {
+                    Text("Unlock Vitrine PRO")
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("brand-kit-unlock-button")
+            }
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .sheet(isPresented: $showingBrandKitPaywall) { PaywallSheet(feature: .brandKit) }
+        .accessibilityIdentifier("settings-brand-kit-upsell")
+    }
+
+    /// Picks a logo image through an open panel and imports it into the container
+    /// (CS-092), reusing the same content-addressed image store the backgrounds use.
+    private func pickBrandKitLogo() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.message = String(localized: "Choose a logo image for your brand kit.")
+        panel.prompt = String(localized: "Choose")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        brandKit.importLogo(from: url)
+    }
+
+    // Bindings into the app-global brand kit; mutating a field reassigns the whole
+    // value, so the store persists and the preview refreshes (CS-092).
+    private var brandKitHandle: Binding<String> {
+        Binding(get: { brandKit.brandKit.handle }, set: { brandKit.brandKit.handle = $0 })
+    }
+    private var brandKitProject: Binding<String> {
+        Binding(get: { brandKit.brandKit.project }, set: { brandKit.brandKit.project = $0 })
+    }
+    private var brandKitAccent: Binding<Color> {
+        Binding(
+            get: { brandKit.brandKit.accent?.color ?? .white },
+            set: { brandKit.brandKit.accent = RGBAColor($0) })
+    }
+    private var brandKitPlacement: Binding<Watermark.Placement> {
+        Binding(get: { brandKit.brandKit.placement }, set: { brandKit.brandKit.placement = $0 })
+    }
+
     // MARK: Background
 
     @ViewBuilder private var backgroundGroup: some View {
@@ -860,6 +1009,8 @@ struct StyleSettingsView: View {
         if config.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             config.code = "func greet(_ name: String) {\n    print(\"Hello, \\(name)!\")\n}"
         }
+        // Show the brand watermark live while configuring the kit (CS-092).
+        config.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
         return config
     }
 
@@ -1504,18 +1655,17 @@ struct WebCaptureControls: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
-        TokenRow(label: Text("Viewport")) {
-            TokenSegmentedPicker(
-                options: WebSnapshotConfig.ViewportPreset.Kind.allCases.map {
-                    ($0, viewportSegmentLabel(for: $0))
-                },
-                selection: $settings.webViewportKind
-            )
-            .accessibilityLabel("Viewport")
+        TokenRow(label: Text("Viewports"), caption: Text(viewportsFooter)) {
+            HStack(spacing: 6) {
+                ForEach(WebSnapshotConfig.ViewportPreset.Kind.allCases, id: \.self) { kind in
+                    viewportChip(kind)
+                }
+            }
+            .accessibilityLabel("Viewports")
             .accessibilityIdentifier("web-viewport-picker")
         }
 
-        if settings.webViewportKind == .custom {
+        if settings.webViewports.contains(.custom) {
             TokenRow(label: Text("Width")) {
                 Stepper(
                     value: $settings.webCustomViewportWidth,
@@ -1592,6 +1742,55 @@ struct WebCaptureControls: View {
         case .mobile: Text("Phone")
         case .custom: Text("Custom…")
         }
+    }
+
+    /// A selectable chip for one viewport kind in the multi-capture set (CS-044).
+    /// Toggling adds/removes the kind in `settings.webViewports`; the last selected
+    /// kind cannot be removed, so a capture always has at least one size.
+    private func viewportChip(_ kind: WebSnapshotConfig.ViewportPreset.Kind) -> some View {
+        let isOn = settings.webViewports.contains(kind)
+        return Button {
+            toggleViewport(kind)
+        } label: {
+            viewportSegmentLabel(for: kind)
+                .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+                .foregroundStyle(isOn ? Color.white : VitrineTokens.Text.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(isOn ? VitrineTokens.Accent.base : Color.clear))
+                .overlay(
+                    Capsule().strokeBorder(
+                        isOn ? Color.clear : VitrineTokens.Line.border, lineWidth: 1)
+                )
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(viewportSegmentLabel(for: kind))
+        .accessibilityAddTraits(isOn ? [.isSelected] : [])
+        .accessibilityIdentifier("web-viewport-chip-\(kind.rawValue)")
+    }
+
+    /// Toggles `kind` in the multi-capture viewport set, keeping it ordered and never
+    /// empty (the last selected kind stays), and syncing the single `webViewportKind`
+    /// to the primary selection so the back-compat single-viewport path stays valid.
+    private func toggleViewport(_ kind: WebSnapshotConfig.ViewportPreset.Kind) {
+        var set = settings.webViewports
+        if let index = set.firstIndex(of: kind) {
+            guard set.count > 1 else { return }
+            set.remove(at: index)
+        } else {
+            set.append(kind)
+        }
+        settings.webViewports = set
+        settings.webViewportKind = set.first ?? .openGraph
+    }
+
+    /// The footer under the viewport chips: a multi-selection captures every chosen
+    /// size in one pass; a single selection behaves like the original single capture.
+    private var viewportsFooter: String {
+        settings.webViewports.count > 1
+            ? String(localized: "Captures every selected size in one pass.")
+            : String(localized: "Pick one or more sizes to capture.")
     }
 
     private var waitSecondsLabel: String {

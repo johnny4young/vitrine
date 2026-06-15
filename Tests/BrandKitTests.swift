@@ -1,0 +1,157 @@
+import AppKit
+import Foundation
+import Testing
+
+@testable import Vitrine
+
+/// CS-092 — the PRO Brand Kit: the brand-kit model, the store's resolver gate
+/// (disabled / not-PRO / empty all yield no watermark), persistence, the logo
+/// round-trip, and the render-core guarantee that a watermark is purely additive —
+/// `nil` renders byte-identically to today's output, and a present watermark visibly
+/// changes the image.
+@Suite("Brand Kit · CS-092")
+@MainActor
+struct BrandKitTests {
+    /// A throwaway defaults suite so each test's persistence is isolated from the
+    /// real app container and from the other tests.
+    private func isolatedDefaults() -> UserDefaults {
+        UserDefaults(suiteName: "VitrineBrandKit-\(UUID().uuidString)")!
+    }
+
+    /// A store rooted at an isolated defaults suite and a temporary image directory,
+    /// so logo imports never touch the user's container.
+    private func isolatedStore() -> (BrandKitStore, URL) {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrineBrandKitTest-\(UUID().uuidString)", isDirectory: true)
+        let store = BrandKitStore(
+            defaults: isolatedDefaults(), imageStore: BackgroundImageStore(directory: dir))
+        return (store, dir)
+    }
+
+    // MARK: - Model
+
+    @Test func hasContentReflectsLogoOrText() {
+        #expect(!BrandKit().hasContent)
+        #expect(BrandKit(handle: "@jane").hasContent)
+        #expect(BrandKit(project: "vitrine").hasContent)
+        // All-whitespace is normalized away, so it counts as empty.
+        #expect(!BrandKit(handle: "   ").hasContent)
+    }
+
+    @Test func watermarkTextComposesAndOmitsBlanks() {
+        #expect(BrandKit(handle: "@jane", project: "vitrine").watermarkText == "@jane · vitrine")
+        #expect(BrandKit(handle: "@jane").watermarkText == "@jane")
+        #expect(BrandKit(project: "vitrine").watermarkText == "vitrine")
+        #expect(BrandKit().watermarkText.isEmpty)
+    }
+
+    @Test func everyPlacementHasALabelAndAlignment() {
+        for placement in Watermark.Placement.allCases {
+            #expect(!placement.label.isEmpty)
+            #expect(placement.alignment != .center)
+        }
+    }
+
+    // MARK: - Resolver gate
+
+    @Test func resolverYieldsNothingUnlessEnabledProAndNonEmpty() {
+        let (store, _) = isolatedStore()
+        store.brandKit = BrandKit(handle: "@jane")
+
+        // Disabled → no mark even with PRO and content.
+        store.isEnabled = false
+        #expect(store.resolvedWatermark(isPro: true) == nil)
+
+        // Enabled but free → no mark (the open-core gate).
+        store.isEnabled = true
+        #expect(store.resolvedWatermark(isPro: false) == nil)
+
+        // Enabled + PRO but empty → no mark.
+        store.brandKit = BrandKit()
+        #expect(store.resolvedWatermark(isPro: true) == nil)
+    }
+
+    @Test func resolverProducesTheMarkWhenEnabledProAndNonEmpty() {
+        let (store, _) = isolatedStore()
+        store.isEnabled = true
+        store.brandKit = BrandKit(
+            handle: "@jane", project: "vitrine", placement: .topLeading)
+        let mark = store.resolvedWatermark(isPro: true)
+        #expect(mark?.text == "@jane · vitrine")
+        #expect(mark?.placement == .topLeading)
+        #expect(mark?.logoImageData == nil)  // text-only kit
+    }
+
+    // MARK: - Persistence + logo
+
+    @Test func brandKitAndSwitchPersistAcrossInstances() {
+        let defaults = isolatedDefaults()
+        let first = BrandKitStore(defaults: defaults)
+        first.isEnabled = true
+        first.brandKit = BrandKit(handle: "@jane", project: "vitrine", placement: .bottomLeading)
+
+        let second = BrandKitStore(defaults: defaults)
+        #expect(second.isEnabled)
+        #expect(second.brandKit.handle == "@jane")
+        #expect(second.brandKit.project == "vitrine")
+        #expect(second.brandKit.placement == .bottomLeading)
+    }
+
+    @Test func importingALogoMakesItAvailableAndCarriesItIntoTheMark() throws {
+        let (store, dir) = isolatedStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        store.isEnabled = true
+
+        // A tiny real PNG written to a temp file, then imported through the store.
+        let source = dir.appendingPathComponent("logo-source.png")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Self.tinyPNG().write(to: source)
+
+        #expect(store.importLogo(from: source))
+        #expect(store.logoImage != nil)
+        // A logo alone is enough content, and it rides into the resolved mark.
+        let mark = store.resolvedWatermark(isPro: true)
+        #expect(mark?.logoImageData != nil)
+    }
+
+    // MARK: - Render core (additive + byte-stable)
+
+    @Test func defaultConfigHasNoWatermark() {
+        // The additive default-off guarantee at the unit level: every freshly built
+        // config (the golden suite's starting point) carries no watermark, so the
+        // canvas takes its unchanged path.
+        #expect(SnapshotConfig().watermark == nil)
+    }
+
+    @Test func aWatermarkChangesTheRenderWhileNilIsStable() throws {
+        var config = SnapshotConfig()
+        config.code = "let answer = 42"
+
+        // Rendering is deterministic: the same watermark-free config twice → identical bytes.
+        let plainA = try render(config)
+        let plainB = try render(config)
+        #expect(plainA == plainB)
+
+        // Adding a watermark visibly changes the output (the overlay is actually drawn).
+        config.watermark = Watermark(text: "@jane · vitrine", logoImageData: nil, tint: nil)
+        let marked = try render(config)
+        #expect(marked != plainA)
+    }
+
+    private func render(_ config: SnapshotConfig) throws -> Data {
+        let image = try #require(ExportManager.renderCGImage(config, scale: 2, fixedSize: nil))
+        return try #require(ExportManager.pngData(from: image))
+    }
+
+    /// A minimal valid PNG (a 2×2 image) for the logo import round-trip.
+    private static func tinyPNG() throws -> Data {
+        let image = NSImage(size: NSSize(width: 2, height: 2))
+        image.lockFocus()
+        NSColor.systemBlue.setFill()
+        NSRect(x: 0, y: 0, width: 2, height: 2).fill()
+        image.unlockFocus()
+        let tiff = try #require(image.tiffRepresentation)
+        let rep = try #require(NSBitmapImageRep(data: tiff))
+        return try #require(rep.representation(using: .png, properties: [:]))
+    }
+}

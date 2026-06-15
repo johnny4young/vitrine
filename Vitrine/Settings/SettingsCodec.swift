@@ -47,6 +47,7 @@ enum SettingsCodec {
         /// Web URL-capture viewport/wait settings (CS-044). All additive keys with
         /// documented defaults, so an older store simply reads the defaults.
         static let webViewportKind = "webViewportKind"
+        static let webViewports = "webViewports"
         static let webCustomViewportWidth = "webCustomViewportWidth"
         static let webCustomViewportHeight = "webCustomViewportHeight"
         static let webCaptureMode = "webCaptureMode"
@@ -87,7 +88,7 @@ enum SettingsCodec {
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
             colorProfile, richClipboard, hotkeyAction, appLanguage, treatURLs,
             reindentOnPaste,
-            webViewportKind, webCustomViewportWidth, webCustomViewportHeight,
+            webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,
             webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
             fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
             hasSeenWelcome, lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,

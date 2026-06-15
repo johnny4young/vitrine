@@ -13,6 +13,18 @@ enum WebInputMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// One viewport's capture in a multi-resolution batch (CS-044): the size it was
+/// rendered at and the resulting asset, for the result gallery and the responsive board.
+struct CapturedViewport: Identifiable {
+    let kind: WebSnapshotConfig.ViewportPreset.Kind
+    let preset: WebSnapshotConfig.ViewportPreset
+    let asset: RenderedAsset
+    /// Unique within a batch — the selected viewport set is de-duplicated by kind.
+    var id: WebSnapshotConfig.ViewportPreset.Kind { kind }
+    /// A short label for the result tile, e.g. "Desktop (1440 × 900)".
+    var label: String { preset.displayName }
+}
+
 /// The observable document behind the Web Snapshot window: the chosen input mode, the
 /// URL/HTML the user is composing, the rendered result, and the in-flight/error state
 /// (CS-042/CS-043).
@@ -29,8 +41,20 @@ final class WebSnapshotModel: ObservableObject {
     @Published var urlText: String = ""
     @Published var htmlText: String = ""
 
-    /// The most recent successful render, shown in the preview and exported.
+    /// The most recent successful render, shown in the preview and exported. In a
+    /// multi-resolution batch this is the primary (first selected) captured viewport.
     @Published var renderedAsset: RenderedAsset?
+
+    /// Every viewport captured in the last multi-resolution batch (CS-044), in selection
+    /// order. Drives the result gallery and the responsive board; empty for a failed or
+    /// not-yet-run capture.
+    @Published var results: [CapturedViewport] = []
+
+    /// The composite "responsive board" for a multi-size batch (CS-044): every capture
+    /// laid out in one shareable image. `nil` for a single-viewport capture or a failed
+    /// batch; when present it is the primary preview/export.
+    @Published var boardAsset: RenderedAsset?
+
     /// Whether a render is in flight (drives the preview's loading state).
     @Published var isRendering = false
     /// A user-facing, non-PII error from the last render attempt, or `nil`.
@@ -52,8 +76,14 @@ final class WebSnapshotModel: ObservableObject {
         return url.host
     }
 
-    /// Renders the current input through the appropriate renderer, publishing the
-    /// asset or a typed error. Safe to call repeatedly; each call replaces the result.
+    /// Renders the current input at every selected viewport, publishing the captured
+    /// set or a typed error. Safe to call repeatedly; each call replaces the results.
+    ///
+    /// Multi-resolution capture (CS-044) is **sequential** — `WKWebView` is main-actor
+    /// bound and two load/snapshot cycles must never overlap — so the viewports are
+    /// rendered one at a time. A single viewport that fails is recorded and skipped, so
+    /// one bad size never aborts the batch; the input (URL/HTML) is validated once up
+    /// front since it is the same across viewports.
     func render(settings: AppSettings) async {
         // Ignore a re-entrant render while one is already in flight (a fast second
         // Capture tap, or a disclosure-confirm landing while a prefilled render runs),
@@ -63,30 +93,90 @@ final class WebSnapshotModel: ObservableObject {
         errorMessage = nil
         isRendering = true
         defer { isRendering = false }
-        do {
-            switch mode {
-            case .html:
-                let renderer = HTMLRenderer(
-                    viewport: settings.webViewportPreset.size,
-                    scale: CGFloat(settings.exportScale),
-                    profile: settings.colorProfile)
-                renderedAsset = try await renderer.render(
-                    .html(htmlText), config: settings.config)
-            case .url:
-                guard let url = Self.normalizedURL(urlText) else {
-                    errorMessage = String(localized: "Enter a valid http or https URL.")
-                    renderedAsset = nil
-                    return
-                }
-                let renderer = URLRenderer.configured(from: settings)
-                renderedAsset = try await renderer.render(.url(url), config: settings.config)
+
+        // Resolve the input once; it is identical across viewports.
+        let input: CaptureInput
+        switch mode {
+        case .url:
+            guard let url = Self.normalizedURL(urlText) else {
+                errorMessage = String(localized: "Enter a valid http or https URL.")
+                results = []
+                renderedAsset = nil
+                boardAsset = nil
+                return
             }
-        } catch let error as RenderError {
+            input = .url(url)
+        case .html:
+            input = .html(htmlText)
+        }
+
+        let presets = settings.selectedWebViewportPresets
+        var captured: [CapturedViewport] = []
+        var lastError: RenderError?
+        var hadUnknownError = false
+        for preset in presets {
+            do {
+                let asset = try await renderOne(input: input, preset: preset, settings: settings)
+                captured.append(CapturedViewport(kind: preset.kind, preset: preset, asset: asset))
+            } catch let error as RenderError {
+                lastError = error
+            } catch {
+                hadUnknownError = true
+            }
+        }
+
+        guard !captured.isEmpty else {
+            results = []
             renderedAsset = nil
-            errorMessage = Self.message(for: error)
-        } catch {
-            renderedAsset = nil
-            errorMessage = String(localized: "The render didn't complete.")
+            boardAsset = nil
+            errorMessage =
+                lastError.map(Self.message(for:))
+                ?? (hadUnknownError ? String(localized: "The render didn't complete.") : nil)
+            return
+        }
+
+        results = captured
+        renderedAsset = captured.first?.asset
+        // A multi-size batch also gets a composite "responsive board" as the primary
+        // preview/export; a single capture has none.
+        if captured.count > 1 {
+            boardAsset = ResponsiveBoardComposer.compose(
+                captured, scale: CGFloat(settings.exportScale), profile: settings.colorProfile)
+            if let board = boardAsset { renderedAsset = board }
+        } else {
+            boardAsset = nil
+        }
+        // Note a partial failure when some viewports succeeded and others didn't.
+        if captured.count < presets.count {
+            errorMessage = String(
+                localized: "Captured \(captured.count) of \(presets.count) sizes; some didn't load."
+            )
+        }
+    }
+
+    /// Renders `input` at a single `preset` viewport with the user's capture settings.
+    /// Builds a fresh renderer per call (no shared web-view state), so the sequential
+    /// batch loop reuses the exact single-capture path once per size.
+    private func renderOne(
+        input: CaptureInput,
+        preset: WebSnapshotConfig.ViewportPreset,
+        settings: AppSettings
+    ) async throws -> RenderedAsset {
+        switch mode {
+        case .html:
+            let renderer = HTMLRenderer(
+                viewport: preset.size,
+                scale: CGFloat(settings.exportScale),
+                profile: settings.colorProfile)
+            return try await renderer.render(input, config: settings.config)
+        case .url:
+            let renderer = URLRenderer(
+                scale: CGFloat(settings.exportScale),
+                viewportPreset: preset,
+                captureMode: settings.webCaptureMode,
+                waitStrategy: settings.webWaitStrategy,
+                profile: settings.colorProfile)
+            return try await renderer.render(input, config: settings.config)
         }
     }
 

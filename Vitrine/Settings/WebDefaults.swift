@@ -12,6 +12,11 @@ enum WebDefaults {
     /// The default viewport: OpenGraph's social-card size.
     static let viewportKind: WebSnapshotConfig.ViewportPreset.Kind = .openGraph
 
+    /// The default set of viewports for a multi-resolution capture (CS-044): just the
+    /// single OpenGraph default, so a fresh install behaves exactly like the
+    /// single-viewport baseline until the user selects more.
+    static let viewports: [WebSnapshotConfig.ViewportPreset.Kind] = [.openGraph]
+
     /// The default custom viewport, used only when the kind is `.custom`. Seeds the
     /// width/height fields with a sensible desktop-ish size the first time a user
     /// switches to a custom viewport.
@@ -38,6 +43,24 @@ enum WebDefaults {
             let kind = WebSnapshotConfig.ViewportPreset.Kind(rawValue: raw)
         else { return viewportKind }
         return kind
+    }
+
+    /// Reads the persisted multi-capture viewport set (CS-044 multi-resolution): an
+    /// ordered, de-duplicated list of kinds. Unknown raw values are dropped; an empty
+    /// or missing list falls back to the single `viewportKind(from:)`, so the
+    /// multi-select degrades cleanly to today's single-viewport capture.
+    static func viewports(
+        from defaults: UserDefaults
+    ) -> [WebSnapshotConfig.ViewportPreset.Kind] {
+        guard let raw = defaults.array(forKey: "webViewports") as? [String] else {
+            return [viewportKind(from: defaults)]
+        }
+        var seen = Set<WebSnapshotConfig.ViewportPreset.Kind>()
+        let ordered =
+            raw
+            .compactMap { WebSnapshotConfig.ViewportPreset.Kind(rawValue: $0) }
+            .filter { seen.insert($0).inserted }
+        return ordered.isEmpty ? [viewportKind(from: defaults)] : ordered
     }
 
     /// Reads the persisted custom viewport width, clamped into the safe range and

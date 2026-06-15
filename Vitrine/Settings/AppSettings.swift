@@ -123,6 +123,13 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(webViewportKind.rawValue, forKey: Keys.webViewportKind) }
     }
 
+    /// The set of viewports a multi-resolution capture renders, ordered and
+    /// de-duplicated (CS-044). An empty set falls back to the single `webViewportKind`
+    /// on read, so the multi-select degrades to today's single-viewport capture.
+    @Published var webViewports: [WebSnapshotConfig.ViewportPreset.Kind] {
+        didSet { defaults.set(webViewports.map(\.rawValue), forKey: Keys.webViewports) }
+    }
+
     /// The custom viewport width in points, used only when `webViewportKind` is
     /// `.custom` (CS-044). Clamped into the safe range on read.
     @Published var webCustomViewportWidth: Int {
@@ -171,6 +178,20 @@ final class AppSettings: ObservableObject {
             kind: webViewportKind,
             customWidth: webCustomViewportWidth,
             customHeight: webCustomViewportHeight)
+    }
+
+    /// The composed viewport presets for a multi-resolution capture (CS-044): each
+    /// selected kind resolved with the stored custom size (so a selected `.custom`
+    /// carries the user's width/height). Falls back to the single `webViewportPreset`
+    /// when the selection is empty, so a batch capture always has at least one size.
+    var selectedWebViewportPresets: [WebSnapshotConfig.ViewportPreset] {
+        let presets = webViewports.map {
+            WebSnapshotConfig.ViewportPreset.resolve(
+                kind: $0,
+                customWidth: webCustomViewportWidth,
+                customHeight: webCustomViewportHeight)
+        }
+        return presets.isEmpty ? [webViewportPreset] : presets
     }
 
     /// The composed wait strategy for a URL capture (CS-044): the persisted
@@ -255,6 +276,7 @@ final class AppSettings: ObservableObject {
         // missing or garbage value by falling back to the documented default and
         // clamping numeric values into the safe range (CS-050 posture).
         webViewportKind = WebDefaults.viewportKind(from: defaults)
+        webViewports = WebDefaults.viewports(from: defaults)
         webCustomViewportWidth = WebDefaults.customViewportWidth(from: defaults)
         webCustomViewportHeight = WebDefaults.customViewportHeight(from: defaults)
         webCaptureMode = WebDefaults.captureMode(from: defaults)
@@ -406,6 +428,23 @@ final class AppSettings: ObservableObject {
     /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content (CS-020).
     var effectiveFixedSize: CGSize? { selectedPreset?.sizing.fixedSize }
 
+    /// The live `config` with the PRO Brand Kit watermark applied — what every image
+    /// export surface renders (CS-092).
+    ///
+    /// The watermark lives only on this derived value, never on the stored `config`:
+    /// so persistence, the "diverged from preset" bookkeeping, per-window sessions,
+    /// and the golden suite (which builds its own `SnapshotConfig`) all stay
+    /// byte-for-byte unchanged — the brand mark exists purely on the rendered output.
+    /// It is resolved from the app-global `BrandKitStore` and the global entitlement,
+    /// so every window and the quick-capture path share one brand identity, and it
+    /// appears only when the user enabled it *and* PRO is unlocked.
+    var exportConfig: SnapshotConfig {
+        var resolved = config
+        resolved.watermark = BrandKitStore.shared.resolvedWatermark(
+            isPro: Entitlements.shared.isPro)
+        return resolved
+    }
+
     /// Records a language as recently used (MRU, capped at 6).
     func noteLanguageUsed(_ language: Language) {
         var list = recentLanguages.filter { $0 != language }
@@ -482,6 +521,7 @@ final class AppSettings: ObservableObject {
         treatURLsAsScreenshot = false
         reindentOnPaste = true
         webViewportKind = WebDefaults.viewportKind
+        webViewports = WebDefaults.viewports
         webCustomViewportWidth = WebDefaults.customViewportWidth
         webCustomViewportHeight = WebDefaults.customViewportHeight
         webCaptureMode = WebDefaults.captureMode

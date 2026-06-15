@@ -255,6 +255,60 @@ enum ExportManager {
         }
     }
 
+    /// Renders `baseConfig` once per preset and writes one file per preset into
+    /// `directory` — the PRO multi-size one-pass export (CS-093).
+    ///
+    /// This is the single-export ladder fanned out, not a new encoder: for each
+    /// preset it applies that preset's presentation (`apply(to:)` writes padding +
+    /// background, leaving `code`/`language`/any watermark intact) and renders at the
+    /// preset's pinned `fixedSize` and `scale` through the same color-managed
+    /// `encodedPayload` path. So each written file is byte-for-byte what a single
+    /// export with THAT preset selected (at its pinned scale) produces. Files are
+    /// named `vitrine-<preset id>.<ext>`. Returns how many were written and how many
+    /// presets failed, so the caller can give precise feedback (CS-038). Only the
+    /// format/counts are logged, never the chosen folder path (CS-048).
+    @discardableResult
+    static func exportPresetSizes(
+        _ baseConfig: SnapshotConfig, presets: [ExportPreset], to directory: URL,
+        format: ExportFormat = .png, profile: ColorProfile = .sRGB
+    ) -> (written: Int, failed: Int) {
+        var written = 0
+        var failed = 0
+        for preset in presets {
+            var config = baseConfig
+            preset.apply(to: &config)
+            let size = preset.sizing.fixedSize
+            let payload = encodedPayload(
+                format,
+                png: {
+                    renderCGImage(
+                        config, scale: CGFloat(preset.scale), fixedSize: size, profile: profile)
+                },
+                pdf: { pdfData(config, fixedSize: size) })
+            guard let payload else {
+                Log.export.error("Multi-size export: render/encode returned nil for a preset")
+                failed += 1
+                continue
+            }
+            let url = directory.appendingPathComponent(
+                "vitrine-\(preset.id).\(payload.ext)", isDirectory: false)
+            do {
+                try payload.data.write(to: url)
+                written += 1
+            } catch {
+                let nsError = error as NSError
+                Log.export.error(
+                    "Multi-size export write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+                )
+                failed += 1
+            }
+        }
+        Log.export.notice(
+            "Multi-size export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
+        )
+        return (written, failed)
+    }
+
     /// The outcome of a save-to-file attempt, so callers can tell apart a written
     /// file, a user cancel, and a genuine failure for feedback (CS-038).
     enum SaveOutcome: Equatable {

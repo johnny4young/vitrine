@@ -287,7 +287,32 @@ private struct SocialCardInspector: View {
                     .labelsHidden()
                     .accessibilityIdentifier("social-card-logo-toggle")
             }
+            brandKitRow
         }
+    }
+
+    /// A PRO affordance that fills the footer from the app-global Brand Kit (CS-092):
+    /// the handle and project become the author/project lines and the logo is enabled.
+    /// Gated through the shared `proGated` modifier, so it runs when PRO is unlocked
+    /// and opens the paywall (with a "PRO" badge) when it is not.
+    private var brandKitRow: some View {
+        Label("Use Brand Kit", systemImage: "wand.and.stars")
+            .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+            .foregroundStyle(VitrineTokens.Accent.base)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .proGated(.brandKit) { applyBrandKit() }
+            .help("Fill the footer from your Brand Kit")
+            .accessibilityIdentifier("social-card-use-brand-kit")
+    }
+
+    /// Copies the brand kit's handle/project into the footer and turns the logo on.
+    /// Empty kit fields are left untouched, so a partial kit never blanks the footer.
+    private func applyBrandKit() {
+        let kit = BrandKitStore.shared.brandKit
+        if !kit.handle.isEmpty { settings.socialCard.author = kit.handle }
+        if !kit.project.isEmpty { settings.socialCard.project = kit.project }
+        settings.socialCard.showLogo = true
     }
 
     private var themeSection: some View {

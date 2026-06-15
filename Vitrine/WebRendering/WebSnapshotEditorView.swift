@@ -17,17 +17,28 @@ struct WebSnapshotEditorView: View {
     @EnvironmentObject private var settings: AppSettings
 
     @State private var showDisclosure = false
+    /// Which captured viewport the big preview is showing (the highlighted filmstrip
+    /// tile) in a multi-resolution batch.
+    @State private var previewedKind: WebSnapshotConfig.ViewportPreset.Kind?
 
     var body: some View {
         VStack(spacing: 0) {
             toolbar
             HStack(spacing: 0) {
-                previewStage
+                VStack(spacing: 0) {
+                    previewStage
+                    resultsFilmstrip
+                }
                 inspector
                     .frame(width: 340)
             }
         }
         .frame(minWidth: 900, minHeight: 580)
+        .onChange(of: model.results.map(\.id)) {
+            // A multi-size batch defaults to the composite board (previewedKind == nil);
+            // a single capture selects its one viewport.
+            previewedKind = model.results.count > 1 ? nil : model.results.first?.kind
+        }
         .background(VitrineTokens.Surface.window)
         .tint(VitrineTokens.Accent.base)
         .sheet(isPresented: $showDisclosure) {
@@ -62,6 +73,12 @@ struct WebSnapshotEditorView: View {
 
             Spacer(minLength: 0)
 
+            if model.results.count > 1 {
+                iconButton(
+                    "web-snapshot-export-all-button", label: "Export all sizes",
+                    help: "Export every captured size, plus the board, to a folder",
+                    systemImage: "rectangle.stack.badge.plus", action: exportAll)
+            }
             iconButton(
                 "web-snapshot-save-button", label: VitrineCommand.saveImage.accessibilityLabel,
                 help: "Save the snapshot as a file", systemImage: "square.and.arrow.down",
@@ -141,6 +158,107 @@ struct WebSnapshotEditorView: View {
         .background(VitrineTokens.Surface.stage)
         .layoutPriority(2)
         .accessibilityIdentifier("web-snapshot-preview-stage")
+    }
+
+    /// A filmstrip of the captured viewports in a multi-resolution batch (CS-044): one
+    /// labeled thumbnail per size; tapping one shows it in the preview and makes it the
+    /// single export target. Hidden for a single-viewport capture.
+    @ViewBuilder
+    private var resultsFilmstrip: some View {
+        if model.results.count > 1 {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    if model.boardAsset != nil {
+                        boardTile
+                    }
+                    ForEach(model.results) { result in
+                        filmstripTile(result)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+            .background(VitrineTokens.Surface.window)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(VitrineTokens.Line.border)
+                    .frame(height: Brand.Stroke.hairline)
+            }
+            .accessibilityIdentifier("web-snapshot-results")
+        }
+    }
+
+    private func filmstripTile(_ result: CapturedViewport) -> some View {
+        let isSelected = previewedKind == result.kind
+        return Button {
+            previewedKind = result.kind
+            model.renderedAsset = result.asset
+        } label: {
+            VStack(spacing: 4) {
+                Image(nsImage: nsImage(from: result.asset))
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 92, height: 58)
+                    .background(VitrineTokens.Surface.stage)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(
+                                isSelected ? VitrineTokens.Accent.base : VitrineTokens.Line.border,
+                                lineWidth: isSelected ? 2 : Brand.Stroke.hairline))
+                Text(verbatim: result.label)
+                    .font(.system(size: 11))
+                    .foregroundStyle(
+                        isSelected ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
+                    )
+                    .lineLimit(1)
+            }
+            .frame(width: 96)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(result.label)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityIdentifier("web-snapshot-result-\(result.kind.rawValue)")
+    }
+
+    /// The leading filmstrip tile for the composite responsive board (CS-044). Selected
+    /// by default after a multi-size capture; tapping it shows the board in the preview
+    /// and makes it the export target.
+    @ViewBuilder
+    private var boardTile: some View {
+        if let board = model.boardAsset {
+            let isSelected = previewedKind == nil
+            Button {
+                previewedKind = nil
+                model.renderedAsset = board
+            } label: {
+                VStack(spacing: 4) {
+                    Image(nsImage: nsImage(from: board))
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 92, height: 58)
+                        .background(VitrineTokens.Surface.stage)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(
+                                    isSelected
+                                        ? VitrineTokens.Accent.base : VitrineTokens.Line.border,
+                                    lineWidth: isSelected ? 2 : Brand.Stroke.hairline))
+                    Text("Board")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(
+                            isSelected ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
+                        )
+                        .lineLimit(1)
+                }
+                .frame(width: 96)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Responsive board"))
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+            .accessibilityIdentifier("web-snapshot-result-board")
+        }
     }
 
     /// The in-flight state: a spinner, a localized "loading locally" line, and — for a
@@ -300,8 +418,13 @@ struct WebSnapshotEditorView: View {
     /// cannot reach the network) routes through the privacy disclosure before any load;
     /// HTML renders immediately since it never reaches the network.
     private func attemptCapture() {
+        // Show the privacy disclosure only when URL capture is actually available and the
+        // user hasn't consented yet. On a build that can't reach the network the disclosure's
+        // confirm button is permanently disabled, so routing through it strands the user in a
+        // dismiss-and-retry dead end; instead fall through to the capture, which fails fast
+        // with `RenderError.urlCaptureDisabled` and its clear message (audit P0-4).
         if model.mode == .url,
-            !settings.urlCaptureConsentGiven || !NetworkCapability.isURLCaptureEnabled
+            !settings.urlCaptureConsentGiven, NetworkCapability.isURLCaptureEnabled
         {
             showDisclosure = true
             return
@@ -366,6 +489,41 @@ struct WebSnapshotEditorView: View {
             CaptureHUDController.shared.present(
                 Notifier.failure(String(localized: "Couldn't save the image")))
         }
+    }
+
+    /// Exports every captured viewport plus the composite board as PNGs into a folder
+    /// the user picks (CS-044 multi-resolution) — a ready-to-share set in one action.
+    private func exportAll() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.prompt = String(localized: "Export")
+        guard panel.runModal() == .OK, let directory = panel.url else { return }
+
+        var items: [(name: String, image: CGImage)] = model.results.map { result in
+            let size = result.preset.size
+            return (
+                "vitrine-web-\(result.kind.rawValue)-\(Int(size.width))x\(Int(size.height))",
+                result.asset.cgImage
+            )
+        }
+        if let board = model.boardAsset?.cgImage {
+            items.append(("vitrine-web-responsive-board", board))
+        }
+
+        var written = 0
+        for item in items {
+            guard let data = ExportManager.pngData(from: item.image) else { continue }
+            if (try? data.write(to: directory.appendingPathComponent("\(item.name).png"))) != nil {
+                written += 1
+            }
+        }
+
+        CaptureHUDController.shared.present(
+            written > 0
+                ? Notifier.confirmation(String(localized: "Images exported"))
+                : Notifier.failure(String(localized: "Couldn't export the images")))
     }
 
     private func shareImage() {
