@@ -46,24 +46,24 @@ struct WebMultiViewportSelectionTests {
     @Test func selectionPersistsAcrossReloads() {
         let store = defaults()
         let first = AppSettings(defaults: store)
-        first.webViewports = [.mobile, .fullHD]
+        first.webCapture.viewports = [.mobile, .fullHD]
         let second = AppSettings(defaults: store)
-        #expect(second.webViewports == [.mobile, .fullHD])
+        #expect(second.webCapture.viewports == [.mobile, .fullHD])
     }
 
     @Test func selectedPresetsResolveTheStoredCustomSize() {
         let settings = AppSettings(defaults: defaults())
-        settings.webCustomViewportWidth = 800
-        settings.webCustomViewportHeight = 600
-        settings.webViewports = [.mobile, .custom]
-        let presets = settings.selectedWebViewportPresets
+        settings.webCapture.customViewportWidth = 800
+        settings.webCapture.customViewportHeight = 600
+        settings.webCapture.viewports = [.mobile, .custom]
+        let presets = settings.webCapture.selectedViewportPresets
         #expect(presets == [.mobile, .custom(width: 800, height: 600)])
     }
 
     @Test func selectedPresetsFallBackToTheSingleViewportWhenEmpty() {
         let settings = AppSettings(defaults: defaults())
-        settings.webViewports = []
-        #expect(settings.selectedWebViewportPresets == [settings.webViewportPreset])
+        settings.webCapture.viewports = []
+        #expect(settings.webCapture.selectedViewportPresets == [settings.webCapture.viewportPreset])
     }
 }
 
