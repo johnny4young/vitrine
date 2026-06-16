@@ -10,8 +10,10 @@ import Security
 /// Honor/convenience model (the epic is explicit: not anti-fork DRM). The signature lets the
 /// CLI trust the app's activation without re-contacting Lemon Squeezy and rejects a
 /// hand-edited token; it is not a defense against a determined forker (the code is open
-/// source). Tokens are signed **server-side** at activation, so the private key is never
-/// shipped — the same posture as the Sparkle appcast key (`SUPublicEDKey`).
+/// source). Architecture B (`docs/ACTIVATION.md`): the app signs the token **locally** at
+/// activation with a private key injected only into the official release build
+/// (`LicenseSigningKey.embedded`). A build compiled from source has no such key, so it cannot
+/// mint a token and stays free — the public half lives in source for offline verification.
 struct LicenseToken: Codable, Equatable {
     /// The opaque license identifier (e.g. the Lemon Squeezy order/license id) — never a
     /// secret, carried so a token is traceable to its purchase.
@@ -56,10 +58,10 @@ struct LicenseVerifier {
         publicKey: Curve25519.Signing.PrivateKey().publicKey)
 }
 
-/// Mints a signed token from a private key (CS-090). This runs **server-side** at activation,
-/// where the private key lives; it is included here so the verifier has a tested counterpart
-/// and the unit tests can exercise the full mint → verify → tamper path. The app never holds
-/// the private key in production.
+/// Mints a signed token from a private key (CS-090). Under Architecture B the **app** runs this
+/// at activation, with the build-injected `LicenseSigningKey.embedded`; the same function backs
+/// the unit tests' mint → verify → tamper path with a throwaway development key. (It is equally
+/// usable server-side, should the signing ever move off-device.)
 enum LicenseSigner {
     static func sign(
         _ token: LicenseToken, with privateKey: Curve25519.Signing.PrivateKey
@@ -138,20 +140,61 @@ extension JSONDecoder {
         }
     }
 
+    /// Mirrors the signed activation token into the shared file the bundled `vitrine` CLI
+    /// reads (CS-094), so the CLI's offline PRO check agrees with the app without a StoreKit
+    /// or IPC bridge. The sandboxed app writes inside its **own container's** Application
+    /// Support; the non-sandboxed CLI reads that exact physical path via
+    /// `CLIEntitlement.defaultTokenURL`. The `url` is injectable so tests use a temp file and
+    /// never touch the real container.
+    struct CLITokenFile {
+        /// The app-side path: the (container) Application Support resolved through
+        /// `.applicationSupportDirectory`, which inside the App Sandbox *is* the container —
+        /// the same bytes `CLIEntitlement.defaultTokenURL` points the CLI at.
+        static var appContainerURL: URL {
+            let base =
+                (try? FileManager.default.url(
+                    for: .applicationSupportDirectory, in: .userDomainMask,
+                    appropriateFor: nil, create: true))
+                ?? FileManager.default.temporaryDirectory
+            return base.appendingPathComponent("Vitrine/pro-license.token", isDirectory: false)
+        }
+
+        var url: URL = CLITokenFile.appContainerURL
+
+        /// Writes the token `0600` (creating the directory), or removes the file on `nil` —
+        /// so deactivation re-locks the CLI too. Failures are swallowed: the CLI mirror is a
+        /// convenience, never a gate on the app's own (Keychain-backed) entitlement.
+        func write(_ token: String?) {
+            let fileManager = FileManager.default
+            guard let token else {
+                try? fileManager.removeItem(at: url)
+                return
+            }
+            try? fileManager.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? token.data(using: .utf8)?.write(to: url, options: [.atomic])
+            try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        }
+    }
+
     /// The direct-download entitlement provider (CS-090): PRO is unlocked by a locally-stored,
     /// signed `LicenseToken`, verified offline against the embedded public key at every launch
-    /// and by the CLI. Activation (a one-time Lemon Squeezy online check that yields a signed
-    /// token) is wired when the LS account exists; until then no token is stored, so it is free.
+    /// and by the CLI. `LicenseActivationService` performs the one-time online activation and
+    /// hands the minted token here; this provider persists it and mirrors it to the CLI file.
     @MainActor
     final class LicenseKeyProvider: EntitlementProvider {
         private let store: LicenseTokenStore
         private let verifier: LicenseVerifier
+        private let cliTokenFile: CLITokenFile
 
         init(
-            store: LicenseTokenStore = KeychainLicenseStore(), verifier: LicenseVerifier = .embedded
+            store: LicenseTokenStore = KeychainLicenseStore(),
+            verifier: LicenseVerifier = .embedded,
+            cliTokenFile: CLITokenFile = CLITokenFile()
         ) {
             self.store = store
             self.verifier = verifier
+            self.cliTokenFile = cliTokenFile
         }
 
         /// Whether the stored token currently verifies — read instantly and offline at boot.
@@ -162,13 +205,16 @@ extension JSONDecoder {
         /// the fast path and the CLI's only path.
         func currentIsPro() async -> Bool { storedValidToken != nil }
 
-        /// Stores a freshly-issued signed token after a successful activation, or clears it on
-        /// deactivation. Validated before storing, so a bad token never sticks.
+        /// Stores a freshly-issued signed token after a successful activation (and mirrors it
+        /// to the CLI file), or clears both on deactivation. Validated before storing, so a
+        /// bad token never sticks and never reaches the CLI.
         func setToken(_ token: String?) {
             if let token, verifier.verify(token) != nil {
                 store.write(token)
+                cliTokenFile.write(token)
             } else {
                 store.write(nil)
+                cliTokenFile.write(nil)
             }
         }
 

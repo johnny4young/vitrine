@@ -79,14 +79,20 @@ final class Entitlements: ObservableObject {
     }
 
     #if VITRINE_DIRECT_DOWNLOAD
-        /// Activates a Lemon Squeezy license key on the direct-download build, returning
-        /// whether PRO is unlocked afterward. The online key → signed-token exchange is
-        /// wired once the Lemon Squeezy account exists; until then this refreshes and
-        /// reports the current state rather than a false unlock.
+        /// Activates a Lemon Squeezy license key on the direct-download build (CS-090,
+        /// Architecture B), returning whether PRO is unlocked afterward.
+        ///
+        /// Validates the key once online via `LicenseActivationService`, which on success mints
+        /// a locally-signed token; that token is handed to the `LicenseKeyProvider`, which
+        /// persists it to the Keychain and mirrors it to the CLI file, and a `refresh()`
+        /// publishes the unlock. A build without the injected signing key cannot mint a token,
+        /// so it reports `notConfigured` and stays free (the open-source / pre-key state).
         func activate(licenseKey: String) async -> Bool {
-            // TODO(CS-090 · Lemon Squeezy): exchange `licenseKey` for a signed token, then
-            // `(provider as? LicenseKeyProvider)?.setToken(token)`. Deferred until the LS
-            // account/secret exists.
+            let service = LicenseActivationService(
+                validator: LemonSqueezyValidator(), signingKey: LicenseSigningKey.embedded)
+            if case .activated(let signedToken) = await service.activate(licenseKey: licenseKey) {
+                (provider as? LicenseKeyProvider)?.setToken(signedToken)
+            }
             await refresh()
             return isPro
         }

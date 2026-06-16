@@ -31,6 +31,14 @@ RESULT_BUNDLE_FLAG := $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)"
 # direct-download superset (network + Sparkle XPC, CS-064) before generating.
 export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 
+# The direct-download license-signing private key (base64 of the raw Ed25519 32 bytes),
+# consumed by project.yml as ${VITRINE_LICENSE_SIGNING_KEY} → the Info.plist's
+# VitrineLicenseSigningKey (CS-090, Architecture B). Empty by default, so a normal/CI build
+# cannot mint a license token and stays free; the release machine exports the real key
+# before `make` / scripts/build-dmg.sh. Never store the real value in the repo — see
+# docs/ACTIVATION.md.
+export VITRINE_LICENSE_SIGNING_KEY ?=
+
 .DEFAULT_GOAL := all
 .PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens gallery format lint changelog-check icon clean
 

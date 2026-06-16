@@ -41,6 +41,14 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 johnny4young. MIT-licensed.</string>
+	<!-- The direct-download build's Ed25519 license-signing private key (base64 of the raw
+	     32 bytes), injected ONLY into the official release at build time from the
+	     VITRINE_LICENSE_SIGNING_KEY env var via the same-named build setting (project.yml).
+	     Empty on every normal/CI/from-source build → the app cannot mint a license token and
+	     stays free (CS-090, Architecture B). Read by LicenseSigningKey.embedded. Never commit
+	     a real value here; see docs/ACTIVATION.md. -->
+	<key>VitrineLicenseSigningKey</key>
+	<string>$(VITRINE_LICENSE_SIGNING_KEY)</string>
 	<!-- The app reads the clipboard locally to render code/URLs; nothing leaves the
 	     Mac (CS-045). Phase 1 promise is unchanged: copied code is turned into an
 	     image entirely on-device. In Product Phase 2, a copied URL is captured by
