@@ -11,7 +11,7 @@
 **Park it (⏸ Future), do not promote to Product Phase 2.x.** Arbitrary screen/window
 capture is a *different product* with a *different permission profile* from everything
 Vitrine ships today. Vitrine's entire identity is "Vitrine renders its own pixels": the
-code canvas (`ImageRenderer`) and the deferred URL/HTML path (`WKWebView`) both produce
+code canvas (`ImageRenderer`) and the dedicated URL/HTML path (`WKWebView`) both produce
 images from content Vitrine itself draws, with **no Screen Recording permission and no
 network egress of your screen**. Capturing the *real desktop* breaks that promise: it
 requires the system Screen Recording permission (TCC), can pull in any other app's

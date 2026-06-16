@@ -115,10 +115,10 @@ struct WebSnapshotPrivacyUXTests {
     }
 
     /// The gate is injectable, so the disclosure renders in both states regardless of
-    /// the host build's entitlement: a Phase 1 build (gate off) and a capable build
+    /// the host build's entitlement: a network-free build (gate off) and a capable build
     /// (gate on) are both representable. This is what lets the view show the disabled
-    /// action plus the "arrives in Product Phase 2" note on a build with no network
-    /// entitlement, and the live confirm action on one that has it.
+    /// action plus the direct-download note on a build with no network entitlement, and
+    /// the live confirm action on one that has it.
     @Test func theDisclosureViewGateIsInjectableInBothStates() {
         let disabled = WebPrivacyDisclosureView(
             onConfirm: {}, onCancel: {}, isURLCaptureEnabled: false)

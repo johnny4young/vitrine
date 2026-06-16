@@ -39,9 +39,8 @@ enum CLIEntitlement {
     /// place. It therefore resolves that same physical file explicitly under the app's
     /// container from the real home, which is where the app actually wrote it.
     ///
-    /// Until the production signing key ships, no token verifies against the placeholder
-    /// embedded key, so the CLI stays free here except under the Debug bypass — the correct
-    /// "locked in releases until accounts exist" state.
+    /// Without a token signed by the pinned production key, the CLI stays free here except
+    /// under the Debug bypass — the correct "locked until activation" state.
     static var defaultTokenURL: URL {
         let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
         return

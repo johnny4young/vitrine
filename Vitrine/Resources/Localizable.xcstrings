@@ -705,14 +705,13 @@
         }
       }
     },
-    "Captures exactly the viewport size. URL capture loads the page locally in WebKit and arrives in Product Phase 2." : {
+    "Captures exactly the viewport size. URL capture loads the page locally in WebKit on this Mac." : {
       "comment" : "Input pane footer for the visible-area web capture mode.",
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Captura exactamente el tamaño del viewport. La captura de URL carga la página localmente en WebKit y llega en la fase 2 del producto."
+            "value" : "Captura exactamente el tamaño del viewport. La captura de URL carga la página localmente en WebKit en este Mac."
           }
         }
       }
@@ -3141,6 +3140,17 @@
         }
       }
     },
+    "Open Web Snapshot" : {
+      "comment" : "Recovery action label for opening Web Snapshot with a detected URL (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Web Snapshot"
+          }
+        }
+      }
+    },
     "Open Help" : {
       "comment" : "What's New button: open the Help window.",
       "extractionState" : "stale",
@@ -4331,14 +4341,13 @@
         }
       }
     },
-    "That looks like a URL — screenshot capture is coming soon" : {
+    "That looks like a URL — open Web Snapshot to capture it" : {
       "comment" : "Capture feedback when the clipboard holds a URL (CS-038).",
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eso parece una URL; la captura de pantalla llegará pronto"
+            "value" : "Eso parece una URL; abre Web Snapshot para capturarla"
           }
         }
       }
@@ -4911,13 +4920,13 @@
         }
       }
     },
-    "Webpage capture arrives in Product Phase 2 and is not available in this build." : {
-      "comment" : "Web privacy disclosure note shown in a Phase 1 build where URL capture is deferred (CS-045).",
+    "Webpage capture requires the direct-download build with local network access." : {
+      "comment" : "Web privacy disclosure note shown when URL capture is unavailable in the current build (CS-045).",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La captura de páginas web llega en la fase 2 del producto y no está disponible en esta versión."
+            "value" : "La captura de páginas web requiere la versión de descarga directa con acceso local a la red."
           }
         }
       }
@@ -4998,18 +5007,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Si está desactivado, una URL copiada se renderiza como texto"
-          }
-        }
-      }
-    },
-    "When off, a copied URL is rendered as text. URL screenshots arrive in Product Phase 2." : {
-      "comment" : "Input pane footer.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cuando está desactivado, una URL copiada se renderiza como texto. Las capturas de URL llegan en la fase 2 del producto."
           }
         }
       }

@@ -1,9 +1,9 @@
 # PRO activation — direct-download (Lemon Squeezy) runbook
 
-How to turn on real PRO activation for the **direct-download / Homebrew (DMG)** build. This is
-the one remaining non-code step for that channel: the activation subsystem is fully built and
-tested (CS-090); what is missing is your **Lemon Squeezy account/product** and your **signing
-keypair**. The Mac App Store channel is separate — see [APP-STORE.md](APP-STORE.md).
+How to turn on real PRO activation for the **direct-download / Homebrew (DMG)** build. The
+activation subsystem is built and tested (CS-090); the remaining release work is your **Lemon
+Squeezy account/product**, the release-machine **private-key injection**, and any deliberate
+public-key rotation. The Mac App Store channel is separate — see [APP-STORE.md](APP-STORE.md).
 
 ## How it works (Architecture B — the app signs locally)
 
@@ -39,8 +39,8 @@ manager). **Never commit it.**
 
 ## Step 2 — Embed the PUBLIC key (in source — not secret)
 
-In [`Vitrine/Pro/LicenseKey.swift`](../Vitrine/Pro/LicenseKey.swift), replace the placeholder
-`LicenseVerifier.embedded` (which uses a throwaway random key) with your real public key:
+In [`Vitrine/Pro/LicenseKey.swift`](../Vitrine/Pro/LicenseKey.swift), confirm
+`LicenseVerifier.embedded` matches your public key. If you are rotating keys, replace the literal:
 
 ```swift
 static let embedded = LicenseVerifier(
@@ -48,9 +48,9 @@ static let embedded = LicenseVerifier(
         rawRepresentation: Data(base64Encoded: "<YOUR PUBLIC BASE64>")!))
 ```
 
-Commit this. After it lands, update the guardrail test `embeddedVerifierRejectsForeignTokens`
-(it currently asserts the placeholder rejects *every* token) so it instead asserts a token signed
-by your real private key verifies and a foreign one does not.
+Commit this. Update `embeddedPublicKeyIsThePinnedProductionKey` in
+`Tests/EntitlementsTests.swift` in the same change, and keep
+`embeddedVerifierRejectsForeignTokens` proving a foreign key cannot unlock PRO.
 
 ## Step 3 — Inject the PRIVATE key at build time (release machine only)
 

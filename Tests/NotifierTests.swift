@@ -89,19 +89,17 @@ struct NotifierFeedbackTests {
 
     // MARK: Recovery actions (failure recovery)
     //
-    // CS-038 acceptance: an empty clipboard or a deferred URL must offer the user a
+    // CS-038 acceptance: an empty clipboard or a URL fallback must offer the user a
     // way forward rather than leaving them stuck.
 
     @Test func emptyClipboardOffersTheEditor() {
         #expect(Notifier.feedback(for: .empty).actions == [.openEditor])
     }
 
-    @Test func deferredURLOffersRenderAsTextAndEditor() {
-        // Product Phase 2 deferral: until URL screenshot capture ships, the user
-        // can render the URL as text or open the editor.
+    @Test func urlFeedbackOffersWebSnapshotAndRenderAsText() {
         let actions = Notifier.feedback(for: .url("https://example.com")).actions
+        #expect(actions.contains(.openWebSnapshot))
         #expect(actions.contains(.renderAsText))
-        #expect(actions.contains(.openEditor))
     }
 
     @Test func routineSuccessHasNoRecoveryActions() {
@@ -121,12 +119,14 @@ struct NotifierFeedbackTests {
 
     @Test func recoveryActionTitlesAreHumanReadable() {
         #expect(!Notifier.RecoveryAction.openEditor.title.isEmpty)
+        #expect(!Notifier.RecoveryAction.openWebSnapshot.title.isEmpty)
         #expect(!Notifier.RecoveryAction.renderAsText.title.isEmpty)
     }
 
     @Test func recoveryActionAccessibilityTokensAreStableAndNonLocalized() {
         // Accessibility identifiers must not be localized (UI tests rely on them).
         #expect(Notifier.RecoveryAction.openEditor.accessibilityToken == "open-editor")
+        #expect(Notifier.RecoveryAction.openWebSnapshot.accessibilityToken == "open-web-snapshot")
         #expect(Notifier.RecoveryAction.renderAsText.accessibilityToken == "render-as-text")
     }
 }
@@ -246,8 +246,9 @@ struct CaptureResultDestinationTests {
 //  3. Clear the clipboard, fire the hotkey. The HUD reads "Clipboard is empty…"
 //     and shows an "Open Editor" button; clicking it opens the editor. The same
 //     action is offered under "Last capture" in the menu.
-//  4. Enable URL → screenshot, copy a URL, fire the hotkey. The HUD offers
-//     "Render as Text" and "Open Editor"; "Render as Text" frames the URL string.
+//  4. Enable URL → screenshot, copy a URL, fire the hotkey. The Web Snapshot
+//     window opens with the URL prefilled. If URL feedback is surfaced directly,
+//     "Render as Text" frames the URL string and "Open Web Snapshot" opens capture.
 //  5. Turn on System Settings ▸ Accessibility ▸ Display ▸ Reduce motion. Repeat
 //     step 1: the HUD still appears with its status but does not slide/scale in.
 //  6. Fire several captures in quick succession. HUDs replace one another; windows

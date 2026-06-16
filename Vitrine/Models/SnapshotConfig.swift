@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Everything that defines the final image. This is the single source of truth
@@ -82,12 +83,12 @@ struct SnapshotConfig: Equatable {
 /// A brand watermark composited onto an exported snapshot — the render-ready form
 /// of the PRO Brand Kit (CS-092).
 ///
-/// It is deliberately **self-contained**: it carries the resolved logo *bytes*
-/// (not a store reference) and a plain tint, so `SnapshotCanvas` draws it
-/// deterministically with no dependency on the brand-kit store, `SnapshotConfig`
-/// stays `Equatable`, and the value renders identically on any machine. The store
-/// (`BrandKitStore`) is what turns the user's brand kit into this value; the render
-/// core only ever consumes it.
+/// It is deliberately **self-contained**: it carries the resolved logo bytes plus
+/// an optional predecoded image (not a store reference) and a plain tint, so
+/// `SnapshotCanvas` draws it deterministically with no dependency on the brand-kit
+/// store, `SnapshotConfig` stays `Equatable`, and the value renders identically on
+/// any machine. The store (`BrandKitStore`) is what turns the user's brand kit into
+/// this value; the render core only ever consumes it.
 struct Watermark: Equatable {
     /// The handle/project line, e.g. `@jane · vitrine`. May be empty when the user
     /// supplied only a logo.
@@ -96,6 +97,12 @@ struct Watermark: Equatable {
     /// The brand logo's image bytes (any `NSImage`-decodable format), or `nil` for a
     /// text-only mark. Carried inline so the canvas needs no file/store access.
     var logoImageData: Data?
+
+    /// The predecoded logo image, when the brand-kit store could resolve it. This
+    /// keeps `WatermarkBadge` from re-decoding `logoImageData` on every SwiftUI body
+    /// pass; `logoImageData` remains the portable fallback for tests and hand-built
+    /// values.
+    var logoImage: NSImage?
 
     /// A cheap, stable identity for the logo (its content-addressed file name) used by
     /// `==` so a SwiftUI diff of `SnapshotConfig` doesn't byte-compare the whole logo `Data`

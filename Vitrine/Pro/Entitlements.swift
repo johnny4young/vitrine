@@ -8,16 +8,15 @@ import Foundation
 /// PRO state is provider-backed and **offline**: the boot path reads the provider's cached
 /// flag instantly (no flicker, no network), and `refresh()` updates it asynchronously. The
 /// provider is injectable (the same pattern as `PresetStore` / `SoftwareUpdater`), so the
-/// real StoreKit (App Store) and license-key (direct-download) providers slot in later
-/// (CS-089/CS-090) without changing a single call site, and tests drive a fake.
+/// StoreKit (App Store) and license-key (direct-download) providers live behind the same
+/// interface without changing call sites, and tests drive a fake.
 ///
 /// `WKWebView`-free and network-free by itself: nothing here logs or transmits anything
 /// about purchases (the CS-048 privacy rule extends to entitlement checks).
 @MainActor
 final class Entitlements: ObservableObject {
-    /// The app-wide entitlement state. Its provider is chosen per build; until the real
-    /// providers land (CS-089/CS-090) it is the free provider, with a Debug-only local
-    /// unlock for development.
+    /// The app-wide entitlement state. Its provider is chosen per build, with a Debug-only
+    /// local unlock for development.
     static let shared = Entitlements(provider: Entitlements.defaultProvider())
 
     /// Whether the PRO tier is unlocked. Published so SwiftUI surfaces (the "PRO" badge,
@@ -99,11 +98,11 @@ final class Entitlements: ObservableObject {
     #endif
 
     /// The provider backing `shared`, chosen per build. The App Store build resolves PRO
-    /// from the StoreKit non-consumable IAP (CS-089); the direct-download build will use a
-    /// local license-key provider (CS-090) and is free until that lands. In a **Debug**
-    /// build only, `VITRINE_PRO_UNLOCK=1` swaps in `DebugUnlockProvider` so PRO can be
-    /// exercised locally — that override is compiled out of release, so a shipped binary has
-    /// no path to PRO through it.
+    /// from the StoreKit non-consumable IAP (CS-089); the direct-download build resolves
+    /// from a locally stored signed license token (CS-090) and is free until activation
+    /// succeeds. In a **Debug** build only, `VITRINE_PRO_UNLOCK=1` swaps in
+    /// `DebugUnlockProvider` so PRO can be exercised locally — that override is compiled
+    /// out of release, so a shipped binary has no path to PRO through it.
     private static func defaultProvider() -> EntitlementProvider {
         #if DEBUG
             if ProcessInfo.processInfo.environment["VITRINE_PRO_UNLOCK"] == "1" {
@@ -178,8 +177,8 @@ extension EntitlementProvider {
     func restore() async -> Bool { cachedIsPro }
 }
 
-/// The default provider until the real ones land (CS-089/CS-090): PRO is locked. A build
-/// with no purchase and no license is always free.
+/// The always-free provider used by tests, unsupported build flavors, and providers without
+/// a purchase/license flow.
 struct FreeProvider: EntitlementProvider {
     var cachedIsPro: Bool { false }
     func currentIsPro() async -> Bool { false }

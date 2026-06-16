@@ -112,6 +112,24 @@ struct BrandKitTests {
         // A logo alone is enough content, and it rides into the resolved mark.
         let mark = store.resolvedWatermark(isPro: true)
         #expect(mark?.logoImageData != nil)
+        #expect(mark?.logoImage != nil)
+    }
+
+    @Test func resetToDefaultsClearsPersistedBrandKitState() {
+        let defaults = isolatedDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let store = BrandKitStore(defaults: defaults)
+
+        store.isEnabled = true
+        store.brandKit = BrandKit(handle: "@jane", project: "vitrine", placement: .topTrailing)
+
+        settings.resetToDefaults()
+        store.reload()
+
+        #expect(!store.isEnabled)
+        #expect(store.brandKit == BrandKit())
+        #expect(defaults.object(forKey: BrandKitStore.storageKey) == nil)
+        #expect(defaults.object(forKey: BrandKitStore.enabledStorageKey) == nil)
     }
 
     // MARK: - Render core (additive + byte-stable)

@@ -33,8 +33,9 @@ enum Notifier {
     enum RecoveryAction: Equatable {
         /// Open the editor window so the user can paste or write code themselves.
         case openEditor
-        /// Render the detected URL as plain text instead of waiting for URL
-        /// screenshot capture to ship (Product Phase 2 deferral).
+        /// Open the Web Snapshot window with the detected URL prefilled.
+        case openWebSnapshot
+        /// Render the detected URL as plain text instead of opening Web Snapshot.
         case renderAsText
 
         /// The button label shown for this action. Localized through the String
@@ -42,6 +43,7 @@ enum Notifier {
         var title: String {
             switch self {
             case .openEditor: String(localized: "Open Editor")
+            case .openWebSnapshot: String(localized: "Open Web Snapshot")
             case .renderAsText: String(localized: "Render as Text")
             }
         }
@@ -52,6 +54,7 @@ enum Notifier {
         var accessibilityToken: String {
             switch self {
             case .openEditor: "open-editor"
+            case .openWebSnapshot: "open-web-snapshot"
             case .renderAsText: "render-as-text"
             }
         }
@@ -101,14 +104,14 @@ enum Notifier {
                 message: successMessage(copied: copiedToClipboard, saved: savedToFile),
                 actions: [])
         case .url:
-            // URL → screenshot capture is Product Phase 2 (CS-043). Until it
-            // ships, offer the two things the user can do right now rather than
-            // leaving them at a dead end (CS-038).
+            // A raw `.url` outcome normally opens Web Snapshot directly from
+            // `QuickCapture.perform`. If another caller surfaces it as feedback, still
+            // offer a direct Web Snapshot action plus the plain-text fallback.
             return CaptureFeedback(
                 category: .info,
                 message: String(
-                    localized: "That looks like a URL — screenshot capture is coming soon"),
-                actions: [.renderAsText, .openEditor])
+                    localized: "That looks like a URL — open Web Snapshot to capture it"),
+                actions: [.openWebSnapshot, .renderAsText])
         case .empty:
             // An empty clipboard is the most common dead end; route the user
             // straight to the editor rather than leaving them stuck (CS-038).

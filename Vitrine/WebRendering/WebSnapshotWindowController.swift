@@ -86,6 +86,15 @@ final class WebSnapshotModel: ObservableObject {
         errorMessage = nil
     }
 
+    /// Loads a URL supplied by quick capture or another presenter, clearing all prior
+    /// rendered outputs so stale filmstrip/export-all results cannot survive into the
+    /// new capture session.
+    func prepareForPrefillURL(_ prefillURL: String) {
+        mode = .url
+        urlText = prefillURL
+        discardRenderedAssets()
+    }
+
     /// Renders the current input at every selected viewport, publishing the captured
     /// set or a typed error. Safe to call repeatedly; each call replaces the results.
     ///
@@ -254,10 +263,7 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     /// and clears any previous result so the user lands ready to capture.
     func show(prefillURL: String? = nil) {
         if let prefillURL {
-            model.mode = .url
-            model.urlText = prefillURL
-            model.renderedAsset = nil
-            model.errorMessage = nil
+            model.prepareForPrefillURL(prefillURL)
         }
         let window = self.window ?? makeWindow()
         self.window = window

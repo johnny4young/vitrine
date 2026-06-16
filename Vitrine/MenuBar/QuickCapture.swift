@@ -9,7 +9,7 @@ enum QuickCapture {
     enum Outcome: Equatable {
         case copied  // rendered and copied to the clipboard
         case rendered  // rendered but auto-copy is off
-        case url(String)  // a URL was detected and URL→screenshot is enabled (Product Phase 2)
+        case url(String)  // a URL was detected and URL capture is enabled by the user
         case empty  // clipboard had no usable text
         // Several Markdown code blocks were detected; the combined source is loaded
         // into the editor for the user to choose how to frame it (CS-027). The
@@ -56,7 +56,7 @@ enum QuickCapture {
             return .nonProducing(.empty)
         }
 
-        // URL → screenshot is Product Phase 2; only branch off when the user opted in.
+        // URL → screenshot capture only branches off when the user opted in.
         // The classified URL becomes a `.url` outcome: the app's `perform()` opens the
         // Web Snapshot window (which owns the privacy disclosure and the async render),
         // while a headless caller can offer the "Render as Text" recovery (CS-038).
@@ -170,9 +170,9 @@ enum QuickCapture {
     /// reading and the URL branch (CS-038).
     ///
     /// This backs the "Render as Text" recovery offered when a clipboard URL is
-    /// detected but URL → screenshot capture has not shipped yet (Product Phase 2):
-    /// rather than leaving the user stuck, the URL text itself is framed as a
-    /// plain-text snippet using the same output settings as a normal capture.
+    /// detected but the user chooses not to open Web Snapshot: the URL text itself
+    /// is framed as a plain-text snippet using the same output settings as a normal
+    /// capture.
     @discardableResult
     static func renderText(
         _ text: String,

@@ -33,10 +33,16 @@ struct WatermarkOverlay: ViewModifier {
 /// deterministically through `ImageRenderer` and looks the same on every machine.
 struct WatermarkBadge: View {
     let watermark: Watermark
+    private let logoImage: NSImage?
+
+    init(watermark: Watermark) {
+        self.watermark = watermark
+        self.logoImage = watermark.logoImage ?? watermark.logoImageData.flatMap(NSImage.init(data:))
+    }
 
     var body: some View {
         HStack(spacing: 7) {
-            if let data = watermark.logoImageData, let logo = NSImage(data: data) {
+            if let logo = logoImage {
                 Image(nsImage: logo)
                     .resizable()
                     .interpolation(.high)

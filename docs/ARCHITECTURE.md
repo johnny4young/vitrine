@@ -30,9 +30,9 @@ menu with submenus** (not just a popover):
 - **Primary action — "New capture from clipboard"** (quick mode): reads `NSPasteboard`,
   detects code vs URL, detects the language for code, renders code with **your saved
   settings**, and leaves the result on the clipboard (**auto-copy configurable**) or
-  saves it — **without opening any UI**. URL input is detected and deferred until
-  Product Phase 2, when it will render locally with `WKWebView`. This is the
-  lowest-friction path without compromising the Phase 1 no-network promise.
+  saves it — **without opening any UI**. When URL capture is enabled, URL input opens
+  Web Snapshot prefilled with the URL; the direct-download build then renders it locally
+  with `WKWebView` after the first-use privacy disclosure.
 - **"Open editor…"** opens the window with live preview and controls (theme, padding,
   font, background) to tweak before exporting.
 - **"Recents" submenu** lists the last captures; choosing one reopens it in the editor.
