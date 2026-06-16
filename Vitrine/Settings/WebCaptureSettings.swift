@@ -89,12 +89,21 @@ final class WebCaptureSettings: ObservableObject {
     /// carries the user's width/height). Falls back to the single `viewportPreset`
     /// when the selection is empty, so a batch capture always has at least one size.
     var selectedViewportPresets: [WebSnapshotConfig.ViewportPreset] {
-        let presets = viewports.map {
-            WebSnapshotConfig.ViewportPreset.resolve(
-                kind: $0,
-                customWidth: customViewportWidth,
-                customHeight: customViewportHeight)
-        }
+        // De-duplicate by kind (stable, keep-first) before resolving: `viewports` is an
+        // unconstrained `@Published` array, and a repeated kind would otherwise render — and
+        // compose into the responsive board — the same viewport twice. The UI toggle already
+        // avoids duplicates, so this enforces the documented invariant defensively and keeps a
+        // batch capture deterministic.
+        var seen = Set<WebSnapshotConfig.ViewportPreset.Kind>()
+        let presets =
+            viewports
+            .filter { seen.insert($0).inserted }
+            .map {
+                WebSnapshotConfig.ViewportPreset.resolve(
+                    kind: $0,
+                    customWidth: customViewportWidth,
+                    customHeight: customViewportHeight)
+            }
         return presets.isEmpty ? [viewportPreset] : presets
     }
 

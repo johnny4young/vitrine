@@ -65,6 +65,14 @@ struct WebMultiViewportSelectionTests {
         settings.webCapture.viewports = []
         #expect(settings.webCapture.selectedViewportPresets == [settings.webCapture.viewportPreset])
     }
+
+    @Test func selectedPresetsDropDuplicateKindsKeepingFirstOrder() {
+        // `viewports` is an unconstrained array; a repeated kind must not render — or compose
+        // into the board — the same viewport twice (PR #2 review).
+        let settings = AppSettings(defaults: defaults())
+        settings.webCapture.viewports = [.mobile, .desktop, .mobile, .desktop]
+        #expect(settings.webCapture.selectedViewportPresets == [.mobile, .desktop])
+    }
 }
 
 @Suite("Responsive board composite · CS-044")
