@@ -146,9 +146,9 @@ extension URLRenderer {
     static func configured(from settings: AppSettings) -> URLRenderer {
         URLRenderer(
             scale: CGFloat(settings.exportScale),
-            viewportPreset: settings.webViewportPreset,
-            captureMode: settings.webCaptureMode,
-            waitStrategy: settings.webWaitStrategy,
+            viewportPreset: settings.webCapture.viewportPreset,
+            captureMode: settings.webCapture.captureMode,
+            waitStrategy: settings.webCapture.waitStrategy,
             profile: settings.colorProfile)
     }
 }

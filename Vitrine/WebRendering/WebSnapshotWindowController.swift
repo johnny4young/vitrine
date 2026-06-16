@@ -120,7 +120,7 @@ final class WebSnapshotModel: ObservableObject {
             input = .html(htmlText)
         }
 
-        let presets = settings.selectedWebViewportPresets
+        let presets = settings.webCapture.selectedViewportPresets
         var captured: [CapturedViewport] = []
         var lastError: RenderError?
         var hadUnknownError = false
@@ -183,8 +183,8 @@ final class WebSnapshotModel: ObservableObject {
             let renderer = URLRenderer(
                 scale: CGFloat(settings.exportScale),
                 viewportPreset: preset,
-                captureMode: settings.webCaptureMode,
-                waitStrategy: settings.webWaitStrategy,
+                captureMode: settings.webCapture.captureMode,
+                waitStrategy: settings.webCapture.waitStrategy,
                 profile: settings.colorProfile)
             return try await renderer.render(input, config: settings.config)
         }

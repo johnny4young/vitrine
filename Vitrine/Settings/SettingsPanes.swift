@@ -1645,9 +1645,9 @@ struct WebCaptureConsentRow: View {
             Text("Direct-download only")
                 .font(.system(size: VitrineTokens.FontSize.subhead))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
-        } else if settings.urlCaptureConsentGiven {
+        } else if settings.webCapture.consentGiven {
             Button("Revoke") {
-                settings.urlCaptureConsentGiven = false
+                settings.webCapture.consentGiven = false
             }
             .buttonStyle(.plain)
             .foregroundStyle(VitrineTokens.Accent.base)
@@ -1682,13 +1682,13 @@ struct WebCaptureControls: View {
             .accessibilityIdentifier("web-viewport-picker")
         }
 
-        if settings.webViewports.contains(.custom) {
+        if settings.webCapture.viewports.contains(.custom) {
             TokenRow(label: Text("Width")) {
                 Stepper(
-                    value: $settings.webCustomViewportWidth,
+                    value: $settings.webCapture.customViewportWidth,
                     in: customDimensionRange, step: 10
                 ) {
-                    Text(verbatim: "\(settings.webCustomViewportWidth) pt")
+                    Text(verbatim: "\(settings.webCapture.customViewportWidth) pt")
                         .font(.system(size: VitrineTokens.FontSize.subhead))
                         .foregroundStyle(VitrineTokens.Text.secondary)
                 }
@@ -1698,10 +1698,10 @@ struct WebCaptureControls: View {
 
             TokenRow(label: Text("Height")) {
                 Stepper(
-                    value: $settings.webCustomViewportHeight,
+                    value: $settings.webCapture.customViewportHeight,
                     in: customDimensionRange, step: 10
                 ) {
-                    Text(verbatim: "\(settings.webCustomViewportHeight) pt")
+                    Text(verbatim: "\(settings.webCapture.customViewportHeight) pt")
                         .font(.system(size: VitrineTokens.FontSize.subhead))
                         .foregroundStyle(VitrineTokens.Text.secondary)
                 }
@@ -1716,7 +1716,7 @@ struct WebCaptureControls: View {
                     (WebSnapshotConfig.CaptureMode.visibleViewport, Text("Visible")),
                     (.fullPage, Text("Full page")),
                 ],
-                selection: $settings.webCaptureMode
+                selection: $settings.webCapture.captureMode
             )
             .accessibilityLabel("Capture")
             .accessibilityIdentifier("web-capture-mode-picker")
@@ -1729,15 +1729,15 @@ struct WebCaptureControls: View {
                     (.networkQuiet, Text("Idle")),
                     (.fixedDelay, Text("Delay")),
                 ],
-                selection: $settings.webWaitKind
+                selection: $settings.webCapture.waitKind
             )
             .accessibilityLabel("Wait until")
             .accessibilityIdentifier("web-wait-strategy-picker")
         }
 
-        if settings.webWaitKind != .domContentLoaded {
+        if settings.webCapture.waitKind != .domContentLoaded {
             TokenRow(label: Text("Extra wait")) {
-                Stepper(value: $settings.webWaitSeconds, in: waitSecondsRange, step: 1) {
+                Stepper(value: $settings.webCapture.waitSeconds, in: waitSecondsRange, step: 1) {
                     Text(waitSecondsLabel)
                         .font(.system(size: VitrineTokens.FontSize.subhead))
                         .foregroundStyle(VitrineTokens.Text.secondary)
@@ -1762,10 +1762,10 @@ struct WebCaptureControls: View {
     }
 
     /// A selectable chip for one viewport kind in the multi-capture set (CS-044).
-    /// Toggling adds/removes the kind in `settings.webViewports`; the last selected
+    /// Toggling adds/removes the kind in `settings.webCapture.viewports`; the last selected
     /// kind cannot be removed, so a capture always has at least one size.
     private func viewportChip(_ kind: WebSnapshotConfig.ViewportPreset.Kind) -> some View {
-        let isOn = settings.webViewports.contains(kind)
+        let isOn = settings.webCapture.viewports.contains(kind)
         return Button {
             toggleViewport(kind)
         } label: {
@@ -1790,24 +1790,24 @@ struct WebCaptureControls: View {
     }
 
     /// Toggles `kind` in the multi-capture viewport set, keeping it ordered and never
-    /// empty (the last selected kind stays), and syncing the single `webViewportKind`
+    /// empty (the last selected kind stays), and syncing the single `webCapture.viewportKind`
     /// to the primary selection so the back-compat single-viewport path stays valid.
     private func toggleViewport(_ kind: WebSnapshotConfig.ViewportPreset.Kind) {
-        var set = settings.webViewports
+        var set = settings.webCapture.viewports
         if let index = set.firstIndex(of: kind) {
             guard set.count > 1 else { return }
             set.remove(at: index)
         } else {
             set.append(kind)
         }
-        settings.webViewports = set
-        settings.webViewportKind = set.first ?? .openGraph
+        settings.webCapture.viewports = set
+        settings.webCapture.viewportKind = set.first ?? .openGraph
     }
 
     /// The footer under the viewport chips: a multi-selection captures every chosen
     /// size in one pass; a single selection behaves like the original single capture.
     private var viewportsFooter: String {
-        settings.webViewports.count > 1
+        settings.webCapture.viewports.count > 1
             ? String(localized: "Captures every selected size in one pass.")
             : String(localized: "Pick one or more sizes to capture.")
     }
@@ -1816,11 +1816,11 @@ struct WebCaptureControls: View {
         // One interpolated key whose singular/plural is chosen by the catalog's
         // plural variations (CS-047), rather than a Swift `== 1` branch — so every
         // locale's own plural categories are honored, not just one/other.
-        String(localized: "\(settings.webWaitSeconds) seconds")
+        String(localized: "\(settings.webCapture.waitSeconds) seconds")
     }
 
     private var captureFooter: String {
-        switch settings.webCaptureMode {
+        switch settings.webCapture.captureMode {
         case .visibleViewport:
             String(
                 localized:
@@ -1835,7 +1835,7 @@ struct WebCaptureControls: View {
     }
 
     private var waitFooter: String {
-        switch settings.webWaitKind {
+        switch settings.webCapture.waitKind {
         case .domContentLoaded:
             String(localized: "Snapshots as soon as the page finishes loading.")
         case .fixedDelay:

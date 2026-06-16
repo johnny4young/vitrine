@@ -71,11 +71,11 @@ struct URLCaptureConsentTests {
 
         let settings = AppSettings(defaults: defaults)
         // Off on a fresh suite, so the first capture always discloses first (CS-045).
-        #expect(!settings.urlCaptureConsentGiven)
+        #expect(!settings.webCapture.consentGiven)
 
-        settings.urlCaptureConsentGiven = true
+        settings.webCapture.consentGiven = true
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.urlCaptureConsentGiven)
+        #expect(reloaded.webCapture.consentGiven)
     }
 
     @Test func resetRevokesConsent() {
@@ -83,9 +83,9 @@ struct URLCaptureConsentTests {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = AppSettings(defaults: defaults)
-        settings.urlCaptureConsentGiven = true
+        settings.webCapture.consentGiven = true
         settings.resetToDefaults()
-        #expect(!settings.urlCaptureConsentGiven)
+        #expect(!settings.webCapture.consentGiven)
     }
 }
 

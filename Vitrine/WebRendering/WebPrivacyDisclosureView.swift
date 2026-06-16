@@ -31,7 +31,7 @@ import SwiftUI
 /// ## Presentation
 ///
 /// The Web Snapshot window hosts this in a modal `.sheet` on the first URL capture,
-/// persists the confirmation in `AppSettings.urlCaptureConsentGiven`, and lets
+/// persists the confirmation in `AppSettings.webCapture.consentGiven`, and lets
 /// `onConfirm` gate the load. URL capture itself stays gated on the network
 /// entitlement (`NetworkCapability`): the App Store build ships without
 /// `com.apple.security.network.client`, so there the confirm action is disabled and

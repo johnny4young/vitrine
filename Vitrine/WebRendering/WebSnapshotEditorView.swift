@@ -45,7 +45,7 @@ struct WebSnapshotEditorView: View {
             WebPrivacyDisclosureView(
                 onConfirm: {
                     // Record consent and proceed with the capture the user asked for.
-                    settings.urlCaptureConsentGiven = true
+                    settings.webCapture.consentGiven = true
                     showDisclosure = false
                     Task { await capture() }
                 },
@@ -424,7 +424,7 @@ struct WebSnapshotEditorView: View {
         // dismiss-and-retry dead end; instead fall through to the capture, which fails fast
         // with `RenderError.urlCaptureDisabled` and its clear message (audit P0-4).
         if model.mode == .url,
-            !settings.urlCaptureConsentGiven, NetworkCapability.isURLCaptureEnabled
+            !settings.webCapture.consentGiven, NetworkCapability.isURLCaptureEnabled
         {
             showDisclosure = true
             return
