@@ -143,9 +143,14 @@ struct LicenseKeyTests {
 
         @Test func providerUnlocksWithAValidTokenAndClearsOnDeactivation() throws {
             let key = Curve25519.Signing.PrivateKey()
+            // Inject a temp CLI-token file so `setToken` does not write the real container path.
+            let cliTokenURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("vitrine-provider-test-\(UUID().uuidString)")
+                .appendingPathComponent("pro-license.token", isDirectory: false)
             let provider = LicenseKeyProvider(
                 store: InMemoryTokenStore(),
-                verifier: LicenseVerifier(publicKey: key.publicKey))
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: cliTokenURL))
             #expect(!provider.cachedIsPro)
             let token = try LicenseSigner.sign(
                 LicenseToken(licenseID: "L1", issuedAt: Date(timeIntervalSince1970: 1_700_000_000)),
