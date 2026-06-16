@@ -195,7 +195,7 @@ struct WebSnapshotEditorView: View {
             model.renderedAsset = result.asset
         } label: {
             VStack(spacing: 4) {
-                Image(nsImage: nsImage(from: result.asset))
+                Image(nsImage: nsImage(from: result.thumbnailAsset))
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 92, height: 58)
@@ -233,7 +233,7 @@ struct WebSnapshotEditorView: View {
                 model.renderedAsset = board
             } label: {
                 VStack(spacing: 4) {
-                    Image(nsImage: nsImage(from: board))
+                    Image(nsImage: nsImage(from: model.boardThumbnailAsset ?? board))
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 92, height: 58)

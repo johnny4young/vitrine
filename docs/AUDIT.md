@@ -18,14 +18,15 @@ fix. None block the current branch (it is green); these are the next-pass backlo
 > - **P1-Security (all 6):** Keychain token, CLI Hardened Runtime, redirect re-validation, SSRF
 >   list gaps, path-component guard, embedded-key guardrail test — `[FIXED]`.
 > - **P1-Performance:** Perf-1/2/4/5/6 (memoization, sRGB short-circuit, cheap watermark diff,
->   logo cache, free web captures on close) — `[FIXED]`. Perf-3 (hoist render off-main) and the
->   filmstrip-downsample half of Perf-6 — `[DEFERRED]`, see notes.
+>   logo cache, free web captures on close, and downsampled Web Snapshot filmstrip thumbnails)
+>   — `[FIXED]`. Perf-3 (hoist render off-main) — `[DEFERRED]`, see notes.
 > - **P1-UX (all 5):** multi-size feedback, accent reset, logo-import error, paywall polish,
 >   token consistency — `[FIXED]`.
 > - **P2:** P2-1 (AppSettings → `WebCaptureSettings` sub-store), P2-3 (provider protocol), P2-4
 >   (named gradient; `configured` kept — tested, not dead), P2-5 (`@MainActor` cache), P2-6
 >   (docs) — `[FIXED]`. P2-2 (coordinator dedup) and P2-7 (`@Observable` migration) — `[DEFERRED]`.
->   The SettingsPanes/EditorView file splits in P2-1 are optional and open.
+>   Brand Kit has been extracted from `SettingsPanes.swift`; broader Settings/Editor file
+>   splits remain optional and open.
 >
 > The StoreKit `#else` paywall path is compiled only by the App-Store-flavor build (no
 > `VITRINE_DIRECT_DOWNLOAD`), not by `make test`; it was reviewed by hand.
@@ -34,8 +35,6 @@ fix. None block the current branch (it is green); these are the next-pass backlo
 > - **Perf-3** — reverted: the recents thumbnail's synchronous availability is a UX + test
 >   contract, and Perf-2 already removed its redundant bitmap copy. The remaining `ImageRenderer`
 >   work is `@MainActor`-bound by the framework.
-> - **Perf-6 (filmstrip downsample)** — a larger Web-Snapshot UI change needing `make test-ui`;
->   the memory win (freeing captures on close) already shipped.
 > - **P2-2** — a risky refactor of two working but untested `WKWebView` delegates, low reward.
 > - **P2-7** — `@Observable` migration across 9 stores / 53 observation sites; its own session
 >   (needs `make test-ui`).
@@ -153,10 +152,11 @@ CLI batch, and multi-viewport — so these multiply across every surface.
    `Vitrine/Canvas/WatermarkBadge.swift:39`. Cache the decoded `NSImage` in `BrandKitStore`
    beside `cachedLogoData`.
 
-6. `[FIXED in part — filmstrip downsample DEFERRED]` **Multi-viewport batch retains ~5-6
+6. `[FIXED]` **Multi-viewport batch retained ~5-6
    full-res captures + the board for the window's lifetime** (`WebSnapshotModel.results`/`boardAsset`, `WebSnapshotWindowController.swift`),
-   and the filmstrip hands SwiftUI full-res bitmaps to rescale to 92×58 every layout. Clear
-   the model on `windowWillClose`; store a downsampled thumbnail per `CapturedViewport`.
+   and the filmstrip handed SwiftUI full-res bitmaps to rescale to 92×58 every layout. The
+   model now clears captures on `windowWillClose`, stores a downsampled thumbnail per
+   `CapturedViewport`, and keeps a separate board thumbnail for the filmstrip.
 
 ---
 
@@ -191,13 +191,14 @@ CLI batch, and multi-viewport — so these multiply across every surface.
 
 ## P2 — Architecture, refactors, dead code, docs
 
-1. `[FIXED — sub-store done; view splits open]` **`AppSettings` is the clearest god-object**
+1. `[FIXED — sub-store done; Brand Kit split out; broader view splits open]` **`AppSettings` is the clearest god-object**
    (≈550 lines, 25 `@Published`). The web-capture cluster was extracted into a
    `WebCaptureSettings` sub-store (`Vitrine/Settings/WebCaptureSettings.swift`, commit `ef57c7e`)
    the way `BrandKitStore`/`PresetStore` already did, shrinking `AppSettings` by ~70 lines and
-   forwarding the sub-store's `objectWillChange`. Still open (optional, mechanical):
-   **`SettingsPanes.swift` ~1,900 lines** and **`EditorView.swift` ~1,015** — split per-pane /
-   extract subviews.
+   forwarding the sub-store's `objectWillChange`. `BrandKitSettingsSection` now owns the
+   PRO-gated Brand Kit controls and logo-import state outside `SettingsPanes.swift`. Still
+   open (optional, mechanical): continue splitting large Settings/Editor sections per pane and
+   extract `EditorView.swift` subviews.
 
 2. `[DEFERRED]` **Duplicated WKWebView load coordinators.** `URLRenderer.LoadCoordinator`
    (`URLRenderer.swift:440-512`) and `WebSnapshotView.NavigationCoordinator`

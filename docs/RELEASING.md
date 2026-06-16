@@ -81,10 +81,16 @@ initialize — a runner-image regression, which has happened before
 (actions/runner-images#7621, #8546) — a dedicated step annotates the run as an
 infrastructure failure rather than a product bug.
 
+For local runs, keep Vitrine/XCTest frontmost while the suite is active. XCUITest
+can report unrelated windows as "interrupting elements" (Slack, browsers, or an
+IDE on another display) even when the app itself is healthy. If a local run fails
+only with interrupting-window diagnostics, close or hide those windows and rerun
+the focused test before treating it as a product regression.
+
 **The display-geometry-sensitive tests run on CI too.** Four tests
 (`testEditorExposesMakeDefaultToolbarAction`,
 `testEditorExposesFormatCodeToolbarAction`,
-`testEditorKeyboardCanReachPresetStripAndInspector`, and
+`testEditorKeyboardCanReachToolbarAndInspector`, and
 `testEditorWindowRecoversFromOffScreenFrame`) assert toolbar hittability and
 off-screen-recovery geometry, which used to fail on the runner's small 1024x768
 virtual display: the editor's 1180-point default window overhung the screen

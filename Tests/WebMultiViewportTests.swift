@@ -104,6 +104,17 @@ struct ResponsiveBoardComposerTests {
         #expect(again.cgImage.height == asset.cgImage.height)
     }
 
+    @Test func capturedViewportsKeepASeparateBoundedThumbnail() {
+        let capture = capture(.desktop, 4_000, 3_000)
+
+        #expect(capture.asset.cgImage.width == 4_000)
+        #expect(capture.asset.cgImage.height == 3_000)
+        #expect(capture.thumbnailAsset.cgImage.width <= CapturedViewport.thumbnailMaxPixelWidth)
+        #expect(capture.thumbnailAsset.cgImage.height <= CapturedViewport.thumbnailMaxPixelHeight)
+        #expect(capture.thumbnailAsset.cgImage.width < capture.asset.cgImage.width)
+        #expect(capture.thumbnailAsset.cgImage.height < capture.asset.cgImage.height)
+    }
+
     private func capture(
         _ kind: WebSnapshotConfig.ViewportPreset.Kind, _ width: Int, _ height: Int
     ) -> CapturedViewport {

@@ -313,20 +313,14 @@ private struct RecentCaptureRow: View {
     @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            thumbnail
-            VStack(alignment: .leading, spacing: 1) {
-                Text(verbatim: capture.menuTitle)
-                    .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
-                    .foregroundStyle(VitrineTokens.Text.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Text(verbatim: metadataLine)
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                    .lineLimit(1)
+        ZStack(alignment: .trailing) {
+            Button(action: reopen) {
+                rowContent
+                    .padding(.trailing, isHovered ? 34 : 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(verbatim: "\(capture.menuTitle), \(metadataLine)"))
+
             if isHovered {
                 Button(action: copy) {
                     Image(systemName: "doc.on.doc")
@@ -343,7 +337,29 @@ private struct RecentCaptureRow: View {
                 .buttonStyle(.plain)
                 .help("Copy image")
                 .accessibilityLabel("Copy image")
+                .padding(.trailing, 6)
             }
+        }
+        .onHover { isHovered = $0 }
+        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var rowContent: some View {
+        HStack(spacing: 10) {
+            thumbnail
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: capture.menuTitle)
+                    .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+                    .foregroundStyle(VitrineTokens.Text.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(verbatim: metadataLine)
+                    .font(.system(size: VitrineTokens.FontSize.caption))
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 5)
         .padding(.horizontal, 6)
@@ -352,12 +368,6 @@ private struct RecentCaptureRow: View {
                 .fill(isHovered ? VitrineTokens.Chrome.tile : .clear)
         )
         .contentShape(RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous))
-        .onTapGesture(perform: reopen)
-        .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(verbatim: "\(capture.menuTitle), \(metadataLine)"))
-        .accessibilityAddTraits(.isButton)
     }
 
     /// Language · relative time · theme — the capture's visible context line.

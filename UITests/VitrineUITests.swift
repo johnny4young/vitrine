@@ -62,9 +62,11 @@ final class VitrineUITests: XCTestCase {
         let second = element("editor-window-2", in: app)
         XCTAssertTrue(second.waitForExistence(timeout: 8), "Second editor window did not open")
 
-        // Close the key (second) window with the standard Close shortcut.
-        second.click()
-        second.typeKey("w", modifierFlags: .command)
+        // `openNewWindow()` leaves the second editor key. Send the standard Close shortcut
+        // to the app instead of clicking the window first; on a busy local desktop, other
+        // apps can appear as XCUI "interrupting elements" even when Vitrine is active.
+        app.activate()
+        app.typeKey("w", modifierFlags: .command)
 
         // The primary window remains; only the second one closed.
         assertExists(element("editor-window", in: app), in: app, timeout: 3)
@@ -237,8 +239,10 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: ["--demo", "--open-editor"])
         defer { app.terminate() }
 
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
         let copyButton = element("copy-button", in: app)
-        assertExists(copyButton, in: app, timeout: 8)
+        assertExists(copyButton, in: app, timeout: 3)
+        assertHittable("copy-button", in: app, "Copy image action is not reachable", timeout: 5)
         copyButton.click()
 
         XCTAssertTrue(
@@ -612,6 +616,7 @@ final class VitrineUITests: XCTestCase {
         app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
             "VitrineUITests-\(name)-\(UUID().uuidString)"
         app.launch()
+        app.activate()
         return app
     }
 

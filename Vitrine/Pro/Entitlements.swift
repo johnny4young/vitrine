@@ -105,8 +105,17 @@ final class Entitlements: ObservableObject {
     /// out of release, so a shipped binary has no path to PRO through it.
     private static func defaultProvider() -> EntitlementProvider {
         #if DEBUG
-            if ProcessInfo.processInfo.environment["VITRINE_PRO_UNLOCK"] == "1" {
+            let environment = ProcessInfo.processInfo.environment
+            if environment["VITRINE_PRO_UNLOCK"] == "1" {
                 return DebugUnlockProvider()
+            }
+            // The app host for unit/UI tests must not touch the developer's real Keychain
+            // or StoreKit account at launch. Tests that need PRO inject their own provider;
+            // the shared app singleton stays deterministically locked.
+            if environment["XCTestConfigurationFilePath"] != nil
+                || environment["VITRINE_USER_DEFAULTS_SUITE"] != nil
+            {
+                return FreeProvider()
             }
         #endif
         #if VITRINE_DIRECT_DOWNLOAD

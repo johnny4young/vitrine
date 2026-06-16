@@ -596,12 +596,6 @@ struct StyleSettingsView: View {
     @AppStorage("settings.styleSubTab", store: AppDefaults.current)
     private var subTab: StyleSubTab = .appearance
 
-    /// True while the Brand Kit upsell's paywall sheet is presented (CS-092).
-    @State private var showingBrandKitPaywall = false
-
-    /// True when the last brand-kit logo pick failed to import (audit P1-UX-3).
-    @State private var brandKitLogoError = false
-
     /// The Style pane's segmented sub-tabs.
     private enum StyleSubTab: String, CaseIterable {
         case appearance, linesAndHeader, background, brandKit
@@ -619,7 +613,8 @@ struct StyleSettingsView: View {
                         case .appearance: appearanceGroups
                         case .linesAndHeader: linesAndHeaderGroups
                         case .background: backgroundGroup
-                        case .brandKit: brandKitGroups
+                        case .brandKit:
+                            BrandKitSettingsSection(brandKit: brandKit, entitlements: entitlements)
                         }
                     }
                     .padding(.horizontal, 26)
@@ -769,156 +764,6 @@ struct StyleSettingsView: View {
         TokenGroup(title: Text("Header")) {
             MetadataFields(settings: settings)
         }
-    }
-
-    // MARK: Brand Kit (PRO · CS-092)
-
-    /// The Brand Kit sub-tab: the configuration controls when PRO is unlocked, or a
-    /// compact upsell that opens the paywall when it is locked. Either way the kit can
-    /// be inspected; it only marks an export once PRO is active and the user enables it.
-    @ViewBuilder private var brandKitGroups: some View {
-        if entitlements.isUnlocked(.brandKit) {
-            brandKitControls
-        } else {
-            brandKitUpsell
-        }
-    }
-
-    private var brandKitControls: some View {
-        TokenGroup(title: Text("Brand Kit")) {
-            TokenRow(
-                label: Text("Apply to captures"),
-                caption: Text("Adds your mark to every exported image")
-            ) {
-                Toggle("Apply to captures", isOn: $brandKit.isEnabled)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-                    .accessibilityIdentifier("brand-kit-enabled-toggle")
-            }
-            TokenRow(label: Text("Logo"), caption: Text("Shown small in the chosen corner")) {
-                brandKitLogoControl
-            }
-            TokenRow(label: Text("Handle")) {
-                TokenTextField(prompt: Text(verbatim: "@jane"), text: brandKitHandle)
-                    .accessibilityIdentifier("brand-kit-handle-field")
-            }
-            TokenRow(label: Text("Project")) {
-                TokenTextField(prompt: Text(verbatim: "vitrine"), text: brandKitProject)
-                    .accessibilityIdentifier("brand-kit-project-field")
-            }
-            TokenRow(label: Text("Accent"), caption: Text("Tints the mark's text")) {
-                HStack(spacing: 8) {
-                    // A way back to the legible default — the model's `nil` accent (audit P1-UX-2).
-                    if brandKit.brandKit.accent != nil {
-                        Button("Reset") { brandKit.brandKit.accent = nil }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(VitrineTokens.Accent.base)
-                            .accessibilityIdentifier("brand-kit-accent-reset")
-                    }
-                    ColorPicker("Accent", selection: brandKitAccent, supportsOpacity: false)
-                        .labelsHidden()
-                        .accessibilityIdentifier("brand-kit-accent-picker")
-                }
-            }
-            TokenRow(label: Text("Placement")) {
-                Picker("Placement", selection: brandKitPlacement) {
-                    ForEach(Watermark.Placement.allCases, id: \.self) { placement in
-                        Text(placement.label).tag(placement)
-                    }
-                }
-                .labelsHidden()
-                .fixedSize()
-                .accessibilityIdentifier("brand-kit-placement-picker")
-            }
-        }
-        .accessibilityIdentifier("settings-brand-kit-controls")
-    }
-
-    /// The logo thumbnail (when set) plus Choose/Replace and Remove actions.
-    @ViewBuilder private var brandKitLogoControl: some View {
-        HStack(spacing: 8) {
-            if let logo = brandKit.logoImage {
-                Image(nsImage: logo)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 26, height: 26)
-                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                Button("Remove") { brandKit.removeLogo() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(VitrineTokens.Text.secondary)
-                    .accessibilityIdentifier("brand-kit-remove-logo-button")
-            }
-            Button(brandKit.logoImage == nil ? "Choose…" : "Replace…") { pickBrandKitLogo() }
-                .accessibilityIdentifier("brand-kit-choose-logo-button")
-            if brandKitLogoError {
-                Text("Couldn't load that image")
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .foregroundStyle(.red)
-            }
-        }
-    }
-
-    /// The locked state: a crown + PRO badge, the value blurb, and an unlock button
-    /// that presents the shared `PaywallSheet` for the brand-kit feature (CS-091/092).
-    private var brandKitUpsell: some View {
-        TokenGroup(title: Text("Brand Kit")) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 6) {
-                    Image(systemName: "crown.fill")
-                        .foregroundStyle(VitrineTokens.Accent.base)
-                    Text("Brand Kit")
-                        .font(.system(size: VitrineTokens.FontSize.body, weight: .semibold))
-                        .foregroundStyle(VitrineTokens.Text.primary)
-                    ProBadge()
-                }
-                Text("Add your logo, handle, and accent color to every snapshot.")
-                    .font(.system(size: VitrineTokens.FontSize.subhead))
-                    .foregroundStyle(VitrineTokens.Text.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button {
-                    showingBrandKitPaywall = true
-                } label: {
-                    Text("Unlock Vitrine PRO")
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("brand-kit-unlock-button")
-            }
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .sheet(isPresented: $showingBrandKitPaywall) { PaywallSheet(feature: .brandKit) }
-        .accessibilityIdentifier("settings-brand-kit-upsell")
-    }
-
-    /// Picks a logo image through an open panel and imports it into the container
-    /// (CS-092), reusing the same content-addressed image store the backgrounds use.
-    private func pickBrandKitLogo() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.message = String(localized: "Choose a logo image for your brand kit.")
-        panel.prompt = String(localized: "Choose")
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        brandKitLogoError = !brandKit.importLogo(from: url)
-    }
-
-    // Bindings into the app-global brand kit; mutating a field reassigns the whole
-    // value, so the store persists and the preview refreshes (CS-092).
-    private var brandKitHandle: Binding<String> {
-        Binding(get: { brandKit.brandKit.handle }, set: { brandKit.brandKit.handle = $0 })
-    }
-    private var brandKitProject: Binding<String> {
-        Binding(get: { brandKit.brandKit.project }, set: { brandKit.brandKit.project = $0 })
-    }
-    private var brandKitAccent: Binding<Color> {
-        Binding(
-            get: { brandKit.brandKit.accent?.color ?? .white },
-            set: { brandKit.brandKit.accent = RGBAColor($0) })
-    }
-    private var brandKitPlacement: Binding<Watermark.Placement> {
-        Binding(get: { brandKit.brandKit.placement }, set: { brandKit.brandKit.placement = $0 })
     }
 
     // MARK: Background
