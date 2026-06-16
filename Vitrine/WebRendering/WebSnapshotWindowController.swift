@@ -19,10 +19,60 @@ struct CapturedViewport: Identifiable {
     let kind: WebSnapshotConfig.ViewportPreset.Kind
     let preset: WebSnapshotConfig.ViewportPreset
     let asset: RenderedAsset
+    let thumbnailAsset: RenderedAsset
     /// Unique within a batch — the selected viewport set is de-duplicated by kind.
     var id: WebSnapshotConfig.ViewportPreset.Kind { kind }
     /// A short label for the result tile, e.g. "Desktop (1440 × 900)".
     var label: String { preset.displayName }
+
+    /// The filmstrip renders thumbnails at 92×58 pt. Keeping a 2× bitmap avoids
+    /// handing SwiftUI full-page captures to downscale on every layout pass.
+    static let thumbnailMaxPixelWidth = 184
+    static let thumbnailMaxPixelHeight = 116
+
+    init(
+        kind: WebSnapshotConfig.ViewportPreset.Kind,
+        preset: WebSnapshotConfig.ViewportPreset,
+        asset: RenderedAsset,
+        thumbnailAsset: RenderedAsset? = nil
+    ) {
+        self.kind = kind
+        self.preset = preset
+        self.asset = asset
+        self.thumbnailAsset = thumbnailAsset ?? Self.makeThumbnail(from: asset)
+    }
+
+    static func makeThumbnail(from asset: RenderedAsset) -> RenderedAsset {
+        let source = asset.cgImage
+        guard source.width > 0, source.height > 0 else { return asset }
+
+        let scale = min(
+            CGFloat(thumbnailMaxPixelWidth) / CGFloat(source.width),
+            CGFloat(thumbnailMaxPixelHeight) / CGFloat(source.height),
+            1)
+        let width = max(1, Int((CGFloat(source.width) * scale).rounded()))
+        let height = max(1, Int((CGFloat(source.height) * scale).rounded()))
+        guard width < source.width || height < source.height else { return asset }
+
+        let colorSpace = source.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)
+        guard
+            let colorSpace,
+            let context = CGContext(
+                data: nil,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
+            return asset
+        }
+        context.interpolationQuality = .medium
+        context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let thumbnail = context.makeImage() else { return asset }
+        return RenderedAsset(cgImage: thumbnail, profile: asset.profile)
+    }
 }
 
 /// The observable document behind the Web Snapshot window: the chosen input mode, the
@@ -55,6 +105,10 @@ final class WebSnapshotModel: ObservableObject {
     /// batch; when present it is the primary preview/export.
     @Published var boardAsset: RenderedAsset?
 
+    /// Downsampled copy of ``boardAsset`` for the filmstrip. The full board stays in
+    /// ``boardAsset`` for export, while the UI keeps layout cheap.
+    @Published var boardThumbnailAsset: RenderedAsset?
+
     /// Whether a render is in flight (drives the preview's loading state).
     @Published var isRendering = false
     /// A user-facing, non-PII error from the last render attempt, or `nil`.
@@ -83,6 +137,7 @@ final class WebSnapshotModel: ObservableObject {
         renderedAsset = nil
         results = []
         boardAsset = nil
+        boardThumbnailAsset = nil
         errorMessage = nil
     }
 
@@ -148,6 +203,7 @@ final class WebSnapshotModel: ObservableObject {
             results = []
             renderedAsset = nil
             boardAsset = nil
+            boardThumbnailAsset = nil
             errorMessage =
                 lastError.map(Self.message(for:))
                 ?? (hadUnknownError ? String(localized: "The render didn't complete.") : nil)
@@ -161,9 +217,15 @@ final class WebSnapshotModel: ObservableObject {
         if captured.count > 1 {
             boardAsset = ResponsiveBoardComposer.compose(
                 captured, scale: CGFloat(settings.exportScale), profile: settings.colorProfile)
-            if let board = boardAsset { renderedAsset = board }
+            if let board = boardAsset {
+                boardThumbnailAsset = CapturedViewport.makeThumbnail(from: board)
+                renderedAsset = board
+            } else {
+                boardThumbnailAsset = nil
+            }
         } else {
             boardAsset = nil
+            boardThumbnailAsset = nil
         }
         // Note a partial failure when some viewports succeeded and others didn't.
         if captured.count < presets.count {

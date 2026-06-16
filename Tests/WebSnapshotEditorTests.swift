@@ -70,6 +70,7 @@ struct WebSnapshotModelTests {
             CapturedViewport(kind: .desktop, preset: .desktop, asset: asset)
         ]
         model.boardAsset = asset
+        model.boardThumbnailAsset = asset
         model.errorMessage = "Previous failure"
 
         model.prepareForPrefillURL("https://example.com/new")
@@ -79,6 +80,7 @@ struct WebSnapshotModelTests {
         #expect(model.renderedAsset == nil)
         #expect(model.results.isEmpty)
         #expect(model.boardAsset == nil)
+        #expect(model.boardThumbnailAsset == nil)
         #expect(model.errorMessage == nil)
     }
 
