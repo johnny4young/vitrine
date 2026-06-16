@@ -26,9 +26,9 @@ struct LicenseToken: Codable, Equatable {
 /// Verifies a signed `LicenseToken` offline against an embedded Ed25519 public key (CS-090).
 /// Shared by the app and the CLI so both reach the same verdict from the same token bytes.
 struct LicenseVerifier {
-    /// The signing public key, embedded in the build. Replaced with the real Lemon Squeezy
-    /// signing key once that pipeline exists; the placeholder below has no known private
-    /// half, so no externally-minted token can validate and the build stays free.
+    /// The signing public key, embedded in the build. This value is safe to ship in source;
+    /// only the matching private key is secret and injected into the official
+    /// direct-download build.
     let publicKey: Curve25519.Signing.PublicKey
 
     /// Decodes and verifies a `"<base64 payload>.<base64 signature>"` token, returning the
@@ -62,8 +62,7 @@ struct LicenseVerifier {
 
 /// Mints a signed token from a private key (CS-090). Under Architecture B the **app** runs this
 /// at activation, with the build-injected `LicenseSigningKey.embedded`; the same function backs
-/// the unit tests' mint → verify → tamper path with a throwaway development key. (It is equally
-/// usable server-side, should the signing ever move off-device.)
+/// the unit tests' mint → verify → tamper path with a throwaway development key.
 enum LicenseSigner {
     static func sign(
         _ token: LicenseToken, with privateKey: Curve25519.Signing.PrivateKey

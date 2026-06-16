@@ -50,7 +50,11 @@ enum SettingsSchema {
     ///   A brand-new key with a documented default (falls back to the single
     ///   `webViewportKind`); an older store has no value for it and falls back, so this
     ///   step only advances the version.
-    static let current = 9
+    /// - `10`: CS-092 — adds Brand Kit persistence (`brandKit`, `brandKitEnabled`).
+    ///   Both are brand-new keys with documented defaults (empty kit, disabled), so an
+    ///   older store simply has no value and reads the defaults; this step only
+    ///   advances the version.
+    static let current = 10
 
     /// The `UserDefaults` key that stores the persisted schema version.
     static let versionKey = "settingsSchemaVersion"
@@ -172,6 +176,10 @@ enum SettingsSchema {
         // viewport); an older store has no value for it, so there is nothing to
         // transform.
         Migration(from: 8, to: 9) { _ in },
+        // v9 → v10: CS-092 adds the Brand Kit JSON blob and "apply to captures"
+        // switch. Both are additive keys with documented defaults (`BrandKit()` and
+        // disabled), so there is no data to transform.
+        Migration(from: 9, to: 10) { _ in },
     ]
 
     /// Whether the store holds any key this app is known to write. Used to tell a

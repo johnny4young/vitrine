@@ -38,9 +38,14 @@ sites honest and leaves room for finer gating later.
 
 ## The direct-download license model (offline, honor-based)
 
-`LicenseSigner.sign` runs **server-side only** (the Ed25519 private key never ships). The app
-embeds the matching public key in `LicenseVerifier.embedded` and verifies the stored token
-**offline** at every launch (`LicenseKeyProvider.cachedIsPro = storedValidToken != nil`).
+The official direct-download build validates a Lemon Squeezy license key once, then signs the
+offline `LicenseToken` **locally** with the build-injected Ed25519 private key
+(`LicenseSigningKey.embedded`). This is a deliberate honor/convenience model, not server-side
+DRM: the private key is injected only into the signed release binary, never committed, while a
+from-source build has no key and cannot mint a token.
+
+The app embeds the matching public key in `LicenseVerifier.embedded` and verifies the stored
+token **offline** at every launch (`LicenseKeyProvider.cachedIsPro = storedValidToken != nil`).
 Tamper / wrong-key / malformed tokens all fail closed. The CLI is a separate process, so it
 re-verifies the same token itself via `CLIEntitlement` (no StoreKit↔CLI bridge, no App Group) —
 this is why `LicenseVerifier` is compiled unconditionally while `LicenseKeyProvider` is
@@ -70,8 +75,7 @@ returns `nil` unless `isEnabled && isPro && hasContent`. **Every image export su
 `exportConfig`, not the stored `config`** (editor save/copy/share/data-URI, QuickCapture's export
 path, Shortcuts, Services). The stored `config` is never watermarked, so persistence, the
 "diverged from preset" bookkeeping, per-window sessions (CS-053), and the golden suite are all
-unaffected. *(Known follow-up in AUDIT.md P0-2: the File-menu commands still render `config` and
-should move to `exportConfig` for parity with the toolbar.)*
+unaffected.
 
 ## Gating UI
 
@@ -105,20 +109,19 @@ absent from any Release binary. `EntitlementsTests.debugUnlockProviderIsCompiled
 and `CLIAutomationTests.theEnvBypassIsCompiledOutOfRelease` source-scan guardrail that the unlock
 can never ship.
 
-## Deferred until accounts exist (the only non-code blockers)
+## Release/account checklist
 
-Built and tested against fakes/test-keys today; wire the real integrations last:
+The code path is built and tested against fakes/test keys. Before a public PRO release, finish
+the external account and release-machine setup:
 
-- **Lemon Squeezy** activation → signed token (`Entitlements.activate(licenseKey:)` /
-  `LicenseKeyProvider.setToken` TODOs).
-- **App Store Connect** non-consumable IAP product + a `.storekit` config for the live flow.
-- **Real Ed25519 keypair** embedded into `LicenseVerifier.embedded` (currently a per-launch random
-  placeholder → free by default; replace with a fixed public-key literal before the first PRO
-  release, and add a CI assertion it is not random — see AUDIT.md P1-Security-6).
-- **CLI token file write** by the app on activation + finalize the shared path under sandboxing
-  (AUDIT.md notes the Keychain recommendation for the token store).
-- **StoreKit lifecycle wiring** at launch (`refresh()` + `startObservingUpdates`) and
-  `transaction.finish()` — see AUDIT.md P0-1.
+- **Lemon Squeezy** product/license-key setup for the direct-download channel; test a real
+  activation against `/v1/licenses/activate`.
+- **Private-key injection on the release machine** via `VITRINE_LICENSE_SIGNING_KEY`; keep the
+  public key pinned in `LicenseVerifier.embedded` and rotate only deliberately.
+- **App Store Connect** non-consumable IAP product + a `.storekit` config for the live App Store
+  purchase/restore flow.
+- **Optional account lifecycle polish**: a deactivate action and lenient periodic re-validation
+  using the `instanceID` returned by Lemon Squeezy.
 
 ## Invariants to preserve
 

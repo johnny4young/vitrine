@@ -15,8 +15,9 @@ import Foundation
     ///
     /// Honor/convenience model, not anti-fork DRM: a build compiled from source without the
     /// injected signing key (`LicenseSigningKey.embedded == nil`) simply cannot mint a token,
-    /// so it stays free — exactly the "free until the real key ships" posture. The signature
-    /// only stops a hand-edited token and lets the CLI trust the app's activation offline.
+    /// so it stays free — exactly the "free unless the release private key is injected"
+    /// posture. The signature only stops a hand-edited token and lets the CLI trust the app's
+    /// activation offline.
 
     /// The bits a successful Lemon Squeezy activation yields that the app needs to mint a token
     /// and to later re-validate or deactivate the seat.

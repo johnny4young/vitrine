@@ -3,13 +3,13 @@ import SwiftUI
 /// The first-use privacy disclosure shown before Vitrine captures a webpage
 /// (CS-045).
 ///
-/// URL capture is Product Phase 2, and the moment the app reaches the network it
-/// changes the product promise. This view is the user-facing half of keeping that
-/// change honest and reviewable: before any page loads, it states the two facts
-/// that matter — Vitrine's Phase 1 promise still holds (code never leaves the Mac),
-/// and a URL capture loads the requested webpage **locally in WebKit on this Mac**,
-/// with no remote screenshot service and no analytics. The user then explicitly
-/// confirms or cancels; nothing loads until they confirm.
+/// URL capture is the web-capture capability, and the moment the app reaches the
+/// network it changes the product promise. This view is the user-facing half of
+/// keeping that change honest and reviewable: before any page loads, it states the
+/// two facts that matter — code capture still never leaves the Mac, and a URL capture
+/// loads the requested webpage **locally in WebKit on this Mac**, with no remote
+/// screenshot service and no analytics. The user then explicitly confirms or
+/// cancels; nothing loads until they confirm.
 ///
 /// ## Single source of words
 ///
@@ -23,10 +23,9 @@ import SwiftUI
 /// ## Capability-aware
 ///
 /// The confirm action is enabled only when the build can actually reach the network
-/// (`NetworkCapability.isURLCaptureEnabled`). A Phase 1 build — which ships without
-/// `com.apple.security.network.client` — shows the same disclosure with the action
-/// disabled and an explicit "arrives in Product Phase 2" note, so the UI never
-/// implies a capability the build does not have.
+/// (`NetworkCapability.isURLCaptureEnabled`). A network-free build shows the same
+/// disclosure with the action disabled and an explicit direct-download note, so the
+/// UI never implies a capability the build does not have.
 ///
 /// ## Presentation
 ///
@@ -70,8 +69,8 @@ struct WebPrivacyDisclosureView: View {
 
             promiseRow
 
-            // In a Phase 1 build the action is disabled; say why, plainly, rather
-            // than leaving a dead button unexplained.
+            // In a network-free build the action is disabled; say why, plainly,
+            // rather than leaving a dead button unexplained.
             if !isURLCaptureEnabled {
                 phaseTwoNote
             }
@@ -131,16 +130,17 @@ struct WebPrivacyDisclosureView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Shown only in a Phase 1 build: the capability is deferred to Product Phase 2,
-    /// stated plainly so the disabled action is never a mystery.
+    /// Shown only in a build without the network entitlement: the direct-download
+    /// channel can capture webpages, while a network-free build refuses plainly so
+    /// the disabled action is never a mystery.
     private var phaseTwoNote: some View {
         Label {
-            Text("Webpage capture arrives in Product Phase 2 and is not available in this build.")
+            Text("Webpage capture requires the direct-download build with local network access.")
                 .font(.callout)
                 .foregroundStyle(Brand.Palette.textSecondary.color)
                 .fixedSize(horizontal: false, vertical: true)
         } icon: {
-            Image(systemName: "clock")
+            Image(systemName: "network.slash")
                 .foregroundStyle(Brand.Palette.textSecondary.color)
         }
         .accessibilityElement(children: .combine)
@@ -172,7 +172,7 @@ struct WebPrivacyDisclosureView: View {
     private var confirmHelp: LocalizedStringKey {
         isURLCaptureEnabled
             ? "Load this webpage locally in WebKit and capture it."
-            : "Webpage capture arrives in Product Phase 2 and is not available in this build."
+            : "Webpage capture requires the direct-download build with local network access."
     }
 }
 

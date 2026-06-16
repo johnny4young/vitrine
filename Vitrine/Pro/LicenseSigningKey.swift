@@ -12,8 +12,8 @@ import Foundation
     /// value at generate time, and read back here at runtime. A normal `make build`, a CI build,
     /// or anyone compiling from source leaves that variable unset → the value is empty →
     /// `embedded` is `nil` → the build **cannot mint a token and stays free**. That is the
-    /// deliberate "free until the real key ships" state, and it is why the open-source build
-    /// never grants PRO by itself.
+    /// deliberate "free unless the release private key is injected" state, and it is why the
+    /// open-source build never grants PRO by itself.
     ///
     /// The matching **public** key must be embedded in `LicenseVerifier.embedded` (in source —
     /// it is not a secret) so the app and the `vitrine` CLI verify minted tokens offline. See

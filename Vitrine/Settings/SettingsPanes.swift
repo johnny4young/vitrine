@@ -62,6 +62,7 @@ struct DestinationSegmentedPicker: View {
 struct GeneralSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var presets: PresetStore
+    @ObservedObject var brandKit: BrandKitStore = .shared
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var showResetConfirmation = false
 
@@ -187,9 +188,10 @@ struct GeneralSettingsView: View {
             Button("Reset", role: .destructive) {
                 settings.resetToDefaults()
                 // `resetToDefaults()` clears the persisted preset blob too (its key
-                // is in `SettingsCodec.Keys.all`); reload so this store's in-memory
-                // copy reflects the cleared state.
+                // is in `SettingsCodec.Keys.all`); reload stores with in-memory
+                // caches so the UI reflects the cleared state immediately.
                 presets.reload()
+                brandKit.reload()
                 launchAtLogin = LaunchAtLogin.isEnabled
             }
             Button("Cancel", role: .cancel) {}
@@ -1824,7 +1826,7 @@ struct WebCaptureControls: View {
         case .visibleViewport:
             String(
                 localized:
-                    "Captures exactly the viewport size. URL capture loads the page locally in WebKit and arrives in Product Phase 2."
+                    "Captures exactly the viewport size. URL capture loads the page locally in WebKit on this Mac."
             )
         case .fullPage:
             String(

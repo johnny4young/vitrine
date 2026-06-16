@@ -77,6 +77,12 @@ enum SettingsCodec {
         /// "Reset all settings" clears the user's themes along with the rest of their
         /// data; the store reloads its in-memory copy afterward.
         static let userCustomThemes = CustomThemeStore.storageKey
+        /// Brand Kit (CS-092). Owned by `BrandKitStore`, listed here so a
+        /// "Reset all settings" clears the user's watermark identity and apply switch
+        /// along with the rest of their preferences; the store reloads its in-memory
+        /// copy afterward.
+        static let brandKit = BrandKitStore.storageKey
+        static let brandKitEnabled = BrandKitStore.enabledStorageKey
 
         /// Every key this app writes, used by `resetToDefaults()` to clear the
         /// store without an app reinstall. The schema version key is reset by
@@ -92,6 +98,7 @@ enum SettingsCodec {
             webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
             fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
             hasSeenWelcome, lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
+            brandKit, brandKitEnabled,
         ]
 
         /// The keys an editor window seeds from the app-wide defaults when it opens

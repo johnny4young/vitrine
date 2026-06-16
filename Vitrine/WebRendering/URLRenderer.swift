@@ -254,19 +254,25 @@ struct URLSnapshotEngine {
 
         webView.load(URLRequest(url: config.url))
 
-        // Wait for the navigation to settle, bounded by the effective timeout (which
-        // already folds in the wait strategy's budget and the hard safety cap).
-        try await coordinator.waitForLoad(timeout: config.timeout)
+        // Every wait below shares one absolute deadline. The timeout is no longer
+        // only a navigation timeout; it bounds navigation, post-load settling, and
+        // the bounded lazy-load pass before the snapshot is attempted.
+        let deadline = ContinuousClock.now.advanced(by: config.timeout)
+
+        // Wait for the navigation to settle, bounded by the remaining total budget.
+        try await coordinator.waitForLoad(timeout: remainingBudget(until: deadline))
 
         // Apply the post-load wait the strategy asks for: nothing for
         // `.domContentLoaded`, a fixed delay, or a best-effort network-quiet settle.
-        await applyWaitStrategy(config.waitStrategy, on: webView)
+        try await applyWaitStrategy(config.waitStrategy, on: webView, deadline: deadline)
 
         // Resolve the rect to capture. A visible-viewport capture is exactly the
         // preset size; a full-page capture grows the height to the clamped content
         // height after a bounded lazy-load pass.
         let captureRect = try await captureRect(
-            for: config, webView: webView, viewport: viewport)
+            for: config, webView: webView, viewport: viewport, deadline: deadline)
+
+        _ = try remainingBudget(until: deadline)
 
         let snapshotConfiguration = WKSnapshotConfiguration()
         snapshotConfiguration.rect = captureRect
@@ -300,15 +306,16 @@ struct URLSnapshotEngine {
     /// issuing requests (best-effort) up to its budget, falling back to the full
     /// budget if it never quiesces.
     func applyWaitStrategy(
-        _ strategy: WebSnapshotConfig.WaitStrategy, on webView: WKWebView
-    ) async {
+        _ strategy: WebSnapshotConfig.WaitStrategy, on webView: WKWebView,
+        deadline: ContinuousClock.Instant
+    ) async throws {
         switch strategy {
         case .domContentLoaded:
             return
         case .fixedDelay(let delay):
-            try? await Task.sleep(for: delay)
+            try await sleep(delay, within: deadline)
         case .networkQuiet(let budget):
-            await waitForNetworkQuiet(on: webView, budget: budget)
+            try await waitForNetworkQuiet(on: webView, budget: budget, deadline: deadline)
         }
     }
 
@@ -316,8 +323,10 @@ struct URLSnapshotEngine {
     /// finished loading and stays settled for a short idle window, or until `budget`
     /// elapses — whichever comes first. Bounded by the budget so a page that polls
     /// forever still returns.
-    private func waitForNetworkQuiet(on webView: WKWebView, budget: Duration) async {
-        let deadline = ContinuousClock.now.advanced(by: budget)
+    private func waitForNetworkQuiet(
+        on webView: WKWebView, budget: Duration, deadline totalDeadline: ContinuousClock.Instant
+    ) async throws {
+        let deadline = min(ContinuousClock.now.advanced(by: budget), totalDeadline)
         let idleWindow = Duration.milliseconds(400)
         let pollInterval = Duration.milliseconds(100)
         var settledSince: ContinuousClock.Instant?
@@ -334,8 +343,9 @@ struct URLSnapshotEngine {
             } else {
                 settledSince = nil
             }
-            try? await Task.sleep(for: pollInterval)
+            try await sleep(pollInterval, within: deadline)
         }
+        if ContinuousClock.now >= totalDeadline { throw WebSnapshotError.timedOut }
     }
 
     /// Whether `document.readyState` is `complete` — the cheapest available "page has
@@ -351,7 +361,8 @@ struct URLSnapshotEngine {
     /// lazy-load pass, measures the document's content height, clamps it to the safety
     /// cap, grows the web view to that height, and returns the full-page rect.
     private func captureRect(
-        for config: WebSnapshotConfig, webView: WKWebView, viewport: CGSize
+        for config: WebSnapshotConfig, webView: WKWebView, viewport: CGSize,
+        deadline: ContinuousClock.Instant
     ) async throws -> CGRect {
         guard config.captureMode.capturesFullHeight else {
             return CGRect(origin: .zero, size: viewport)
@@ -359,7 +370,7 @@ struct URLSnapshotEngine {
 
         // Fault in deferred content with a bounded scroll pass before measuring, so a
         // lazy-loading page is captured top to bottom rather than blank below the fold.
-        await performBoundedLazyLoadPass(on: webView, viewport: viewport)
+        try await performBoundedLazyLoadPass(on: webView, viewport: viewport, deadline: deadline)
 
         let contentHeight = await documentContentHeight(webView, fallback: viewport.height)
         let cappedHeight = config.safetyCaps.clampPageHeight(
@@ -371,7 +382,7 @@ struct URLSnapshotEngine {
         webView.frame = fullFrame
         webView.layoutSubtreeIfNeeded()
         // A brief settle so the resized layout paints before the snapshot.
-        try? await Task.sleep(for: .milliseconds(80))
+        try await sleep(.milliseconds(80), within: deadline)
 
         return fullFrame
     }
@@ -380,19 +391,22 @@ struct URLSnapshotEngine {
     /// content, then returns to the top. Strictly bounded: it stops after
     /// `maxLazyLoadSteps` steps or once it reaches the bottom of the document,
     /// whichever comes first, so an infinite-scroll page cannot loop forever.
-    private func performBoundedLazyLoadPass(on webView: WKWebView, viewport: CGSize) async {
+    private func performBoundedLazyLoadPass(
+        on webView: WKWebView, viewport: CGSize, deadline: ContinuousClock.Instant
+    ) async throws {
         let step = max(viewport.height, 1)
         var offset = step
         for _ in 0..<Self.maxLazyLoadSteps {
+            _ = try remainingBudget(until: deadline)
             _ = try? await webView.evaluateJavaScript("window.scrollTo(0, \(offset))")
-            try? await Task.sleep(for: Self.lazyLoadStepPause)
+            try await sleep(Self.lazyLoadStepPause, within: deadline)
             let height = await documentContentHeight(webView, fallback: step)
             if offset >= height { break }
             offset += step
         }
         // Return to the top so the capture starts at the document origin.
         _ = try? await webView.evaluateJavaScript("window.scrollTo(0, 0)")
-        try? await Task.sleep(for: Self.lazyLoadStepPause)
+        try await sleep(Self.lazyLoadStepPause, within: deadline)
     }
 
     /// The document's full scrollable height in CSS points, read from the DOM. Returns
@@ -424,6 +438,27 @@ struct URLSnapshotEngine {
         case .nonPersistent: .nonPersistent()
         case .persistent: .default()
         }
+    }
+
+    /// The remaining time until `deadline`, or a typed timeout when the total budget
+    /// has already been consumed.
+    func remainingBudget(until deadline: ContinuousClock.Instant) throws -> Duration {
+        let now = ContinuousClock.now
+        guard now < deadline else { throw WebSnapshotError.timedOut }
+        return now.duration(to: deadline)
+    }
+
+    /// Sleeps for `duration` without overshooting the total deadline. If the requested
+    /// wait cannot fit, it sleeps only until the deadline and then throws `.timedOut`
+    /// so the caller never continues past the cap as if the full wait had completed.
+    private func sleep(_ duration: Duration, within deadline: ContinuousClock.Instant) async throws
+    {
+        let remaining = try remainingBudget(until: deadline)
+        guard duration <= remaining else {
+            try await Task.sleep(for: remaining)
+            throw WebSnapshotError.timedOut
+        }
+        try await Task.sleep(for: duration)
     }
 }
 

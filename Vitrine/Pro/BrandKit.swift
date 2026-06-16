@@ -95,10 +95,19 @@ final class BrandKitStore: ObservableObject {
     /// The shared store backed by the app's resolved defaults.
     static let shared = BrandKitStore(defaults: AppDefaults.current)
 
+    /// Persisted key names. Exposed so the central settings reset/schema registry
+    /// clears Brand Kit alongside every other user preference.
+    static let storageKey = "brandKit"
+    static let enabledStorageKey = "brandKitEnabled"
+
     /// The working brand kit. Persisted on change; the logo cache is refreshed so
     /// the resolver stays fast and free of disk reads in the render path.
     @Published var brandKit: BrandKit {
         didSet {
+            guard !isReloading else {
+                refreshLogoCache()
+                return
+            }
             persist()
             refreshLogoCache()
         }
@@ -107,7 +116,10 @@ final class BrandKitStore: ObservableObject {
     /// Whether the brand kit is applied to captures (CS-092). Off by default, so a
     /// fresh install (and the golden suite) renders unbranded until the user opts in.
     @Published var isEnabled: Bool {
-        didSet { defaults.set(isEnabled, forKey: Keys.enabled) }
+        didSet {
+            guard !isReloading else { return }
+            defaults.set(isEnabled, forKey: Keys.enabled)
+        }
     }
 
     private let defaults: UserDefaults
@@ -121,9 +133,12 @@ final class BrandKitStore: ObservableObject {
     /// the file from disk on every SwiftUI body pass (audit P1-Perf-5).
     private var cachedLogoImage: NSImage?
 
+    /// Suppresses write-back while `reload()` mirrors an external reset into memory.
+    private var isReloading = false
+
     private enum Keys {
-        static let kit = "brandKit"
-        static let enabled = "brandKitEnabled"
+        static let kit = BrandKitStore.storageKey
+        static let enabled = BrandKitStore.enabledStorageKey
     }
 
     init(defaults: UserDefaults = .standard, imageStore: BackgroundImageStore = .container) {
@@ -144,6 +159,7 @@ final class BrandKitStore: ObservableObject {
         return Watermark(
             text: text,
             logoImageData: cachedLogoData,
+            logoImage: cachedLogoImage,
             logoIdentity: brandKit.logo?.fileName,
             tint: brandKit.accent,
             placement: brandKit.placement)
@@ -172,6 +188,8 @@ final class BrandKitStore: ObservableObject {
 
     /// Re-reads the kit from the backing store (used after an external reset).
     func reload() {
+        isReloading = true
+        defer { isReloading = false }
         brandKit = Self.read(from: defaults)
         isEnabled = defaults.object(forKey: Keys.enabled) as? Bool ?? false
     }

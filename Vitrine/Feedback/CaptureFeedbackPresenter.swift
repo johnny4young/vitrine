@@ -39,8 +39,8 @@ final class CaptureFeedbackPresenter: ObservableObject {
     ///
     /// `settings` is the same settings instance the capture ran against, used to
     /// re-render on a recovery action. Routine success shows the HUD only; dead
-    /// ends (empty clipboard, deferred URL) show the HUD with inline recovery
-    /// buttons.
+    /// ends (empty clipboard or a URL fallback path) show the HUD with inline
+    /// recovery buttons.
     func present(_ result: QuickCapture.Result, settings: AppSettings) {
         let feedback = Notifier.feedback(
             for: result.outcome,
@@ -69,6 +69,13 @@ final class CaptureFeedbackPresenter: ObservableObject {
             // it into the primary editor so the "Open Editor" recovery surfaces it even
             // if the editor is already open (CS-027 + CS-053).
             EditorWindowController.shared.loadIntoPrimary(settings.config)
+        case .openWebSnapshot:
+            if let text = pendingURLText {
+                pendingURLText = nil
+                WebSnapshotPresenter.show(prefillURL: text)
+            } else {
+                WebSnapshotPresenter.show()
+            }
         case .renderAsText:
             renderPendingURLAsText(settings: settings)
         }

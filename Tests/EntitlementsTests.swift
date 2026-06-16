@@ -132,10 +132,10 @@ struct LicenseKeyTests {
     }
 
     @Test func embeddedPublicKeyIsThePinnedProductionKey() {
-        // The embedded verifier must be the fixed production public key, never a random
-        // placeholder (audit P1-Security-6): a silent revert to a throwaway key would lock out
-        // every paying user (their real-key-signed tokens would stop verifying), so pin the
-        // exact bytes here. Update this literal only alongside a deliberate key rotation.
+        // The embedded verifier must be the fixed production public key (audit
+        // P1-Security-6): a silent key drift would lock out paying users (their
+        // real-key-signed tokens would stop verifying), so pin the exact bytes here.
+        // Update this literal only alongside a deliberate key rotation.
         #expect(
             LicenseVerifier.embedded.publicKey.rawRepresentation.base64EncodedString()
                 == "GBiLsURlP+jwJGvfAJUAxTACaZbObIVBnBurkOQ+Fd0=")
