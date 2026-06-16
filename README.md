@@ -33,7 +33,8 @@ Vitrine attacks that flow head-on:
 - **Live preview** in the editor, or a no-UI quick mode that just works.
 - **`Copy` → retina PNG** on your clipboard, ready to paste into Notion, Slack, X, Keynote.
 
-Works **offline**, **100% local**, no account, no server. MIT-licensed.
+Works **offline**, **100% local**, no account, no telemetry. MIT-licensed — with an
+optional [**PRO**](#vitrine-pro) tier for people who publish professionally.
 
 > ray.so (built by Raycast) is open source and is exactly the bar we hold ourselves
 > to for UX and design. The difference: Vitrine is **native and always one shortcut
@@ -170,8 +171,8 @@ preview, move and resize with handles, undo with ⌘Z; they are baked into the e
 Retina **PNG** and **PDF** to the clipboard, a file, or the Share Sheet — sRGB by
 default (Display P3 on demand), with real alpha for transparent backgrounds.
 Destination presets cover **OpenGraph** (1200×630), an **Instagram Story**, and a
-**GitHub banner**, and the bundled **`vitrine` CLI** renders the same pixels from your
-terminal.
+**GitHub banner**. [PRO](#vitrine-pro) adds **multi-size one-pass export** and the bundled
+**`vitrine` CLI** that renders the same pixels from your terminal.
 
 ### Crafted & private
 
@@ -190,8 +191,9 @@ Shortcuts and App Intents.
 | **Capture** | Menu-bar app, global hotkey, clipboard auto-detect (code · URL · HTML), Quick and editor modes |
 | **Style** | 13 themes + custom, 160+ languages, fonts, gradient & image backgrounds, focus mode, diff coloring |
 | **Annotate** | Arrows, lines, boxes, text, highlighter, blur, numbered counters — on the live preview, with undo/redo |
-| **Export** | Retina PNG/PDF, clipboard · file · Share Sheet, OpenGraph · Story · GitHub-banner presets, `vitrine` CLI |
-| **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, Shortcuts/App Intents, recents |
+| **Export** | Retina PNG/PDF, clipboard · file · Share Sheet, OpenGraph · Story · GitHub-banner presets |
+| **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
+| **PRO** | Brand Kit watermark · multi-size one-pass export · automation (`vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
 
 <details>
 <summary>Everything, in detail</summary>
@@ -210,33 +212,59 @@ Shortcuts and App Intents.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
 - 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar.
 - 🚀 **First-run quick-start**, offline in-app **Help**, and a **What's New** window on upgrades.
-- ⚡ **Shortcuts / App Intents** — render a code image or open the editor from Shortcuts and Spotlight.
+- ⚡ **Shortcuts / App Intents** *(PRO)* — render a code image or open the editor from Shortcuts and Spotlight.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
 - 🌍 **Localized** in English and Spanish (String Catalog), with pseudolocale and RTL layout tests.
-- 🖥️ **Command-line renderer** — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app (no network, screen recording, or Accessibility needed).
+- 🖥️ **Command-line renderer** *(PRO)* — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app (no network, screen recording, or Accessibility needed).
+- 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark, multi-size one-pass export, and the automation surfaces above; the free tier loses nothing.
 - 🔒 Sandboxed, no network by default — your code **never leaves your Mac**.
 
 </details>
+
+## Vitrine PRO
+
+Vitrine is **open-core**: the app is and stays free and fully open source (MIT), and the
+free tier loses nothing — no watermark, no resolution cap, no launch-time nags. **PRO** is
+an optional **one-time** license that adds a few power features for people who publish
+professionally:
+
+- **Brand Kit** — your logo, handle, and accent color applied as a tasteful watermark to
+  every export, in one click.
+- **Multi-size export** — one capture rendered to every platform size (X, LinkedIn,
+  OpenGraph, …) into a folder in a single pass.
+- **Automation** — the `vitrine` command-line renderer, Shortcuts / App Intents, and folder
+  batch rendering.
+
+It is **honor/convenience, not anti-fork DRM**. On the Mac App Store, PRO is a StoreKit
+in-app purchase; on the direct-download build, a license key activates **once** online and
+the app then verifies an **offline, signed token** on every launch (the bundled CLI
+re-verifies the same token), so PRO works without the network after activation. Nothing
+about your code or usage is ever sent. Details: [`docs/PRO.md`](docs/PRO.md).
 
 ## Privacy
 
 Vitrine is private by design, and that promise does not soften as the product grows:
 
-- **Phase 1 (today): your code never leaves your Mac.** Rendering a code image is fully
-  local and on-device. There is no account, no server, and no network access — the app
-  ships sandboxed *without* the network entitlement. Rendering needs no Screen Recording
-  or Accessibility permission.
-- **Product Phase 2 (URL capture): the requested webpage loads locally.** When a copied
-  URL is captured, Vitrine loads that webpage **locally in WebKit on your Mac** and turns
-  it into an image on-device. There is **no remote screenshot service** — the URL is never
-  sent off your machine to be rendered. URL capture is opt-in, gated behind the network
-  entitlement (absent in Phase 1 builds), and shows a first-use disclosure that explains
-  exactly this before any page loads. Only `http`/`https` URLs are accepted, and the web
-  view uses a non-persistent data store by default (no cookies or website data persist
-  across captures unless you opt in).
-- **No analytics, no telemetry, ever.** Neither code rendering nor URL capture collects,
-  tracks, or transmits any usage data. The bundled privacy manifest declares no tracking
-  and no collected data, so the App Store privacy label is **Data Not Collected**.
+- **Code rendering: your code never leaves your Mac.** Rendering a code image is fully
+  local and on-device — no account, and no network at all on the App Store build (it ships
+  sandboxed *without* the network entitlement). Rendering needs no Screen Recording or
+  Accessibility permission.
+- **URL capture: the requested webpage loads locally.** When a copied URL is captured,
+  Vitrine loads that webpage **locally in WebKit on your Mac** and turns it into an image
+  on-device. There is **no remote screenshot service** — the URL is never sent off your
+  machine to be rendered. URL capture is opt-in, gated behind the network entitlement
+  (present only on the direct-download build), and shows a first-use disclosure before any
+  page loads. Only `http`/`https` URLs are accepted, private and loopback hosts are refused,
+  and the web view uses a non-persistent data store by default (no cookies or website data
+  persist across captures unless you opt in).
+- **PRO activation contacts only the license provider, once.** On the direct-download build,
+  activating a PRO license makes a single online check to the license provider (Lemon
+  Squeezy) to validate your key; afterward PRO is verified from an offline signed token and
+  never touches the network again. Nothing about your code or usage is sent. (On the Mac App
+  Store, PRO is an ordinary StoreKit purchase.)
+- **No analytics, no telemetry, ever.** Code rendering, URL capture, and PRO activation
+  collect, track, and transmit **no** usage data. The bundled privacy manifest declares no
+  tracking and no collected data, so the App Store privacy label is **Data Not Collected**.
 
 The permission and privacy posture per phase is documented in
 [**docs/PROJECT.md**](docs/PROJECT.md#privacy-and-permissions); the full
@@ -344,13 +372,14 @@ vitrine/
 │   ├── Editor/            # code editor, ambient-light stage, inspector, language detection
 │   ├── Canvas/            # the SwiftUI views that become the exported image
 │   ├── Rendering/         # capture input → code render pipeline
-│   ├── WebRendering/      # local URL/HTML snapshots (Product Phase 2)
+│   ├── WebRendering/      # local URL/HTML snapshots (WebKit, on-device)
 │   ├── SocialCards/       # social-card composition
 │   ├── Export/            # ImageRenderer → PNG/PDF → clipboard / file / share
 │   ├── Recents/           # capture history + gallery window
 │   ├── Help/              # offline Help + What's New release notes
 │   ├── Feedback/          # capture HUD, notifications, diagnostics bundle
 │   ├── Settings/          # six-pane Settings window, presets, custom themes
+│   ├── Pro/               # open-core PRO gate: entitlements, StoreKit + license providers, Brand Kit, paywall
 │   ├── DesignSystem/      # token layer (VitrineTokens) + shared chrome components
 │   ├── AppIntents/        # Shortcuts / App Intents surface
 │   ├── Updates/           # Sparkle auto-update integration (DMG channel)
@@ -372,6 +401,8 @@ to leave the repo:
 - [**CHANGELOG.md**](CHANGELOG.md) — the complete, versioned change history ([Keep a Changelog](https://keepachangelog.com)).
 - [**docs/PROJECT.md**](docs/PROJECT.md) — vision, positioning, naming, distribution, risks.
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
+- [**docs/PRO.md**](docs/PRO.md) — the PRO subsystem: the open-core gate, per-build providers, Brand Kit, multi-size export, and automation.
+- [**docs/ACTIVATION.md**](docs/ACTIVATION.md) — direct-download PRO activation runbook: keypair generation, build-time key injection, and the Lemon Squeezy product.
 - [**docs/RENDER-PHASES.md**](docs/RENDER-PHASES.md) — "beyond code": OG cards, HTML/URL snapshots, and the optional web render service.
 - [**docs/SCREEN-CAPTURE-DISCOVERY.md**](docs/SCREEN-CAPTURE-DISCOVERY.md) — why arbitrary screen/window capture is parked (Screen Recording trade-offs).
 - [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md) — the permission and entitlement matrix: every entitlement with its reason, user-facing behavior, and App Store impact, per phase and channel.
