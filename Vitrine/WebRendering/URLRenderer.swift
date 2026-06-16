@@ -343,7 +343,15 @@ struct URLSnapshotEngine {
             } else {
                 settledSince = nil
             }
-            try await sleep(pollInterval, within: deadline)
+            // Sleep one poll interval, never overshooting the budget deadline. Budget
+            // exhaustion is a normal best-effort exit (the loop condition ends it and the page
+            // is snapshotted anyway), NOT a failure — so this must not throw `.timedOut` the way
+            // the deadline-enforcing `sleep(_:within:)` does. Only the absolute total deadline,
+            // checked after the loop, fails the capture. (A sub-interval remaining budget made
+            // the old `sleep(within:)` throw here and surface as `renderFailed`.)
+            let remaining = ContinuousClock.now.duration(to: deadline)
+            guard remaining > .zero else { break }
+            try await Task.sleep(for: min(pollInterval, remaining))
         }
         if ContinuousClock.now >= totalDeadline { throw WebSnapshotError.timedOut }
     }
@@ -543,5 +551,43 @@ private final class LoadCoordinator: NSObject, WKNavigationDelegate {
             "URL page provisional navigation failed (\((error as NSError).domain, privacy: .public))"
         )
         resume(.failure(WebSnapshotError.loadFailed))
+    }
+
+    /// Re-validates every navigation target against the SSRF host filter (CS-043). The entry
+    /// URL is checked before `load`, but a public page can 30x-redirect — or embed a frame —
+    /// to a private, loopback, or link-local host (e.g. the `169.254.169.254` cloud-metadata
+    /// endpoint); without this, WebKit would follow it and render the private response. This
+    /// closes the post-redirect gap, matching `BackgroundImageStore`'s image-download re-check.
+    /// A blocked main-frame target fails the capture; a blocked subframe is dropped so the rest
+    /// of the page still renders.
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+        if let host = navigationAction.request.url?.host,
+            WebSnapshotConfig.isPrivateLocalhost(host: host)
+        {
+            decisionHandler(.cancel)
+            if navigationAction.targetFrame?.isMainFrame ?? true {
+                Log.render.error("URL capture blocked a navigation to a private host")
+                resume(.failure(WebSnapshotError.loadFailed))
+            }
+            return
+        }
+        decisionHandler(.allow)
+    }
+
+    /// Backstop for server-issued redirects of the provisional (main-frame) navigation: if the
+    /// redirected URL resolves to a private host, stop and fail rather than render it.
+    func webView(
+        _ webView: WKWebView,
+        didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!
+    ) {
+        if let host = webView.url?.host, WebSnapshotConfig.isPrivateLocalhost(host: host) {
+            webView.stopLoading()
+            Log.render.error("URL capture blocked a server redirect to a private host")
+            resume(.failure(WebSnapshotError.loadFailed))
+        }
     }
 }

@@ -72,7 +72,7 @@ struct WebPrivacyDisclosureView: View {
             // In a network-free build the action is disabled; say why, plainly,
             // rather than leaving a dead button unexplained.
             if !isURLCaptureEnabled {
-                phaseTwoNote
+                networkUnavailableNote
             }
 
             actions
@@ -133,7 +133,7 @@ struct WebPrivacyDisclosureView: View {
     /// Shown only in a build without the network entitlement: the direct-download
     /// channel can capture webpages, while a network-free build refuses plainly so
     /// the disabled action is never a mystery.
-    private var phaseTwoNote: some View {
+    private var networkUnavailableNote: some View {
         Label {
             Text("Webpage capture requires the direct-download build with local network access.")
                 .font(.callout)

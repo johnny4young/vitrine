@@ -628,8 +628,11 @@ extension WebSnapshotConfig {
         }
 
         // IPv4-mapped IPv6 with a legacy IPv4 tail (`::ffff:127.1`) is not accepted
-        // by `inet_pton(AF_INET6)` on every platform, so reduce it manually too.
-        let ipv4 = bare.hasPrefix("::ffff:") ? String(bare.dropFirst("::ffff:".count)) : bare
+        // by `inet_pton(AF_INET6)` on every platform, so reduce it manually too. Use the
+        // zone-stripped `addressLiteral` so `::ffff:127.1%lo0` still reduces to its IPv4 tail.
+        let ipv4 =
+            addressLiteral.hasPrefix("::ffff:")
+            ? String(addressLiteral.dropFirst("::ffff:".count)) : addressLiteral
         guard let octets = ipv4Octets(from: ipv4) else { return false }
         return isPrivateIPv4(octets)
     }
