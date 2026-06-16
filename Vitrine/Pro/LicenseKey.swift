@@ -45,17 +45,19 @@ struct LicenseVerifier {
         return decoded
     }
 
-    /// The verifier built from the embedded public key.
+    /// The verifier built from the embedded **production** public key (CS-090, Architecture B).
     ///
-    /// ⚠️ PRODUCTION TODO (before the first PRO release): replace this placeholder with the
-    /// real Lemon Squeezy signing key's public half as a fixed byte literal, e.g.
-    /// `try! Curve25519.Signing.PublicKey(rawRepresentation: Data([0x..., …]))`. The
-    /// placeholder uses a throwaway **random** key whose private half is immediately
-    /// discarded — deliberately unforgeable (no one can mint a token for it) and so the
-    /// direct-download build is free by default until the real key ships. The guardrail test
-    /// `embeddedVerifierRejectsForeignTokens` pins that no externally-minted token validates.
+    /// This is the public half of the direct-download license-signing keypair. The matching
+    /// private half is injected only into the official release (`LicenseSigningKey.embedded`)
+    /// and never committed; a token the app mints with it verifies here — and in the `vitrine`
+    /// CLI — entirely offline. The exact bytes are pinned by
+    /// `embeddedPublicKeyIsThePinnedProductionKey` (so a forgotten swap to a throwaway key can't
+    /// silently lock out paying users, audit P1-Security-6), and
+    /// `embeddedVerifierRejectsForeignTokens` guards that no foreign-signed token validates.
     static let embedded = LicenseVerifier(
-        publicKey: Curve25519.Signing.PrivateKey().publicKey)
+        publicKey: try! Curve25519.Signing.PublicKey(
+            rawRepresentation: Data(base64Encoded: "GBiLsURlP+jwJGvfAJUAxTACaZbObIVBnBurkOQ+Fd0=")!)
+    )
 }
 
 /// Mints a signed token from a private key (CS-090). Under Architecture B the **app** runs this

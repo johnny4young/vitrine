@@ -120,16 +120,25 @@ struct LicenseKeyTests {
     }
 
     @Test func embeddedVerifierRejectsForeignTokens() throws {
-        // The placeholder embedded key must accept no externally-minted token, so the
-        // direct-download build is free by default and a forged/foreign token can't unlock
-        // PRO (audit P1-Security-6). Replace the placeholder with the production key before
-        // the first PRO release — until then this guards that it stays inert.
+        // No foreign-signed token validates against the embedded production public key, so a
+        // forged or hand-edited token cannot unlock PRO (audit P1-Security-6). Only a token the
+        // app minted with the matching, build-injected private key verifies.
         let foreignKey = Curve25519.Signing.PrivateKey()
         let token = try LicenseSigner.sign(
             LicenseToken(
                 licenseID: "FOREIGN", issuedAt: Date(timeIntervalSince1970: 1_700_000_000)),
             with: foreignKey)
         #expect(LicenseVerifier.embedded.verify(token) == nil)
+    }
+
+    @Test func embeddedPublicKeyIsThePinnedProductionKey() {
+        // The embedded verifier must be the fixed production public key, never a random
+        // placeholder (audit P1-Security-6): a silent revert to a throwaway key would lock out
+        // every paying user (their real-key-signed tokens would stop verifying), so pin the
+        // exact bytes here. Update this literal only alongside a deliberate key rotation.
+        #expect(
+            LicenseVerifier.embedded.publicKey.rawRepresentation.base64EncodedString()
+                == "GBiLsURlP+jwJGvfAJUAxTACaZbObIVBnBurkOQ+Fd0=")
     }
 
     #if VITRINE_DIRECT_DOWNLOAD
