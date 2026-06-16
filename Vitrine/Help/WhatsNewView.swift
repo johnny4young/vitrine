@@ -36,9 +36,13 @@ struct WhatsNewView: View {
                 .padding(Brand.Spacing.xl)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            // A hairline divider sets the action row apart as a footer so the buttons
+            // never crowd the highlights card above them, at any window size.
+            Divider()
             footer
                 .padding(.horizontal, Brand.Spacing.xl)
-                .padding(.bottom, Brand.Spacing.xl)
+                .padding(.top, Brand.Spacing.md)
+                .padding(.bottom, Brand.Spacing.lg)
         }
         .frame(width: 520)
         .frame(minHeight: 420)
