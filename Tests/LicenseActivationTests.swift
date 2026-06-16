@@ -50,6 +50,29 @@ import Testing
                     == LicenseActivation(licenseID: "42", instanceID: "inst-1", status: "active"))
         }
 
+        @Test func parsesARealLemonSqueezyResponseShape() throws {
+            // The full field set a real Lemon Squeezy /v1/licenses/activate response carries
+            // (values anonymized), to pin that the parser tracks LS's actual names/types and
+            // that the many extra fields it sends — meta, activation_limit, test_mode, … — are
+            // ignored rather than breaking decoding.
+            let json = Data(
+                """
+                {"activated":true,"error":null,
+                 "instance":{"id":"d6097f9f-7154-4b57-a7b9-5616c3efb037","name":"Mac",
+                             "created_at":"2026-01-01T00:00:00.000000Z"},
+                 "license_key":{"id":1433534,"status":"active","key":"XXXX-XXXX-XXXX-XXXX",
+                                "activation_limit":3,"activation_usage":1,"expires_at":null,
+                                "created_at":"2026-01-01T00:00:00.000000Z","test_mode":true},
+                 "meta":{"store_id":1,"product_id":1,"product_name":"Vitrine PRO"}}
+                """.utf8)
+            let activation = try LemonSqueezyValidator.parse(status: 200, data: json)
+            #expect(
+                activation
+                    == LicenseActivation(
+                        licenseID: "1433534",
+                        instanceID: "d6097f9f-7154-4b57-a7b9-5616c3efb037", status: "active"))
+        }
+
         @Test func parseMapsTheActivationLimitToATypedError() {
             let json = Data(
                 #"{"activated":false,"error":"This license key has reached the activation limit."}"#
