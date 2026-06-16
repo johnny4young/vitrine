@@ -39,8 +39,6 @@ fix. None block the current branch (it is green); these are the next-pass backlo
 > - **P2-2** — a risky refactor of two working but untested `WKWebView` delegates, low reward.
 > - **P2-7** — `@Observable` migration across 9 stores / 53 observation sites; its own session
 >   (needs `make test-ui`).
-> - **Security-6** — the fixed-public-key assertion stays inert until the real signing key
->   ships; the placeholder-rejects-foreign-tokens guardrail is in place meanwhile.
 
 ---
 
@@ -111,10 +109,11 @@ fix. None block the current branch (it is green); these are the next-pass backlo
    `..`, `.` but not `\` or dot-prefixed names. Add `!name.contains("\\")` and
    `!name.hasPrefix(".")` for defense in depth.
 
-6. `[DEFERRED — inert until real key]` **`LicenseVerifier.embedded` regenerates a random key each launch (L-1).**
-   `LicenseKey.swift:48` — intentional placeholder, but add a CI test asserting the embedded
-   public key is a fixed, non-random literal before the first PRO release (else a forgotten
-   substitution silently locks out every paying user).
+6. `[FIXED]` **`LicenseVerifier.embedded` regenerates a random key each launch (L-1).**
+   `LicenseKey.swift` now embeds the real production public key as a fixed literal, and the
+   `embeddedPublicKeyIsThePinnedProductionKey` test pins its exact bytes — so a forgotten
+   revert to a throwaway key fails CI instead of silently locking out every paying user. The
+   private half is build-injected and never committed (CS-090, Architecture B).
 
 ---
 
