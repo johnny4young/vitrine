@@ -9,13 +9,38 @@ Priority key: **P0** = correctness/ship-relevant before PRO goes live · **P1** 
 (security/perf/UX) · **P2** = refactor/architecture/docs. Each item lists `file:line` and the
 fix. None block the current branch (it is green); these are the next-pass backlog.
 
-> **Resolved 2026-06-15** (build/cli/test=1154 incl. golden suite/lint green): all four **P0**
-> bugs (StoreKit lifecycle, File-menu watermark parity, the two-sheet collapse, the URL
-> disclosure loop), **P1-Perf-1** (HighlightManager theme + tokenization memoization — goldens
-> verified byte-identical), and **P1-Security-1/2** (license token → Keychain, CLI Hardened
-> Runtime). Items below tagged `[FIXED]` are done; the rest remain open backlog. The StoreKit
-> `#else` paywall path is compiled only by the App-Store-flavor build (no `VITRINE_DIRECT_DOWNLOAD`),
-> not by `make test`.
+> **Resolved 2026-06-15** (`make cli`/`test`=1155 incl. golden suite/`lint` green, on
+> `feat/vitrine-pro`). The category summary below is the status record; the few open items are
+> tagged `[DEFERRED]` inline in the body, everything else is shipped. Summary:
+>
+> - **P0 (all 4):** StoreKit lifecycle, File-menu watermark parity, two-sheet collapse, URL
+>   disclosure loop — `[FIXED]`.
+> - **P1-Security (all 6):** Keychain token, CLI Hardened Runtime, redirect re-validation, SSRF
+>   list gaps, path-component guard, embedded-key guardrail test — `[FIXED]`.
+> - **P1-Performance:** Perf-1/2/4/5/6 (memoization, sRGB short-circuit, cheap watermark diff,
+>   logo cache, free web captures on close) — `[FIXED]`. Perf-3 (hoist render off-main) and the
+>   filmstrip-downsample half of Perf-6 — `[DEFERRED]`, see notes.
+> - **P1-UX (all 5):** multi-size feedback, accent reset, logo-import error, paywall polish,
+>   token consistency — `[FIXED]`.
+> - **P2:** P2-1 (AppSettings → `WebCaptureSettings` sub-store), P2-3 (provider protocol), P2-4
+>   (named gradient; `configured` kept — tested, not dead), P2-5 (`@MainActor` cache), P2-6
+>   (docs) — `[FIXED]`. P2-2 (coordinator dedup) and P2-7 (`@Observable` migration) — `[DEFERRED]`.
+>   The SettingsPanes/EditorView file splits in P2-1 are optional and open.
+>
+> The StoreKit `#else` paywall path is compiled only by the App-Store-flavor build (no
+> `VITRINE_DIRECT_DOWNLOAD`), not by `make test`; it was reviewed by hand.
+>
+> **Deferred, with rationale** (none block ship):
+> - **Perf-3** — reverted: the recents thumbnail's synchronous availability is a UX + test
+>   contract, and Perf-2 already removed its redundant bitmap copy. The remaining `ImageRenderer`
+>   work is `@MainActor`-bound by the framework.
+> - **Perf-6 (filmstrip downsample)** — a larger Web-Snapshot UI change needing `make test-ui`;
+>   the memory win (freeing captures on close) already shipped.
+> - **P2-2** — a risky refactor of two working but untested `WKWebView` delegates, low reward.
+> - **P2-7** — `@Observable` migration across 9 stores / 53 observation sites; its own session
+>   (needs `make test-ui`).
+> - **Security-6** — the fixed-public-key assertion stays inert until the real signing key
+>   ships; the placeholder-rejects-foreign-tokens guardrail is in place meanwhile.
 
 ---
 
@@ -86,7 +111,7 @@ fix. None block the current branch (it is green); these are the next-pass backlo
    `..`, `.` but not `\` or dot-prefixed names. Add `!name.contains("\\")` and
    `!name.hasPrefix(".")` for defense in depth.
 
-6. **`LicenseVerifier.embedded` regenerates a random key each launch (L-1).**
+6. `[DEFERRED — inert until real key]` **`LicenseVerifier.embedded` regenerates a random key each launch (L-1).**
    `LicenseKey.swift:48` — intentional placeholder, but add a CI test asserting the embedded
    public key is a fixed, non-random literal before the first PRO release (else a forgotten
    substitution silently locks out every paying user).
@@ -114,7 +139,7 @@ CLI batch, and multi-viewport — so these multiply across every surface.
    bitmap every render; for sRGB it is a no-op that still costs ~27 MB at 3600×1890. Short-
    circuit when `cgImage.colorSpace` already matches `profile`.
 
-3. **Whole pipeline runs synchronously on `@MainActor`.** `ExportManager.renderCGImage`
+3. `[DEFERRED]` **Whole pipeline runs synchronously on `@MainActor`.** `ExportManager.renderCGImage`
    (highlight + `ImageRenderer` + `normalized`) blocks the UI for every export; `RecentsStore
    .add` renders+encodes a thumbnail inline on capture. Hoist `normalized()`/`pngData()` (they
    operate on a finished `CGImage`) and the recents thumbnail onto a background `Task`.
@@ -129,8 +154,8 @@ CLI batch, and multi-viewport — so these multiply across every surface.
    `Vitrine/Canvas/WatermarkBadge.swift:39`. Cache the decoded `NSImage` in `BrandKitStore`
    beside `cachedLogoData`.
 
-6. **Multi-viewport batch retains ~5-6 full-res captures + the board for the window's
-   lifetime** (`WebSnapshotModel.results`/`boardAsset`, `WebSnapshotWindowController.swift`),
+6. `[FIXED in part — filmstrip downsample DEFERRED]` **Multi-viewport batch retains ~5-6
+   full-res captures + the board for the window's lifetime** (`WebSnapshotModel.results`/`boardAsset`, `WebSnapshotWindowController.swift`),
    and the filmstrip hands SwiftUI full-res bitmaps to rescale to 92×58 every layout. Clear
    the model on `windowWillClose`; store a downsampled thumbnail per `CapturedViewport`.
 
@@ -167,12 +192,15 @@ CLI batch, and multi-viewport — so these multiply across every surface.
 
 ## P2 — Architecture, refactors, dead code, docs
 
-1. **`AppSettings` is the clearest god-object** (≈550 lines, 25 `@Published`). The 10-property
-   web-capture cluster (`AppSettings.swift:122-201`) extracts cleanly into a `WebCaptureSettings`
-   sub-store the way `BrandKitStore`/`PresetStore` already did. **`SettingsPanes.swift` is
-   ~1,900 lines** and **`EditorView.swift` ~1,015** — split per-pane / extract subviews.
+1. `[FIXED — sub-store done; view splits open]` **`AppSettings` is the clearest god-object**
+   (≈550 lines, 25 `@Published`). The web-capture cluster was extracted into a
+   `WebCaptureSettings` sub-store (`Vitrine/Settings/WebCaptureSettings.swift`, commit `ef57c7e`)
+   the way `BrandKitStore`/`PresetStore` already did, shrinking `AppSettings` by ~70 lines and
+   forwarding the sub-store's `objectWillChange`. Still open (optional, mechanical):
+   **`SettingsPanes.swift` ~1,900 lines** and **`EditorView.swift` ~1,015** — split per-pane /
+   extract subviews.
 
-2. **Duplicated WKWebView load coordinators.** `URLRenderer.LoadCoordinator`
+2. `[DEFERRED]` **Duplicated WKWebView load coordinators.** `URLRenderer.LoadCoordinator`
    (`URLRenderer.swift:440-512`) and `WebSnapshotView.NavigationCoordinator`
    (`WebSnapshotView.swift:360-477`) share the same continuation/timeout/`resume` machinery
    (~60 lines). Extract a shared base.
@@ -198,7 +226,7 @@ CLI batch, and multi-viewport — so these multiply across every surface.
    in the git-ignored `docs/ROADMAP.md`. → Addressed by the new `docs/PRO.md` and an
    `ARCHITECTURE.md` refresh. README has no PRO mention (defer until PRO commits).
 
-7. **Modernization:** migrate the 11 `ObservableObject` stores to the `@Observable` macro
+7. `[DEFERRED]` **Modernization:** migrate the 11 `ObservableObject` stores to the `@Observable` macro
    (macOS 14 target) for property-level view invalidation — pilot on the small, well-tested
    `Entitlements`/`BrandKitStore`. Do **not** adopt SwiftData (the flat JSON-in-`UserDefaults` +
    versioned-migration + defensive-decode model is correct for these shapes).
