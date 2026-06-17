@@ -185,6 +185,13 @@ jobs:
           MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
+          # PRO direct-download license-signing private key (CS-090, Architecture B).
+          # XcodeGen interpolates it into the VitrineLicenseSigningKey Info.plist value
+          # (project.yml), so the release DMG can mint + sign activation tokens. Unset →
+          # empty → LicenseSigningKey.embedded is nil and the build stays free (a fork or a
+          # PR build never gets it). The matching public key is committed in source. The value
+          # is a GitHub Actions secret, masked in logs and never echoed by build-dmg.sh.
+          VITRINE_LICENSE_SIGNING_KEY: ${{ secrets.VITRINE_LICENSE_SIGNING_KEY }}
         run: ./scripts/build-dmg.sh
 
       # Compute, print, and store the DMG SHA-256 so the Homebrew cask can be
