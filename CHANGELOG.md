@@ -12,6 +12,50 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-16
+
+Introduces **Vitrine PRO** (open-core), grows web capture into multi-resolution
+"responsive boards", and folds in a broad security / performance / UX audit pass.
+
+### Added
+
+- **Vitrine PRO (open-core).** An optional one-time license unlocks **Brand Kit**
+  (your logo, handle, and accent color as a watermark on every export),
+  **multi-size one-pass export** (one capture → every platform size into a folder),
+  and **automation** (the `vitrine` CLI, Shortcuts, and folder batch rendering). The
+  free tier loses nothing, and gating lives only at the edges — the render core and
+  golden outputs are byte-for-byte unchanged. (Direct-download license activation
+  goes live in a follow-up.)
+- **Multi-resolution web capture.** Pick several viewports and Vitrine captures each
+  and composes them into a deterministic "responsive board" image (direct-download
+  build).
+- **"That looks like a URL" → Open Web Snapshot.** Copying a URL now offers to open
+  the Web Snapshot window prefilled with it, instead of a dead-end notice.
+
+### Changed
+
+- Hardened the URL-capture SSRF defense to refuse resolver-equivalent host forms
+  (`127.1`, `0x7f000001`, IPv4-mapped IPv6, zone IDs, trailing-dot FQDNs) on the
+  entry URL **and** on post-redirect navigation targets.
+- Faster across surfaces: syntax-highlight theme + tokenization memoization, a
+  no-op-path short-circuit in color-profile normalization, a cheaper watermark diff,
+  a cached brand logo, and downsampled Web Snapshot filmstrip thumbnails.
+- Recents rows in the menu bar are now proper buttons (better VoiceOver and keyboard
+  reach).
+- Internal refactors with no behavior change: the web-capture settings moved into a
+  focused `WebCaptureSettings` store, and the Brand Kit controls into their own
+  Settings section.
+
+### Fixed
+
+- The File-menu Save / Share / Copy now apply the Brand Kit watermark, matching the
+  editor toolbar.
+- The Web Snapshot "network-quiet" wait no longer fails a capture when a page never
+  goes quiet within its budget — it snapshots best-effort.
+- A "Reset all settings" now clears the Brand Kit; the accent color can be reset to
+  its legible default; a failed logo import is surfaced inline; and the "What's New"
+  window footer no longer crowds its content.
+
 ## [0.7.0] - 2026-06-14
 
 The first release tracked in this changelog. It folds in the editor polish
