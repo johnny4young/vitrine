@@ -42,6 +42,21 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.8.0",
+            headline: "Web boards, and a faster Vitrine",
+            highlights: [
+                "Capture a page at several viewport sizes at once and Vitrine lays them out "
+                    + "into one shareable responsive board (direct-download build).",
+                "Copy a URL and Vitrine offers to open Web Snapshot prefilled with it, so a "
+                    + "link becomes an image in two clicks.",
+                "Faster across the board: quicker syntax highlighting, lighter exports, and a "
+                    + "lighter Web Snapshot filmstrip.",
+                "Menu-bar recents are now proper buttons for VoiceOver and the keyboard, the "
+                    + "accent color resets to its default, and the What's New layout is tidier.",
+                "Vitrine PRO is on the way: Brand Kit watermarks, multi-size one-pass export, "
+                    + "and automation (the vitrine CLI, Shortcuts, and folder batch).",
+            ]),
+        ReleaseNote(
             version: "0.7.0",
             headline: "Annotate your screenshots",
             highlights: [
