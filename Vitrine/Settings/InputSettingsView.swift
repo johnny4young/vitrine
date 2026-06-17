@@ -189,6 +189,12 @@ struct WebCaptureControls: View {
         } label: {
             viewportSegmentLabel(for: kind)
                 .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+                // Match the segmented control's segments: keep each chip's label on one
+                // line at its natural width, so a narrow trailing column never breaks
+                // "Desktop" into "De / skt / op". The chips hug their content and the
+                // TokenRow label (maxWidth: .infinity) yields the space they need.
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(
                     isOn ? VitrineTokens.Accent.contrast : VitrineTokens.Text.secondary
                 )
