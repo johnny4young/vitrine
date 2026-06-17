@@ -70,7 +70,9 @@ repo. Tip: keep it in your login Keychain and export it in the build step, e.g.
 
 ## Step 4 — Lemon Squeezy product + license keys
 
-1. Create a **product** "Vitrine PRO", one-time payment, **$19** (early-bird) → settle at $25.
+1. Create a **product** "Vitrine PRO", one-time payment. Set the **base price to $25**, and
+   run the launch **early-bird at $19** (an LS discount code, or list at $19 and raise to $25
+   after the early window). No price is hard-coded in the app, so this is purely an LS setting.
 2. Enable **license keys** for the product. Set the **activation limit** (e.g. 3 machines per
    license) — the app sends an `instance_name` (the Mac's name) so a buyer can see/manage seats.
 3. No API key is embedded in the app: activation uses only the buyer's license key against the
