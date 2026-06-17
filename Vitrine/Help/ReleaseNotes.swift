@@ -42,6 +42,17 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.8.1",
+            headline: "Vitrine PRO is here",
+            highlights: [
+                "Vitrine PRO unlocks Brand Kit watermarks on every export, multi-size "
+                    + "one-pass export, and automation (the vitrine CLI, Shortcuts, and "
+                    + "folder batch).",
+                "Activate a one-time license key in the paywall — it's verified offline after "
+                    + "the first check, so PRO keeps working with no network.",
+                "The free tier loses nothing: no watermark, no resolution cap, no nags.",
+            ]),
+        ReleaseNote(
             version: "0.8.0",
             headline: "Web boards, and a faster Vitrine",
             highlights: [

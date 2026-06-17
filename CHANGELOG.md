@@ -12,6 +12,16 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-06-16
+
+### Changed
+
+- **Vitrine PRO direct-download activation is live.** The signed release build now embeds
+  the license-signing key, so pasting a Lemon Squeezy license key in the paywall unlocks
+  Brand Kit, multi-size export, and automation — verified offline on every later launch. No
+  app-logic change from 0.8.0; the release pipeline now ships the key (the public key was
+  already committed). A from-source or PR build still has no key and stays free.
+
 ## [0.8.0] - 2026-06-16
 
 Introduces **Vitrine PRO** (open-core), grows web capture into multi-resolution
