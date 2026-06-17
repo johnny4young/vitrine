@@ -176,6 +176,20 @@ Apple ID style (fallback):
 | `MACOS_NOTARY_PASSWORD` | App-specific password |
 | `MACOS_NOTARY_TEAM_ID` | Developer Team ID |
 
+PRO direct-download activation (CS-090):
+
+| Secret | Purpose |
+| --- | --- |
+| `VITRINE_LICENSE_SIGNING_KEY` | Base64 of the 32-byte Ed25519 **private** signing key. Injected into the DMG's `VitrineLicenseSigningKey` Info.plist value (via `project.yml`) so the released build can mint + sign activation tokens. Unset → the build can't mint a token and PRO stays inert (a fork or PR build never gets it). The matching **public** key is committed in `LicenseVerifier.embedded`. See [`ACTIVATION.md`](ACTIVATION.md). |
+
+Set it once from the key you generated for the keypair (keep the private half in your
+login Keychain, never in the repo):
+
+```bash
+gh secret set VITRINE_LICENSE_SIGNING_KEY --repo johnny4young/vitrine \
+  --body "$(security find-generic-password -s vitrine-license-key -w)"
+```
+
 The release workflow imports `MACOS_CERTIFICATE_P12` into a temporary runner keychain
 before building (the **Import Developer ID certificate** step), and stages
 `MACOS_NOTARY_KEY_P8` to a file (the **Stage App Store Connect API key** step). Both
