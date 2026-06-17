@@ -284,7 +284,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         // Surface the outcome so a render/encode failure from the menu isn't silent
         // (CS-038), mirroring the quick-capture HUD path.
         let copied = ExportManager.copyToPasteboard(
-            settings.config, scale: CGFloat(settings.effectiveExportScale),
+            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile)
         CaptureHUDController.shared.present(
             copied
@@ -296,7 +296,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         guard canPerform(.saveImage) else { return }
         let settings = activeSettings
         switch ExportManager.saveToFile(
-            settings.config, scale: CGFloat(settings.effectiveExportScale),
+            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
             profile: settings.colorProfile)
         {
@@ -315,7 +315,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         let settings = activeSettings
         guard canPerform(.shareImage),
             let image = ExportManager.renderNSImage(
-                settings.config, scale: CGFloat(settings.effectiveExportScale),
+                settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
                 fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile),
             let view = NSApp.keyWindow?.contentView
         else { return }

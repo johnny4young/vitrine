@@ -298,10 +298,10 @@ struct WebCaptureConfigCompositionTests {
         // built from settings carries exactly the viewport, capture mode, and wait
         // strategy the user selected.
         let settings = AppSettings(defaults: Self.isolatedDefaults())
-        settings.webViewportKind = .fullHD
-        settings.webCaptureMode = .fullPage
-        settings.webWaitKind = .fixedDelay
-        settings.webWaitSeconds = 4
+        settings.webCapture.viewportKind = .fullHD
+        settings.webCapture.captureMode = .fullPage
+        settings.webCapture.waitKind = .fixedDelay
+        settings.webCapture.waitSeconds = 4
         settings.exportScale = 1
 
         let renderer = URLRenderer.configured(from: settings)
@@ -315,9 +315,9 @@ struct WebCaptureConfigCompositionTests {
         // A hand-edited out-of-range custom size persisted in settings can never reach
         // the renderer as a degenerate viewport.
         let settings = AppSettings(defaults: Self.isolatedDefaults())
-        settings.webViewportKind = .custom
-        settings.webCustomViewportWidth = 100_000
-        settings.webCustomViewportHeight = 1
+        settings.webCapture.viewportKind = .custom
+        settings.webCapture.customViewportWidth = 100_000
+        settings.webCapture.customViewportHeight = 1
         let renderer = URLRenderer.configured(from: settings)
         let range = WebSnapshotConfig.ViewportPreset.customDimensionRange
         #expect(renderer.viewportPreset.size.width == CGFloat(range.upperBound))
@@ -332,24 +332,24 @@ struct WebCaptureConfigCompositionTests {
         // the persistence seam the Input pane relies on.
         let settings = AppSettings(defaults: Self.isolatedDefaults())
         for kind in WebSnapshotConfig.ViewportPreset.Kind.allCases where kind != .custom {
-            settings.webViewportKind = kind
+            settings.webCapture.viewportKind = kind
             // The stored custom size is deliberately set to prove a fixed kind ignores it.
-            settings.webCustomViewportWidth = 4321
-            settings.webCustomViewportHeight = 1234
-            #expect(settings.webViewportPreset.kind == kind)
+            settings.webCapture.customViewportWidth = 4321
+            settings.webCapture.customViewportHeight = 1234
+            #expect(settings.webCapture.viewportPreset.kind == kind)
             #expect(
-                settings.webViewportPreset
+                settings.webCapture.viewportPreset
                     == WebSnapshotConfig.ViewportPreset.resolve(
                         kind: kind, customWidth: 1, customHeight: 1))
         }
 
-        settings.webWaitKind = .networkQuiet
-        settings.webWaitSeconds = 6
-        #expect(settings.webWaitStrategy == .networkQuiet(budget: .seconds(6)))
+        settings.webCapture.waitKind = .networkQuiet
+        settings.webCapture.waitSeconds = 6
+        #expect(settings.webCapture.waitStrategy == .networkQuiet(budget: .seconds(6)))
 
-        settings.webWaitKind = .domContentLoaded
+        settings.webCapture.waitKind = .domContentLoaded
         // The DOM-loaded strategy ignores the stored seconds entirely.
-        #expect(settings.webWaitStrategy == .domContentLoaded)
+        #expect(settings.webCapture.waitStrategy == .domContentLoaded)
     }
 
     /// A throwaway, uniquely-named defaults suite so a test never touches real app
@@ -374,20 +374,20 @@ struct WebCaptureSettingsPersistenceTests {
         defaults.removePersistentDomain(forName: suite)
 
         let first = AppSettings(defaults: defaults)
-        first.webViewportKind = .mobile
-        first.webCustomViewportWidth = 1100
-        first.webCustomViewportHeight = 1400
-        first.webCaptureMode = .fullPage
-        first.webWaitKind = .networkQuiet
-        first.webWaitSeconds = 7
+        first.webCapture.viewportKind = .mobile
+        first.webCapture.customViewportWidth = 1100
+        first.webCapture.customViewportHeight = 1400
+        first.webCapture.captureMode = .fullPage
+        first.webCapture.waitKind = .networkQuiet
+        first.webCapture.waitSeconds = 7
 
         let second = AppSettings(defaults: defaults)
-        #expect(second.webViewportKind == .mobile)
-        #expect(second.webCustomViewportWidth == 1100)
-        #expect(second.webCustomViewportHeight == 1400)
-        #expect(second.webCaptureMode == .fullPage)
-        #expect(second.webWaitKind == .networkQuiet)
-        #expect(second.webWaitSeconds == 7)
+        #expect(second.webCapture.viewportKind == .mobile)
+        #expect(second.webCapture.customViewportWidth == 1100)
+        #expect(second.webCapture.customViewportHeight == 1400)
+        #expect(second.webCapture.captureMode == .fullPage)
+        #expect(second.webCapture.waitKind == .networkQuiet)
+        #expect(second.webCapture.waitSeconds == 7)
     }
 
     @Test func resetReturnsTheWebCaptureChoicesToTheirDefaults() {
@@ -396,16 +396,16 @@ struct WebCaptureSettingsPersistenceTests {
         defaults.removePersistentDomain(forName: suite)
 
         let settings = AppSettings(defaults: defaults)
-        settings.webViewportKind = .fullHD
-        settings.webCaptureMode = .fullPage
-        settings.webWaitKind = .fixedDelay
-        settings.webWaitSeconds = 9
+        settings.webCapture.viewportKind = .fullHD
+        settings.webCapture.captureMode = .fullPage
+        settings.webCapture.waitKind = .fixedDelay
+        settings.webCapture.waitSeconds = 9
 
         settings.resetToDefaults()
-        #expect(settings.webViewportKind == WebDefaults.viewportKind)
-        #expect(settings.webCaptureMode == WebDefaults.captureMode)
-        #expect(settings.webWaitKind == WebDefaults.waitKind)
-        #expect(settings.webWaitSeconds == WebDefaults.waitSeconds)
+        #expect(settings.webCapture.viewportKind == WebDefaults.viewportKind)
+        #expect(settings.webCapture.captureMode == WebDefaults.captureMode)
+        #expect(settings.webCapture.waitKind == WebDefaults.waitKind)
+        #expect(settings.webCapture.waitSeconds == WebDefaults.waitSeconds)
     }
 
     @Test func aGarbagePersistedValueFallsBackToTheDocumentedDefault() {
@@ -421,14 +421,14 @@ struct WebCaptureSettingsPersistenceTests {
         defaults.set(-5, forKey: "webCustomViewportWidth")
 
         let settings = AppSettings(defaults: defaults)
-        #expect(settings.webViewportKind == WebDefaults.viewportKind)
-        #expect(settings.webCaptureMode == WebDefaults.captureMode)
-        #expect(settings.webWaitKind == WebDefaults.waitKind)
+        #expect(settings.webCapture.viewportKind == WebDefaults.viewportKind)
+        #expect(settings.webCapture.captureMode == WebDefaults.captureMode)
+        #expect(settings.webCapture.waitKind == WebDefaults.waitKind)
         // A negative persisted seconds clamps to the documented non-negative range.
-        #expect(settings.webWaitSeconds >= 0)
+        #expect(settings.webCapture.waitSeconds >= 0)
         // A negative persisted custom width clamps into the safe range.
         #expect(
-            settings.webCustomViewportWidth
+            settings.webCapture.customViewportWidth
                 >= WebSnapshotConfig.ViewportPreset.customDimensionRange.lowerBound)
     }
 
@@ -443,10 +443,10 @@ struct WebCaptureSettingsPersistenceTests {
         defaults.set(99_999, forKey: "webWaitSeconds")
 
         let settings = AppSettings(defaults: defaults)
-        #expect(settings.webWaitSeconds == WebDefaults.waitSecondsRange.upperBound)
+        #expect(settings.webCapture.waitSeconds == WebDefaults.waitSecondsRange.upperBound)
         // A value already inside the range is read back unchanged.
         defaults.set(12, forKey: "webWaitSeconds")
-        #expect(AppSettings(defaults: defaults).webWaitSeconds == 12)
+        #expect(AppSettings(defaults: defaults).webCapture.waitSeconds == 12)
     }
 
     @Test func anOutOfRangePersistedCustomHeightClampsOnRead() {
@@ -459,10 +459,10 @@ struct WebCaptureSettingsPersistenceTests {
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         defaults.set(-7, forKey: "webCustomViewportHeight")
-        #expect(AppSettings(defaults: defaults).webCustomViewportHeight == range.lowerBound)
+        #expect(AppSettings(defaults: defaults).webCapture.customViewportHeight == range.lowerBound)
 
         defaults.set(500_000, forKey: "webCustomViewportHeight")
-        #expect(AppSettings(defaults: defaults).webCustomViewportHeight == range.upperBound)
+        #expect(AppSettings(defaults: defaults).webCapture.customViewportHeight == range.upperBound)
     }
 
     @Test func theNewSettingsAdvanceTheSchemaWithoutLosingExistingValues() {
@@ -475,12 +475,12 @@ struct WebCaptureSettingsPersistenceTests {
 
         let settings = AppSettings(defaults: defaults)
         settings.autoCopy = false
-        settings.webCaptureMode = .fullPage
+        settings.webCapture.captureMode = .fullPage
 
         #expect(defaults.integer(forKey: SettingsSchema.versionKey) == SettingsSchema.current)
         let reloaded = AppSettings(defaults: defaults)
         #expect(reloaded.autoCopy == false)
-        #expect(reloaded.webCaptureMode == .fullPage)
+        #expect(reloaded.webCapture.captureMode == .fullPage)
     }
 }
 

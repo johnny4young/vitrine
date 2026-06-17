@@ -344,7 +344,7 @@ struct ServiceRegistrationTests {
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("VitrineServiceTest-empty"))
         pasteboard.clearContents()
 
-        let outcome = CodeImageService.shared.process(pasteboard: pasteboard)
+        let outcome = CodeImageService.shared.process(pasteboard: pasteboard, isProUnlocked: true)
 
         guard case .failed(let message) = outcome else {
             Issue.record("expected a failure outcome for an empty selection")
@@ -361,10 +361,27 @@ struct ServiceRegistrationTests {
         pasteboard.clearContents()
         pasteboard.setString("let greeting = \"hello\"", forType: .string)
 
-        let outcome = CodeImageService.shared.process(pasteboard: pasteboard)
+        let outcome = CodeImageService.shared.process(pasteboard: pasteboard, isProUnlocked: true)
 
         #expect(outcome == .rendered)
         // An image representation is now on the pasteboard.
         #expect(pasteboard.data(forType: .png) != nil)
+    }
+
+    @Test func servicesMenuIsGatedByProAndNeverRendersWhenLocked() {
+        // CS-094: without PRO the Services menu reports the requirement and writes no
+        // image — automation never bypasses the gate.
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("VitrineServiceTest-locked"))
+        pasteboard.clearContents()
+        pasteboard.setString("let greeting = \"hello\"", forType: .string)
+
+        let outcome = CodeImageService.shared.process(pasteboard: pasteboard, isProUnlocked: false)
+
+        guard case .failed(let message) = outcome else {
+            Issue.record("expected a PRO-locked failure outcome")
+            return
+        }
+        #expect(!message.isEmpty)
+        #expect(pasteboard.data(forType: .png) == nil)
     }
 }

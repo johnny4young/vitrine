@@ -59,6 +59,47 @@ struct WebSnapshotModelTests {
         model.mode = .html
         #expect(model.loadingHost == nil)
     }
+
+    @Test func prefillURLClearsStaleRenderedResults() throws {
+        let model = WebSnapshotModel()
+        let asset = try Self.tinyRenderedAsset()
+        model.mode = .html
+        model.htmlText = "<strong>old</strong>"
+        model.renderedAsset = asset
+        model.results = [
+            CapturedViewport(kind: .desktop, preset: .desktop, asset: asset)
+        ]
+        model.boardAsset = asset
+        model.boardThumbnailAsset = asset
+        model.errorMessage = "Previous failure"
+
+        model.prepareForPrefillURL("https://example.com/new")
+
+        #expect(model.mode == .url)
+        #expect(model.urlText == "https://example.com/new")
+        #expect(model.renderedAsset == nil)
+        #expect(model.results.isEmpty)
+        #expect(model.boardAsset == nil)
+        #expect(model.boardThumbnailAsset == nil)
+        #expect(model.errorMessage == nil)
+    }
+
+    private static func tinyRenderedAsset() throws -> RenderedAsset {
+        let colorSpace = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let context = try #require(
+            CGContext(
+                data: nil,
+                width: 1,
+                height: 1,
+                bitsPerComponent: 8,
+                bytesPerRow: 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(NSColor.systemBlue.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: 1, height: 1))
+        let image = try #require(context.makeImage())
+        return RenderedAsset(cgImage: image, profile: .sRGB)
+    }
 }
 
 @Suite("URL-capture consent persistence")
@@ -71,11 +112,11 @@ struct URLCaptureConsentTests {
 
         let settings = AppSettings(defaults: defaults)
         // Off on a fresh suite, so the first capture always discloses first (CS-045).
-        #expect(!settings.urlCaptureConsentGiven)
+        #expect(!settings.webCapture.consentGiven)
 
-        settings.urlCaptureConsentGiven = true
+        settings.webCapture.consentGiven = true
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.urlCaptureConsentGiven)
+        #expect(reloaded.webCapture.consentGiven)
     }
 
     @Test func resetRevokesConsent() {
@@ -83,9 +124,9 @@ struct URLCaptureConsentTests {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = AppSettings(defaults: defaults)
-        settings.urlCaptureConsentGiven = true
+        settings.webCapture.consentGiven = true
         settings.resetToDefaults()
-        #expect(!settings.urlCaptureConsentGiven)
+        #expect(!settings.webCapture.consentGiven)
     }
 }
 

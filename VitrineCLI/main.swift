@@ -39,7 +39,16 @@ func printError(_ message: String) {
 
 do {
     let options = try CLIArguments.parse(Array(CommandLine.arguments.dropFirst()))
-    let summary = try CLIRenderer.run(options)
+    // PRO gate at the process boundary (CS-094): the CLI is direct-download only and
+    // re-verifies the app's signed activation token itself. `--help` already exited
+    // above (parse threw `helpRequested`), so a free build still sees usage but never
+    // renders.
+    guard CLIEntitlement.isProUnlocked() else { throw CLIError.proRequired }
+    let summary: String
+    switch options.command {
+    case .render: summary = try CLIRenderer.run(options)
+    case .batch: summary = try CLIRenderer.runBatch(options)
+    }
     print(summary)
     exit(0)
 } catch let error as CLIError {

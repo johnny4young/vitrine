@@ -1,3 +1,4 @@
+import Combine
 import OSLog
 import SwiftUI
 
@@ -117,67 +118,18 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(reindentOnPaste, forKey: Keys.reindentOnPaste) }
     }
 
-    /// The viewport preset a URL capture lays the page out in (CS-044). Stored as a
-    /// flat discriminant; the custom size rides in `webCustomViewportWidth/Height`.
-    @Published var webViewportKind: WebSnapshotConfig.ViewportPreset.Kind {
-        didSet { defaults.set(webViewportKind.rawValue, forKey: Keys.webViewportKind) }
-    }
-
-    /// The custom viewport width in points, used only when `webViewportKind` is
-    /// `.custom` (CS-044). Clamped into the safe range on read.
-    @Published var webCustomViewportWidth: Int {
-        didSet { defaults.set(webCustomViewportWidth, forKey: Keys.webCustomViewportWidth) }
-    }
-
-    /// The custom viewport height in points, used only when `webViewportKind` is
-    /// `.custom` (CS-044). Clamped into the safe range on read.
-    @Published var webCustomViewportHeight: Int {
-        didSet { defaults.set(webCustomViewportHeight, forKey: Keys.webCustomViewportHeight) }
-    }
-
-    /// Whether a URL capture grabs the visible viewport or the full scrollable page
-    /// (CS-044). The default is the deterministic visible viewport.
-    @Published var webCaptureMode: WebSnapshotConfig.CaptureMode {
-        didSet { defaults.set(webCaptureMode.rawValue, forKey: Keys.webCaptureMode) }
-    }
-
-    /// Which wait strategy a URL capture uses before snapshotting (CS-044). Stored
-    /// as a flat discriminant; the post-load delay rides in `webWaitSeconds`.
-    @Published var webWaitKind: WebSnapshotConfig.WaitStrategy.Kind {
-        didSet { defaults.set(webWaitKind.rawValue, forKey: Keys.webWaitKind) }
-    }
-
-    /// The post-load wait, in seconds, for the fixed-delay and network-quiet
-    /// strategies (CS-044). Ignored by `.domContentLoaded`. Clamped non-negative.
-    @Published var webWaitSeconds: Int {
-        didSet { defaults.set(webWaitSeconds, forKey: Keys.webWaitSeconds) }
-    }
-
-    /// Whether the user has confirmed the first-use URL-capture privacy disclosure
-    /// (CS-045). URL capture loads a webpage over the network, so the first attempt
-    /// shows `WebPrivacyDisclosureView` and only proceeds once this is set. The
-    /// Settings transparency row revokes it (back to `false`), re-arming the
-    /// disclosure. Defaults off so a fresh install always discloses before the first
-    /// network capture.
-    @Published var urlCaptureConsentGiven: Bool {
-        didSet { defaults.set(urlCaptureConsentGiven, forKey: Keys.urlCaptureConsent) }
-    }
-
-    /// The composed viewport preset for a URL capture (CS-044): the persisted
-    /// discriminant resolved with the stored custom size, defensively clamped so a
-    /// custom preset is always a usable, memory-safe size.
-    var webViewportPreset: WebSnapshotConfig.ViewportPreset {
-        .resolve(
-            kind: webViewportKind,
-            customWidth: webCustomViewportWidth,
-            customHeight: webCustomViewportHeight)
-    }
-
-    /// The composed wait strategy for a URL capture (CS-044): the persisted
-    /// discriminant resolved with the stored post-load delay.
-    var webWaitStrategy: WebSnapshotConfig.WaitStrategy {
-        .resolve(kind: webWaitKind, extraWaitSeconds: webWaitSeconds)
-    }
+    /// The web URL-capture viewport, capture-mode, wait, and consent settings (CS-044),
+    /// in their own focused sub-store rather than as members of this object (audit P2-1,
+    /// "AppSettings is a god object"). Access them through `webCapture`, e.g.
+    /// `settings.webCapture.viewportKind`. `AppSettings` forwards the sub-store's change
+    /// notifications (see `init`), so SwiftUI surfaces observing `AppSettings` still refresh
+    /// when a web-capture knob changes. Backed by the same defaults suite, so its settings
+    /// persist alongside the rest and an older store loads unchanged.
+    ///
+    /// Declared `var` (never reassigned after `init`) only so a `$settings.webCapture.field`
+    /// SwiftUI binding resolves: a `let` class property forms a read-only key path, which
+    /// would break the writable-binding chain the Settings controls rely on.
+    var webCapture: WebCaptureSettings
 
     /// Recently used languages, most-recent first (CS-004).
     @Published private(set) var recentLanguages: [Language] {
@@ -211,6 +163,12 @@ final class AppSettings: ObservableObject {
     }
 
     private let defaults: UserDefaults
+
+    /// Keeps the forwarded `webCapture` change subscription alive for this instance's
+    /// lifetime (audit P2-1). A nested `ObservableObject` does not re-publish through its
+    /// parent automatically, so without this re-broadcast a view observing `AppSettings`
+    /// would miss web-capture edits.
+    private var webCaptureObserver: AnyCancellable?
 
     /// Guards the `config` observer from clearing the selected preset while we are
     /// applying that very preset (CS-020). Without it, the style writes inside
@@ -251,18 +209,10 @@ final class AppSettings: ObservableObject {
         // Default on: a fresh install tidies pastes by default (CS-049), the behavior the
         // editor's "paste a snippet to screenshot it" flow expects; the toggle opts out.
         reindentOnPaste = defaults.object(forKey: Keys.reindentOnPaste) as? Bool ?? true
-        // Web URL-capture viewport/wait settings (CS-044). Each read tolerates a
-        // missing or garbage value by falling back to the documented default and
-        // clamping numeric values into the safe range (CS-050 posture).
-        webViewportKind = WebDefaults.viewportKind(from: defaults)
-        webCustomViewportWidth = WebDefaults.customViewportWidth(from: defaults)
-        webCustomViewportHeight = WebDefaults.customViewportHeight(from: defaults)
-        webCaptureMode = WebDefaults.captureMode(from: defaults)
-        webWaitKind = WebDefaults.waitKind(from: defaults)
-        webWaitSeconds = WebDefaults.waitSeconds(from: defaults)
-        // Off on a fresh suite, so the first URL capture always shows the privacy
-        // disclosure before reaching the network (CS-045).
-        urlCaptureConsentGiven = defaults.object(forKey: Keys.urlCaptureConsent) as? Bool ?? false
+        // Web URL-capture viewport/wait/consent settings (CS-044) live in their own
+        // focused sub-store (audit P2-1), read defensively from the same defaults suite
+        // so a missing or garbage value falls back to the documented default (CS-050).
+        webCapture = WebCaptureSettings(defaults: defaults)
         recentLanguages =
             (defaults.array(forKey: Keys.recentLanguages) as? [String] ?? [])
             .compactMap(Language.init(rawValue:))
@@ -279,6 +229,13 @@ final class AppSettings: ObservableObject {
         socialCard = SettingsCodec.readSocialCard(from: defaults)
 
         config = SettingsCodec.readConfig(from: defaults)
+
+        // Re-broadcast the web-capture sub-store's changes as our own (audit P2-1) so
+        // SwiftUI surfaces bound to `AppSettings` refresh when a web-capture knob changes;
+        // a nested `ObservableObject` does not propagate to its parent on its own.
+        webCaptureObserver = webCapture.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
 
     // MARK: - Per-window editor sessions (CS-053)
@@ -406,6 +363,23 @@ final class AppSettings: ObservableObject {
     /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content (CS-020).
     var effectiveFixedSize: CGSize? { selectedPreset?.sizing.fixedSize }
 
+    /// The live `config` with the PRO Brand Kit watermark applied — what every image
+    /// export surface renders (CS-092).
+    ///
+    /// The watermark lives only on this derived value, never on the stored `config`:
+    /// so persistence, the "diverged from preset" bookkeeping, per-window sessions,
+    /// and the golden suite (which builds its own `SnapshotConfig`) all stay
+    /// byte-for-byte unchanged — the brand mark exists purely on the rendered output.
+    /// It is resolved from the app-global `BrandKitStore` and the global entitlement,
+    /// so every window and the quick-capture path share one brand identity, and it
+    /// appears only when the user enabled it *and* PRO is unlocked.
+    var exportConfig: SnapshotConfig {
+        var resolved = config
+        resolved.watermark = BrandKitStore.shared.resolvedWatermark(
+            isPro: Entitlements.shared.isPro)
+        return resolved
+    }
+
     /// Records a language as recently used (MRU, capped at 6).
     func noteLanguageUsed(_ language: Language) {
         var list = recentLanguages.filter { $0 != language }
@@ -481,14 +455,10 @@ final class AppSettings: ObservableObject {
         appLanguage = .system
         treatURLsAsScreenshot = false
         reindentOnPaste = true
-        webViewportKind = WebDefaults.viewportKind
-        webCustomViewportWidth = WebDefaults.customViewportWidth
-        webCustomViewportHeight = WebDefaults.customViewportHeight
-        webCaptureMode = WebDefaults.captureMode
-        webWaitKind = WebDefaults.waitKind
-        webWaitSeconds = WebDefaults.waitSeconds
-        // A full reset returns to the pre-consent state, re-arming the disclosure.
-        urlCaptureConsentGiven = false
+        // The web-capture sub-store resets its own published state (audit P2-1); its
+        // persisted keys were cleared by the `Keys.all` sweep above. This includes
+        // returning consent to the pre-disclosure state, re-arming the disclosure.
+        webCapture.resetToDefaults()
         recentLanguages = []
         selectedPresetID = nil
         // Returns the user to a first-run experience after a full reset (CS-035).

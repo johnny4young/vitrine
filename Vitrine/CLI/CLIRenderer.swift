@@ -47,6 +47,83 @@ enum CLIRenderer {
         return "Rendered \(outputURL.path) (\(dimensions.width)×\(dimensions.height))"
     }
 
+    /// Runs a folder `batch`: renders every readable text file in the input directory
+    /// to the output directory, one image per file (CS-094).
+    ///
+    /// Non-text/unreadable files are skipped (not fatal), so a mixed folder still
+    /// produces images for the code in it; the summary reports how many were skipped.
+    /// Each file goes through the same render-and-write path as `vitrine render`, so a
+    /// batched image is pixel-identical to rendering that file alone with the same
+    /// options. `directoryLister` is injected so the file-discovery half is
+    /// unit-testable without a real directory tree.
+    @discardableResult
+    static func runBatch(
+        _ options: CLIOptions,
+        fileLoader: (URL) throws -> FileInputLoader.LoadedFile = {
+            try FileInputLoader.load(from: $0)
+        },
+        directoryLister: (URL) throws -> [URL] = {
+            try FileManager.default.contentsOfDirectory(
+                at: $0, includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles])
+        }
+    ) throws -> String {
+        let inputDirectory = URL(fileURLWithPath: options.inputPath)
+        let outputDirectory = URL(fileURLWithPath: options.outputPath)
+        do {
+            try FileManager.default.createDirectory(
+                at: outputDirectory, withIntermediateDirectories: true)
+        } catch {
+            throw CLIError.writeFailed(path: options.outputPath)
+        }
+
+        let entries: [URL]
+        do {
+            entries = try directoryLister(inputDirectory)
+        } catch {
+            throw CLIError.inputUnreadable(path: options.inputPath)
+        }
+        // Sort for a deterministic batch regardless of filesystem enumeration order,
+        // and drop subdirectories so only files are rendered.
+        let files =
+            entries
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+
+        let ext = options.format == .pdf ? "pdf" : "png"
+        var rendered = 0
+        var skipped = 0
+        for file in files {
+            let loaded: FileInputLoader.LoadedFile
+            do {
+                loaded = try fileLoader(file)
+            } catch {
+                // A binary/unreadable file is skipped, never a fatal batch error.
+                skipped += 1
+                continue
+            }
+            let language = options.language ?? loaded.language
+            let config = options.makeConfig(code: loaded.text, language: language)
+            let outputURL =
+                outputDirectory
+                .appendingPathComponent(file.deletingPathExtension().lastPathComponent)
+                .appendingPathExtension(ext)
+            do {
+                _ = try renderAndWrite(config, options: options, to: outputURL)
+                rendered += 1
+            } catch {
+                skipped += 1
+            }
+        }
+
+        Log.export.notice(
+            "CLI batch rendered \(rendered, privacy: .public), skipped \(skipped, privacy: .public)"
+        )
+        let summary =
+            "Rendered \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
+        return skipped > 0 ? summary + " (skipped \(skipped))" : summary
+    }
+
     /// Reads the input file through the injected loader, translating its
     /// `FileInputLoader.LoadError` into the matching `CLIError`.
     private static func loadInput(

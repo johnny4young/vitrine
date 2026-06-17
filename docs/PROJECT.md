@@ -17,7 +17,7 @@ extension; an optional web API only as a far-future, well-scoped phase.
 
 - **Stack:** Swift 6 + SwiftUI + AppKit + Highlightr
 - **Distribution:** OSS on GitHub (MIT) · Homebrew cask · free App Store (optional, post-v0.1)
-- **Monetization:** none for now — the goal is to build the best tool and use it daily.
+- **Monetization:** open-core — the app is free and MIT-licensed; an optional one-time **PRO** license adds Brand Kit, multi-size export, and automation (App Store IAP, or a direct-download license key verified offline). The free tier loses nothing.
 - **Repo:** `johnny4young/vitrine` (personal account, no organization)
 - **v0.1 estimate:** ~6 weeks part-time
 
@@ -43,7 +43,7 @@ second of friction matters.
 
 Vitrine targets that flow: **0 seconds to open** (always in the menu bar), the code
 **already pasted** from the clipboard, live preview, and `Copy` → retina PNG on the
-clipboard. Works offline, fully local, no account, no server.
+clipboard. Works offline, fully local, no account, no telemetry.
 
 ray.so (by Raycast) is open source and is exactly the UX/design quality bar we aim
 for. The difference: Vitrine is **native and always available in the menu bar** — not
@@ -52,14 +52,16 @@ a web app, not a Raycast command.
 **Target user:** developers who publish technical content on X/Twitter, LinkedIn,
 Substack, or who write internal documentation.
 
-### Why open source (and unmonetized for now)
+### Why open source (open-core)
 
-- The goal is to build the best tool and use it daily — not to generate revenue.
-- MIT on GitHub: anyone can build it and contribute new themes and languages.
-- Frictionless distribution: Homebrew cask + signed releases. If it ever reaches the
-  App Store, it would be free.
-- Less legal/marketing surface: no competing for Store keywords. A distinctive name
-  still helps discoverability.
+- The app is free and fully open source (MIT) — anyone can build it and contribute new
+  themes and languages — and the free tier loses nothing.
+- An optional one-time **PRO** license funds the work without compromising the free tool:
+  it adds Brand Kit, multi-size export, and automation, gated honor/convenience-style at the
+  edges (never the render core or the golden suite). See [`PRO.md`](PRO.md).
+- Frictionless distribution: Homebrew cask + signed releases, plus a free App Store build
+  (PRO is a StoreKit in-app purchase there).
+- Less legal/marketing surface: a distinctive name still helps discoverability.
 
 ## Privacy and permissions
 
