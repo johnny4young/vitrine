@@ -705,14 +705,13 @@
         }
       }
     },
-    "Captures exactly the viewport size. URL capture loads the page locally in WebKit and arrives in Product Phase 2." : {
+    "Captures exactly the viewport size. URL capture loads the page locally in WebKit on this Mac." : {
       "comment" : "Input pane footer for the visible-area web capture mode.",
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Captura exactamente el tamaño del viewport. La captura de URL carga la página localmente en WebKit y llega en la fase 2 del producto."
+            "value" : "Captura exactamente el tamaño del viewport. La captura de URL carga la página localmente en WebKit en este Mac."
           }
         }
       }
@@ -3141,6 +3140,17 @@
         }
       }
     },
+    "Open Web Snapshot" : {
+      "comment" : "Recovery action label for opening Web Snapshot with a detected URL (CS-038).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Web Snapshot"
+          }
+        }
+      }
+    },
     "Open Help" : {
       "comment" : "What's New button: open the Help window.",
       "extractionState" : "stale",
@@ -4331,14 +4341,13 @@
         }
       }
     },
-    "That looks like a URL — screenshot capture is coming soon" : {
+    "That looks like a URL — open Web Snapshot to capture it" : {
       "comment" : "Capture feedback when the clipboard holds a URL (CS-038).",
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eso parece una URL; la captura de pantalla llegará pronto"
+            "value" : "Eso parece una URL; abre Web Snapshot para capturarla"
           }
         }
       }
@@ -4911,13 +4920,13 @@
         }
       }
     },
-    "Webpage capture arrives in Product Phase 2 and is not available in this build." : {
-      "comment" : "Web privacy disclosure note shown in a Phase 1 build where URL capture is deferred (CS-045).",
+    "Webpage capture requires the direct-download build with local network access." : {
+      "comment" : "Web privacy disclosure note shown when URL capture is unavailable in the current build (CS-045).",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La captura de páginas web llega en la fase 2 del producto y no está disponible en esta versión."
+            "value" : "La captura de páginas web requiere la versión de descarga directa con acceso local a la red."
           }
         }
       }
@@ -4998,18 +5007,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Si está desactivado, una URL copiada se renderiza como texto"
-          }
-        }
-      }
-    },
-    "When off, a copied URL is rendered as text. URL screenshots arrive in Product Phase 2." : {
-      "comment" : "Input pane footer.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cuando está desactivado, una URL copiada se renderiza como texto. Las capturas de URL llegan en la fase 2 del producto."
           }
         }
       }
@@ -6000,6 +5997,907 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Texto"
+          }
+        }
+      }
+    },
+    "Captures every selected size in one pass." : {
+      "comment" : "CS-044: web multi-viewport footer (multiple selected).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captures every selected size in one pass."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura cada tamaño seleccionado de una sola pasada."
+          }
+        }
+      }
+    },
+    "Pick one or more sizes to capture." : {
+      "comment" : "CS-044: web multi-viewport footer (one selected).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick one or more sizes to capture."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige uno o más tamaños para capturar."
+          }
+        }
+      }
+    },
+    "Captured %lld of %lld sizes; some didn't load." : {
+      "comment" : "CS-044: partial multi-viewport capture failure.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captured %lld of %lld sizes; some didn't load."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se capturaron %lld de %lld tamaños; algunos no cargaron."
+          }
+        }
+      }
+    },
+    "Board" : {
+      "comment" : "CS-044: filmstrip tile for the composite responsive board.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Board"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tablero"
+          }
+        }
+      }
+    },
+    "Responsive board" : {
+      "comment" : "CS-044: a11y label for the composite board tile.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Responsive board"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tablero adaptable"
+          }
+        }
+      }
+    },
+    "Images exported" : {
+      "comment" : "CS-044: export-all confirmation HUD.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Images exported"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imágenes exportadas"
+          }
+        }
+      }
+    },
+    "Couldn't export the images" : {
+      "comment" : "CS-044: export-all failure HUD.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't export the images"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron exportar las imágenes"
+          }
+        }
+      }
+    },
+    "Export all sizes" : {
+      "comment" : "CS-044: export-all toolbar button label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export all sizes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar todos los tamaños"
+          }
+        }
+      }
+    },
+    "Export every captured size, plus the board, to a folder" : {
+      "comment" : "CS-044: export-all toolbar button help.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export every captured size, plus the board, to a folder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporta cada tamaño capturado, más el tablero, a una carpeta."
+          }
+        }
+      }
+    },
+    "Viewports" : {
+      "comment" : "CS-044: web multi-viewport selection row label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viewports"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viewports"
+          }
+        }
+      }
+    },
+    "Brand Kit" : {
+      "comment" : "CS-088: PRO feature paywall title (brand term kept).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brand Kit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brand Kit"
+          }
+        }
+      }
+    },
+    "Multi-size export" : {
+      "comment" : "CS-088: PRO feature paywall title.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Multi-size export"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportación multitamaño"
+          }
+        }
+      }
+    },
+    "Automation" : {
+      "comment" : "CS-088: PRO feature paywall title.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automation"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatización"
+          }
+        }
+      }
+    },
+    "Add your logo, handle, and accent color to every snapshot." : {
+      "comment" : "CS-088: PRO paywall blurb (Brand Kit).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add your logo, handle, and accent color to every snapshot."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega tu logo, usuario y color de acento a cada captura."
+          }
+        }
+      }
+    },
+    "Export one capture to every platform size in a single pass." : {
+      "comment" : "CS-088: PRO paywall blurb (multi-size export).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export one capture to every platform size in a single pass."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporta una captura a todos los tamaños de plataforma de una sola pasada."
+          }
+        }
+      }
+    },
+    "Unlock the vitrine command line, Shortcuts, and folder batch rendering." : {
+      "comment" : "CS-088: PRO paywall blurb (automation).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock the vitrine command line, Shortcuts, and folder batch rendering."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquea la línea de comandos vitrine, Atajos y el render por lotes de carpetas."
+          }
+        }
+      }
+    },
+    "Not now" : {
+      "comment" : "CS-091: paywall dismiss.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not now"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora no"
+          }
+        }
+      }
+    },
+    "One-time purchase. The free version keeps every feature it has today." : {
+      "comment" : "CS-091: paywall footnote.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One-time purchase. The free version keeps every feature it has today."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compra única. La versión gratis conserva todas sus funciones actuales."
+          }
+        }
+      }
+    },
+    "Enter your license key" : {
+      "comment" : "CS-091: paywall license field (direct-download).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter your license key"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingresa tu clave de licencia"
+          }
+        }
+      }
+    },
+    "Activate" : {
+      "comment" : "CS-091: paywall activate button.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activate"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activar"
+          }
+        }
+      }
+    },
+    "That license key couldn't be activated. Check it and try again." : {
+      "comment" : "CS-091: paywall activation failure.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That license key couldn't be activated. Check it and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo activar esa clave de licencia. Revísala e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Get Vitrine PRO" : {
+      "comment" : "CS-091: paywall purchase button (App Store).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get Vitrine PRO"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obtener Vitrine PRO"
+          }
+        }
+      }
+    },
+    "Restore Purchases" : {
+      "comment" : "CS-091: paywall restore button (App Store).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore Purchases"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar compras"
+          }
+        }
+      }
+    },
+    "PRO feature" : {
+      "comment" : "CS-091: PRO badge accessibility label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PRO feature"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Función PRO"
+          }
+        }
+      }
+    },
+    "Apply to captures" : {
+      "comment" : "CS-092: Brand Kit enable toggle.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply to captures"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar a las capturas"
+          }
+        }
+      }
+    },
+    "Adds your mark to every exported image" : {
+      "comment" : "CS-092: Brand Kit toggle caption.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds your mark to every exported image"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade tu marca a cada imagen exportada"
+          }
+        }
+      }
+    },
+    "Logo" : {
+      "comment" : "CS-092: Brand Kit logo row label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logo"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logo"
+          }
+        }
+      }
+    },
+    "Shown small in the chosen corner" : {
+      "comment" : "CS-092: Brand Kit logo caption.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shown small in the chosen corner"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se muestra pequeño en la esquina elegida"
+          }
+        }
+      }
+    },
+    "Handle" : {
+      "comment" : "CS-092: Brand Kit handle field label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Handle"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuario"
+          }
+        }
+      }
+    },
+    "Accent" : {
+      "comment" : "CS-092: Brand Kit accent color label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accent"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acento"
+          }
+        }
+      }
+    },
+    "Placement" : {
+      "comment" : "CS-092: Brand Kit watermark placement label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Placement"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posición"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "comment" : "CS-092: Remove the brand-kit logo.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar"
+          }
+        }
+      }
+    },
+    "Choose…" : {
+      "comment" : "CS-092: Choose a brand-kit logo file.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir…"
+          }
+        }
+      }
+    },
+    "Replace…" : {
+      "comment" : "CS-092: Replace the brand-kit logo file.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reemplazar…"
+          }
+        }
+      }
+    },
+    "Unlock Vitrine PRO" : {
+      "comment" : "CS-092: Brand Kit upsell button.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock Vitrine PRO"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquear Vitrine PRO"
+          }
+        }
+      }
+    },
+    "Choose a logo image for your brand kit." : {
+      "comment" : "CS-092: Logo open-panel message.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a logo image for your brand kit."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una imagen de logo para tu Brand Kit."
+          }
+        }
+      }
+    },
+    "Choose" : {
+      "comment" : "CS-092: Logo open-panel prompt.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir"
+          }
+        }
+      }
+    },
+    "Bottom right" : {
+      "comment" : "CS-092: Watermark placement option.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bottom right"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abajo a la derecha"
+          }
+        }
+      }
+    },
+    "Bottom left" : {
+      "comment" : "CS-092: Watermark placement option.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bottom left"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abajo a la izquierda"
+          }
+        }
+      }
+    },
+    "Top right" : {
+      "comment" : "CS-092: Watermark placement option.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Top right"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arriba a la derecha"
+          }
+        }
+      }
+    },
+    "Top left" : {
+      "comment" : "CS-092: Watermark placement option.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Top left"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arriba a la izquierda"
+          }
+        }
+      }
+    },
+    "Use Brand Kit" : {
+      "comment" : "CS-092: Social-card footer brand-kit action.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Brand Kit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar Brand Kit"
+          }
+        }
+      }
+    },
+    "Fill the footer from your Brand Kit" : {
+      "comment" : "CS-092: Social-card brand-kit action help.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fill the footer from your Brand Kit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rellena el pie con tu Brand Kit"
+          }
+        }
+      }
+    },
+    "Export sizes" : {
+      "comment" : "CS-093: Multi-size export sheet/title.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export sizes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar tamaños"
+          }
+        }
+      }
+    },
+    "Write one image per platform size into a folder." : {
+      "comment" : "CS-093: Multi-size export subtitle.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write one image per platform size into a folder."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribe una imagen por cada tamaño de plataforma en una carpeta."
+          }
+        }
+      }
+    },
+    "Select all" : {
+      "comment" : "CS-093: Select every preset.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select all"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleccionar todo"
+          }
+        }
+      }
+    },
+    "Select none" : {
+      "comment" : "CS-093: Deselect every preset.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select none"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No seleccionar ninguno"
+          }
+        }
+      }
+    },
+    "Choose a folder for the exported images." : {
+      "comment" : "CS-093: Folder open-panel message.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a folder for the exported images."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una carpeta para las imágenes exportadas."
+          }
+        }
+      }
+    },
+    "Some images couldn't be written. Check the folder and try again." : {
+      "comment" : "CS-093: Multi-size export failure note.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some images couldn't be written. Check the folder and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron escribir algunas imágenes. Revisa la carpeta e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Export this snapshot to several platform sizes at once" : {
+      "comment" : "CS-093: Multi-size export toolbar help.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export this snapshot to several platform sizes at once"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporta esta captura a varios tamaños de plataforma a la vez"
+          }
+        }
+      }
+    },
+    "The purchase didn't complete. Please try again." : {
+      "comment" : "CS-089: paywall message when a StoreKit purchase fails.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The purchase didn't complete. Please try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La compra no se completó. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Tints the mark's text" : {
+      "comment" : "CS-092: Brand Kit accent caption.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tints the mark's text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiñe el texto de la marca"
+          }
+        }
+      }
+    },
+    "Couldn't load that image" : {
+      "comment" : "CS-092: Brand Kit logo import error.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load that image"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar esa imagen"
           }
         }
       }

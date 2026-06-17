@@ -144,6 +144,28 @@ struct URLValidationTests {
         }
     }
 
+    @Test func resolverEquivalentLocalhostSpellingsAreRejectedByHostGuard() {
+        // macOS accepts several IPv4 literal spellings that are not four dotted
+        // decimal octets. The SSRF guard must reject them before WebKit hands them to
+        // the resolver.
+        for host in [
+            "localhost.",
+            "service.local.",
+            "127.1",
+            "0177.1",
+            "0x7f000001",
+            "2130706433",
+            "::ffff:127.0.0.1",
+            "::ffff:127.1",
+            "fe90::1",
+            "fd00::1",
+        ] {
+            #expect(
+                WebSnapshotConfig.isPrivateLocalhost(host: host),
+                "\(host) must be refused as local/private")
+        }
+    }
+
     @Test func publicHostsThatMerelyContainLoopbackTextAreAllowed() throws {
         // The localhost guard must not over-match: a real public host whose name
         // merely contains "localhost" or starts past the loopback block still loads.
@@ -151,6 +173,7 @@ struct URLValidationTests {
         #expect(try WebSnapshotConfig.validate(captureURL: lookalike) == lookalike)
         let notLoopback = try #require(URL(string: "https://128.0.0.1/page"))
         #expect(try WebSnapshotConfig.validate(captureURL: notLoopback) == notLoopback)
+        #expect(!WebSnapshotConfig.isPrivateLocalhost(host: "1.2.3"))
     }
 
     @Test func validatingTextTrimsSurroundingWhitespace() throws {

@@ -67,7 +67,17 @@ final class CodeImageService: NSObject {
     /// `.rendered` after both an `NSImage` (for image wells) and explicit PNG bytes
     /// (for apps that read raw PNG) are placed on the pasteboard.
     @discardableResult
-    func process(pasteboard: NSPasteboard) -> Outcome {
+    func process(
+        pasteboard: NSPasteboard,
+        isProUnlocked: Bool = Entitlements.shared.isUnlocked(.automation)
+    ) -> Outcome {
+        // Automation requires PRO (CS-094): the Services menu is an automation surface,
+        // so a free build reports the PRO requirement and renders nothing. The check is
+        // injectable so the gate is unit-testable; production calls use the default.
+        guard isProUnlocked else {
+            Log.capture.info("Services: automation locked by the PRO gate")
+            return .failed(message: ProFeature.automation.paywallBlurb)
+        }
         // Read the selected text the host app placed on the pasteboard. Both modern
         // (`.string`) and any plain-text representation are covered by `.string`.
         guard let text = pasteboard.string(forType: .string),
@@ -83,7 +93,9 @@ final class CodeImageService: NSObject {
         let request = SnapshotRenderRequest(
             code: interpreted.code,
             language: interpreted.language,
-            baseStyle: AppSettings.shared.config)
+            // `exportConfig`, not `config`, so a PRO user's enabled Brand Kit watermark
+            // marks the Services output too (CS-092). Free/disabled → no watermark.
+            baseStyle: AppSettings.shared.exportConfig)
 
         let image: NSImage
         do {

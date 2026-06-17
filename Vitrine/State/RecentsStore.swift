@@ -67,6 +67,9 @@ final class RecentsStore: ObservableObject {
             captures = Array(captures.prefix(Self.limit))
         }
         persist()
+        // The thumbnail is rendered synchronously so the gallery shows it the moment a
+        // capture lands (the UX + test contract). It is small (320×200 @ 1×), and audit
+        // P1-Perf-2 already removed the redundant full-bitmap color copy from this path.
         cacheThumbnail(for: capture)
         thumbnails.prune(keeping: Set(captures.map(\.id)))
     }

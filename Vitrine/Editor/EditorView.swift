@@ -30,6 +30,12 @@ struct EditorView: View {
     @ObservedObject private var presets = PresetStore.shared
     @ObservedObject private var themes = CustomThemeStore.shared
 
+    /// The PRO brand kit and entitlement, observed so the live preview shows (or
+    /// drops) the watermark the moment the kit, the "apply to captures" switch, or
+    /// the PRO state changes anywhere in the app (CS-092).
+    @ObservedObject private var brandKit = BrandKitStore.shared
+    @ObservedObject private var entitlements = Entitlements.shared
+
     /// True while a drag is hovering the editor, used to draw the drop affordance
     /// (CS-028).
     @State private var isDropTargeted = false
@@ -74,6 +80,18 @@ struct EditorView: View {
     /// This editor's own `NSWindow`, captured via `WindowAccessor`, so actions like
     /// close-after-copy target it directly instead of guessing at `keyWindow`.
     @State private var editorWindow: NSWindow?
+
+    /// Which PRO multi-size sheet is up — the size picker when unlocked, the paywall
+    /// when locked — or nil. A single `.sheet(item:)` drives both so they can never
+    /// collide: two sibling `.sheet(isPresented:)` on one view can silently drop one
+    /// (CS-093).
+    @State private var multiSizeSheet: MultiSizeSheet?
+
+    /// The two mutually-exclusive multi-size sheets.
+    private enum MultiSizeSheet: String, Identifiable {
+        case export, paywall
+        var id: String { rawValue }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -215,13 +233,14 @@ struct EditorView: View {
                 systemImage: "square.and.arrow.down",
                 action: {
                     ExportManager.saveToFile(
-                        settings.config, scale: CGFloat(settings.effectiveExportScale),
+                        settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
                         format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
                         profile: settings.colorProfile)
                 })
             iconButton(
                 .shareImage, "share-button", help: "Share the rendered image",
                 systemImage: "square.and.arrow.up", action: share)
+            multiSizeExportButton
             savePresetButton
             makeDefaultButton
 
@@ -268,7 +287,7 @@ struct EditorView: View {
     /// once can keep it open from Settings.
     private func copyImage() {
         ExportManager.copyToPasteboard(
-            settings.config, scale: CGFloat(settings.effectiveExportScale),
+            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
             richText: settings.richClipboard)
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
@@ -323,6 +342,33 @@ struct EditorView: View {
         .accessibilityLabel("More copy options")
         .accessibilityIdentifier("copy-options-menu")
         .disabled(settings.config.code.isEmpty)
+    }
+
+    /// The PRO multi-size export entry (CS-093): when unlocked it opens the size
+    /// picker; when locked it shows a discreet "PRO" badge and opens the paywall
+    /// instead. Both sheets are anchored here; disabled with the rest of the toolbar
+    /// when there is no code to render.
+    private var multiSizeExportButton: some View {
+        GlassIconButton(systemImage: "square.grid.2x2") {
+            multiSizeSheet = entitlements.isUnlocked(.multiSizeExport) ? .export : .paywall
+        }
+        .overlay(alignment: .topTrailing) {
+            if !entitlements.isUnlocked(.multiSizeExport) { ProBadge().accessibilityHidden(true) }
+        }
+        .help("Export this snapshot to several platform sizes at once")
+        .disabled(settings.config.code.isEmpty)
+        .accessibilityLabel(Text("Export sizes"))
+        .accessibilityIdentifier("export-sizes-button")
+        .sheet(item: $multiSizeSheet) { sheet in
+            switch sheet {
+            case .export:
+                MultiSizeExportView(
+                    baseConfig: settings.exportConfig, format: settings.exportFormat,
+                    profile: settings.colorProfile)
+            case .paywall:
+                PaywallSheet(feature: .multiSizeExport)
+            }
+        }
     }
 
     /// The star: applies a saved style preset or saves the current style as a
@@ -713,7 +759,12 @@ struct EditorView: View {
     /// editor state shows a sample"). The substitution is preview-only and never
     /// mutates the live document (see ``EditorPreview``).
     private var previewConfig: SnapshotConfig {
-        EditorPreview.configForPreview(settings.config)
+        var config = EditorPreview.configForPreview(settings.config)
+        // WYSIWYG: the preview shows the same brand watermark the export will apply
+        // (CS-092), resolved from the observed brand kit + entitlement so it tracks
+        // changes live. Off unless the user enabled it and PRO is unlocked.
+        config.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
+        return config
     }
 
     /// A subtle border + label shown while a drag hovers the editor, so the editor
@@ -887,7 +938,7 @@ struct EditorView: View {
     private func share() {
         guard
             let image = ExportManager.renderNSImage(
-                settings.config, scale: CGFloat(settings.effectiveExportScale),
+                settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
                 fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile),
             let view = NSApp.keyWindow?.contentView
         else { return }
@@ -898,7 +949,7 @@ struct EditorView: View {
     /// URI string (CS-054), honoring the active preset's framing.
     private func copyDataURI() {
         RichPasteboard.copyDataURI(
-            for: settings.config, scale: CGFloat(settings.effectiveExportScale),
+            for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile)
     }
 

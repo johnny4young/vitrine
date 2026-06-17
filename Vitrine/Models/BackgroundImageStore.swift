@@ -105,6 +105,12 @@ struct BackgroundImageStore {
         guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
             throw ImportError.downloadFailed
         }
+        // Refuse internal/loopback/link-local hosts as an image source — the same
+        // private-host SSRF defense URL capture uses (audit P1-Security-3). The final URL
+        // is re-checked after the request in case a public host redirects to a private one.
+        if let host = url.host, WebSnapshotConfig.isPrivateLocalhost(host: host) {
+            throw ImportError.downloadFailed
+        }
 
         let data: Data
         let response: URLResponse
@@ -114,6 +120,14 @@ struct BackgroundImageStore {
             throw ImportError.downloadFailed
         }
 
+        // A public host can 30x-redirect to a private one. Without a session delegate we
+        // can't cancel mid-flight, but discarding the response here prevents an internal
+        // resource from ever being stored as a background.
+        if let finalHost = (response.url ?? url).host,
+            WebSnapshotConfig.isPrivateLocalhost(host: finalHost)
+        {
+            throw ImportError.downloadFailed
+        }
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw ImportError.downloadFailed
         }
@@ -153,10 +167,14 @@ struct BackgroundImageStore {
     /// missing or the name is unsafe — the signal callers use to fall back to a
     /// safe default background (CS-051 graceful degradation).
     func url(for reference: ImageReference) -> URL? {
-        // Reject any name that is not a plain file component (path separators,
-        // `..`) so a hand-edited store cannot escape the backgrounds directory.
+        // Reject any name that is not a plain, visible file component — path separators
+        // (`/` and `\`) and any dot-prefixed name (`.`, `..`, hidden files) — so a
+        // hand-edited or synced store cannot escape the backgrounds directory. Legit
+        // names are content-addressed SHA-256 hex (+ extension), which never start with a
+        // dot or contain a separator.
         let name = reference.fileName
-        guard !name.isEmpty, !name.contains("/"), name != "..", name != "." else { return nil }
+        guard !name.isEmpty, !name.contains("/"), !name.contains("\\"), !name.hasPrefix(".")
+        else { return nil }
         let candidate = directory.appendingPathComponent(name, isDirectory: false)
         guard FileManager.default.fileExists(atPath: candidate.path) else { return nil }
         return candidate

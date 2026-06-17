@@ -17,9 +17,18 @@ struct SnapshotCanvas: View {
     var fixedSize: CGSize?
 
     var body: some View {
-        // The default (no annotations) path is left byte-for-byte unchanged so every
-        // golden render is unaffected; annotations only restructure the canvas when
-        // the user has actually added one (CS-083).
+        // The optional brand watermark composites onto the finished canvas (CS-092).
+        // `WatermarkOverlay` is a no-op when `config.watermark` is nil — it returns the
+        // content unchanged — so the default render and every golden stay byte-for-byte
+        // identical; only an explicitly resolved watermark adds the corner mark.
+        canvasContent.modifier(WatermarkOverlay(watermark: config.watermark))
+    }
+
+    /// The canvas itself, before any watermark. The default (no annotations) path is
+    /// left byte-for-byte unchanged so every golden render is unaffected; annotations
+    /// only restructure the canvas when the user has actually added one (CS-083).
+    @ViewBuilder
+    private var canvasContent: some View {
         if config.annotations.isEmpty {
             plainCanvas
         } else {

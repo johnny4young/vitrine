@@ -19,11 +19,20 @@ import Foundation
 /// model exactly as the GUI does, keeping the produced image identical.
 @MainActor
 struct CLIOptions: Equatable {
-    /// The source file to read the code from. The language is inferred from its
-    /// extension (falling back to content detection), matching the editor's
-    /// drag-and-drop loader (CS-027/028).
+    /// Whether this is a single-file `render` or a folder `batch` (CS-094). For
+    /// `batch`, `inputPath`/`outputPath` are directories rather than files; every
+    /// style flag still applies per rendered file.
+    var command: Command = .render
+
+    /// The CLI subcommand. `render` writes one image; `batch` renders every text file
+    /// in a folder into an output folder (CS-094).
+    enum Command: String, Equatable, Sendable { case render, batch }
+
+    /// The source file to read the code from (a folder for `batch`). The language is
+    /// inferred from its extension (falling back to content detection), matching the
+    /// editor's drag-and-drop loader (CS-027/028).
     var inputPath: String
-    /// Where the rendered image is written.
+    /// Where the rendered image is written (an output folder for `batch`).
     var outputPath: String
 
     /// An explicit syntax theme id (e.g. `dracula`), or `nil` to use the default

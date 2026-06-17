@@ -1,6 +1,7 @@
 import AppKit
 import KeyboardShortcuts
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The destination preset as the redesign's segmented pill row: "Custom"
 /// leading, then the presets under the handoff's short labels (CS-020). The
@@ -61,6 +62,7 @@ struct DestinationSegmentedPicker: View {
 struct GeneralSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var presets: PresetStore
+    @ObservedObject var brandKit: BrandKitStore = .shared
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var showResetConfirmation = false
 
@@ -186,9 +188,10 @@ struct GeneralSettingsView: View {
             Button("Reset", role: .destructive) {
                 settings.resetToDefaults()
                 // `resetToDefaults()` clears the persisted preset blob too (its key
-                // is in `SettingsCodec.Keys.all`); reload so this store's in-memory
-                // copy reflects the cleared state.
+                // is in `SettingsCodec.Keys.all`); reload stores with in-memory
+                // caches so the UI reflects the cleared state immediately.
                 presets.reload()
+                brandKit.reload()
                 launchAtLogin = LaunchAtLogin.isEnabled
             }
             Button("Cancel", role: .cancel) {}
@@ -582,6 +585,12 @@ struct StyleSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var themes: CustomThemeStore
 
+    /// The PRO brand kit + entitlement (CS-092): observed so the Brand Kit sub-tab's
+    /// controls and the live preview track changes, and so the locked/unlocked split
+    /// re-renders the instant PRO unlocks.
+    @ObservedObject private var brandKit = BrandKitStore.shared
+    @ObservedObject private var entitlements = Entitlements.shared
+
     /// The active sub-tab, remembered across openings (and seedable by the
     /// design-audit tooling) through the app's defaults store.
     @AppStorage("settings.styleSubTab", store: AppDefaults.current)
@@ -589,7 +598,7 @@ struct StyleSettingsView: View {
 
     /// The Style pane's segmented sub-tabs.
     private enum StyleSubTab: String, CaseIterable {
-        case appearance, linesAndHeader, background
+        case appearance, linesAndHeader, background, brandKit
     }
 
     var body: some View {
@@ -604,6 +613,8 @@ struct StyleSettingsView: View {
                         case .appearance: appearanceGroups
                         case .linesAndHeader: linesAndHeaderGroups
                         case .background: backgroundGroup
+                        case .brandKit:
+                            BrandKitSettingsSection(brandKit: brandKit, entitlements: entitlements)
                         }
                     }
                     .padding(.horizontal, 26)
@@ -626,11 +637,13 @@ struct StyleSettingsView: View {
                     (StyleSubTab.appearance, Text("Appearance")),
                     (.linesAndHeader, Text("Lines & header")),
                     (.background, Text("Background")),
+                    (.brandKit, Text("Brand Kit")),
                 ],
                 selection: $subTab,
                 fillsWidth: true,
                 optionIdentifiers: [
                     "style-subtab-appearance", "style-subtab-lines", "style-subtab-background",
+                    "style-subtab-brandkit",
                 ]
             )
         }
@@ -860,6 +873,8 @@ struct StyleSettingsView: View {
         if config.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             config.code = "func greet(_ name: String) {\n    print(\"Hello, \\(name)!\")\n}"
         }
+        // Show the brand watermark live while configuring the kit (CS-092).
+        config.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
         return config
     }
 
@@ -1477,9 +1492,9 @@ struct WebCaptureConsentRow: View {
             Text("Direct-download only")
                 .font(.system(size: VitrineTokens.FontSize.subhead))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
-        } else if settings.urlCaptureConsentGiven {
+        } else if settings.webCapture.consentGiven {
             Button("Revoke") {
-                settings.urlCaptureConsentGiven = false
+                settings.webCapture.consentGiven = false
             }
             .buttonStyle(.plain)
             .foregroundStyle(VitrineTokens.Accent.base)
@@ -1504,24 +1519,23 @@ struct WebCaptureControls: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
-        TokenRow(label: Text("Viewport")) {
-            TokenSegmentedPicker(
-                options: WebSnapshotConfig.ViewportPreset.Kind.allCases.map {
-                    ($0, viewportSegmentLabel(for: $0))
-                },
-                selection: $settings.webViewportKind
-            )
-            .accessibilityLabel("Viewport")
+        TokenRow(label: Text("Viewports"), caption: Text(viewportsFooter)) {
+            HStack(spacing: 6) {
+                ForEach(WebSnapshotConfig.ViewportPreset.Kind.allCases, id: \.self) { kind in
+                    viewportChip(kind)
+                }
+            }
+            .accessibilityLabel("Viewports")
             .accessibilityIdentifier("web-viewport-picker")
         }
 
-        if settings.webViewportKind == .custom {
+        if settings.webCapture.viewports.contains(.custom) {
             TokenRow(label: Text("Width")) {
                 Stepper(
-                    value: $settings.webCustomViewportWidth,
+                    value: $settings.webCapture.customViewportWidth,
                     in: customDimensionRange, step: 10
                 ) {
-                    Text(verbatim: "\(settings.webCustomViewportWidth) pt")
+                    Text(verbatim: "\(settings.webCapture.customViewportWidth) pt")
                         .font(.system(size: VitrineTokens.FontSize.subhead))
                         .foregroundStyle(VitrineTokens.Text.secondary)
                 }
@@ -1531,10 +1545,10 @@ struct WebCaptureControls: View {
 
             TokenRow(label: Text("Height")) {
                 Stepper(
-                    value: $settings.webCustomViewportHeight,
+                    value: $settings.webCapture.customViewportHeight,
                     in: customDimensionRange, step: 10
                 ) {
-                    Text(verbatim: "\(settings.webCustomViewportHeight) pt")
+                    Text(verbatim: "\(settings.webCapture.customViewportHeight) pt")
                         .font(.system(size: VitrineTokens.FontSize.subhead))
                         .foregroundStyle(VitrineTokens.Text.secondary)
                 }
@@ -1549,7 +1563,7 @@ struct WebCaptureControls: View {
                     (WebSnapshotConfig.CaptureMode.visibleViewport, Text("Visible")),
                     (.fullPage, Text("Full page")),
                 ],
-                selection: $settings.webCaptureMode
+                selection: $settings.webCapture.captureMode
             )
             .accessibilityLabel("Capture")
             .accessibilityIdentifier("web-capture-mode-picker")
@@ -1562,15 +1576,15 @@ struct WebCaptureControls: View {
                     (.networkQuiet, Text("Idle")),
                     (.fixedDelay, Text("Delay")),
                 ],
-                selection: $settings.webWaitKind
+                selection: $settings.webCapture.waitKind
             )
             .accessibilityLabel("Wait until")
             .accessibilityIdentifier("web-wait-strategy-picker")
         }
 
-        if settings.webWaitKind != .domContentLoaded {
+        if settings.webCapture.waitKind != .domContentLoaded {
             TokenRow(label: Text("Extra wait")) {
-                Stepper(value: $settings.webWaitSeconds, in: waitSecondsRange, step: 1) {
+                Stepper(value: $settings.webCapture.waitSeconds, in: waitSecondsRange, step: 1) {
                     Text(waitSecondsLabel)
                         .font(.system(size: VitrineTokens.FontSize.subhead))
                         .foregroundStyle(VitrineTokens.Text.secondary)
@@ -1594,19 +1608,70 @@ struct WebCaptureControls: View {
         }
     }
 
+    /// A selectable chip for one viewport kind in the multi-capture set (CS-044).
+    /// Toggling adds/removes the kind in `settings.webCapture.viewports`; the last selected
+    /// kind cannot be removed, so a capture always has at least one size.
+    private func viewportChip(_ kind: WebSnapshotConfig.ViewportPreset.Kind) -> some View {
+        let isOn = settings.webCapture.viewports.contains(kind)
+        return Button {
+            toggleViewport(kind)
+        } label: {
+            viewportSegmentLabel(for: kind)
+                .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+                .foregroundStyle(
+                    isOn ? VitrineTokens.Accent.contrast : VitrineTokens.Text.secondary
+                )
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(isOn ? VitrineTokens.Accent.base : Color.clear))
+                .overlay(
+                    Capsule().strokeBorder(
+                        isOn ? Color.clear : VitrineTokens.Line.border, lineWidth: 1)
+                )
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(viewportSegmentLabel(for: kind))
+        .accessibilityAddTraits(isOn ? [.isSelected] : [])
+        .accessibilityIdentifier("web-viewport-chip-\(kind.rawValue)")
+    }
+
+    /// Toggles `kind` in the multi-capture viewport set, keeping it ordered and never
+    /// empty (the last selected kind stays), and syncing the single `webCapture.viewportKind`
+    /// to the primary selection so the back-compat single-viewport path stays valid.
+    private func toggleViewport(_ kind: WebSnapshotConfig.ViewportPreset.Kind) {
+        var set = settings.webCapture.viewports
+        if let index = set.firstIndex(of: kind) {
+            guard set.count > 1 else { return }
+            set.remove(at: index)
+        } else {
+            set.append(kind)
+        }
+        settings.webCapture.viewports = set
+        settings.webCapture.viewportKind = set.first ?? .openGraph
+    }
+
+    /// The footer under the viewport chips: a multi-selection captures every chosen
+    /// size in one pass; a single selection behaves like the original single capture.
+    private var viewportsFooter: String {
+        settings.webCapture.viewports.count > 1
+            ? String(localized: "Captures every selected size in one pass.")
+            : String(localized: "Pick one or more sizes to capture.")
+    }
+
     private var waitSecondsLabel: String {
         // One interpolated key whose singular/plural is chosen by the catalog's
         // plural variations (CS-047), rather than a Swift `== 1` branch — so every
         // locale's own plural categories are honored, not just one/other.
-        String(localized: "\(settings.webWaitSeconds) seconds")
+        String(localized: "\(settings.webCapture.waitSeconds) seconds")
     }
 
     private var captureFooter: String {
-        switch settings.webCaptureMode {
+        switch settings.webCapture.captureMode {
         case .visibleViewport:
             String(
                 localized:
-                    "Captures exactly the viewport size. URL capture loads the page locally in WebKit and arrives in Product Phase 2."
+                    "Captures exactly the viewport size. URL capture loads the page locally in WebKit on this Mac."
             )
         case .fullPage:
             String(
@@ -1617,7 +1682,7 @@ struct WebCaptureControls: View {
     }
 
     private var waitFooter: String {
-        switch settings.webWaitKind {
+        switch settings.webCapture.waitKind {
         case .domContentLoaded:
             String(localized: "Snapshots as soon as the page finishes loading.")
         case .fixedDelay:

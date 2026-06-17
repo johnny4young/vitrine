@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Everything that defines the final image. This is the single source of truth
@@ -58,6 +59,16 @@ struct SnapshotConfig: Equatable {
     /// is unchanged until the user adds context.
     var metadata = SnapshotMetadata()
 
+    /// An optional brand watermark composited onto the exported image — the PRO
+    /// Brand Kit (CS-092). `nil` by default, so the default render and every golden
+    /// are byte-for-byte unchanged; the canvas only adds the overlay when a
+    /// watermark is present. It is *derived* presentation, never part of the saved
+    /// style: it is resolved from the app-global brand kit at the export/preview
+    /// seam (`AppSettings.exportConfig`) and is never persisted into the document or
+    /// fed to the golden suite, exactly like `annotations` leaves the default path
+    /// untouched.
+    var watermark: Watermark?
+
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 
@@ -66,6 +77,84 @@ struct SnapshotConfig: Equatable {
     /// as a single `Text`, so the default render is byte-for-byte unchanged (CS-021).
     var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || diffDecorations
+    }
+}
+
+/// A brand watermark composited onto an exported snapshot — the render-ready form
+/// of the PRO Brand Kit (CS-092).
+///
+/// It is deliberately **self-contained**: it carries the resolved logo bytes plus
+/// an optional predecoded image (not a store reference) and a plain tint, so
+/// `SnapshotCanvas` draws it deterministically with no dependency on the brand-kit
+/// store, `SnapshotConfig` stays `Equatable`, and the value renders identically on
+/// any machine. The store (`BrandKitStore`) is what turns the user's brand kit into
+/// this value; the render core only ever consumes it.
+struct Watermark: Equatable {
+    /// The handle/project line, e.g. `@jane · vitrine`. May be empty when the user
+    /// supplied only a logo.
+    var text: String
+
+    /// The brand logo's image bytes (any `NSImage`-decodable format), or `nil` for a
+    /// text-only mark. Carried inline so the canvas needs no file/store access.
+    var logoImageData: Data?
+
+    /// The predecoded logo image, when the brand-kit store could resolve it. This
+    /// keeps `WatermarkBadge` from re-decoding `logoImageData` on every SwiftUI body
+    /// pass; `logoImageData` remains the portable fallback for tests and hand-built
+    /// values.
+    var logoImage: NSImage?
+
+    /// A cheap, stable identity for the logo (its content-addressed file name) used by
+    /// `==` so a SwiftUI diff of `SnapshotConfig` doesn't byte-compare the whole logo `Data`
+    /// on every render (audit P1-Perf-4). `nil` for a text-only or hand-built mark, where
+    /// `==` falls back to the bytes.
+    var logoIdentity: String?
+
+    /// The accent tint for the text, or `nil` to use the legible default.
+    var tint: RGBAColor?
+
+    /// Which corner the mark sits in.
+    var placement: Placement = .bottomTrailing
+
+    /// The corner a watermark is anchored to.
+    enum Placement: String, CaseIterable, Codable, Sendable {
+        case bottomTrailing, bottomLeading, topTrailing, topLeading
+
+        /// A human-readable name for the picker.
+        var label: String {
+            switch self {
+            case .bottomTrailing: String(localized: "Bottom right")
+            case .bottomLeading: String(localized: "Bottom left")
+            case .topTrailing: String(localized: "Top right")
+            case .topLeading: String(localized: "Top left")
+            }
+        }
+
+        /// The SwiftUI alignment used to pin the mark to its corner.
+        var alignment: Alignment {
+            switch self {
+            case .bottomTrailing: .bottomTrailing
+            case .bottomLeading: .bottomLeading
+            case .topTrailing: .topTrailing
+            case .topLeading: .topLeading
+            }
+        }
+    }
+
+    /// Whether the mark has anything to draw — at least a logo or a non-empty line.
+    var hasContent: Bool { logoImageData != nil || !text.isEmpty }
+
+    /// Equality compares the logo by its cheap content identity rather than its bytes, so a
+    /// SwiftUI diff of `SnapshotConfig` stays O(1) on every render (audit P1-Perf-4). When
+    /// neither side has an identity (a text-only or hand-built mark) it falls back to the
+    /// bytes, so correctness is unchanged.
+    static func == (lhs: Watermark, rhs: Watermark) -> Bool {
+        guard lhs.text == rhs.text, lhs.tint == rhs.tint, lhs.placement == rhs.placement
+        else { return false }
+        if lhs.logoIdentity != nil || rhs.logoIdentity != nil {
+            return lhs.logoIdentity == rhs.logoIdentity
+        }
+        return lhs.logoImageData == rhs.logoImageData
     }
 }
 

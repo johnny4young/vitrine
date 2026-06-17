@@ -30,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Resolve the PRO entitlement at launch and — on the App Store build — observe
+        // out-of-band StoreKit updates, so a refund or a purchase made on another device
+        // re-locks/unlocks PRO without a relaunch (CS-089).
+        Entitlements.shared.startLiveUpdates()
+
         // First-run surfaces on a normal launch (CS-035/CS-049): onboarding owns the
         // first launch; once it has been seen, What's New surfaces on a version
         // upgrade — never both. Skipped when a dev launch hook already opened a window
