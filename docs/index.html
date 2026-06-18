@@ -142,6 +142,16 @@
   footer .note { width: 100%; color: var(--faint); font-size: 13.5px; }
   .pill { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 5px 13px; }
   .pill i { color: var(--teal); }
+
+  .pro-card { background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 28px; margin-top: 30px; max-width: 640px; box-shadow: 0 30px 80px -36px rgba(124, 92, 255, 0.6); }
+  .pro-price { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .pro-now { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; }
+  .pro-was { font-size: 20px; color: var(--faint); text-decoration: line-through; }
+  .pro-badge { font-size: 12.5px; font-weight: 600; color: var(--teal); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; }
+  .pro-note { color: var(--muted); font-size: 14.5px; margin: 10px 0 0; }
+  .pro-list { list-style: none; padding: 0; margin: 18px 0 22px; display: grid; gap: 10px; }
+  .pro-list li { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 15px; }
+  .pro-list i { color: var(--teal); font-size: 18px; }
 </style>
 </head>
 <body>
@@ -153,6 +163,7 @@
       <a href="#features">Features</a>
       <a href="#gallery">Gallery</a>
       <a href="#whats-new">Changelog</a>
+      <a href="#pro">Pricing</a>
       <a href="https://github.com/johnny4young/vitrine">GitHub</a>
       <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><i class="ti ti-download" aria-hidden="true"></i>Download</a>
     </div>
@@ -265,6 +276,32 @@
     <p class="lead">Pulled live from the project's <code>CHANGELOG.md</code> — always current, nothing to maintain.</p>
     <div class="changelog" id="changelog-body">
       <p class="muted">Loading the latest release notes…</p>
+    </div>
+  </div>
+</section>
+
+<section id="pro">
+  <div class="wrap">
+    <span class="eyebrow">Vitrine PRO</span>
+    <h2 class="title">Go PRO when you need more.</h2>
+    <p class="lead">Vitrine is free and open source, forever. PRO is an optional <strong>one-time</strong> license — no subscription — that unlocks a few power features. The free tier loses nothing: no watermark, no resolution cap, no nags.</p>
+    <div class="pro-card">
+      <div class="pro-price">
+        <span class="pro-now">$19.99</span>
+        <span class="pro-was">$25</span>
+        <span class="pro-badge">Early bird · 2026 only</span>
+      </div>
+      <p class="pro-note">Regular price is <strong>$25</strong>. Through 2026 it's <strong>$19.99</strong> as an early-bird launch price — no code needed.</p>
+      <ul class="pro-list">
+        <li><i class="ti ti-check" aria-hidden="true"></i> Brand Kit — your logo, handle, and accent as a watermark on every export</li>
+        <li><i class="ti ti-check" aria-hidden="true"></i> Multi-size one-pass export — every platform size into a folder in one go</li>
+        <li><i class="ti ti-check" aria-hidden="true"></i> Automation — the <code>vitrine</code> CLI, Shortcuts, and folder batch rendering</li>
+      </ul>
+      <div class="cta" style="justify-content:flex-start">
+        <a class="btn btn-primary" href="https://vitrine.lemonsqueezy.com/checkout/buy/314e7d43-efa1-41be-a319-7474628e5185"><i class="ti ti-crown" aria-hidden="true"></i>Get Vitrine PRO</a>
+        <a class="btn btn-ghost" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><i class="ti ti-download" aria-hidden="true"></i>Download free</a>
+      </div>
+      <p class="subtle">Pay once, then activate in the app with the license key you receive by email. Works on the direct-download build.</p>
     </div>
   </div>
 </section>
