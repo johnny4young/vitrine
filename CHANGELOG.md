@@ -12,6 +12,8 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-18
+
 ### Added
 
 - **Buy Vitrine PRO.** The paywall on the direct-download build now leads with a
@@ -182,7 +184,10 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/johnny4young/vitrine/compare/v0.8.1...v0.9.0
+[0.8.1]: https://github.com/johnny4young/vitrine/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/johnny4young/vitrine/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/johnny4young/vitrine/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/johnny4young/vitrine/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/johnny4young/vitrine/compare/v0.4.0...v0.5.0
