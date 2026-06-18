@@ -115,7 +115,16 @@ struct PaywallSheet: View {
     @ViewBuilder
     private var unlockControls: some View {
         #if VITRINE_DIRECT_DOWNLOAD
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
+                // The buy path: open the Lemon Squeezy checkout. The license key arrives by
+                // email; pasting it in the field below activates PRO (verified offline after).
+                Link(destination: LemonSqueezyStore.checkoutURL) {
+                    Text("Get Vitrine PRO").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .accessibilityIdentifier("pro-get-license-button")
+
                 TextField("Enter your license key", text: $licenseKey)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("pro-license-field")
@@ -129,7 +138,7 @@ struct PaywallSheet: View {
                 } label: {
                     Text("Activate").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .disabled(working || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityIdentifier("pro-activate-button")
                 .keyboardShortcut(.defaultAction)
