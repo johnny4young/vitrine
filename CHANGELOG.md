@@ -12,6 +12,14 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- **Buy Vitrine PRO.** The paywall on the direct-download build now leads with a
+  "Get Vitrine PRO" button that opens the Lemon Squeezy checkout; the license-key
+  field stays below to activate the key you receive by email. The landing page gains
+  a Pricing section with the regular ($25) and early-bird ($19.99, through 2026)
+  prices and the same checkout link.
+
 ## [0.8.1] - 2026-06-16
 
 ### Changed
