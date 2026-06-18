@@ -205,4 +205,16 @@ import Foundation
             return name.isEmpty ? "Vitrine" : name
         }
     }
+
+    /// The public Lemon Squeezy checkout for Vitrine PRO, opened by the paywall's
+    /// purchase button. Direct-download only; the App Store build unlocks through
+    /// StoreKit instead. The early-bird price is set on the product in Lemon Squeezy
+    /// (no discount code), so the link carries no query parameters.
+    enum LemonSqueezyStore {
+        /// Checkout for the one-time PRO license.
+        static let checkoutURL = URL(
+            string: "https://vitrine.lemonsqueezy.com/checkout/buy/"
+                + "314e7d43-efa1-41be-a319-7474628e5185"
+        )!
+    }
 #endif
