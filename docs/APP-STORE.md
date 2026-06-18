@@ -36,8 +36,8 @@ already-shipping identity of the app, listed here so a submission is reproducibl
 | Bundle identifier | `com.johnny4young.vitrine` | `project.yml` → `PRODUCT_BUNDLE_IDENTIFIER` (the `Info.plist` `CFBundleIdentifier` expands from it). |
 | App name (display) | `Vitrine` | `Info.plist` → `CFBundleDisplayName`; `CFBundleName` expands from `PRODUCT_NAME`. |
 | Primary category | Developer Tools (`public.app-category.developer-tools`) | `Info.plist` → `LSApplicationCategoryType`. |
-| Marketing version | `0.8.1` | `project.yml` → `MARKETING_VERSION` (the `Info.plist` `CFBundleShortVersionString` expands from it). |
-| Build number | `8` | `project.yml` → `CURRENT_PROJECT_VERSION` (the `Info.plist` `CFBundleVersion` expands from it). |
+| Marketing version | `0.9.0` | `project.yml` → `MARKETING_VERSION` (the `Info.plist` `CFBundleShortVersionString` expands from it). |
+| Build number | `9` | `project.yml` → `CURRENT_PROJECT_VERSION` (the `Info.plist` `CFBundleVersion` expands from it). |
 | Copyright | `© 2026 johnny4young. MIT-licensed.` | `Info.plist` → `NSHumanReadableCopyright`. |
 | Minimum macOS | 14.0 (Sonoma) | `project.yml` → `deploymentTarget.macOS`; `Info.plist` `LSMinimumSystemVersion` expands from `MACOSX_DEPLOYMENT_TARGET`. |
 | App icon | `AppIcon` asset set | `project.yml` → `ASSETCATALOG_COMPILER_APPICON_NAME`. |
