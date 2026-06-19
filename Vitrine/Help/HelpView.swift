@@ -68,7 +68,6 @@ struct HelpView: View {
         .frame(width: 520)
         .frame(minHeight: 560)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.base)
         .accessibilityIdentifier("help-view")
     }
 

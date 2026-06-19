@@ -141,7 +141,6 @@ struct EditorView: View {
         .background(WindowAccessor { editorWindow = $0 })
         // The redesign's controls tint with the brand accent regardless of the
         // user's system accent (`--control-on: var(--accent)`).
-        .tint(VitrineTokens.Accent.base)
         .alert("Save Preset", isPresented: $showSavePresetPrompt) {
             TextField("Name", text: $savePresetName)
                 .accessibilityIdentifier("editor-save-preset-name-field")

@@ -21,7 +21,11 @@ struct VitrineApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Vitrine", systemImage: Brand.symbolName) {
+        // The status-bar glyph is the real Vitrine logo (viewfinder + code
+        // chevrons), shipped as a monochrome template image set so macOS tints it
+        // for light/dark bars and selection — not the generic `camera.viewfinder`
+        // SF Symbol. See `assets/brand/vitrine-menubar-*` in the design system.
+        MenuBarExtra("Vitrine", image: "vitrine-menubar") {
             MenuBarContent()
                 .environmentObject(AppSettings.shared)
                 .environmentObject(RecentsStore.shared)
