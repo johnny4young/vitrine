@@ -53,6 +53,26 @@ struct AnnotationTests {
             moved.fingerprint != a.fingerprint, "moving an endpoint must change the fingerprint")
     }
 
+    // MARK: - Content lifecycle
+
+    @Test func clearContentMarksDropsAnnotationsAndHighlightsButKeepsStyle() {
+        var config = SnapshotConfig()
+        config.annotations = [Annotation(kind: .text, start: .zero, end: CGPoint(x: 1, y: 1))]
+        config.highlightedLineRanges = [3...5]
+        // Style + header that should survive a new capture (reusable, not content-bound).
+        config.fontSize = 18
+        config.metadata.title = "PR Review"
+        let keptTheme = config.theme
+
+        config.clearContentMarks()
+
+        #expect(config.annotations.isEmpty)
+        #expect(config.highlightedLineRanges.isEmpty)
+        #expect(config.fontSize == 18)
+        #expect(config.metadata.title == "PR Review")
+        #expect(config.theme == keptTheme)
+    }
+
     // MARK: - Persistence
 
     @Test func persistsAndReadsBackThroughTheConfig() {
