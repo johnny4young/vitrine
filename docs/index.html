@@ -60,9 +60,12 @@
   }
 
   /* ===========================================================
-     Vitrine landing — direction "The Vitrine": a glass display case.
-     A calm, light, gallery-grade chrome where the only colour is the
-     work on the wall — the exported cards. Built on the tokens above.
+     Vitrine landing — PROPOSAL, direction B: "The Vitrine".
+     A vitrine is a glass display case. The page is that case:
+     a calm, light, gallery-grade chrome where the only colour is
+     the work on the wall — the exported cards. Editorial layout,
+     a salon hang in the hero, and a live re-style bench.
+     Built entirely on the Vitrine Design System tokens.
      =========================================================== */
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -121,6 +124,9 @@
   .appearance button { border: 0; background: transparent; cursor: pointer; color: var(--text-tertiary); width: 28px; height: 24px; border-radius: var(--radius-pill); display: grid; place-items: center; }
   .appearance button svg { width: 15px; height: 15px; }
   .appearance button.active { background: var(--accent); color: var(--accent-contrast); }
+  .lang { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 3px; background: var(--surface-card); }
+  .lang button { border: 0; background: transparent; cursor: pointer; color: var(--text-tertiary); height: 26px; padding: 0 10px; border-radius: var(--radius-pill); font-family: var(--font-ui); font-size: 12px; font-weight: var(--weight-semibold); letter-spacing: 0.04em; }
+  .lang button.active { background: var(--accent); color: var(--accent-contrast); }
 
   /* ---------- hero ---------- */
   .hero { padding: 64px 0 24px; }
@@ -266,16 +272,20 @@
   <div class="wrap">
     <a class="brand" href="#top"><img src="vitrine-icon.png" alt="">Vitrine</a>
     <div class="links">
-      <a class="navlink" href="#bench">Style bench</a>
-      <a class="navlink" href="#story">Features</a>
-      <a class="navlink" href="#whats-new">Changelog</a>
-      <a class="navlink" href="#pro">Pricing</a>
+      <a class="navlink" href="#bench" data-i18n="nav.bench">Style bench</a>
+      <a class="navlink" href="#story" data-i18n="nav.features">Features</a>
+      <a class="navlink" href="#whats-new" data-i18n="nav.changelog">Changelog</a>
+      <a class="navlink" href="#pro" data-i18n="nav.pricing">Pricing</a>
       <a class="navlink" href="https://github.com/johnny4young/vitrine">GitHub</a>
+      <div class="lang" role="group" aria-label="Language">
+        <button id="set-en" class="active" aria-label="English">EN</button>
+        <button id="set-es" aria-label="Español">ES</button>
+      </div>
       <div class="appearance" role="group" aria-label="Appearance">
         <button id="set-light" class="active" aria-label="Light" title="Light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"></path></svg></button>
         <button id="set-dark" aria-label="Dark" title="Dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.2A8 8 0 0 1 9.8 4 7.2 7.2 0 1 0 20 14.2Z"></path></svg></button>
       </div>
-      <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest" style="padding:8px 14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M7.5 10l4.5 4.5L16.5 10M5 19.5h14"></path></svg>Download</a>
+      <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest" style="padding:8px 14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M7.5 10l4.5 4.5L16.5 10M5 19.5h14"></path></svg><span data-i18n="nav.download">Download</span></a>
     </div>
   </div>
 </nav>
@@ -283,16 +293,16 @@
 <a id="top"></a>
 <header class="hero">
   <div class="wrap">
-    <span class="kicker"><span class="dot"></span> The menu-bar app for sharing code</span>
-    <h1>Put your code <span class="em">behind glass.</span></h1>
+    <span class="kicker"><span class="dot"></span> <span data-i18n="hero.kicker">The menu-bar app for sharing code</span></span>
+    <h1 data-i18n="hero.h1">Put your code <span class="em">behind glass.</span></h1>
     <div class="sub">
-      <p class="tag">Vitrine turns code, URLs, and HTML into gorgeous, share-ready images — copy, press <b>⇧⌘S</b>, paste. Instant, and fully local.</p>
+      <p class="tag" data-i18n="hero.tag">Vitrine turns code, URLs, and HTML into gorgeous, share-ready images — copy, press <b>⇧⌘S</b>, paste. Instant, and fully local.</p>
       <div>
         <div class="cta">
-          <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 12.6c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.6-1.3-.1-2.5.8-3.1.8-.6 0-1.6-.7-2.7-.7-1.4 0-2.7.8-3.4 2.1-1.4 2.5-.4 6.2 1 8.2.7 1 1.5 2.1 2.5 2.1 1 0 1.4-.6 2.6-.6 1.2 0 1.5.6 2.6.6 1.1 0 1.8-1 2.4-2 .8-1.1 1.1-2.2 1.1-2.3-.1 0-2.3-.9-2.3-3.4ZM14.7 6.5c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.5.6-1 1.6-.9 2.6 1 0 1.9-.5 2.5-1.2Z"></path></svg>Download for macOS</a>
-          <a class="btn btn-ghost" href="https://github.com/johnny4young/vitrine"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2A9.8 9.8 0 0 0 8.9 21.3c.5.1.7-.2.7-.5v-1.8c-2.7.6-3.3-1.3-3.3-1.3-.5-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.4-2.2-.2-4.5-1.1-4.5-4.9 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 4.9 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.8-2.3 4.7-4.5 4.9.3.3.7 1 .7 2v2.9c0 .3.2.6.7.5A9.8 9.8 0 0 0 12 2.2Z"></path></svg>View on GitHub</a>
+          <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 12.6c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.6-1.3-.1-2.5.8-3.1.8-.6 0-1.6-.7-2.7-.7-1.4 0-2.7.8-3.4 2.1-1.4 2.5-.4 6.2 1 8.2.7 1 1.5 2.1 2.5 2.1 1 0 1.4-.6 2.6-.6 1.2 0 1.5.6 2.6.6 1.1 0 1.8-1 2.4-2 .8-1.1 1.1-2.2 1.1-2.3-.1 0-2.3-.9-2.3-3.4ZM14.7 6.5c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.5.6-1 1.6-.9 2.6 1 0 1.9-.5 2.5-1.2Z"></path></svg><span data-i18n="hero.cta1">Download for macOS</span></a>
+          <a class="btn btn-ghost" href="https://github.com/johnny4young/vitrine"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2A9.8 9.8 0 0 0 8.9 21.3c.5.1.7-.2.7-.5v-1.8c-2.7.6-3.3-1.3-3.3-1.3-.5-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.4-2.2-.2-4.5-1.1-4.5-4.9 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 4.9 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.8-2.3 4.7-4.5 4.9.3.3.7 1 .7 2v2.9c0 .3.2.6.7.5A9.8 9.8 0 0 0 12 2.2Z"></path></svg><span data-i18n="hero.cta2">View on GitHub</span></a>
         </div>
-        <p class="meta">Latest <b data-version>release</b> · macOS 14+ · free &amp; open source · your code never leaves your Mac</p>
+        <p class="meta" data-i18n="hero.meta">Latest <b data-version>release</b> · macOS 14+ · free &amp; open source · your code never leaves your Mac</p>
       </div>
     </div>
   </div>
@@ -340,9 +350,9 @@
 <!-- ============ STYLE BENCH (interactive) ============ -->
 <section id="bench">
   <div class="wrap">
-    <span class="eyebrow">The style bench</span>
-    <h2 class="title">One snippet. Every look.</h2>
-    <p class="lead">Pick a gradient and a theme — the same code, restyled live. In the app these are saved presets, applied the instant you press the hotkey.</p>
+    <span class="eyebrow" data-i18n="bench.eyebrow">The style bench</span>
+    <h2 class="title" data-i18n="bench.title">One snippet. Every look.</h2>
+    <p class="lead" data-i18n="bench.lead">Pick a gradient and a theme — the same code, restyled live. In the app these are saved presets, applied the instant you press the hotkey.</p>
     <div class="bench">
       <div class="bench-grid">
         <div class="bench-stage" id="stage" style="background:var(--grad-aurora)">
@@ -360,7 +370,7 @@
           </div>
         </div>
         <div class="bench-controls">
-          <p class="ctl-label">Background preset</p>
+          <p class="ctl-label" data-i18n="bench.bg">Background preset</p>
           <div class="swatches" id="swatches">
             <button class="swatch" data-grad="var(--grad-aurora)" aria-pressed="true" title="Aurora" style="background:var(--grad-aurora)"></button>
             <button class="swatch" data-grad="var(--grad-ocean)" aria-pressed="false" title="Ocean" style="background:var(--grad-ocean)"></button>
@@ -369,19 +379,19 @@
             <button class="swatch" data-grad="var(--grad-night)" aria-pressed="false" title="Night" style="background:var(--grad-night)"></button>
             <button class="swatch" data-grad="var(--grad-carbon)" aria-pressed="false" title="Carbon" style="background:var(--grad-carbon)"></button>
           </div>
-          <p class="ctl-label">Theme</p>
+          <p class="ctl-label" data-i18n="bench.theme">Theme</p>
           <div class="chips" id="themes">
             <button class="chip" data-theme="one-dark" aria-pressed="true">One Dark</button>
             <button class="chip" data-theme="one-light" aria-pressed="false">One Light</button>
             <button class="chip" data-theme="dracula" aria-pressed="false">Dracula</button>
           </div>
-          <p class="ctl-label">Language</p>
+          <p class="ctl-label" data-i18n="bench.lang">Language</p>
           <div class="chips" id="langs">
             <button class="chip" data-lang="swift" aria-pressed="true">Swift</button>
             <button class="chip" data-lang="ts" aria-pressed="false">TypeScript</button>
             <button class="chip" data-lang="py" aria-pressed="false">Python</button>
           </div>
-          <p class="bench-note">13 themes, 160+ languages, gradient &amp; image backgrounds, focus mode, and diff coloring ship in the app.</p>
+          <p class="bench-note" data-i18n="bench.note">13 themes, 160+ languages, gradient &amp; image backgrounds, focus mode, and diff coloring ship in the app.</p>
         </div>
       </div>
     </div>
@@ -391,16 +401,16 @@
 <!-- ============ STORY ROWS ============ -->
 <section id="story">
   <div class="wrap">
-    <span class="eyebrow">In the editor</span>
-    <h2 class="title">Fine-tune when you want to.</h2>
-    <p class="lead">The hotkey covers the common case. Open the editor for everything else — captured from the real build.</p>
+    <span class="eyebrow" data-i18n="story.eyebrow">In the editor</span>
+    <h2 class="title" data-i18n="story.title">Fine-tune when you want to.</h2>
+    <p class="lead" data-i18n="story.lead">The hotkey covers the common case. Open the editor for everything else — captured from the real build.</p>
 
     <div class="story">
       <div>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 1.8-1 1.2-1.9-.7-1 .1-2.1 1.3-2.1H17a3.5 3.5 0 0 0 3.5-3.5C20.5 7 16.7 3.5 12 3.5Z"></path></svg></div>
-        <h3>A studio for one image.</h3>
-        <p>Code on the left, the preview floating in ambient light at the center, the style inspector on the right. Theme, font, padding, window chrome, background — every control one click away.</p>
-        <div class="tagrow"><span class="tag-pill">13 themes</span><span class="tag-pill">Developer fonts</span><span class="tag-pill">Gradient &amp; image</span><span class="tag-pill">Focus mode</span></div>
+        <h3 data-i18n="story1.h">A studio for one image.</h3>
+        <p data-i18n="story1.p">Code on the left, the preview floating in ambient light at the center, the style inspector on the right. Theme, font, padding, window chrome, background — every control one click away.</p>
+        <div class="tagrow"><span class="tag-pill" data-i18n="story1.t1">13 themes</span><span class="tag-pill" data-i18n="story1.t2">Developer fonts</span><span class="tag-pill" data-i18n="story1.t3">Gradient &amp; image</span><span class="tag-pill" data-i18n="story1.t4">Focus mode</span></div>
       </div>
       <div class="story-media"><img src="screenshots/editor.png" alt="The Vitrine editor: code pane, preview on its ambient-light stage, and the style inspector" loading="lazy"></div>
     </div>
@@ -408,9 +418,9 @@
     <div class="story">
       <div>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4M4 20l1-4L16 5a2 2 0 0 1 3 3L8 19z"></path></svg></div>
-        <h3>Mark it up before you ship it.</h3>
-        <p>A CleanShot-style palette built in: arrows, boxes, text, a highlighter, blur and redaction, and numbered counters — drawn straight on the live preview.</p>
-        <div class="tagrow"><span class="tag-pill">Arrows &amp; boxes</span><span class="tag-pill">Blur / redact</span><span class="tag-pill">Counters</span></div>
+        <h3 data-i18n="story2.h">Mark it up before you ship it.</h3>
+        <p data-i18n="story2.p">A CleanShot-style palette built in: arrows, boxes, text, a highlighter, blur and redaction, and numbered counters — drawn straight on the live preview.</p>
+        <div class="tagrow"><span class="tag-pill" data-i18n="story2.t1">Arrows &amp; boxes</span><span class="tag-pill" data-i18n="story2.t2">Blur / redact</span><span class="tag-pill" data-i18n="story2.t3">Counters</span></div>
       </div>
       <div class="story-media"><img src="screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur box, and an arrow" loading="lazy"></div>
     </div>
@@ -418,9 +428,9 @@
     <div class="story">
       <div>
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></div>
-        <h3>Diffs that read like GitHub.</h3>
-        <p>Paste a unified diff and Vitrine bands added lines green and removed lines red, with line numbers — perfect for PR write-ups and release notes.</p>
-        <div class="tagrow"><span class="tag-pill">Unified diff</span><span class="tag-pill">Line numbers</span><span class="tag-pill">160+ languages</span></div>
+        <h3 data-i18n="story3.h">Diffs that read like GitHub.</h3>
+        <p data-i18n="story3.p">Paste a unified diff and Vitrine bands added lines green and removed lines red, with line numbers — perfect for PR write-ups and release notes.</p>
+        <div class="tagrow"><span class="tag-pill" data-i18n="story3.t1">Unified diff</span><span class="tag-pill" data-i18n="story3.t2">Line numbers</span><span class="tag-pill" data-i18n="story3.t3">160+ languages</span></div>
       </div>
       <div class="story-media"><img src="screenshots/diff.png" alt="A unified diff with added lines banded green and removed lines banded red" loading="lazy"></div>
     </div>
@@ -430,12 +440,12 @@
 <!-- ============ THE LOOP ============ -->
 <section id="loop" style="padding-top:0">
   <div class="wrap">
-    <span class="eyebrow">The loop</span>
-    <h2 class="title">Three moves, muscle memory.</h2>
+    <span class="eyebrow" data-i18n="loop.eyebrow">The loop</span>
+    <h2 class="title" data-i18n="loop.title">Three moves, muscle memory.</h2>
     <div class="loop">
-      <div class="step"><div class="no">01</div><h4>Copy</h4><p>Select code anywhere — your editor, a terminal, a webpage — and copy it as you always would.</p><div class="keys"><span class="keycap">⌘</span><span class="keycap">C</span></div></div>
-      <div class="step"><div class="no">02</div><h4>Press the hotkey</h4><p>Vitrine reads the clipboard, detects code, a URL, or HTML, and renders with your saved style.</p><div class="keys"><span class="keycap">⇧</span><span class="keycap">⌘</span><span class="keycap">S</span></div></div>
-      <div class="step"><div class="no">03</div><h4>Paste the image</h4><p>A retina PNG lands on your clipboard. Paste it into your doc, PR, chat, or slide.</p><div class="keys"><span class="keycap">⌘</span><span class="keycap">V</span></div></div>
+      <div class="step"><div class="no">01</div><h4 data-i18n="loop.s1h">Copy</h4><p data-i18n="loop.s1p">Select code anywhere — your editor, a terminal, a webpage — and copy it as you always would.</p><div class="keys"><span class="keycap">⌘</span><span class="keycap">C</span></div></div>
+      <div class="step"><div class="no">02</div><h4 data-i18n="loop.s2h">Press the hotkey</h4><p data-i18n="loop.s2p">Vitrine reads the clipboard, detects code, a URL, or HTML, and renders with your saved style.</p><div class="keys"><span class="keycap">⇧</span><span class="keycap">⌘</span><span class="keycap">S</span></div></div>
+      <div class="step"><div class="no">03</div><h4 data-i18n="loop.s3h">Paste the image</h4><p data-i18n="loop.s3p">A retina PNG lands on your clipboard. Paste it into your doc, PR, chat, or slide.</p><div class="keys"><span class="keycap">⌘</span><span class="keycap">V</span></div></div>
     </div>
   </div>
 </section>
@@ -443,23 +453,23 @@
 <!-- ============ TRIO ============ -->
 <section id="more" style="padding-top:0">
   <div class="wrap">
-    <span class="eyebrow">And</span>
-    <h2 class="title">The details that matter.</h2>
+    <span class="eyebrow" data-i18n="more.eyebrow">And</span>
+    <h2 class="title" data-i18n="more.title">The details that matter.</h2>
     <div class="trio">
       <div class="tcard">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.5v5.5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V5.5z"></path><path d="M9.3 12l1.9 1.9 3.6-3.8"></path></svg></div>
-        <h4>Private by design</h4>
-        <p>Fully local and sandboxed — no account, no network by default, no telemetry. Your code never leaves your Mac.</p>
+        <h4 data-i18n="more.c1h">Private by design</h4>
+        <p data-i18n="more.c1p">Fully local and sandboxed — no account, no network by default, no telemetry. Your code never leaves your Mac.</p>
       </div>
       <div class="tcard">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M4 17l4.5-4 3 2.5L15 11l5 5"></path></svg></div>
-        <h4>Export &amp; share</h4>
-        <p>Retina PNG/PDF to clipboard, file, or Share Sheet. OpenGraph, Story, and GitHub-banner presets, plus a <code>vitrine</code> CLI.</p>
+        <h4 data-i18n="more.c2h">Export &amp; share</h4>
+        <p data-i18n="more.c2p">Retina PNG/PDF to clipboard, file, or Share Sheet. OpenGraph, Story, and GitHub-banner presets, plus a <code>vitrine</code> CLI.</p>
       </div>
       <div class="tcard">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.2"></rect><path d="M3.5 9h17M6.6 7h.01M9.1 7h.01"></path></svg></div>
-        <h4>Web snapshots</h4>
-        <p>Render pasted HTML, or capture a webpage at one or more sizes — entirely locally in WebKit, with a first-use privacy disclosure.</p>
+        <h4 data-i18n="more.c3h">Web snapshots</h4>
+        <p data-i18n="more.c3p">Render pasted HTML, or capture a webpage at one or more sizes — entirely locally in WebKit, with a first-use privacy disclosure.</p>
       </div>
     </div>
   </div>
@@ -468,9 +478,9 @@
 <!-- ============ CHANGELOG ============ -->
 <section id="whats-new" style="padding-top:0">
   <div class="wrap">
-    <span class="eyebrow">Changelog</span>
-    <h2 class="title">What's new</h2>
-    <p class="lead">Pulled live from the project's <code>CHANGELOG.md</code> — always current, nothing to maintain.</p>
+    <span class="eyebrow" data-i18n="cl.eyebrow">Changelog</span>
+    <h2 class="title" data-i18n="cl.title">What's new</h2>
+    <p class="lead" data-i18n="cl.lead">Pulled live from the project's <code>CHANGELOG.md</code> — always current, nothing to maintain.</p>
     <div class="changelog" id="changelog-body"><p class="muted">Loading the latest release notes…</p></div>
   </div>
 </section>
@@ -479,21 +489,21 @@
 <section id="pro" style="padding-top:0">
   <div class="wrap">
     <span class="eyebrow">Vitrine PRO</span>
-    <h2 class="title">Go PRO when you need more.</h2>
-    <p class="lead">Free and open source, forever. PRO is an optional <strong>one-time</strong> license — no subscription. The free tier loses nothing: no watermark, no resolution cap, no nags.</p>
+    <h2 class="title" data-i18n="pro.title">Go PRO when you need more.</h2>
+    <p class="lead" data-i18n="pro.lead">Free and open source, forever. PRO is an optional <strong>one-time</strong> license — no subscription. The free tier loses nothing: no watermark, no resolution cap, no nags.</p>
     <div class="pro-card">
-      <div class="pro-price"><span class="pro-now">$19.99</span><span class="pro-was">$25</span><span class="pro-badge">Early bird · 2026 only</span></div>
-      <p class="pro-note">Regular price is <strong>$25</strong>. Through 2026 it's <strong>$19.99</strong> as an early-bird launch price — no code needed.</p>
+      <div class="pro-price"><span class="pro-now">$19.99</span><span class="pro-was">$25</span><span class="pro-badge" data-i18n="pro.badge">Early bird · 2026 only</span></div>
+      <p class="pro-note" data-i18n="pro.note">Regular price is <strong>$25</strong>. Through 2026 it's <strong>$19.99</strong> as an early-bird launch price — no code needed.</p>
       <ul class="pro-list">
-        <li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span> Brand Kit — your logo, handle, and accent as a watermark on every export</li>
-        <li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span> Multi-size one-pass export — every platform size into a folder in one go</li>
-        <li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span> Automation — the <code>vitrine</code> CLI, Shortcuts, and folder batch rendering</li>
+        <li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span> <span data-i18n="pro.l1">Brand Kit — your logo, handle, and accent as a watermark on every export</span></li>
+        <li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span> <span data-i18n="pro.l2">Multi-size one-pass export — every platform size into a folder in one go</span></li>
+        <li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span> <span data-i18n="pro.l3">Automation — the <code>vitrine</code> CLI, Shortcuts, and folder batch rendering</span></li>
       </ul>
       <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap">
-        <a class="btn btn-primary" href="https://vitrine.lemonsqueezy.com/checkout/buy/314e7d43-efa1-41be-a319-7474628e5185"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l4 3.5L12 5l4 6.5L20 8l-1.4 9.5H5.4z"></path></svg>Get Vitrine PRO</a>
-        <a class="btn btn-ghost" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M7.5 10l4.5 4.5L16.5 10M5 19.5h14"></path></svg>Download free</a>
+        <a class="btn btn-primary" href="https://vitrine.lemonsqueezy.com/checkout/buy/314e7d43-efa1-41be-a319-7474628e5185"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l4 3.5L12 5l4 6.5L20 8l-1.4 9.5H5.4z"></path></svg><span data-i18n="pro.cta1">Get Vitrine PRO</span></a>
+        <a class="btn btn-ghost" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M7.5 10l4.5 4.5L16.5 10M5 19.5h14"></path></svg><span data-i18n="pro.cta2">Download free</span></a>
       </div>
-      <p class="meta" style="margin-top:16px;color:var(--text-tertiary);font-size:13px">Pay once, then activate in the app with the license key you receive by email.</p>
+      <p class="meta" data-i18n="pro.foot" style="margin-top:16px;color:var(--text-tertiary);font-size:13px">Pay once, then activate in the app with the license key you receive by email.</p>
     </div>
   </div>
 </section>
@@ -501,17 +511,17 @@
 <!-- ============ INSTALL ============ -->
 <section id="install" class="install" style="padding-top:0">
   <div class="wrap">
-    <span class="eyebrow">Install</span>
-    <h2 class="title">Two commands away.</h2>
-    <p class="lead" style="margin-inline:auto">Install with Homebrew, or grab the signed, notarized DMG. Either way, the <code>vitrine</code> CLI lands on your PATH.</p>
+    <span class="eyebrow" data-i18n="inst.eyebrow">Install</span>
+    <h2 class="title" data-i18n="inst.title">Two commands away.</h2>
+    <p class="lead" data-i18n="inst.lead" style="margin-inline:auto">Install with Homebrew, or grab the signed, notarized DMG. Either way, the <code>vitrine</code> CLI lands on your PATH.</p>
     <div class="terminal">
       <span class="prompt">$</span>
       <code id="brew-cmd">brew install --cask johnny4young/tap/vitrine</code>
       <button id="copy-brew" aria-label="Copy install command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2"></rect><path d="M5.5 15.5H5a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 5 3.5h9A1.5 1.5 0 0 1 15.5 5v.5"></path></svg> Copy</button>
     </div>
     <div class="cta" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:22px">
-      <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M7.5 10l4.5 4.5L16.5 10M5 19.5h14"></path></svg>Download the DMG</a>
-      <a class="btn btn-ghost" href="https://github.com/johnny4young/vitrine#getting-started"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l5 6-5 6M13 18h6"></path></svg>Build from source</a>
+      <a class="btn btn-primary" data-download href="https://github.com/johnny4young/vitrine/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M7.5 10l4.5 4.5L16.5 10M5 19.5h14"></path></svg><span data-i18n="inst.dmg">Download the DMG</span></a>
+      <a class="btn btn-ghost" href="https://github.com/johnny4young/vitrine#getting-started"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l5 6-5 6M13 18h6"></path></svg><span data-i18n="inst.src">Build from source</span></a>
     </div>
   </div>
 </section>
@@ -525,21 +535,90 @@
       <a class="flink" href="https://github.com/johnny4young/vitrine/blob/main/docs/PERMISSIONS.md">Privacy</a>
       <a class="flink" href="https://github.com/johnny4young/vitrine/blob/main/LICENSE">License</a>
     </div>
-    <span class="pill" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9" rx="2"></rect><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"></path></svg> No account · no network by default · no telemetry</span>
-    <p class="note">Open source under the MIT license. Built by <a href="https://github.com/johnny4young" style="color:var(--accent)">johnny4young</a>.</p>
+    <span class="pill" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9" rx="2"></rect><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"></path></svg> <span data-i18n="foot.pill">No account · no network by default · no telemetry</span></span>
+    <p class="note" data-i18n="foot.note">Open source under the MIT license. Built by <a href="https://github.com/johnny4young" style="color:var(--accent)">johnny4young</a>. This page is a design-system proposal built on the Vitrine tokens.</p>
   </div>
 </footer>
 
 <script>
   /* localStorage is blocked in some sandboxed preview iframes — reading/writing it
-     there throws, which would abort the whole script and leave the style bench below
-     non-interactive. Wrap it so a blocked store is a no-op, never fatal. */
-  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+     there throws, which would abort the whole script. Wrap it so a blocked store is
+     a no-op, never fatal. */
+  function lsGet(k) { try { return lsGet(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { lsSet(k, v); } catch (e) { /* ignore */ } }
+  /* ---------- i18n: English / Español ---------- */
+  (function () {
+    var KEY = "vitrine-landing-b-lang";
+    var ES = {
+      "nav.bench": "Estilos", "nav.features": "Funciones", "nav.changelog": "Cambios", "nav.pricing": "Precio", "nav.download": "Descargar",
+      "hero.kicker": "La app de menu bar para compartir código",
+      "hero.h1": "Pon tu código <span class=\"em\">tras el cristal.</span>",
+      "hero.tag": "Vitrine convierte código, URLs y HTML en imágenes preciosas y listas para compartir — copia, pulsa <b>⇧⌘S</b>, pega. Al instante, y todo local.",
+      "hero.cta1": "Descargar para macOS", "hero.cta2": "Ver en GitHub",
+      "hero.meta": "Última <b data-version>versión</b> · macOS 14+ · libre y de código abierto · tu código nunca sale de tu Mac",
+      "bench.eyebrow": "El banco de estilos", "bench.title": "Un snippet. Todos los estilos.",
+      "bench.lead": "Elige un degradado y un tema — el mismo código, reestilizado en vivo. En la app son presets guardados que se aplican al instante al pulsar el atajo.",
+      "bench.bg": "Fondo (preset)", "bench.theme": "Tema", "bench.lang": "Lenguaje",
+      "bench.note": "13 temas, 160+ lenguajes, fondos de degradado e imagen, modo enfoque y coloreado de diffs vienen en la app.",
+      "story.eyebrow": "En el editor", "story.title": "Ajusta cuando quieras.",
+      "story.lead": "El atajo cubre el caso común. Abre el editor para todo lo demás — capturas del build real.",
+      "story1.h": "Un estudio para una imagen.",
+      "story1.p": "Código a la izquierda, la vista previa flotando en luz ambiental al centro, el inspector de estilo a la derecha. Tema, fuente, relleno, marco de ventana, fondo — cada control a un clic.",
+      "story1.t1": "13 temas", "story1.t2": "Fuentes de código", "story1.t3": "Degradado e imagen", "story1.t4": "Modo enfoque",
+      "story2.h": "Anótala antes de enviarla.",
+      "story2.p": "Una paleta tipo CleanShot integrada: flechas, cajas, texto, resaltador, desenfoque y censura, y contadores numerados — dibujados sobre la vista previa en vivo.",
+      "story2.t1": "Flechas y cajas", "story2.t2": "Desenfoque / censura", "story2.t3": "Contadores",
+      "story3.h": "Diffs que se leen como GitHub.",
+      "story3.p": "Pega un diff unificado y Vitrine resalta las líneas añadidas en verde y las eliminadas en rojo, con números de línea — ideal para PRs y notas de versión.",
+      "story3.t1": "Diff unificado", "story3.t2": "Números de línea", "story3.t3": "160+ lenguajes",
+      "loop.eyebrow": "El flujo", "loop.title": "Tres pasos, memoria muscular.",
+      "loop.s1h": "Copia", "loop.s1p": "Selecciona código en cualquier sitio — tu editor, una terminal, una web — y cópialo como siempre.",
+      "loop.s2h": "Pulsa el atajo", "loop.s2p": "Vitrine lee el portapapeles, detecta código, una URL o HTML, y renderiza con tu estilo guardado.",
+      "loop.s3h": "Pega la imagen", "loop.s3p": "Un PNG retina queda en tu portapapeles. Pégalo en tu doc, PR, chat o diapositiva.",
+      "more.eyebrow": "Y", "more.title": "Los detalles que importan.",
+      "more.c1h": "Privada por diseño", "more.c1p": "Totalmente local y en sandbox — sin cuenta, sin red por defecto, sin telemetría. Tu código nunca sale de tu Mac.",
+      "more.c2h": "Exporta y comparte", "more.c2p": "PNG/PDF retina al portapapeles, a archivo o al menú Compartir. Presets OpenGraph, Story y banner de GitHub, más una CLI <code>vitrine</code>.",
+      "more.c3h": "Capturas web", "more.c3p": "Renderiza HTML pegado, o captura una página a uno o varios tamaños — localmente en WebKit, con un aviso de privacidad la primera vez.",
+      "cl.eyebrow": "Cambios", "cl.title": "Novedades", "cl.lead": "Se cargan en vivo desde el <code>CHANGELOG.md</code> del proyecto — siempre al día, nada que mantener.",
+      "pro.title": "Pásate a PRO cuando lo necesites.",
+      "pro.lead": "Libre y de código abierto, para siempre. PRO es una licencia opcional <strong>de pago único</strong> — sin suscripción. La versión gratis no pierde nada: sin marca de agua, sin límite de resolución, sin molestias.",
+      "pro.badge": "Lanzamiento · solo 2026",
+      "pro.note": "El precio normal es <strong>$25</strong>. Durante 2026 son <strong>$19.99</strong> como precio de lanzamiento — sin código.",
+      "pro.l1": "Brand Kit — tu logo, usuario y acento como marca de agua en cada exportación",
+      "pro.l2": "Exportación multi-tamaño en una pasada — cada tamaño de plataforma a una carpeta de una vez",
+      "pro.l3": "Automatización — la CLI <code>vitrine</code>, Atajos y renderizado por lotes de carpetas",
+      "pro.cta1": "Obtener Vitrine PRO", "pro.cta2": "Descargar gratis",
+      "pro.foot": "Paga una vez y actívalo en la app con la clave de licencia que recibes por correo.",
+      "inst.eyebrow": "Instalar", "inst.title": "A dos comandos.",
+      "inst.lead": "Instala con Homebrew, o descarga el DMG firmado y notarizado. En ambos casos, la CLI <code>vitrine</code> queda en tu PATH.",
+      "inst.dmg": "Descargar el DMG", "inst.src": "Compilar desde el código",
+      "foot.pill": "Sin cuenta · sin red por defecto · sin telemetría",
+      "foot.note": "Código abierto bajo licencia MIT. Hecho por <a href=\"https://github.com/johnny4young\" style=\"color:var(--accent)\">johnny4young</a>. Esta página es una propuesta de design system sobre los tokens de Vitrine."
+    };
+    var nodes = document.querySelectorAll("[data-i18n]");
+    var EN = {};
+    nodes.forEach(function (n) { EN[n.getAttribute("data-i18n")] = n.innerHTML; });
+    var enBtn = document.getElementById("set-en"), esBtn = document.getElementById("set-es");
+    function apply(lang) {
+      var es = lang === "es";
+      document.documentElement.lang = es ? "es" : "en";
+      nodes.forEach(function (n) {
+        var key = n.getAttribute("data-i18n");
+        var val = es ? (ES[key] != null ? ES[key] : EN[key]) : EN[key];
+        if (n.innerHTML !== val) n.innerHTML = val;
+      });
+      enBtn.classList.toggle("active", !es);
+      esBtn.classList.toggle("active", es);
+      if (window.__vtag) document.querySelectorAll("[data-version]").forEach(function (el) { el.textContent = window.__vtag; });
+    }
+    apply(lsGet(KEY) || "en");
+    enBtn.onclick = function () { lsSet(KEY, "en"); apply("en"); };
+    esBtn.onclick = function () { lsSet(KEY, "es"); apply("es"); };
+  })();
 
   /* appearance toggle */
   (function () {
-    var KEY = "vitrine-landing-appearance";
+    var KEY = "vitrine-landing-b-appearance";
     var light = document.getElementById("set-light"), dark = document.getElementById("set-dark");
     function apply(mode) {
       var isDark = mode === "dark";
@@ -572,16 +651,19 @@
       py: { name: "main.py", html:
         '<span class="k">def</span> <span class="f">greet</span>(name: <span class="t">str</span>) -&gt; <span class="t">str</span>:\n    <span class="c"># a tiny hello</span>\n    <span class="k">return</span> <span class="s">f"Hello, {name}!"</span>\n\n<span class="f">print</span>(<span class="f">greet</span>(<span class="s">"world"</span>))' }
     };
+    var current = "swift";
 
     function paintTheme(name) {
       var th = THEMES[name];
       card.style.background = th.bg;
       codeEl.style.color = th.fg;
+      codeEl.style.setProperty("--ck", th.k);
       ["k","t","n","s","f","c"].forEach(function (cls) {
         codeEl.querySelectorAll("." + cls).forEach(function (el) { el.style.color = th[cls]; });
       });
     }
     function paintSnippet(lang) {
+      current = lang;
       codeEl.innerHTML = SNIPPETS[lang].html;
       nameEl.textContent = SNIPPETS[lang].name;
       var active = document.querySelector('#themes .chip[aria-pressed="true"]').dataset.theme;
@@ -621,7 +703,7 @@
     return out.join("");
   }
   fetch("https://api.github.com/repos/"+REPO+"/releases/latest").then(function(r){return r.ok?r.json():Promise.reject();}).then(function(rel){
-    var tag = rel.tag_name||""; document.querySelectorAll("[data-version]").forEach(function(el){ if(tag) el.textContent=tag; });
+    var tag = rel.tag_name||""; window.__vtag = tag; document.querySelectorAll("[data-version]").forEach(function(el){ if(tag) el.textContent=tag; });
     var dmg=(rel.assets||[]).find(function(a){return /\.dmg$/i.test(a.name);}); var url=dmg?dmg.browser_download_url:rel.html_url;
     document.querySelectorAll("[data-download]").forEach(function(el){el.href=url;});
   }).catch(function(){});
