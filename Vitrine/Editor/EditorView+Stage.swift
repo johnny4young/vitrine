@@ -29,7 +29,8 @@ extension EditorView {
                 theme: settings.config.theme,
                 fontName: settings.config.fontName,
                 fontSize: settings.config.fontSize,
-                fontLigatures: settings.config.fontLigatures
+                fontLigatures: settings.config.fontLigatures,
+                onReplaceAllPaste: { settings.config.clearContentMarks() }
             )
             .overlay {
                 if settings.config.code.isEmpty {
@@ -289,6 +290,9 @@ extension EditorView {
         }
         let language = LanguageDetector.detect(text)
         settings.config.language = language
+        // Pasting fresh code is a new capture, so drop content-bound marks (annotations,
+        // highlighted lines) that were positioned over whatever was here before.
+        settings.config.clearContentMarks()
         // Tidy the indentation on paste when the user opts in (CS-049); the global
         // preference (not the per-window session) owns this behavior.
         settings.config.code =

@@ -78,6 +78,16 @@ struct SnapshotConfig: Equatable {
     var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || diffDecorations
     }
+
+    /// Clears the marks that are tied to *this specific code* — free-form annotations
+    /// (arrows / text / blur) and highlighted line ranges — so loading new content
+    /// (paste, drop, quick capture) starts clean instead of stranding marks that were
+    /// positioned over unrelated code. Style (theme, font, background, header text)
+    /// is reusable and intentionally kept.
+    mutating func clearContentMarks() {
+        annotations = []
+        highlightedLineRanges = []
+    }
 }
 
 /// A brand watermark composited onto an exported snapshot — the render-ready form

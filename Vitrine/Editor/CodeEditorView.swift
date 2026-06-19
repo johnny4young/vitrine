@@ -10,6 +10,10 @@ struct CodeEditorView: NSViewRepresentable {
     var fontName: String
     var fontSize: Double
     var fontLigatures: Bool
+    /// Called when a paste replaced the *entire* document (a select-all paste or a
+    /// paste into an empty editor) — i.e. a new capture — so the editor can clear
+    /// content-bound marks that no longer apply. A mid-edit insert does not fire it.
+    var onReplaceAllPaste: () -> Void = {}
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -55,9 +59,12 @@ struct CodeEditorView: NSViewRepresentable {
 
         // After a native ⌘V paste, re-indent through the coordinator (CS-049); the
         // coordinator checks the user's preference and uses the undo-aware edit cycle.
-        textView.onPaste = { [weak textView] in
+        textView.onPaste = { [weak textView] replacedEntireDocument in
             guard let textView else { return }
             context.coordinator.reindentAfterPaste(textView)
+            // A select-all paste (or a paste into an empty editor) is a new capture, so
+            // drop content-bound marks that were positioned over the old code.
+            if replacedEntireDocument { context.coordinator.parent.onReplaceAllPaste() }
         }
 
         context.coordinator.configure(textView)
@@ -191,11 +198,18 @@ struct CodeEditorView: NSViewRepresentable {
 /// callbacks. `super.paste` honors `isRichText = false`, so it inserts plain text.
 final class CodeTextView: NSTextView {
     /// Invoked right after a paste lands so the coordinator can tidy the indentation
-    /// when the user's preference is on.
-    var onPaste: (() -> Void)?
+    /// when the user's preference is on. The flag reports whether the paste replaced
+    /// the *entire* document (a select-all paste, or a paste into an empty editor),
+    /// which the editor treats as a new capture.
+    var onPaste: ((_ replacedEntireDocument: Bool) -> Void)?
 
     override func paste(_ sender: Any?) {
+        // Measure the replacement target *before* the paste mutates the text.
+        let lengthBefore = (string as NSString).length
+        let selection = selectedRange()
+        let replacedEntireDocument =
+            lengthBefore == 0 || (selection.location == 0 && selection.length == lengthBefore)
         super.paste(sender)
-        onPaste?()
+        onPaste?(replacedEntireDocument)
     }
 }
