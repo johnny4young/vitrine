@@ -56,21 +56,28 @@ struct TokenRow<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        HStack(alignment: .center, spacing: VitrineTokens.Spacing.sm) {
-            VStack(alignment: .leading, spacing: 1) {
+        // Center the trailing control against the *label line* (always one line,
+        // stable) and let the caption flow full-width beneath it — the macOS
+        // System Settings layout. This keeps the control's vertical position
+        // fixed when the caption reflows (e.g. toggling a segmented option whose
+        // description grows or shrinks), instead of re-centering the control
+        // against a label+caption block whose height changes.
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: VitrineTokens.Spacing.sm) {
                 if let label {
                     label
                         .font(.system(size: VitrineTokens.FontSize.body))
                         .foregroundStyle(VitrineTokens.Text.primary)
                 }
-                if let caption {
-                    caption
-                        .font(.system(size: VitrineTokens.FontSize.caption))
-                        .foregroundStyle(VitrineTokens.Text.tertiary)
-                }
+                Spacer(minLength: VitrineTokens.Spacing.sm)
+                content
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            content
+            if let caption {
+                caption
+                    .font(.system(size: VitrineTokens.FontSize.caption))
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.vertical, 9)
     }
@@ -123,15 +130,18 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(
-                    isSelected ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
+                    isSelected ? VitrineTokens.Accent.contrast : VitrineTokens.Text.secondary
                 )
                 .padding(.vertical, 4)
                 .padding(.horizontal, 10)
                 .frame(maxWidth: fillsWidth ? .infinity : nil)
                 .background {
                     if isSelected {
+                        // The selected segment lifts onto an accent-tinted pill so the
+                        // control follows the macOS system accent like the rest of the
+                        // chrome (selection/links/chips), instead of a neutral white card.
                         Capsule(style: .continuous)
-                            .fill(VitrineTokens.Surface.card)
+                            .fill(Color.accentColor)
                             .brandShadow(VitrineTokens.Chrome.segmentShadow)
                     }
                 }
