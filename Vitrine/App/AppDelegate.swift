@@ -9,6 +9,31 @@ import OSLog
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyTask: Task<Void, Never>?
 
+    /// Enforce a single running instance. A menu-bar agent must never stack a second
+    /// status item, but launching the same bundle id from a different path — several
+    /// Xcode DerivedData copies, or `open`-ing more than one built `.app` — starts a
+    /// second process with the same identifier. If another Vitrine is already running
+    /// when this one launches, hand activation back to it and exit *before* the SwiftUI
+    /// scene installs a duplicate `MenuBarExtra` icon. UI tests are unaffected:
+    /// `XCUIApplication.launch()` terminates any prior instance before launching, so no
+    /// other instance is ever present here under test.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Never enforce single-instance under UI tests: `XCUIApplication.launch()` brings
+        // up a fresh test host that must run even if a developer instance is already open,
+        // and consecutive tests relaunch rapidly. UI-test launches set
+        // `VITRINE_USER_DEFAULTS_SUITE` (also used for test isolation), so key off it.
+        guard ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"] == nil else {
+            return
+        }
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            .filter { $0 != .current }
+        if let existing = others.first {
+            existing.activate()
+            exit(0)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.app.notice("Vitrine launched")
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
