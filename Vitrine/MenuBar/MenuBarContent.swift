@@ -29,8 +29,9 @@ struct MenuBarContent: View {
         }
         .padding(14)
         .frame(width: 340)
-        // The redesign's controls tint with the brand accent, not the user's
-        // system accent.
+        // Controls follow the user's macOS accent; `Color.accentColor` is the app's
+        // brand asset in this repo, so force the AppKit system token.
+        .tint(VitrineTokens.Accent.system)
         .accessibilityContainerIdentifier("menubar-panel")
     }
 
@@ -122,7 +123,7 @@ struct MenuBarContent: View {
                 } label: {
                     Text("View history →")
                         .font(.system(size: VitrineTokens.FontSize.caption))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(VitrineTokens.Accent.system)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("menu-recents-gallery")
@@ -171,7 +172,7 @@ struct MenuBarContent: View {
             Text(verbatim: theme.displayName)
                 .font(.system(size: VitrineTokens.FontSize.caption, weight: .medium))
                 .foregroundStyle(
-                    isSelected ? VitrineTokens.Accent.contrast : VitrineTokens.Text.secondary
+                    isSelected ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
                 )
                 .lineLimit(1)
                 .fixedSize()
@@ -179,7 +180,7 @@ struct MenuBarContent: View {
                 .padding(.horizontal, 10)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(isSelected ? Color.accentColor : .clear)
+                        .fill(isSelected ? VitrineTokens.Accent.system : .clear)
                 )
                 .overlay(
                     Capsule(style: .continuous)
@@ -429,18 +430,24 @@ private struct MenuPanelRow: View {
                 Image(systemName: systemImage)
                     .font(.system(size: 12))
                     .foregroundStyle(
-                        isHovered ? .white.opacity(0.85) : VitrineTokens.Text.secondary
+                        isHovered
+                            ? VitrineTokens.Accent.systemContrast.opacity(0.85)
+                            : VitrineTokens.Text.secondary
                     )
                     .frame(width: 15)
                 Text(title)
                     .font(.system(size: VitrineTokens.FontSize.body))
-                    .foregroundStyle(isHovered ? .white : VitrineTokens.Text.primary)
+                    .foregroundStyle(
+                        isHovered ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.primary
+                    )
                 Spacer(minLength: 0)
                 if let shortcutGlyphs {
                     Text(verbatim: shortcutGlyphs)
                         .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
                         .foregroundStyle(
-                            isHovered ? .white.opacity(0.85) : VitrineTokens.Text.tertiary
+                            isHovered
+                                ? VitrineTokens.Accent.systemContrast.opacity(0.85)
+                                : VitrineTokens.Text.tertiary
                         )
                         .padding(.vertical, 2)
                         .padding(.horizontal, 7)
@@ -448,7 +455,8 @@ private struct MenuPanelRow: View {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .strokeBorder(
                                     isHovered
-                                        ? Color.white.opacity(0.3) : VitrineTokens.Line.border,
+                                        ? VitrineTokens.Accent.systemContrast.opacity(0.3)
+                                        : VitrineTokens.Line.border,
                                     lineWidth: Brand.Stroke.hairline
                                 )
                         )
@@ -458,7 +466,7 @@ private struct MenuPanelRow: View {
             .padding(.horizontal, VitrineTokens.Spacing.xs)
             .background(
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(isHovered ? Color.accentColor : .clear)
+                    .fill(isHovered ? VitrineTokens.Accent.system : .clear)
             )
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }

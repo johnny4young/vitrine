@@ -83,7 +83,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `--seen-old-version` seeds an older last-seen version and then presents What's
     /// New through its real version gate; `--skip-onboarding` just marks the
     /// quick-start as seen; the multi-window hooks (`--open-second-editor`,
-    /// `--force-offscreen-editor`) drive the CS-053 UI smoke tests.
+    /// `--force-offscreen-editor`) drive the CS-053 UI smoke tests; `--demo-brand-kit-free`
+    /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests.
     ///
     /// - Returns: whether a hook opened a window, so the normal first-run surfaces
     ///   (`presentIfFirstRun` / `presentIfNewVersion`) are not stacked on top of one.
@@ -143,6 +144,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppSettings.shared.config = demo
             EditorWindowController.shared.show()
             didOpenWindow = true
+        }
+        if arguments.contains("--demo-brand-kit-free") {
+            let store = BrandKitStore.shared
+            store.isEnabled = true
+            store.brandKit = BrandKit(
+                handle: "@vitrine", project: "demo", placement: .free,
+                freePosition: CGPoint(x: 0.72, y: 0.78))
         }
         if arguments.contains("--open-editor") {
             EditorWindowController.shared.show()

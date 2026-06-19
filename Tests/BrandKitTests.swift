@@ -85,6 +85,21 @@ struct BrandKitTests {
         #expect(kit.freePosition == CGPoint(x: 1, y: 0))
     }
 
+    @Test func cornerPlacementEqualityIgnoresFreePosition() {
+        // Two identical corner-placed marks that differ only in a carried-but-unused
+        // free position compare equal — `freePosition` only renders under `.free`, so
+        // this avoids needless SwiftUI rerenders.
+        let a = Watermark(
+            text: "@jane", placement: .topLeading, freePosition: CGPoint(x: 0.1, y: 0.1))
+        let b = Watermark(
+            text: "@jane", placement: .topLeading, freePosition: CGPoint(x: 0.9, y: 0.9))
+        #expect(a == b)
+        // Under `.free` the position is significant, so it participates in equality.
+        let c = Watermark(text: "@jane", placement: .free, freePosition: CGPoint(x: 0.1, y: 0.1))
+        let d = Watermark(text: "@jane", placement: .free, freePosition: CGPoint(x: 0.9, y: 0.9))
+        #expect(c != d)
+    }
+
     @Test func brandKitDecodesWithoutAFreePositionToTheDefault() throws {
         // A kit persisted before free placement (no freePosition key) decodes cleanly.
         let json = #"{"handle":"@jane","project":"","placement":"bottomTrailing"}"#

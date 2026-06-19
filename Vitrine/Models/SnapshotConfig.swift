@@ -165,9 +165,13 @@ struct Watermark: Equatable {
     /// neither side has an identity (a text-only or hand-built mark) it falls back to the
     /// bytes, so correctness is unchanged.
     static func == (lhs: Watermark, rhs: Watermark) -> Bool {
-        guard lhs.text == rhs.text, lhs.tint == rhs.tint, lhs.placement == rhs.placement,
-            lhs.freePosition == rhs.freePosition
+        guard lhs.text == rhs.text, lhs.tint == rhs.tint, lhs.placement == rhs.placement
         else { return false }
+        // `freePosition` only changes the render under `.free` placement, so two
+        // corner-placed marks that differ only in a stored free position stay equal —
+        // this keeps a SwiftUI diff of `SnapshotConfig` from triggering needless
+        // rerenders when the position is carried but unused.
+        if lhs.placement == .free, lhs.freePosition != rhs.freePosition { return false }
         if lhs.logoIdentity != nil || rhs.logoIdentity != nil {
             return lhs.logoIdentity == rhs.logoIdentity
         }

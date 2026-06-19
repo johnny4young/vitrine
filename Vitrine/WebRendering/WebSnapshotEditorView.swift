@@ -44,6 +44,7 @@ struct WebSnapshotEditorView: View {
             previewedKind = model.results.count > 1 ? nil : model.results.first?.kind
         }
         .background(VitrineTokens.Surface.window)
+        .tint(VitrineTokens.Accent.system)
         .sheet(isPresented: $showDisclosure) {
             WebPrivacyDisclosureView(
                 onConfirm: {

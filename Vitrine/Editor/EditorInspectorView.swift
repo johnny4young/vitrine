@@ -90,8 +90,7 @@ struct EditorInspectorView: View {
                 .fill(VitrineTokens.Line.border)
                 .frame(width: Brand.Stroke.hairline)
         }
-        // The redesign's controls tint with the brand accent, not the user's
-        // system accent.
+        .tint(VitrineTokens.Accent.system)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
