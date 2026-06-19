@@ -159,10 +159,12 @@ struct CustomThemeEditor: View {
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { onCancel() }
+                    .buttonStyle(.bordered)
                     .keyboardShortcut(.cancelAction)
                 Button("Save") {
                     onSave(draft.name, draft.palette())
                 }
+                .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .accessibilityIdentifier("save-custom-theme-button")
             }

@@ -98,6 +98,7 @@ struct BrandKitSettingsSection: View {
                 .accessibilityIdentifier("brand-kit-remove-logo-button")
             }
             Button(brandKit.logoImage == nil ? "Choose…" : "Replace…") { pickLogo() }
+                .buttonStyle(.bordered)
                 .accessibilityIdentifier("brand-kit-choose-logo-button")
             if logoImportFailed {
                 Text("Couldn't load that image")

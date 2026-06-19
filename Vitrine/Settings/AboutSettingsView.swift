@@ -35,6 +35,7 @@ struct AboutSettingsView: View {
                 Button("Export Diagnostics…") {
                     DiagnosticsExporter.exportWithSavePanel(settings: settings)
                 }
+                .buttonStyle(.bordered)
                 .accessibilityIdentifier("export-diagnostics-button")
                 .help(
                     "Save a privacy-safe report (no code or clipboard contents) to a file you choose."
