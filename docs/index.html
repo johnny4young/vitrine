@@ -531,6 +531,12 @@
 </footer>
 
 <script>
+  /* localStorage is blocked in some sandboxed preview iframes — reading/writing it
+     there throws, which would abort the whole script and leave the style bench below
+     non-interactive. Wrap it so a blocked store is a no-op, never fatal. */
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+
   /* appearance toggle */
   (function () {
     var KEY = "vitrine-landing-appearance";
@@ -541,9 +547,9 @@
       light.classList.toggle("active", !isDark);
       dark.classList.toggle("active", isDark);
     }
-    apply(localStorage.getItem(KEY) || "light");
-    light.onclick = function () { localStorage.setItem(KEY, "light"); apply("light"); };
-    dark.onclick = function () { localStorage.setItem(KEY, "dark"); apply("dark"); };
+    apply(lsGet(KEY) || "light");
+    light.onclick = function () { lsSet(KEY, "light"); apply("light"); };
+    dark.onclick = function () { lsSet(KEY, "dark"); apply("dark"); };
   })();
 
   /* ---------- style bench ---------- */
