@@ -9,6 +9,11 @@ import OSLog
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyTask: Task<Void, Never>?
 
+    /// Whether the menu-bar icon's hover tooltip has been installed yet, so the
+    /// idempotent installer in `applicationWillUpdate(_:)` stops searching once
+    /// it has found the status-bar button.
+    private var didInstallMenuBarTooltip = false
+
     /// Enforce a single running instance. A menu-bar agent must never stack a second
     /// status item, but launching the same bundle id from a different path — several
     /// Xcode DerivedData copies, or `open`-ing more than one built `.app` — starts a
@@ -288,6 +293,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// this effectively free on this hot every-event path.
     func applicationWillUpdate(_ notification: Notification) {
         AppMenu.reinstallIfDisplaced()
+        ensureMenuBarTooltip()
+    }
+
+    /// Give the menu-bar icon a hover tooltip ("Vitrine"). SwiftUI's `MenuBarExtra`
+    /// owns the `NSStatusItem` and exposes no API for its tooltip, so reach the
+    /// underlying status-bar button through the window hierarchy and set it directly.
+    /// Driven from `applicationWillUpdate(_:)` because the status item is created
+    /// during SwiftUI's scene bring-up, after `applicationDidFinishLaunching`; the
+    /// flag makes it a no-op once the button has been found, so this hot path stays
+    /// cheap.
+    private func ensureMenuBarTooltip() {
+        guard !didInstallMenuBarTooltip else { return }
+        for window in NSApp.windows {
+            guard let button = Self.firstStatusBarButton(in: window.contentView) else { continue }
+            // "Vitrine" is the verbatim brand wordmark, like the other brand strings
+            // that bypass the String Catalog (CS-047).
+            button.toolTip = "Vitrine"
+            didInstallMenuBarTooltip = true
+            return
+        }
+    }
+
+    /// Depth-first search for the `NSStatusBarButton` in a view subtree (the status
+    /// item's button is hosted inside the status-bar window's content view).
+    private static func firstStatusBarButton(in view: NSView?) -> NSStatusBarButton? {
+        guard let view else { return nil }
+        if let button = view as? NSStatusBarButton { return button }
+        for subview in view.subviews {
+            if let found = firstStatusBarButton(in: subview) { return found }
+        }
+        return nil
     }
 
     func applicationWillTerminate(_ notification: Notification) {

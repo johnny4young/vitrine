@@ -23,12 +23,25 @@ struct TokenGroupLabel: View {
 /// (`Group` in the settings kit: tile fill, hairline border, radius 14).
 struct TokenGroup<Content: View>: View {
     var title: Text? = nil
+    /// Optional explanatory line under the section label — for clarifying a
+    /// section's scope (e.g. what "Theme" affects versus the rest of "Style").
+    var caption: Text? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let title {
-                TokenGroupLabel(title: title)
+            if title != nil || caption != nil {
+                VStack(alignment: .leading, spacing: 3) {
+                    if let title {
+                        TokenGroupLabel(title: title)
+                    }
+                    if let caption {
+                        caption
+                            .font(.system(size: VitrineTokens.FontSize.caption))
+                            .foregroundStyle(VitrineTokens.Text.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
             VStack(alignment: .leading, spacing: 0) {
                 content

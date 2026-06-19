@@ -109,7 +109,12 @@ struct StyleSettingsView: View {
             }
         }
 
-        TokenGroup(title: Text("Theme")) {
+        TokenGroup(
+            title: Text("Theme"),
+            caption: Text(
+                "The theme recolors the code's syntax. The other Style tabs shape the image around it — font, background, header, and brand."
+            )
+        ) {
             ThemeChipPicker(settings: settings, themes: themes, searchable: true)
                 .accessibilityIdentifier("style-theme-picker")
         }
@@ -297,6 +302,13 @@ struct StyleSettingsView: View {
         if config.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             config.code = "func greet(_ name: String) {\n    print(\"Hello, \\(name)!\")\n}"
         }
+        // The Style preview is a *style* thumbnail, so drop the editor's free-form
+        // annotations (arrows / text callouts / blur). They are content drawn on a
+        // specific capture in the editor — not a Style-pane control — and a leftover
+        // blur or "Note" callout only muddies the preview of the theme/background/font.
+        // Header text, highlighted lines, and line numbers stay: those *are* set in
+        // this pane, so the preview should reflect them.
+        config.annotations = []
         // Show the brand watermark live while configuring the kit (CS-092).
         config.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
         return config
