@@ -76,7 +76,7 @@ extension WebSnapshotEditorView {
                     .overlay(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .strokeBorder(
-                                isSelected ? VitrineTokens.Accent.base : VitrineTokens.Line.border,
+                                isSelected ? Color.accentColor : VitrineTokens.Line.border,
                                 lineWidth: isSelected ? 2 : Brand.Stroke.hairline))
                 Text(verbatim: result.label)
                     .font(.system(size: 11))
@@ -115,7 +115,7 @@ extension WebSnapshotEditorView {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .strokeBorder(
                                     isSelected
-                                        ? VitrineTokens.Accent.base : VitrineTokens.Line.border,
+                                        ? Color.accentColor : VitrineTokens.Line.border,
                                     lineWidth: isSelected ? 2 : Brand.Stroke.hairline))
                     Text("Board")
                         .font(.system(size: 11, weight: .medium))

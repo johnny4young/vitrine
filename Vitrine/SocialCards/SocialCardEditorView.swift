@@ -296,7 +296,7 @@ private struct SocialCardInspector: View {
     private var brandKitRow: some View {
         Label("Use Brand Kit", systemImage: "wand.and.stars")
             .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
-            .foregroundStyle(VitrineTokens.Accent.base)
+            .foregroundStyle(Color.accentColor)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .proGated(.brandKit) { applyBrandKit() }

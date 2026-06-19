@@ -463,7 +463,7 @@ struct ThemeChip: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .strokeBorder(
-                                isSelected ? VitrineTokens.Accent.base : VitrineTokens.Line.border,
+                                isSelected ? Color.accentColor : VitrineTokens.Line.border,
                                 lineWidth: isSelected ? 2 : Brand.Stroke.hairline
                             )
                     )
@@ -597,7 +597,7 @@ struct FontChip: View {
                 .overlay(
                     Capsule(style: .continuous)
                         .strokeBorder(
-                            isSelected ? VitrineTokens.Accent.base : VitrineTokens.Line.border,
+                            isSelected ? Color.accentColor : VitrineTokens.Line.border,
                             lineWidth: Brand.Stroke.hairline
                         )
                 )

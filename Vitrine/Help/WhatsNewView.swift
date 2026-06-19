@@ -77,7 +77,7 @@ struct WhatsNewView: View {
             ForEach(Array(note.highlights.enumerated()), id: \.offset) { _, highlight in
                 HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
                     Circle()
-                        .fill(VitrineTokens.Accent.base)
+                        .fill(Color.accentColor)
                         .frame(width: 18, height: 18)
                         .overlay(
                             Image(systemName: "checkmark")
