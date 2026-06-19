@@ -139,8 +139,6 @@ struct EditorView: View {
         // supported window; the stage column absorbs all extra width.
         .frame(minWidth: 940, minHeight: 520)
         .background(WindowAccessor { editorWindow = $0 })
-        // The redesign's controls tint with the brand accent regardless of the
-        // user's system accent (`--control-on: var(--accent)`).
         .alert("Save Preset", isPresented: $showSavePresetPrompt) {
             TextField("Name", text: $savePresetName)
                 .accessibilityIdentifier("editor-save-preset-name-field")
