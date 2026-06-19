@@ -47,7 +47,7 @@ struct WhatsNewView: View {
         .frame(width: 520)
         .frame(minHeight: 420)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.base)
+        .tint(VitrineTokens.Accent.system)
         .accessibilityContainerIdentifier("whats-new-view")
     }
 
@@ -78,7 +78,7 @@ struct WhatsNewView: View {
             ForEach(Array(note.highlights.enumerated()), id: \.offset) { _, highlight in
                 HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
                     Circle()
-                        .fill(VitrineTokens.Accent.base)
+                        .fill(VitrineTokens.Accent.system)
                         .frame(width: 18, height: 18)
                         .overlay(
                             Image(systemName: "checkmark")

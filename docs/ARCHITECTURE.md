@@ -310,6 +310,9 @@ Vitrine/
 ├── Onboarding/
 │   └── WelcomeView.swift      # first-run quick-start + window controller (CS-035)
 ├── Editor/
+│   ├── EditorView.swift       # scene shell + window-level state
+│   ├── EditorView+Toolbar/Stage/Annotations/DragDrop.swift
+│   │                         # focused editor regions and interactions
 │   ├── CodeEditorView.swift   # NSViewRepresentable over NSTextView
 │   ├── HighlightManager.swift # Highlightr wrapper
 │   └── LanguageDetector.swift # detection by extension / heuristic
@@ -322,7 +325,10 @@ Vitrine/
 │   └── ShareManager.swift     # NSSharingService
 ├── Settings/
 │   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)
-│   ├── SettingsWindow.swift   # preferences window (Settings package)
+│   ├── SettingsWindow.swift / SettingsRootView.swift # custom preferences window
+│   ├── General/Style/Output/Input/Library/AboutSettingsView.swift
+│   │                         # pane-level settings surfaces
+│   ├── BrandKitSettingsSection.swift / SettingsSharedControls.swift
 │   └── CustomThemeStore.swift # built-in + user theme catalog (CS-031)
 ├── Models/
 │   ├── Theme.swift

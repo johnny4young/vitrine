@@ -54,7 +54,7 @@ struct BrandKitSettingsSection: View {
                     if brandKit.brandKit.accent != nil {
                         Button("Reset") { brandKit.brandKit.accent = nil }
                             .buttonStyle(.plain)
-                            .foregroundStyle(VitrineTokens.Accent.base)
+                            .foregroundStyle(VitrineTokens.Accent.system)
                             .accessibilityIdentifier("brand-kit-accent-reset")
                     }
                     ColorPicker("Accent", selection: accent, supportsOpacity: false)
@@ -62,7 +62,11 @@ struct BrandKitSettingsSection: View {
                         .accessibilityIdentifier("brand-kit-accent-picker")
                 }
             }
-            TokenRow(label: Text("Placement")) {
+            TokenRow(
+                label: Text("Placement"),
+                caption: brandKit.brandKit.placement == .free
+                    ? Text("Drag the mark in the preview to place it anywhere.") : nil
+            ) {
                 Picker("Placement", selection: placement) {
                     ForEach(Watermark.Placement.allCases, id: \.self) { placement in
                         Text(placement.label).tag(placement)
@@ -94,6 +98,7 @@ struct BrandKitSettingsSection: View {
                 .accessibilityIdentifier("brand-kit-remove-logo-button")
             }
             Button(brandKit.logoImage == nil ? "Choose…" : "Replace…") { pickLogo() }
+                .buttonStyle(.bordered)
                 .accessibilityIdentifier("brand-kit-choose-logo-button")
             if logoImportFailed {
                 Text("Couldn't load that image")
@@ -110,7 +115,7 @@ struct BrandKitSettingsSection: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
                     Image(systemName: "crown.fill")
-                        .foregroundStyle(VitrineTokens.Accent.base)
+                        .foregroundStyle(VitrineTokens.Accent.system)
                     Text("Brand Kit")
                         .font(.system(size: VitrineTokens.FontSize.body, weight: .semibold))
                         .foregroundStyle(VitrineTokens.Text.primary)

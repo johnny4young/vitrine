@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The flat token namespace for the redesigned app chrome (design/handoff).
@@ -22,6 +23,32 @@ enum VitrineTokens {
     enum Accent {
         /// `--accent` — #4F46E5 light / #7C8CFF dark (re-exported brand accent).
         static let base = Brand.Palette.accent.color
+        /// The accent for app chrome (selection / hover / links / chips). It follows the
+        /// user's macOS accent when they picked a specific one in System Settings →
+        /// Appearance → Accent color, and otherwise — on the default "Multicolor" — keeps
+        /// Vitrine's brand accent. We resolve this ourselves rather than use
+        /// `Color.accentColor`/`.controlAccentColor` directly: the app ships a brand
+        /// `AccentColor` asset, and `.controlAccentColor` reports the macOS *default blue*
+        /// on Multicolor, which would silently drop the brand identity for everyone who
+        /// never chose an accent.
+        static var system: Color {
+            usesSystemAccentOverride(
+                accentColorValue: UserDefaults.standard.object(forKey: "AppleAccentColor"))
+                ? Color(nsColor: .controlAccentColor) : base
+        }
+        /// Whether a stored `AppleAccentColor` value means the user chose a specific
+        /// macOS accent (vs. the default "Multicolor", where the key is absent → `nil`).
+        /// macOS stores an integer once set (0–6, or `-1` for graphite). Kept a pure
+        /// function of the value so it is unit-testable — a `UserDefaults(suiteName:)`
+        /// still cascades to the global domain, so the real key cannot be hidden in a
+        /// test by removing it from a suite.
+        static func usesSystemAccentOverride(accentColorValue: Any?) -> Bool {
+            accentColorValue != nil
+        }
+        /// Text/glyph color that AppKit pairs with a selected-control/system-accent
+        /// fill. This keeps custom accent-filled chips readable for every macOS
+        /// accent, including yellow/graphite and high-contrast appearances.
+        static let systemContrast = Color(nsColor: .selectedControlTextColor)
         /// `--accent-hover` — one step brighter on hover.
         static let hover = Brand.BrandColor(
             light: Color(hex: "#4339D4"),

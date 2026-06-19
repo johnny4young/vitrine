@@ -44,10 +44,14 @@ Every `Brand.BrandColor` carries explicit **light**, **dark**, **light high-cont
 and **dark high-contrast** variants. Use `.color` in views — it resolves the right
 variant for the current appearance automatically. The accent and neutral stage are also
 mirrored in the asset catalog (`AccentColor`, `BrandStage`) with the same four variants.
+For native chrome that should follow the user's macOS accent, use
+`VitrineTokens.Accent.system` (and `systemContrast` for text on that fill), not
+`Color.accentColor` — Vitrine's `AccentColor` asset is the brand violet.
 
 | Token | Role |
 | --- | --- |
 | `accent` / `accentSecondary` | brand accent + gradient far stop |
+| `system` / `systemContrast` | user's macOS accent + readable selected-control text |
 | `stage` | the neutral backdrop behind previews (the "display case") |
 | `textPrimary` / `textSecondary` | body and caption text on app surfaces |
 | `border` | hairline border for cards and previews |

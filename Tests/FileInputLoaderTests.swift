@@ -243,6 +243,35 @@ struct FileInputLoaderApplyTests {
         #expect(config.language == .python)
     }
 
+    /// Replacing the document is a new capture, so content-bound marks (annotations,
+    /// highlighted lines) positioned over the old code are dropped.
+    @Test func replaceClearsContentBoundMarks() {
+        var config = SnapshotConfig(code: "OLD\n", language: .swift)
+        config.annotations = [Annotation(kind: .text, start: .zero, end: .zero)]
+        config.highlightedLineRanges = [1...2]
+        let loaded = FileInputLoader.LoadedFile(
+            text: "print('new')\n", language: .python, filename: "new.py")
+
+        loaded.apply(to: &config, replacing: true)
+
+        #expect(config.annotations.isEmpty)
+        #expect(config.highlightedLineRanges.isEmpty)
+    }
+
+    /// Appending grows the *same* document, so its marks are kept.
+    @Test func appendKeepsContentBoundMarks() {
+        var config = SnapshotConfig(code: "let a = 1\n", language: .swift)
+        config.annotations = [Annotation(kind: .text, start: .zero, end: .zero)]
+        config.highlightedLineRanges = [1...1]
+        let loaded = FileInputLoader.LoadedFile(
+            text: "let b = 2\n", language: .swift, filename: "more.swift")
+
+        loaded.apply(to: &config, replacing: false)
+
+        #expect(config.annotations.count == 1)
+        #expect(config.highlightedLineRanges == [1...1])
+    }
+
     /// A dropped *text* payload carries no filename, so replacing must not stamp an
     /// empty filename onto the metadata (which would reserve an empty header chip).
     @Test func replaceWithEmptyFilenameLeavesMetadataUntouched() {

@@ -68,7 +68,7 @@ struct WebCaptureConsentRow: View {
                 settings.webCapture.consentGiven = false
             }
             .buttonStyle(.plain)
-            .foregroundStyle(VitrineTokens.Accent.base)
+            .foregroundStyle(VitrineTokens.Accent.system)
             .accessibilityIdentifier("web-capture-revoke-consent-button")
         } else {
             Text("Not used yet")
@@ -196,11 +196,11 @@ struct WebCaptureControls: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(
-                    isOn ? VitrineTokens.Accent.contrast : VitrineTokens.Text.secondary
+                    isOn ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
                 )
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Capsule().fill(isOn ? VitrineTokens.Accent.base : Color.clear))
+                .background(Capsule().fill(isOn ? VitrineTokens.Accent.system : Color.clear))
                 .overlay(
                     Capsule().strokeBorder(
                         isOn ? Color.clear : VitrineTokens.Line.border, lineWidth: 1)

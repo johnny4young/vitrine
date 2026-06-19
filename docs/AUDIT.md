@@ -25,8 +25,8 @@ fix. None block the current branch (it is green); these are the next-pass backlo
 > - **P2:** P2-1 (AppSettings → `WebCaptureSettings` sub-store), P2-3 (provider protocol), P2-4
 >   (named gradient; `configured` kept — tested, not dead), P2-5 (`@MainActor` cache), P2-6
 >   (docs) — `[FIXED]`. P2-2 (coordinator dedup) and P2-7 (`@Observable` migration) — `[DEFERRED]`.
->   Brand Kit has been extracted from `SettingsPanes.swift`; broader Settings/Editor file
->   splits remain optional and open.
+>   Brand Kit, Settings panes, and Editor subviews now live in focused files instead of
+>   the old large-pane/editor shells.
 >
 > The StoreKit `#else` paywall path is compiled only by the App-Store-flavor build (no
 > `VITRINE_DIRECT_DOWNLOAD`), not by `make test`; it was reviewed by hand.
@@ -60,21 +60,21 @@ fix. None block the current branch (it is green); these are the next-pass backlo
 2. **File-menu Save/Share/Copy do not apply the Brand Kit watermark, but the editor toolbar
    (which mirrors them) does** → same user action, different pixels by entry point. Same bug
    class as the Shortcuts/Services divergence already fixed in this branch.
-   `Vitrine/App/VitrineCommands.swift:287,299,318` use `settings.config`; route them through
-   `…exportConfig` like `EditorView.swift:229,283,936,947`. (QuickCapture's omission at
-   `QuickCapture.swift:103` is deliberate and documented — leave it.)
+   `[FIXED]` `Vitrine/App/VitrineCommands.swift` now routes Copy/Save/Share through
+   `settings.exportConfig`, matching the toolbar export paths in
+   `Vitrine/Editor/EditorView+Toolbar.swift`. (QuickCapture's omission is deliberate and
+   documented — leave it.)
 
 3. **Two sibling `.sheet(isPresented:)` on one view** — SwiftUI honors only one per view on
    several OS versions; the second can silently never present (latent "button does nothing").
-   `Vitrine/Editor/EditorView.swift:359-366` (multi-size + paywall). Collapse to a single
-   `.sheet(item:)` over an enum (`.export` / `.paywall`).
+   `[FIXED]` `Vitrine/Editor/EditorView.swift` now owns a single sheet state and
+   `Vitrine/Editor/EditorView+Toolbar.swift` presents the multi-size/paywall flow through
+   `.sheet(item:)`.
 
 4. **URL-capture disclosure can infinite-loop when the network entitlement is absent.**
-   `Vitrine/WebRendering/WebSnapshotEditorView.swift:421-425` shows the disclosure when
-   `!consent || !isURLCaptureEnabled`; with the feature disabled the confirm button is
-   permanently disabled, so consent never sticks and every "Capture" re-shows the sheet.
-   Gate on `!consent && isURLCaptureEnabled`; let the disabled build fall through to the
-   existing `RenderError.urlCaptureDisabled` message.
+   `[FIXED]` `Vitrine/WebRendering/WebSnapshotEditorView.swift` now gates the disclosure on
+   missing consent only when URL capture is available; disabled builds fall through to the
+   existing `RenderError.urlCaptureDisabled` feedback.
 
 ---
 
@@ -162,43 +162,40 @@ CLI batch, and multi-viewport — so these multiply across every surface.
 
 ## P1 — UX / HIG (the new PRO surfaces)
 
-1. **Multi-size export gives no success feedback and strands partial failures.**
-   `Vitrine/Export/MultiSizeExportView.swift:121-127` — `dismiss()`s silently on success
-   (every other export shows a `CaptureHUDController` confirmation) and discards the
-   `(written, failed)` count on partial failure. Present "Exported N images" + reveal the
-   folder; report "Wrote N, M failed".
+1. `[FIXED]` **Multi-size export gives no success feedback and strands partial failures.**
+   `Vitrine/Export/MultiSizeExportView.swift` now reports written/failed counts through the
+   same capture feedback surface as the rest of export.
 
-2. **Accent color is a one-way trap.** `Vitrine/Settings/SettingsPanes.swift:896-899` coerces
-   `nil → .white` in the getter and always writes a concrete color, so the model's "no accent
-   (use legible default)" state can never be restored, and the swatch is white-on-white in
-   Light mode. Add a "Default"/reset affordance that sets `accent = nil`.
+2. `[FIXED]` **Accent color is a one-way trap.**
+   `Vitrine/Settings/BrandKitSettingsSection.swift` now exposes a Reset affordance that
+   returns the Brand Kit accent to `nil` (the legible default).
 
-3. **Logo import failure is silent.** `SettingsPanes.swift:846` ignores `importLogo`'s `Bool`;
-   surface an inline error like the editor's file-load alert.
+3. `[FIXED]` **Logo import failure is silent.**
+   `Vitrine/Settings/BrandKitSettingsSection.swift` now surfaces an inline
+   "Couldn't load that image" error when logo import fails.
 
-4. **Paywall polish:** "Restore Purchases"/"Not now" are `.plain` (read as labels, not
-   controls); no Esc/Return shortcuts; `ProBadge` overlaps the 30×30 toolbar icon and double-
-   announces in VoiceOver. `Vitrine/Pro/ProGate.swift:43,90-95,160-163`,
-   `EditorView.swift:347-350` — use `.link`/`.bordered`, add `.cancelAction`/`.defaultAction`,
-   `ProBadge().accessibilityHidden(true)` on the toolbar.
+4. `[FIXED]` **Paywall polish.** `Vitrine/Pro/ProGate.swift` now uses visible button
+   styling plus cancel/default shortcuts, and toolbar PRO badges are hidden from VoiceOver
+   in `Vitrine/Editor/EditorView+Toolbar.swift`.
 
-5. **Token-system consistency:** the upsell + both sheets are hand-built with raw
-   `VStack`/`Text(.system(size:))` instead of `TokenGroup`/`TokenRow`; placement `Picker` is
-   hard-coded `width: 160` (truncates under localization); badge/chips use `Color.white` instead
-   of `VitrineTokens.Accent.contrast`.
+5. `[FIXED]` **Token-system consistency.** The Brand Kit surface uses
+   `TokenGroup`/`TokenRow`, the placement picker sizes to its localized content, and
+   branch chrome that should follow the user's macOS accent now uses
+   `VitrineTokens.Accent.system` / `systemContrast` instead of the app's brand
+   `AccentColor` asset.
 
 ---
 
 ## P2 — Architecture, refactors, dead code, docs
 
-1. `[FIXED — sub-store done; Brand Kit split out; broader view splits open]` **`AppSettings` is the clearest god-object**
+1. `[FIXED — sub-store done; Brand Kit, Settings panes, and Editor regions split]` **`AppSettings` is the clearest god-object**
    (≈550 lines, 25 `@Published`). The web-capture cluster was extracted into a
    `WebCaptureSettings` sub-store (`Vitrine/Settings/WebCaptureSettings.swift`, commit `ef57c7e`)
    the way `BrandKitStore`/`PresetStore` already did, shrinking `AppSettings` by ~70 lines and
    forwarding the sub-store's `objectWillChange`. `BrandKitSettingsSection` now owns the
-   PRO-gated Brand Kit controls and logo-import state outside `SettingsPanes.swift`. Still
-   open (optional, mechanical): continue splitting large Settings/Editor sections per pane and
-   extract `EditorView.swift` subviews.
+   PRO-gated Brand Kit controls and logo-import state; the Settings panes live in focused
+   `*SettingsView.swift` files, and the editor's toolbar/stage/annotations/drag-drop regions
+   live in focused `EditorView+*.swift` files.
 
 2. `[DEFERRED]` **Duplicated WKWebView load coordinators.** `URLRenderer.LoadCoordinator`
    (`URLRenderer.swift:440-512`) and `WebSnapshotView.NavigationCoordinator`

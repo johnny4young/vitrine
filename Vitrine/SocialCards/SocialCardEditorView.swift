@@ -24,8 +24,7 @@ struct SocialCardEditorView: View {
         }
         .frame(minWidth: 860, minHeight: 560)
         .background(VitrineTokens.Surface.window)
-        // The redesign's controls tint with the brand accent, not the system accent.
-        .tint(VitrineTokens.Accent.base)
+        .tint(VitrineTokens.Accent.system)
     }
 
     private var card: SocialCardModel { settings.socialCard }
@@ -222,7 +221,7 @@ private struct SocialCardInspector: View {
                 .fill(VitrineTokens.Line.border)
                 .frame(width: Brand.Stroke.hairline)
         }
-        .tint(VitrineTokens.Accent.base)
+        .tint(VitrineTokens.Accent.system)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("social-card-inspector")
@@ -298,7 +297,7 @@ private struct SocialCardInspector: View {
     private var brandKitRow: some View {
         Label("Use Brand Kit", systemImage: "wand.and.stars")
             .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
-            .foregroundStyle(VitrineTokens.Accent.base)
+            .foregroundStyle(VitrineTokens.Accent.system)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .proGated(.brandKit) { applyBrandKit() }

@@ -59,6 +59,9 @@ enum FileInputLoader {
         ///   when the current content does not already end with one.
         func apply(to config: inout SnapshotConfig, replacing: Bool) {
             if replacing {
+                // Swapping the whole document is a new capture: drop content-bound marks
+                // (annotations, highlighted lines) positioned over the previous code.
+                config.clearContentMarks()
                 config.code = text
                 config.language = language
                 if !filename.isEmpty {

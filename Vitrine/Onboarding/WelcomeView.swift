@@ -87,9 +87,7 @@ struct WelcomeView: View {
         }
         .frame(width: 700)
         .background(VitrineTokens.Surface.window)
-        // The redesign's controls tint with the brand accent, not the user's
-        // system accent.
-        .tint(VitrineTokens.Accent.base)
+        .tint(VitrineTokens.Accent.system)
         .accessibilityContainerIdentifier("welcome-view")
         .onAppear {
             if case .gradient(let preset) = settings.config.background {

@@ -29,7 +29,8 @@ extension EditorView {
                 theme: settings.config.theme,
                 fontName: settings.config.fontName,
                 fontSize: settings.config.fontSize,
-                fontLigatures: settings.config.fontLigatures
+                fontLigatures: settings.config.fontLigatures,
+                onReplaceAllPaste: { settings.config.clearContentMarks() }
             )
             .overlay {
                 if settings.config.code.isEmpty {
@@ -124,6 +125,14 @@ extension EditorView {
                     canvasSize: cardSize, activeTool: activeTool,
                     drawColor: newDrawColor, drawThickness: newDrawThickness,
                     onBeginEdit: recordAnnotationUndo)
+                // Free-placement: drag the brand mark anywhere on the canvas. The
+                // handle shares the canvas coordinate space (a sibling at cardSize),
+                // so a drag maps straight to the normalized brand-kit position.
+                if previewConfig.watermark?.placement == .free {
+                    FreeWatermarkDragHandle(
+                        position: $brandKit.brandKit.freePosition,
+                        contentRect: CGRect(origin: .zero, size: cardSize))
+                }
             }
             .scaleEffect(scale)
             // `scaleEffect` does not shrink the layout footprint, so without this the
@@ -281,6 +290,9 @@ extension EditorView {
         }
         let language = LanguageDetector.detect(text)
         settings.config.language = language
+        // Pasting fresh code is a new capture, so drop content-bound marks (annotations,
+        // highlighted lines) that were positioned over whatever was here before.
+        settings.config.clearContentMarks()
         // Tidy the indentation on paste when the user opts in (CS-049); the global
         // preference (not the per-window session) owns this behavior.
         settings.config.code =

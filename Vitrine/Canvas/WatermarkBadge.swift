@@ -13,9 +13,29 @@ struct WatermarkOverlay: ViewModifier {
 
     func body(content: Content) -> some View {
         if let watermark, watermark.hasContent {
-            content.overlay(alignment: watermark.placement.alignment) {
-                WatermarkBadge(watermark: watermark)
-                    .padding(Self.inset)
+            if watermark.placement == .free {
+                // Free placement: center the mark on the normalized point. A
+                // GeometryReader maps it to the canvas; `.fixedSize` keeps the badge at
+                // its natural size so `.position` does not stretch it. The mark is
+                // purely decorative, so the full-canvas GeometryReader must not take
+                // hit testing — interaction is the separate `FreeWatermarkDragHandle`
+                // layer (mirrors the annotation overlay's decorative marks).
+                content.overlay {
+                    GeometryReader { geo in
+                        WatermarkBadge(watermark: watermark)
+                            .fixedSize()
+                            .position(
+                                x: geo.size.width * watermark.freePosition.x,
+                                y: geo.size.height * watermark.freePosition.y)
+                    }
+                    .allowsHitTesting(false)
+                }
+            } else {
+                content.overlay(alignment: watermark.placement.alignment) {
+                    WatermarkBadge(watermark: watermark)
+                        .padding(Self.inset)
+                        .allowsHitTesting(false)
+                }
             }
         } else {
             content

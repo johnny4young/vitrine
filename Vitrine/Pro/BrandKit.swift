@@ -25,21 +25,27 @@ struct BrandKit: Equatable, Codable {
     /// The accent tint for the mark's text, or `nil` to use the legible default.
     var accent: RGBAColor?
 
-    /// Which corner the mark sits in.
+    /// Which corner the mark sits in — or `.free`, where `freePosition` places it.
     var placement: Watermark.Placement
+
+    /// For `.free` placement: the mark's center as a normalized point in the canvas
+    /// (x,y in 0…1), set by dragging it in a preview. Ignored for the corners.
+    var freePosition: CGPoint
 
     init(
         logo: ImageReference? = nil,
         handle: String = "",
         project: String = "",
         accent: RGBAColor? = nil,
-        placement: Watermark.Placement = .bottomTrailing
+        placement: Watermark.Placement = .bottomTrailing,
+        freePosition: CGPoint = CGPoint(x: 0.84, y: 0.9)
     ) {
         self.logo = logo
         self.handle = Self.normalized(handle)
         self.project = Self.normalized(project)
         self.accent = accent
         self.placement = placement
+        self.freePosition = Watermark.clampFreePosition(freePosition)
     }
 
     /// Trims surrounding whitespace/newlines so a blank field never reserves layout
@@ -58,7 +64,7 @@ struct BrandKit: Equatable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case logo, handle, project, accent, placement
+        case logo, handle, project, accent, placement, freePosition
     }
 
     /// Decodes tolerantly and re-normalizes, so a corrupt blob degrades to a clean
@@ -71,7 +77,9 @@ struct BrandKit: Equatable, Codable {
             project: (try? container.decodeIfPresent(String.self, forKey: .project)) ?? "",
             accent: try? container.decodeIfPresent(RGBAColor.self, forKey: .accent),
             placement: (try? container.decodeIfPresent(Watermark.Placement.self, forKey: .placement))
-                ?? .bottomTrailing
+                ?? .bottomTrailing,
+            freePosition: (try? container.decodeIfPresent(CGPoint.self, forKey: .freePosition))
+                ?? CGPoint(x: 0.84, y: 0.9)
         )
     }
 }
@@ -162,7 +170,8 @@ final class BrandKitStore: ObservableObject {
             logoImage: cachedLogoImage,
             logoIdentity: brandKit.logo?.fileName,
             tint: brandKit.accent,
-            placement: brandKit.placement)
+            placement: brandKit.placement,
+            freePosition: brandKit.freePosition)
     }
 
     /// Imports a user-picked logo file into the container and adopts it, returning
