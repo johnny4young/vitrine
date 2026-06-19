@@ -4376,6 +4376,17 @@
         }
       }
     },
+    "The theme recolors the code's syntax. The other Style tabs shape the image around it — font, background, header, and brand." : {
+      "comment" : "Style pane: caption under the Theme group clarifying Theme vs the broader Style tabs.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El tema solo recolorea la sintaxis del código. Las otras pestañas de Estilo dan forma a la imagen alrededor: tipografía, fondo, encabezado y marca."
+          }
+        }
+      }
+    },
     "Theme" : {
       "comment" : "Picker/menu label: syntax theme.",
       "localizations" : {
