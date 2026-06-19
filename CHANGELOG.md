@@ -12,6 +12,42 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-06-19
+
+### Added
+
+- **Brand Kit · Free placement.** Alongside the four corners, a new "Free" placement
+  lets you drag the brand mark to any point on the image — directly in the editor
+  preview and in the Settings ▸ Style preview.
+- **Menu-bar tooltip + logo glyph.** The status-bar icon is the real Vitrine logo
+  (a template image) and shows a "Vitrine" tooltip on hover.
+
+### Changed
+
+- **Controls follow the macOS system accent.** Selection, hover, links, chips, and
+  segmented controls now track System Settings ▸ Appearance ▸ Accent color; on the
+  default Multicolor they keep Vitrine's brand accent rather than the system blue.
+  Accent-filled chips use the AppKit on-accent text color so they stay legible for
+  every accent.
+- **Annotations and highlighted lines reset on a new capture.** Loading new content
+  — the Paste button, a select-all paste, a dropped file that replaces the document,
+  or a quick capture — clears marks that were positioned over the old code; a
+  mid-edit paste keeps them. Reusable style (theme, font, background, header) stays.
+- **Native, legible Settings buttons.** The Library and the other Settings panes use
+  explicit `.bordered` / `.borderedProminent` styles with a clear primary/secondary
+  hierarchy instead of low-contrast accent-tinted titles.
+- **Refreshed website.** The landing page adopts the "The Vitrine" design-system
+  proposal (light-first, appearance toggle, interactive style bench).
+
+### Fixed
+
+- The single-instance guard no longer affects the unit-test host (it could abort a
+  local `make test` when a developer instance was open).
+- The free-placement watermark overlay is non-interactive, so it never blocks
+  selection or editing of the content beneath it.
+- The Style settings preview drops the editor's free-form annotations, so a stray
+  blur or "Note" callout no longer muddies the style thumbnail.
+
 ## [0.9.0] - 2026-06-18
 
 ### Added
