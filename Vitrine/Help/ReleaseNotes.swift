@@ -42,6 +42,20 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.10.0",
+            headline: "Your accent, free brand placement, and polish",
+            highlights: [
+                "Vitrine's controls now follow your macOS accent color. On the default "
+                    + "Multicolor, they keep Vitrine's signature accent.",
+                "Brand Kit gains a Free placement: drag your mark anywhere on the image — in "
+                    + "the editor or the Style preview.",
+                "Annotations and highlighted lines now reset when you load new code (paste, "
+                    + "drop, or quick capture), so old marks never strand over new content; a "
+                    + "mid-edit paste keeps them.",
+                "The menu-bar icon is the Vitrine logo now, with a tooltip on hover, and the "
+                    + "Settings buttons and website got a cleaner, more legible pass.",
+            ]),
+        ReleaseNote(
             version: "0.9.0",
             headline: "Vitrine PRO, now available",
             highlights: [
