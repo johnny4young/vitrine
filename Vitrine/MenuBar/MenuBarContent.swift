@@ -31,7 +31,6 @@ struct MenuBarContent: View {
         .frame(width: 340)
         // The redesign's controls tint with the brand accent, not the user's
         // system accent.
-        .tint(VitrineTokens.Accent.base)
         .accessibilityContainerIdentifier("menubar-panel")
     }
 

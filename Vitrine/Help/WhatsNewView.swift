@@ -47,7 +47,6 @@ struct WhatsNewView: View {
         .frame(width: 520)
         .frame(minHeight: 420)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.base)
         .accessibilityContainerIdentifier("whats-new-view")
     }
 

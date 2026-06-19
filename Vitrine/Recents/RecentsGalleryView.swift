@@ -50,7 +50,6 @@ struct RecentsGalleryView: View {
         .background(Brand.Palette.stage.color)
         // The redesign's controls tint with the brand accent, not the user's
         // system accent.
-        .tint(VitrineTokens.Accent.base)
         .accessibilityContainerIdentifier("recents-gallery")
     }
 

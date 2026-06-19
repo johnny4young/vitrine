@@ -31,7 +31,6 @@ struct SettingsRootView: View {
         // The redesign's controls always tint with the brand accent
         // (`--control-on: var(--accent)`), even when the user's system accent
         // differs — switches, sliders, and pickers all inherit this.
-        .tint(VitrineTokens.Accent.base)
     }
 
     // MARK: - Sidebar
