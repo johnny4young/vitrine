@@ -83,27 +83,28 @@ struct StyleSettingsView: View {
 
     @ViewBuilder private var preview: some View {
         if let image = previewImage {
-            Image(nsImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity)
-                .frame(maxHeight: 150)
-                .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
+            ZStack {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .accessibilityLabel("Live preview")
+                    .accessibilityIdentifier("settings-style-preview")
                 // Free-placement: drag the brand mark over the preview. The handle maps
                 // the drag to the image's letterboxed content rect, not the frame.
-                .overlay {
-                    if previewConfig.watermark?.placement == .free {
-                        GeometryReader { geo in
-                            FreeWatermarkDragHandle(
-                                position: $brandKit.brandKit.freePosition,
-                                contentRect: FreeWatermarkDragHandle.aspectFitRect(
-                                    imageSize: image.size, in: geo.size))
-                        }
+                if previewConfig.watermark?.placement == .free {
+                    GeometryReader { geo in
+                        FreeWatermarkDragHandle(
+                            position: $brandKit.brandKit.freePosition,
+                            contentRect: FreeWatermarkDragHandle.aspectFitRect(
+                                imageSize: image.size, in: geo.size))
                     }
                 }
-                .help("Live preview of the current style")
-                .accessibilityLabel("Live preview")
-                .accessibilityIdentifier("settings-style-preview")
+            }
+            .frame(maxWidth: .infinity)
+            .frame(maxHeight: 150)
+            .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
+            .help("Live preview of the current style")
+            .accessibilityElement(children: .contain)
         } else {
             previewPlaceholder
         }

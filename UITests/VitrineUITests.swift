@@ -282,6 +282,26 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testStylePaneShowsFreeBrandKitDragHandle() {
+        continueAfterFailure = false
+        let app = launch(
+            arguments: ["--demo-brand-kit-free", "--open-settings"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+
+        // The free-placement Brand Kit mode is only useful if the preview exposes an
+        // actual drag target, not just a picker value hidden in Settings.
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-style", in: app).click()
+        assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
+        element("style-subtab-brandkit", in: app).click()
+        assertExists(element("settings-brand-kit-controls", in: app), in: app, timeout: 3)
+        assertHittable(
+            "brand-kit-free-drag-handle", in: app,
+            "Free Brand Kit placement should expose a reachable preview drag handle")
+    }
+
+    @MainActor
     func testInputPaneExposesReindentOnPasteToggle() {
         continueAfterFailure = false
         let app = launch(arguments: ["--open-settings"])
@@ -610,11 +630,18 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch(arguments: [String], locale: LocaleOverride = .system) -> XCUIApplication {
+    private func launch(
+        arguments: [String],
+        locale: LocaleOverride = .system,
+        environment: [String: String] = [:]
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = arguments + locale.launchArguments
         app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
             "VitrineUITests-\(name)-\(UUID().uuidString)"
+        for (key, value) in environment {
+            app.launchEnvironment[key] = value
+        }
         app.launch()
         app.activate()
         return app

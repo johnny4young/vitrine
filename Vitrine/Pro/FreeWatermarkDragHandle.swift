@@ -21,6 +21,9 @@ struct FreeWatermarkDragHandle: View {
 
     /// The normalized position when the current drag began.
     @State private var dragOrigin: CGPoint?
+    /// Tracks whether this view pushed an open-hand cursor, so removal while hovered
+    /// can unwind AppKit's cursor stack instead of leaving the app stuck in grab mode.
+    @State private var didPushCursor = false
 
     /// A grab zone roughly the size of the badge, so hovering "over the mark" works
     /// without measuring the rendered badge.
@@ -30,11 +33,12 @@ struct FreeWatermarkDragHandle: View {
         let center = CGPoint(
             x: contentRect.minX + position.x * contentRect.width,
             y: contentRect.minY + position.y * contentRect.height)
-        // An invisible grab zone (a dashed outline appears only while dragging, as
-        // grab feedback) that never alters the rendered mark beneath it.
+        // A subtle grab zone that never alters the rendered mark beneath it. Keep a
+        // low-opacity outline visible at rest so Free placement is discoverable and
+        // present in the accessibility tree; lift it while dragging as feedback.
         RoundedRectangle(cornerRadius: 9, style: .continuous)
             .strokeBorder(
-                VitrineTokens.Accent.base.opacity(dragOrigin == nil ? 0 : 0.9),
+                VitrineTokens.Accent.system.opacity(dragOrigin == nil ? 0.28 : 0.9),
                 style: StrokeStyle(lineWidth: 1.5, dash: [5, 3])
             )
             .frame(width: Self.hitSize.width, height: Self.hitSize.height)
@@ -42,14 +46,30 @@ struct FreeWatermarkDragHandle: View {
             .position(center)
             .gesture(dragGesture)
             .onHover { hovering in
-                if hovering {
+                if hovering, !didPushCursor {
                     NSCursor.openHand.push()
-                } else {
+                    didPushCursor = true
+                } else if !hovering, didPushCursor {
                     NSCursor.pop()
+                    didPushCursor = false
+                }
+            }
+            .onDisappear {
+                if didPushCursor {
+                    NSCursor.pop()
+                    didPushCursor = false
                 }
             }
             .help("Drag to place the brand mark")
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("Brand mark position")
+            .accessibilityValue(
+                Text(
+                    verbatim:
+                        "\(Int((position.x * 100).rounded()))%, \(Int((position.y * 100).rounded()))%"
+                )
+            )
+            .accessibilityHint("Drag to place the brand mark")
             .accessibilityIdentifier("brand-kit-free-drag-handle")
     }
 

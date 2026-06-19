@@ -143,18 +143,18 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(
-                    isSelected ? VitrineTokens.Accent.contrast : VitrineTokens.Text.secondary
+                    isSelected ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
                 )
                 .padding(.vertical, 4)
                 .padding(.horizontal, 10)
                 .frame(maxWidth: fillsWidth ? .infinity : nil)
                 .background {
                     if isSelected {
-                        // The selected segment lifts onto an accent-tinted pill so the
-                        // control follows the macOS system accent like the rest of the
+                        // The selected segment lifts onto a system-accent pill so the
+                        // control follows the user's macOS accent like the rest of the
                         // chrome (selection/links/chips), instead of a neutral white card.
                         Capsule(style: .continuous)
-                            .fill(Color.accentColor)
+                            .fill(VitrineTokens.Accent.system)
                             .brandShadow(VitrineTokens.Chrome.segmentShadow)
                     }
                 }
@@ -486,7 +486,8 @@ struct ThemeChip: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .strokeBorder(
-                                isSelected ? Color.accentColor : VitrineTokens.Line.border,
+                                isSelected
+                                    ? VitrineTokens.Accent.system : VitrineTokens.Line.border,
                                 lineWidth: isSelected ? 2 : Brand.Stroke.hairline
                             )
                     )
@@ -620,7 +621,7 @@ struct FontChip: View {
                 .overlay(
                     Capsule(style: .continuous)
                         .strokeBorder(
-                            isSelected ? Color.accentColor : VitrineTokens.Line.border,
+                            isSelected ? VitrineTokens.Accent.system : VitrineTokens.Line.border,
                             lineWidth: Brand.Stroke.hairline
                         )
                 )

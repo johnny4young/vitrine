@@ -6687,7 +6687,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arrastra la marca en el preview para ponerla donde quieras."
+            "value" : "Arrastra la marca en la vista previa para ponerla donde quieras."
           }
         }
       }

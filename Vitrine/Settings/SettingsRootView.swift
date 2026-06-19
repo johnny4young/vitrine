@@ -28,9 +28,7 @@ struct SettingsRootView: View {
         .frame(width: 720)
         .frame(maxHeight: .infinity)
         .background(VitrineTokens.Surface.window)
-        // The redesign's controls always tint with the brand accent
-        // (`--control-on: var(--accent)`), even when the user's system accent
-        // differs — switches, sliders, and pickers all inherit this.
+        .tint(VitrineTokens.Accent.system)
     }
 
     // MARK: - Sidebar
@@ -142,7 +140,7 @@ private struct SettingsSidebarRow: View {
                     )
             }
             .foregroundStyle(
-                isActive ? VitrineTokens.Accent.contrast : VitrineTokens.Text.secondary
+                isActive ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
             )
             .padding(.vertical, VitrineTokens.Spacing.xs)
             .padding(.horizontal, 10)
@@ -163,7 +161,7 @@ private struct SettingsSidebarRow: View {
     }
 
     private var rowFill: Color {
-        if isActive { return Color.accentColor }
+        if isActive { return VitrineTokens.Accent.system }
         if isHovered { return VitrineTokens.Chrome.tile }
         return .clear
     }

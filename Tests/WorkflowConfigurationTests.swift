@@ -53,6 +53,10 @@ struct WorkflowConfigurationTests {
         try text("docs", "RELEASING.md")
     }
 
+    private static func verificationWorkflow() throws -> String {
+        try text("tools", "verify-cs.workflow.js")
+    }
+
     // MARK: - Files exist
 
     @Test func theWorkflowFilesAndSupportingFilesExist() {
@@ -67,6 +71,56 @@ struct WorkflowConfigurationTests {
                 fileManager.fileExists(atPath: path.path),
                 "CS-060 expects \(path.lastPathComponent) to exist")
         }
+    }
+
+    /// The CS verification workflow is only useful when its "likely files" hints point
+    /// at current source locations. This catches stale paths after large mechanical
+    /// splits (for example, the removed SettingsPanes.swift file) before a reviewer
+    /// agent wastes time on dead evidence.
+    @Test func csVerificationWorkflowReferencesCurrentFiles() throws {
+        let workflow = try Self.verificationWorkflow()
+        #expect(
+            !workflow.contains("SettingsPanes.swift"),
+            "verify-cs.workflow.js must not point reviewers at the removed SettingsPanes.swift")
+
+        let fileManager = FileManager.default
+        let hints = workflow.components(separatedBy: .newlines)
+            .compactMap(Self.fileHintList)
+            .flatMap(Self.concreteFileHints)
+
+        #expect(!hints.isEmpty, "Expected CS workflow to contain likely-file hints")
+        for hint in hints {
+            let url = hint.split(separator: "/").reduce(Self.repositoryRoot) {
+                $0.appendingPathComponent(String($1))
+            }
+            #expect(
+                fileManager.fileExists(atPath: url.path),
+                "verify-cs.workflow.js references a missing file hint: \(hint)")
+        }
+    }
+
+    private static func fileHintList(from line: String) -> String? {
+        guard let marker = line.range(of: #"files: ""#) else { return nil }
+        let rest = line[marker.upperBound...]
+        guard let end = rest.firstIndex(of: "\"") else { return nil }
+        return String(rest[..<end])
+    }
+
+    private static func concreteFileHints(from list: String) -> [String] {
+        list.split(separator: ",")
+            .map { raw in
+                var hint = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let annotation = hint.range(of: " (") {
+                    hint = String(hint[..<annotation.lowerBound])
+                }
+                return hint
+            }
+            .filter { hint in
+                hint.hasSuffix(".swift") || hint.hasSuffix(".yml") || hint.hasSuffix(".md")
+                    || hint.hasSuffix(".rb") || hint.hasSuffix(".sh")
+                    || hint == "Makefile" || hint == "project.yml"
+                    || hint.hasSuffix(".xcprivacy")
+            }
     }
 
     // MARK: - YAML well-formedness guard (tabs)

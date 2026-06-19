@@ -139,6 +139,7 @@ struct EditorView: View {
         // supported window; the stage column absorbs all extra width.
         .frame(minWidth: 940, minHeight: 520)
         .background(WindowAccessor { editorWindow = $0 })
+        .tint(VitrineTokens.Accent.system)
         .alert("Save Preset", isPresented: $showSavePresetPrompt) {
             TextField("Name", text: $savePresetName)
                 .accessibilityIdentifier("editor-save-preset-name-field")
