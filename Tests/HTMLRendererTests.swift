@@ -72,6 +72,13 @@ enum WebKitAvailability {
     /// (the snapshot times out or fails) probes as unavailable.
     @MainActor
     private static func probe() async -> Bool {
+        // On hosted CI the WebKit web process is unstable: it cannot acquire its RBS
+        // assertions and intermittently *crashes the test host* (SIGABRT) rather than
+        // failing with a catchable error — a `do/catch` cannot recover a process abort.
+        // The live-render suites already skip there (the probe times out), so launching
+        // a web process buys no coverage and only risks aborting the whole run. Skip the
+        // launch entirely on CI; run it for real everywhere else.
+        if isContinuousIntegration { return false }
         do {
             _ = try await WebSnapshotView().snapshot(
                 of: .init(
@@ -83,6 +90,13 @@ enum WebKitAvailability {
         } catch {
             return false
         }
+    }
+
+    /// Whether the suite is running under a hosted CI runner, where the WebKit web
+    /// process is unreliable. GitHub Actions sets `GITHUB_ACTIONS`/`CI`.
+    private static var isContinuousIntegration: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["GITHUB_ACTIONS"] == "true" || environment["CI"] == "true"
     }
 }
 

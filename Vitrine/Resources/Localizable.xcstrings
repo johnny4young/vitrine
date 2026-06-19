@@ -4376,6 +4376,17 @@
         }
       }
     },
+    "The theme recolors the code's syntax. The other Style tabs shape the image around it — font, background, header, and brand." : {
+      "comment" : "Style pane: caption under the Theme group clarifying Theme vs the broader Style tabs.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El tema solo recolorea la sintaxis del código. Las otras pestañas de Estilo dan forma a la imagen alrededor: tipografía, fondo, encabezado y marca."
+          }
+        }
+      }
+    },
     "Theme" : {
       "comment" : "Picker/menu label: syntax theme.",
       "localizations" : {
@@ -6643,6 +6654,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abajo a la derecha"
+          }
+        }
+      }
+    },
+    "Free" : {
+      "comment" : "CS-092: Watermark placement option — drag the mark anywhere.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Libre"
+          }
+        }
+      }
+    },
+    "Drag the mark in the preview to place it anywhere." : {
+      "comment" : "Brand Kit: hint shown when placement is Free.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag the mark in the preview to place it anywhere."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra la marca en la vista previa para ponerla donde quieras."
+          }
+        }
+      }
+    },
+    "Drag to place the brand mark" : {
+      "comment" : "Brand Kit: tooltip on the free-placement drag handle.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to place the brand mark"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra para ubicar la marca"
+          }
+        }
+      }
+    },
+    "Brand mark position" : {
+      "comment" : "Brand Kit: accessibility label for the free-placement drag handle.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brand mark position"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posición de la marca"
           }
         }
       }

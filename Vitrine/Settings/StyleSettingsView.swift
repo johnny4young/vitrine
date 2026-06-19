@@ -83,15 +83,28 @@ struct StyleSettingsView: View {
 
     @ViewBuilder private var preview: some View {
         if let image = previewImage {
-            Image(nsImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity)
-                .frame(maxHeight: 150)
-                .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
-                .help("Live preview of the current style")
-                .accessibilityLabel("Live preview")
-                .accessibilityIdentifier("settings-style-preview")
+            ZStack {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .accessibilityLabel("Live preview")
+                    .accessibilityIdentifier("settings-style-preview")
+                // Free-placement: drag the brand mark over the preview. The handle maps
+                // the drag to the image's letterboxed content rect, not the frame.
+                if previewConfig.watermark?.placement == .free {
+                    GeometryReader { geo in
+                        FreeWatermarkDragHandle(
+                            position: $brandKit.brandKit.freePosition,
+                            contentRect: FreeWatermarkDragHandle.aspectFitRect(
+                                imageSize: image.size, in: geo.size))
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(maxHeight: 150)
+            .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
+            .help("Live preview of the current style")
+            .accessibilityElement(children: .contain)
         } else {
             previewPlaceholder
         }
@@ -109,7 +122,12 @@ struct StyleSettingsView: View {
             }
         }
 
-        TokenGroup(title: Text("Theme")) {
+        TokenGroup(
+            title: Text("Theme"),
+            caption: Text(
+                "The theme recolors the code's syntax. The other Style tabs shape the image around it — font, background, header, and brand."
+            )
+        ) {
             ThemeChipPicker(settings: settings, themes: themes, searchable: true)
                 .accessibilityIdentifier("style-theme-picker")
         }
@@ -297,6 +315,13 @@ struct StyleSettingsView: View {
         if config.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             config.code = "func greet(_ name: String) {\n    print(\"Hello, \\(name)!\")\n}"
         }
+        // The Style preview is a *style* thumbnail, so drop the editor's free-form
+        // annotations (arrows / text callouts / blur). They are content drawn on a
+        // specific capture in the editor — not a Style-pane control — and a leftover
+        // blur or "Note" callout only muddies the preview of the theme/background/font.
+        // Header text, highlighted lines, and line numbers stay: those *are* set in
+        // this pane, so the preview should reflect them.
+        config.annotations = []
         // Show the brand watermark live while configuring the kit (CS-092).
         config.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
         return config

@@ -65,6 +65,7 @@ struct GeneralSettingsView: View {
                 if settings.languageChangePendingRelaunch {
                     TokenRow {
                         Button("Relaunch to Apply") { AppRelauncher.relaunch() }
+                            .buttonStyle(.bordered)
                             .accessibilityIdentifier("relaunch-to-apply-button")
                     }
                 }
@@ -87,6 +88,7 @@ struct GeneralSettingsView: View {
                             )
                             .accessibilityIdentifier("copy-cli-command-button")
                         }
+                        .buttonStyle(.bordered)
                         .fixedSize()
                     }
                 }
@@ -98,6 +100,7 @@ struct GeneralSettingsView: View {
                     Button("Reset All Settings…", role: .destructive) {
                         showResetConfirmation = true
                     }
+                    .buttonStyle(.bordered)
                     .accessibilityIdentifier("reset-all-settings-button")
                 }
             }

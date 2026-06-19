@@ -75,6 +75,9 @@ enum QuickCapture {
         let interpreted = LanguageDetector.interpret(text)
 
         var config = settings.config
+        // A quick capture is new content: drop content-bound marks (annotations,
+        // highlighted lines) carried over from the previous capture's code.
+        config.clearContentMarks()
         config.code = interpreted.code
         config.language = interpreted.language
 

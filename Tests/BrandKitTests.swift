@@ -48,8 +48,70 @@ struct BrandKitTests {
     @Test func everyPlacementHasALabelAndAlignment() {
         for placement in Watermark.Placement.allCases {
             #expect(!placement.label.isEmpty)
+        }
+        // The four corner placements map to a real corner alignment; `.free` has no
+        // corner anchor — it is positioned by `freePosition`, so `.center` is just its
+        // exhaustive fallback.
+        for placement in Watermark.Placement.allCases where placement != .free {
             #expect(placement.alignment != .center)
         }
+    }
+
+    // MARK: - Free placement (CS-092 follow-up)
+
+    @Test func freePlacementPersistsItsPositionAndResolvesIntoTheMark() {
+        let defaults = isolatedDefaults()
+        let first = BrandKitStore(defaults: defaults)
+        first.isEnabled = true
+        first.brandKit = BrandKit(
+            handle: "@jane", placement: .free, freePosition: CGPoint(x: 0.25, y: 0.7))
+
+        // Persists across instances.
+        let second = BrandKitStore(defaults: defaults)
+        #expect(second.brandKit.placement == .free)
+        #expect(second.brandKit.freePosition == CGPoint(x: 0.25, y: 0.7))
+
+        // The resolver carries the free position into the render-ready mark.
+        let mark = second.resolvedWatermark(isPro: true)
+        #expect(mark?.placement == .free)
+        #expect(mark?.freePosition == CGPoint(x: 0.25, y: 0.7))
+    }
+
+    @Test func freePositionIsClampedIntoTheCanvas() {
+        #expect(Watermark.clampFreePosition(CGPoint(x: -0.5, y: 2)) == CGPoint(x: 0, y: 1))
+        #expect(Watermark.clampFreePosition(CGPoint(x: 0.3, y: 0.6)) == CGPoint(x: 0.3, y: 0.6))
+        // BrandKit's init clamps an out-of-range position.
+        let kit = BrandKit(placement: .free, freePosition: CGPoint(x: 5, y: -1))
+        #expect(kit.freePosition == CGPoint(x: 1, y: 0))
+    }
+
+    @Test func cornerPlacementEqualityIgnoresFreePosition() {
+        // Two identical corner-placed marks that differ only in a carried-but-unused
+        // free position compare equal — `freePosition` only renders under `.free`, so
+        // this avoids needless SwiftUI rerenders.
+        let a = Watermark(
+            text: "@jane", placement: .topLeading, freePosition: CGPoint(x: 0.1, y: 0.1))
+        let b = Watermark(
+            text: "@jane", placement: .topLeading, freePosition: CGPoint(x: 0.9, y: 0.9))
+        #expect(a == b)
+        // Under `.free` the position is significant, so it participates in equality.
+        let c = Watermark(text: "@jane", placement: .free, freePosition: CGPoint(x: 0.1, y: 0.1))
+        let d = Watermark(text: "@jane", placement: .free, freePosition: CGPoint(x: 0.9, y: 0.9))
+        #expect(c != d)
+    }
+
+    @Test func brandKitDecodesWithoutAFreePositionToTheDefault() throws {
+        // A kit persisted before free placement (no freePosition key) decodes cleanly.
+        let json = #"{"handle":"@jane","project":"","placement":"bottomTrailing"}"#
+        let kit = try JSONDecoder().decode(BrandKit.self, from: Data(json.utf8))
+        #expect(kit.freePosition == CGPoint(x: 0.84, y: 0.9))
+    }
+
+    @Test func aspectFitRectLetterboxesByAspectRatio() {
+        // A 2:1 image in a 100×100 box fits to 100×50, centered vertically.
+        let rect = FreeWatermarkDragHandle.aspectFitRect(
+            imageSize: CGSize(width: 200, height: 100), in: CGSize(width: 100, height: 100))
+        #expect(rect == CGRect(x: 0, y: 25, width: 100, height: 50))
     }
 
     // MARK: - Resolver gate

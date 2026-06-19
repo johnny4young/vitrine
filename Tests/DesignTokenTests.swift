@@ -37,6 +37,15 @@ struct DesignTokenTests {
         #expect(Brand.Stroke.hairline == 1)
         #expect(Brand.Stroke.focus > Brand.Stroke.hairline)
     }
+
+    @Test func systemAccentOverrideReflectsTheAppleAccentColorValue() {
+        // Absent key (nil) = the default "Multicolor": keep Vitrine's brand accent.
+        #expect(!VitrineTokens.Accent.usesSystemAccentOverride(accentColorValue: nil))
+        // A specific accent picked in System Settings (3 = Green): follow it.
+        #expect(VitrineTokens.Accent.usesSystemAccentOverride(accentColorValue: 3))
+        // Graphite is stored as -1 — still a deliberate, non-Multicolor choice.
+        #expect(VitrineTokens.Accent.usesSystemAccentOverride(accentColorValue: -1))
+    }
 }
 
 /// The app UI and exported presets must share one brand vocabulary (CS-036).

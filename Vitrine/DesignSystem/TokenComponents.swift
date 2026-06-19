@@ -23,12 +23,25 @@ struct TokenGroupLabel: View {
 /// (`Group` in the settings kit: tile fill, hairline border, radius 14).
 struct TokenGroup<Content: View>: View {
     var title: Text? = nil
+    /// Optional explanatory line under the section label — for clarifying a
+    /// section's scope (e.g. what "Theme" affects versus the rest of "Style").
+    var caption: Text? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let title {
-                TokenGroupLabel(title: title)
+            if title != nil || caption != nil {
+                VStack(alignment: .leading, spacing: 3) {
+                    if let title {
+                        TokenGroupLabel(title: title)
+                    }
+                    if let caption {
+                        caption
+                            .font(.system(size: VitrineTokens.FontSize.caption))
+                            .foregroundStyle(VitrineTokens.Text.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
             VStack(alignment: .leading, spacing: 0) {
                 content
@@ -56,21 +69,28 @@ struct TokenRow<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        HStack(alignment: .center, spacing: VitrineTokens.Spacing.sm) {
-            VStack(alignment: .leading, spacing: 1) {
+        // Center the trailing control against the *label line* (always one line,
+        // stable) and let the caption flow full-width beneath it — the macOS
+        // System Settings layout. This keeps the control's vertical position
+        // fixed when the caption reflows (e.g. toggling a segmented option whose
+        // description grows or shrinks), instead of re-centering the control
+        // against a label+caption block whose height changes.
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: VitrineTokens.Spacing.sm) {
                 if let label {
                     label
                         .font(.system(size: VitrineTokens.FontSize.body))
                         .foregroundStyle(VitrineTokens.Text.primary)
                 }
-                if let caption {
-                    caption
-                        .font(.system(size: VitrineTokens.FontSize.caption))
-                        .foregroundStyle(VitrineTokens.Text.tertiary)
-                }
+                Spacer(minLength: VitrineTokens.Spacing.sm)
+                content
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            content
+            if let caption {
+                caption
+                    .font(.system(size: VitrineTokens.FontSize.caption))
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.vertical, 9)
     }
@@ -123,15 +143,18 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(
-                    isSelected ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
+                    isSelected ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
                 )
                 .padding(.vertical, 4)
                 .padding(.horizontal, 10)
                 .frame(maxWidth: fillsWidth ? .infinity : nil)
                 .background {
                     if isSelected {
+                        // The selected segment lifts onto a system-accent pill so the
+                        // control follows the user's macOS accent like the rest of the
+                        // chrome (selection/links/chips), instead of a neutral white card.
                         Capsule(style: .continuous)
-                            .fill(VitrineTokens.Surface.card)
+                            .fill(VitrineTokens.Accent.system)
                             .brandShadow(VitrineTokens.Chrome.segmentShadow)
                     }
                 }
@@ -463,7 +486,8 @@ struct ThemeChip: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .strokeBorder(
-                                isSelected ? VitrineTokens.Accent.base : VitrineTokens.Line.border,
+                                isSelected
+                                    ? VitrineTokens.Accent.system : VitrineTokens.Line.border,
                                 lineWidth: isSelected ? 2 : Brand.Stroke.hairline
                             )
                     )
@@ -597,7 +621,7 @@ struct FontChip: View {
                 .overlay(
                     Capsule(style: .continuous)
                         .strokeBorder(
-                            isSelected ? VitrineTokens.Accent.base : VitrineTokens.Line.border,
+                            isSelected ? VitrineTokens.Accent.system : VitrineTokens.Line.border,
                             lineWidth: Brand.Stroke.hairline
                         )
                 )

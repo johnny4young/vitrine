@@ -23,7 +23,7 @@ extension WebSnapshotEditorView {
                 .fill(VitrineTokens.Line.border)
                 .frame(width: Brand.Stroke.hairline)
         }
-        .tint(VitrineTokens.Accent.base)
+        .tint(VitrineTokens.Accent.system)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("web-snapshot-inspector")

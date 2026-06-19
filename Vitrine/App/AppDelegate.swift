@@ -9,6 +9,46 @@ import OSLog
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyTask: Task<Void, Never>?
 
+    /// Whether the menu-bar icon's hover tooltip has been installed yet, so the
+    /// idempotent installer in `applicationWillUpdate(_:)` stops searching once
+    /// it has found the status-bar button.
+    private var didInstallMenuBarTooltip = false
+
+    /// Enforce a single running instance. A menu-bar agent must never stack a second
+    /// status item, but launching the same bundle id from a different path — several
+    /// Xcode DerivedData copies, or `open`-ing more than one built `.app` — starts a
+    /// second process with the same identifier. If another Vitrine is already running
+    /// when this one launches, hand activation back to it and exit *before* the SwiftUI
+    /// scene installs a duplicate `MenuBarExtra` icon. UI tests are unaffected:
+    /// `XCUIApplication.launch()` terminates any prior instance before launching, so no
+    /// other instance is ever present here under test.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Never enforce single-instance under tests. The *unit*-test host launches this
+        // app to host XCTest (`XCTestConfigurationFilePath` is set) even while a developer
+        // instance is open; exiting here aborts the run with "test runner exited before
+        // establishing connection". The *UI*-test host instead sets
+        // `VITRINE_USER_DEFAULTS_SUITE` (also used for test isolation). Either signal
+        // means "do not enforce".
+        guard Self.shouldEnforceSingleInstance(ProcessInfo.processInfo.environment) else { return }
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            .filter { $0 != .current }
+        if let existing = others.first {
+            existing.activate()
+            exit(0)
+        }
+    }
+
+    /// Whether to enforce the single-instance guard for a launch with this environment.
+    /// Returns `false` under tests — the unit-test host sets `XCTestConfigurationFilePath`
+    /// and the UI-test host sets `VITRINE_USER_DEFAULTS_SUITE` — so a test run is never
+    /// killed by a developer instance that happens to be open. Pure + injectable so the
+    /// rule is unit-testable.
+    static func shouldEnforceSingleInstance(_ environment: [String: String]) -> Bool {
+        environment["VITRINE_USER_DEFAULTS_SUITE"] == nil
+            && environment["XCTestConfigurationFilePath"] == nil
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.app.notice("Vitrine launched")
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
@@ -53,7 +93,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `--seen-old-version` seeds an older last-seen version and then presents What's
     /// New through its real version gate; `--skip-onboarding` just marks the
     /// quick-start as seen; the multi-window hooks (`--open-second-editor`,
-    /// `--force-offscreen-editor`) drive the CS-053 UI smoke tests.
+    /// `--force-offscreen-editor`) drive the CS-053 UI smoke tests; `--demo-brand-kit-free`
+    /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests.
     ///
     /// - Returns: whether a hook opened a window, so the normal first-run surfaces
     ///   (`presentIfFirstRun` / `presentIfNewVersion`) are not stacked on top of one.
@@ -113,6 +154,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppSettings.shared.config = demo
             EditorWindowController.shared.show()
             didOpenWindow = true
+        }
+        if arguments.contains("--demo-brand-kit-free") {
+            let store = BrandKitStore.shared
+            store.isEnabled = true
+            store.brandKit = BrandKit(
+                handle: "@vitrine", project: "demo", placement: .free,
+                freePosition: CGPoint(x: 0.72, y: 0.78))
         }
         if arguments.contains("--open-editor") {
             EditorWindowController.shared.show()
@@ -263,6 +311,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// this effectively free on this hot every-event path.
     func applicationWillUpdate(_ notification: Notification) {
         AppMenu.reinstallIfDisplaced()
+        ensureMenuBarTooltip()
+    }
+
+    /// Give the menu-bar icon a hover tooltip ("Vitrine"). SwiftUI's `MenuBarExtra`
+    /// owns the `NSStatusItem` and exposes no API for its tooltip, so reach the
+    /// underlying status-bar button through the window hierarchy and set it directly.
+    /// Driven from `applicationWillUpdate(_:)` because the status item is created
+    /// during SwiftUI's scene bring-up, after `applicationDidFinishLaunching`; the
+    /// flag makes it a no-op once the button has been found, so this hot path stays
+    /// cheap.
+    private func ensureMenuBarTooltip() {
+        guard !didInstallMenuBarTooltip else { return }
+        for window in NSApp.windows {
+            guard let button = Self.firstStatusBarButton(in: window.contentView) else { continue }
+            // "Vitrine" is the verbatim brand wordmark, like the other brand strings
+            // that bypass the String Catalog (CS-047).
+            button.toolTip = "Vitrine"
+            didInstallMenuBarTooltip = true
+            return
+        }
+    }
+
+    /// Depth-first search for the `NSStatusBarButton` in a view subtree (the status
+    /// item's button is hosted inside the status-bar window's content view).
+    private static func firstStatusBarButton(in view: NSView?) -> NSStatusBarButton? {
+        guard let view else { return nil }
+        if let button = view as? NSStatusBarButton { return button }
+        for subview in view.subviews {
+            if let found = firstStatusBarButton(in: subview) { return found }
+        }
+        return nil
     }
 
     func applicationWillTerminate(_ notification: Notification) {

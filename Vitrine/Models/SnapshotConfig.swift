@@ -78,6 +78,16 @@ struct SnapshotConfig: Equatable {
     var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || diffDecorations
     }
+
+    /// Clears the marks that are tied to *this specific code* — free-form annotations
+    /// (arrows / text / blur) and highlighted line ranges — so loading new content
+    /// (paste, drop, quick capture) starts clean instead of stranding marks that were
+    /// positioned over unrelated code. Style (theme, font, background, header text)
+    /// is reusable and intentionally kept.
+    mutating func clearContentMarks() {
+        annotations = []
+        highlightedLineRanges = []
+    }
 }
 
 /// A brand watermark composited onto an exported snapshot — the render-ready form
@@ -113,12 +123,18 @@ struct Watermark: Equatable {
     /// The accent tint for the text, or `nil` to use the legible default.
     var tint: RGBAColor?
 
-    /// Which corner the mark sits in.
+    /// Which corner the mark sits in — or `.free`, where `freePosition` places it.
     var placement: Placement = .bottomTrailing
 
-    /// The corner a watermark is anchored to.
+    /// For `.free` placement: the mark's center as a normalized point in the canvas
+    /// (x,y in 0…1). Ignored for the four corner placements. Defaults to the
+    /// bottom-right region, so switching to Free starts where the default corner sat.
+    var freePosition: CGPoint = CGPoint(x: 0.84, y: 0.9)
+
+    /// Where a watermark is anchored: one of the four corners, or `.free` (placed
+    /// anywhere by dragging it in the preview).
     enum Placement: String, CaseIterable, Codable, Sendable {
-        case bottomTrailing, bottomLeading, topTrailing, topLeading
+        case bottomTrailing, bottomLeading, topTrailing, topLeading, free
 
         /// A human-readable name for the picker.
         var label: String {
@@ -127,18 +143,28 @@ struct Watermark: Equatable {
             case .bottomLeading: String(localized: "Bottom left")
             case .topTrailing: String(localized: "Top right")
             case .topLeading: String(localized: "Top left")
+            case .free: String(localized: "Free")
             }
         }
 
-        /// The SwiftUI alignment used to pin the mark to its corner.
+        /// The SwiftUI alignment used to pin the mark to its corner. `.free` has no
+        /// corner anchor (it is positioned by `freePosition`); it returns `.center`
+        /// only as an exhaustive fallback.
         var alignment: Alignment {
             switch self {
             case .bottomTrailing: .bottomTrailing
             case .bottomLeading: .bottomLeading
             case .topTrailing: .topTrailing
             case .topLeading: .topLeading
+            case .free: .center
             }
         }
+    }
+
+    /// Clamps a normalized point into the canvas (each axis in 0…1), used so a free
+    /// watermark position can never drift fully off the image.
+    static func clampFreePosition(_ point: CGPoint) -> CGPoint {
+        CGPoint(x: min(max(point.x, 0), 1), y: min(max(point.y, 0), 1))
     }
 
     /// Whether the mark has anything to draw — at least a logo or a non-empty line.
@@ -151,6 +177,11 @@ struct Watermark: Equatable {
     static func == (lhs: Watermark, rhs: Watermark) -> Bool {
         guard lhs.text == rhs.text, lhs.tint == rhs.tint, lhs.placement == rhs.placement
         else { return false }
+        // `freePosition` only changes the render under `.free` placement, so two
+        // corner-placed marks that differ only in a stored free position stay equal —
+        // this keeps a SwiftUI diff of `SnapshotConfig` from triggering needless
+        // rerenders when the position is carried but unused.
+        if lhs.placement == .free, lhs.freePosition != rhs.freePosition { return false }
         if lhs.logoIdentity != nil || rhs.logoIdentity != nil {
             return lhs.logoIdentity == rhs.logoIdentity
         }

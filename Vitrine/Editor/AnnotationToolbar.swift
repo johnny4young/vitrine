@@ -83,10 +83,13 @@ struct AnnotationToolbar: View {
             Image(systemName: tool.systemImage)
                 .font(.system(size: 12.5, weight: .medium))
                 .frame(width: 28, height: 25)
-                .foregroundStyle(activeTool == tool ? Color.white : VitrineTokens.Text.secondary)
+                .foregroundStyle(
+                    activeTool == tool
+                        ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
+                )
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(activeTool == tool ? VitrineTokens.Accent.base : Color.clear)
+                        .fill(activeTool == tool ? VitrineTokens.Accent.system : Color.clear)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
@@ -159,7 +162,7 @@ private struct ColorSwatchButton: View {
                             .overlay(
                                 Circle().strokeBorder(
                                     swatch.isApproximately(color)
-                                        ? VitrineTokens.Accent.base : .white.opacity(0.25),
+                                        ? VitrineTokens.Accent.system : .white.opacity(0.25),
                                     lineWidth: swatch.isApproximately(color) ? 2.5 : 1))
                     }
                     .buttonStyle(.plain)
