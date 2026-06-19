@@ -82,6 +82,7 @@ struct StylePresetsSection: View {
                         saveName = settings.config.theme.displayName
                         showSavePrompt = true
                     }
+                    .buttonStyle(.borderedProminent)
                     .help("Save the current style as a new named preset you can reuse.")
                     .accessibilityIdentifier("save-style-preset-button")
 
@@ -99,6 +100,7 @@ struct StylePresetsSection: View {
                     )
                     .accessibilityIdentifier("export-presets-button")
                 }
+                .buttonStyle(.bordered)
                 .fixedSize()
             }
 
@@ -185,6 +187,7 @@ struct StylePresetsSection: View {
                 .disabled(!canEdit)
                 .accessibilityIdentifier("delete-style-preset-button")
             }
+            .buttonStyle(.bordered)
             .fixedSize()
         }
     }
@@ -332,6 +335,7 @@ struct CustomThemesSection: View {
     private var themeActionButtons: some View {
         HStack(spacing: VitrineTokens.Spacing.xs) {
             Button("New Theme…") { editorDraft = CustomThemeDraft() }
+                .buttonStyle(.borderedProminent)
                 .help("Create a custom syntax theme with a live preview.")
                 .accessibilityIdentifier("new-custom-theme-button")
 
@@ -349,6 +353,7 @@ struct CustomThemesSection: View {
             )
             .accessibilityIdentifier("export-themes-button")
         }
+        .buttonStyle(.bordered)
         .fixedSize()
     }
 
@@ -392,6 +397,7 @@ struct CustomThemesSection: View {
                 .disabled(theme == nil)
                 .accessibilityIdentifier("delete-custom-theme-button")
             }
+            .buttonStyle(.bordered)
             .fixedSize()
         }
     }
