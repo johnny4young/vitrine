@@ -29,7 +29,7 @@ struct AboutSettingsView: View {
                     .foregroundStyle(VitrineTokens.Text.secondary)
                 Link("GitHub", destination: URL(string: "https://github.com/johnny4young/vitrine")!)
                     .font(.system(size: VitrineTokens.FontSize.body))
-                    .foregroundStyle(VitrineTokens.Accent.base)
+                    .foregroundStyle(Color.accentColor)
                     .padding(.top, 4)
 
                 Button("Export Diagnostics…") {

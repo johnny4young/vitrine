@@ -163,7 +163,7 @@ private struct SettingsSidebarRow: View {
     }
 
     private var rowFill: Color {
-        if isActive { return VitrineTokens.Accent.base }
+        if isActive { return Color.accentColor }
         if isHovered { return VitrineTokens.Chrome.tile }
         return .clear
     }

@@ -122,7 +122,7 @@ struct MenuBarContent: View {
                 } label: {
                     Text("View history →")
                         .font(.system(size: VitrineTokens.FontSize.caption))
-                        .foregroundStyle(VitrineTokens.Accent.base)
+                        .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("menu-recents-gallery")
@@ -179,7 +179,7 @@ struct MenuBarContent: View {
                 .padding(.horizontal, 10)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(isSelected ? VitrineTokens.Accent.base : .clear)
+                        .fill(isSelected ? Color.accentColor : .clear)
                 )
                 .overlay(
                     Capsule(style: .continuous)
@@ -458,7 +458,7 @@ private struct MenuPanelRow: View {
             .padding(.horizontal, VitrineTokens.Spacing.xs)
             .background(
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(isHovered ? VitrineTokens.Accent.base : .clear)
+                    .fill(isHovered ? Color.accentColor : .clear)
             )
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
