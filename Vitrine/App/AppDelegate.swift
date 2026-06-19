@@ -23,13 +23,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `XCUIApplication.launch()` terminates any prior instance before launching, so no
     /// other instance is ever present here under test.
     func applicationWillFinishLaunching(_ notification: Notification) {
-        // Never enforce single-instance under UI tests: `XCUIApplication.launch()` brings
-        // up a fresh test host that must run even if a developer instance is already open,
-        // and consecutive tests relaunch rapidly. UI-test launches set
-        // `VITRINE_USER_DEFAULTS_SUITE` (also used for test isolation), so key off it.
-        guard ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"] == nil else {
-            return
-        }
+        // Never enforce single-instance under tests. The *unit*-test host launches this
+        // app to host XCTest (`XCTestConfigurationFilePath` is set) even while a developer
+        // instance is open; exiting here aborts the run with "test runner exited before
+        // establishing connection". The *UI*-test host instead sets
+        // `VITRINE_USER_DEFAULTS_SUITE` (also used for test isolation). Either signal
+        // means "do not enforce".
+        guard Self.shouldEnforceSingleInstance(ProcessInfo.processInfo.environment) else { return }
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             .filter { $0 != .current }
@@ -37,6 +37,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             existing.activate()
             exit(0)
         }
+    }
+
+    /// Whether to enforce the single-instance guard for a launch with this environment.
+    /// Returns `false` under tests — the unit-test host sets `XCTestConfigurationFilePath`
+    /// and the UI-test host sets `VITRINE_USER_DEFAULTS_SUITE` — so a test run is never
+    /// killed by a developer instance that happens to be open. Pure + injectable so the
+    /// rule is unit-testable.
+    static func shouldEnforceSingleInstance(_ environment: [String: String]) -> Bool {
+        environment["VITRINE_USER_DEFAULTS_SUITE"] == nil
+            && environment["XCTestConfigurationFilePath"] == nil
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
