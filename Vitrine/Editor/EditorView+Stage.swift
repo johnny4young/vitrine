@@ -124,6 +124,14 @@ extension EditorView {
                     canvasSize: cardSize, activeTool: activeTool,
                     drawColor: newDrawColor, drawThickness: newDrawThickness,
                     onBeginEdit: recordAnnotationUndo)
+                // Free-placement: drag the brand mark anywhere on the canvas. The
+                // handle shares the canvas coordinate space (a sibling at cardSize),
+                // so a drag maps straight to the normalized brand-kit position.
+                if previewConfig.watermark?.placement == .free {
+                    FreeWatermarkDragHandle(
+                        position: $brandKit.brandKit.freePosition,
+                        contentRect: CGRect(origin: .zero, size: cardSize))
+                }
             }
             .scaleEffect(scale)
             // `scaleEffect` does not shrink the layout footprint, so without this the

@@ -62,7 +62,11 @@ struct BrandKitSettingsSection: View {
                         .accessibilityIdentifier("brand-kit-accent-picker")
                 }
             }
-            TokenRow(label: Text("Placement")) {
+            TokenRow(
+                label: Text("Placement"),
+                caption: brandKit.brandKit.placement == .free
+                    ? Text("Drag the mark in the preview to place it anywhere.") : nil
+            ) {
                 Picker("Placement", selection: placement) {
                     ForEach(Watermark.Placement.allCases, id: \.self) { placement in
                         Text(placement.label).tag(placement)

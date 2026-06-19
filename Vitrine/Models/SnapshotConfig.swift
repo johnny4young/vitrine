@@ -113,12 +113,18 @@ struct Watermark: Equatable {
     /// The accent tint for the text, or `nil` to use the legible default.
     var tint: RGBAColor?
 
-    /// Which corner the mark sits in.
+    /// Which corner the mark sits in — or `.free`, where `freePosition` places it.
     var placement: Placement = .bottomTrailing
 
-    /// The corner a watermark is anchored to.
+    /// For `.free` placement: the mark's center as a normalized point in the canvas
+    /// (x,y in 0…1). Ignored for the four corner placements. Defaults to the
+    /// bottom-right region, so switching to Free starts where the default corner sat.
+    var freePosition: CGPoint = CGPoint(x: 0.84, y: 0.9)
+
+    /// Where a watermark is anchored: one of the four corners, or `.free` (placed
+    /// anywhere by dragging it in the preview).
     enum Placement: String, CaseIterable, Codable, Sendable {
-        case bottomTrailing, bottomLeading, topTrailing, topLeading
+        case bottomTrailing, bottomLeading, topTrailing, topLeading, free
 
         /// A human-readable name for the picker.
         var label: String {
@@ -127,18 +133,28 @@ struct Watermark: Equatable {
             case .bottomLeading: String(localized: "Bottom left")
             case .topTrailing: String(localized: "Top right")
             case .topLeading: String(localized: "Top left")
+            case .free: String(localized: "Free")
             }
         }
 
-        /// The SwiftUI alignment used to pin the mark to its corner.
+        /// The SwiftUI alignment used to pin the mark to its corner. `.free` has no
+        /// corner anchor (it is positioned by `freePosition`); it returns `.center`
+        /// only as an exhaustive fallback.
         var alignment: Alignment {
             switch self {
             case .bottomTrailing: .bottomTrailing
             case .bottomLeading: .bottomLeading
             case .topTrailing: .topTrailing
             case .topLeading: .topLeading
+            case .free: .center
             }
         }
+    }
+
+    /// Clamps a normalized point into the canvas (each axis in 0…1), used so a free
+    /// watermark position can never drift fully off the image.
+    static func clampFreePosition(_ point: CGPoint) -> CGPoint {
+        CGPoint(x: min(max(point.x, 0), 1), y: min(max(point.y, 0), 1))
     }
 
     /// Whether the mark has anything to draw — at least a logo or a non-empty line.
@@ -149,7 +165,8 @@ struct Watermark: Equatable {
     /// neither side has an identity (a text-only or hand-built mark) it falls back to the
     /// bytes, so correctness is unchanged.
     static func == (lhs: Watermark, rhs: Watermark) -> Bool {
-        guard lhs.text == rhs.text, lhs.tint == rhs.tint, lhs.placement == rhs.placement
+        guard lhs.text == rhs.text, lhs.tint == rhs.tint, lhs.placement == rhs.placement,
+            lhs.freePosition == rhs.freePosition
         else { return false }
         if lhs.logoIdentity != nil || rhs.logoIdentity != nil {
             return lhs.logoIdentity == rhs.logoIdentity

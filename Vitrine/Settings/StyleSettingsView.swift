@@ -89,6 +89,18 @@ struct StyleSettingsView: View {
                 .frame(maxWidth: .infinity)
                 .frame(maxHeight: 150)
                 .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
+                // Free-placement: drag the brand mark over the preview. The handle maps
+                // the drag to the image's letterboxed content rect, not the frame.
+                .overlay {
+                    if previewConfig.watermark?.placement == .free {
+                        GeometryReader { geo in
+                            FreeWatermarkDragHandle(
+                                position: $brandKit.brandKit.freePosition,
+                                contentRect: FreeWatermarkDragHandle.aspectFitRect(
+                                    imageSize: image.size, in: geo.size))
+                        }
+                    }
+                }
                 .help("Live preview of the current style")
                 .accessibilityLabel("Live preview")
                 .accessibilityIdentifier("settings-style-preview")
