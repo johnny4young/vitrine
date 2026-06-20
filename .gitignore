@@ -84,3 +84,6 @@ Vendor/
 
 # Local working mirror of the Claude Design "Vitrine Design System" (design-sync pull)
 docs/design/
+
+# BSD `script` default capture file (dev artifact)
+typescript
