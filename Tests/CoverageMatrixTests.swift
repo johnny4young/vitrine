@@ -250,9 +250,10 @@ struct LanguageThemeMatrixTests {
     /// theme versus a dark theme produces different pixels. This proves the matrix
     /// above is exercising real per-theme rendering, not drawing the same image 13
     /// times.
-    // `.terminal` is excluded: terminal output is colored by its own ANSI palette and
-    // a fixed terminal background, so it renders identically across syntax themes by
-    // design.
+    // `.terminal` is excluded here because this test exercises Highlightr-driven syntax
+    // theming, which terminal output does not use — it is colored by its own ANSI palette.
+    // Terminal rendering *does* vary by theme (light/dark + signature palettes); that is
+    // covered separately by ANSIRenderTests.
     @Test(arguments: Language.allCases.filter { $0 != .plaintext && $0 != .terminal })
     func themeChangesTheRenderedImage(_ language: Language) throws {
         var dark = SnapshotConfig()

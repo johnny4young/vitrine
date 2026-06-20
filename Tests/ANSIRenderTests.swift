@@ -85,6 +85,19 @@ struct ANSIRenderTests {
         #expect(ShellInit.resolveShell("fish") == nil)
     }
 
+    @Test func shellInitArgumentParsing() {
+        #expect(ShellInit.invocation(for: ["zsh"]) == .snippet(.zsh))
+        #expect(ShellInit.invocation(for: ["bash"]) == .snippet(.bash))
+        #expect(ShellInit.invocation(for: ["--help"]) == .help)
+        #expect(ShellInit.invocation(for: ["-h"]) == .help)
+        // --help wins in any position, not just the first.
+        #expect(ShellInit.invocation(for: ["zsh", "--help"]) == .help)
+        // Extra positional arguments are surfaced, not silently ignored.
+        #expect(ShellInit.invocation(for: ["zsh", "extra"]) == .extraArguments(["extra"]))
+        // An unknown single argument is reported as an unknown shell.
+        #expect(ShellInit.invocation(for: ["fish"]) == .unknownShell("fish"))
+    }
+
     @Test func terminalPaletteFollowsTheTheme() {
         // Light theme → light terminal; dark theme → the default dark palette;
         // a signature theme (Dracula) → its own palette.
