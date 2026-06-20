@@ -3,12 +3,22 @@
 Vitrine renders **terminal output** — anything with ANSI color escape codes (`git`,
 test runners, `ls --color`, build logs) — as a styled terminal image. The colors come
 from the escape codes themselves (standard 16-color, 256-color, and 24-bit truecolor)
-with bold / dim / italic / underline / inverse, on a dark terminal background.
+with bold / dim / italic / underline / strikethrough / inverse.
 
 It is a first-class **Terminal** language: pasting, dropping a file, quick-capturing,
 or `vitrine render … --language terminal` all work, and Vitrine auto-detects terminal
 output by its escape codes (they override the file extension, so a `.log`/`.txt` of
 colored output is recognized too).
+
+## Themes
+
+The terminal palette follows the **Style ▸ theme** you pick, so the same theme switch
+that restyles a code snapshot restyles a terminal one:
+
+- A **light** theme (GitHub, One Light, …) renders the terminal on a **light** card —
+  the right look for light blogs, docs, and slides.
+- A **dark** theme renders on a dark card with a balanced One-Dark-family palette.
+- **Dracula** and **Nord** map to their own signature ANSI palettes.
 
 ## The catch: color is lost when you copy
 
@@ -44,7 +54,10 @@ vlast                   # share the LAST command you already ran — without re-
 - **`vgrab <command>`** runs the command inside a pseudo-terminal (via the system
   `script`), so the program emits its colors automatically, captures the output, and
   copies the rendered image to the clipboard. Use it when you're *about to* run
-  something.
+  something. It returns the command's own exit status, so it composes
+  (`vgrab make && …`), and **`vgrab -w 100 <command>`** sets the capture width
+  (`COLUMNS`) so wide output like `git log --graph` wraps consistently — a best effort,
+  since tools that query the terminal size directly ignore it.
 - **`vlast`** shares the command you *already* ran. Because the integration passively
   records your session, the colored output of the last command is already captured — so
   `vlast` renders it instantly, with no re-run and no side effects.
@@ -101,3 +114,35 @@ pipe. Both detect terminal output by its ANSI escapes when `--language` is omitt
   final lines.
 - Everything else about a snapshot still applies: background, padding, window title,
   annotations (arrow a failing assert, blur a secret), multi-size export, Brand Kit.
+
+## Roadmap
+
+Deferred, with the technical reason each is not in the first cut:
+
+- **Nerd Font / Powerline / icon glyphs.** Modern prompts (`starship`), `eza --icons`,
+  and Powerline separators use glyphs from the Private Use Area that the bundled
+  JetBrains Mono lacks, so they render as missing boxes. The fix is a font **cascade
+  list** (`kCTFontCascadeListAttribute`) with a bundled *Symbols Nerd Font* as the
+  fallback — it needs shipping that font asset (size + OFL license review). Box-drawing
+  characters already render (JetBrains Mono includes them).
+- **Full terminal emulation (TUIs, progress bars, redraws).** The current renderer is
+  line-oriented: it strips cursor-movement sequences and collapses carriage returns, so
+  line-based output (`git`, test runners, `ls`) is faithful, but full-screen apps
+  (`htop`, `vim`) and in-place progress bars are not. Capturing the *final screen
+  state* needs a small VT/grid emulator (cursor positioning into a cell buffer, à la
+  `pyte`), which is a separate, larger component.
+- **`vgrab --edit`** (open the captured output in the editor to annotate/restyle before
+  exporting). The CLI is a separate process; pushing content into the running app needs
+  app-side IPC — a `vitrine://` URL scheme plus an open-content handler that seeds the
+  editor.
+- **One-click shell-init install.** A Settings button that appends the `eval` line to
+  `~/.zshrc`. The App Store build is sandboxed and cannot write arbitrary files, so the
+  interim is a "Copy setup line" button; auto-install would ship in the direct-download
+  build or behind a user-selected file grant.
+- **`vlast` for bash / fish, and native terminal integrations.** Today the passive
+  recorder is zsh-only. bash needs `bash-preexec`/`DEBUG`-trap equivalents; fish needs
+  its event hooks. iTerm2 / kitty / WezTerm expose the *last command's* output via their
+  own shell integration, which would let `vlast` skip the `exec script` re-exec entirely
+  on those terminals (less invasive).
+- **OSC 8 hyperlinks** (style the linked text) and a **copyable-text sidecar** (ship the
+  raw output alongside the image for accessibility / easy copy) — small, additive.

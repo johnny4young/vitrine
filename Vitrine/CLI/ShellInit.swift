@@ -59,17 +59,31 @@ enum ShellInit {
         # >>> vitrine shell integration (zsh) >>>
         # Turn terminal output into a Vitrine image. Docs: vitrine shell-init --help
 
-        # vgrab <cmd…> — run a command under a pseudo-terminal (so it emits color) and
-        # copy a terminal image of its output to the clipboard.
+        # vgrab [-w cols] <cmd…> — run a command under a pseudo-terminal (so it emits
+        # color) and copy a terminal image of its output to the clipboard. Returns the
+        # command's own exit status (script -e). -w/--width sets COLUMNS for it (a
+        # best effort: tools that query the tty size directly ignore it).
         vgrab() {
           emulate -L zsh
+          local _vw=""
+          while [[ "$1" == -* ]]; do
+            case "$1" in
+              -w|--width) _vw="$2"; shift 2 ;;
+              --) shift; break ;;
+              *) break ;;
+            esac
+          done
           if (( $# == 0 )); then
-            print -ru2 -- "usage: vgrab <command> [args…]"
+            print -ru2 -- "usage: vgrab [-w cols] <command> [args…]"
             return 2
           fi
           local _vf
           _vf="$(mktemp -t vitrine-grab)" || return 1
-          script -q "$_vf" "$@"
+          if [[ -n "$_vw" ]]; then
+            COLUMNS="$_vw" script -qe "$_vf" "$@"
+          else
+            script -qe "$_vf" "$@"
+          fi
           local _vc=$?
           command vitrine render "$_vf" --language terminal --copy
           rm -f -- "$_vf"
@@ -119,13 +133,25 @@ enum ShellInit {
         # `vgrab` works in bash; the passive `vlast` recorder is zsh-only for now.
 
         vgrab() {
+          local _vw=""
+          while [ "${1:0:1}" = "-" ]; do
+            case "$1" in
+              -w|--width) _vw="$2"; shift 2 ;;
+              --) shift; break ;;
+              *) break ;;
+            esac
+          done
           if [ "$#" -eq 0 ]; then
-            printf 'usage: vgrab <command> [args…]\\n' >&2
+            printf 'usage: vgrab [-w cols] <command> [args…]\\n' >&2
             return 2
           fi
           local _vf
           _vf="$(mktemp -t vitrine-grab)" || return 1
-          script -q "$_vf" "$@"
+          if [ -n "$_vw" ]; then
+            COLUMNS="$_vw" script -qe "$_vf" "$@"
+          else
+            script -qe "$_vf" "$@"
+          fi
           local _vc=$?
           command vitrine render "$_vf" --language terminal --copy
           rm -f -- "$_vf"

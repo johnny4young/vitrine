@@ -227,11 +227,15 @@ struct SnapshotCanvas: View {
             family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
     }
 
+    /// The terminal color palette for the active theme — drives both the ANSI text
+    /// colors and the card background when rendering terminal output.
+    private var terminalPalette: ANSIPalette { ANSIPalette.forTheme(config.theme) }
+
     /// The card fill: the syntax theme's background, or the terminal palette's
-    /// background when rendering ANSI terminal output.
+    /// background (theme-matched) when rendering ANSI terminal output.
     private var cardBackgroundColor: Color {
         config.language == .terminal
-            ? Color(nsColor: ANSIPalette.terminal.defaultBackground)
+            ? Color(nsColor: terminalPalette.defaultBackground)
             : HighlightManager.shared.backgroundColor(for: config.theme)
     }
 
@@ -239,9 +243,11 @@ struct SnapshotCanvas: View {
         let placeholder = "// Paste or type code…"
         let source = config.code.isEmpty ? placeholder : config.code
         // Terminal output is colored by its own ANSI escape codes, not by syntax
-        // highlighting, so it goes through the ANSI path rather than Highlightr.
+        // highlighting, so it goes through the ANSI path rather than Highlightr — but
+        // the palette still follows the chosen theme (light themes get a light terminal).
         if config.language == .terminal {
-            return AttributedString(ANSIRenderer.attributedString(source, font: codeFont))
+            return AttributedString(
+                ANSIRenderer.attributedString(source, font: codeFont, palette: terminalPalette))
         }
         let attributed = HighlightManager.shared.attributedString(
             for: source,

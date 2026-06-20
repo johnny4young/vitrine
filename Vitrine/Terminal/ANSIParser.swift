@@ -21,6 +21,7 @@ struct ANSIStyle: Equatable {
     var dim = false
     var italic = false
     var underline = false
+    var strikethrough = false
     /// Swap foreground and background (SGR 7); applied by `ANSIPalette` at render time.
     var inverse = false
 }
@@ -149,12 +150,14 @@ enum ANSIParser {
             case 3: style.italic = true
             case 4: style.underline = true
             case 7: style.inverse = true
+            case 9: style.strikethrough = true
             case 22:
                 style.bold = false
                 style.dim = false
             case 23: style.italic = false
             case 24: style.underline = false
             case 27: style.inverse = false
+            case 29: style.strikethrough = false
             case 30...37: style.foreground = .indexed(code - 30)
             case 39: style.foreground = .default
             case 40...47: style.background = .indexed(code - 40)
@@ -190,7 +193,7 @@ enum ANSIParser {
                     index += 4
                 }
             default:
-                break  // unsupported SGR (blink, conceal, strike, …) — ignored for now
+                break  // unsupported SGR (blink, conceal, framed, …) — ignored for now
             }
             index += 1
         }

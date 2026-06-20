@@ -36,12 +36,12 @@ struct ANSIParserTests {
     }
 
     @Test func attributesAndTheirResets() {
-        let runs = ANSIParser.parse("\(esc)[1;2;3;4;7mx\(esc)[22;23;24;27my")
+        let runs = ANSIParser.parse("\(esc)[1;2;3;4;7;9mx\(esc)[22;23;24;27;29my")
         #expect(runs[0].style.bold && runs[0].style.dim && runs[0].style.italic)
-        #expect(runs[0].style.underline && runs[0].style.inverse)
-        // 22 clears bold+dim, 23 italic, 24 underline, 27 inverse — colors untouched.
+        #expect(runs[0].style.underline && runs[0].style.inverse && runs[0].style.strikethrough)
+        // 22 clears bold+dim, 23 italic, 24 underline, 27 inverse, 29 strikethrough.
         #expect(!runs[1].style.bold && !runs[1].style.dim && !runs[1].style.italic)
-        #expect(!runs[1].style.underline && !runs[1].style.inverse)
+        #expect(!runs[1].style.underline && !runs[1].style.inverse && !runs[1].style.strikethrough)
     }
 
     @Test func brightForegroundAndBackground() {
