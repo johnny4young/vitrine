@@ -26,7 +26,7 @@ enum SnapshotLanguageAppEnum: String, AppEnum, CaseIterable {
     case swift, python, javascript, typescript, go, rust, ruby, java, kotlin
     case c, cpp, csharp, objectivec, scala, dart, elixir, haskell, lua, r, perl
     case php, html, css, scss, json, yaml, toml, bash, sql, graphql, dockerfile
-    case diff, markdown
+    case diff, markdown, terminal
     case plaintext
 
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Language")
@@ -71,6 +71,7 @@ enum SnapshotLanguageAppEnum: String, AppEnum, CaseIterable {
             .dockerfile: "Dockerfile",
             .diff: "Diff",
             .markdown: "Markdown",
+            .terminal: "Terminal",
             .plaintext: "Plain Text",
         ]
     }

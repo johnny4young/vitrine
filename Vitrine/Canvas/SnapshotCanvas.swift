@@ -169,7 +169,7 @@ struct SnapshotCanvas: View {
         .padding(.horizontal, 26)
         .padding(.vertical, 22)
         .frame(minWidth: 360, alignment: .leading)
-        .background(HighlightManager.shared.backgroundColor(for: config.theme))
+        .background(cardBackgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous)
@@ -227,9 +227,22 @@ struct SnapshotCanvas: View {
             family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
     }
 
+    /// The card fill: the syntax theme's background, or the terminal palette's
+    /// background when rendering ANSI terminal output.
+    private var cardBackgroundColor: Color {
+        config.language == .terminal
+            ? Color(nsColor: ANSIPalette.terminal.defaultBackground)
+            : HighlightManager.shared.backgroundColor(for: config.theme)
+    }
+
     private var highlightedCode: AttributedString {
         let placeholder = "// Paste or type code…"
         let source = config.code.isEmpty ? placeholder : config.code
+        // Terminal output is colored by its own ANSI escape codes, not by syntax
+        // highlighting, so it goes through the ANSI path rather than Highlightr.
+        if config.language == .terminal {
+            return AttributedString(ANSIRenderer.attributedString(source, font: codeFont))
+        }
         let attributed = HighlightManager.shared.attributedString(
             for: source,
             language: config.language,

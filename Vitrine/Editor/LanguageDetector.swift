@@ -28,6 +28,9 @@ enum LanguageDetector {
         // letting keyword scoring color it like a program (e.g. the digits in
         // `…/v0.1.0` highlighted as numeric literals). CS-004.
         if isURL(raw) { return .plaintext }
+        // Terminal output carries ANSI escape codes; render it through the ANSI path
+        // (colored by its own escapes) rather than scoring it as source code.
+        if ANSIParser.containsANSI(raw) { return .terminal }
         let code = raw.lowercased()
         guard !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return .plaintext
@@ -213,6 +216,10 @@ enum LanguageDetector {
         // (`…/styles.css`, `…/v0.1.0`) is never mistaken for a source language (CS-004).
         if isURL(raw) {
             return Interpretation(code: raw, language: .plaintext, blockCount: 0)
+        }
+        // Terminal output (ANSI escapes) renders through the ANSI path, not scoring.
+        if ANSIParser.containsANSI(raw) {
+            return Interpretation(code: raw, language: .terminal, blockCount: 0)
         }
 
         let blocks = MarkdownFence.codeBlocks(in: raw)
