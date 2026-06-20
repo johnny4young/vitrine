@@ -26,18 +26,27 @@ import Foundation
 // neither AppKit nor the PRO gate. Handle it before anything else and exit.
 let rawArguments = Array(CommandLine.arguments.dropFirst())
 if rawArguments.first == "shell-init" {
-    let rest = Array(rawArguments.dropFirst())
-    if rest.first == "--help" || rest.first == "-h" {
+    switch ShellInit.invocation(for: Array(rawArguments.dropFirst())) {
+    case .help:
         print(ShellInit.usage)
         exit(0)
-    }
-    guard let shell = ShellInit.resolveShell(rest.first) else {
+    case .snippet(let shell):
+        print(ShellInit.snippet(for: shell))
+        exit(0)
+    case .unknownShell(let name):
         FileHandle.standardError.write(
-            Data("error: unknown shell \"\(rest.first ?? "")\". Use zsh or bash.\n".utf8))
+            Data("error: unknown shell \"\(name)\". Use zsh or bash.\n".utf8))
+        exit(2)
+    case .extraArguments(let extras):
+        FileHandle.standardError.write(
+            Data(
+                """
+                error: unexpected argument(s) "\(extras.joined(separator: " "))" after shell-init. \
+                Usage: vitrine shell-init [zsh|bash]
+
+                """.utf8))
         exit(2)
     }
-    print(ShellInit.snippet(for: shell))
-    exit(0)
 }
 
 // Bring up the shared application as a background accessory: this initializes AppKit

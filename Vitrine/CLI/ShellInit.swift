@@ -33,6 +33,27 @@ enum ShellInit {
         return .zsh
     }
 
+    /// What the arguments after the `shell-init` subcommand resolve to.
+    enum Invocation: Equatable {
+        case help
+        case snippet(Shell)
+        case unknownShell(String)
+        case extraArguments([String])
+    }
+
+    /// Classifies the arguments that follow `shell-init`. `--help`/`-h` wins in any
+    /// position; otherwise at most one positional shell name is accepted, and anything
+    /// extra is surfaced rather than silently ignored (so a typo like
+    /// `shell-init zsh extra` is reported instead of quietly printing the zsh snippet).
+    static func invocation(for arguments: [String]) -> Invocation {
+        if arguments.contains("--help") || arguments.contains("-h") { return .help }
+        if arguments.count > 1 { return .extraArguments(Array(arguments.dropFirst())) }
+        guard let shell = resolveShell(arguments.first) else {
+            return .unknownShell(arguments.first ?? "")
+        }
+        return .snippet(shell)
+    }
+
     /// The snippet to `eval` from `~/.zshrc` (or `~/.bashrc`).
     static func snippet(for shell: Shell) -> String {
         switch shell {
