@@ -28,6 +28,9 @@ enum LanguageDetector {
         // letting keyword scoring color it like a program (e.g. the digits in
         // `…/v0.1.0` highlighted as numeric literals). CS-004.
         if isURL(raw) { return .plaintext }
+        // Terminal output carries ANSI escape codes; render it through the ANSI path
+        // (colored by its own escapes) rather than scoring it as source code.
+        if ANSIParser.containsANSI(raw) { return .terminal }
         let code = raw.lowercased()
         guard !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return .plaintext
@@ -198,9 +201,11 @@ enum LanguageDetector {
     /// Interprets raw clipboard text into the code + language the capture path
     /// should use (CS-027), applying this hint precedence:
     ///
-    /// 1. A Markdown fence's explicit info-string language (```swift).
-    /// 2. A file path / drop-metadata extension, when the whole text is one path.
-    /// 3. Weighted content scoring (`detect`).
+    /// 1. A bare URL remains plain text.
+    /// 2. A Markdown fence's explicit info-string language (```swift) or stripped body.
+    /// 3. ANSI escape codes, when no fence already narrowed the content.
+    /// 4. A file path / drop-metadata extension, when the whole text is one path.
+    /// 5. Weighted content scoring (`detect`).
     ///
     /// When the text contains exactly one fenced block, only that block's code is
     /// returned (surrounding prose is dropped). When it contains several, the
@@ -214,10 +219,13 @@ enum LanguageDetector {
         if isURL(raw) {
             return Interpretation(code: raw, language: .plaintext, blockCount: 0)
         }
-
         let blocks = MarkdownFence.codeBlocks(in: raw)
 
         if blocks.isEmpty {
+            // Terminal output (ANSI escapes) renders through the ANSI path, not scoring.
+            if ANSIParser.containsANSI(raw) {
+                return Interpretation(code: raw, language: .terminal, blockCount: 0)
+            }
             // No fence. A lone file path names its language by extension;
             // otherwise fall back to content scoring on the original text.
             if let hinted = language(forPath: raw) {

@@ -22,6 +22,8 @@ nonisolated enum CLIError: Error, Equatable {
     case missingRequired(String)
     /// A value was supplied but is not valid for its flag (bad number, unknown id…).
     case invalidValue(flag: String, value: String)
+    /// Two otherwise-valid options were combined in a way that would be ambiguous.
+    case incompatibleOptions(String)
     /// The input source file could not be read.
     case inputUnreadable(path: String)
     /// The input file decoded but is not text (likely a binary file).
@@ -49,6 +51,8 @@ nonisolated enum CLIError: Error, Equatable {
             "Missing required \(what)."
         case .invalidValue(let flag, let value):
             "\"\(value)\" is not a valid value for \"\(flag)\"."
+        case .incompatibleOptions(let message):
+            message
         case .inputUnreadable(let path):
             "Could not read the input file at \"\(path)\"."
         case .inputNotText(let path):
@@ -118,6 +122,8 @@ enum CLIArguments {
         var format: ExportFormat = .png
         var profile: ColorProfile = .fallback
         var transparent = false
+        var readStdin = false
+        var copyToClipboard = false
 
         /// Pops the value that must follow a `--flag`, or throws if it is absent.
         func value(for flag: String) throws -> String {
@@ -147,6 +153,10 @@ enum CLIArguments {
                 profile = try resolveProfile(try value(for: token))
             case "--transparent":
                 transparent = true
+            case "--stdin":
+                readStdin = true
+            case "--copy":
+                copyToClipboard = true
             default:
                 if token.hasPrefix("-") {
                     throw CLIError.unknownFlag(token)
@@ -158,25 +168,49 @@ enum CLIArguments {
             }
         }
 
-        guard let inputPath else {
-            throw CLIError.missingRequired(mode == .batch ? "input folder" : "input file")
+        // `--stdin` and `--copy` are render-only (a batch needs real folders).
+        if mode == .batch, readStdin || copyToClipboard {
+            throw CLIError.unknownFlag(readStdin ? "--stdin" : "--copy")
         }
-        guard let outputPath else {
-            throw CLIError.missingRequired(
-                mode == .batch ? "--out output folder" : "--out output path")
+        if readStdin, let inputPath {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --stdin with input file \"\(inputPath)\".")
+        }
+        // Input is a file unless reading stdin; output is required unless copying the
+        // image to the clipboard.
+        let resolvedInput: String
+        if readStdin {
+            resolvedInput = ""
+        } else {
+            guard let inputPath else {
+                throw CLIError.missingRequired(mode == .batch ? "input folder" : "input file")
+            }
+            resolvedInput = inputPath
+        }
+        let resolvedOutput: String
+        if copyToClipboard {
+            resolvedOutput = outputPath ?? ""
+        } else {
+            guard let outputPath else {
+                throw CLIError.missingRequired(
+                    mode == .batch ? "--out output folder" : "--out output path")
+            }
+            resolvedOutput = outputPath
         }
 
         return CLIOptions(
             command: mode,
-            inputPath: inputPath,
-            outputPath: outputPath,
+            inputPath: resolvedInput,
+            outputPath: resolvedOutput,
             themeID: themeID,
             language: languageID.flatMap(Language.init(rawValue:)),
             presetID: presetID,
             scale: scale,
             format: format,
             profile: profile,
-            transparent: transparent
+            transparent: transparent,
+            readStdin: readStdin,
+            copyToClipboard: copyToClipboard
         )
     }
 
@@ -246,12 +280,17 @@ nonisolated enum CLIUsage {
 
         USAGE:
           vitrine render <input-file> --out <image> [options]
+          vitrine render --stdin --copy [options]
           vitrine batch <input-folder> --out <output-folder> [options]
+          vitrine shell-init [zsh|bash]   Print the terminal-capture shell helpers.
 
         OPTIONS:
-          -o, --out <path>       Output image path (required).
+          -o, --out <path>       Output image path (required unless --copy).
+          --copy                 Copy the rendered image to the clipboard.
+          --stdin                Read the source from standard input (e.g. a pipe).
           --theme <id>           Syntax theme id (e.g. one-dark, dracula, nord).
-          --language <id>        Language id (e.g. swift, python). Inferred when omitted.
+          --language <id>        Language id (e.g. swift, python, terminal). Inferred
+                                 when omitted.
           --preset <id>          Destination preset (twitter, linkedin, keynote,
                                  docs, transparent-slide, opengraph).
           --scale <1|2|3>        Export resolution multiplier. Defaults to the app

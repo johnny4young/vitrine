@@ -3317,6 +3317,17 @@
         }
       }
     },
+    "Paste code or terminal output, or drop a file, to turn it into a beautiful image." : {
+      "comment" : "Editor empty-state message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega código o salida de terminal, o suelta un archivo, para convertirlo en una imagen atractiva."
+          }
+        }
+      }
+    },
     "Paste code, or drop a source file, to turn it into a beautiful image." : {
       "comment" : "Editor empty-state message.",
       "extractionState" : "stale",

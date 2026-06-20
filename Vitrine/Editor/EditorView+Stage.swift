@@ -41,7 +41,7 @@ extension EditorView {
                     EmptyStateView(
                         title: "Nothing to show yet",
                         message:
-                            "Paste code, or drop a source file, to turn it into a beautiful image.",
+                            "Paste code or terminal output, or drop a file, to turn it into a beautiful image.",
                         actionTitle: "Paste Code",
                         action: pasteFromClipboard,
                         compact: true

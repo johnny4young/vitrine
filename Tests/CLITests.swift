@@ -207,6 +207,36 @@ struct CLITests {
         }
     }
 
+    @Test func stdinAndCopyRelaxTheRequiredArguments() throws {
+        // --stdin needs no input file; --copy needs no --out.
+        let piped = try CLIArguments.parse(["render", "--stdin", "--copy"])
+        #expect(piped.readStdin && piped.copyToClipboard)
+        #expect(piped.inputPath.isEmpty && piped.outputPath.isEmpty)
+
+        // --copy with a file source, no --out.
+        let copy = try CLIArguments.parse(["render", "in.swift", "--copy"])
+        #expect(copy.copyToClipboard && copy.outputPath.isEmpty && copy.inputPath == "in.swift")
+
+        // --copy + --out does both.
+        let both = try CLIArguments.parse(["render", "in.swift", "--copy", "--out", "x.png"])
+        #expect(both.copyToClipboard && both.outputPath == "x.png")
+    }
+
+    @Test func stdinRejectsPositionalInput() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --stdin with input file \"in.swift\".")
+        ) {
+            try CLIArguments.parse(["render", "in.swift", "--stdin", "--out", "x.png"])
+        }
+    }
+
+    @Test func stdinAndCopyAreRejectedForBatch() {
+        #expect(throws: CLIError.unknownFlag("--stdin")) {
+            try CLIArguments.parse(["batch", "dir", "--out", "out", "--stdin"])
+        }
+    }
+
     @Test func invalidValuesAreRejected() {
         #expect(throws: CLIError.invalidValue(flag: "--theme", value: "neon")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--theme", "neon"])

@@ -16,6 +16,10 @@ enum Language: String, CaseIterable, Identifiable {
     case c, cpp, csharp, objectivec, scala, dart, elixir, haskell, lua, r, perl
     case php, html, css, scss, json, yaml, toml, bash, sql, graphql, dockerfile
     case diff, markdown
+    /// Terminal / shell output with ANSI escape codes. Not a Highlight.js language —
+    /// it is colored by its own escape sequences through the ANSI render path, so it
+    /// is excluded from the Highlightr coverage checks.
+    case terminal
     case plaintext
 
     var id: String { rawValue }
@@ -56,6 +60,7 @@ enum Language: String, CaseIterable, Identifiable {
         case .dockerfile: "Dockerfile"
         case .diff: "Diff"
         case .markdown: "Markdown"
+        case .terminal: "Terminal"
         case .plaintext: "Plain Text"
         }
     }
@@ -122,6 +127,7 @@ enum Language: String, CaseIterable, Identifiable {
         case .dockerfile: "dockerfile"
         case .diff: nil
         case .markdown: "md"
+        case .terminal: nil
         case .plaintext: nil
         }
     }

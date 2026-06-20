@@ -168,6 +168,15 @@ struct FileInputLoaderInferLanguageTests {
         let swift = "import Foundation\nfunc f() -> some View { Text(\"x\") }"
         #expect(FileInputLoader.inferLanguage(forFilename: "x.bin", content: swift) == .swift)
     }
+
+    @Test func ansiContentIsTerminalEvenWithAPlainExtension() {
+        // A `.txt`/`.log` of colored output is terminal — the ANSI escapes override
+        // the extension, which would otherwise infer plain text.
+        let output = "\u{1B}[31merror:\u{1B}[0m build failed"
+        #expect(
+            FileInputLoader.inferLanguage(forFilename: "build.log", content: output) == .terminal)
+        #expect(FileInputLoader.inferLanguage(forFilename: "out.txt", content: output) == .terminal)
+    }
 }
 
 // MARK: - File loading from disk (security-scoped path)
