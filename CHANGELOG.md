@@ -22,6 +22,13 @@ can never drift.
   dropping a file of colored output detects it automatically (the ANSI escapes
   override the file extension), and `vitrine render … --language terminal` works from
   the CLI.
+- **Zero-friction terminal capture (`vitrine shell-init`).** Because programs drop
+  color when their output isn't a real terminal, `eval "$(vitrine shell-init zsh)"`
+  installs two helpers that force it for you: `vgrab <command>` runs a command under a
+  pseudo-terminal and copies a terminal image of its colored output to the clipboard,
+  and `vlast` shares the **last** command you already ran — without re-running it —
+  via a passive session recorder. New `vitrine render` flags `--copy` (image to the
+  clipboard) and `--stdin` (read a pipe) back them. See [docs/TERMINAL.md](docs/TERMINAL.md).
 
 ## [0.10.0] - 2026-06-19
 

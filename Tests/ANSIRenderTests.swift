@@ -66,6 +66,25 @@ struct ANSIRenderTests {
         #expect(LanguageDetector.detect("func greet() {}") != .terminal)
     }
 
+    @Test func normalizeCleansPseudoTerminalControlBytes() {
+        #expect(ANSIRenderer.normalize("a\r\nb") == "a\nb")  // CRLF → LF
+        #expect(ANSIRenderer.normalize("a\rb") == "ab")  // lone CR dropped
+        #expect(ANSIRenderer.normalize("x\u{04}y\u{07}z") == "xyz")  // ^D / BEL dropped
+        // Tab, newline, and ESC (the parser consumes ESC) are preserved.
+        #expect(ANSIRenderer.normalize("a\tb\n\(esc)[0m") == "a\tb\n\(esc)[0m")
+        #expect(ANSIRenderer.normalize("plain text") == "plain text")
+    }
+
+    @Test func shellInitEmitsTheHelpers() {
+        let zsh = ShellInit.snippet(for: .zsh)
+        #expect(zsh.contains("vgrab()") && zsh.contains("vlast()"))
+        #expect(zsh.contains("script -q") && zsh.contains("--copy"))
+        #expect(ShellInit.snippet(for: .bash).contains("vgrab()"))
+        #expect(ShellInit.resolveShell("zsh") == .zsh)
+        #expect(ShellInit.resolveShell("bash") == .bash)
+        #expect(ShellInit.resolveShell("fish") == nil)
+    }
+
     private func approx(_ color: NSColor, _ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> Bool {
         guard let c = color.usingColorSpace(.sRGB) else { return false }
         return abs(c.redComponent - r) < 0.01 && abs(c.greenComponent - g) < 0.01
