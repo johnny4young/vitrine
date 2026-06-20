@@ -110,7 +110,7 @@ struct LanguageCoverageTests {
     /// escape hatch) must produce multi-color highlighting. One distinct color or
     /// fewer means the engine fell back to plain text — the exact regression this
     /// guards (CS-052 acceptance).
-    @Test(arguments: Language.allCases.filter { $0 != .plaintext })
+    @Test(arguments: Language.allCases.filter { $0 != .plaintext && $0 != .terminal })
     func languageHighlightsWithoutFallingBackToPlaintext(_ language: Language) {
         let colors = highlight(language, theme: .oneDark).distinctForegroundColors()
         #expect(
@@ -126,7 +126,7 @@ struct LanguageCoverageTests {
     @Test func everyLanguageIdIsRecognizedByTheEngine() throws {
         let supported = Set(try #require(HighlightManager.shared.supportedLanguageNames()))
         #expect(!supported.isEmpty)
-        for language in Language.allCases where language != .plaintext {
+        for language in Language.allCases where language != .plaintext && language != .terminal {
             #expect(
                 supported.contains(language.hljsName),
                 "Highlight.js does not register '\(language.hljsName)' for \(language.displayName)")
@@ -136,7 +136,7 @@ struct LanguageCoverageTests {
     /// A fixture exists for every advertised language, so the matrix below can
     /// never silently skip one (a new case with no fixture fails here).
     @Test func everyAdvertisedLanguageHasAFixture() {
-        for language in Language.allCases where language != .plaintext {
+        for language in Language.allCases where language != .plaintext && language != .terminal {
             #expect(
                 Fixture.byLanguage[language] != nil,
                 "no coverage fixture for \(language.displayName)")
@@ -250,7 +250,11 @@ struct LanguageThemeMatrixTests {
     /// theme versus a dark theme produces different pixels. This proves the matrix
     /// above is exercising real per-theme rendering, not drawing the same image 13
     /// times.
-    @Test(arguments: Language.allCases.filter { $0 != .plaintext })
+    // `.terminal` is excluded here because this test exercises Highlightr-driven syntax
+    // theming, which terminal output does not use — it is colored by its own ANSI palette.
+    // Terminal rendering *does* vary by theme (light/dark + signature palettes); that is
+    // covered separately by ANSIRenderTests.
+    @Test(arguments: Language.allCases.filter { $0 != .plaintext && $0 != .terminal })
     func themeChangesTheRenderedImage(_ language: Language) throws {
         var dark = SnapshotConfig()
         dark.code = Fixture.code(for: language)
