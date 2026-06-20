@@ -10,6 +10,38 @@ or `vitrine render … --language terminal` all work, and Vitrine auto-detects t
 output by its escape codes (they override the file extension, so a `.log`/`.txt` of
 colored output is recognized too).
 
+## Quick start
+
+Three ways in, easiest first:
+
+1. **`vgrab <command>`** — about to run something? Prefix it. The command runs with
+   color on and a styled image of its output lands on your clipboard; paste anywhere
+   (⌘V).
+   ```sh
+   vgrab npm test
+   vgrab git log --oneline --graph -10
+   ```
+2. **`vlast`** — already ran it? Don't re-run. `vlast` shares the **last** command's
+   output (the integration recorded it as it scrolled past), with no side effects.
+3. **Paste or drop** — paste colored output straight into Vitrine (⌘V), or drop a
+   `.log` / `.txt` file; it auto-detects terminal output and styles it.
+
+`vgrab` and `vlast` need the one-time shell hook (`eval "$(vitrine shell-init zsh)"`,
+below). Paste / drop and the `--stdin` pipe need no setup.
+
+## Use cases
+
+- **Bug reports & GitHub issues** — share a failing `pytest` / `cargo test` with its
+  red-and-green intact, not a flat wall of text.
+- **PR descriptions & reviews** — a `git diff --stat`, a `git log --graph`, or a green
+  test run, dropped inline as an image.
+- **Posts & social** — a clean "tests passing" or `git status` that actually looks good
+  on X / LinkedIn / Mastodon.
+- **Slides, docs & tutorials** — terminal output as a crisp image; pick a light Style
+  theme and it renders on a light card to match light slides.
+- **Teaching & standups** — show the command and its colored output together, or drop a
+  readable build log into Slack.
+
 ## Themes
 
 The terminal palette follows the **Style ▸ theme** you pick, so the same theme switch
