@@ -58,6 +58,15 @@ struct CLIOptions: Equatable {
     /// alpha channel on export (CS-024). Overrides any preset background.
     var transparent: Bool = false
 
+    /// Read the source from standard input instead of a file. The `vgrab`/`vlast`
+    /// shell integration pipes captured (ANSI-colored) terminal output here, so the
+    /// language is inferred from the content — terminal output is detected by its
+    /// escape codes.
+    var readStdin: Bool = false
+    /// Put the rendered image on the clipboard (instead of, or in addition to,
+    /// writing a file). The default for the shell integration's "share now" flow.
+    var copyToClipboard: Bool = false
+
     /// The default export scale when neither a preset nor an explicit `--scale`
     /// supplies one — the app's documented default resolution multiplier.
     static let defaultScale = SettingsDefaults.exportScale

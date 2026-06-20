@@ -22,6 +22,24 @@ import Foundation
 /// `main.swift` top-level code runs on the main actor under the module's
 /// MainActor-default isolation, so the `@MainActor` renderer is called directly.
 
+// `shell-init` only prints the shell integration text — no rendering, so it needs
+// neither AppKit nor the PRO gate. Handle it before anything else and exit.
+let rawArguments = Array(CommandLine.arguments.dropFirst())
+if rawArguments.first == "shell-init" {
+    let rest = Array(rawArguments.dropFirst())
+    if rest.first == "--help" || rest.first == "-h" {
+        print(ShellInit.usage)
+        exit(0)
+    }
+    guard let shell = ShellInit.resolveShell(rest.first) else {
+        FileHandle.standardError.write(
+            Data("error: unknown shell \"\(rest.first ?? "")\". Use zsh or bash.\n".utf8))
+        exit(2)
+    }
+    print(ShellInit.snippet(for: shell))
+    exit(0)
+}
+
 // Bring up the shared application as a background accessory: this initializes AppKit
 // enough for `ImageRenderer`/Highlightr without showing a Dock icon or menu bar.
 let application = NSApplication.shared

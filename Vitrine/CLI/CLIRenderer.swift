@@ -39,6 +39,24 @@ enum CLIRenderer {
         let language = options.language ?? loaded.language
         let config = options.makeConfig(code: loaded.text, language: language)
 
+        // `--copy`: put the rendered image on the clipboard (the share-now flow). A
+        // `--out` given alongside still writes the file too.
+        if options.copyToClipboard {
+            let copied = ExportManager.copyToPasteboard(
+                config, scale: options.effectiveScale, fixedSize: options.fixedSize,
+                profile: options.profile)
+            guard copied else { throw CLIError.renderFailed }
+            Log.export.notice("CLI copied an image to the clipboard")
+            if !options.outputPath.isEmpty {
+                let outputURL = URL(fileURLWithPath: options.outputPath)
+                let dimensions = try renderAndWrite(config, options: options, to: outputURL)
+                return
+                    "Copied the image to the clipboard and wrote \(outputURL.path) "
+                    + "(\(dimensions.width)×\(dimensions.height))"
+            }
+            return "Copied the image to the clipboard"
+        }
+
         let outputURL = URL(fileURLWithPath: options.outputPath)
         let dimensions = try renderAndWrite(config, options: options, to: outputURL)
 
@@ -130,6 +148,19 @@ enum CLIRenderer {
         _ options: CLIOptions,
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile
     ) throws -> FileInputLoader.LoadedFile {
+        // `--stdin`: read the piped source (the shell integration feeds captured
+        // terminal output here) and infer the language from the content — no filename,
+        // so ANSI escapes route it to the terminal renderer.
+        if options.readStdin {
+            let data = FileHandle.standardInput.readDataToEndOfFile()
+            do {
+                return try FileInputLoader.decode(data: data, filename: "")
+            } catch FileInputLoader.LoadError.binaryFile {
+                throw CLIError.inputNotText(path: "<stdin>")
+            } catch {
+                throw CLIError.inputUnreadable(path: "<stdin>")
+            }
+        }
         let inputURL = URL(fileURLWithPath: options.inputPath)
         do {
             return try fileLoader(inputURL)

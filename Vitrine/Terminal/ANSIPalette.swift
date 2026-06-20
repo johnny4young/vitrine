@@ -86,13 +86,28 @@ enum ANSIRenderer {
         _ text: String, font: NSFont, palette: ANSIPalette = .terminal
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        for run in ANSIParser.parse(text) {
+        for run in ANSIParser.parse(normalize(text)) {
             result.append(
                 NSAttributedString(
                     string: run.text,
                     attributes: attributes(run.style, font: font, palette: palette)))
         }
         return result
+    }
+
+    /// Cleans control bytes a pseudo-terminal capture leaves behind so the static
+    /// image shows clean lines. A terminal turns `\\n` into `\\r\\n` on output and a
+    /// lone `\\r` rewrites the line; `script` also leaves stray bytes like `^D` (EOT)
+    /// or BEL. Drop every C0 control except tab and newline — and ESC, which the
+    /// parser itself consumes as SGR/other sequences.
+    static func normalize(_ text: String) -> String {
+        let isStray: (Unicode.Scalar) -> Bool = {
+            $0.value < 0x20 && $0 != "\t" && $0 != "\n" && $0 != "\u{1B}"
+        }
+        guard text.unicodeScalars.contains(where: isStray) else { return text }
+        var scalars = text.unicodeScalars
+        scalars.removeAll(where: isStray)
+        return String(scalars)
     }
 
     private static func attributes(
