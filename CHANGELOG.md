@@ -12,6 +12,17 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- **Terminal / ANSI renderer.** Paste raw shell or program output that carries ANSI
+  escape codes — `git`, test runners, `ls --color`, build logs — and Vitrine renders
+  it as a styled terminal image: the colors come from the escape codes (standard 16,
+  256-color, and 24-bit truecolor) with bold / dim / italic / underline, on a dark
+  terminal background. It is a new **Terminal** language; pasting, quick-capturing, or
+  dropping a file of colored output detects it automatically (the ANSI escapes
+  override the file extension), and `vitrine render … --language terminal` works from
+  the CLI.
+
 ## [0.10.0] - 2026-06-19
 
 ### Added

@@ -354,7 +354,7 @@ extension Language {
         case .python, .yaml, .ruby, .haskell, .lua, .elixir, .bash, .sql, .toml,
             .dockerfile:
             .dedentOnly
-        case .diff, .markdown, .plaintext: .leaveAlone
+        case .diff, .markdown, .terminal, .plaintext: .leaveAlone
         }
     }
 

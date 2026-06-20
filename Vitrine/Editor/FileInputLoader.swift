@@ -210,6 +210,9 @@ enum FileInputLoader {
     /// `Dockerfile`), then falls back to weighted content detection when the
     /// extension is unknown or absent.
     static func inferLanguage(forFilename filename: String, content: String) -> Language {
+        // ANSI escape codes are a definitive "terminal output" signal that overrides
+        // the extension — a `.txt` or `.log` of colored output renders as a terminal.
+        if ANSIParser.containsANSI(content) { return .terminal }
         if let byExtension = LanguageDetector.language(forPath: filename) {
             return byExtension
         }
