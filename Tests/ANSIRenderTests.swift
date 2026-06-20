@@ -68,7 +68,9 @@ struct ANSIRenderTests {
 
     @Test func normalizeCleansPseudoTerminalControlBytes() {
         #expect(ANSIRenderer.normalize("a\r\nb") == "a\nb")  // CRLF → LF
-        #expect(ANSIRenderer.normalize("a\rb") == "ab")  // lone CR dropped
+        #expect(ANSIRenderer.normalize("a\rb") == "b")  // lone CR redraws the line
+        #expect(ANSIRenderer.normalize("10%\r20%\rDone\n") == "Done\n")
+        #expect(ANSIRenderer.normalize("abc\u{08}d") == "abd")  // backspace redraw
         #expect(ANSIRenderer.normalize("x\u{04}y\u{07}z") == "xyz")  // ^D / BEL dropped
         // Tab, newline, and ESC (the parser consumes ESC) are preserved.
         #expect(ANSIRenderer.normalize("a\tb\n\(esc)[0m") == "a\tb\n\(esc)[0m")

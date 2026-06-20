@@ -148,18 +148,54 @@ enum ANSIRenderer {
     }
 
     /// Cleans control bytes a pseudo-terminal capture leaves behind so the static
-    /// image shows clean lines. A terminal turns `\\n` into `\\r\\n` on output and a
-    /// lone `\\r` rewrites the line; `script` also leaves stray bytes like `^D` (EOT)
-    /// or BEL. Drop every C0 control except tab and newline — and ESC, which the
-    /// parser itself consumes as SGR/other sequences.
+    /// image shows clean lines. A terminal turns `\\n` into `\\r\\n` on output, a lone
+    /// `\\r` redraws the current line (progress bars/spinners), and `\\b` backs up one
+    /// visible character. `script` can also leave stray bytes like `^D` (EOT) or BEL.
+    /// Keep tab, newline, and ESC — the parser itself consumes ESC as SGR/other
+    /// sequences — while dropping the remaining C0 controls.
     static func normalize(_ text: String) -> String {
-        let isStray: (Unicode.Scalar) -> Bool = {
-            $0.value < 0x20 && $0 != "\t" && $0 != "\n" && $0 != "\u{1B}"
+        let scalars = Array(text.unicodeScalars)
+        var output: [Unicode.Scalar] = []
+        output.reserveCapacity(scalars.count)
+        var lineStart = 0
+        var changed = false
+        var index = 0
+
+        while index < scalars.count {
+            let scalar = scalars[index]
+            switch scalar {
+            case "\r":
+                changed = true
+                if index + 1 < scalars.count, scalars[index + 1] == "\n" {
+                    output.append("\n")
+                    lineStart = output.count
+                    index += 2
+                } else {
+                    output.removeSubrange(lineStart..<output.count)
+                    index += 1
+                }
+            case "\n":
+                output.append(scalar)
+                lineStart = output.count
+                index += 1
+            case "\u{08}":
+                changed = true
+                if output.count > lineStart { output.removeLast() }
+                index += 1
+            default:
+                if scalar.value < 0x20, scalar != "\t", scalar != "\u{1B}" {
+                    changed = true
+                } else {
+                    output.append(scalar)
+                }
+                index += 1
+            }
         }
-        guard text.unicodeScalars.contains(where: isStray) else { return text }
-        var scalars = text.unicodeScalars
-        scalars.removeAll(where: isStray)
-        return String(scalars)
+
+        guard changed else { return text }
+        var view = String.UnicodeScalarView()
+        view.append(contentsOf: output)
+        return String(view)
     }
 
     private static func attributes(

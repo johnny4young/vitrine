@@ -22,6 +22,8 @@ nonisolated enum CLIError: Error, Equatable {
     case missingRequired(String)
     /// A value was supplied but is not valid for its flag (bad number, unknown id…).
     case invalidValue(flag: String, value: String)
+    /// Two otherwise-valid options were combined in a way that would be ambiguous.
+    case incompatibleOptions(String)
     /// The input source file could not be read.
     case inputUnreadable(path: String)
     /// The input file decoded but is not text (likely a binary file).
@@ -49,6 +51,8 @@ nonisolated enum CLIError: Error, Equatable {
             "Missing required \(what)."
         case .invalidValue(let flag, let value):
             "\"\(value)\" is not a valid value for \"\(flag)\"."
+        case .incompatibleOptions(let message):
+            message
         case .inputUnreadable(let path):
             "Could not read the input file at \"\(path)\"."
         case .inputNotText(let path):
@@ -167,6 +171,10 @@ enum CLIArguments {
         // `--stdin` and `--copy` are render-only (a batch needs real folders).
         if mode == .batch, readStdin || copyToClipboard {
             throw CLIError.unknownFlag(readStdin ? "--stdin" : "--copy")
+        }
+        if readStdin, let inputPath {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --stdin with input file \"\(inputPath)\".")
         }
         // Input is a file unless reading stdin; output is required unless copying the
         // image to the clipboard.
