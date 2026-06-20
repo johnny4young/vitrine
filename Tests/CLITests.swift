@@ -222,6 +222,15 @@ struct CLITests {
         #expect(both.copyToClipboard && both.outputPath == "x.png")
     }
 
+    @Test func stdinRejectsPositionalInput() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --stdin with input file \"in.swift\".")
+        ) {
+            try CLIArguments.parse(["render", "in.swift", "--stdin", "--out", "x.png"])
+        }
+    }
+
     @Test func stdinAndCopyAreRejectedForBatch() {
         #expect(throws: CLIError.unknownFlag("--stdin")) {
             try CLIArguments.parse(["batch", "dir", "--out", "out", "--stdin"])

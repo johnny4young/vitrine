@@ -257,6 +257,26 @@ struct LanguageDetectorInterpretTests {
         #expect(result.blockCount == 1)
     }
 
+    /// ANSI output inside one fenced block is still unwrapped before terminal
+    /// detection, so surrounding prose is not rendered into the snapshot.
+    @Test func proseAroundOneANSIBlockKeepsOnlyTheBlock() {
+        let esc = "\u{1B}"
+        let terminal = "\(esc)[31merror:\(esc)[0m build failed"
+        let text = """
+            Failing output:
+
+            ```
+            \(terminal)
+            ```
+
+            Can you fix this?
+            """
+        let result = LanguageDetector.interpret(text)
+        #expect(result.code == terminal)
+        #expect(result.language == .terminal)
+        #expect(result.blockCount == 1)
+    }
+
     /// A fence without an info string still strips delimiters and falls back to
     /// content scoring for the language.
     @Test func fenceWithoutLanguageFallsBackToContentScoring() {
