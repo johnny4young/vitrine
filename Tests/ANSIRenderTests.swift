@@ -85,6 +85,35 @@ struct ANSIRenderTests {
         #expect(ShellInit.resolveShell("fish") == nil)
     }
 
+    @Test func terminalPaletteFollowsTheTheme() {
+        // Light theme → light terminal; dark theme → the default dark palette;
+        // a signature theme (Dracula) → its own palette.
+        #expect(
+            ANSIPalette.forTheme(.github).defaultBackground
+                == ANSIPalette.terminalLight.defaultBackground)
+        #expect(
+            ANSIPalette.forTheme(.oneDark).defaultBackground
+                == ANSIPalette.terminal.defaultBackground)
+        #expect(
+            ANSIPalette.forTheme(.dracula).defaultBackground
+                == ANSIPalette.dracula.defaultBackground)
+    }
+
+    @Test func terminalRenderDiffersBetweenLightAndDarkThemes() throws {
+        var dark = SnapshotConfig()
+        dark.language = .terminal
+        dark.code = "\(esc)[31mmodified:\(esc)[0m file.swift"
+        dark.theme = .oneDark
+        var light = dark
+        light.theme = .github
+
+        let darkImage = try #require(ExportManager.renderCGImage(dark, scale: 1))
+        let lightImage = try #require(ExportManager.renderCGImage(light, scale: 1))
+        let darkPNG = try #require(ExportManager.pngData(from: darkImage))
+        let lightPNG = try #require(ExportManager.pngData(from: lightImage))
+        #expect(darkPNG != lightPNG, "terminal render should follow the theme's light/dark palette")
+    }
+
     private func approx(_ color: NSColor, _ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> Bool {
         guard let c = color.usingColorSpace(.sRGB) else { return false }
         return abs(c.redComponent - r) < 0.01 && abs(c.greenComponent - g) < 0.01
