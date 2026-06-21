@@ -42,6 +42,19 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.11.0",
+            headline: "Turn terminal output into beautiful images",
+            highlights: [
+                "Paste colored terminal output — git, test runners, build logs — and "
+                    + "Vitrine renders the ANSI colors and styles (bold, italic, underline, "
+                    + "strikethrough) as a clean terminal image.",
+                "The terminal card follows your theme: a light theme renders on a light "
+                    + "card, and Dracula and Nord use their own signature palettes.",
+                "Set up the shell helpers once with vitrine shell-init: vgrab copies an "
+                    + "image of a command's colored output, and vlast shares the last command "
+                    + "you ran — without re-running it.",
+            ]),
+        ReleaseNote(
             version: "0.10.0",
             headline: "Your accent, free brand placement, and polish",
             highlights: [

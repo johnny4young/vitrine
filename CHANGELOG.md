@@ -12,22 +12,30 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-20
+
 ### Added
 
 - **Terminal / ANSI renderer.** Paste raw shell or program output that carries ANSI
   escape codes — `git`, test runners, `ls --color`, build logs — and Vitrine renders
   it as a styled terminal image: the colors come from the escape codes (standard 16,
-  256-color, and 24-bit truecolor) with bold / dim / italic / underline, on a dark
-  terminal background. It is a new **Terminal** language; pasting, quick-capturing, or
-  dropping a file of colored output detects it automatically (the ANSI escapes
-  override the file extension), and `vitrine render … --language terminal` works from
-  the CLI.
+  256-color, and 24-bit truecolor) with bold / dim / italic / underline / strikethrough
+  / inverse. It is a new **Terminal** language; pasting, quick-capturing, or dropping a
+  file of colored output detects it automatically (the ANSI escapes override the file
+  extension, and ANSI inside a single Markdown fence is unwrapped first so surrounding
+  prose is dropped), and `vitrine render … --language terminal` works from the CLI.
+  Progress bars and spinners show their final line — carriage-return and backspace
+  redraws are resolved instead of concatenated.
+- **Theme-aware terminal palettes.** The terminal card follows your Style theme: a light
+  theme renders on a light card — the right look for light blogs, docs, and slides — and
+  Dracula and Nord map to their own signature ANSI palettes.
 - **Zero-friction terminal capture (`vitrine shell-init`).** Because programs drop
   color when their output isn't a real terminal, `eval "$(vitrine shell-init zsh)"`
   installs two helpers that force it for you: `vgrab <command>` runs a command under a
-  pseudo-terminal and copies a terminal image of its colored output to the clipboard,
-  and `vlast` shares the **last** command you already ran — without re-running it —
-  via a passive session recorder. New `vitrine render` flags `--copy` (image to the
+  pseudo-terminal and copies a terminal image of its colored output to the clipboard —
+  passing through the command's own exit status, with `-w <cols>` to set the capture
+  width — and `vlast` shares the **last** command you already ran — without re-running
+  it — via a passive session recorder. New `vitrine render` flags `--copy` (image to the
   clipboard) and `--stdin` (read a pipe) back them. See [docs/TERMINAL.md](docs/TERMINAL.md).
 
 ## [0.10.0] - 2026-06-19
