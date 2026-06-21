@@ -32,6 +32,10 @@ nonisolated enum CLIError: Error, Equatable {
     case renderFailed
     /// Encoding or writing the output file failed.
     case writeFailed(path: String)
+    /// `--edit` could not open Vitrine to receive the handoff (no app registered for the
+    /// `vitrine://` scheme, or a Launch Services failure). Surfaced so a script sees a
+    /// non-zero exit instead of a false success.
+    case editorOpenFailed
     /// The PRO tier is required for command-line/automation rendering but is not
     /// active (CS-094). Reported before any file work so a free build never renders.
     case proRequired
@@ -61,6 +65,8 @@ nonisolated enum CLIError: Error, Equatable {
             "Rendering failed to produce an image."
         case .writeFailed(let path):
             "Could not write the output to \"\(path)\"."
+        case .editorOpenFailed:
+            "Could not open Vitrine to receive the output. Is Vitrine installed?"
         case .proRequired:
             "Vitrine PRO is required for command-line and automation rendering. "
                 + "Activate PRO in the Vitrine app to unlock it."
@@ -297,7 +303,7 @@ nonisolated enum CLIUsage {
         USAGE:
           vitrine render <input-file> --out <image> [options]
           vitrine render --stdin --copy [options]
-          vitrine render <input-file> --edit [options]
+          vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
           vitrine shell-init [zsh|bash]   Print the terminal-capture shell helpers.
 
