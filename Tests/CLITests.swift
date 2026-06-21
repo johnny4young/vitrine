@@ -237,6 +237,29 @@ struct CLITests {
         }
     }
 
+    @Test func editFlagParsesAndNeedsNoOutput() throws {
+        let long = try CLIArguments.parse(["render", "in.log", "--edit"])
+        #expect(long.openInEditor && long.outputPath.isEmpty && long.inputPath == "in.log")
+        // The short form is equivalent.
+        let short = try CLIArguments.parse(["render", "in.log", "-e"])
+        #expect(short.openInEditor)
+    }
+
+    @Test func editRejectsCopyAndOutCombos() {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --edit with --copy.")) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--copy"])
+        }
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --edit with --out.")) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--out", "x.png"])
+        }
+    }
+
+    @Test func editIsRejectedForBatch() {
+        #expect(throws: CLIError.unknownFlag("--edit")) {
+            try CLIArguments.parse(["batch", "dir", "--out", "out", "--edit"])
+        }
+    }
+
     @Test func invalidValuesAreRejected() {
         #expect(throws: CLIError.invalidValue(flag: "--theme", value: "neon")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--theme", "neon"])

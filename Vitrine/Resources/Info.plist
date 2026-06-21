@@ -39,6 +39,22 @@
 	<!-- Menu-bar agent: no Dock icon, no app-switcher entry (CS-001). -->
 	<key>LSUIElement</key>
 	<true/>
+	<!-- Custom URL scheme for the CLI → editor handoff (`vitrine render … --edit`,
+	     behind `vgrab -e` / `vlast -e`). The CLI stages the captured text on a private
+	     pasteboard and opens `vitrine://edit`; AppDelegate's GetURL handler reads it back
+	     and seeds the editor (see EditorHandoff). Local IPC only — the URL carries no
+	     content, just the language hint, so nothing leaves the Mac. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>vitrine</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 johnny4young. MIT-licensed.</string>
 	<!-- The direct-download build's Ed25519 license-signing private key (base64 of the raw
