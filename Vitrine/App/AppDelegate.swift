@@ -1,4 +1,5 @@
 import AppKit
+import CoreServices
 import KeyboardShortcuts
 import OSLog
 
@@ -23,6 +24,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `XCUIApplication.launch()` terminates any prior instance before launching, so no
     /// other instance is ever present here under test.
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // Handle `vitrine://edit` handoffs from the CLI (`--edit`). Register before the
+        // single-instance guard and the SwiftUI scene so a URL that *cold-launches* the
+        // app is still delivered once the AppleEvent queue drains. When an instance is
+        // already running, the OS routes the open to it instead of spawning a new one.
+        NSAppleEventManager.shared().setEventHandler(
+            self, andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL))
+
         // Never enforce single-instance under tests. The *unit*-test host launches this
         // app to host XCTest (`XCTestConfigurationFilePath` is set) even while a developer
         // instance is open; exiting here aborts the run with "test runner exited before
@@ -47,6 +57,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static func shouldEnforceSingleInstance(_ environment: [String: String]) -> Bool {
         environment["VITRINE_USER_DEFAULTS_SUITE"] == nil
             && environment["XCTestConfigurationFilePath"] == nil
+    }
+
+    /// GetURL AppleEvent entry point: pulls the `vitrine://…` string out of the event
+    /// and routes it to `openHandoff`.
+    @objc private func handleGetURLEvent(
+        _ event: NSAppleEventDescriptor, withReplyEvent replyEvent: NSAppleEventDescriptor
+    ) {
+        guard
+            let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?
+                .stringValue,
+            let url = URL(string: urlString)
+        else { return }
+        openHandoff(url)
+    }
+
+    /// Seeds the editor from a `vitrine://edit` handoff (the CLI's `--edit`): reads the
+    /// staged content and optional language hint, then loads it into the primary editor
+    /// — replacing that window's document like quick capture and the Open-Code App Intent
+    /// do (CS-027/034), seeded on the user's current style. A no-op for any other URL or
+    /// an empty payload, so a stray open can never blank the editor.
+    func openHandoff(_ url: URL) {
+        guard let handoff = EditorHandoff.consume(url: url) else { return }
+        var config = AppSettings.shared.config
+        config.code = handoff.content
+        if let language = handoff.language { config.language = language }
+        EditorWindowController.shared.loadIntoPrimary(config)
+        NSApp.activate(ignoringOtherApps: true)
+        Log.app.notice("Opened a CLI --edit handoff in the editor")
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

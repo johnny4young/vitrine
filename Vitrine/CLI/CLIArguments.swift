@@ -124,6 +124,7 @@ enum CLIArguments {
         var transparent = false
         var readStdin = false
         var copyToClipboard = false
+        var openInEditor = false
 
         /// Pops the value that must follow a `--flag`, or throws if it is absent.
         func value(for flag: String) throws -> String {
@@ -157,6 +158,8 @@ enum CLIArguments {
                 readStdin = true
             case "--copy":
                 copyToClipboard = true
+            case "--edit", "-e":
+                openInEditor = true
             default:
                 if token.hasPrefix("-") {
                     throw CLIError.unknownFlag(token)
@@ -168,16 +171,28 @@ enum CLIArguments {
             }
         }
 
-        // `--stdin` and `--copy` are render-only (a batch needs real folders).
-        if mode == .batch, readStdin || copyToClipboard {
-            throw CLIError.unknownFlag(readStdin ? "--stdin" : "--copy")
+        // `--stdin`, `--copy`, and `--edit` are render-only (a batch needs real folders).
+        if mode == .batch, readStdin || copyToClipboard || openInEditor {
+            let flag = readStdin ? "--stdin" : (copyToClipboard ? "--copy" : "--edit")
+            throw CLIError.unknownFlag(flag)
         }
         if readStdin, let inputPath {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --stdin with input file \"\(inputPath)\".")
         }
+        // `--edit` hands the source to the running editor instead of rendering, so it
+        // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
+        if openInEditor {
+            if copyToClipboard {
+                throw CLIError.incompatibleOptions("Cannot combine --edit with --copy.")
+            }
+            if outputPath != nil {
+                throw CLIError.incompatibleOptions("Cannot combine --edit with --out.")
+            }
+        }
         // Input is a file unless reading stdin; output is required unless copying the
-        // image to the clipboard.
+        // image to the clipboard or handing it to the editor (`--edit`), neither of
+        // which writes a file.
         let resolvedInput: String
         if readStdin {
             resolvedInput = ""
@@ -188,7 +203,7 @@ enum CLIArguments {
             resolvedInput = inputPath
         }
         let resolvedOutput: String
-        if copyToClipboard {
+        if copyToClipboard || openInEditor {
             resolvedOutput = outputPath ?? ""
         } else {
             guard let outputPath else {
@@ -210,7 +225,8 @@ enum CLIArguments {
             profile: profile,
             transparent: transparent,
             readStdin: readStdin,
-            copyToClipboard: copyToClipboard
+            copyToClipboard: copyToClipboard,
+            openInEditor: openInEditor
         )
     }
 
@@ -281,12 +297,15 @@ nonisolated enum CLIUsage {
         USAGE:
           vitrine render <input-file> --out <image> [options]
           vitrine render --stdin --copy [options]
+          vitrine render <input-file> --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
           vitrine shell-init [zsh|bash]   Print the terminal-capture shell helpers.
 
         OPTIONS:
-          -o, --out <path>       Output image path (required unless --copy).
+          -o, --out <path>       Output image path (required unless --copy / --edit).
           --copy                 Copy the rendered image to the clipboard.
+          -e, --edit             Open the source in Vitrine's editor instead of
+                                 rendering (no image is written; not with --copy/--out).
           --stdin                Read the source from standard input (e.g. a pipe).
           --theme <id>           Syntax theme id (e.g. one-dark, dracula, nord).
           --language <id>        Language id (e.g. swift, python, terminal). Inferred
