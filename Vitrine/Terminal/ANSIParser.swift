@@ -153,10 +153,15 @@ enum ANSIParser {
     /// (usually empty, e.g. `id=…`) and the URI is everything after the second `;` — so
     /// a URI containing its own `;` (a query string) survives. A closing hyperlink is
     /// `8 ; ; ` with an empty URI, which the caller reads as "clear the link".
+    ///
+    /// Only a well-formed body with both `;` separators is treated as OSC 8; a truncated
+    /// `8` or `8;` (or any non-`8` OSC) returns `nil` so a malformed sequence never
+    /// clears an open link or splits a run.
     private static func hyperlinkURI(fromOSC body: String) -> String? {
-        guard body == "8" || body.hasPrefix("8;") else { return nil }
+        guard body.hasPrefix("8;") else { return nil }
         let fields = body.split(separator: ";", maxSplits: 2, omittingEmptySubsequences: false)
-        return fields.count >= 3 ? String(fields[2]) : ""
+        guard fields.count >= 3 else { return nil }
+        return String(fields[2])
     }
 
     // MARK: - SGR application

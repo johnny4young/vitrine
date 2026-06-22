@@ -286,7 +286,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         let copied = ExportManager.copyToPasteboard(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
-            plainText: settings.textSidecar)
+            richText: settings.richClipboard, plainText: settings.textSidecar)
         CaptureHUDController.shared.present(
             copied
                 ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
