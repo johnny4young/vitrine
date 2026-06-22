@@ -197,12 +197,15 @@ enum ExportManager {
     @discardableResult
     static func copyToPasteboard(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
-        profile: ColorProfile = .sRGB, richText: Bool = false
+        profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false
     ) -> Bool {
-        if richText {
+        // Either opt-in (rich styled text, or the plain-text rider) needs the
+        // multi-representation item, so route both through RichPasteboard; the plain
+        // image fast-path stays for the default copy that asked for neither.
+        if richText || plainText {
             return RichPasteboard.copy(
                 config, scale: scale, fixedSize: fixedSize, profile: profile,
-                includeRichText: true)
+                includeRichText: richText, includePlainText: plainText)
         }
         guard
             let cgImage = renderCGImage(
@@ -281,7 +284,7 @@ enum ExportManager {
     @discardableResult
     static func exportPresetSizes(
         _ baseConfig: SnapshotConfig, presets: [ExportPreset], to directory: URL,
-        format: ExportFormat = .png, profile: ColorProfile = .sRGB
+        format: ExportFormat = .png, profile: ColorProfile = .sRGB, textSidecar: Bool = false
     ) -> (written: Int, failed: Int) {
         var written = 0
         var failed = 0
@@ -305,6 +308,12 @@ enum ExportManager {
                 "vitrine-\(preset.id).\(payload.ext)", isDirectory: false)
             do {
                 try payload.data.write(to: url)
+                // The chosen folder is a user-granted directory, so a `.txt` sidecar
+                // beside each image is sandbox-safe here (unlike a single save panel).
+                if textSidecar {
+                    let sidecarURL = url.deletingPathExtension().appendingPathExtension("txt")
+                    try Data(config.sidecarText.utf8).write(to: sidecarURL)
+                }
                 written += 1
             } catch {
                 let nsError = error as NSError

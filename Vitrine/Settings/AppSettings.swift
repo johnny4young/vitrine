@@ -70,6 +70,15 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(richClipboard, forKey: Keys.richClipboard) }
     }
 
+    /// Send the source along with the image as plain, copyable text. Off by default so
+    /// a copy stays a plain image; when on, a copy also places the text on the clipboard
+    /// (paste the image anywhere, paste the text into an editor) and the multi-size
+    /// export writes a `.txt` beside each image. Terminal output is stripped of its
+    /// escape codes first, matching the rendered card.
+    @Published var textSidecar: Bool {
+        didSet { defaults.set(textSidecar, forKey: Keys.textSidecar) }
+    }
+
     /// What the global hotkey does (CS-002).
     @Published var hotkeyAction: HotkeyAction {
         didSet { defaults.set(hotkeyAction.rawValue, forKey: Keys.hotkeyAction) }
@@ -194,6 +203,7 @@ final class AppSettings: ObservableObject {
         exportFormat = ExportFormat.resolve(defaults.string(forKey: Keys.exportFormat))
         colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
         richClipboard = defaults.object(forKey: Keys.richClipboard) as? Bool ?? false
+        textSidecar = defaults.object(forKey: Keys.textSidecar) as? Bool ?? false
         hotkeyAction = HotkeyAction.resolve(defaults.string(forKey: Keys.hotkeyAction))
         let resolvedLanguage = AppLanguage.resolve(defaults.string(forKey: Keys.appLanguage))
         appLanguage = resolvedLanguage
@@ -304,6 +314,7 @@ final class AppSettings: ObservableObject {
         exportFormat = session.exportFormat
         colorProfile = session.colorProfile
         richClipboard = session.richClipboard
+        textSidecar = session.textSidecar
         if let preset = session.selectedPreset {
             selectedPresetID = preset.id
         } else {
@@ -416,6 +427,7 @@ final class AppSettings: ObservableObject {
             exportFormat: exportFormat.rawValue,
             colorProfile: colorProfile.rawValue,
             richClipboard: richClipboard,
+            textSidecar: textSidecar,
             hotkeyAction: hotkeyAction.rawValue,
             treatURLsAsScreenshot: treatURLsAsScreenshot,
             recentLanguageCount: recentLanguages.count,
@@ -451,6 +463,7 @@ final class AppSettings: ObservableObject {
         exportFormat = .fallback
         colorProfile = .fallback
         richClipboard = false
+        textSidecar = false
         hotkeyAction = .fallback
         appLanguage = .system
         treatURLsAsScreenshot = false

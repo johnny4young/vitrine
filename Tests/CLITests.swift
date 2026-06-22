@@ -260,6 +260,31 @@ struct CLITests {
         }
     }
 
+    @Test func parsesTextSidecarFlag() throws {
+        let options = try CLIArguments.parse(
+            ["render", "in.log", "--out", "out.png", "--text-sidecar"])
+        #expect(options.textSidecar)
+        // Off unless requested.
+        let bare = try CLIArguments.parse(["render", "in.log", "--out", "out.png"])
+        #expect(!bare.textSidecar)
+    }
+
+    @Test func textSidecarRejectsEditAndOutlessCopy() {
+        // Meaningless with --edit (no image is written).
+        #expect(
+            throws: CLIError.incompatibleOptions("Cannot combine --edit with --text-sidecar.")
+        ) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--text-sidecar"])
+        }
+        // A clipboard-only copy has no --out file for the sidecar to sit beside.
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--text-sidecar needs an --out path to write beside.")
+        ) {
+            try CLIArguments.parse(["render", "in.log", "--copy", "--text-sidecar"])
+        }
+    }
+
     @Test func editStagesTheHandoffAndReportsSuccess() throws {
         var captured: URL?
         let options = try CLIArguments.parse(["render", "session.log", "--edit"])
@@ -410,6 +435,32 @@ struct CLITests {
         let image = try decodePNG(at: output)
         #expect(image.width > 0)
         #expect(image.height > 0)
+    }
+
+    @Test func textSidecarWritesPlainTextNextToImage() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let esc = "\u{1B}"
+        // Colored terminal output with an OSC 8 link: the sidecar holds the visible text
+        // with the escape codes and the link URL stripped.
+        let ansi =
+            "\(esc)[32m$ build\(esc)[0m\nsee \(esc)]8;;https://example.com\u{07}docs\(esc)]8;;\u{07}\n"
+        let input = try writeInput(ansi, named: "session.log", in: directory)
+        let output = directory.appendingPathComponent("card.png").path
+        let options = try CLIArguments.parse(
+            ["render", input, "--out", output, "--language", "terminal", "--text-sidecar"])
+
+        let summary = try CLIRenderer.run(options)
+        #expect(summary.contains("card.txt"))
+
+        let sidecar = directory.appendingPathComponent("card.txt")
+        #expect(FileManager.default.fileExists(atPath: sidecar.path))
+        let text = try String(contentsOf: sidecar, encoding: .utf8)
+        #expect(text == "$ build\nsee docs\n")
+
+        // The image is still written alongside the sidecar.
+        #expect(FileManager.default.fileExists(atPath: output))
     }
 
     @Test func languageIsInferredFromTheInputExtension() throws {

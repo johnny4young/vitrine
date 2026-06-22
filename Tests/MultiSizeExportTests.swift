@@ -62,6 +62,32 @@ struct MultiSizeExportTests {
         #expect(written == reference)
     }
 
+    @Test func textSidecarWritesATxtBesideEachImage() throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let presets = [ExportPreset.twitter, .openGraph]
+
+        let result = ExportManager.exportPresetSizes(
+            baseConfig(), presets: presets, to: dir, format: .png, textSidecar: true)
+
+        #expect(result.written == 2)
+        #expect(result.failed == 0)
+        for preset in presets {
+            let txt = dir.appendingPathComponent("vitrine-\(preset.id).txt")
+            #expect(FileManager.default.fileExists(atPath: txt.path))
+            #expect((try? String(contentsOf: txt, encoding: .utf8)) == "let answer = 42")
+        }
+    }
+
+    @Test func noTextSidecarByDefault() {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = ExportManager.exportPresetSizes(
+            baseConfig(), presets: [ExportPreset.twitter], to: dir)
+        let txt = dir.appendingPathComponent("vitrine-\(ExportPreset.twitter.id).txt")
+        #expect(!FileManager.default.fileExists(atPath: txt.path))
+    }
+
     @Test func noPresetsWritesNothing() {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

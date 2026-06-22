@@ -71,6 +71,11 @@ struct CLIOptions: Equatable {
     /// `vitrine://edit` URL rather than producing an image. Mutually exclusive with
     /// `--copy`/`--out`, and render-only (not `batch`).
     var openInEditor: Bool = false
+    /// Also write a plain-text `.txt` sidecar next to the rendered image, holding the
+    /// source as selectable, copyable text (terminal output is stripped of its escape
+    /// codes first). Lets a shared image ship with accessible, greppable output. Needs
+    /// an `--out` path to sit beside; not meaningful with `--edit`.
+    var textSidecar: Bool = false
 
     /// The default export scale when neither a preset nor an explicit `--scale`
     /// supplies one — the app's documented default resolution multiplier.

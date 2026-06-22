@@ -141,19 +141,31 @@ vitrine render test.log --out test.png       # auto-detects ANSI
 vitrine render <input-file> --out <image> [--language terminal]
 vitrine render --stdin --copy                 # read a pipe, copy the image
 vitrine render <input-file> --edit            # open it in the editor (no image)
+vitrine render <input-file> --out <image> --text-sidecar   # image + .txt of the output
 vitrine shell-init [zsh|bash]                 # print the helpers
 ```
 
 `--copy` puts the rendered image on the clipboard; `--stdin` reads the source from a
 pipe; `--edit` (`-e`) opens the source in Vitrine's editor instead of rendering — useful
-to tweak before exporting. Each detects terminal output by its ANSI escapes when
-`--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--out`.
+to tweak before exporting; `--text-sidecar` also writes a `.txt` of the output next to
+`--out` (terminal escapes stripped). Each detects terminal output by its ANSI escapes
+when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--out`.
 
 ## Notes
 
 - Vitrine strips the non-color escape sequences (cursor moves, screen clears, OSC
   window titles, progress-bar carriage returns) so the static image shows clean,
   final lines.
+- **OSC 8 hyperlinks** (the `ESC]8` links emitted by `gh`, `eza --hyperlink`, some test
+  runners) are styled — the linked text is underlined and tinted, the way a link reads —
+  while the URL itself stays hidden, exactly as it is in the terminal.
+- **Copyable text alongside the image.** From the command line, `--text-sidecar` writes
+  a `.txt` next to the rendered image holding the output as selectable, greppable text —
+  the terminal escapes stripped to the visible lines. In the app, **Settings ▸ Output ▸
+  Clipboard ▸ "Copyable text with images"** does the same idea sandbox-safely: it adds
+  the text to the clipboard when you copy (paste the image anywhere, paste the text into
+  an editor) and writes a `.txt` beside each image in a multi-size export. Handy for
+  accessibility and for pairing a shared image with copy-pasteable output.
 - Everything else about a snapshot still applies: background, padding, window title,
   annotations (arrow a failing assert, blur a secret), multi-size export, Brand Kit.
 
@@ -182,5 +194,3 @@ Deferred, with the technical reason each is not in the first cut:
   its event hooks. iTerm2 / kitty / WezTerm expose the *last command's* output via their
   own shell integration, which would let `vlast` skip the `exec script` re-exec entirely
   on those terminals (less invasive).
-- **OSC 8 hyperlinks** (style the linked text) and a **copyable-text sidecar** (ship the
-  raw output alongside the image for accessibility / easy copy) — small, additive.
