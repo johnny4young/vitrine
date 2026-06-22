@@ -79,6 +79,14 @@ struct SnapshotConfig: Equatable {
         showLineNumbers || !highlightedLineRanges.isEmpty || diffDecorations
     }
 
+    /// The plain, copyable text that travels with the rendered image (the clipboard
+    /// text rider and the `--text-sidecar` / multi-size `.txt`): terminal output is
+    /// reduced to its visible lines with the ANSI escape codes stripped so it matches
+    /// the image, while other languages are the source verbatim.
+    var sidecarText: String {
+        language == .terminal ? ANSIRenderer.plainText(code) : code
+    }
+
     /// Clears the marks that are tied to *this specific code* — free-form annotations
     /// (arrows / text / blur) and highlighted line ranges — so loading new content
     /// (paste, drop, quick capture) starts clean instead of stranding marks that were

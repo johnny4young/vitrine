@@ -141,6 +141,46 @@ struct RichExportTests {
         #expect(pasteboard.data(forType: RichPasteboard.htmlType) == nil)
     }
 
+    @Test func plainTextRiderAddsTheStringAlongsideTheImage() {
+        // The text-rider opt-in adds the source as a plain `.string` so a paste into a
+        // code editor gets the text while an image well still gets the PNG — independent
+        // of the rich-text opt-in (plain only → PNG + string, no RTF/HTML).
+        let pasteboard = Self.scratchPasteboard()
+        let config = Self.sampleConfig()
+        let copied = RichPasteboard.copy(
+            config, scale: 1, fixedSize: nil, profile: .sRGB,
+            includeRichText: false, includePlainText: true, to: pasteboard)
+        #expect(copied)
+        #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
+        #expect(pasteboard.string(forType: .string) == config.sidecarText)
+        #expect(pasteboard.data(forType: RichPasteboard.rtfType) == nil)
+    }
+
+    @Test func terminalTextRiderStripsANSIEscapes() {
+        // For terminal output the rider ships the visible text (escape codes stripped),
+        // matching the rendered card — not the raw ANSI.
+        let esc = "\u{1B}"
+        let config = Self.sampleConfig {
+            $0.language = .terminal
+            $0.code = "\(esc)[32m$ ok\(esc)[0m"
+        }
+        let payload = RichPasteboard.makePayload(
+            for: config, scale: 1, fixedSize: nil, profile: .sRGB,
+            includeRichText: false, includePlainText: true)
+        #expect(payload?.plainText == "$ ok")
+    }
+
+    @Test func copyToPasteboardPlainTextRoutesThroughTheRichPath() {
+        // The public `ExportManager.copyToPasteboard(plainText:)` flag the callers pass:
+        // with it on, the general pasteboard ends up with both image and plain text.
+        let config = Self.sampleConfig()
+        #expect(ExportManager.copyToPasteboard(config, scale: 1, plainText: true))
+
+        let pasteboard = NSPasteboard.general
+        #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
+        #expect(pasteboard.string(forType: .string) == config.sidecarText)
+    }
+
     // MARK: - 2. Data URI
 
     @Test func dataURIHasTheExpectedPrefixAndDecodesToPNG() throws {
@@ -359,6 +399,20 @@ struct RichExportTests {
         settings.richClipboard = true
         settings.resetToDefaults()
         #expect(settings.richClipboard == false)
+    }
+
+    @Test func textSidecarSettingDefaultsOffPersistsAndResets() {
+        let defaults = UserDefaults(suiteName: "VitrineRichExport-\(UUID().uuidString)")!
+        let settings = AppSettings(defaults: defaults)
+        // Default off keeps copy/export unchanged until the user opts into the rider.
+        #expect(settings.textSidecar == false)
+
+        settings.textSidecar = true
+        let reloaded = AppSettings(defaults: defaults)
+        #expect(reloaded.textSidecar)
+
+        reloaded.resetToDefaults()
+        #expect(reloaded.textSidecar == false)
     }
 
     // MARK: - Helpers

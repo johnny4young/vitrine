@@ -200,6 +200,16 @@ struct DiagnosticsSchemaTests {
         let keys = lines.map(\.key)
         #expect(keys == keys.sorted())
     }
+
+    @Test func settingsSnapshotIncludesCopyableTextSidecarKnob() {
+        let defaults = UserDefaults(suiteName: "DiagTextSidecar-\(UUID())")!
+        let settings = AppSettings(defaults: defaults)
+        settings.textSidecar = true
+
+        let lines = settings.diagnosticsSnapshot.redactedLines()
+        let sidecarLine = lines.first { $0.key == "textSidecar" }
+        #expect(sidecarLine?.value == "true")
+    }
 }
 
 // MARK: - Source hygiene (the `print(` lint check)

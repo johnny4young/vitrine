@@ -69,6 +69,15 @@ struct OutputSettingsView: View {
                         .labelsHidden()
                         .accessibilityIdentifier("rich-clipboard-toggle")
                 }
+                TokenRow(
+                    label: Text("Copyable text with images"),
+                    caption: Text("Adds plain text on copy, and a .txt with multi-size exports")
+                ) {
+                    Toggle("Copyable text with images", isOn: $settings.textSidecar)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("text-sidecar-toggle")
+                }
             }
 
             // Color management lives in its own "Advanced" group so the default

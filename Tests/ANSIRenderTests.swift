@@ -59,6 +59,56 @@ struct ANSIRenderTests {
                 == palette.indexedColor(1))
     }
 
+    @Test func attributedStringStylesOSC8LinkedText() {
+        let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        let attributed = ANSIRenderer.attributedString(
+            "\(esc)]8;;https://example.com\u{07}link\(esc)]8;;\u{07}", font: font)
+        #expect(attributed.string == "link")
+        // Default-colored link text is underlined and tinted the palette's blue. No
+        // `.link` attribute: SwiftUI's Text drops a linked run when the canvas is
+        // rasterized through ImageRenderer, so the URL is styled, never attached.
+        #expect(
+            attributed.attribute(.underlineStyle, at: 0, effectiveRange: nil) as? Int
+                == NSUnderlineStyle.single.rawValue)
+        let color = attributed.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
+        #expect(color == palette.base[4])
+        #expect(attributed.attribute(.link, at: 0, effectiveRange: nil) == nil)
+    }
+
+    @Test func hyperlinkKeepsAnExplicitColor() {
+        let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        // A program that already colored the link (green) keeps that color — only the
+        // underline is added on top.
+        let attributed = ANSIRenderer.attributedString(
+            "\(esc)]8;;https://x\u{07}\(esc)[32mgreen\(esc)[0m\(esc)]8;;\u{07}", font: font)
+        let color = attributed.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
+        #expect(color == palette.indexedColor(2))
+        #expect(
+            attributed.attribute(.underlineStyle, at: 0, effectiveRange: nil) as? Int
+                == NSUnderlineStyle.single.rawValue)
+    }
+
+    @Test func plainTextStripsEscapesAndResolvesRedraws() {
+        #expect(
+            ANSIRenderer.plainText("\(esc)[31m$ ls\(esc)[0m\n10%\r100%\n") == "$ ls\n100%\n")
+        // OSC 8 link text survives as plain text; the URL does not.
+        #expect(ANSIRenderer.plainText("\(esc)]8;;https://x\u{07}docs\(esc)]8;;\u{07}") == "docs")
+    }
+
+    @Test func sidecarTextStripsANSIForTerminalButKeepsCodeVerbatim() {
+        // The copyable-text rider/sidecar: terminal output is de-ANSI'd to its visible
+        // lines, other languages are the source unchanged.
+        var terminal = SnapshotConfig()
+        terminal.language = .terminal
+        terminal.code = "\(esc)[31mred\(esc)[0m\nplain"
+        #expect(terminal.sidecarText == "red\nplain")
+
+        var swift = SnapshotConfig()
+        swift.language = .swift
+        swift.code = "let x = 1"
+        #expect(swift.sidecarText == "let x = 1")
+    }
+
     @Test func detectorRoutesANSIToTerminal() {
         #expect(LanguageDetector.detect("\(esc)[32m$ ls\(esc)[0m\nfile.txt") == .terminal)
         #expect(LanguageDetector.interpret("\(esc)[31merror\(esc)[0m").language == .terminal)
@@ -71,10 +121,16 @@ struct ANSIRenderTests {
         #expect(ANSIRenderer.normalize("a\rb") == "b")  // lone CR redraws the line
         #expect(ANSIRenderer.normalize("10%\r20%\rDone\n") == "Done\n")
         #expect(ANSIRenderer.normalize("abc\u{08}d") == "abd")  // backspace redraw
-        #expect(ANSIRenderer.normalize("x\u{04}y\u{07}z") == "xyz")  // ^D / BEL dropped
+        #expect(ANSIRenderer.normalize("x\u{04}y\u{07}z") == "xyz")  // ^D / stray BEL dropped
         // Tab, newline, and ESC (the parser consumes ESC) are preserved.
         #expect(ANSIRenderer.normalize("a\tb\n\(esc)[0m") == "a\tb\n\(esc)[0m")
         #expect(ANSIRenderer.normalize("plain text") == "plain text")
+        // An OSC's BEL/ST terminator is preserved (not treated as a stray ^G), so the
+        // hyperlink and the text after it survive into the parser.
+        #expect(
+            ANSIRenderer.normalize("a\(esc)]8;;https://x\u{07}b") == "a\(esc)]8;;https://x\u{07}b")
+        #expect(
+            ANSIRenderer.normalize("a\(esc)]8;;u\(esc)\\b") == "a\(esc)]8;;u\(esc)\\b")
     }
 
     @Test func shellInitEmitsTheHelpers() {
