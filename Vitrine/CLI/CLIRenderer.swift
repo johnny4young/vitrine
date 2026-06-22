@@ -65,6 +65,33 @@ enum CLIRenderer {
         return "Rendered \(outputURL.path) (\(dimensions.width)×\(dimensions.height))"
     }
 
+    /// Hands the loaded source to the running app's editor (`--edit`) instead of
+    /// rendering: stages the text on the private handoff pasteboard and opens a
+    /// `vitrine://edit` URL, which the app reads back into its editor (see
+    /// `EditorHandoff`). No image is produced and the general clipboard is untouched.
+    ///
+    /// `open` is injected so a test can assert the staged URL and pasteboard without
+    /// actually launching the app; it defaults to `NSWorkspace.open`, which also wakes
+    /// Vitrine if it isn't already running. It returns whether the open succeeded — a
+    /// `false` (no app registered for `vitrine://`, Launch Services failure) throws
+    /// `CLIError.editorOpenFailed` so the CLI exits non-zero instead of falsely
+    /// reporting success to a script.
+    @discardableResult
+    static func openInEditor(
+        _ options: CLIOptions,
+        fileLoader: (URL) throws -> FileInputLoader.LoadedFile = {
+            try FileInputLoader.load(from: $0)
+        },
+        open: (URL) -> Bool = { NSWorkspace.shared.open($0) }
+    ) throws -> String {
+        let loaded = try loadInput(options, fileLoader: fileLoader)
+        let language = options.language ?? loaded.language
+        let url = EditorHandoff.stage(content: loaded.text, language: language)
+        guard open(url) else { throw CLIError.editorOpenFailed }
+        Log.export.notice("CLI handed the source to the editor (--edit)")
+        return "Opened the captured output in Vitrine's editor."
+    }
+
     /// Runs a folder `batch`: renders every readable text file in the input directory
     /// to the output directory, one image per file (CS-094).
     ///

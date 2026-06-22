@@ -26,6 +26,9 @@ Three ways in, easiest first:
 3. **Paste or drop** — paste colored output straight into Vitrine (⌘V), or drop a
    `.log` / `.txt` file; it auto-detects terminal output and styles it.
 
+Add **`-e`** to either (`vgrab -e <command>`, `vlast -e`) to open the output in Vitrine's
+editor — to annotate or restyle before exporting — instead of copying an image.
+
 `vgrab` and `vlast` need the one-time shell hook (`eval "$(vitrine shell-init zsh)"`,
 below). Paste / drop and the `--stdin` pipe need no setup.
 
@@ -93,6 +96,10 @@ vlast                   # share the LAST command you already ran — without re-
 - **`vlast`** shares the command you *already* ran. Because the integration passively
   records your session, the colored output of the last command is already captured — so
   `vlast` renders it instantly, with no re-run and no side effects.
+- **`-e` / `--edit`** on either helper opens the captured output in Vitrine's **editor**
+  instead of copying — to annotate, restyle, or change the theme before exporting.
+  `vgrab -e git status` and `vlast -e` hand the output straight to a Vitrine window
+  (nothing touches your clipboard).
 
 ### How the passive recorder works (and its one trade-off)
 
@@ -133,11 +140,14 @@ vitrine render test.log --out test.png       # auto-detects ANSI
 ```
 vitrine render <input-file> --out <image> [--language terminal]
 vitrine render --stdin --copy                 # read a pipe, copy the image
+vitrine render <input-file> --edit            # open it in the editor (no image)
 vitrine shell-init [zsh|bash]                 # print the helpers
 ```
 
 `--copy` puts the rendered image on the clipboard; `--stdin` reads the source from a
-pipe. Both detect terminal output by its ANSI escapes when `--language` is omitted.
+pipe; `--edit` (`-e`) opens the source in Vitrine's editor instead of rendering — useful
+to tweak before exporting. Each detects terminal output by its ANSI escapes when
+`--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--out`.
 
 ## Notes
 
@@ -163,10 +173,6 @@ Deferred, with the technical reason each is not in the first cut:
   (`htop`, `vim`) and in-place progress bars are not. Capturing the *final screen
   state* needs a small VT/grid emulator (cursor positioning into a cell buffer, à la
   `pyte`), which is a separate, larger component.
-- **`vgrab --edit`** (open the captured output in the editor to annotate/restyle before
-  exporting). The CLI is a separate process; pushing content into the running app needs
-  app-side IPC — a `vitrine://` URL scheme plus an open-content handler that seeds the
-  editor.
 - **One-click shell-init install.** A Settings button that appends the `eval` line to
   `~/.zshrc`. The App Store build is sandboxed and cannot write arbitrary files, so the
   interim is a "Copy setup line" button; auto-install would ship in the direct-download
