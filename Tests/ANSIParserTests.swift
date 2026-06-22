@@ -142,4 +142,14 @@ struct ANSIParserTests {
         let runs = ANSIParser.parse("\(esc)]0;my title\u{07}body")
         #expect(runs == [ANSIRun(text: "body", style: ANSIStyle())])
     }
+
+    @Test func malformedOSC8DoesNotClearAnOpenLink() {
+        // A truncated `8` body (no `;params;URI`) is not a valid OSC 8: it must neither
+        // clear an open link nor split the run. Here a bogus `ESC]8 BEL` sits between two
+        // linked spans — both stay linked and merge into one run.
+        let runs = ANSIParser.parse(
+            "\(esc)]8;;https://x\u{07}a\(esc)]8\u{07}b\(esc)]8;;\u{07}")
+        #expect(runs.map(\.text).joined() == "ab")
+        #expect(runs.allSatisfy { $0.style.hyperlink == "https://x" })
+    }
 }
