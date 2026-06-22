@@ -80,22 +80,24 @@ enum ShellInit {
         # >>> vitrine shell integration (zsh) >>>
         # Turn terminal output into a Vitrine image. Docs: vitrine shell-init --help
 
-        # vgrab [-w cols] <cmd…> — run a command under a pseudo-terminal (so it emits
-        # color) and copy a terminal image of its output to the clipboard. Returns the
-        # command's own exit status (script -e). -w/--width sets COLUMNS for it (a
-        # best effort: tools that query the tty size directly ignore it).
+        # vgrab [-w cols] [-e] <cmd…> — run a command under a pseudo-terminal (so it
+        # emits color) and copy a terminal image of its output to the clipboard. Returns
+        # the command's own exit status (script -e). -w/--width sets COLUMNS for it (a
+        # best effort: tools that query the tty size directly ignore it). -e/--edit opens
+        # the captured output in Vitrine's editor (to annotate/restyle) instead of copying.
         vgrab() {
           emulate -L zsh
-          local _vw=""
+          local _vw="" _vshare="--copy"
           while [[ "$1" == -* ]]; do
             case "$1" in
               -w|--width) _vw="$2"; shift 2 ;;
+              -e|--edit) _vshare="--edit"; shift ;;
               --) shift; break ;;
               *) break ;;
             esac
           done
           if (( $# == 0 )); then
-            print -ru2 -- "usage: vgrab [-w cols] <command> [args…]"
+            print -ru2 -- "usage: vgrab [-w cols] [-e] <command> [args…]"
             return 2
           fi
           local _vf
@@ -106,7 +108,7 @@ enum ShellInit {
             script -qe "$_vf" "$@"
           fi
           local _vc=$?
-          command vitrine render "$_vf" --language terminal --copy
+          command vitrine render "$_vf" --language terminal "$_vshare"
           rm -f -- "$_vf"
           return $_vc
         }
@@ -137,14 +139,17 @@ enum ShellInit {
           add-zsh-hook precmd _vitrine_precmd 2>/dev/null
         fi
 
-        # vlast — copy a terminal image of the last command's output (no re-run).
+        # vlast [-e] — copy a terminal image of the last command's output (no re-run).
+        # -e/--edit opens it in Vitrine's editor instead of copying.
         vlast() {
           emulate -L zsh
+          local _vshare="--copy"
+          [[ "$1" == "-e" || "$1" == "--edit" ]] && { _vshare="--edit"; shift }
           if [[ -z "${VITRINE_LAST:-}" || ! -s "$VITRINE_LAST" ]]; then
             print -ru2 -- "vlast: nothing recorded yet — run a command first (the recorder starts in a new shell after install)."
             return 1
           fi
-          command vitrine render "$VITRINE_LAST" --language terminal --copy "$@"
+          command vitrine render "$VITRINE_LAST" --language terminal "$_vshare" "$@"
         }
         # <<< vitrine shell integration (zsh) <<<
         """
@@ -154,16 +159,17 @@ enum ShellInit {
         # `vgrab` works in bash; the passive `vlast` recorder is zsh-only for now.
 
         vgrab() {
-          local _vw=""
+          local _vw="" _vshare="--copy"
           while [ "${1:0:1}" = "-" ]; do
             case "$1" in
               -w|--width) _vw="$2"; shift 2 ;;
+              -e|--edit) _vshare="--edit"; shift ;;
               --) shift; break ;;
               *) break ;;
             esac
           done
           if [ "$#" -eq 0 ]; then
-            printf 'usage: vgrab [-w cols] <command> [args…]\\n' >&2
+            printf 'usage: vgrab [-w cols] [-e] <command> [args…]\\n' >&2
             return 2
           fi
           local _vf
@@ -174,7 +180,7 @@ enum ShellInit {
             script -qe "$_vf" "$@"
           fi
           local _vc=$?
-          command vitrine render "$_vf" --language terminal --copy
+          command vitrine render "$_vf" --language terminal "$_vshare"
           rm -f -- "$_vf"
           return $_vc
         }

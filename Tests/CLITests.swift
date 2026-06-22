@@ -237,6 +237,63 @@ struct CLITests {
         }
     }
 
+    @Test func editFlagParsesAndNeedsNoOutput() throws {
+        let long = try CLIArguments.parse(["render", "in.log", "--edit"])
+        #expect(long.openInEditor && long.outputPath.isEmpty && long.inputPath == "in.log")
+        // The short form is equivalent.
+        let short = try CLIArguments.parse(["render", "in.log", "-e"])
+        #expect(short.openInEditor)
+    }
+
+    @Test func editRejectsCopyAndOutCombos() {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --edit with --copy.")) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--copy"])
+        }
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --edit with --out.")) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--out", "x.png"])
+        }
+    }
+
+    @Test func editIsRejectedForBatch() {
+        #expect(throws: CLIError.unknownFlag("--edit")) {
+            try CLIArguments.parse(["batch", "dir", "--out", "out", "--edit"])
+        }
+    }
+
+    @Test func editStagesTheHandoffAndReportsSuccess() throws {
+        var captured: URL?
+        let options = try CLIArguments.parse(["render", "session.log", "--edit"])
+        let summary = try CLIRenderer.openInEditor(
+            options,
+            fileLoader: { _ in
+                FileInputLoader.LoadedFile(
+                    text: "\u{1B}[31merror\u{1B}[0m", language: .terminal, filename: "session.log")
+            },
+            open: {
+                captured = $0
+                return true
+            })
+        #expect(summary.contains("editor"))
+        #expect(captured?.scheme == "vitrine" && captured?.host == "edit")
+        // The staged content is reachable through the captured URL's token.
+        #expect(EditorHandoff.consume(url: captured!)?.content == "\u{1B}[31merror\u{1B}[0m")
+    }
+
+    @Test func editThrowsWhenTheAppCannotBeOpened() throws {
+        // A failed open (no app registered for vitrine://) surfaces as a non-zero error,
+        // not a false success.
+        let options = try CLIArguments.parse(["render", "session.log", "--edit"])
+        #expect(throws: CLIError.editorOpenFailed) {
+            try CLIRenderer.openInEditor(
+                options,
+                fileLoader: { _ in
+                    FileInputLoader.LoadedFile(
+                        text: "x", language: .terminal, filename: "session.log")
+                },
+                open: { _ in false })
+        }
+    }
+
     @Test func invalidValuesAreRejected() {
         #expect(throws: CLIError.invalidValue(flag: "--theme", value: "neon")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--theme", "neon"])

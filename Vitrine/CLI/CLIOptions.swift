@@ -66,6 +66,11 @@ struct CLIOptions: Equatable {
     /// Put the rendered image on the clipboard (instead of, or in addition to,
     /// writing a file). The default for the shell integration's "share now" flow.
     var copyToClipboard: Bool = false
+    /// Hand the loaded source to the running app's editor instead of rendering
+    /// (`--edit`, behind `vgrab -e` / `vlast -e`): the CLI stages the text and opens a
+    /// `vitrine://edit` URL rather than producing an image. Mutually exclusive with
+    /// `--copy`/`--out`, and render-only (not `batch`).
+    var openInEditor: Bool = false
 
     /// The default export scale when neither a preset nor an explicit `--scale`
     /// supplies one — the app's documented default resolution multiplier.

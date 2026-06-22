@@ -73,7 +73,12 @@ do {
     guard CLIEntitlement.isProUnlocked() else { throw CLIError.proRequired }
     let summary: String
     switch options.command {
-    case .render: summary = try CLIRenderer.run(options)
+    case .render:
+        // `--edit` hands the source to the running editor (no render); otherwise the
+        // normal render-and-write/copy path produces the image.
+        summary =
+            options.openInEditor
+            ? try CLIRenderer.openInEditor(options) : try CLIRenderer.run(options)
     case .batch: summary = try CLIRenderer.runBatch(options)
     }
     print(summary)
