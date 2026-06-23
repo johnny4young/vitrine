@@ -405,6 +405,23 @@
         }
       }
     },
+    "Adds plain text on copy, and a .txt with multi-size exports" : {
+      "comment" : "Output pane: copyable-text-sidecar row caption.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds plain text on copy, and a .txt with multi-size exports"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega texto plano al copiar, y un .txt en la exportación multi-tamaño"
+          }
+        }
+      }
+    },
     "Advanced" : {
       "comment" : "Output pane section header: advanced color options.",
       "localizations" : {
@@ -1177,6 +1194,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar al portapapeles automáticamente"
+          }
+        }
+      }
+    },
+    "Copyable text with images" : {
+      "comment" : "Output pane: copyable-text-sidecar row label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copyable text with images"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto copiable con las imágenes"
           }
         }
       }

@@ -124,7 +124,7 @@ extension EditorView {
         ExportManager.copyToPasteboard(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
-            richText: settings.richClipboard)
+            richText: settings.richClipboard, plainText: settings.textSidecar)
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
         // shared settings (what the Settings toggle edits) rather than this window's
         // per-session copy. Close *this* window — captured via `WindowAccessor`, so it
@@ -199,7 +199,7 @@ extension EditorView {
             case .export:
                 MultiSizeExportView(
                     baseConfig: settings.exportConfig, format: settings.exportFormat,
-                    profile: settings.colorProfile)
+                    profile: settings.colorProfile, textSidecar: settings.textSidecar)
             case .paywall:
                 PaywallSheet(feature: .multiSizeExport)
             }

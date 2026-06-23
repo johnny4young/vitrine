@@ -278,7 +278,7 @@ struct MenuBarContent: View {
         ExportManager.copyToPasteboard(
             config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
-            richText: settings.richClipboard)
+            richText: settings.richClipboard, plainText: settings.textSidecar)
     }
 }
 

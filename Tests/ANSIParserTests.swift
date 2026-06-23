@@ -103,4 +103,53 @@ struct ANSIParserTests {
         #expect(runs[0].style.bold && runs[0].style.underline)
         #expect(runs[0].style.foreground == .indexed(3))
     }
+
+    @Test func parsesOSC8Hyperlink() {
+        // Open (`8;;URI`) … linked text … close (`8;;` empty URI).
+        let runs = ANSIParser.parse(
+            "\(esc)]8;;https://example.com\u{07}link\(esc)]8;;\u{07} after")
+        #expect(runs.count == 2)
+        #expect(runs[0].text == "link")
+        #expect(runs[0].style.hyperlink == "https://example.com")
+        #expect(runs[1].text == " after")
+        #expect(runs[1].style.hyperlink == nil)
+    }
+
+    @Test func hyperlinkAcceptsTheSTTerminator() {
+        let runs = ANSIParser.parse("\(esc)]8;;https://x\(esc)\\link\(esc)]8;;\(esc)\\")
+        #expect(runs[0].text == "link")
+        #expect(runs[0].style.hyperlink == "https://x")
+    }
+
+    @Test func hyperlinkSurvivesSGRReset() {
+        // OSC 8 is independent of SGR: a color + full reset inside the link must not
+        // drop it — only the closing OSC 8 does.
+        let runs = ANSIParser.parse(
+            "\(esc)]8;;https://x\u{07}\(esc)[31mred\(esc)[0mplain\(esc)]8;;\u{07}")
+        #expect(runs.map(\.text).joined() == "redplain")
+        #expect(runs.allSatisfy { $0.style.hyperlink == "https://x" })
+    }
+
+    @Test func hyperlinkURIKeepsParamsAndQuerySemicolons() {
+        // The `id=…` params field is skipped; a URI carrying its own `;` survives.
+        let runs = ANSIParser.parse(
+            "\(esc)]8;id=42;https://e.com/a?x=1;y=2\u{07}t\(esc)]8;;\u{07}")
+        #expect(runs[0].style.hyperlink == "https://e.com/a?x=1;y=2")
+    }
+
+    @Test func nonHyperlinkOSCLeavesNoLink() {
+        // A window-title OSC (`0;…`) is still stripped and sets no hyperlink.
+        let runs = ANSIParser.parse("\(esc)]0;my title\u{07}body")
+        #expect(runs == [ANSIRun(text: "body", style: ANSIStyle())])
+    }
+
+    @Test func malformedOSC8DoesNotClearAnOpenLink() {
+        // A truncated `8` body (no `;params;URI`) is not a valid OSC 8: it must neither
+        // clear an open link nor split the run. Here a bogus `ESC]8 BEL` sits between two
+        // linked spans — both stay linked and merge into one run.
+        let runs = ANSIParser.parse(
+            "\(esc)]8;;https://x\u{07}a\(esc)]8\u{07}b\(esc)]8;;\u{07}")
+        #expect(runs.map(\.text).joined() == "ab")
+        #expect(runs.allSatisfy { $0.style.hyperlink == "https://x" })
+    }
 }

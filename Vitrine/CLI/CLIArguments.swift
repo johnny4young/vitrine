@@ -131,6 +131,7 @@ enum CLIArguments {
         var readStdin = false
         var copyToClipboard = false
         var openInEditor = false
+        var textSidecar = false
 
         /// Pops the value that must follow a `--flag`, or throws if it is absent.
         func value(for flag: String) throws -> String {
@@ -166,6 +167,8 @@ enum CLIArguments {
                 copyToClipboard = true
             case "--edit", "-e":
                 openInEditor = true
+            case "--text-sidecar":
+                textSidecar = true
             default:
                 if token.hasPrefix("-") {
                     throw CLIError.unknownFlag(token)
@@ -195,6 +198,15 @@ enum CLIArguments {
             if outputPath != nil {
                 throw CLIError.incompatibleOptions("Cannot combine --edit with --out.")
             }
+            if textSidecar {
+                throw CLIError.incompatibleOptions("Cannot combine --edit with --text-sidecar.")
+            }
+        }
+        // The text sidecar sits next to a written image, so it needs an `--out` path —
+        // a clipboard-only copy (`--copy` with no `--out`) has no file to accompany.
+        if textSidecar, outputPath == nil {
+            throw CLIError.incompatibleOptions(
+                "--text-sidecar needs an --out path to write beside.")
         }
         // Input is a file unless reading stdin; output is required unless copying the
         // image to the clipboard or handing it to the editor (`--edit`), neither of
@@ -232,7 +244,8 @@ enum CLIArguments {
             transparent: transparent,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
-            openInEditor: openInEditor
+            openInEditor: openInEditor,
+            textSidecar: textSidecar
         )
     }
 
@@ -323,6 +336,8 @@ nonisolated enum CLIUsage {
           --format <png|pdf>     Output format. Defaults to png.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.
           --transparent          Render a real transparent background.
+          --text-sidecar         Also write a .txt next to --out with the source as
+                                 selectable text (terminal escapes stripped).
           -h, --help             Show this help.
 
         Code rendering is fully local: it never needs the network, screen recording,

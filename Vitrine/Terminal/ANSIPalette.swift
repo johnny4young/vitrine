@@ -147,6 +147,14 @@ enum ANSIRenderer {
         return result
     }
 
+    /// The visible text of terminal output with every escape sequence removed and line
+    /// redraws/backspaces resolved — the plain text a reader would copy, matching what
+    /// the rendered image shows. Used for the copyable-text sidecar so the shared image
+    /// ships with selectable, accessible output rather than only pixels.
+    static func plainText(_ text: String) -> String {
+        ANSIParser.parse(normalize(text)).map(\.text).joined()
+    }
+
     /// Cleans control bytes a pseudo-terminal capture leaves behind so the static
     /// image shows clean lines. A terminal turns `\\n` into `\\r\\n` on output, a lone
     /// `\\r` redraws the current line (progress bars/spinners), and `\\b` backs up one
@@ -182,8 +190,30 @@ enum ANSIRenderer {
                 changed = true
                 if output.count > lineStart { output.removeLast() }
                 index += 1
+            case "\u{1B}":
+                // Preserve an OSC sequence intact so the stray-control stripping below
+                // never eats its BEL/ST terminator — without this, an OSC 8 hyperlink
+                // (and the rest of its line) is swallowed as an unterminated OSC, since
+                // BEL is otherwise dropped as a `^G`. CSI needs no special case: its
+                // bytes are all ≥ 0x20 and already pass through.
+                output.append(scalar)  // ESC
+                index += 1
+                guard index < scalars.count, scalars[index] == "]" else { break }
+                output.append(scalars[index])  // ]
+                index += 1
+                while index < scalars.count {
+                    let byte = scalars[index]
+                    output.append(byte)
+                    index += 1
+                    if byte == "\u{07}" { break }  // BEL terminator
+                    if byte == "\u{1B}", index < scalars.count, scalars[index] == "\\" {
+                        output.append(scalars[index])  // ST terminator's trailing `\`
+                        index += 1
+                        break
+                    }
+                }
             default:
-                if scalar.value < 0x20, scalar != "\t", scalar != "\u{1B}" {
+                if scalar.value < 0x20, scalar != "\t" {
                     changed = true
                 } else {
                     output.append(scalar)
@@ -221,6 +251,18 @@ enum ANSIRenderer {
         }
         if style.strikethrough {
             attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+        }
+        // OSC 8 hyperlink: underline it and tint default-colored link text the palette's
+        // blue so it reads as a link in the static image (a program that already colored
+        // the link keeps its color). Deliberately *not* the `.link` attribute: SwiftUI's
+        // `Text` drops a linked run (and the rest of its line) when the canvas is
+        // rasterized through `ImageRenderer`, so the URL is styled here, never attached —
+        // which also matches the terminal, where the URL itself stays hidden.
+        if style.hyperlink != nil {
+            attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
+            if style.foreground == .default, !style.inverse {
+                attributes[.foregroundColor] = palette.base[4]
+            }
         }
         return attributes
     }

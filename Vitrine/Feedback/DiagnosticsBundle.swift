@@ -211,6 +211,9 @@ struct DiagnosticsSettingsSnapshot: Equatable {
     /// never user-entered text. Defaults to off so older call sites that predate
     /// the flag construct a valid snapshot without it.
     var richClipboard: Bool = false
+    /// Whether the copyable-text rider/sidecar opt-in is on. A plain boolean knob,
+    /// never user-entered text, but useful when diagnosing clipboard/export behavior.
+    var textSidecar: Bool = false
     var hotkeyAction: String
     var treatURLsAsScreenshot: Bool
     var recentLanguageCount: Int
@@ -236,6 +239,7 @@ struct DiagnosticsSettingsSnapshot: Equatable {
             ("exportFormat", exportFormat),
             ("colorProfile", colorProfile),
             ("richClipboard", String(richClipboard)),
+            ("textSidecar", String(textSidecar)),
             ("hotkeyAction", hotkeyAction),
             ("treatURLsAsScreenshot", String(treatURLsAsScreenshot)),
             ("recentLanguageCount", String(recentLanguageCount)),

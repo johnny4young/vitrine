@@ -15,6 +15,10 @@ struct MultiSizeExportView: View {
     let baseConfig: SnapshotConfig
     let format: ExportFormat
     let profile: ColorProfile
+    /// Whether the active editor session should write plain-text sidecars next to the
+    /// exported images. Passed in by the editor so a per-window session stays
+    /// authoritative instead of re-reading the app-wide defaults.
+    let textSidecar: Bool
 
     @Environment(\.dismiss) private var dismiss
 
@@ -117,7 +121,8 @@ struct MultiSizeExportView: View {
         guard panel.runModal() == .OK, let directory = panel.url else { return }
 
         let result = ExportManager.exportPresetSizes(
-            baseConfig, presets: presets, to: directory, format: format, profile: profile)
+            baseConfig, presets: presets, to: directory, format: format, profile: profile,
+            textSidecar: textSidecar)
         if result.failed == 0 {
             // Confirm and reveal the folder so the export doesn't finish silently — the
             // feedback convention every other export follows (audit P1-UX-1).
