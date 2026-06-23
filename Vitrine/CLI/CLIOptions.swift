@@ -58,16 +58,15 @@ struct CLIOptions: Equatable {
     /// alpha channel on export (CS-024). Overrides any preset background.
     var transparent: Bool = false
 
-    /// Read the source from standard input instead of a file. The `vgrab`/`vlast`
-    /// shell integration pipes captured (ANSI-colored) terminal output here, so the
-    /// language is inferred from the content — terminal output is detected by its
-    /// escape codes.
+    /// Read the source from standard input instead of a file (e.g.
+    /// `some-command | vitrine render --stdin`), so the language is inferred from the
+    /// content — ANSI-colored terminal output is detected by its escape codes.
     var readStdin: Bool = false
     /// Put the rendered image on the clipboard (instead of, or in addition to,
     /// writing a file). The default for the shell integration's "share now" flow.
     var copyToClipboard: Bool = false
     /// Hand the loaded source to the running app's editor instead of rendering
-    /// (`--edit`, behind `vgrab -e` / `vlast -e`): the CLI stages the text and opens a
+    /// (`--edit`, behind `vgrab -e`): the CLI stages the text and opens a
     /// `vitrine://edit` URL rather than producing an image. Mutually exclusive with
     /// `--copy`/`--out`, and render-only (not `batch`).
     var openInEditor: Bool = false
