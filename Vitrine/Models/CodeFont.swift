@@ -92,4 +92,77 @@ enum CodeFont {
             .init(rawValue: kCTFontOpenTypeFeatureValue as String): value,
         ]
     }
+
+    // MARK: - Nerd Font glyph cascade (terminal)
+
+    /// Nerd Font families probed for the terminal glyph cascade, in preference
+    /// order. The symbols-only families come first: they carry *only* the icon
+    /// glyphs (Powerline separators, devicons, the `eza --icons` / `starship` set)
+    /// and never override the base font's letterforms, so the rendered text keeps
+    /// the chosen code font and only the missing Private-Use-Area glyphs fall back.
+    ///
+    /// We **bundle nothing** — the cascade rides a Nerd Font the user already
+    /// installed (the norm for anyone using Powerline/`starship`/`eza`). That keeps
+    /// the app free of a multi-megabyte font asset and of any redistribution /
+    /// attribution obligation; a user without a Nerd Font sees the same
+    /// missing-glyph boxes as before, never a worse result.
+    static let nerdFontCandidates: [String] = [
+        "Symbols Nerd Font Mono",
+        "Symbols Nerd Font",
+        "JetBrainsMono Nerd Font Mono",
+        "JetBrainsMono Nerd Font",
+        "Hack Nerd Font Mono",
+        "Hack Nerd Font",
+        "FiraCode Nerd Font Mono",
+        "FiraCode Nerd Font",
+        "MesloLGS Nerd Font Mono",
+        "MesloLGS NF",
+        "CaskaydiaCove Nerd Font Mono",
+    ]
+
+    /// The `nerdFontCandidates` actually present in `availableFamilies`, preserving
+    /// preference order. Pure (the family set is injected) so the resolution is
+    /// testable without depending on what fonts the host happens to have.
+    static func installedNerdFonts(
+        among candidates: [String] = nerdFontCandidates,
+        availableFamilies: Set<String>
+    ) -> [String] {
+        candidates.filter { availableFamilies.contains($0) }
+    }
+
+    /// Cascade descriptors for the installed Nerd Fonts, built once from the host's
+    /// font list (it does not change within a session). Empty when no Nerd Font is
+    /// installed — in which case `applyingNerdCascade` is a no-op.
+    private static let nerdCascadeDescriptors: [NSFontDescriptor] = {
+        let families = Set(NSFontManager.shared.availableFontFamilies)
+        return installedNerdFonts(availableFamilies: families).map {
+            NSFontDescriptor(fontAttributes: [.family: $0])
+        }
+    }()
+
+    /// Returns `font` with a Nerd Font fallback cascade appended, so glyphs the base
+    /// font lacks (the Private-Use-Area icons modern prompts emit) render from an
+    /// installed Nerd Font instead of as missing-glyph boxes. Used for terminal
+    /// output only.
+    ///
+    /// When no Nerd Font is installed the font is returned **unchanged** — byte-for-
+    /// byte identical rendering — so a host without one (e.g. CI) never drifts.
+    static func applyingNerdCascade(to font: NSFont) -> NSFont {
+        applying(cascade: nerdCascadeDescriptors, to: font)
+    }
+
+    /// Appends `cascade` to `font`'s descriptor as its fallback list. Factored out
+    /// (and `cascade` injected) so the cascade wiring is testable with a known
+    /// font; an empty list returns `font` untouched.
+    ///
+    /// Any cascade list already on the base font is **preserved** — the new
+    /// descriptors are appended after it, not substituted — so a font that arrives
+    /// with its own fallbacks keeps them ahead of the Nerd Font.
+    static func applying(cascade descriptors: [NSFontDescriptor], to font: NSFont) -> NSFont {
+        guard !descriptors.isEmpty else { return font }
+        let existing = font.fontDescriptor.fontAttributes[.cascadeList] as? [NSFontDescriptor] ?? []
+        let descriptor = font.fontDescriptor.addingAttributes([.cascadeList: existing + descriptors]
+        )
+        return NSFont(descriptor: descriptor, size: 0) ?? font
+    }
 }

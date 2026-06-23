@@ -1,6 +1,193 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Couldn't read the startup file (is it valid UTF-8?). Add the line by hand instead." : {
+      "comment" : "Settings General: shell-integration install failure when the chosen startup file exists but can't be read.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the startup file (is it valid UTF-8?). Add the line by hand instead."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo leer el archivo de inicio (¿es UTF-8 válido?). Agrega la línea a mano."
+          }
+        }
+      }
+    },
+    "%@ Run the copied command in Terminal to add it by hand." : {
+      "comment" : "Settings General: shell-integration install failure alert message.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Run the copied command in Terminal to add it by hand."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Ejecuta el comando copiado en la Terminal para agregarlo a mano."
+          }
+        }
+      }
+    },
+    "Add" : {
+      "comment" : "Settings General: shell-integration open-panel prompt button.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar"
+          }
+        }
+      }
+    },
+    "Add the vgrab and vlast helpers to your shell" : {
+      "comment" : "Settings General: shell-integration row caption.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add the vgrab and vlast helpers to your shell"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega los comandos vgrab y vlast a tu shell"
+          }
+        }
+      }
+    },
+    "Add the vgrab and vlast helpers to your shell startup file." : {
+      "comment" : "Settings General: shell-integration Set Up button help.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add the vgrab and vlast helpers to your shell startup file."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega los comandos vgrab y vlast al archivo de inicio de tu shell."
+          }
+        }
+      }
+    },
+    "Added to %@" : {
+      "comment" : "Settings General: shell-integration installed caption (%@ is the file path).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added to %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregado a %@"
+          }
+        }
+      }
+    },
+    "Choose your shell startup file (for example .zshrc) to add the vgrab and vlast helpers." : {
+      "comment" : "Settings General: shell-integration open-panel message.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose your shell startup file (for example .zshrc) to add the vgrab and vlast helpers."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige el archivo de inicio de tu shell (por ejemplo .zshrc) para agregar los comandos vgrab y vlast."
+          }
+        }
+      }
+    },
+    "Copy the equivalent Terminal command." : {
+      "comment" : "Settings General: shell-integration Copy Command button help.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the equivalent Terminal command."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el comando equivalente de la Terminal."
+          }
+        }
+      }
+    },
+    "Couldn't Add the Shell Integration" : {
+      "comment" : "Settings General: shell-integration install failure alert title.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't Add the Shell Integration"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo agregar la integración del shell"
+          }
+        }
+      }
+    },
+    "Set Up…" : {
+      "comment" : "Settings General: shell-integration Set Up button.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set Up…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar…"
+          }
+        }
+      }
+    },
+    "Shell integration" : {
+      "comment" : "Settings General: shell-integration row label.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shell integration"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Integración del shell"
+          }
+        }
+      }
+    },
     "%@ System folders need an administrator: run the copied command in Terminal instead." : {
       "comment" : "Settings General: CLI install failure alert message (CS-033).",
       "localizations" : {
