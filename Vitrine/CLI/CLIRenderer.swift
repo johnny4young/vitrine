@@ -52,7 +52,7 @@ enum CLIRenderer {
                 let dimensions = try renderAndWrite(config, options: options, to: outputURL)
                 return
                     "Copied the image to the clipboard and wrote \(outputURL.path) "
-                    + "(\(dimensions.width)×\(dimensions.height))"
+                    + "(\(dimensions.width)×\(dimensions.height))\(sidecarNote(options, beside: outputURL))"
             }
             return "Copied the image to the clipboard"
         }
@@ -62,7 +62,9 @@ enum CLIRenderer {
 
         Log.export.notice(
             "CLI rendered an image (\(options.format.rawValue, privacy: .public))")
-        return "Rendered \(outputURL.path) (\(dimensions.width)×\(dimensions.height))"
+        return
+            "Rendered \(outputURL.path) "
+            + "(\(dimensions.width)×\(dimensions.height))\(sidecarNote(options, beside: outputURL))"
     }
 
     /// Hands the loaded source to the running app's editor (`--edit`) instead of
@@ -226,6 +228,7 @@ enum CLIRenderer {
             pdf: { ExportManager.pdfData(config, fixedSize: options.fixedSize) })
         guard let payload else { throw CLIError.renderFailed }
         try write(payload.data, to: url, options: options)
+        if options.textSidecar { try writeTextSidecar(for: config, options: options, beside: url) }
 
         switch options.format {
         case .png:
@@ -237,6 +240,34 @@ enum CLIRenderer {
             // read back from the page).
             let size = options.fixedSize ?? pdfPointSize(of: payload.data) ?? .zero
             return (Int(size.width.rounded()), Int(size.height.rounded()))
+        }
+    }
+
+    /// The "` + card.txt`" tail appended to a success line when a text sidecar was
+    /// written, naming the sidecar file; empty when the sidecar was not requested.
+    private static func sidecarNote(_ options: CLIOptions, beside imageURL: URL) -> String {
+        guard options.textSidecar else { return "" }
+        let name = imageURL.deletingPathExtension().appendingPathExtension("txt").lastPathComponent
+        return " + \(name)"
+    }
+
+    /// Writes the plain-text sidecar next to the rendered image at `imageURL`,
+    /// replacing its extension with `.txt` (`card.png` → `card.txt`). Terminal output
+    /// is reduced to its visible text (escape codes stripped, line redraws resolved) so
+    /// the sidecar matches the image; other languages are written verbatim. A write
+    /// failure surfaces as `CLIError.writeFailed`, the same as the image write.
+    private static func writeTextSidecar(
+        for config: SnapshotConfig, options: CLIOptions, beside imageURL: URL
+    ) throws {
+        let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("txt")
+        do {
+            try Data(config.sidecarText.utf8).write(to: sidecarURL)
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "CLI text-sidecar write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            throw CLIError.writeFailed(path: sidecarURL.path)
         }
     }
 

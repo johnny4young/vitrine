@@ -285,7 +285,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         // (CS-038), mirroring the quick-capture HUD path.
         let copied = ExportManager.copyToPasteboard(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile)
+            fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
+            richText: settings.richClipboard, plainText: settings.textSidecar)
         CaptureHUDController.shared.present(
             copied
                 ? Notifier.confirmation(String(localized: "Image copied to clipboard"))

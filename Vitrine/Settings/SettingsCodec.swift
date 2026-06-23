@@ -40,6 +40,7 @@ enum SettingsCodec {
         static let exportFormat = "exportFormat"
         static let colorProfile = "colorProfile"
         static let richClipboard = "richClipboard"
+        static let textSidecar = "textSidecar"
         static let hotkeyAction = "hotkeyAction"
         static let appLanguage = "appLanguage"
         static let treatURLs = "treatURLsAsScreenshot"
@@ -92,7 +93,7 @@ enum SettingsCodec {
             showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
-            colorProfile, richClipboard, hotkeyAction, appLanguage, treatURLs,
+            colorProfile, richClipboard, textSidecar, hotkeyAction, appLanguage, treatURLs,
             reindentOnPaste,
             webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,
             webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
@@ -114,7 +115,7 @@ enum SettingsCodec {
             showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
-            colorProfile, richClipboard, selectedPreset,
+            colorProfile, richClipboard, textSidecar, selectedPreset,
         ]
     }
 

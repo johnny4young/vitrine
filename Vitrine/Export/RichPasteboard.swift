@@ -18,9 +18,10 @@ import UniformTypeIdentifiers
 /// ## How this stays safe and predictable
 ///
 /// - The default one-shortcut copy is unchanged: `ExportManager.copyToPasteboard`
-///   still writes PNG and only *adds* rich representations when the user opts in
-///   (`AppSettings.richClipboard`, CS-054). The explicit "Copy as data URI" and
-///   "Copy highlighted code" commands are separate, clearly labeled actions.
+///   still writes PNG and only *adds* text representations when the user opts in
+///   (`AppSettings.richClipboard` for styled RTF/HTML, `AppSettings.textSidecar`
+///   for plain text). The explicit "Copy as data URI" and "Copy highlighted code"
+///   commands are separate, clearly labeled actions.
 /// - Nothing leaves the Mac: every representation is produced locally from the
 ///   already-rendered image and the locally highlighted code.
 /// - Large outputs are bounded. A `data:` URI and an RTF/HTML blob both grow with
@@ -29,7 +30,7 @@ import UniformTypeIdentifiers
 ///   serialization (PNG/base64/RTF/HTML encoding) runs off the main actor through
 ///   the `async` builders so a big capture never blocks UI.
 enum RichPasteboard {
-    /// The upper bound on a single non-image representation placed on the
+    /// The upper bound on a single large non-image representation placed on the
     /// pasteboard (the base64 `data:` URI, the RTF blob, and the HTML blob).
     ///
     /// A `data:` URI for a retina social card can be well over a megabyte of
@@ -143,6 +144,10 @@ enum RichPasteboard {
         var rtf: Data?
         /// Highlighted code as HTML, when the user opted into rich text and it fit.
         var html: Data?
+        /// The source as plain, copyable text, when the user opted into the text rider
+        /// (`AppSettings.textSidecar`) — so a paste into a code editor receives the text
+        /// while an image well still receives the picture.
+        var plainText: String?
 
         /// Whether any styled-text representation accompanies the image. Used by
         /// callers/tests to assert the rich path actually added something.
@@ -167,7 +172,8 @@ enum RichPasteboard {
         scale: CGFloat,
         fixedSize: CGSize?,
         profile: ColorProfile,
-        includeRichText: Bool
+        includeRichText: Bool,
+        includePlainText: Bool = false
     ) -> Payload? {
         guard
             let cgImage = ExportManager.renderCGImage(
@@ -183,6 +189,9 @@ enum RichPasteboard {
             let attributed = highlightedCode(for: config)
             payload.rtf = rtfData(from: attributed)
             payload.html = htmlData(from: attributed)
+        }
+        if includePlainText {
+            payload.plainText = config.sidecarText
         }
         return payload
     }
@@ -213,9 +222,19 @@ enum RichPasteboard {
         item.setData(payload.png, forType: pngType)
         if let rtf = payload.rtf { item.setData(rtf, forType: rtfType) }
         if let html = payload.html { item.setData(html, forType: htmlType) }
+        // The plain-text rider is added last so a code editor that ignores styling still
+        // receives the source; an image well and rich editors prefer the earlier reps.
+        if let plainText = payload.plainText { item.setString(plainText, forType: .string) }
         let wrote = pasteboard.writeObjects([item])
+        // Name every representation that accompanied the image so the log mirrors what
+        // actually landed on the pasteboard — the plain-text rider counts too, not just
+        // RTF/HTML — which is the point of diagnosing clipboard behavior.
+        let extras =
+            [payload.hasRichText ? "richtext" : nil, payload.plainText != nil ? "plaintext" : nil]
+            .compactMap { $0 }
+        let summary = extras.isEmpty ? "imageonly" : "image+\(extras.joined(separator: "+"))"
         Log.export.info(
-            "Rich copy wrote pasteboard item (image+\(payload.hasRichText ? "richtext" : "imageonly", privacy: .public), success \(wrote, privacy: .public))"
+            "Rich copy wrote pasteboard item (\(summary, privacy: .public), success \(wrote, privacy: .public))"
         )
         return wrote
     }
@@ -236,12 +255,13 @@ enum RichPasteboard {
         fixedSize: CGSize?,
         profile: ColorProfile,
         includeRichText: Bool,
+        includePlainText: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
         guard
             let payload = makePayload(
                 for: config, scale: scale, fixedSize: fixedSize, profile: profile,
-                includeRichText: includeRichText)
+                includeRichText: includeRichText, includePlainText: includePlainText)
         else { return false }
         return write(payload, to: pasteboard)
     }

@@ -24,6 +24,11 @@ struct ANSIStyle: Equatable {
     var strikethrough = false
     /// Swap foreground and background (SGR 7); applied by `ANSIPalette` at render time.
     var inverse = false
+    /// The target of an OSC 8 hyperlink covering this run, or `nil` when the run is
+    /// not linked. OSC 8 is independent of SGR — it opens with `ESC]8;;URI` and closes
+    /// with an empty-URI `ESC]8;;`, and survives SGR resets in between — so it lives on
+    /// the style only to ride along the run split, not as an SGR attribute.
+    var hyperlink: String?
 }
 
 /// A maximal run of text that shares one style.
@@ -81,8 +86,13 @@ enum ANSIParser {
                     style = Self.applySGR(params, to: style)
                 }
                 index = end
-            case "]":  // OSC — strip up to BEL or ST (`ESC \`)
-                index = Self.skipOSC(scalars, from: index + 2)
+            case "]":  // OSC — extract an OSC 8 hyperlink; strip every other OSC body.
+                let (body, end) = Self.scanOSC(scalars, from: index + 2)
+                if let uri = Self.hyperlinkURI(fromOSC: body) {
+                    flush()
+                    style.hyperlink = uri.isEmpty ? nil : uri
+                }
+                index = end
             default:  // a two-byte escape (`ESC <byte>`) or unknown — drop both bytes
                 index += 2
             }
@@ -115,19 +125,43 @@ enum ANSIParser {
         return (String(params), nil, cursor)  // truncated — consume to end
     }
 
-    /// Skips an OSC sequence's body, terminated by BEL (`\u{7}`) or ST (`ESC \`).
-    /// Returns the index just past the terminator (or end of input).
-    private static func skipOSC(_ scalars: [Unicode.Scalar], from start: Int) -> Int {
+    /// Scans an OSC sequence's body, terminated by BEL (`\u{7}`) or ST (`ESC \`).
+    /// Returns the body (the bytes between `ESC]` and the terminator) and the index
+    /// just past the terminator (or end of input). The caller decides what to do with
+    /// the body — OSC 8 carries a hyperlink, every other OSC is dropped.
+    private static func scanOSC(
+        _ scalars: [Unicode.Scalar], from start: Int
+    ) -> (body: String, end: Int) {
+        var body = String.UnicodeScalarView()
         var cursor = start
         while cursor < scalars.count {
-            if scalars[cursor] == "\u{07}" { return cursor + 1 }
+            if scalars[cursor] == "\u{07}" { return (String(body), cursor + 1) }
             if scalars[cursor] == "\u{1B}", cursor + 1 < scalars.count, scalars[cursor + 1] == "\\"
             {
-                return cursor + 2
+                return (String(body), cursor + 2)
             }
+            body.append(scalars[cursor])
             cursor += 1
         }
-        return cursor
+        return (String(body), cursor)
+    }
+
+    /// Reads the URI from an OSC 8 hyperlink body, or `nil` when `body` is some other
+    /// OSC sequence (window title, color query, …) that carries no link.
+    ///
+    /// OSC 8 is `8 ; params ; URI`: the params field holds optional `key=value` pairs
+    /// (usually empty, e.g. `id=…`) and the URI is everything after the second `;` — so
+    /// a URI containing its own `;` (a query string) survives. A closing hyperlink is
+    /// `8 ; ; ` with an empty URI, which the caller reads as "clear the link".
+    ///
+    /// Only a well-formed body with both `;` separators is treated as OSC 8; a truncated
+    /// `8` or `8;` (or any non-`8` OSC) returns `nil` so a malformed sequence never
+    /// clears an open link or splits a run.
+    private static func hyperlinkURI(fromOSC body: String) -> String? {
+        guard body.hasPrefix("8;") else { return nil }
+        let fields = body.split(separator: ";", maxSplits: 2, omittingEmptySubsequences: false)
+        guard fields.count >= 3 else { return nil }
+        return String(fields[2])
     }
 
     // MARK: - SGR application
@@ -144,7 +178,12 @@ enum ANSIParser {
         while index < codes.count {
             let code = codes[index]
             switch code {
-            case 0: style = ANSIStyle()
+            case 0:
+                // An SGR reset clears the graphic rendition but not an open OSC 8
+                // hyperlink — only its closing sequence does — so carry the link across.
+                let hyperlink = style.hyperlink
+                style = ANSIStyle()
+                style.hyperlink = hyperlink
             case 1: style.bold = true
             case 2: style.dim = true
             case 3: style.italic = true
