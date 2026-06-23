@@ -74,6 +74,11 @@ Install the integration once:
 eval "$(vitrine shell-init zsh)"
 ```
 
+Or one-click it: **Vitrine ▸ Settings ▸ General ▸ Shell integration ▸ Set Up…** picks
+your startup file and appends that line for you (idempotently). Because the app is
+sandboxed, the file picker's grant is what authorizes the write; a "Copy Command"
+button gives the equivalent `echo … >> ~/.zshrc` for any setup the panel can't reach.
+
 (Install the CLI itself from Vitrine ▸ Settings ▸ General ▸ Command-line tool ▸
 Install…. The helpers require Vitrine PRO, like all CLI rendering.)
 
@@ -185,10 +190,6 @@ Deferred, with the technical reason each is not in the first cut:
   (`htop`, `vim`) and in-place progress bars are not. Capturing the *final screen
   state* needs a small VT/grid emulator (cursor positioning into a cell buffer, à la
   `pyte`), which is a separate, larger component.
-- **One-click shell-init install.** A Settings button that appends the `eval` line to
-  `~/.zshrc`. The App Store build is sandboxed and cannot write arbitrary files, so the
-  interim is a "Copy setup line" button; auto-install would ship in the direct-download
-  build or behind a user-selected file grant.
 - **`vlast` for bash / fish, and native terminal integrations.** Today the passive
   recorder is zsh-only. bash needs `bash-preexec`/`DEBUG`-trap equivalents; fish needs
   its event hooks. iTerm2 / kitty / WezTerm expose the *last command's* output via their
