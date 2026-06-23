@@ -125,7 +125,9 @@ enum ShellInit {
           if VITRINE_REC="$(mktemp -t vitrine-session)" \\
                && VITRINE_LAST="$(mktemp -t vitrine-last)"; then
             export VITRINE_REC VITRINE_LAST
-            exec script -q "$VITRINE_REC" "$SHELL"
+            # Re-exec zsh specifically (not $SHELL, which may be another login shell)
+            # so the recorded session is the one with these zsh hooks.
+            exec script -q "$VITRINE_REC" zsh
           fi
         fi
 
@@ -200,7 +202,9 @@ enum ShellInit {
           if VITRINE_REC="$(mktemp -t vitrine-session)" \\
                && VITRINE_LAST="$(mktemp -t vitrine-last)"; then
             export VITRINE_REC VITRINE_LAST
-            exec script -q "$VITRINE_REC" "$SHELL"
+            # Re-exec *this* shell (bash sets $BASH to its own path), not $SHELL — the
+            # login shell may differ (e.g. zsh), which would break the bash-only hooks.
+            exec script -q "$VITRINE_REC" "${BASH:-bash}"
           fi
         fi
 

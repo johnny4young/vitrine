@@ -141,6 +141,10 @@ struct ANSIRenderTests {
         let bash = ShellInit.snippet(for: .bash)
         #expect(bash.contains("vgrab()") && bash.contains("vlast()"))
         #expect(bash.contains("trap '_vitrine_preexec' DEBUG") && bash.contains("PROMPT_COMMAND"))
+        // The recorder re-execs the current shell, not $SHELL (the login shell may differ).
+        #expect(bash.contains("exec script -q \"$VITRINE_REC\" \"${BASH:-bash}\""))
+        #expect(zsh.contains("exec script -q \"$VITRINE_REC\" zsh"))
+        #expect(!bash.contains("\"$VITRINE_REC\" \"$SHELL\"") && !zsh.contains("\"$SHELL\""))
         // fish ships all three via its native preexec/postexec events.
         let fish = ShellInit.snippet(for: .fish)
         #expect(fish.contains("function vgrab") && fish.contains("function vlast"))

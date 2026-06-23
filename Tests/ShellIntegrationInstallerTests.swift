@@ -97,6 +97,25 @@ struct ShellIntegrationInstallerTests {
         #expect(ShellIntegrationInstaller.install(.zsh, into: file) == .alreadyInstalled(file))
     }
 
+    @Test func installRefusesToClobberAnUnreadableExistingFile() throws {
+        // A file that exists but isn't valid UTF-8 must NOT be treated as empty and
+        // overwritten with only our block — that would lose the user's content.
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vitrine-rc-\(UUID().uuidString)")
+        let invalidUTF8 = Data([0xFF, 0xFE, 0xFF, 0x00, 0x80])
+        try invalidUTF8.write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let outcome = ShellIntegrationInstaller.install(.zsh, into: file)
+
+        guard case .failed = outcome else {
+            Issue.record("expected .failed, got \(outcome)")
+            return
+        }
+        // The original bytes are untouched — nothing was clobbered.
+        #expect(try Data(contentsOf: file) == invalidUTF8)
+    }
+
     @Test func terminalCommandAppendsTheEvalLineToTheRCFile() {
         #expect(
             ShellIntegrationInstaller.terminalCommand(for: .zsh)
@@ -104,8 +123,10 @@ struct ShellIntegrationInstallerTests {
         #expect(
             ShellIntegrationInstaller.terminalCommand(for: .bash)
                 == "echo 'eval \"$(vitrine shell-init bash)\"' >> ~/.bashrc")
+        // fish: `>>` can't create ~/.config/fish/, so the command makes it first.
         #expect(
             ShellIntegrationInstaller.terminalCommand(for: .fish)
-                == "echo 'vitrine shell-init fish | source' >> ~/.config/fish/config.fish")
+                == "mkdir -p ~/.config/fish && echo 'vitrine shell-init fish | source' "
+                + ">> ~/.config/fish/config.fish")
     }
 }

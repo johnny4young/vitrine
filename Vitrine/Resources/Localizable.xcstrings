@@ -1,6 +1,23 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Couldn't read the startup file (is it valid UTF-8?). Add the line by hand instead." : {
+      "comment" : "Settings General: shell-integration install failure when the chosen startup file exists but can't be read.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the startup file (is it valid UTF-8?). Add the line by hand instead."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo leer el archivo de inicio (¿es UTF-8 válido?). Agrega la línea a mano."
+          }
+        }
+      }
+    },
     "%@ Run the copied command in Terminal to add it by hand." : {
       "comment" : "Settings General: shell-integration install failure alert message.",
       "localizations" : {
