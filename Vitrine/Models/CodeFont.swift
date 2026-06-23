@@ -154,9 +154,15 @@ enum CodeFont {
     /// Appends `cascade` to `font`'s descriptor as its fallback list. Factored out
     /// (and `cascade` injected) so the cascade wiring is testable with a known
     /// font; an empty list returns `font` untouched.
+    ///
+    /// Any cascade list already on the base font is **preserved** — the new
+    /// descriptors are appended after it, not substituted — so a font that arrives
+    /// with its own fallbacks keeps them ahead of the Nerd Font.
     static func applying(cascade descriptors: [NSFontDescriptor], to font: NSFont) -> NSFont {
         guard !descriptors.isEmpty else { return font }
-        let descriptor = font.fontDescriptor.addingAttributes([.cascadeList: descriptors])
+        let existing = font.fontDescriptor.fontAttributes[.cascadeList] as? [NSFontDescriptor] ?? []
+        let descriptor = font.fontDescriptor.addingAttributes([.cascadeList: existing + descriptors]
+        )
         return NSFont(descriptor: descriptor, size: 0) ?? font
     }
 }

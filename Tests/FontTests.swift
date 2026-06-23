@@ -59,4 +59,21 @@ struct NerdFontCascadeTests {
         #expect(list?.count == 1)
         #expect(result.pointSize == 13)
     }
+
+    @Test func applyingACascadePreservesAnExistingOne() {
+        // A base font that already carries a cascade list keeps it — the new
+        // descriptors are appended after, not substituted.
+        let existing = NSFontDescriptor(fontAttributes: [.family: "Courier"])
+        let base = NSFont(name: "Menlo", size: 13)!
+        let withExisting = NSFont(
+            descriptor: base.fontDescriptor.addingAttributes([.cascadeList: [existing]]), size: 0)!
+
+        let added = NSFontDescriptor(fontAttributes: [.family: "Monaco"])
+        let result = CodeFont.applying(cascade: [added], to: withExisting)
+
+        let list = result.fontDescriptor.fontAttributes[.cascadeList] as? [NSFontDescriptor]
+        #expect(list?.count == 2)
+        #expect(list?.first?.fontAttributes[.family] as? String == "Courier")
+        #expect(list?.last?.fontAttributes[.family] as? String == "Monaco")
+    }
 }

@@ -55,15 +55,15 @@ enum ShellIntegrationInstaller {
     /// The Terminal equivalent of the install, shown (and copyable) when the file
     /// can't be granted. `>>` appends and creates the file if it is missing; the
     /// single quotes keep the `$(…)` literal so the shell expands it at startup,
-    /// not now.
+    /// not now. fish's config lives under `~/.config/fish/`, which `>>` will not
+    /// create — so the fish command makes that directory first.
     static func terminalCommand(for shell: ShellInit.Shell) -> String {
-        let file: String
+        let line = "echo '\(evalLine(for: shell))'"
         switch shell {
-        case .zsh: file = "~/.zshrc"
-        case .bash: file = "~/.bashrc"
-        case .fish: file = "~/.config/fish/config.fish"
+        case .zsh: return "\(line) >> ~/.zshrc"
+        case .bash: return "\(line) >> ~/.bashrc"
+        case .fish: return "mkdir -p ~/.config/fish && \(line) >> ~/.config/fish/config.fish"
         }
-        return "echo '\(evalLine(for: shell))' >> \(file)"
     }
 
     /// The result of an install attempt into a powerbox-granted file.
@@ -90,7 +90,23 @@ enum ShellIntegrationInstaller {
         let didScope = file.startAccessingSecurityScopedResource()
         defer { if didScope { file.stopAccessingSecurityScopedResource() } }
 
-        let existing = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+        // Distinguish a missing file (fine — we create it) from one that exists but
+        // can't be read (e.g. not UTF-8, or a permissions hiccup). Treating the latter
+        // as empty would overwrite the user's startup file with only our block, losing
+        // their content — so refuse rather than clobber.
+        let existing: String
+        if fileManager.fileExists(atPath: file.path) {
+            guard let contents = try? String(contentsOf: file, encoding: .utf8) else {
+                return .failed(
+                    String(
+                        localized:
+                            "Couldn't read the startup file (is it valid UTF-8?). Add the line by hand instead."
+                    ))
+            }
+            existing = contents
+        } else {
+            existing = ""
+        }
         if isInstalled(in: existing) { return .alreadyInstalled(file) }
 
         let separator = existing.isEmpty || existing.hasSuffix("\n") ? "" : "\n"
