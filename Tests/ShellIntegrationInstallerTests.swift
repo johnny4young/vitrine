@@ -21,6 +21,9 @@ struct ShellIntegrationInstallerTests {
             ShellIntegrationInstaller.evalLine(for: .zsh) == "eval \"$(vitrine shell-init zsh)\"")
         #expect(
             ShellIntegrationInstaller.evalLine(for: .bash) == "eval \"$(vitrine shell-init bash)\"")
+        // fish has no `$(…)`: it sources a pipe instead.
+        #expect(
+            ShellIntegrationInstaller.evalLine(for: .fish) == "vitrine shell-init fish | source")
     }
 
     @Test func startupFileMapsTheShellToItsRCFile() {
@@ -31,6 +34,9 @@ struct ShellIntegrationInstallerTests {
         #expect(
             ShellIntegrationInstaller.startupFile(for: .bash, home: home).path
                 == "/Users/test/.bashrc")
+        #expect(
+            ShellIntegrationInstaller.startupFile(for: .fish, home: home).path
+                == "/Users/test/.config/fish/config.fish")
     }
 
     @Test func installAppendsTheBlockToAnExistingFile() throws {
@@ -98,5 +104,8 @@ struct ShellIntegrationInstallerTests {
         #expect(
             ShellIntegrationInstaller.terminalCommand(for: .bash)
                 == "echo 'eval \"$(vitrine shell-init bash)\"' >> ~/.bashrc")
+        #expect(
+            ShellIntegrationInstaller.terminalCommand(for: .fish)
+                == "echo 'vitrine shell-init fish | source' >> ~/.config/fish/config.fish")
     }
 }

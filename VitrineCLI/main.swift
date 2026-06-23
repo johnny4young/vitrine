@@ -35,14 +35,14 @@ if rawArguments.first == "shell-init" {
         exit(0)
     case .unknownShell(let name):
         FileHandle.standardError.write(
-            Data("error: unknown shell \"\(name)\". Use zsh or bash.\n".utf8))
+            Data("error: unknown shell \"\(name)\". Use zsh, bash, or fish.\n".utf8))
         exit(2)
     case .extraArguments(let extras):
         FileHandle.standardError.write(
             Data(
                 """
                 error: unexpected argument(s) "\(extras.joined(separator: " "))" after shell-init. \
-                Usage: vitrine shell-init [zsh|bash]
+                Usage: vitrine shell-init [zsh|bash|fish]
 
                 """.utf8))
         exit(2)

@@ -122,7 +122,10 @@ Trade-off, stated plainly:
   transparent in normal use; remove the recorder block from the snippet (or the whole
   `eval` line) to disable it. `vgrab` works without the recorder.
 
-`bash` ships `vgrab` today; the passive `vlast` recorder is zsh-only for now.
+`vgrab` and the passive `vlast` recorder both work in **zsh, bash, and fish** — the
+hook mechanism differs per shell (zsh `add-zsh-hook`, bash `DEBUG` trap + `PROMPT_COMMAND`,
+fish `fish_preexec`/`fish_postexec` events), the behavior is the same. fish loads it with
+`vitrine shell-init fish | source` (fish has no `eval "$(…)"`).
 
 ## Manual alternatives (no shell integration)
 
@@ -147,7 +150,7 @@ vitrine render <input-file> --out <image> [--language terminal]
 vitrine render --stdin --copy                 # read a pipe, copy the image
 vitrine render <input-file> --edit            # open it in the editor (no image)
 vitrine render <input-file> --out <image> --text-sidecar   # image + .txt of the output
-vitrine shell-init [zsh|bash]                 # print the helpers
+vitrine shell-init [zsh|bash|fish]            # print the helpers
 ```
 
 `--copy` puts the rendered image on the clipboard; `--stdin` reads the source from a
@@ -190,8 +193,7 @@ Deferred, with the technical reason each is not in the first cut:
   (`htop`, `vim`) and in-place progress bars are not. Capturing the *final screen
   state* needs a small VT/grid emulator (cursor positioning into a cell buffer, à la
   `pyte`), which is a separate, larger component.
-- **`vlast` for bash / fish, and native terminal integrations.** Today the passive
-  recorder is zsh-only. bash needs `bash-preexec`/`DEBUG`-trap equivalents; fish needs
-  its event hooks. iTerm2 / kitty / WezTerm expose the *last command's* output via their
-  own shell integration, which would let `vlast` skip the `exec script` re-exec entirely
-  on those terminals (less invasive).
+- **Native terminal integrations.** `vlast` now works in zsh / bash / fish via the
+  `exec script` re-exec. iTerm2 / kitty / WezTerm expose the *last command's* output via
+  their own shell integration, which would let `vlast` skip the re-exec entirely on those
+  terminals (less invasive) — deferred because it is terminal-specific plumbing.

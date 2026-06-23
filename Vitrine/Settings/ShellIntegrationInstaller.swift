@@ -15,10 +15,14 @@ import Foundation
 /// Mirrors `CLIToolInstaller`; the integration depends on the `vitrine` command,
 /// so the Settings row appears alongside it.
 enum ShellIntegrationInstaller {
-    /// The line a startup file evaluates to load the helpers, e.g.
-    /// `eval "$(vitrine shell-init zsh)"`.
+    /// The line a startup file evaluates to load the helpers. zsh/bash use
+    /// `eval "$(…)"`; fish has no `$(…)` and sources a pipe instead
+    /// (`vitrine shell-init fish | source`).
     static func evalLine(for shell: ShellInit.Shell) -> String {
-        "eval \"$(vitrine shell-init \(shell.rawValue))\""
+        switch shell {
+        case .zsh, .bash: "eval \"$(vitrine shell-init \(shell.rawValue))\""
+        case .fish: "vitrine shell-init fish | source"
+        }
     }
 
     /// The commented block appended to the startup file: a header so the user can
@@ -37,6 +41,7 @@ enum ShellIntegrationInstaller {
         switch shell {
         case .zsh: home.appendingPathComponent(".zshrc")
         case .bash: home.appendingPathComponent(".bashrc")
+        case .fish: home.appendingPathComponent(".config/fish/config.fish")
         }
     }
 
@@ -52,7 +57,12 @@ enum ShellIntegrationInstaller {
     /// single quotes keep the `$(…)` literal so the shell expands it at startup,
     /// not now.
     static func terminalCommand(for shell: ShellInit.Shell) -> String {
-        let file = shell == .zsh ? "~/.zshrc" : "~/.bashrc"
+        let file: String
+        switch shell {
+        case .zsh: file = "~/.zshrc"
+        case .bash: file = "~/.bashrc"
+        case .fish: file = "~/.config/fish/config.fish"
+        }
         return "echo '\(evalLine(for: shell))' >> \(file)"
     }
 
