@@ -42,6 +42,22 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.12.0",
+            headline: "Terminal capture, now in any shell",
+            highlights: [
+                "Set up the shell helpers in one click from Settings ▸ General ▸ Shell "
+                    + "integration — no more editing a dotfile by hand. Works with zsh, bash, "
+                    + "and fish.",
+                "vgrab and vlast now work in bash and fish, not just zsh, so the last command "
+                    + "you ran is one keystroke from a beautiful image in any shell.",
+                "Terminal images show Powerline separators and prompt icons from tools like "
+                    + "starship and eza --icons, using a Nerd Font you already have installed.",
+                "vgrab --edit, vlast --edit, and vitrine render --edit open the capture in the "
+                    + "editor so you can restyle and annotate before sharing.",
+                "Terminal hyperlinks render as styled links, and an optional plain-text sidecar "
+                    + "keeps the words selectable right next to the image.",
+            ]),
+        ReleaseNote(
             version: "0.11.0",
             headline: "Turn terminal output into beautiful images",
             highlights: [
