@@ -16,6 +16,14 @@ struct GeneralSettingsView: View {
     /// A failed install attempt's message; drives the fallback alert.
     @State private var cliInstallError: String?
 
+    /// The startup file the shell helpers were just added to, if any. Unlike the
+    /// CLI link this can't be detected on appear — the sandbox can't read
+    /// `~/.zshrc` without a grant — so it is set only after the user grants the
+    /// file through the open panel.
+    @State private var shellIntegrationAddedAt: URL?
+    /// A failed shell-integration install's message; drives its fallback alert.
+    @State private var shellIntegrationError: String?
+
     var body: some View {
         SettingsPaneScroll {
             TokenGroup(title: Text("Capture")) {
@@ -91,6 +99,28 @@ struct GeneralSettingsView: View {
                         .buttonStyle(.bordered)
                         .fixedSize()
                     }
+
+                    // One-click counterpart of pasting the `eval` line by hand:
+                    // adds the vgrab / vlast helpers to the shell startup file.
+                    TokenRow(
+                        label: Text("Shell integration"), caption: shellIntegrationCaption
+                    ) {
+                        HStack(spacing: VitrineTokens.Spacing.xs) {
+                            Button("Set Up…") { installShellIntegration() }
+                                .help(
+                                    "Add the vgrab and vlast helpers to your shell startup file."
+                                )
+                                .accessibilityIdentifier("install-shell-integration-button")
+                            Button("Copy Command") {
+                                copyToClipboard(
+                                    ShellIntegrationInstaller.terminalCommand(for: resolvedShell))
+                            }
+                            .help("Copy the equivalent Terminal command.")
+                            .accessibilityIdentifier("copy-shell-command-button")
+                        }
+                        .buttonStyle(.bordered)
+                        .fixedSize()
+                    }
                 }
 
                 TokenRow(
@@ -125,6 +155,22 @@ struct GeneralSettingsView: View {
         } message: {
             Text(
                 "\(cliInstallError ?? "") System folders need an administrator: run the copied command in Terminal instead."
+            )
+        }
+        .alert(
+            "Couldn't Add the Shell Integration",
+            isPresented: Binding(
+                get: { shellIntegrationError != nil },
+                set: { if !$0 { shellIntegrationError = nil } })
+        ) {
+            Button("Copy Command") {
+                copyToClipboard(ShellIntegrationInstaller.terminalCommand(for: resolvedShell))
+                shellIntegrationError = nil
+            }
+            Button("OK", role: .cancel) { shellIntegrationError = nil }
+        } message: {
+            Text(
+                "\(shellIntegrationError ?? "") Run the copied command in Terminal to add it by hand."
             )
         }
         .accessibilityIdentifier("settings-general-pane")
@@ -183,6 +229,48 @@ struct GeneralSettingsView: View {
             cliInstallError = nil
         case .failed(let message):
             cliInstallError = message
+        }
+    }
+
+    // MARK: - Shell integration (vgrab / vlast)
+
+    /// The shell the integration targets, resolved from `$SHELL` (zsh otherwise) —
+    /// matching what `vitrine shell-init` emits for the same environment.
+    private var resolvedShell: ShellInit.Shell {
+        ShellInit.resolveShell(nil) ?? .zsh
+    }
+
+    /// The shell-integration row's caption: which file it was added to once done,
+    /// otherwise what setting it up gets you.
+    private var shellIntegrationCaption: Text {
+        if let shellIntegrationAddedAt {
+            return Text("Added to \(shellIntegrationAddedAt.path)")
+        }
+        return Text("Add the vgrab and vlast helpers to your shell")
+    }
+
+    /// Sandbox-true setup: the user picks their startup file (the panel's grant is
+    /// what authorizes the write), then the eval line is appended idempotently. A
+    /// refusal surfaces the copyable Terminal fallback.
+    private func installShellIntegration() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.showsHiddenFiles = true
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
+        panel.message = String(
+            localized:
+                "Choose your shell startup file (for example .zshrc) to add the vgrab and vlast helpers."
+        )
+        panel.prompt = String(localized: "Add")
+        guard panel.runModal() == .OK, let file = panel.url else { return }
+        switch ShellIntegrationInstaller.install(resolvedShell, into: file) {
+        case .installed(let url), .alreadyInstalled(let url):
+            shellIntegrationAddedAt = url
+            shellIntegrationError = nil
+        case .failed(let message):
+            shellIntegrationError = message
         }
     }
 

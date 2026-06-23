@@ -268,13 +268,15 @@ enum ANSIRenderer {
     }
 
     /// Derives the bold / italic variant of the monospaced base font, keeping its
-    /// size; falls back to the base font when a trait is unavailable.
+    /// size (falling back to the base font when a trait is unavailable), then appends
+    /// the Nerd Font glyph cascade so Powerline / devicon / `eza` icons render when a
+    /// Nerd Font is installed. The cascade is applied to every run — plain ones too,
+    /// not just bold/italic — and is a no-op when no Nerd Font is present.
     private static func styledFont(_ font: NSFont, bold: Bool, italic: Bool) -> NSFont {
-        guard bold || italic else { return font }
         var traits: NSFontTraitMask = []
         if bold { traits.insert(.boldFontMask) }
         if italic { traits.insert(.italicFontMask) }
-        let converted = NSFontManager.shared.convert(font, toHaveTrait: traits)
-        return converted
+        let base = traits.isEmpty ? font : NSFontManager.shared.convert(font, toHaveTrait: traits)
+        return CodeFont.applyingNerdCascade(to: base)
     }
 }

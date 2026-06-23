@@ -74,6 +74,11 @@ Install the integration once:
 eval "$(vitrine shell-init zsh)"
 ```
 
+Or one-click it: **Vitrine ▸ Settings ▸ General ▸ Shell integration ▸ Set Up…** picks
+your startup file and appends that line for you (idempotently). Because the app is
+sandboxed, the file picker's grant is what authorizes the write; a "Copy Command"
+button gives the equivalent `echo … >> ~/.zshrc` for any setup the panel can't reach.
+
 (Install the CLI itself from Vitrine ▸ Settings ▸ General ▸ Command-line tool ▸
 Install…. The helpers require Vitrine PRO, like all CLI rendering.)
 
@@ -117,7 +122,10 @@ Trade-off, stated plainly:
   transparent in normal use; remove the recorder block from the snippet (or the whole
   `eval` line) to disable it. `vgrab` works without the recorder.
 
-`bash` ships `vgrab` today; the passive `vlast` recorder is zsh-only for now.
+`vgrab` and the passive `vlast` recorder both work in **zsh, bash, and fish** — the
+hook mechanism differs per shell (zsh `add-zsh-hook`, bash `DEBUG` trap + `PROMPT_COMMAND`,
+fish `fish_preexec`/`fish_postexec` events), the behavior is the same. fish loads it with
+`vitrine shell-init fish | source` (fish has no `eval "$(…)"`).
 
 ## Manual alternatives (no shell integration)
 
@@ -142,7 +150,7 @@ vitrine render <input-file> --out <image> [--language terminal]
 vitrine render --stdin --copy                 # read a pipe, copy the image
 vitrine render <input-file> --edit            # open it in the editor (no image)
 vitrine render <input-file> --out <image> --text-sidecar   # image + .txt of the output
-vitrine shell-init [zsh|bash]                 # print the helpers
+vitrine shell-init [zsh|bash|fish]            # print the helpers
 ```
 
 `--copy` puts the rendered image on the clipboard; `--stdin` reads the source from a
@@ -159,6 +167,12 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
 - **OSC 8 hyperlinks** (the `ESC]8` links emitted by `gh`, `eza --hyperlink`, some test
   runners) are styled — the linked text is underlined and tinted, the way a link reads —
   while the URL itself stays hidden, exactly as it is in the terminal.
+- **Nerd Font / Powerline / icon glyphs.** Private-Use-Area glyphs from `starship`,
+  `eza --icons`, and Powerline separators render via a font **cascade** to a Nerd Font
+  **you already have installed** (Symbols Nerd Font, a `…Nerd Font` patched family, etc.).
+  Vitrine bundles no font — so there is nothing to license and no multi-megabyte asset —
+  and falls back gracefully to the previous missing-glyph boxes when no Nerd Font is
+  present. (Install any Nerd Font to light these up.)
 - **Copyable text alongside the image.** From the command line, `--text-sidecar` writes
   a `.txt` next to the rendered image holding the output as selectable, greppable text —
   the terminal escapes stripped to the visible lines. In the app, **Settings ▸ Output ▸
@@ -173,24 +187,13 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
 
 Deferred, with the technical reason each is not in the first cut:
 
-- **Nerd Font / Powerline / icon glyphs.** Modern prompts (`starship`), `eza --icons`,
-  and Powerline separators use glyphs from the Private Use Area that the bundled
-  JetBrains Mono lacks, so they render as missing boxes. The fix is a font **cascade
-  list** (`kCTFontCascadeListAttribute`) with a bundled *Symbols Nerd Font* as the
-  fallback — it needs shipping that font asset (size + OFL license review). Box-drawing
-  characters already render (JetBrains Mono includes them).
 - **Full terminal emulation (TUIs, progress bars, redraws).** The current renderer is
   line-oriented: it strips cursor-movement sequences and collapses carriage returns, so
   line-based output (`git`, test runners, `ls`) is faithful, but full-screen apps
   (`htop`, `vim`) and in-place progress bars are not. Capturing the *final screen
   state* needs a small VT/grid emulator (cursor positioning into a cell buffer, à la
   `pyte`), which is a separate, larger component.
-- **One-click shell-init install.** A Settings button that appends the `eval` line to
-  `~/.zshrc`. The App Store build is sandboxed and cannot write arbitrary files, so the
-  interim is a "Copy setup line" button; auto-install would ship in the direct-download
-  build or behind a user-selected file grant.
-- **`vlast` for bash / fish, and native terminal integrations.** Today the passive
-  recorder is zsh-only. bash needs `bash-preexec`/`DEBUG`-trap equivalents; fish needs
-  its event hooks. iTerm2 / kitty / WezTerm expose the *last command's* output via their
-  own shell integration, which would let `vlast` skip the `exec script` re-exec entirely
-  on those terminals (less invasive).
+- **Native terminal integrations.** `vlast` now works in zsh / bash / fish via the
+  `exec script` re-exec. iTerm2 / kitty / WezTerm expose the *last command's* output via
+  their own shell integration, which would let `vlast` skip the re-exec entirely on those
+  terminals (less invasive) — deferred because it is terminal-specific plumbing.

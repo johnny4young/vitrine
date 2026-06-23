@@ -137,15 +137,29 @@ struct ANSIRenderTests {
         let zsh = ShellInit.snippet(for: .zsh)
         #expect(zsh.contains("vgrab()") && zsh.contains("vlast()"))
         #expect(zsh.contains("script -q") && zsh.contains("--copy"))
-        #expect(ShellInit.snippet(for: .bash).contains("vgrab()"))
+        // bash now ships the passive recorder + vlast too (DEBUG trap + PROMPT_COMMAND).
+        let bash = ShellInit.snippet(for: .bash)
+        #expect(bash.contains("vgrab()") && bash.contains("vlast()"))
+        #expect(bash.contains("trap '_vitrine_preexec' DEBUG") && bash.contains("PROMPT_COMMAND"))
+        // The recorder re-execs the current shell, not $SHELL (the login shell may differ).
+        #expect(bash.contains("exec script -q \"$VITRINE_REC\" \"${BASH:-bash}\""))
+        #expect(zsh.contains("exec script -q \"$VITRINE_REC\" zsh"))
+        #expect(!bash.contains("\"$VITRINE_REC\" \"$SHELL\"") && !zsh.contains("\"$SHELL\""))
+        // fish ships all three via its native preexec/postexec events.
+        let fish = ShellInit.snippet(for: .fish)
+        #expect(fish.contains("function vgrab") && fish.contains("function vlast"))
+        #expect(
+            fish.contains("--on-event fish_preexec") && fish.contains("--on-event fish_postexec"))
         #expect(ShellInit.resolveShell("zsh") == .zsh)
         #expect(ShellInit.resolveShell("bash") == .bash)
-        #expect(ShellInit.resolveShell("fish") == nil)
+        #expect(ShellInit.resolveShell("fish") == .fish)
+        #expect(ShellInit.resolveShell("tcsh") == nil)
     }
 
     @Test func shellInitArgumentParsing() {
         #expect(ShellInit.invocation(for: ["zsh"]) == .snippet(.zsh))
         #expect(ShellInit.invocation(for: ["bash"]) == .snippet(.bash))
+        #expect(ShellInit.invocation(for: ["fish"]) == .snippet(.fish))
         #expect(ShellInit.invocation(for: ["--help"]) == .help)
         #expect(ShellInit.invocation(for: ["-h"]) == .help)
         // --help wins in any position, not just the first.
@@ -153,7 +167,7 @@ struct ANSIRenderTests {
         // Extra positional arguments are surfaced, not silently ignored.
         #expect(ShellInit.invocation(for: ["zsh", "extra"]) == .extraArguments(["extra"]))
         // An unknown single argument is reported as an unknown shell.
-        #expect(ShellInit.invocation(for: ["fish"]) == .unknownShell("fish"))
+        #expect(ShellInit.invocation(for: ["tcsh"]) == .unknownShell("tcsh"))
     }
 
     @Test func terminalPaletteFollowsTheTheme() {
