@@ -384,7 +384,7 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() {
+    func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() throws {
         continueAfterFailure = false
         // A fresh defaults suite is a first run, so the quick-start appears on
         // launch with no extra hook (CS-035 "first launch shows the quick-start").
@@ -392,6 +392,9 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("welcome-window", in: app), in: app, timeout: 8)
+        // The bottom controls (sample capture / skip) overhang a display too short to
+        // hold the welcome window, so skip the interaction there rather than flaking.
+        try skipUnlessADisplayFitsTheWelcomeWindow(app)
         assertExists(element("welcome-view", in: app), in: app, timeout: 3)
         // Local-only privacy copy is visible before any capture (CS-035).
         assertExists(element("welcome-privacy-badge", in: app), in: app)
@@ -415,7 +418,7 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testForcedQuickStartCanBeSkippedToReachTheEditor() {
+    func testForcedQuickStartCanBeSkippedToReachTheEditor() throws {
         continueAfterFailure = false
         // Force the quick-start open and also open the editor: skipping the
         // quick-start must not gate access to the rest of the app (CS-035 "user can
@@ -424,6 +427,9 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("welcome-window", in: app), in: app, timeout: 8)
+        // The Skip button overhangs a display too short to hold the welcome window,
+        // so skip the interaction there rather than flaking on hittability.
+        try skipUnlessADisplayFitsTheWelcomeWindow(app)
         // Wait for the Skip button to be hittable, not just present: the window may
         // still be animating forward, which flakes an immediate click as
         // "is not hittable" on the hosted CI runner.
