@@ -12,6 +12,36 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-06-23
+
+### Added
+
+- **One-click shell-integration setup.** Settings ▸ General ▸ Shell integration ▸
+  **Set Up…** appends the `eval "$(vitrine shell-init …)"` load line to your startup
+  file for you, so you no longer have to edit a dotfile by hand to get `vgrab` and
+  `vlast`. It detects your shell from `$SHELL` (zsh, bash, or fish), is idempotent
+  (re-running never duplicates the line), creates the file if it is missing, and falls
+  back to a copyable `echo … >> <rcfile>` command if you decline the file grant.
+- **`vgrab` and `vlast` in bash and fish.** The capture helpers and the passive
+  "share your last command" recorder were zsh-only; they now work in bash (a `DEBUG`
+  trap plus `PROMPT_COMMAND`) and fish (native `fish_preexec` / `fish_postexec`
+  events) as well. fish loads the helpers with `vitrine shell-init fish | source`.
+- **Nerd Font / Powerline glyphs in terminal images.** Terminal captures now render
+  Powerline separators and prompt icons from tools like `starship` and `eza --icons`
+  by cascading to a Nerd Font you already have installed — no bundled font is added,
+  and when none is installed the render is byte-identical to before (no missing-glyph
+  boxes appear in their place).
+- **Open a capture in the editor (`--edit`).** `vgrab --edit`, `vlast --edit`, and
+  `vitrine render … --edit` open the captured output in Vitrine's editor instead of
+  copying it, so you can restyle, annotate, and choose an export before sharing. The
+  handoff travels over a private named pasteboard and a `vitrine://edit` URL, never the
+  general clipboard. (PRO.)
+- **Terminal hyperlinks and a copyable-text sidecar.** OSC 8 hyperlinks in terminal
+  output now render as styled links, and a new **Output ▸ Clipboard ▸ plain-text
+  sidecar** toggle (and the `--text-sidecar` CLI flag) keeps the underlying text
+  selectable: copying adds the plain text alongside the image, and each multi-size
+  export writes a `.txt` next to its PNG.
+
 ## [0.11.0] - 2026-06-20
 
 ### Added
