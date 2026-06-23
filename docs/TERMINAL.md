@@ -167,6 +167,12 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
 - **OSC 8 hyperlinks** (the `ESC]8` links emitted by `gh`, `eza --hyperlink`, some test
   runners) are styled — the linked text is underlined and tinted, the way a link reads —
   while the URL itself stays hidden, exactly as it is in the terminal.
+- **Nerd Font / Powerline / icon glyphs.** Private-Use-Area glyphs from `starship`,
+  `eza --icons`, and Powerline separators render via a font **cascade** to a Nerd Font
+  **you already have installed** (Symbols Nerd Font, a `…Nerd Font` patched family, etc.).
+  Vitrine bundles no font — so there is nothing to license and no multi-megabyte asset —
+  and falls back gracefully to the previous missing-glyph boxes when no Nerd Font is
+  present. (Install any Nerd Font to light these up.)
 - **Copyable text alongside the image.** From the command line, `--text-sidecar` writes
   a `.txt` next to the rendered image holding the output as selectable, greppable text —
   the terminal escapes stripped to the visible lines. In the app, **Settings ▸ Output ▸
@@ -181,12 +187,6 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
 
 Deferred, with the technical reason each is not in the first cut:
 
-- **Nerd Font / Powerline / icon glyphs.** Modern prompts (`starship`), `eza --icons`,
-  and Powerline separators use glyphs from the Private Use Area that the bundled
-  JetBrains Mono lacks, so they render as missing boxes. The fix is a font **cascade
-  list** (`kCTFontCascadeListAttribute`) with a bundled *Symbols Nerd Font* as the
-  fallback — it needs shipping that font asset (size + OFL license review). Box-drawing
-  characters already render (JetBrains Mono includes them).
 - **Full terminal emulation (TUIs, progress bars, redraws).** The current renderer is
   line-oriented: it strips cursor-movement sequences and collapses carriage returns, so
   line-based output (`git`, test runners, `ls`) is faithful, but full-screen apps
