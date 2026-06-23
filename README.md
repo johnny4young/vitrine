@@ -13,7 +13,7 @@ gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so) and
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v0.8.1%20shipped-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v0.12.0%20shipped-brightgreen.svg)](#status)
 
 </div>
 
@@ -415,7 +415,7 @@ to leave the repo:
 
 ## Status
 
-🟢 **v0.8.1 — shipped and stable.** Everything under [Features](#features) is built and
+🟢 **v0.12.0 — shipped and stable.** Everything under [Features](#features) is built and
 driven by one design-token system ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in
 light and dark. It is covered by a Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
