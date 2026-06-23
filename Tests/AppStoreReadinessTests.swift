@@ -75,6 +75,30 @@ struct AppStoreReadinessTests {
         try text("project.yml")
     }
 
+    /// The body of a top-level `## <name>` Markdown section, from its heading up to
+    /// the next `## ` heading (or end of file). Returns `nil` if the heading is absent.
+    private static func section(named name: String, in markdown: String) -> String? {
+        guard let start = markdown.range(of: "## \(name)") else { return nil }
+        let rest = markdown[start.upperBound...]
+        if let next = rest.range(of: "\n## ") {
+            return String(rest[..<next.lowerBound])
+        }
+        return String(rest)
+    }
+
+    /// `MARKETING_VERSION` as `project.yml` actually sets it — the single source of
+    /// truth the version-sync guards below all compare against.
+    private static func marketingVersion() throws -> String {
+        let project = try projectYAML()
+        let regex = try NSRegularExpression(
+            pattern: #"(?m)^\s*MARKETING_VERSION:\s*"?([0-9][0-9A-Za-z.\-]*)"?\s*$"#)
+        let match = try #require(
+            regex.firstMatch(
+                in: project, range: NSRange(project.startIndex..<project.endIndex, in: project)),
+            "project.yml must set MARKETING_VERSION")
+        return String(project[try #require(Range(match.range(at: 1), in: project))])
+    }
+
     // MARK: - Files exist
 
     @Test func theAppStoreReadinessFilesExist() {
@@ -210,6 +234,30 @@ struct AppStoreReadinessTests {
         #expect(
             topVersion == ReleaseNotes.latestVersion,
             "CHANGELOG.md's newest version must match the bundled ReleaseNotes.latest")
+    }
+
+    /// The README — the project's front page — keeps its shipped-status badge and its
+    /// `## Status` section in lockstep with `MARKETING_VERSION`. The badge encodes the
+    /// version in its shields.io URL (`status-vX.Y.Z…`) and the section prose names it
+    /// in the "shipped and stable" line; a version bump that forgets either would greet
+    /// every visitor with a stale release number. This fails the bump until the README
+    /// is updated, exactly like the CHANGELOG and APP-STORE guards above, so the README
+    /// can never silently drift behind a release again.
+    @Test func readmeStatusMatchesTheShippedVersion() throws {
+        let readme = try Self.text("README.md")
+        let marketingVersion = try Self.marketingVersion()
+
+        #expect(
+            readme.contains("status-v\(marketingVersion)"),
+            "README.md status badge must name the shipped version v\(marketingVersion) (stale badge — bump it with the release)"
+        )
+
+        let statusSection = try #require(
+            Self.section(named: "Status", in: readme),
+            "README.md must keep a `## Status` section")
+        #expect(
+            statusSection.contains("v\(marketingVersion)"),
+            "README.md `## Status` section must name the shipped version v\(marketingVersion)")
     }
 
     // MARK: - Acceptance: App Sandbox remains enabled; entitlements minimal and justified

@@ -404,6 +404,12 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("welcome-get-started-button", in: app), in: app)
 
         // Running the sample capture needs no clipboard setup and reports inline.
+        // Poll for hittability first: the welcome window can still be settling into
+        // place when the button already exists, so an immediate click flakes with
+        // "is not hittable" on the hosted CI runner.
+        assertHittable(
+            "welcome-sample-capture-button", in: app,
+            "Sample-capture button should become reachable on the quick-start", timeout: 5)
         element("welcome-sample-capture-button", in: app).click()
         assertExists(element("welcome-sample-status", in: app), in: app, timeout: 5)
     }
@@ -418,6 +424,12 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("welcome-window", in: app), in: app, timeout: 8)
+        // Wait for the Skip button to be hittable, not just present: the window may
+        // still be animating forward, which flakes an immediate click as
+        // "is not hittable" on the hosted CI runner.
+        assertHittable(
+            "welcome-skip-button", in: app,
+            "Skip button should become reachable on the quick-start", timeout: 5)
         element("welcome-skip-button", in: app).click()
 
         // After skipping, the editor window and its primary controls are fully
