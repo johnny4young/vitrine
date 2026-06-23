@@ -52,36 +52,36 @@
         }
       }
     },
-    "Add the vgrab and vlast helpers to your shell" : {
+    "Add the vgrab helper to your shell" : {
       "comment" : "Settings General: shell-integration row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add the vgrab and vlast helpers to your shell"
+            "value" : "Add the vgrab helper to your shell"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Agrega los comandos vgrab y vlast a tu shell"
+            "value" : "Agrega el comando vgrab a tu shell"
           }
         }
       }
     },
-    "Add the vgrab and vlast helpers to your shell startup file." : {
+    "Add the vgrab helper to your shell startup file." : {
       "comment" : "Settings General: shell-integration Set Up button help.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add the vgrab and vlast helpers to your shell startup file."
+            "value" : "Add the vgrab helper to your shell startup file."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Agrega los comandos vgrab y vlast al archivo de inicio de tu shell."
+            "value" : "Agrega el comando vgrab al archivo de inicio de tu shell."
           }
         }
       }
@@ -103,19 +103,19 @@
         }
       }
     },
-    "Choose your shell startup file (for example .zshrc) to add the vgrab and vlast helpers." : {
+    "Choose your shell startup file (for example .zshrc) to add the vgrab helper." : {
       "comment" : "Settings General: shell-integration open-panel message.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose your shell startup file (for example .zshrc) to add the vgrab and vlast helpers."
+            "value" : "Choose your shell startup file (for example .zshrc) to add the vgrab helper."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elige el archivo de inicio de tu shell (por ejemplo .zshrc) para agregar los comandos vgrab y vlast."
+            "value" : "Elige el archivo de inicio de tu shell (por ejemplo .zshrc) para agregar el comando vgrab."
           }
         }
       }
