@@ -136,6 +136,12 @@ on every release.
 | --- | --- |
 | <img src="docs/screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur/redaction box over a secret, an arrow, and a text callout" width="380"> | <img src="docs/screenshots/diff.png" alt="A unified diff with + lines banded green and − lines banded red, GitHub-style, with line numbers" width="380"> |
 
+**Full-screen TUIs** — Vitrine reconstructs the final screen (cursor moves, colors, and all), not just scrolling output. Real captures of `htop`, `lazygit`, and Neovim:
+
+| `htop` · One Dark | `lazygit` · Dracula | `nvim` · Nord |
+| --- | --- | --- |
+| <img src="docs/screenshots/terminal-htop.png" alt="htop's system monitor reconstructed as an image — CPU and memory meters, the process table, and the function-key bar" width="250"> | <img src="docs/screenshots/terminal-lazygit.png" alt="The lazygit multi-panel git dashboard reconstructed — status, files, branches, commits, and a diff pane" width="250"> | <img src="docs/screenshots/terminal-nvim.png" alt="A Neovim editing session reconstructed with syntax highlighting and the status line" width="250"> |
+
 </div>
 
 > How the gallery is generated, what it covers, and the design-QA process live in
