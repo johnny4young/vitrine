@@ -42,6 +42,16 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.14.0",
+            headline: "Capture full-screen terminal apps",
+            highlights: [
+                "Vitrine now turns full-screen terminal apps — htop, vim, lazygit, k9s, "
+                    + "less — into images, not just scrolling output. It reconstructs the "
+                    + "program's final screen, colors and all, in your theme.",
+                "It's automatic: vgrab htop captures the dashboard, while a plain git log "
+                    + "or test run still renders as the full scrolling transcript.",
+            ]),
+        ReleaseNote(
             version: "0.13.0",
             headline: "A lighter terminal integration",
             highlights: [
