@@ -518,6 +518,9 @@ struct TerminalScreen {
         cursorCol = 0
         scrollTop = 0
         scrollBottom = screenRows - 1
+        // Each alt session starts clean: never let a snapshot from a previous alt session
+        // (entered, cleared while empty, then exited) leak into this one's capture.
+        altSnapshot = nil
     }
 
     private mutating func leaveAltScreen() {
@@ -525,6 +528,7 @@ struct TerminalScreen {
         // The last full TUI frame: the live alt buffer, or the pre-clear snapshot when the
         // app erased the screen on its way out.
         capturedAltFrame = isPopulated(rows) ? rows : altSnapshot
+        altSnapshot = nil  // consumed — drop the prior frame and guard against reuse
         rows = stash.rows
         cursorRow = clampRow(stash.row)
         cursorCol = clampCol(stash.col)
