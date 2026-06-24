@@ -99,8 +99,8 @@ vgrab !!                # capture a command you already ran (re-runs the last on
   (`COLUMNS`) so wide output like `git log --graph` wraps consistently — a best effort,
   since tools that query the terminal size directly ignore it.
 - **Already ran something?** Recall it and prepend `vgrab` — `vgrab !!` (zsh/bash)
-  expands to your last command and captures it; in any shell, press ↑ and add `vgrab `
-  to the front. This re-runs the command, so it's ideal for read-only output (a
+  expands to your last command and captures it; in any shell, press ↑ and add `vgrab`
+  plus a space to the front. This re-runs the command, so it's ideal for read-only output (a
   `git log`, a test run); for slow or side-effecting commands, run them under `vgrab`
   in the first place.
 - **`-e` / `--edit`** opens the captured output in Vitrine's **editor** instead of
