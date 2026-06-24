@@ -138,7 +138,7 @@ enum ANSIRenderer {
         _ text: String, font: NSFont, palette: ANSIPalette = .terminal
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        for run in ANSIParser.parse(normalize(text)) {
+        for run in styledRuns(text) {
             result.append(
                 NSAttributedString(
                     string: run.text,
@@ -152,7 +152,23 @@ enum ANSIRenderer {
     /// the rendered image shows. Used for the copyable-text sidecar so the shared image
     /// ships with selectable, accessible output rather than only pixels.
     static func plainText(_ text: String) -> String {
-        ANSIParser.parse(normalize(text)).map(\.text).joined()
+        styledRuns(text).map(\.text).joined()
+    }
+
+    /// The styled runs for terminal `text`, choosing the renderer by content: when the
+    /// stream addresses the screen with cursor positioning (a full-screen TUI like
+    /// `htop`/`vim`), the cell-buffer emulator (``TerminalScreen``) reconstructs the
+    /// final frame; otherwise the line-oriented parse of the normalized text. Both yield
+    /// `[ANSIRun]`, so a grid capture and a scrolling capture render identically.
+    ///
+    /// Grid mode skips ``normalize(_:)`` on purpose: that collapses the `\r`/`\b` redraws
+    /// the emulator interprets itself as cursor motion, and keeps the cursor escapes it
+    /// needs intact.
+    private static func styledRuns(_ text: String) -> [ANSIRun] {
+        if TerminalScreen.usesScreenAddressing(text) {
+            return TerminalScreen.runs(text, columns: TerminalScreen.inferColumns(text))
+        }
+        return ANSIParser.parse(normalize(text))
     }
 
     /// Cleans control bytes a pseudo-terminal capture leaves behind so the static

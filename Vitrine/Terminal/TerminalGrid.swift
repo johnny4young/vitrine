@@ -72,6 +72,94 @@ struct TerminalScreen {
         return screen.runs()
     }
 
+    // MARK: - Routing: is this a full-screen TUI?
+
+    /// Whether `text` addresses the screen with cursor positioning — the signal that it
+    /// is a full-screen TUI (htop, vim, lazygit) whose final frame the grid emulator
+    /// should reconstruct, rather than scrolling output the line renderer should keep
+    /// verbatim.
+    ///
+    /// Triggers on the unambiguous full-screen markers: entering the alternate screen
+    /// (`?1049h`/`?47h`/`?1047h`), an erase-display (`ED`), or absolute cursor
+    /// positioning (`CUP` to a non-home cell, or `VPA`). Plain colored output (`git`,
+    /// `ls`, a test run) carries only SGR — and a progress bar only `\r`/`EL` — so none
+    /// of them trip this and they stay in line mode. `EL` (erase *line*) is deliberately
+    /// not a trigger: it is the progress-bar idiom, which line mode already handles.
+    static func usesScreenAddressing(_ text: String) -> Bool {
+        guard ANSIParser.containsANSI(text) else { return false }
+        let scalars = Array(text.unicodeScalars)
+        var index = 0
+        while index < scalars.count {
+            guard scalars[index] == "\u{1B}", index + 1 < scalars.count else {
+                index += 1
+                continue
+            }
+            guard scalars[index + 1] == "[" else {  // only CSI carries these
+                index += 2
+                continue
+            }
+            let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
+            index = end
+            guard let finalByte else { break }
+            if params.hasPrefix("?") {
+                let modes = params.dropFirst().split(separator: ";").compactMap { Int($0) }
+                if finalByte == "h" || finalByte == "l",
+                    modes.contains(where: { $0 == 1049 || $0 == 47 || $0 == 1047 })
+                {
+                    return true  // alternate screen
+                }
+                continue
+            }
+            switch finalByte {
+            case "J": return true  // ED — erase display (full-screen redraw)
+            case "d": return true  // VPA — absolute row
+            case "H", "f":  // CUP — count only positioning beyond home
+                if !params.isEmpty, params != "1", params != "1;1", params != ";" {
+                    return true
+                }
+            default: break
+            }
+        }
+        return false
+    }
+
+    /// A safe column width to replay `text` at: wide enough that no addressed cell or
+    /// printed line wraps early — the grid trims trailing blanks, so over-estimating is
+    /// harmless, while under-estimating would wrap a TUI's content wrong. Floors at 80
+    /// and caps at a sane maximum.
+    static func inferColumns(_ text: String) -> Int {
+        let scalars = Array(text.unicodeScalars)
+        var maxWidth = 80
+        var lineWidth = 0
+        var index = 0
+        while index < scalars.count {
+            let scalar = scalars[index]
+            if scalar == "\u{1B}", index + 1 < scalars.count, scalars[index + 1] == "[" {
+                let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
+                if let finalByte, !params.hasPrefix("?") {
+                    let nums = params.split(separator: ";", omittingEmptySubsequences: false)
+                        .map { Int($0) ?? 0 }
+                    if finalByte == "H" || finalByte == "f", nums.count > 1 {
+                        maxWidth = max(maxWidth, nums[1])  // CUP column
+                    }
+                    if finalByte == "G", let column = nums.first {
+                        maxWidth = max(maxWidth, column)  // CHA absolute column
+                    }
+                }
+                index = end
+                continue
+            }
+            if scalar == "\n" || scalar == "\r" {
+                lineWidth = 0
+            } else if scalar.value >= 0x20, scalar.value != 0x7F {
+                lineWidth += 1
+                maxWidth = max(maxWidth, lineWidth)
+            }
+            index += 1
+        }
+        return min(maxWidth, 1000)
+    }
+
     // MARK: - Feeding the stream
 
     /// Replays the bytes of `text`, mutating the screen. Reuses ``ANSIParser``'s CSI/OSC
