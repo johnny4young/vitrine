@@ -189,7 +189,23 @@ struct TerminalScreen {
                 case "8":
                     restoreCursor()
                     index += 2  // DECRC
-                default: index += 2  // unknown two-byte escape — drop both
+                default:
+                    // ESC followed by an intermediate byte (0x20–0x2F) is a longer
+                    // sequence — most often charset designation (`ESC ( B`, which htop and
+                    // friends emit constantly): consume the intermediate(s) and the final
+                    // byte, so the final (e.g. `B`) is never printed as stray text. Any
+                    // other `ESC <byte>` is a two-byte escape (`ESC =`, `ESC M`) — drop both.
+                    if (0x20...0x2F).contains(scalars[index + 1].value) {
+                        var cursor = index + 1
+                        while cursor < scalars.count,
+                            (0x20...0x2F).contains(scalars[cursor].value)
+                        {
+                            cursor += 1
+                        }
+                        index = cursor < scalars.count ? cursor + 1 : cursor
+                    } else {
+                        index += 2
+                    }
                 }
             case "\r":
                 cursorCol = 0
