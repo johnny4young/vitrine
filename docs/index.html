@@ -563,8 +563,8 @@
   /* localStorage is blocked in some sandboxed preview iframes — reading/writing it
      there throws, which would abort the whole script. Wrap it so a blocked store is
      a no-op, never fatal. */
-  function lsGet(k) { try { return lsGet(k); } catch (e) { return null; } }
-  function lsSet(k, v) { try { lsSet(k, v); } catch (e) { /* ignore */ } }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
   /* ---------- i18n: English / Español ---------- */
   (function () {
     var KEY = "vitrine-landing-b-lang";
