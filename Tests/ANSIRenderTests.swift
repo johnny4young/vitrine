@@ -135,21 +135,28 @@ struct ANSIRenderTests {
 
     @Test func shellInitEmitsTheHelpers() {
         let zsh = ShellInit.snippet(for: .zsh)
-        #expect(zsh.contains("vgrab()") && zsh.contains("vlast()"))
-        #expect(zsh.contains("script -q") && zsh.contains("--copy"))
-        // bash now ships the passive recorder + vlast too (DEBUG trap + PROMPT_COMMAND).
+        #expect(zsh.contains("vgrab()"))
+        #expect(zsh.contains("script -qe") && zsh.contains("--copy"))
         let bash = ShellInit.snippet(for: .bash)
-        #expect(bash.contains("vgrab()") && bash.contains("vlast()"))
-        #expect(bash.contains("trap '_vitrine_preexec' DEBUG") && bash.contains("PROMPT_COMMAND"))
-        // The recorder re-execs the current shell, not $SHELL (the login shell may differ).
-        #expect(bash.contains("exec script -q \"$VITRINE_REC\" \"${BASH:-bash}\""))
-        #expect(zsh.contains("exec script -q \"$VITRINE_REC\" zsh"))
-        #expect(!bash.contains("\"$VITRINE_REC\" \"$SHELL\"") && !zsh.contains("\"$SHELL\""))
-        // fish ships all three via its native preexec/postexec events.
+        #expect(bash.contains("vgrab()"))
         let fish = ShellInit.snippet(for: .fish)
-        #expect(fish.contains("function vgrab") && fish.contains("function vlast"))
-        #expect(
-            fish.contains("--on-event fish_preexec") && fish.contains("--on-event fish_postexec"))
+        #expect(fish.contains("function vgrab"))
+
+        // The integration is `vgrab` only: a plain function with no passive recorder,
+        // so the snippet never re-execs the shell, registers a prompt hook, or leaves a
+        // background `script` session running. That always-on machinery (and macOS
+        // `script`'s block buffering, which it raced) is exactly what made the removed
+        // `vlast` unreliable, so assert it is gone for good.
+        for snippet in [zsh, bash, fish] {
+            #expect(!snippet.contains("vlast"))
+            #expect(!snippet.contains("exec script"))
+            #expect(!snippet.contains("VITRINE_REC"))
+            #expect(!snippet.contains("VITRINE_LAST"))
+            #expect(!snippet.contains("preexec"))
+            #expect(!snippet.contains("precmd"))
+            #expect(!snippet.contains("PROMPT_COMMAND"))
+        }
+
         #expect(ShellInit.resolveShell("zsh") == .zsh)
         #expect(ShellInit.resolveShell("bash") == .bash)
         #expect(ShellInit.resolveShell("fish") == .fish)

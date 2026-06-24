@@ -21,16 +21,16 @@ Three ways in, easiest first:
    vgrab npm test
    vgrab git log --oneline --graph -10
    ```
-2. **`vlast`** — already ran it? Don't re-run. `vlast` shares the **last** command's
-   output (the integration recorded it as it scrolled past), with no side effects.
+2. **Already ran it?** Recall the command (↑ or `!!`) and prepend `vgrab` — e.g.
+   `vgrab !!` re-runs the last command and captures it.
 3. **Paste or drop** — paste colored output straight into Vitrine (⌘V), or drop a
    `.log` / `.txt` file; it auto-detects terminal output and styles it.
 
-Add **`-e`** to either (`vgrab -e <command>`, `vlast -e`) to open the output in Vitrine's
-editor — to annotate or restyle before exporting — instead of copying an image.
+Add **`-e`** (`vgrab -e <command>`) to open the output in Vitrine's editor — to annotate
+or restyle before exporting — instead of copying an image.
 
-`vgrab` and `vlast` need the one-time shell hook (`eval "$(vitrine shell-init zsh)"`,
-below). Paste / drop and the `--stdin` pipe need no setup.
+`vgrab` needs the one-time shell hook (`eval "$(vitrine shell-init zsh)"`, below).
+Paste / drop and the `--stdin` pipe need no setup.
 
 ## Use cases
 
@@ -65,7 +65,7 @@ selecting text in your terminal copies it without ANSI codes.
 The fix is to make the program *think* it's writing to a terminal. The
 `vitrine shell-init` helpers do exactly that for you, with zero color flags.
 
-## `vgrab` and `vlast` (recommended)
+## `vgrab` (recommended)
 
 Install the integration once:
 
@@ -80,7 +80,7 @@ sandboxed, the file picker's grant is what authorizes the write; a "Copy Command
 button gives the equivalent `echo … >> ~/.zshrc` for any setup the panel can't reach.
 
 (Install the CLI itself from Vitrine ▸ Settings ▸ General ▸ Command-line tool ▸
-Install…. The helpers require Vitrine PRO, like all CLI rendering.)
+Install…. `vgrab` requires Vitrine PRO, like all CLI rendering.)
 
 Then, in a new shell:
 
@@ -88,7 +88,7 @@ Then, in a new shell:
 vgrab git status        # run it and copy a terminal image of its (colored) output
 vgrab pytest            # no --color, no unbuffer, no pbcopy
 vgrab cargo test
-vlast                   # share the LAST command you already ran — without re-running it
+vgrab !!                # capture a command you already ran (re-runs the last one)
 ```
 
 - **`vgrab <command>`** runs the command inside a pseudo-terminal (via the system
@@ -98,34 +98,25 @@ vlast                   # share the LAST command you already ran — without re-
   (`vgrab make && …`), and **`vgrab -w 100 <command>`** sets the capture width
   (`COLUMNS`) so wide output like `git log --graph` wraps consistently — a best effort,
   since tools that query the terminal size directly ignore it.
-- **`vlast`** shares the command you *already* ran. Because the integration passively
-  records your session, the colored output of the last command is already captured — so
-  `vlast` renders it instantly, with no re-run and no side effects.
-- **`-e` / `--edit`** on either helper opens the captured output in Vitrine's **editor**
-  instead of copying — to annotate, restyle, or change the theme before exporting.
-  `vgrab -e git status` and `vlast -e` hand the output straight to a Vitrine window
-  (nothing touches your clipboard).
+- **Already ran something?** Recall it and prepend `vgrab` — `vgrab !!` (zsh/bash)
+  expands to your last command and captures it; in any shell, press ↑ and add `vgrab`
+  plus a space to the front. This re-runs the command, so it's ideal for read-only output (a
+  `git log`, a test run); for slow or side-effecting commands, run them under `vgrab`
+  in the first place.
+- **`-e` / `--edit`** opens the captured output in Vitrine's **editor** instead of
+  copying — to annotate, restyle, or change the theme before exporting.
+  `vgrab -e git status` hands the output straight to a Vitrine window (nothing touches
+  your clipboard).
 
-### How the passive recorder works (and its one trade-off)
+### Zero background cost
 
-To recover the color of an already-run command, it had to be captured *as it ran* —
-there's no way to re-colorize plain text after the fact. So `shell-init` re-execs your
-interactive shell under `script` (once, guarded) to record the colored stream your
-terminal receives, and uses `preexec`/`precmd` hooks to keep the **last** command's
-output sliced into a tiny file that `vlast` renders.
+`vgrab` is just a shell function — it does nothing until you call it. The snippet
+**doesn't** re-exec your shell, install a prompt hook, or run anything in the
+background, so adding it has no effect on your terminal's performance or behavior.
 
-Trade-off, stated plainly:
-
-- It only records sessions started **after** you add the line — there's no magic for a
-  session that was already running.
-- Your interactive shell runs under `script` while the recorder is on. It's
-  transparent in normal use; remove the recorder block from the snippet (or the whole
-  `eval` line) to disable it. `vgrab` works without the recorder.
-
-`vgrab` and the passive `vlast` recorder both work in **zsh, bash, and fish** — the
-hook mechanism differs per shell (zsh `add-zsh-hook`, bash `DEBUG` trap + `PROMPT_COMMAND`,
-fish `fish_preexec`/`fish_postexec` events), the behavior is the same. fish loads it with
-`vitrine shell-init fish | source` (fish has no `eval "$(…)"`).
+`vgrab` works in **zsh, bash, and fish** — fish loads it with
+`vitrine shell-init fish | source` (fish has no `eval "$(…)"`); the others use the
+`eval` line above.
 
 ## Manual alternatives (no shell integration)
 
@@ -193,7 +184,3 @@ Deferred, with the technical reason each is not in the first cut:
   (`htop`, `vim`) and in-place progress bars are not. Capturing the *final screen
   state* needs a small VT/grid emulator (cursor positioning into a cell buffer, à la
   `pyte`), which is a separate, larger component.
-- **Native terminal integrations.** `vlast` now works in zsh / bash / fish via the
-  `exec script` re-exec. iTerm2 / kitty / WezTerm expose the *last command's* output via
-  their own shell integration, which would let `vlast` skip the re-exec entirely on those
-  terminals (less invasive) — deferred because it is terminal-specific plumbing.

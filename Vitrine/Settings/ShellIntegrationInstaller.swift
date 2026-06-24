@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-/// Adds the `vgrab` / `vlast` shell helpers to the user's shell startup file
+/// Adds the `vgrab` shell helper to the user's shell startup file
 /// (the one-click counterpart of pasting `eval "$(vitrine shell-init zsh)"` by
 /// hand), surfaced as a Settings ▸ General row beside the CLI installer (CS-033).
 ///
@@ -15,7 +15,7 @@ import Foundation
 /// Mirrors `CLIToolInstaller`; the integration depends on the `vitrine` command,
 /// so the Settings row appears alongside it.
 enum ShellIntegrationInstaller {
-    /// The line a startup file evaluates to load the helpers. zsh/bash use
+    /// The line a startup file evaluates to load the helper. zsh/bash use
     /// `eval "$(…)"`; fish has no `$(…)` and sources a pipe instead
     /// (`vitrine shell-init fish | source`).
     static func evalLine(for shell: ShellInit.Shell) -> String {
@@ -28,7 +28,7 @@ enum ShellIntegrationInstaller {
     /// The commented block appended to the startup file: a header so the user can
     /// find (and remove) it later, then the eval line.
     static func block(for shell: ShellInit.Shell) -> String {
-        "# Vitrine shell integration (vgrab / vlast)\n\(evalLine(for: shell))"
+        "# Vitrine shell integration (vgrab)\n\(evalLine(for: shell))"
     }
 
     /// The default startup file for `shell` under the user's home directory
