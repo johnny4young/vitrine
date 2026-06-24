@@ -160,4 +160,42 @@ struct TerminalGridTests {
         let viaStatic = TerminalScreen.runs("\(esc)[2;1HX", columns: 80).map(\.text).joined()
         #expect(viaStatic == "\nX")
     }
+
+    // MARK: - Detection: line vs grid routing
+
+    @Test func plainColoredOutputStaysLineMode() {
+        #expect(!TerminalScreen.usesScreenAddressing("\(esc)[31mred\(esc)[0m plain"))
+        // A progress bar (CR + erase-line) is the line-mode idiom, not a full screen.
+        #expect(!TerminalScreen.usesScreenAddressing("10%\r20%\r\(esc)[Kdone"))
+        // Bare cursor-home alone isn't enough to call it a TUI.
+        #expect(!TerminalScreen.usesScreenAddressing("\(esc)[Hhi"))
+    }
+
+    @Test func cursorAddressedOutputUsesGrid() {
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[?1049hframe\(esc)[?1049l"))  // alt screen
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[2Jcleared"))  // ED
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[5;10Hx"))  // CUP position
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[3dx"))  // VPA
+    }
+
+    @Test func inferColumnsFloorsAt80AndWidensForContent() {
+        #expect(TerminalScreen.inferColumns("short") == 80)
+        #expect(TerminalScreen.inferColumns(String(repeating: "x", count: 120)) == 120)
+        #expect(TerminalScreen.inferColumns("\(esc)[1;200Hedge") == 200)  // CUP column
+    }
+
+    // MARK: - Renderer routing (canvas + sidecar go through ANSIRenderer)
+
+    @Test func rendererRoutesTUIThroughTheGrid() {
+        // The renderer reconstructs the alt-screen frame for a TUI, not the escape soup —
+        // so the canvas image and the copyable-text sidecar both show the final screen.
+        let tui = "before\(esc)[?1049h\(esc)[2J\(esc)[1;1HTUI\(esc)[?1049lafter"
+        #expect(ANSIRenderer.plainText(tui) == "TUI")
+    }
+
+    @Test func rendererKeepsScrollingOutputInLineMode() {
+        // Plain colored output is untouched: the line path strips SGR to plain text and
+        // keeps every scrolled line (no grid, no cap).
+        #expect(ANSIRenderer.plainText("\(esc)[32mok\(esc)[0m\nnext") == "ok\nnext")
+    }
 }
