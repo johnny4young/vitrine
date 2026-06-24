@@ -223,10 +223,11 @@ struct TerminalGridTests {
     }
 
     @Test func cursorAddressedOutputUsesGrid() {
-        #expect(TerminalScreen.usesScreenAddressing("\(esc)[?1049hframe\(esc)[?1049l"))  // alt screen
-        #expect(TerminalScreen.usesScreenAddressing("\(esc)[2Jcleared"))  // ED
-        #expect(TerminalScreen.usesScreenAddressing("\(esc)[5;10Hx"))  // CUP position
-        #expect(TerminalScreen.usesScreenAddressing("\(esc)[3dx"))  // VPA
+        // The alt screen, erase-display (ED), absolute CUP, and VPA each mark a TUI.
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[?1049hframe\(esc)[?1049l"))
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[2Jcleared"))
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[5;10Hx"))
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[3dx"))
     }
 
     @Test func inferColumnsFloorsAt80AndWidensForContent() {
