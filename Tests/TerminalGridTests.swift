@@ -123,6 +123,18 @@ struct TerminalGridTests {
         #expect(plain(stream) == "EDITOR")
     }
 
+    @Test func altSnapshotDoesNotLeakAcrossAltSessions() {
+        // A first alt session leaves a pre-clear snapshot; a second session that is
+        // entered, cleared while still empty, then exited must NOT reuse that stale frame.
+        let stream =
+            "\(esc)[?1049h\(esc)[1;1HFIRST\(esc)[2J\(esc)[?1049l"  // draw, clear, leave
+            + "PRIMARY"  // primary-screen content
+            + "\(esc)[?1049h\(esc)[2J\(esc)[?1049l"  // enter, clear-while-empty, leave
+        let result = plain(stream)
+        #expect(!result.contains("FIRST"))  // no stale frame leaked from the first session
+        #expect(result.contains("PRIMARY"))  // the real last screen
+    }
+
     @Test func stillOnAlternateScreenReturnsItsContent() {
         // The program never left the alt screen (capture taken mid-run) — its buffer is
         // the screen to report, not the stashed primary.
