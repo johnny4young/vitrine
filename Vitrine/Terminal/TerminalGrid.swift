@@ -51,10 +51,13 @@ struct TerminalScreen {
     private var rows: [[TerminalCell]]
     private var cursorRow = 0
     private var cursorCol = 0
+    /// Real terminals delay autowrap until the next printable character. Keeping that
+    /// pending state avoids double-advancing when a full-width line is followed by `\n`.
+    private var pendingWrap = false
     /// The current pen, accumulated from SGR codes (and the OSC 8 link, which rides on the
     /// style so each cell remembers its hyperlink).
     private var style = ANSIStyle()
-    private var saved: (row: Int, col: Int, style: ANSIStyle)?
+    private var saved: (row: Int, col: Int, pendingWrap: Bool, style: ANSIStyle)?
     /// The scroll region (DECSTBM), inclusive 0-based row bounds. Defaults to the whole
     /// screen; a line feed at `scrollBottom` scrolls `[scrollTop, scrollBottom]` up.
     private var scrollTop = 0
@@ -62,7 +65,10 @@ struct TerminalScreen {
 
     /// While on the alternate screen the primary buffer (and its cursor / scroll region)
     /// is stashed here; `nil` on the primary screen.
-    private var primaryStash: (rows: [[TerminalCell]], row: Int, col: Int, top: Int, bottom: Int)?
+    private var primaryStash:
+        (
+            rows: [[TerminalCell]], row: Int, col: Int, pendingWrap: Bool, top: Int, bottom: Int
+        )?
     /// The last full alternate-screen frame, captured when the program *leaves* the alt
     /// screen (its exit) — the htop/vim screen the user saw, which the restored primary
     /// screen's shell prompt would otherwise hide.
@@ -153,20 +159,40 @@ struct TerminalScreen {
         var index = 0
         while index < scalars.count {
             let scalar = scalars[index]
-            if scalar == "\u{1B}", index + 1 < scalars.count, scalars[index + 1] == "[" {
-                let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
-                if let finalByte, !params.hasPrefix("?") {
-                    let nums = params.split(separator: ";", omittingEmptySubsequences: false)
-                        .map { Int($0) ?? 0 }
-                    if finalByte == "H" || finalByte == "f", nums.count > 1 {
-                        maxWidth = max(maxWidth, nums[1])  // CUP column
+            if scalar == "\u{1B}", index + 1 < scalars.count {
+                switch scalars[index + 1] {
+                case "[":
+                    let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
+                    if let finalByte, !params.hasPrefix("?") {
+                        let nums = params.split(separator: ";", omittingEmptySubsequences: false)
+                            .map { Int($0) ?? 0 }
+                        if finalByte == "H" || finalByte == "f", nums.count > 1 {
+                            maxWidth = max(maxWidth, nums[1])  // CUP column
+                        }
+                        if finalByte == "G", let column = nums.first {
+                            maxWidth = max(maxWidth, column)  // CHA absolute column
+                        }
                     }
-                    if finalByte == "G", let column = nums.first {
-                        maxWidth = max(maxWidth, column)  // CHA absolute column
+                    index = end
+                    continue
+                case "]":
+                    let (_, end) = ANSIParser.scanOSC(scalars, from: index + 2)
+                    index = end
+                    continue
+                default:
+                    if (0x20...0x2F).contains(scalars[index + 1].value) {
+                        var cursor = index + 1
+                        while cursor < scalars.count,
+                            (0x20...0x2F).contains(scalars[cursor].value)
+                        {
+                            cursor += 1
+                        }
+                        index = cursor < scalars.count ? cursor + 1 : cursor
+                    } else {
+                        index += 2
                     }
+                    continue
                 }
-                index = end
-                continue
             }
             if scalar == "\n" || scalar == "\r" {
                 lineWidth = 0
@@ -243,6 +269,7 @@ struct TerminalScreen {
                     restoreCursor()
                     index += 2  // DECRC
                 case "M":  // RI — reverse index (up; scroll the region down at the top)
+                    pendingWrap = false
                     if cursorRow == scrollTop {
                         scrollRegionDown(1)
                     } else {
@@ -250,9 +277,11 @@ struct TerminalScreen {
                     }
                     index += 2
                 case "D":  // IND — index (down; scroll up at the bottom), like a line feed
+                    pendingWrap = false
                     indexDown()
                     index += 2
                 case "E":  // NEL — next line (CR + IND)
+                    pendingWrap = false
                     cursorCol = 0
                     indexDown()
                     index += 2
@@ -275,12 +304,14 @@ struct TerminalScreen {
                     }
                 }
             case "\r":
+                pendingWrap = false
                 cursorCol = 0
                 index += 1
             case "\n":
                 lineFeed()
                 index += 1
             case "\u{08}":
+                pendingWrap = false
                 cursorCol = max(0, cursorCol - 1)
                 index += 1  // backspace
             case "\t":
@@ -313,27 +344,56 @@ struct TerminalScreen {
         case "m":  // SGR — reuse the line-mode parser so styling matches exactly
             style = ANSIParser.applySGR(params, to: style)
         case "H", "f":  // CUP / HVP — 1-based row;col
+            pendingWrap = false
             cursorRow = clampRow(Self.at(nums, 0, default: 1) - 1)
             cursorCol = clampCol(Self.at(nums, 1, default: 1) - 1)
-        case "A": cursorRow = max(0, cursorRow - Self.at(nums, 0, default: 1))  // up
-        case "B": cursorRow = clampRow(cursorRow + Self.at(nums, 0, default: 1))  // down
-        case "C": cursorCol = clampCol(cursorCol + Self.at(nums, 0, default: 1))  // forward
-        case "D": cursorCol = max(0, cursorCol - Self.at(nums, 0, default: 1))  // back
+        case "A":
+            pendingWrap = false
+            cursorRow = max(0, cursorRow - Self.at(nums, 0, default: 1))  // up
+        case "B":
+            pendingWrap = false
+            cursorRow = clampRow(cursorRow + Self.at(nums, 0, default: 1))  // down
+        case "C":
+            pendingWrap = false
+            cursorCol = clampCol(cursorCol + Self.at(nums, 0, default: 1))  // forward
+        case "D":
+            pendingWrap = false
+            cursorCol = max(0, cursorCol - Self.at(nums, 0, default: 1))  // back
         case "E":  // CNL — cursor next line
+            pendingWrap = false
             cursorRow = clampRow(cursorRow + Self.at(nums, 0, default: 1))
             cursorCol = 0
         case "F":  // CPL — cursor previous line
+            pendingWrap = false
             cursorRow = max(0, cursorRow - Self.at(nums, 0, default: 1))
             cursorCol = 0
-        case "G": cursorCol = clampCol(Self.at(nums, 0, default: 1) - 1)  // CHA — absolute column
-        case "d": cursorRow = clampRow(Self.at(nums, 0, default: 1) - 1)  // VPA — absolute row
-        case "J": eraseDisplay(Self.at(nums, 0, default: 0))  // ED
-        case "K": eraseLine(Self.at(nums, 0, default: 0))  // EL
-        case "r": setScrollRegion(nums)  // DECSTBM
-        case "S": scrollRegionUp(Self.at(nums, 0, default: 1))  // SU
-        case "T": scrollRegionDown(Self.at(nums, 0, default: 1))  // SD
-        case "L": insertLines(Self.at(nums, 0, default: 1))  // IL
-        case "M": deleteLines(Self.at(nums, 0, default: 1))  // DL
+        case "G":
+            pendingWrap = false
+            cursorCol = clampCol(Self.at(nums, 0, default: 1) - 1)  // CHA — absolute column
+        case "d":
+            pendingWrap = false
+            cursorRow = clampRow(Self.at(nums, 0, default: 1) - 1)  // VPA — absolute row
+        case "J":
+            pendingWrap = false
+            eraseDisplay(Self.at(nums, 0, default: 0))  // ED
+        case "K":
+            pendingWrap = false
+            eraseLine(Self.at(nums, 0, default: 0))  // EL
+        case "r":
+            pendingWrap = false
+            setScrollRegion(nums)  // DECSTBM
+        case "S":
+            pendingWrap = false
+            scrollRegionUp(Self.at(nums, 0, default: 1))  // SU
+        case "T":
+            pendingWrap = false
+            scrollRegionDown(Self.at(nums, 0, default: 1))  // SD
+        case "L":
+            pendingWrap = false
+            insertLines(Self.at(nums, 0, default: 1))  // IL
+        case "M":
+            pendingWrap = false
+            deleteLines(Self.at(nums, 0, default: 1))  // DL
         case "s": saveCursor()  // SCP
         case "u": restoreCursor()  // RCP
         default:
@@ -345,6 +405,7 @@ struct TerminalScreen {
         let modes = Self.parseParams(params)
         let setting = finalByte == "h"
         for mode in modes where mode == 1049 || mode == 47 || mode == 1047 {
+            pendingWrap = false
             if setting { enterAltScreen() } else { leaveAltScreen() }
         }
     }
@@ -352,17 +413,22 @@ struct TerminalScreen {
     // MARK: - Drawing
 
     private mutating func putChar(_ scalar: Unicode.Scalar) {
-        padRow(cursorRow, to: cursorCol)
-        rows[cursorRow][cursorCol] = TerminalCell(scalar: scalar, style: style)
-        cursorCol += 1
-        if cursorCol >= columns {  // autowrap: like a line feed at the right edge
+        if pendingWrap {
+            pendingWrap = false
             cursorCol = 0
             indexDown()
+        }
+        padRow(cursorRow, to: cursorCol)
+        rows[cursorRow][cursorCol] = TerminalCell(scalar: scalar, style: style)
+        if cursorCol == columns - 1 {
+            pendingWrap = true
+        } else {
+            cursorCol += 1
         }
     }
 
     /// Move down one line, scrolling the region up if at the bottom margin (the `IND`
-    /// behavior a line feed and a right-edge autowrap share).
+    /// behavior a line feed and realized right-edge autowrap share).
     private mutating func indexDown() {
         if cursorRow == scrollBottom {
             scrollRegionUp(1)
@@ -376,11 +442,17 @@ struct TerminalScreen {
     /// column, so this is correct for it), and pasted terminal output that uses a bare `\n`
     /// then reads without a staircase.
     private mutating func lineFeed() {
+        pendingWrap = false
         indexDown()
         cursorCol = 0
     }
 
     private mutating func tab() {
+        if pendingWrap {
+            pendingWrap = false
+            cursorCol = 0
+            indexDown()
+        }
         let next = ((cursorCol / 8) + 1) * 8
         cursorCol = min(columns - 1, next)
     }
@@ -499,12 +571,13 @@ struct TerminalScreen {
 
     // MARK: - Cursor save / restore
 
-    private mutating func saveCursor() { saved = (cursorRow, cursorCol, style) }
+    private mutating func saveCursor() { saved = (cursorRow, cursorCol, pendingWrap, style) }
 
     private mutating func restoreCursor() {
         guard let saved else { return }
         cursorRow = clampRow(saved.row)
         cursorCol = clampCol(saved.col)
+        pendingWrap = saved.pendingWrap
         style = saved.style
     }
 
@@ -512,10 +585,11 @@ struct TerminalScreen {
 
     private mutating func enterAltScreen() {
         guard primaryStash == nil else { return }  // already on the alt screen
-        primaryStash = (rows, cursorRow, cursorCol, scrollTop, scrollBottom)
+        primaryStash = (rows, cursorRow, cursorCol, pendingWrap, scrollTop, scrollBottom)
         rows = Array(repeating: [], count: screenRows)
         cursorRow = 0
         cursorCol = 0
+        pendingWrap = false
         scrollTop = 0
         scrollBottom = screenRows - 1
         // Each alt session starts clean: never let a snapshot from a previous alt session
@@ -532,6 +606,7 @@ struct TerminalScreen {
         rows = stash.rows
         cursorRow = clampRow(stash.row)
         cursorCol = clampCol(stash.col)
+        pendingWrap = stash.pendingWrap
         scrollTop = stash.top
         scrollBottom = stash.bottom
         primaryStash = nil

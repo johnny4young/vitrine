@@ -86,6 +86,11 @@ struct TerminalGridTests {
         #expect(plain("ABCDEFG", columns: 4) == "ABCD\nEFG")
     }
 
+    @Test func newlineAfterFullWidthLineDoesNotDoubleAdvance() {
+        #expect(plain("ABCD\nEFG", columns: 4) == "ABCD\nEFG")
+        #expect(plain("ABCD\r\nEFG", columns: 4) == "ABCD\nEFG")
+    }
+
     // MARK: - Vertical movement
 
     @Test func cursorUpOverwritesAnEarlierRow() {
@@ -246,6 +251,12 @@ struct TerminalGridTests {
         #expect(TerminalScreen.inferColumns("short") == 80)
         #expect(TerminalScreen.inferColumns(String(repeating: "x", count: 120)) == 120)
         #expect(TerminalScreen.inferColumns("\(esc)[1;200Hedge") == 200)  // CUP column
+    }
+
+    @Test func inferColumnsIgnoresEscapeBodies() {
+        let longURI = "https://example.com/" + String(repeating: "x", count: 200)
+        #expect(TerminalScreen.inferColumns("\(esc)]8;;\(longURI)\u{07}link\(esc)]8;;\u{07}") == 80)
+        #expect(TerminalScreen.inferColumns("A\(esc)(BC") == 80)
     }
 
     // MARK: - Renderer routing (canvas + sidecar go through ANSIRenderer)
