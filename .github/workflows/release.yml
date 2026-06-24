@@ -361,7 +361,9 @@ jobs:
         run: |
           mkdir -p _site/screenshots
           cp docs/index.html docs/vitrine-icon.png _site/
-          cp docs/screenshots/editor.png docs/screenshots/annotated.png docs/screenshots/diff.png _site/screenshots/
+          cp docs/screenshots/editor.png docs/screenshots/annotated.png docs/screenshots/diff.png \
+             docs/screenshots/terminal-htop.png docs/screenshots/terminal-lazygit.png docs/screenshots/terminal-nvim.png \
+             _site/screenshots/
 
       # Deploy the signed appcast to GitHub Pages so the SUFeedURL in Info.plist resolves.
       # Skipped when no appcast was produced (no EdDSA key secret), so the release still

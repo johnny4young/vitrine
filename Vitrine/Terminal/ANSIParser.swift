@@ -107,7 +107,11 @@ enum ANSIParser {
     /// bytes (0x20–0x3F) up to the final byte (0x40–0x7E). Returns the parameter
     /// string, the final byte (or `nil` if the input ran out), and the index just
     /// past the sequence.
-    private static func scanCSI(
+    ///
+    /// Internal (not private) so the grid emulator (`TerminalScreen`) can reuse the same
+    /// scanner to dispatch cursor-positioning sequences, keeping one parser of the wire
+    /// format.
+    static func scanCSI(
         _ scalars: [Unicode.Scalar], from start: Int
     )
         -> (params: String, finalByte: Unicode.Scalar?, end: Int)
@@ -129,7 +133,7 @@ enum ANSIParser {
     /// Returns the body (the bytes between `ESC]` and the terminator) and the index
     /// just past the terminator (or end of input). The caller decides what to do with
     /// the body — OSC 8 carries a hyperlink, every other OSC is dropped.
-    private static func scanOSC(
+    static func scanOSC(
         _ scalars: [Unicode.Scalar], from start: Int
     ) -> (body: String, end: Int) {
         var body = String.UnicodeScalarView()
@@ -157,7 +161,7 @@ enum ANSIParser {
     /// Only a well-formed body with both `;` separators is treated as OSC 8; a truncated
     /// `8` or `8;` (or any non-`8` OSC) returns `nil` so a malformed sequence never
     /// clears an open link or splits a run.
-    private static func hyperlinkURI(fromOSC body: String) -> String? {
+    static func hyperlinkURI(fromOSC body: String) -> String? {
         guard body.hasPrefix("8;") else { return nil }
         let fields = body.split(separator: ";", maxSplits: 2, omittingEmptySubsequences: false)
         guard fields.count >= 3 else { return nil }
