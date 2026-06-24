@@ -118,6 +118,26 @@ background, so adding it has no effect on your terminal's performance or behavio
 `vitrine shell-init fish | source` (fish has no `eval "$(…)"`); the others use the
 `eval` line above.
 
+## Full-screen apps (TUIs)
+
+Vitrine doesn't just render scrolling output — it captures **full-screen terminal apps**
+too: `htop`, `btop`, `vim`, `lazygit`, `k9s`, `tig`, `less` — anything that paints a fixed
+screen by positioning the cursor and redrawing in place.
+
+These apps don't scroll a transcript; they address the screen cell by cell (usually on the
+*alternate screen*). Vitrine detects that and switches to a cell-buffer emulator that
+replays the cursor moves and reports the **final frame** — the screen you actually saw —
+with its colors intact and your chosen theme, font, and background. The surrounding shell
+prompt is left out.
+
+```sh
+vgrab htop          # captures the dashboard, not an escape-soup transcript
+vgrab lazygit
+```
+
+The switch is automatic, by content: plain scrolling output (a `git log`, a test run)
+keeps rendering the full transcript line by line, unaffected.
+
 ## Manual alternatives (no shell integration)
 
 ```sh
@@ -152,9 +172,10 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
 
 ## Notes
 
-- Vitrine strips the non-color escape sequences (cursor moves, screen clears, OSC
-  window titles, progress-bar carriage returns) so the static image shows clean,
-  final lines.
+- For scrolling output, Vitrine strips the non-color escape sequences (OSC window
+  titles, stray controls) and resolves progress-bar carriage returns so the static image
+  shows clean, final lines. For a full-screen app it *interprets* the cursor moves
+  instead, reconstructing the final frame — see [Full-screen apps (TUIs)](#full-screen-apps-tuis).
 - **OSC 8 hyperlinks** (the `ESC]8` links emitted by `gh`, `eza --hyperlink`, some test
   runners) are styled — the linked text is underlined and tinted, the way a link reads —
   while the URL itself stays hidden, exactly as it is in the terminal.
@@ -176,11 +197,17 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
 
 ## Roadmap
 
-Deferred, with the technical reason each is not in the first cut:
+Full-screen TUI capture shipped (the cell-buffer emulator described in
+[Full-screen apps (TUIs)](#full-screen-apps-tuis)). Still deferred, with the technical
+reason each is out of the first cut:
 
-- **Full terminal emulation (TUIs, progress bars, redraws).** The current renderer is
-  line-oriented: it strips cursor-movement sequences and collapses carriage returns, so
-  line-based output (`git`, test runners, `ls`) is faithful, but full-screen apps
-  (`htop`, `vim`) and in-place progress bars are not. Capturing the *final screen
-  state* needs a small VT/grid emulator (cursor positioning into a cell buffer, à la
-  `pyte`), which is a separate, larger component.
+- **Scroll regions and line/character insert-delete.** The emulator redraws by absolute
+  cursor position and erase — how `htop`/`vim`/`lazygit` paint each frame — so it captures
+  them faithfully. Apps that scroll a *sub-region* by emitting only the delta (`DECSTBM`
+  plus a scroll, rather than repainting) aren't modeled yet.
+- **Wide (double-width) characters.** CJK and emoji occupy two cells in a real terminal;
+  the grid advances the cursor by one per scalar, so a frame dense with double-width
+  glyphs can misalign. ASCII, box-drawing, and Powerline/Nerd glyphs (all single-width)
+  are unaffected.
+- **Explicit capture size.** The replay width is inferred from the content; passing the
+  real `COLUMNS` (via `vgrab -w` / a `--terminal-width` flag) would make wraps pixel-exact.
