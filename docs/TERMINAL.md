@@ -198,13 +198,11 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
 ## Roadmap
 
 Full-screen TUI capture shipped (the cell-buffer emulator described in
-[Full-screen apps (TUIs)](#full-screen-apps-tuis)). Still deferred, with the technical
-reason each is out of the first cut:
+[Full-screen apps (TUIs)](#full-screen-apps-tuis)), with a fixed-height screen that
+**scrolls** like a real terminal — so pagers (`less`, `man`, `bat`) and anything that
+draws from the bottom line reconstruct correctly — plus scroll regions (`DECSTBM`), scroll
+up/down, and line insert/delete. Still deferred, with the technical reason each is out:
 
-- **Scroll regions and line/character insert-delete.** The emulator redraws by absolute
-  cursor position and erase — how `htop`/`vim`/`lazygit` paint each frame — so it captures
-  them faithfully. Apps that scroll a *sub-region* by emitting only the delta (`DECSTBM`
-  plus a scroll, rather than repainting) aren't modeled yet.
 - **Wide (double-width) characters.** CJK and emoji occupy two cells in a real terminal;
   the grid advances the cursor by one per scalar, so a frame dense with double-width
   glyphs can misalign. ASCII, box-drawing, and Powerline/Nerd glyphs (all single-width)
