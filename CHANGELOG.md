@@ -12,6 +12,19 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-06-23
+
+### Removed
+
+- **The `vlast` shell helper and its passive recorder.** `vlast` shared the *last*
+  command you already ran, but recovering its color required an always-on recorder
+  that re-exec'd your shell under `script` and sliced output with prompt hooks — real
+  terminal overhead, and unreliable on macOS, where the system `script` block-buffers
+  its recording so a short command's output often never reached `vlast`. `vgrab` is now
+  the only shell helper: a plain function with no background recorder, no re-exec, and
+  no effect on your terminal's performance. To capture a command you already ran, recall
+  it (↑ or `!!`) and prepend `vgrab` — e.g. `vgrab !!`.
+
 ## [0.12.0] - 2026-06-23
 
 ### Added
