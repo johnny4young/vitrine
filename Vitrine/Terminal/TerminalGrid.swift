@@ -15,81 +15,94 @@ struct TerminalCell: Equatable {
 }
 
 /// A cell-buffer VT emulator: replays a stream of terminal output that addresses the
-/// screen with cursor-positioning escapes (CUP, erase, alternate screen) and reports
-/// the **final** screen state.
+/// screen with cursor-positioning escapes (CUP, erase, scrolling, alternate screen) and
+/// reports the **final** screen state.
 ///
 /// This is the grid counterpart to ``ANSIRenderer/normalize(_:)``, which is
 /// line-oriented and strips cursor moves: where line mode captures the scrolled
 /// transcript (a `git log`, a test run), the grid captures the screen a full-screen
-/// TUI — `htop`, `vim`, `lazygit` — paints by writing cells directly. Pure and
-/// AppKit-free for unit-testing, like ``ANSIParser``: it produces `[ANSIRun]` that
-/// ``ANSIRenderer`` turns into the image, reusing ``ANSIStyle`` and
-/// ``ANSIParser/applySGR(_:to:)`` for the pen so the styling is identical to line mode.
+/// TUI — `htop`, `vim`, `lazygit`, or a pager like `less`/`man` — paints by writing
+/// cells directly. Pure and AppKit-free for unit-testing, like ``ANSIParser``: it
+/// produces `[ANSIRun]` that ``ANSIRenderer`` turns into the image, reusing ``ANSIStyle``
+/// and ``ANSIParser/applySGR(_:to:)`` for the pen so the styling matches line mode.
 ///
-/// **Phase 1 scope:** cursor positioning (CUP/CUU-D/CUF-B/CHA/VPA/CNL/CPL, CR/LF/BS/HT),
-/// erase (ED/EL), SGR, autowrap, OSC 8 hyperlinks, save/restore cursor, and the
-/// alternate-screen snapshot that makes `htop`/`vim` capturable. Deferred: scroll
-/// regions (DECSTBM), line/character insert-delete, and wide (double-width) characters.
+/// The screen is a **fixed height** (`screenRows`, inferred from the stream): a line feed
+/// at the bottom margin *scrolls* the screen up instead of growing the buffer, which is
+/// what a real terminal does and what pagers (`less`, `man`, `bat`) rely on — they write
+/// from the bottom line and let `\n` scroll. A growing buffer would stack the whole file
+/// with the content stranded at the bottom.
+///
+/// Handles: cursor positioning (CUP/CUU-D/CUF-B/CHA/VPA/CNL/CPL, CR/LF/BS/HT), erase
+/// (ED/EL), SGR, autowrap, OSC 8 hyperlinks, save/restore cursor, the alternate-screen
+/// snapshot that makes `htop`/`vim` capturable, charset-designation escapes, and **scroll
+/// regions** (DECSTBM) with scroll-up/down (SU/SD), insert/delete-line (IL/DL), and
+/// reverse-index / index / next-line (RI/IND/NEL). Deferred: wide (double-width)
+/// characters and character insert/delete (ICH/DCH).
 struct TerminalScreen {
-    /// The width the stream was produced at: cursor columns clamp to it and printed
-    /// text autowraps at it.
+    /// The width the stream was produced at: cursor columns clamp to it and printed text
+    /// autowraps at it.
     let columns: Int
-    /// A safety cap so a malformed stream addressing huge rows can't grow the buffer
-    /// without bound. Real TUIs fit a screen; this is far above any terminal height.
-    private let maxRows: Int
+    /// The fixed screen height. The grid is always exactly this many rows; a line feed at
+    /// the scroll-region bottom scrolls rather than adding a row.
+    let screenRows: Int
 
-    /// The visible buffer — the primary screen, or the alternate screen while in it.
-    /// Rows grow on demand; each row grows to its longest written column.
-    private var rows: [[TerminalCell]] = [[]]
+    /// The visible buffer — always `screenRows` rows tall; each row grows to its longest
+    /// written column. The primary screen, or the alternate screen while in it.
+    private var rows: [[TerminalCell]]
     private var cursorRow = 0
     private var cursorCol = 0
-    /// The current pen, accumulated from SGR codes (and the OSC 8 link, which rides on
-    /// the style so each cell remembers its hyperlink).
+    /// The current pen, accumulated from SGR codes (and the OSC 8 link, which rides on the
+    /// style so each cell remembers its hyperlink).
     private var style = ANSIStyle()
     private var saved: (row: Int, col: Int, style: ANSIStyle)?
+    /// The scroll region (DECSTBM), inclusive 0-based row bounds. Defaults to the whole
+    /// screen; a line feed at `scrollBottom` scrolls `[scrollTop, scrollBottom]` up.
+    private var scrollTop = 0
+    private var scrollBottom = 0
 
-    /// While on the alternate screen the primary buffer is stashed here; `nil` on the
-    /// primary screen.
-    private var primaryStash: (rows: [[TerminalCell]], row: Int, col: Int)?
+    /// While on the alternate screen the primary buffer (and its cursor / scroll region)
+    /// is stashed here; `nil` on the primary screen.
+    private var primaryStash: (rows: [[TerminalCell]], row: Int, col: Int, top: Int, bottom: Int)?
     /// The last full alternate-screen frame, captured when the program *leaves* the alt
-    /// screen (its exit). That frame is the htop/vim screen the user actually saw, which
-    /// the trailing shell prompt on the restored primary screen would otherwise hide.
+    /// screen (its exit) — the htop/vim screen the user saw, which the restored primary
+    /// screen's shell prompt would otherwise hide.
     private var capturedAltFrame: [[TerminalCell]]?
     /// A fallback alt-screen frame snapshotted just before an in-alt full clear: some apps
     /// (`nvim`, `lazygit`) erase the screen *before* leaving the alt buffer on exit, which
-    /// would otherwise blank the frame we capture. Holding the pre-clear copy recovers the
-    /// screen the user actually saw.
+    /// would otherwise blank the frame we capture.
     private var altSnapshot: [[TerminalCell]]?
 
-    init(columns: Int = 80, maxRows: Int = 1000) {
+    init(columns: Int = 80, rows screenRows: Int = 200) {
         self.columns = max(1, columns)
-        self.maxRows = max(1, maxRows)
+        self.screenRows = max(1, min(screenRows, 1000))
+        self.rows = Array(repeating: [], count: self.screenRows)
+        self.scrollBottom = self.screenRows - 1
     }
 
     // MARK: - Convenience
 
-    /// Replays `text` at `columns` width and returns the final screen as styled runs,
-    /// ready for ``ANSIRenderer`` — rows joined by newlines, trailing blank cells and
-    /// rows trimmed.
-    static func runs(_ text: String, columns: Int = 80) -> [ANSIRun] {
-        var screen = TerminalScreen(columns: columns)
+    /// Replays `text` at an inferred width and height and returns the final screen as
+    /// styled runs, ready for ``ANSIRenderer``.
+    static func runs(_ text: String, columns: Int? = nil) -> [ANSIRun] {
+        var screen = TerminalScreen(
+            columns: columns ?? inferColumns(text), rows: inferRows(text))
         screen.feed(text)
         return screen.runs()
     }
 
     // MARK: - Routing: is this a full-screen TUI?
 
-    /// Whether `text` addresses the screen with cursor positioning — the signal that it
-    /// is a full-screen TUI (htop, vim, lazygit) whose final frame the grid emulator
-    /// should reconstruct, rather than scrolling output the line renderer should keep
-    /// verbatim.
+    /// Whether `text` addresses the screen with cursor positioning — the signal that it is
+    /// a full-screen TUI (htop, vim, a pager) whose final frame the grid emulator should
+    /// reconstruct, rather than scrolling output the line renderer should keep verbatim.
     ///
     /// Triggers on the unambiguous full-screen markers: entering the alternate screen
-    /// (`?1049h`/`?47h`/`?1047h`), an erase-display (`ED`), or absolute cursor
-    /// positioning (`CUP` to a non-home cell, or `VPA`). Plain colored output (`git`,
-    /// `ls`, a test run) carries only SGR — and a progress bar only `\r`/`EL` — so none
-    /// of them trip this and they stay in line mode. `EL` (erase *line*) is deliberately
-    /// not a trigger: it is the progress-bar idiom, which line mode already handles.
+    /// (`?1049h`/`?47h`/`?1047h`), an erase-display (`ED`), absolute cursor positioning
+    /// (`CUP` to a non-home cell, or `VPA`), or a scroll region (`DECSTBM`). Plain colored
+    /// output (`git`, `ls`, a test run) carries only SGR — and a progress bar only
+    /// `\r`/`EL` — so none of them trip this and they stay in line mode. `EL` (erase
+    /// *line*) is deliberately not a trigger: it is the progress-bar idiom line mode
+    /// already handles.
     static func usesScreenAddressing(_ text: String) -> Bool {
         guard ANSIParser.containsANSI(text) else { return false }
         let scalars = Array(text.unicodeScalars)
@@ -118,6 +131,7 @@ struct TerminalScreen {
             switch finalByte {
             case "J": return true  // ED — erase display (full-screen redraw)
             case "d": return true  // VPA — absolute row
+            case "r": return true  // DECSTBM — scroll region
             case "H", "f":  // CUP — count only positioning beyond home
                 if !params.isEmpty, params != "1", params != "1;1", params != ";" {
                     return true
@@ -130,8 +144,8 @@ struct TerminalScreen {
 
     /// A safe column width to replay `text` at: wide enough that no addressed cell or
     /// printed line wraps early — the grid trims trailing blanks, so over-estimating is
-    /// harmless, while under-estimating would wrap a TUI's content wrong. Floors at 80
-    /// and caps at a sane maximum.
+    /// harmless, while under-estimating would wrap a TUI's content wrong. Floors at 80 and
+    /// caps at a sane maximum.
     static func inferColumns(_ text: String) -> Int {
         let scalars = Array(text.unicodeScalars)
         var maxWidth = 80
@@ -165,6 +179,40 @@ struct TerminalScreen {
         return min(maxWidth, 1000)
     }
 
+    /// A safe screen height to replay `text` at: the app reveals its height by addressing
+    /// its bottom row (a status line via CUP/VPA, or a DECSTBM bottom margin), so the
+    /// highest addressed row is the screen height. Floors at 24 for a sane minimum; an app
+    /// that only ever uses relative moves (e.g. `fzf`) gets a typical screen so it stays
+    /// bounded. Getting this right is what lets a pager's bottom-line scrolling reconstruct
+    /// correctly instead of stacking the whole file.
+    static func inferRows(_ text: String) -> Int {
+        let scalars = Array(text.unicodeScalars)
+        var maxRow = 0
+        var index = 0
+        while index < scalars.count {
+            if scalars[index] == "\u{1B}", index + 1 < scalars.count, scalars[index + 1] == "[" {
+                let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
+                if let finalByte, !params.hasPrefix("?") {
+                    let nums = params.split(separator: ";", omittingEmptySubsequences: false)
+                        .map { Int($0) ?? 0 }
+                    if finalByte == "H" || finalByte == "f" || finalByte == "d",
+                        let row = nums.first
+                    {
+                        maxRow = max(maxRow, row)  // CUP / VPA row
+                    }
+                    if finalByte == "r", nums.count > 1 {
+                        maxRow = max(maxRow, nums[1])  // DECSTBM bottom margin
+                    }
+                }
+                index = end
+                continue
+            }
+            index += 1
+        }
+        if maxRow == 0 { return 40 }  // relative-only app: a typical screen height
+        return min(max(maxRow, 24), 300)
+    }
+
     // MARK: - Feeding the stream
 
     /// Replays the bytes of `text`, mutating the screen. Reuses ``ANSIParser``'s CSI/OSC
@@ -194,12 +242,26 @@ struct TerminalScreen {
                 case "8":
                     restoreCursor()
                     index += 2  // DECRC
+                case "M":  // RI — reverse index (up; scroll the region down at the top)
+                    if cursorRow == scrollTop {
+                        scrollRegionDown(1)
+                    } else {
+                        cursorRow = max(0, cursorRow - 1)
+                    }
+                    index += 2
+                case "D":  // IND — index (down; scroll up at the bottom), like a line feed
+                    indexDown()
+                    index += 2
+                case "E":  // NEL — next line (CR + IND)
+                    cursorCol = 0
+                    indexDown()
+                    index += 2
                 default:
                     // ESC followed by an intermediate byte (0x20–0x2F) is a longer
                     // sequence — most often charset designation (`ESC ( B`, which htop and
                     // friends emit constantly): consume the intermediate(s) and the final
                     // byte, so the final (e.g. `B`) is never printed as stray text. Any
-                    // other `ESC <byte>` is a two-byte escape (`ESC =`, `ESC M`) — drop both.
+                    // other `ESC <byte>` is a two-byte escape (`ESC =`) — drop both.
                     if (0x20...0x2F).contains(scalars[index + 1].value) {
                         var cursor = index + 1
                         while cursor < scalars.count,
@@ -238,9 +300,9 @@ struct TerminalScreen {
     // MARK: - CSI dispatch
 
     private mutating func applyCSI(_ params: String, _ finalByte: Unicode.Scalar) {
-        // DEC private modes (`ESC[?…h` / `…l`) — the only one Phase 1 acts on is the
-        // alternate screen; the rest (cursor visibility, mouse, bracketed paste) are
-        // visual no-ops for a static capture.
+        // DEC private modes (`ESC[?…h` / `…l`) — the only one acted on is the alternate
+        // screen; the rest (cursor visibility, mouse, bracketed paste) are visual no-ops
+        // for a static capture.
         if params.hasPrefix("?") {
             applyPrivateMode(String(params.dropFirst()), finalByte)
             return
@@ -267,10 +329,15 @@ struct TerminalScreen {
         case "d": cursorRow = clampRow(Self.at(nums, 0, default: 1) - 1)  // VPA — absolute row
         case "J": eraseDisplay(Self.at(nums, 0, default: 0))  // ED
         case "K": eraseLine(Self.at(nums, 0, default: 0))  // EL
+        case "r": setScrollRegion(nums)  // DECSTBM
+        case "S": scrollRegionUp(Self.at(nums, 0, default: 1))  // SU
+        case "T": scrollRegionDown(Self.at(nums, 0, default: 1))  // SD
+        case "L": insertLines(Self.at(nums, 0, default: 1))  // IL
+        case "M": deleteLines(Self.at(nums, 0, default: 1))  // DL
         case "s": saveCursor()  // SCP
         case "u": restoreCursor()  // RCP
         default:
-            break  // L/M/P/@/X/S/T/r and friends — deferred to Phase 3
+            break  // ICH/DCH/ECH and wide chars are deferred
         }
     }
 
@@ -285,26 +352,32 @@ struct TerminalScreen {
     // MARK: - Drawing
 
     private mutating func putChar(_ scalar: Unicode.Scalar) {
-        ensureRow(cursorRow)
         padRow(cursorRow, to: cursorCol)
         rows[cursorRow][cursorCol] = TerminalCell(scalar: scalar, style: style)
         cursorCol += 1
-        if cursorCol >= columns {  // autowrap
+        if cursorCol >= columns {  // autowrap: like a line feed at the right edge
             cursorCol = 0
-            cursorRow = clampRow(cursorRow + 1)
-            ensureRow(cursorRow)
+            indexDown()
         }
     }
 
-    /// Newline. Treated as CR+LF (column reset *and* down a row) rather than VT-strict
-    /// LF (down only): a `script` PTY capture already emits `\r\n` (the `\r` resets the
-    /// column, so this is correct for it), and pasted terminal output that uses a bare
-    /// `\n` then reads without a staircase. TUIs lay out with absolute positioning, so
-    /// the distinction never affects a full-screen capture.
+    /// Move down one line, scrolling the region up if at the bottom margin (the `IND`
+    /// behavior a line feed and a right-edge autowrap share).
+    private mutating func indexDown() {
+        if cursorRow == scrollBottom {
+            scrollRegionUp(1)
+        } else {
+            cursorRow = min(cursorRow + 1, screenRows - 1)
+        }
+    }
+
+    /// Newline. Treated as CR+LF (column reset *and* down a row) rather than VT-strict LF
+    /// (down only): a `script` PTY capture already emits `\r\n` (the `\r` resets the
+    /// column, so this is correct for it), and pasted terminal output that uses a bare `\n`
+    /// then reads without a staircase.
     private mutating func lineFeed() {
-        cursorRow = clampRow(cursorRow + 1)
+        indexDown()
         cursorCol = 0
-        ensureRow(cursorRow)
     }
 
     private mutating func tab() {
@@ -312,18 +385,72 @@ struct TerminalScreen {
         cursorCol = min(columns - 1, next)
     }
 
+    // MARK: - Scrolling
+
+    /// Sets the DECSTBM scroll region (1-based, inclusive). An invalid or absent pair
+    /// resets to the whole screen. Homes the cursor, as the spec requires.
+    private mutating func setScrollRegion(_ nums: [Int]) {
+        let top = Self.at(nums, 0, default: 1) - 1
+        let bottom = (nums.count > 1 && nums[1] > 0 ? nums[1] : screenRows) - 1
+        if top >= 0, bottom < screenRows, top < bottom {
+            scrollTop = top
+            scrollBottom = bottom
+        } else {
+            scrollTop = 0
+            scrollBottom = screenRows - 1
+        }
+        cursorRow = 0
+        cursorCol = 0
+    }
+
+    /// Scrolls `[scrollTop, scrollBottom]` up by `count` lines: the top lines fall off and
+    /// blank lines come in at the bottom of the region. The standard terminal scroll.
+    private mutating func scrollRegionUp(_ count: Int) {
+        let n = min(max(1, count), scrollBottom - scrollTop + 1)
+        rows.removeSubrange(scrollTop..<(scrollTop + n))
+        rows.insert(contentsOf: blankRows(n), at: scrollBottom - n + 1)
+    }
+
+    /// Scrolls `[scrollTop, scrollBottom]` down by `count`: bottom lines fall off, blanks
+    /// come in at the top of the region (used by RI and SD).
+    private mutating func scrollRegionDown(_ count: Int) {
+        let n = min(max(1, count), scrollBottom - scrollTop + 1)
+        rows.removeSubrange((scrollBottom - n + 1)..<(scrollBottom + 1))
+        rows.insert(contentsOf: blankRows(n), at: scrollTop)
+    }
+
+    /// Inserts `count` blank lines at the cursor, pushing lines below it down within the
+    /// region (lines past the bottom fall off). Editors use this to open a line.
+    private mutating func insertLines(_ count: Int) {
+        guard cursorRow >= scrollTop, cursorRow <= scrollBottom else { return }
+        let n = min(max(1, count), scrollBottom - cursorRow + 1)
+        rows.removeSubrange((scrollBottom - n + 1)..<(scrollBottom + 1))
+        rows.insert(contentsOf: blankRows(n), at: cursorRow)
+    }
+
+    /// Deletes `count` lines at the cursor, pulling lines below it up within the region
+    /// (blanks come in at the bottom). Editors use this to close a line.
+    private mutating func deleteLines(_ count: Int) {
+        guard cursorRow >= scrollTop, cursorRow <= scrollBottom else { return }
+        let n = min(max(1, count), scrollBottom - cursorRow + 1)
+        rows.removeSubrange(cursorRow..<(cursorRow + n))
+        rows.insert(contentsOf: blankRows(n), at: scrollBottom - n + 1)
+    }
+
+    private func blankRows(_ count: Int) -> [[TerminalCell]] {
+        Array(repeating: [], count: count)
+    }
+
     // MARK: - Erase
 
     private mutating func eraseDisplay(_ mode: Int) {
         switch mode {
         case 0:  // cursor → end of screen
-            ensureRow(cursorRow)
             padRow(cursorRow, to: cursorCol)
             blank(row: cursorRow, from: cursorCol)
             for row in (cursorRow + 1)..<rows.count { blank(row: row) }
         case 1:  // start of screen → cursor
             for row in 0..<min(cursorRow, rows.count) { blank(row: row) }
-            ensureRow(cursorRow)
             padRow(cursorRow, to: cursorCol)
             blank(row: cursorRow, through: cursorCol)
         default:  // 2 / 3 — whole screen
@@ -341,7 +468,6 @@ struct TerminalScreen {
     }
 
     private mutating func eraseLine(_ mode: Int) {
-        ensureRow(cursorRow)
         switch mode {
         case 1:
             padRow(cursorRow, to: cursorCol)
@@ -386,10 +512,12 @@ struct TerminalScreen {
 
     private mutating func enterAltScreen() {
         guard primaryStash == nil else { return }  // already on the alt screen
-        primaryStash = (rows, cursorRow, cursorCol)
-        rows = [[]]
+        primaryStash = (rows, cursorRow, cursorCol, scrollTop, scrollBottom)
+        rows = Array(repeating: [], count: screenRows)
         cursorRow = 0
         cursorCol = 0
+        scrollTop = 0
+        scrollBottom = screenRows - 1
     }
 
     private mutating func leaveAltScreen() {
@@ -400,19 +528,15 @@ struct TerminalScreen {
         rows = stash.rows
         cursorRow = clampRow(stash.row)
         cursorCol = clampCol(stash.col)
+        scrollTop = stash.top
+        scrollBottom = stash.bottom
         primaryStash = nil
     }
 
     // MARK: - Geometry helpers
 
-    private func clampRow(_ row: Int) -> Int { min(max(0, row), maxRows - 1) }
+    private func clampRow(_ row: Int) -> Int { min(max(0, row), screenRows - 1) }
     private func clampCol(_ col: Int) -> Int { min(max(0, col), columns - 1) }
-
-    /// Grows `rows` so index `row` exists (within the row cap).
-    private mutating func ensureRow(_ row: Int) {
-        let target = min(row, maxRows - 1)
-        while rows.count <= target { rows.append([]) }
-    }
 
     /// Grows `rows[row]` so column `col` exists, padding with blank cells.
     private mutating func padRow(_ row: Int, to col: Int) {
@@ -423,8 +547,8 @@ struct TerminalScreen {
     // MARK: - Output
 
     /// The screen to report: the captured alternate-screen frame when a TUI ran and
-    /// exited, the live buffer when still on the alt screen at end of input, otherwise
-    /// the primary buffer.
+    /// exited, the live buffer when still on the alt screen at end of input, otherwise the
+    /// primary buffer.
     private var finalFrame: [[TerminalCell]] {
         if primaryStash != nil {  // ended inside the alt screen
             return isPopulated(rows) ? rows : (altSnapshot ?? rows)
@@ -434,8 +558,8 @@ struct TerminalScreen {
     }
 
     /// The final screen flattened into styled runs: adjacent same-style cells coalesce,
-    /// trailing blank cells and trailing blank rows are trimmed, and rows are separated
-    /// by a default-styled newline — the same shape ``ANSIParser/parse(_:)`` yields, so
+    /// trailing blank cells and trailing blank rows are trimmed, and rows are separated by
+    /// a default-styled newline — the same shape ``ANSIParser/parse(_:)`` yields, so
     /// ``ANSIRenderer`` renders a grid and a line capture identically.
     func runs() -> [ANSIRun] {
         let frame = finalFrame
@@ -477,8 +601,8 @@ struct TerminalScreen {
         return out
     }
 
-    /// The final screen as plain text (styling dropped) — the copyable-text counterpart
-    /// of the rendered image, matching ``ANSIRenderer/plainText(_:)`` for line mode.
+    /// The final screen as plain text (styling dropped) — the copyable-text counterpart of
+    /// the rendered image, matching ``ANSIRenderer/plainText(_:)`` for line mode.
     func plainText() -> String {
         runs().map(\.text).joined()
     }

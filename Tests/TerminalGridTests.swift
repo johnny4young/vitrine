@@ -177,6 +177,41 @@ struct TerminalGridTests {
         #expect(viaStatic == "\nX")
     }
 
+    // MARK: - Scrolling (bounded screen)
+
+    @Test func lineFeedAtBottomScrollsTheScreen() {
+        // A 3-row screen: writing a 4th line scrolls the first off the top — the bounded
+        // behavior pagers (less/man) rely on, instead of growing the buffer unbounded.
+        var screen = TerminalScreen(columns: 10, rows: 3)
+        screen.feed("L1\nL2\nL3\nL4")
+        #expect(screen.plainText() == "L2\nL3\nL4")
+    }
+
+    @Test func scrollRegionConfinesScrolling() {
+        // DECSTBM keeps a header fixed while the body below it scrolls.
+        var screen = TerminalScreen(columns: 12, rows: 5)
+        screen.feed("\(esc)[1;1HHEADER\(esc)[2;5r\(esc)[2;1Ha\nb\nc\nd\ne")
+        #expect(screen.plainText() == "HEADER\nb\nc\nd\ne")  // 'a' scrolled off, header kept
+    }
+
+    @Test func deleteLinesPullsContentUp() {
+        var screen = TerminalScreen(columns: 6, rows: 4)
+        screen.feed("\(esc)[1;1Hone\ntwo\nthree\nfour\(esc)[2;1H\(esc)[M")  // DL at line 2
+        #expect(screen.plainText() == "one\nthree\nfour")
+    }
+
+    @Test func insertLinesPushesContentDown() {
+        var screen = TerminalScreen(columns: 6, rows: 4)
+        screen.feed("\(esc)[1;1Hone\ntwo\nthree\nfour\(esc)[2;1H\(esc)[L")  // IL at line 2
+        #expect(screen.plainText() == "one\n\ntwo\nthree")  // 'four' pushed off the bottom
+    }
+
+    @Test func inferRowsFromBottomAddressing() {
+        #expect(TerminalScreen.inferRows("\(esc)[34;1Hstatus") == 34)  // the addressed bottom
+        #expect(TerminalScreen.inferRows("plain \(esc)[31mtext\(esc)[0m") == 40)  // no addressing
+        #expect(TerminalScreen.inferRows("\(esc)[2;1Hx") == 24)  // floor
+    }
+
     // MARK: - Detection: line vs grid routing
 
     @Test func plainColoredOutputStaysLineMode() {

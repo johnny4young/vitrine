@@ -166,7 +166,7 @@ enum ANSIRenderer {
     /// needs intact.
     private static func styledRuns(_ text: String) -> [ANSIRun] {
         if TerminalScreen.usesScreenAddressing(text) {
-            return TerminalScreen.runs(text, columns: TerminalScreen.inferColumns(text))
+            return TerminalScreen.runs(text)  // infers the screen width and height
         }
         return ANSIParser.parse(normalize(text))
     }
