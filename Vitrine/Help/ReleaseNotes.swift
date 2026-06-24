@@ -42,6 +42,16 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.13.0",
+            headline: "A lighter terminal integration",
+            highlights: [
+                "The vitrine shell integration is now a single vgrab function — it no "
+                    + "longer runs a background recorder or re-execs your shell, so it has "
+                    + "no effect on your terminal's performance.",
+                "To capture a command you already ran, recall it (↑ or !!) and prepend "
+                    + "vgrab — for example, vgrab !!.",
+            ]),
+        ReleaseNote(
             version: "0.12.0",
             headline: "Terminal capture, now in any shell",
             highlights: [
