@@ -204,6 +204,11 @@
   /* small feature trio */
   .trio { display: grid; gap: 16px; margin-top: 40px; grid-template-columns: repeat(3, 1fr); }
   @media (max-width: 760px) { .trio { grid-template-columns: 1fr; } }
+  .shots { display: grid; gap: 18px; margin-top: 40px; grid-template-columns: repeat(3, 1fr); }
+  .shots figure { margin: 0; }
+  .shots img { width: 100%; height: auto; display: block; border-radius: var(--radius-card); box-shadow: var(--shadow-elevated); border: 1px solid var(--exported-card-border); }
+  .shots figcaption { margin-top: 10px; text-align: center; font-family: var(--font-mono); font-size: 13px; color: var(--muted, #8a8d98); }
+  @media (max-width: 760px) { .shots { grid-template-columns: 1fr; } }
   .tcard { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; box-shadow: var(--shadow-card); }
   .tcard .ic { width: 40px; height: 40px; border-radius: var(--radius-md); display: grid; place-items: center; background: color-mix(in srgb, var(--accent-secondary) 16%, transparent); color: var(--accent-secondary); }
   .tcard .ic svg { width: 20px; height: 20px; }
@@ -475,6 +480,20 @@
   </div>
 </section>
 
+<!-- ============ TERMINAL TUIs ============ -->
+<section id="terminals" style="padding-top:0">
+  <div class="wrap">
+    <span class="eyebrow" data-i18n="term.eyebrow">Terminal</span>
+    <h2 class="title" data-i18n="term.title">Even full-screen TUIs.</h2>
+    <p class="lead" data-i18n="term.lead">Paste or <code>vgrab</code> colored terminal output — and now full-screen apps like <code>htop</code>, <code>lazygit</code>, and Neovim too. Vitrine reconstructs the final screen, every cursor move and color, in your theme.</p>
+    <div class="shots">
+      <figure><img src="screenshots/terminal-htop.png" alt="htop's system monitor reconstructed as a Vitrine image — CPU and memory meters, the process table, and the function-key bar" loading="lazy"><figcaption>htop · One Dark</figcaption></figure>
+      <figure><img src="screenshots/terminal-lazygit.png" alt="The lazygit multi-panel git dashboard reconstructed as a Vitrine image" loading="lazy"><figcaption>lazygit · Dracula</figcaption></figure>
+      <figure><img src="screenshots/terminal-nvim.png" alt="A Neovim editing session reconstructed as a Vitrine image with syntax highlighting" loading="lazy"><figcaption>nvim · Nord</figcaption></figure>
+    </div>
+  </div>
+</section>
+
 <!-- ============ CHANGELOG ============ -->
 <section id="whats-new" style="padding-top:0">
   <div class="wrap">
@@ -579,6 +598,8 @@
       "more.c1h": "Privada por diseño", "more.c1p": "Totalmente local y en sandbox — sin cuenta, sin red por defecto, sin telemetría. Tu código nunca sale de tu Mac.",
       "more.c2h": "Exporta y comparte", "more.c2p": "PNG/PDF retina al portapapeles, a archivo o al menú Compartir. Presets OpenGraph, Story y banner de GitHub, más una CLI <code>vitrine</code>.",
       "more.c3h": "Capturas web", "more.c3p": "Renderiza HTML pegado, o captura una página a uno o varios tamaños — localmente en WebKit, con un aviso de privacidad la primera vez.",
+      "term.eyebrow": "Terminal", "term.title": "Hasta TUIs de pantalla completa.",
+      "term.lead": "Pega o usa <code>vgrab</code> con salida de terminal a color — y ahora también apps de pantalla completa como <code>htop</code>, <code>lazygit</code> y Neovim. Vitrine reconstruye la pantalla final, con cada movimiento del cursor y su color, en tu tema.",
       "cl.eyebrow": "Cambios", "cl.title": "Novedades", "cl.lead": "Se cargan en vivo desde el <code>CHANGELOG.md</code> del proyecto — siempre al día, nada que mantener.",
       "pro.title": "Pásate a PRO cuando lo necesites.",
       "pro.lead": "Libre y de código abierto, para siempre. PRO es una licencia opcional <strong>de pago único</strong> — sin suscripción. La versión gratis no pierde nada: sin marca de agua, sin límite de resolución, sin molestias.",
