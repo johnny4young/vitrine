@@ -12,6 +12,19 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-06-24
+
+### Added
+
+- **Full-screen terminal apps (TUIs) → image.** Vitrine now captures `htop`, `btop`,
+  `vim`, `lazygit`, `k9s`, `tig`, `less`, `man`, and other full-screen terminal apps —
+  not just scrolling output. A cell-buffer terminal emulator reconstructs the program's
+  *final screen* (cursor positioning, screen clears, scroll regions, and the alternate
+  screen) with its colors intact, rendered in your theme; the surrounding shell prompt is
+  left out. It kicks in **automatically** by content — `vgrab htop` captures the dashboard
+  — while plain scrolling output (a `git log`, a test run) keeps rendering the full
+  transcript line by line. See [docs/TERMINAL.md](docs/TERMINAL.md).
+
 ## [0.13.0] - 2026-06-23
 
 ### Removed
