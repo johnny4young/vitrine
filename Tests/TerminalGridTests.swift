@@ -116,6 +116,13 @@ struct TerminalGridTests {
         #expect(plain(stream) == "TUI FRAME")
     }
 
+    @Test func alternateScreenClearedBeforeExitStillCaptures() {
+        // nvim/lazygit erase the whole screen *before* leaving the alt buffer on exit;
+        // the pre-clear snapshot must still recover the frame the user saw.
+        let stream = "\(esc)[?1049h\(esc)[1;1HEDITOR\(esc)[2J\(esc)[?1049lshell$ "
+        #expect(plain(stream) == "EDITOR")
+    }
+
     @Test func stillOnAlternateScreenReturnsItsContent() {
         // The program never left the alt screen (capture taken mid-run) — its buffer is
         // the screen to report, not the stashed primary.

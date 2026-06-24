@@ -55,6 +55,11 @@ struct TerminalScreen {
     /// screen (its exit). That frame is the htop/vim screen the user actually saw, which
     /// the trailing shell prompt on the restored primary screen would otherwise hide.
     private var capturedAltFrame: [[TerminalCell]]?
+    /// A fallback alt-screen frame snapshotted just before an in-alt full clear: some apps
+    /// (`nvim`, `lazygit`) erase the screen *before* leaving the alt buffer on exit, which
+    /// would otherwise blank the frame we capture. Holding the pre-clear copy recovers the
+    /// screen the user actually saw.
+    private var altSnapshot: [[TerminalCell]]?
 
     init(columns: Int = 80, maxRows: Int = 1000) {
         self.columns = max(1, columns)
@@ -322,8 +327,17 @@ struct TerminalScreen {
             padRow(cursorRow, to: cursorCol)
             blank(row: cursorRow, through: cursorCol)
         default:  // 2 / 3 — whole screen
+            // If a full clear would blank a populated alt-screen buffer — apps that erase
+            // the screen right before leaving the alt buffer on exit — keep a pre-clear
+            // copy so the final frame isn't lost.
+            if primaryStash != nil, isPopulated(rows) { altSnapshot = rows }
             for row in rows.indices { blank(row: row) }
         }
+    }
+
+    /// Whether any cell in `frame` was actually drawn (a non-blank cell).
+    private func isPopulated(_ frame: [[TerminalCell]]) -> Bool {
+        frame.contains { row in row.contains { !$0.isBlank } }
     }
 
     private mutating func eraseLine(_ mode: Int) {
@@ -380,7 +394,9 @@ struct TerminalScreen {
 
     private mutating func leaveAltScreen() {
         guard let stash = primaryStash else { return }
-        capturedAltFrame = rows  // the last full TUI frame, before the prompt redraws
+        // The last full TUI frame: the live alt buffer, or the pre-clear snapshot when the
+        // app erased the screen on its way out.
+        capturedAltFrame = isPopulated(rows) ? rows : altSnapshot
         rows = stash.rows
         cursorRow = clampRow(stash.row)
         cursorCol = clampCol(stash.col)
@@ -410,11 +426,10 @@ struct TerminalScreen {
     /// exited, the live buffer when still on the alt screen at end of input, otherwise
     /// the primary buffer.
     private var finalFrame: [[TerminalCell]] {
-        if primaryStash != nil { return rows }  // ended inside the alt screen
-        if let alt = capturedAltFrame, alt.contains(where: { row in row.contains { !$0.isBlank } })
-        {
-            return alt
+        if primaryStash != nil {  // ended inside the alt screen
+            return isPopulated(rows) ? rows : (altSnapshot ?? rows)
         }
+        if let alt = capturedAltFrame, isPopulated(alt) { return alt }
         return rows
     }
 
