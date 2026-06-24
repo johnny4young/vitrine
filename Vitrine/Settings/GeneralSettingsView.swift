@@ -101,14 +101,14 @@ struct GeneralSettingsView: View {
                     }
 
                     // One-click counterpart of pasting the `eval` line by hand:
-                    // adds the vgrab / vlast helpers to the shell startup file.
+                    // adds the vgrab helper to the shell startup file.
                     TokenRow(
                         label: Text("Shell integration"), caption: shellIntegrationCaption
                     ) {
                         HStack(spacing: VitrineTokens.Spacing.xs) {
                             Button("Set Up…") { installShellIntegration() }
                                 .help(
-                                    "Add the vgrab and vlast helpers to your shell startup file."
+                                    "Add the vgrab helper to your shell startup file."
                                 )
                                 .accessibilityIdentifier("install-shell-integration-button")
                             Button("Copy Command") {
@@ -232,7 +232,7 @@ struct GeneralSettingsView: View {
         }
     }
 
-    // MARK: - Shell integration (vgrab / vlast)
+    // MARK: - Shell integration (vgrab)
 
     /// The shell the integration targets, resolved from `$SHELL` (zsh otherwise) —
     /// matching what `vitrine shell-init` emits for the same environment.
@@ -246,7 +246,7 @@ struct GeneralSettingsView: View {
         if let shellIntegrationAddedAt {
             return Text("Added to \(shellIntegrationAddedAt.path)")
         }
-        return Text("Add the vgrab and vlast helpers to your shell")
+        return Text("Add the vgrab helper to your shell")
     }
 
     /// Sandbox-true setup: the user picks their startup file (the panel's grant is
@@ -261,7 +261,7 @@ struct GeneralSettingsView: View {
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
         panel.message = String(
             localized:
-                "Choose your shell startup file (for example .zshrc) to add the vgrab and vlast helpers."
+                "Choose your shell startup file (for example .zshrc) to add the vgrab helper."
         )
         panel.prompt = String(localized: "Add")
         guard panel.runModal() == .OK, let file = panel.url else { return }

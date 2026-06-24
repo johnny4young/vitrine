@@ -1,7 +1,7 @@
 import AppKit
 
 /// The contract for handing captured content from the `vitrine` CLI to the running
-/// app's editor (`vitrine render … --edit`, behind `vgrab -e` / `vlast -e`).
+/// app's editor (`vitrine render … --edit`, behind `vgrab -e`).
 ///
 /// The CLI is a separate process and the app is sandboxed, so content cannot be passed
 /// by temp-file path — the sandbox can't read an arbitrary `/tmp` file the CLI wrote.
