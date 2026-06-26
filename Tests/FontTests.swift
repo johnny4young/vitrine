@@ -20,6 +20,18 @@ struct FontTests {
         #expect(CodeFont.bundled.count == 8)
         #expect(CodeFont.all.count >= 10)
     }
+
+    @Test func advanceReadsTheGlyphCellWidth() {
+        // CodeFont.advance reads the glyph advance via Core Text rather than running
+        // NSAttributedString layout (which can raise an uncatchable NSException and abort
+        // the whole test process on a degraded headless text subsystem). For a monospaced
+        // font every glyph shares one advance, so a digit, a space, and a wide letter match.
+        let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        let zero = CodeFont.advance(of: "0", in: font)
+        #expect(zero > 0)
+        #expect(abs(CodeFont.advance(of: " ", in: font) - zero) < 0.01)
+        #expect(abs(CodeFont.advance(of: "W", in: font) - zero) < 0.01)
+    }
 }
 
 @Suite("Nerd Font glyph cascade")

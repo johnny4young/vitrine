@@ -117,7 +117,7 @@ struct GutterMetrics {
     static let trailingGap: CGFloat = 14
 
     init(font: NSFont, lineCount: Int) {
-        digitWidth = ("0" as NSString).size(withAttributes: [.font: font]).width
+        digitWidth = CodeFont.advance(of: "0", in: font)
         digitColumns = max(2, String(max(lineCount, 1)).count)
     }
 
