@@ -50,6 +50,10 @@ struct CLIOptions: Equatable {
     /// explicit scale is given, the preset's recommended scale is used, mirroring the
     /// GUI's "preset seeds the scale, an explicit value overrides it" rule (CS-020).
     var scale: Int?
+    /// An explicit terminal reconstruction width (columns), or `nil` to infer it from
+    /// the captured output. Only meaningful for `--language terminal`; set by `vgrab -w`
+    /// so a known-width capture wraps exactly as it did in the live terminal (CS-070).
+    var terminalColumns: Int?
     /// The output format. Defaults to PNG; PDF is the supported vector format.
     var format: ExportFormat = .png
     /// The ICC color profile for PNG export (CS-024). PDF ignores this.
@@ -97,6 +101,7 @@ struct CLIOptions: Equatable {
             presetID: presetID, themeID: themeID, transparent: transparent)
         config.code = code
         config.language = language
+        config.terminalColumns = terminalColumns
         return config
     }
 

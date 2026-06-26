@@ -301,4 +301,13 @@ struct TerminalGridTests {
         // keeps every scrolled line (no grid, no cap).
         #expect(ANSIRenderer.plainText("\(esc)[32mok\(esc)[0m\nnext") == "ok\nnext")
     }
+
+    @Test func explicitColumnsOverrideInferenceInGridMode() {
+        // `--terminal-width` flows through ANSIRenderer to the grid emulator. ED puts the
+        // stream in grid mode; a 10-char line then wraps at the pinned width, where the
+        // inferred width (floored at 80) would keep it on one line.
+        let tui = "\(esc)[2JABCDEFGHIJ"
+        #expect(ANSIRenderer.plainText(tui) == "ABCDEFGHIJ")  // inferred ≥ 80: no wrap
+        #expect(ANSIRenderer.plainText(tui, columns: 4) == "ABCD\nEFGH\nIJ")  // pinned to 4
+    }
 }

@@ -110,6 +110,7 @@ struct CLITests {
             "--language", "python",
             "--preset", "opengraph",
             "--scale", "3",
+            "--terminal-width", "100",
             "--format", "png",
             "--profile", "p3",
             "--transparent",
@@ -120,8 +121,22 @@ struct CLITests {
         #expect(options.language == .python)
         #expect(options.presetID == "opengraph")
         #expect(options.scale == 3)
+        #expect(options.terminalColumns == 100)
         #expect(options.profile == .displayP3)
         #expect(options.transparent)
+    }
+
+    @Test func terminalWidthDefaultsToNilAndFlowsIntoTheConfig() throws {
+        // Absent flag → infer (nil); present → carried onto the rendered SnapshotConfig
+        // so the canvas and the text sidecar reconstruct at exactly that width.
+        let inferred = try CLIArguments.parse(["render", "out.log", "-o", "o.png"])
+        #expect(inferred.terminalColumns == nil)
+        #expect(inferred.makeConfig(code: "", language: .terminal).terminalColumns == nil)
+
+        let pinned = try CLIArguments.parse([
+            "render", "out.log", "-o", "o.png", "--terminal-width", "120",
+        ])
+        #expect(pinned.makeConfig(code: "", language: .terminal).terminalColumns == 120)
     }
 
     @Test func shortFlagsAndOrderingAreAccepted() throws {
@@ -334,6 +349,14 @@ struct CLITests {
         }
         #expect(throws: CLIError.invalidValue(flag: "--format", value: "svg")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--format", "svg"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--terminal-width", value: "0")) {
+            try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--terminal-width", "0"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--terminal-width", value: "huge")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--terminal-width", "huge",
+            ])
         }
     }
 
