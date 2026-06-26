@@ -118,15 +118,31 @@ struct WebCaptureControls: View {
     }
 
     private var viewportsRow: some View {
-        TokenRow(label: Text("Viewports"), caption: Text(viewportsFooter)) {
-            HStack(spacing: VitrineTokens.Spacing.xxs + 2) {
+        // Full-width (not a TokenRow) so every viewport chip wraps into view in the narrow
+        // inspector instead of overflowing off the right edge; the label sits above the
+        // chips, matching the theme/font chip pickers.
+        VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
+            Text("Viewports")
+                .font(.system(size: VitrineTokens.FontSize.body))
+                .foregroundStyle(VitrineTokens.Text.primary)
+            FlowLayout(
+                spacing: VitrineTokens.Spacing.xxs + 2, lineSpacing: VitrineTokens.Spacing.xxs + 2
+            ) {
                 ForEach(WebSnapshotConfig.ViewportPreset.Kind.allCases, id: \.self) { kind in
                     viewportChip(kind)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("Viewports")
             .accessibilityIdentifier("web-viewport-picker")
+            Text(viewportsFooter)
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 9)
     }
 
     private var widthRow: some View {
