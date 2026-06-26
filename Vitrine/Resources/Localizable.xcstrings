@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Capture a webpage" : {
+      "comment" : "Web Snapshot empty-state title, URL mode.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura una página web"
+          }
+        }
+      }
+    },
+    "Capture options" : {
+      "comment" : "Web Snapshot inspector: collapsible section holding capture mode and wait strategy.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opciones de captura"
+          }
+        }
+      }
+    },
+    "Render HTML" : {
+      "comment" : "Web Snapshot empty-state title, HTML mode.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza HTML"
+          }
+        }
+      }
+    },
     "Couldn't read the startup file (is it valid UTF-8?). Add the line by hand instead." : {
       "comment" : "Settings General: shell-integration install failure when the chosen startup file exists but can't be read.",
       "localizations" : {

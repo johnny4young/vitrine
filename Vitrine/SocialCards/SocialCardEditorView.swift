@@ -183,12 +183,14 @@ struct SocialCardEditorView: View {
     }
 
     private var emptyPrompt: some View {
+        // Sits over the card's own background gradient (not the neutral stage), so the
+        // copy stays white for legibility on any preset; the rest is tokenized.
         Text("Add a title or a code excerpt to compose your card.")
-            .font(.system(size: 30, weight: .medium))
-            .foregroundStyle(.white.opacity(0.92))
+            .font(.system(size: VitrineTokens.FontSize.largeTitle, weight: .medium))
+            .foregroundStyle(.white)
             .multilineTextAlignment(.center)
             .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
-            .padding(80)
+            .padding(VitrineTokens.Spacing.xxl)
     }
 }
 
@@ -199,10 +201,12 @@ struct SocialCardEditorView: View {
 private struct SocialCardInspector: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject private var themes = CustomThemeStore.shared
+    @State private var showTypography = false
+    @State private var showBackground = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 8) {
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 templateSection
                 contentSection
                 if card.template.showsCode { codeSection }
@@ -295,14 +299,32 @@ private struct SocialCardInspector: View {
     /// Gated through the shared `proGated` modifier, so it runs when PRO is unlocked
     /// and opens the paywall (with a "PRO" badge) when it is not.
     private var brandKitRow: some View {
-        Label("Use Brand Kit", systemImage: "wand.and.stars")
-            .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
-            .foregroundStyle(VitrineTokens.Accent.system)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .proGated(.brandKit) { applyBrandKit() }
-            .help("Fill the footer from your Brand Kit")
-            .accessibilityIdentifier("social-card-use-brand-kit")
+        // A tinted accent pill so the affordance clearly reads as a tappable action
+        // (not a static label). `proGated` runs it when PRO is unlocked and opens the
+        // paywall — with its "PRO" badge — when it is not.
+        HStack(spacing: VitrineTokens.Spacing.xs) {
+            Image(systemName: "wand.and.stars")
+            Text("Use Brand Kit")
+            Spacer(minLength: 0)
+        }
+        .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+        .foregroundStyle(VitrineTokens.Accent.system)
+        .padding(.horizontal, VitrineTokens.Spacing.sm)
+        .padding(.vertical, VitrineTokens.Spacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous)
+                .fill(VitrineTokens.Accent.system.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous)
+                .strokeBorder(
+                    VitrineTokens.Accent.system.opacity(0.30), lineWidth: Brand.Stroke.hairline)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous))
+        .proGated(.brandKit) { applyBrandKit() }
+        .help("Fill the footer from your Brand Kit")
+        .accessibilityIdentifier("social-card-use-brand-kit")
     }
 
     /// Copies the brand kit's handle/project into the footer and turns the logo on.
@@ -321,7 +343,10 @@ private struct SocialCardInspector: View {
     }
 
     private var typographySection: some View {
-        section("Typography") {
+        InspectorDisclosure(
+            label: Text("Typography"), identifier: "social-card-typography-disclosure",
+            isExpanded: $showTypography
+        ) {
             SocialCardFontPicker(fontName: $settings.socialCard.fontName)
             row("Font size") {
                 Slider(
@@ -336,7 +361,10 @@ private struct SocialCardInspector: View {
     }
 
     private var backgroundSection: some View {
-        section("Background") {
+        InspectorDisclosure(
+            label: Text("Background"), identifier: "social-card-background-disclosure",
+            isExpanded: $showBackground
+        ) {
             ChipScroll(topPadding: 2, bottomPadding: 6) {
                 ForEach(GradientPreset.allCases) { preset in
                     GradientSwatch(preset: preset, isSelected: selectedGradient == preset, size: 28)
@@ -428,28 +456,20 @@ private struct SocialCardInspector: View {
 
     // MARK: Chrome helpers
 
-    /// An uppercase-labeled section: a `TokenGroupLabel` over its controls, matching
-    /// the editor inspector's chrome without a tile (the glass column is the surface).
+    /// Local sugar over the shared `InspectorSection` so call sites keep passing a
+    /// `LocalizedStringKey`; the chrome is the shared editor-kit component, so every
+    /// inspector reads with one section metric.
     private func section<Content: View>(
         _ title: LocalizedStringKey, @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 11) {
-            TokenGroupLabel(title: Text(title))
-            content()
-        }
+        InspectorSection(title: Text(title), content: content)
     }
 
-    /// One label + trailing control row.
+    /// Local sugar over the shared `InspectorRow`.
     private func row<Content: View>(
         _ label: LocalizedStringKey, @ViewBuilder control: () -> Content
     ) -> some View {
-        HStack(spacing: 10) {
-            Text(label)
-                .font(.system(size: VitrineTokens.FontSize.body))
-                .foregroundStyle(VitrineTokens.Text.primary)
-            Spacer(minLength: 0)
-            control()
-        }
+        InspectorRow(label: Text(label), content: control)
     }
 
     /// A binding from an optional text field of the card to a non-optional `String`,

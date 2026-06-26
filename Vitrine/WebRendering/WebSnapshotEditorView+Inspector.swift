@@ -7,7 +7,7 @@ extension WebSnapshotEditorView {
 
     var inspector: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 8) {
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 modeSection
                 inputSection
                 optionsSection
@@ -30,7 +30,7 @@ extension WebSnapshotEditorView {
     }
 
     var modeSection: some View {
-        section("Source") {
+        InspectorSection(title: Text("Source")) {
             TokenSegmentedPicker(
                 options: [
                     (WebInputMode.url, Text(verbatim: "URL")),
@@ -48,7 +48,7 @@ extension WebSnapshotEditorView {
     @ViewBuilder var inputSection: some View {
         switch model.mode {
         case .url:
-            section("URL") {
+            InspectorSection(title: Text(verbatim: "URL")) {
                 InspectorTextField(
                     prompt: Text(verbatim: "https://example.com"), text: $model.urlText,
                     onSubmit: attemptCapture, disablesAutocorrection: true
@@ -64,7 +64,7 @@ extension WebSnapshotEditorView {
                 }
             }
         case .html:
-            section("HTML") {
+            InspectorSection(title: Text(verbatim: "HTML")) {
                 InspectorCodeField(
                     text: $model.htmlText, placeholder: "<h1>Hello</h1>", height: 160
                 )
@@ -74,8 +74,8 @@ extension WebSnapshotEditorView {
     }
 
     var optionsSection: some View {
-        section("Output") {
-            WebCaptureControls(settings: settings)
+        InspectorSection(title: Text("Output")) {
+            WebCaptureControls(settings: settings, collapsesAdvanced: true)
         }
     }
 
@@ -104,17 +104,6 @@ extension WebSnapshotEditorView {
                 .foregroundStyle(VitrineTokens.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
             }
-        }
-    }
-
-    // MARK: - Chrome helpers
-
-    func section<Content: View>(
-        _ title: LocalizedStringKey, @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 11) {
-            TokenGroupLabel(title: Text(title))
-            content()
         }
     }
 }

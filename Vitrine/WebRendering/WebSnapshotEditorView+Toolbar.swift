@@ -6,7 +6,7 @@ extension WebSnapshotEditorView {
     // MARK: - Toolbar
 
     var toolbar: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: VitrineTokens.Spacing.sm) {
             HStack(spacing: VitrineTokens.Spacing.xs) {
                 Image(nsImage: NSApp.applicationIconImage)
                     .resizable()
