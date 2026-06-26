@@ -210,7 +210,10 @@ struct TerminalScreen {
             if scalar == "\n" || scalar == "\r" {
                 lineWidth = 0
             } else if scalar.value >= 0x20, scalar.value != 0x7F {
-                lineWidth += 1
+                // Count terminal columns, not scalars: a wide (CJK/emoji) char takes two,
+                // a combining mark none — so an unaddressed wide line isn't under-measured
+                // and wrapped early.
+                lineWidth += CharacterWidth.displayWidth(scalar)
                 maxWidth = max(maxWidth, lineWidth)
             }
             index += 1

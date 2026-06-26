@@ -320,6 +320,12 @@ struct TerminalGridTests {
         #expect(TerminalScreen.inferColumns("\(esc)[1;200Hedge") == 200)  // CUP column
     }
 
+    @Test func inferColumnsCountsWideCharactersAsTwoColumns() {
+        // 50 CJK chars span 100 terminal columns; scalar-counting would under-measure to
+        // the 80 floor and wrap the line early.
+        #expect(TerminalScreen.inferColumns(String(repeating: "你", count: 50)) == 100)
+    }
+
     @Test func inferColumnsIgnoresEscapeBodies() {
         let longURI = "https://example.com/" + String(repeating: "x", count: 200)
         #expect(TerminalScreen.inferColumns("\(esc)]8;;\(longURI)\u{07}link\(esc)]8;;\u{07}") == 80)
