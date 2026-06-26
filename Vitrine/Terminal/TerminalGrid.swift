@@ -35,9 +35,9 @@ struct TerminalCell: Equatable {
 /// Handles: cursor positioning (CUP/CUU-D/CUF-B/CHA/VPA/CNL/CPL, CR/LF/BS/HT), erase
 /// (ED/EL), SGR, autowrap, OSC 8 hyperlinks, save/restore cursor, the alternate-screen
 /// snapshot that makes `htop`/`vim` capturable, charset-designation escapes, and **scroll
-/// regions** (DECSTBM) with scroll-up/down (SU/SD), insert/delete-line (IL/DL), and
-/// reverse-index / index / next-line (RI/IND/NEL). Deferred: wide (double-width)
-/// characters and character insert/delete (ICH/DCH).
+/// regions** (DECSTBM) with scroll-up/down (SU/SD), insert/delete-line (IL/DL),
+/// character insert/delete/erase (ICH/DCH/ECH), and reverse-index / index / next-line
+/// (RI/IND/NEL). Deferred: wide (double-width) characters.
 struct TerminalScreen {
     /// The width the stream was produced at: cursor columns clamp to it and printed text
     /// autowraps at it.
@@ -394,10 +394,19 @@ struct TerminalScreen {
         case "M":
             pendingWrap = false
             deleteLines(Self.at(nums, 0, default: 1))  // DL
+        case "@":
+            pendingWrap = false
+            insertChars(Self.at(nums, 0, default: 1))  // ICH
+        case "P":
+            pendingWrap = false
+            deleteChars(Self.at(nums, 0, default: 1))  // DCH
+        case "X":
+            pendingWrap = false
+            eraseChars(Self.at(nums, 0, default: 1))  // ECH
         case "s": saveCursor()  // SCP
         case "u": restoreCursor()  // RCP
         default:
-            break  // ICH/DCH/ECH and wide chars are deferred
+            break  // remaining CSI sequences have no effect on a static capture
         }
     }
 
@@ -511,6 +520,42 @@ struct TerminalScreen {
 
     private func blankRows(_ count: Int) -> [[TerminalCell]] {
         Array(repeating: [], count: count)
+    }
+
+    // MARK: - Character insert / delete (within the cursor row)
+
+    /// Inserts `count` blank cells at the cursor, shifting the rest of the row right; cells
+    /// pushed past the right margin fall off. The `ICH` a line editor uses to open space
+    /// mid-line (e.g. shell autosuggestion, `readline` insert mode).
+    private mutating func insertChars(_ count: Int) {
+        guard rows.indices.contains(cursorRow) else { return }
+        let n = min(max(1, count), columns - cursorCol)
+        guard n > 0 else { return }
+        padRow(cursorRow, to: cursorCol)
+        rows[cursorRow].insert(contentsOf: Array(repeating: .blank, count: n), at: cursorCol)
+        if rows[cursorRow].count > columns {
+            rows[cursorRow].removeLast(rows[cursorRow].count - columns)
+        }
+    }
+
+    /// Deletes `count` cells at the cursor, pulling the rest of the row left and backfilling
+    /// blanks at the right (those trailing blanks are trimmed on output). The `DCH` a line
+    /// editor uses to close space mid-line.
+    private mutating func deleteChars(_ count: Int) {
+        guard rows.indices.contains(cursorRow), cursorCol < rows[cursorRow].count else { return }
+        let n = min(max(1, count), rows[cursorRow].count - cursorCol)
+        rows[cursorRow].removeSubrange(cursorCol..<(cursorCol + n))
+        rows[cursorRow].append(contentsOf: Array(repeating: .blank, count: n))
+    }
+
+    /// Blanks `count` cells from the cursor in place, leaving the rest of the row where it
+    /// is. `ECH` — like erase-to-end-of-line (`EL`) from the cursor, but bounded to a count.
+    private mutating func eraseChars(_ count: Int) {
+        guard rows.indices.contains(cursorRow) else { return }
+        padRow(cursorRow, to: cursorCol)
+        let end = min(cursorCol + max(1, count), rows[cursorRow].count)
+        guard cursorCol < end else { return }
+        for col in cursorCol..<end { rows[cursorRow][col] = .blank }
     }
 
     // MARK: - Erase

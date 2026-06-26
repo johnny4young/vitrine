@@ -223,6 +223,34 @@ struct TerminalGridTests {
         #expect(screen.plainText() == "one\n\ntwo\nthree")  // 'four' pushed off the bottom
     }
 
+    // MARK: - Character insert / delete / erase (ICH / DCH / ECH)
+
+    @Test func insertCharsShiftsTheRowRight() {
+        // ICH opens blank space at the cursor, pushing the rest right.
+        #expect(plain("ABCDEF\(esc)[3D\(esc)[2@") == "ABC  DEF")
+    }
+
+    @Test func insertCharsPushedPastWidthFallOff() {
+        // ICH at the line start on a narrow screen drops the cells pushed past the margin.
+        #expect(plain("ABCD\(esc)[1G\(esc)[2@", columns: 4) == "  AB")
+    }
+
+    @Test func deleteCharsPullsTheRowLeft() {
+        // DCH removes cells at the cursor; the tail slides left (backfilled blanks trim off).
+        #expect(plain("ABCDEF\(esc)[3D\(esc)[2P") == "ABCF")
+    }
+
+    @Test func eraseCharsBlanksInPlaceWithoutShifting() {
+        // ECH blanks a bounded count from the cursor but leaves the rest where it is.
+        #expect(plain("ABCDEF\(esc)[3D\(esc)[2X") == "ABC  F")
+    }
+
+    @Test func characterEditCountDefaultsToOne() {
+        // An omitted count means 1, the CSI convention.
+        #expect(plain("ABC\(esc)[1G\(esc)[P") == "BC")  // DCH deletes the A
+        #expect(plain("ABC\(esc)[1G\(esc)[@") == " ABC")  // ICH opens one blank at the start
+    }
+
     @Test func inferRowsFromBottomAddressing() {
         #expect(TerminalScreen.inferRows("\(esc)[34;1Hstatus") == 34)  // the addressed bottom
         #expect(TerminalScreen.inferRows("plain \(esc)[31mtext\(esc)[0m") == 40)  // no addressing
