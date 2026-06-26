@@ -120,7 +120,7 @@ struct CodeEditorView: NSViewRepresentable {
         func configure(_ textView: NSTextView) {
             let font = self.font
             textView.font = font
-            let spaceWidth = (" " as NSString).size(withAttributes: [.font: font]).width
+            let spaceWidth = CodeFont.advance(of: " ", in: font)
             let style = NSMutableParagraphStyle()
             style.tabStops = []
             style.defaultTabInterval = max(spaceWidth * 4, 1)
