@@ -42,6 +42,18 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.15.0",
+            headline: "Sharper terminal captures — emoji, CJK, exact width",
+            highlights: [
+                "Full-screen terminal captures now handle wide characters: CJK text and "
+                    + "emoji line up correctly instead of drifting, so an htop or a 你好 / 🚀 "
+                    + "dashboard reconstructs cleanly.",
+                "vgrab -w <cols> now pins the exact reconstruction width, so wide output "
+                    + "like git log --graph wraps just as it did in your terminal.",
+                "In-place line edits — shell autosuggestion and the like — reconstruct "
+                    + "faithfully, with wide characters kept whole.",
+            ]),
+        ReleaseNote(
             version: "0.14.0",
             headline: "Capture full-screen terminal apps",
             highlights: [

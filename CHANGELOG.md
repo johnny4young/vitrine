@@ -12,6 +12,27 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-06-26
+
+### Added
+
+- **Wide (double-width) characters in terminal captures.** The cell-buffer emulator now
+  measures CJK ideographs and emoji as two columns and combining marks as zero, so a
+  full-screen TUI dense with `你好` / `🚀` / accented text reconstructs without column
+  drift — the value columns of an `htop` or a CJK dashboard line up where the program drew
+  them.
+- **`vitrine render --terminal-width <n>`** pins the reconstruction width (1–1000) instead
+  of inferring it from the captured bytes, for pixel-exact wraps. `vgrab -w <cols>` now
+  passes it through (alongside the `COLUMNS` it already exports for the captured program)
+  and validates the value in zsh, bash, and fish.
+
+### Changed
+
+- **Faithful in-place line edits in terminal captures.** The emulator now honors character
+  insert/delete/erase (`ICH` / `DCH` / `ECH`), so shells with inline autosuggestion and
+  other programs that edit a line in place reconstruct correctly. Wide characters stay
+  intact across edits, erases, and line clears — no orphaned half-glyphs.
+
 ## [0.14.0] - 2026-06-24
 
 ### Added
