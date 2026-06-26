@@ -1,17 +1,29 @@
 import Foundation
 
-/// One cell of a reconstructed terminal screen: a single visible scalar and the SGR
-/// style it was drawn with. A blank cell is a space in the default style.
+/// One cell of a reconstructed terminal screen and the SGR style it was drawn with. A
+/// blank cell is a space in the default style.
 struct TerminalCell: Equatable {
-    var scalar: Unicode.Scalar
+    /// What occupies the cell: a grapheme — a base scalar plus any combining marks — or
+    /// the right half of a wide (double-width) character to its left, a placeholder that
+    /// owns no glyph and is never emitted (the head to its left carries the text).
+    enum Content: Equatable {
+        case grapheme(String)
+        case continuation
+    }
+
+    var content: Content
     var style: ANSIStyle
 
     /// An empty cell — a space with no styling.
-    static let blank = TerminalCell(scalar: " ", style: ANSIStyle())
+    static let blank = TerminalCell(content: .grapheme(" "), style: ANSIStyle())
 
     /// Whether the cell is an unstyled space, i.e. nothing was drawn here. Trailing
-    /// blanks are trimmed when the screen is flattened into runs.
-    var isBlank: Bool { scalar == " " && style == ANSIStyle() }
+    /// blanks are trimmed when the screen is flattened into runs. A continuation cell is
+    /// never blank: its head to the left is live content.
+    var isBlank: Bool {
+        guard case .grapheme(" ") = content else { return false }
+        return style == ANSIStyle()
+    }
 }
 
 /// A cell-buffer VT emulator: replays a stream of terminal output that addresses the
@@ -36,8 +48,9 @@ struct TerminalCell: Equatable {
 /// (ED/EL), SGR, autowrap, OSC 8 hyperlinks, save/restore cursor, the alternate-screen
 /// snapshot that makes `htop`/`vim` capturable, charset-designation escapes, and **scroll
 /// regions** (DECSTBM) with scroll-up/down (SU/SD), insert/delete-line (IL/DL),
-/// character insert/delete/erase (ICH/DCH/ECH), and reverse-index / index / next-line
-/// (RI/IND/NEL). Deferred: wide (double-width) characters.
+/// character insert/delete/erase (ICH/DCH/ECH), reverse-index / index / next-line
+/// (RI/IND/NEL), and **wide (double-width CJK/emoji) characters** plus combining marks
+/// (via ``CharacterWidth``), which advance the cursor by 2 and 0 columns respectively.
 struct TerminalScreen {
     /// The width the stream was produced at: cursor columns clamp to it and printed text
     /// autowraps at it.
@@ -422,17 +435,76 @@ struct TerminalScreen {
     // MARK: - Drawing
 
     private mutating func putChar(_ scalar: Unicode.Scalar) {
+        let width = CharacterWidth.displayWidth(scalar)
+        // A combining / zero-width mark stacks on the previous cell without advancing. If
+        // there is nothing to stack on (line start), it falls through and prints as width 1.
+        if width == 0, appendCombining(scalar) { return }
+
         if pendingWrap {
             pendingWrap = false
             cursorCol = 0
             indexDown()
         }
-        padRow(cursorRow, to: cursorCol)
-        rows[cursorRow][cursorCol] = TerminalCell(scalar: scalar, style: style)
-        if cursorCol == columns - 1 {
+        let cells = max(1, width)  // a base-less combining mark draws as a single cell
+        // A wide char needs two columns; if only the last one is free, wrap so it isn't
+        // split across the right edge.
+        if cells == 2, cursorCol == columns - 1 {
+            cursorCol = 0
+            indexDown()
+        }
+        writeCell(TerminalCell(content: .grapheme(String(scalar)), style: style), at: cursorCol)
+        if cells == 2 {
+            writeCell(TerminalCell(content: .continuation, style: style), at: cursorCol + 1)
+        }
+        let last = cursorCol + cells - 1
+        if last >= columns - 1 {
+            cursorCol = columns - 1
             pendingWrap = true
         } else {
-            cursorCol += 1
+            cursorCol = last + 1
+        }
+    }
+
+    /// Stacks a combining / zero-width `scalar` onto the most recent grapheme (skipping a
+    /// wide char's continuation back to its head), without moving the cursor. Returns
+    /// `false` when there is no base to combine with (e.g. a mark at the line start), so
+    /// the caller can draw it as an ordinary cell instead of dropping it.
+    private mutating func appendCombining(_ scalar: Unicode.Scalar) -> Bool {
+        guard rows.indices.contains(cursorRow) else { return false }
+        // When autowrap is pending the last glyph sits at the cursor; otherwise it's behind.
+        var col = pendingWrap ? cursorCol : cursorCol - 1
+        if col >= 0, rows[cursorRow].indices.contains(col),
+            case .continuation = rows[cursorRow][col].content
+        {
+            col -= 1
+        }
+        guard col >= 0, rows[cursorRow].indices.contains(col),
+            case .grapheme(let base) = rows[cursorRow][col].content
+        else { return false }
+        rows[cursorRow][col] = TerminalCell(
+            content: .grapheme(base + String(scalar)), style: rows[cursorRow][col].style)
+        return true
+    }
+
+    /// Writes `cell` at (`cursorRow`, `col`), growing the row to reach it and dissolving any
+    /// wide character it would half-overwrite (so a redraw never leaves a stray half-glyph).
+    private mutating func writeCell(_ cell: TerminalCell, at col: Int) {
+        padRow(cursorRow, to: col)
+        clearWideOverlap(row: cursorRow, col: col)
+        rows[cursorRow][col] = cell
+    }
+
+    /// Blanks the orphaned partner of a wide character straddling (`row`, `col`): if the
+    /// target is a continuation, blank its head to the left; if it is a wide head, blank
+    /// the continuation to its right.
+    private mutating func clearWideOverlap(row: Int, col: Int) {
+        guard rows.indices.contains(row), rows[row].indices.contains(col) else { return }
+        if case .continuation = rows[row][col].content {
+            if rows[row].indices.contains(col - 1) { rows[row][col - 1] = .blank }
+        } else if rows[row].indices.contains(col + 1),
+            case .continuation = rows[row][col + 1].content
+        {
+            rows[row][col + 1] = .blank
         }
     }
 
@@ -701,14 +773,14 @@ struct TerminalScreen {
             out.append(ANSIRun(text: text, style: runStyle))
             text = ""
         }
-        func emit(_ scalar: Unicode.Scalar, _ cellStyle: ANSIStyle) {
+        func emit(_ fragment: String, _ cellStyle: ANSIStyle) {
             if text.isEmpty {
                 runStyle = cellStyle
             } else if cellStyle != runStyle {
                 flush()
                 runStyle = cellStyle
             }
-            text.unicodeScalars.append(scalar)
+            text += fragment
         }
 
         for rowIndex in 0...lastRow {
@@ -717,7 +789,10 @@ struct TerminalScreen {
             var lastCol = row.count - 1
             while lastCol >= 0, row[lastCol].isBlank { lastCol -= 1 }
             if lastCol >= 0 {
-                for col in 0...lastCol { emit(row[col].scalar, row[col].style) }
+                for col in 0...lastCol {
+                    // A continuation cell owns no glyph — its wide head already emitted it.
+                    if case .grapheme(let g) = row[col].content { emit(g, row[col].style) }
+                }
             }
             if rowIndex < lastRow { emit("\n", ANSIStyle()) }
         }

@@ -251,6 +251,45 @@ struct TerminalGridTests {
         #expect(plain("ABC\(esc)[1G\(esc)[@") == " ABC")  // ICH opens one blank at the start
     }
 
+    // MARK: - Wide (double-width) characters & combining marks
+
+    @Test func wideCharacterAdvancesTwoColumns() {
+        // A CJK char occupies two cells, so a following char lands two columns on — no
+        // overwrite of its right half.
+        #expect(plain("AB你CD") == "AB你CD")
+        // Proof via absolute positioning: 你 fills columns 1-2, so column 3 is just after.
+        #expect(plain("你\(esc)[3GX") == "你X")
+    }
+
+    @Test func wideCharacterAutowrapsInsteadOfSplitting() {
+        // With a single column left, a wide char wraps to the next line rather than
+        // straddling the right edge.
+        #expect(plain("AB你", columns: 3) == "AB\n你")
+    }
+
+    @Test func emojiCountsAsWide() {
+        #expect(plain("🚀X") == "🚀X")
+        #expect(plain("A🚀", columns: 2) == "A\n🚀")  // wraps, not split
+    }
+
+    @Test func combiningMarkRidesTheBaseWithoutAdvancing() {
+        // e + U+0301 (combining acute) share one cell, so on a 2-column screen "éXY" still
+        // wraps after the X — the mark consumed no column of its own.
+        let acute = "\u{0301}"
+        #expect(plain("e\(acute)XY", columns: 2) == "e\(acute)X\nY")
+    }
+
+    @Test func overwritingAWideCharClearsItsOrphanedHalf() {
+        // Redraw over a wide char: the orphaned half must not survive as a stray glyph.
+        #expect(plain("你\(esc)[1GX") == "X")  // overwrite the head → continuation cleared
+        #expect(plain("你\(esc)[2GY") == " Y")  // overwrite the tail → headless half cleared
+    }
+
+    @Test func cjkLineRoundTripsThroughTheGrid() {
+        // A full CJK line in an addressed (grid-mode) frame reconstructs intact.
+        #expect(plain("\(esc)[2J\(esc)[1;1H日本語 test") == "日本語 test")
+    }
+
     @Test func inferRowsFromBottomAddressing() {
         #expect(TerminalScreen.inferRows("\(esc)[34;1Hstatus") == 34)  // the addressed bottom
         #expect(TerminalScreen.inferRows("plain \(esc)[31mtext\(esc)[0m") == 40)  // no addressing
