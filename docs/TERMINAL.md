@@ -95,9 +95,9 @@ vgrab !!                # capture a command you already ran (re-runs the last on
   `script`), so the program emits its colors automatically, captures the output, and
   copies the rendered image to the clipboard. Use it when you're *about to* run
   something. It returns the command's own exit status, so it composes
-  (`vgrab make && …`), and **`vgrab -w 100 <command>`** sets the capture width
-  (`COLUMNS`) so wide output like `git log --graph` wraps consistently — a best effort,
-  since tools that query the terminal size directly ignore it.
+  (`vgrab make && …`), and **`vgrab -w 100 <command>`** pins the capture width: it exports
+  `COLUMNS` for the program (best effort — tools that query the tty directly ignore it) and
+  passes `--terminal-width` so Vitrine reconstructs wraps at exactly that width.
 - **Already ran something?** Recall it and prepend `vgrab` — `vgrab !!` (zsh/bash)
   expands to your last command and captures it; in any shell, press ↑ and add `vgrab`
   plus a space to the front. This re-runs the command, so it's ideal for read-only output (a
@@ -197,15 +197,18 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
 
 ## Roadmap
 
-Full-screen TUI capture shipped (the cell-buffer emulator described in
-[Full-screen apps (TUIs)](#full-screen-apps-tuis)), with a fixed-height screen that
-**scrolls** like a real terminal — so pagers (`less`, `man`, `bat`) and anything that
-draws from the bottom line reconstruct correctly — plus scroll regions (`DECSTBM`), scroll
-up/down, and line insert/delete. Still deferred, with the technical reason each is out:
+Full-screen TUI capture is feature-complete (the cell-buffer emulator described in
+[Full-screen apps (TUIs)](#full-screen-apps-tuis)): a fixed-height screen that **scrolls**
+like a real terminal — so pagers (`less`, `man`, `bat`) and anything that draws from the
+bottom line reconstruct correctly — plus scroll regions (`DECSTBM`), scroll up/down, line
+and character insert/delete (`ICH`/`DCH`/`ECH`), **wide (double-width) CJK/emoji characters
+and combining marks**, and an explicit capture width.
 
-- **Wide (double-width) characters.** CJK and emoji occupy two cells in a real terminal;
-  the grid advances the cursor by one per scalar, so a frame dense with double-width
-  glyphs can misalign. ASCII, box-drawing, and Powerline/Nerd glyphs (all single-width)
-  are unaffected.
-- **Explicit capture size.** The replay width is inferred from the content; passing the
-  real `COLUMNS` (via `vgrab -w` / a `--terminal-width` flag) would make wraps pixel-exact.
+- **Wide characters** advance the cursor two columns (combining marks zero), so a frame
+  dense with CJK or emoji no longer drifts; ASCII, box-drawing, and Powerline/Nerd glyphs
+  are single-width as before. One caveat is font-level: the image is laid out as flowed
+  monospaced text, so the *pixel* alignment of a wide glyph still depends on your code
+  font's CJK/emoji advance — the cell model is exact, the rendering is as good as the font.
+- **Explicit capture width** — `vgrab -w <cols>` (or `vitrine render --terminal-width`)
+  pins the replay width instead of inferring it from the content, so wraps match what you
+  saw live.
