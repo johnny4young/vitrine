@@ -169,6 +169,15 @@ struct SocialCardEditorView: View {
                         if !card.isRenderable { emptyPrompt }
                     }
                     .scaleEffect(scale)
+                    // `scaleEffect` does not shrink the layout footprint, so pin it to the
+                    // scaled size — otherwise the full-size 1200×630 card stays full-width
+                    // in layout and its centered overflow is clipped to one side, leaving
+                    // the card off-center in the stage (the editor's fix). Kept on the card
+                    // (with its empty-state overlay) so the overlay scales and stays put.
+                    .frame(
+                        width: SocialCardModel.defaultSize.width * scale,
+                        height: SocialCardModel.defaultSize.height * scale
+                    )
                     .animation(.easeInOut(duration: 0.2), value: scale)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
