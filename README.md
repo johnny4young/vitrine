@@ -13,7 +13,7 @@ gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so) and
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v0.14.0%20shipped-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v0.15.0%20shipped-brightgreen.svg)](#status)
 
 </div>
 
@@ -207,7 +207,7 @@ Shortcuts and App Intents.
 - 🍫 Native **menu-bar app** (`MenuBarExtra`, `LSUIElement` — no Dock icon, no app switcher).
 - ⌨️ Configurable **global hotkey** (`⇧⌘S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
-- 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact — including **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — and a copyable-text sidecar can ship the output as text alongside the image. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
+- 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact — including **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included — and a copyable-text sidecar can ship the output as text alongside the image. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
 - ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows, lines, rectangles, text callouts, a highlighter, blur/redaction boxes, and numbered counters. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
@@ -421,7 +421,7 @@ to leave the repo:
 
 ## Status
 
-🟢 **v0.14.0 — shipped and stable.** Everything under [Features](#features) is built and
+🟢 **v0.15.0 — shipped and stable.** Everything under [Features](#features) is built and
 driven by one design-token system ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in
 light and dark. It is covered by a Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
