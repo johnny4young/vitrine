@@ -39,7 +39,7 @@ extension WebSnapshotEditorView {
     var resultsFilmstrip: some View {
         if model.results.count > 1 {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                HStack(spacing: VitrineTokens.Spacing.xs + 2) {
                     if model.boardAsset != nil {
                         boardTile
                     }
@@ -47,8 +47,8 @@ extension WebSnapshotEditorView {
                         filmstripTile(result)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, VitrineTokens.Spacing.md)
+                .padding(.vertical, VitrineTokens.Spacing.xs + 2)
             }
             .background(VitrineTokens.Surface.window)
             .overlay(alignment: .top) {
@@ -61,37 +61,17 @@ extension WebSnapshotEditorView {
     }
 
     func filmstripTile(_ result: CapturedViewport) -> some View {
-        let isSelected = previewedKind == result.kind
-        return Button {
+        resultTile(
+            asset: result.thumbnailAsset,
+            label: Text(verbatim: result.label),
+            emphasized: false,
+            isSelected: previewedKind == result.kind,
+            identifier: "web-snapshot-result-\(result.kind.rawValue)",
+            accessibilityLabel: Text(verbatim: result.label)
+        ) {
             previewedKind = result.kind
             model.renderedAsset = result.asset
-        } label: {
-            VStack(spacing: 4) {
-                Image(nsImage: nsImage(from: result.thumbnailAsset))
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 92, height: 58)
-                    .background(VitrineTokens.Surface.stage)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .strokeBorder(
-                                isSelected
-                                    ? VitrineTokens.Accent.system : VitrineTokens.Line.border,
-                                lineWidth: isSelected ? 2 : Brand.Stroke.hairline))
-                Text(verbatim: result.label)
-                    .font(.system(size: 11))
-                    .foregroundStyle(
-                        isSelected ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
-                    )
-                    .lineLimit(1)
-            }
-            .frame(width: 96)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(result.label)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-        .accessibilityIdentifier("web-snapshot-result-\(result.kind.rawValue)")
     }
 
     /// The leading filmstrip tile for the composite responsive board (CS-044). Selected
@@ -100,39 +80,65 @@ extension WebSnapshotEditorView {
     @ViewBuilder
     var boardTile: some View {
         if let board = model.boardAsset {
-            let isSelected = previewedKind == nil
-            Button {
+            resultTile(
+                asset: model.boardThumbnailAsset ?? board,
+                label: Text("Board"),
+                emphasized: true,
+                isSelected: previewedKind == nil,
+                identifier: "web-snapshot-result-board",
+                accessibilityLabel: Text("Responsive board")
+            ) {
                 previewedKind = nil
                 model.renderedAsset = board
-            } label: {
-                VStack(spacing: 4) {
-                    Image(nsImage: nsImage(from: model.boardThumbnailAsset ?? board))
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 92, height: 58)
-                        .background(VitrineTokens.Surface.stage)
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .strokeBorder(
-                                    isSelected
-                                        ? VitrineTokens.Accent.system : VitrineTokens.Line.border,
-                                    lineWidth: isSelected ? 2 : Brand.Stroke.hairline))
-                    Text("Board")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(
-                            isSelected ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
-                        )
-                        .lineLimit(1)
-                }
-                .frame(width: 96)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Responsive board"))
-            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-            .accessibilityIdentifier("web-snapshot-result-board")
         }
     }
+
+    /// One filmstrip thumbnail — a viewport result or the composite board. Tokenized
+    /// preview tile with an accent ring when it is the selected export target, so both
+    /// callers share one metric instead of hand-tuned sizes.
+    private func resultTile(
+        asset: RenderedAsset, label: Text, emphasized: Bool, isSelected: Bool,
+        identifier: String, accessibilityLabel: Text, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: VitrineTokens.Spacing.xxs) {
+                Image(nsImage: nsImage(from: asset))
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: Self.tileSize.width, height: Self.tileSize.height)
+                    .background(VitrineTokens.Surface.stage)
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: VitrineTokens.Radius.sm, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: VitrineTokens.Radius.sm, style: .continuous)
+                            .strokeBorder(
+                                isSelected
+                                    ? VitrineTokens.Accent.system : VitrineTokens.Line.border,
+                                lineWidth: isSelected ? 2 : Brand.Stroke.hairline))
+                label
+                    .font(
+                        .system(
+                            size: VitrineTokens.FontSize.caption,
+                            weight: emphasized ? .medium : .regular)
+                    )
+                    .foregroundStyle(
+                        isSelected ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary
+                    )
+                    .lineLimit(1)
+            }
+            .frame(width: Self.tileSize.width + VitrineTokens.Spacing.xxs)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityIdentifier(identifier)
+    }
+
+    /// The filmstrip thumbnail size (CS-044): a 16:10-ish tile big enough to read each
+    /// viewport at a glance without crowding the strip.
+    private static var tileSize: CGSize { CGSize(width: 92, height: 58) }
 
     /// The in-flight state: a spinner, a localized "loading locally" line, and — for a
     /// URL — the host shown verbatim, so it is always transparent which page is loading
@@ -159,25 +165,30 @@ extension WebSnapshotEditorView {
         .accessibilityAddTraits(.updatesFrequently)
     }
 
+    /// The empty state: a branded placeholder (mark + copy over the signature wash),
+    /// matching the editor's empty state. Copy switches on the source mode.
     var emptyView: some View {
-        messageView(
-            systemImage: model.mode == .url ? "globe" : "chevron.left.forwardslash.chevron.right",
-            text: model.mode == .url
-                ? String(localized: "Enter a URL, then Capture to snapshot the page.")
-                : String(localized: "Paste HTML, then Render to snapshot it."))
+        EmptyStateView(
+            title: model.mode == .url ? "Capture a webpage" : "Render HTML",
+            message: model.mode == .url
+                ? "Enter a URL, then Capture to snapshot the page."
+                : "Paste HTML, then Render to snapshot it."
+        )
     }
 
+    /// The error state: an icon + message centered on the stage (the empty state uses
+    /// the branded `EmptyStateView`; an error is not a "nothing here yet" state).
     func messageView(systemImage: String, text: String) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: VitrineTokens.Spacing.sm) {
             Image(systemName: systemImage)
-                .font(.system(size: 34, weight: .light))
+                .font(.system(size: 32, weight: .light))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
             Text(text)
-                .font(.system(size: 14))
+                .font(.system(size: VitrineTokens.FontSize.body))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 320)
         }
-        .padding(40)
+        .padding(VitrineTokens.Spacing.xl)
     }
 }

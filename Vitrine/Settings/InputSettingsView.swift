@@ -89,9 +89,37 @@ struct WebCaptureConsentRow: View {
 struct WebCaptureControls: View {
     @ObservedObject var settings: AppSettings
 
+    /// When true, the capture-mode / wait-strategy controls fold into an
+    /// `InspectorDisclosure` so the Web Snapshot inspector leads with the viewport
+    /// selection; Settings passes the default `false` and shows every row inline.
+    var collapsesAdvanced = false
+    @State private var showAdvanced = false
+
     var body: some View {
+        viewportsRow
+        if settings.webCapture.viewports.contains(.custom) {
+            widthRow
+            heightRow
+        }
+        if collapsesAdvanced {
+            InspectorDisclosure(
+                label: Text("Capture options"), identifier: "web-advanced-disclosure",
+                isExpanded: $showAdvanced
+            ) {
+                captureModeRow
+                waitRow
+                if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
+            }
+        } else {
+            captureModeRow
+            waitRow
+            if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
+        }
+    }
+
+    private var viewportsRow: some View {
         TokenRow(label: Text("Viewports"), caption: Text(viewportsFooter)) {
-            HStack(spacing: 6) {
+            HStack(spacing: VitrineTokens.Spacing.xxs + 2) {
                 ForEach(WebSnapshotConfig.ViewportPreset.Kind.allCases, id: \.self) { kind in
                     viewportChip(kind)
                 }
@@ -99,35 +127,39 @@ struct WebCaptureControls: View {
             .accessibilityLabel("Viewports")
             .accessibilityIdentifier("web-viewport-picker")
         }
+    }
 
-        if settings.webCapture.viewports.contains(.custom) {
-            TokenRow(label: Text("Width")) {
-                Stepper(
-                    value: $settings.webCapture.customViewportWidth,
-                    in: customDimensionRange, step: 10
-                ) {
-                    Text(verbatim: "\(settings.webCapture.customViewportWidth) pt")
-                        .font(.system(size: VitrineTokens.FontSize.subhead))
-                        .foregroundStyle(VitrineTokens.Text.secondary)
-                }
-                .accessibilityLabel("Width")
-                .accessibilityIdentifier("web-custom-width-stepper")
+    private var widthRow: some View {
+        TokenRow(label: Text("Width")) {
+            Stepper(
+                value: $settings.webCapture.customViewportWidth,
+                in: customDimensionRange, step: 10
+            ) {
+                Text(verbatim: "\(settings.webCapture.customViewportWidth) pt")
+                    .font(.system(size: VitrineTokens.FontSize.subhead))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
             }
-
-            TokenRow(label: Text("Height")) {
-                Stepper(
-                    value: $settings.webCapture.customViewportHeight,
-                    in: customDimensionRange, step: 10
-                ) {
-                    Text(verbatim: "\(settings.webCapture.customViewportHeight) pt")
-                        .font(.system(size: VitrineTokens.FontSize.subhead))
-                        .foregroundStyle(VitrineTokens.Text.secondary)
-                }
-                .accessibilityLabel("Height")
-                .accessibilityIdentifier("web-custom-height-stepper")
-            }
+            .accessibilityLabel("Width")
+            .accessibilityIdentifier("web-custom-width-stepper")
         }
+    }
 
+    private var heightRow: some View {
+        TokenRow(label: Text("Height")) {
+            Stepper(
+                value: $settings.webCapture.customViewportHeight,
+                in: customDimensionRange, step: 10
+            ) {
+                Text(verbatim: "\(settings.webCapture.customViewportHeight) pt")
+                    .font(.system(size: VitrineTokens.FontSize.subhead))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+            }
+            .accessibilityLabel("Height")
+            .accessibilityIdentifier("web-custom-height-stepper")
+        }
+    }
+
+    private var captureModeRow: some View {
         TokenRow(label: Text("Capture"), caption: Text(captureFooter)) {
             TokenSegmentedPicker(
                 options: [
@@ -139,7 +171,9 @@ struct WebCaptureControls: View {
             .accessibilityLabel("Capture")
             .accessibilityIdentifier("web-capture-mode-picker")
         }
+    }
 
+    private var waitRow: some View {
         TokenRow(label: Text("Wait until"), caption: Text(waitFooter)) {
             TokenSegmentedPicker(
                 options: [
@@ -152,17 +186,17 @@ struct WebCaptureControls: View {
             .accessibilityLabel("Wait until")
             .accessibilityIdentifier("web-wait-strategy-picker")
         }
+    }
 
-        if settings.webCapture.waitKind != .domContentLoaded {
-            TokenRow(label: Text("Extra wait")) {
-                Stepper(value: $settings.webCapture.waitSeconds, in: waitSecondsRange, step: 1) {
-                    Text(waitSecondsLabel)
-                        .font(.system(size: VitrineTokens.FontSize.subhead))
-                        .foregroundStyle(VitrineTokens.Text.secondary)
-                }
-                .accessibilityLabel("Extra wait")
-                .accessibilityIdentifier("web-wait-seconds-stepper")
+    private var extraWaitRow: some View {
+        TokenRow(label: Text("Extra wait")) {
+            Stepper(value: $settings.webCapture.waitSeconds, in: waitSecondsRange, step: 1) {
+                Text(waitSecondsLabel)
+                    .font(.system(size: VitrineTokens.FontSize.subhead))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
             }
+            .accessibilityLabel("Extra wait")
+            .accessibilityIdentifier("web-wait-seconds-stepper")
         }
     }
 
