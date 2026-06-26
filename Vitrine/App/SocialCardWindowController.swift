@@ -50,7 +50,7 @@ final class SocialCardWindowController: NSObject {
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingController(
             rootView: SocialCardEditorView().environmentObject(AppSettings.shared))
-        let window = NSWindow(contentViewController: hosting)
+        let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = String(localized: "Social Card")
         window.styleMask = [
             .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView,
