@@ -22,6 +22,10 @@ struct SocialCardEditorView: View {
                     .frame(width: 320)
             }
         }
+        // Merge the toolbar into the title bar so the title sits in the traffic-light row
+        // (the editor pattern, CS-037): extending into the top safe area pulls the glass
+        // toolbar to the window edge, with the traffic lights floating over its leading 86 pt.
+        .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 860, minHeight: 560)
         .background(VitrineTokens.Surface.window)
         .tint(VitrineTokens.Accent.system)
