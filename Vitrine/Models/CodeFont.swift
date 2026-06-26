@@ -93,6 +93,31 @@ enum CodeFont {
         ]
     }
 
+    // MARK: - Glyph metrics
+
+    /// The horizontal advance of `character` in `font`, read straight from the font's
+    /// metrics table via Core Text.
+    ///
+    /// Used instead of `NSString.size(withAttributes:)` deliberately: that path runs full
+    /// `NSAttributedString` text layout, which on a degraded headless text subsystem (a CI
+    /// runner with a broken font/render stack) raises an uncatchable Objective-C
+    /// `NSException` from inside UIFoundation and aborts the *entire* test process. Reading
+    /// the glyph advance only touches the font's metrics — no layout, no rasterization — so
+    /// it can't trip that path. For a monospaced font this equals the cell advance, so it is
+    /// a drop-in replacement for measuring a digit or space column.
+    static func advance(of character: Character, in font: NSFont) -> CGFloat {
+        let ctFont = font as CTFont
+        var unichars = Array(String(character).utf16)
+        var glyphs = [CGGlyph](repeating: 0, count: unichars.count)
+        guard CTFontGetGlyphsForCharacters(ctFont, &unichars, &glyphs, unichars.count),
+            let first = glyphs.first
+        else {
+            return font.maximumAdvancement.width  // unmapped character — a safe upper bound
+        }
+        var glyph = first
+        return CGFloat(CTFontGetAdvancesForGlyphs(ctFont, .horizontal, &glyph, nil, 1))
+    }
+
     // MARK: - Nerd Font glyph cascade (terminal)
 
     /// Nerd Font families probed for the terminal glyph cascade, in preference
