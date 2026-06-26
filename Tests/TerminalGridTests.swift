@@ -223,6 +223,88 @@ struct TerminalGridTests {
         #expect(screen.plainText() == "one\n\ntwo\nthree")  // 'four' pushed off the bottom
     }
 
+    // MARK: - Character insert / delete / erase (ICH / DCH / ECH)
+
+    @Test func insertCharsShiftsTheRowRight() {
+        // ICH opens blank space at the cursor, pushing the rest right.
+        #expect(plain("ABCDEF\(esc)[3D\(esc)[2@") == "ABC  DEF")
+    }
+
+    @Test func insertCharsPushedPastWidthFallOff() {
+        // ICH at the line start on a narrow screen drops the cells pushed past the margin.
+        #expect(plain("ABCD\(esc)[1G\(esc)[2@", columns: 4) == "  AB")
+    }
+
+    @Test func deleteCharsPullsTheRowLeft() {
+        // DCH removes cells at the cursor; the tail slides left (backfilled blanks trim off).
+        #expect(plain("ABCDEF\(esc)[3D\(esc)[2P") == "ABCF")
+    }
+
+    @Test func eraseCharsBlanksInPlaceWithoutShifting() {
+        // ECH blanks a bounded count from the cursor but leaves the rest where it is.
+        #expect(plain("ABCDEF\(esc)[3D\(esc)[2X") == "ABC  F")
+    }
+
+    @Test func characterEditCountDefaultsToOne() {
+        // An omitted count means 1, the CSI convention.
+        #expect(plain("ABC\(esc)[1G\(esc)[P") == "BC")  // DCH deletes the A
+        #expect(plain("ABC\(esc)[1G\(esc)[@") == " ABC")  // ICH opens one blank at the start
+    }
+
+    @Test func characterEditsDoNotSplitWideCells() {
+        // Targeting the right half of a wide cell must not leave a visible glyph whose
+        // continuation was deleted, blanked, or shifted away.
+        #expect(plain("你Z\(esc)[2G\(esc)[P") == " Z")  // DCH at the continuation
+        #expect(plain("你Z\(esc)[2G\(esc)[X") == "  Z")  // ECH at the continuation
+        #expect(plain("你Z\(esc)[2G\(esc)[@") == "   Z")  // ICH inside the wide cell
+    }
+
+    // MARK: - Wide (double-width) characters & combining marks
+
+    @Test func wideCharacterAdvancesTwoColumns() {
+        // A CJK char occupies two cells, so a following char lands two columns on — no
+        // overwrite of its right half.
+        #expect(plain("AB你CD") == "AB你CD")
+        // Proof via absolute positioning: 你 fills columns 1-2, so column 3 is just after.
+        #expect(plain("你\(esc)[3GX") == "你X")
+    }
+
+    @Test func wideCharacterAutowrapsInsteadOfSplitting() {
+        // With a single column left, a wide char wraps to the next line rather than
+        // straddling the right edge.
+        #expect(plain("AB你", columns: 3) == "AB\n你")
+    }
+
+    @Test func emojiCountsAsWide() {
+        #expect(plain("🚀X") == "🚀X")
+        #expect(plain("A🚀", columns: 2) == "A\n🚀")  // wraps, not split
+    }
+
+    @Test func combiningMarkRidesTheBaseWithoutAdvancing() {
+        // e + U+0301 (combining acute) share one cell, so on a 2-column screen "éXY" still
+        // wraps after the X — the mark consumed no column of its own.
+        let acute = "\u{0301}"
+        #expect(plain("e\(acute)XY", columns: 2) == "e\(acute)X\nY")
+    }
+
+    @Test func overwritingAWideCharClearsItsOrphanedHalf() {
+        // Redraw over a wide char: the orphaned half must not survive as a stray glyph.
+        #expect(plain("你\(esc)[1GX") == "X")  // overwrite the head → continuation cleared
+        #expect(plain("你\(esc)[2GY") == " Y")  // overwrite the tail → headless half cleared
+    }
+
+    @Test func erasingFromWideContinuationClearsTheWholeCell() {
+        // EL starts at the cursor. If that cursor is on a wide char's continuation, the head
+        // to its left must be removed too; otherwise the final text shows an impossible
+        // half-erased wide glyph.
+        #expect(plain("A你Z\(esc)[3G\(esc)[K") == "A")
+    }
+
+    @Test func cjkLineRoundTripsThroughTheGrid() {
+        // A full CJK line in an addressed (grid-mode) frame reconstructs intact.
+        #expect(plain("\(esc)[2J\(esc)[1;1H日本語 test") == "日本語 test")
+    }
+
     @Test func inferRowsFromBottomAddressing() {
         #expect(TerminalScreen.inferRows("\(esc)[34;1Hstatus") == 34)  // the addressed bottom
         #expect(TerminalScreen.inferRows("plain \(esc)[31mtext\(esc)[0m") == 40)  // no addressing
@@ -253,6 +335,12 @@ struct TerminalGridTests {
         #expect(TerminalScreen.inferColumns("\(esc)[1;200Hedge") == 200)  // CUP column
     }
 
+    @Test func inferColumnsCountsWideCharactersAsTwoColumns() {
+        // 50 CJK chars span 100 terminal columns; scalar-counting would under-measure to
+        // the 80 floor and wrap the line early.
+        #expect(TerminalScreen.inferColumns(String(repeating: "你", count: 50)) == 100)
+    }
+
     @Test func inferColumnsIgnoresEscapeBodies() {
         let longURI = "https://example.com/" + String(repeating: "x", count: 200)
         #expect(TerminalScreen.inferColumns("\(esc)]8;;\(longURI)\u{07}link\(esc)]8;;\u{07}") == 80)
@@ -272,5 +360,14 @@ struct TerminalGridTests {
         // Plain colored output is untouched: the line path strips SGR to plain text and
         // keeps every scrolled line (no grid, no cap).
         #expect(ANSIRenderer.plainText("\(esc)[32mok\(esc)[0m\nnext") == "ok\nnext")
+    }
+
+    @Test func explicitColumnsOverrideInferenceInGridMode() {
+        // `--terminal-width` flows through ANSIRenderer to the grid emulator. ED puts the
+        // stream in grid mode; a 10-char line then wraps at the pinned width, where the
+        // inferred width (floored at 80) would keep it on one line.
+        let tui = "\(esc)[2JABCDEFGHIJ"
+        #expect(ANSIRenderer.plainText(tui) == "ABCDEFGHIJ")  // inferred ≥ 80: no wrap
+        #expect(ANSIRenderer.plainText(tui, columns: 4) == "ABCD\nEFGH\nIJ")  // pinned to 4
     }
 }

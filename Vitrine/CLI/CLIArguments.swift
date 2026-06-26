@@ -125,6 +125,7 @@ enum CLIArguments {
         var languageID: String?
         var presetID: String?
         var scale: Int?
+        var terminalColumns: Int?
         var format: ExportFormat = .png
         var profile: ColorProfile = .fallback
         var transparent = false
@@ -155,6 +156,8 @@ enum CLIArguments {
                 presetID = try resolvePreset(try value(for: token))
             case "--scale":
                 scale = try resolveScale(try value(for: token), flag: token)
+            case "--terminal-width":
+                terminalColumns = try resolveColumns(try value(for: token), flag: token)
             case "--format":
                 format = try resolveFormat(try value(for: token))
             case "--profile":
@@ -239,6 +242,7 @@ enum CLIArguments {
             language: languageID.flatMap(Language.init(rawValue:)),
             presetID: presetID,
             scale: scale,
+            terminalColumns: terminalColumns,
             format: format,
             profile: profile,
             transparent: transparent,
@@ -281,6 +285,16 @@ enum CLIArguments {
         guard let value = Int(raw),
             SettingsDefaults.exportScaleRange.contains(value)
         else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Parses and range-checks an explicit terminal capture width (1...1000, the bound
+    /// the grid emulator clamps to). Pins the reconstruction width for `--language
+    /// terminal` output instead of inferring it; ignored for non-terminal languages.
+    private static func resolveColumns(_ raw: String, flag: String) throws -> Int {
+        guard let value = Int(raw), (1...1000).contains(value) else {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return value
@@ -333,6 +347,9 @@ nonisolated enum CLIUsage {
                                  docs, transparent-slide, opengraph).
           --scale <1|2|3>        Export resolution multiplier. Defaults to the app
                                  default, or the preset's recommended scale.
+          --terminal-width <n>   Reconstruct terminal output at exactly n columns
+                                 instead of inferring the width (1-1000). Only
+                                 affects --language terminal; set by `vgrab -w`.
           --format <png|pdf>     Output format. Defaults to png.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.
           --transparent          Render a real transparent background.
