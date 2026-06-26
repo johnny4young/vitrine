@@ -69,6 +69,14 @@ struct SnapshotConfig: Equatable {
     /// untouched.
     var watermark: Watermark?
 
+    /// An explicit width (columns) to reconstruct `.terminal` output at, or `nil` to
+    /// infer it from the captured stream (CS-070). Set only by `vitrine render
+    /// --terminal-width` (which `vgrab -w` passes), so a known-width capture wraps
+    /// exactly as it did live. Invocation-only: it is not a persisted document style and
+    /// stays `nil` on the default path, so non-terminal renders and the goldens are
+    /// untouched.
+    var terminalColumns: Int?
+
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 
@@ -84,7 +92,7 @@ struct SnapshotConfig: Equatable {
     /// reduced to its visible lines with the ANSI escape codes stripped so it matches
     /// the image, while other languages are the source verbatim.
     var sidecarText: String {
-        language == .terminal ? ANSIRenderer.plainText(code) : code
+        language == .terminal ? ANSIRenderer.plainText(code, columns: terminalColumns) : code
     }
 
     /// Clears the marks that are tied to *this specific code* — free-form annotations

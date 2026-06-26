@@ -86,9 +86,10 @@ enum ShellInit {
 
         # vgrab [-w cols] [-e] <cmd…> — run a command under a pseudo-terminal (so it
         # emits color) and copy a terminal image of its output to the clipboard. Returns
-        # the command's own exit status (script -e). -w/--width sets COLUMNS for it (a
-        # best effort: tools that query the tty size directly ignore it). -e/--edit opens
-        # the captured output in Vitrine's editor (to annotate/restyle) instead of copying.
+        # the command's own exit status (script -e). -w/--width sets the capture width: it
+        # exports COLUMNS for the command (best effort — tools that query the tty directly
+        # ignore it) and passes --terminal-width so Vitrine reconstructs wraps at exactly
+        # that width. -e/--edit opens the captured output in Vitrine's editor instead.
         #
         # To capture a command you already ran, recall it (↑ or !!) and prepend vgrab,
         # e.g. `vgrab !!`.
@@ -115,7 +116,9 @@ enum ShellInit {
             script -qe "$_vf" "$@"
           fi
           local _vc=$?
-          command vitrine render "$_vf" --language terminal "$_vshare"
+          local -a _vwarg
+          [[ -n "$_vw" ]] && _vwarg=(--terminal-width "$_vw")
+          command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "$_vshare"
           rm -f -- "$_vf"
           return $_vc
         }
@@ -127,8 +130,9 @@ enum ShellInit {
         # Turn terminal output into a Vitrine image. Docs: vitrine shell-init --help
 
         # vgrab [-w cols] [-e] <cmd…> — run a command under a pseudo-terminal (so it
-        # emits color) and copy a terminal image of its output. -w/--width sets COLUMNS;
-        # -e/--edit opens the captured output in Vitrine's editor instead of copying.
+        # emits color) and copy a terminal image of its output. -w/--width sets the capture
+        # width (exports COLUMNS for the command + passes --terminal-width so Vitrine
+        # reconstructs wraps at that width); -e/--edit opens the output in Vitrine's editor.
         #
         # To capture a command you already ran, recall it (↑ or !!) and prepend vgrab,
         # e.g. `vgrab !!`.
@@ -154,7 +158,9 @@ enum ShellInit {
             script -qe "$_vf" "$@"
           fi
           local _vc=$?
-          command vitrine render "$_vf" --language terminal "$_vshare"
+          local _vwarg=()
+          [ -n "$_vw" ] && _vwarg=(--terminal-width "$_vw")
+          command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "$_vshare"
           rm -f -- "$_vf"
           return $_vc
         }
@@ -166,8 +172,9 @@ enum ShellInit {
         # Turn terminal output into a Vitrine image. Docs: vitrine shell-init --help
 
         # vgrab [-w cols] [-e] <cmd…> — run a command under a pseudo-terminal (so it
-        # emits color) and copy a terminal image of its output. -w/--width sets COLUMNS;
-        # -e/--edit opens the captured output in Vitrine's editor instead of copying.
+        # emits color) and copy a terminal image of its output. -w/--width sets the capture
+        # width (exports COLUMNS for the command + passes --terminal-width so Vitrine
+        # reconstructs wraps at that width); -e/--edit opens the output in Vitrine's editor.
         #
         # To capture a command you already ran, recall it (↑) and prepend vgrab.
         function vgrab --description 'run a command and copy a terminal image of its output'
@@ -199,7 +206,11 @@ enum ShellInit {
                 script -qe $_vf $argv
             end
             set -l _vc $status
-            command vitrine render $_vf --language terminal $_vshare
+            set -l _vwarg
+            if test -n "$_vw"
+                set _vwarg --terminal-width $_vw
+            end
+            command vitrine render $_vf --language terminal $_vwarg $_vshare
             rm -f -- $_vf
             return $_vc
         end
