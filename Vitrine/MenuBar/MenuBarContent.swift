@@ -207,6 +207,12 @@ struct MenuBarContent: View {
             commandRow(.openEditor) {
                 EditorWindowController.shared.show()
             }
+            commandRow(.newWebSnapshot) {
+                WebSnapshotPresenter.show()
+            }
+            commandRow(.newSocialCard) {
+                SocialCardWindowController.shared.show()
+            }
             commandRow(.settings) {
                 SettingsWindowManager.shared.show()
             }
