@@ -511,6 +511,60 @@ struct TerminalScreen {
         }
     }
 
+    /// The terminal cell width owned by this cell's grapheme head. Continuation cells own no
+    /// width because their head to the left carries the glyph.
+    private func cellDisplayWidth(_ cell: TerminalCell) -> Int {
+        guard case .grapheme(let grapheme) = cell.content,
+            let scalar = grapheme.unicodeScalars.first
+        else { return 0 }
+        return CharacterWidth.displayWidth(scalar)
+    }
+
+    /// Blanks both cells of a wide character touched by `col`. Unlike `clearWideOverlap`,
+    /// this also blanks the target cell because edit/erase operations may shift it instead
+    /// of immediately overwriting it.
+    private mutating func blankWideCluster(row: Int, col: Int) {
+        guard rows.indices.contains(row), rows[row].indices.contains(col) else { return }
+        if case .continuation = rows[row][col].content {
+            rows[row][col] = .blank
+            if rows[row].indices.contains(col - 1),
+                cellDisplayWidth(rows[row][col - 1]) == 2
+            {
+                rows[row][col - 1] = .blank
+            }
+        } else if cellDisplayWidth(rows[row][col]) == 2 {
+            rows[row][col] = .blank
+            if rows[row].indices.contains(col + 1),
+                case .continuation = rows[row][col + 1].content
+            {
+                rows[row][col + 1] = .blank
+            }
+        }
+    }
+
+    /// Repairs a row after an operation shifts or truncates cells so a wide head is always
+    /// immediately followed by its continuation, and a continuation is never headless.
+    private mutating func repairWideClusters(row: Int) {
+        guard rows.indices.contains(row), !rows[row].isEmpty else { return }
+        var col = 0
+        while col < rows[row].count {
+            if case .continuation = rows[row][col].content {
+                if col == 0 || cellDisplayWidth(rows[row][col - 1]) != 2 {
+                    rows[row][col] = .blank
+                }
+            } else if cellDisplayWidth(rows[row][col]) == 2 {
+                if col + 1 >= rows[row].count {
+                    rows[row][col] = .blank
+                } else if case .continuation = rows[row][col + 1].content {
+                    col += 1
+                } else {
+                    rows[row][col] = .blank
+                }
+            }
+            col += 1
+        }
+    }
+
     /// Move down one line, scrolling the region up if at the bottom margin (the `IND`
     /// behavior a line feed and realized right-edge autowrap share).
     private mutating func indexDown() {
@@ -607,10 +661,12 @@ struct TerminalScreen {
         let n = min(max(1, count), columns - cursorCol)
         guard n > 0 else { return }
         padRow(cursorRow, to: cursorCol)
+        blankWideCluster(row: cursorRow, col: cursorCol)
         rows[cursorRow].insert(contentsOf: Array(repeating: .blank, count: n), at: cursorCol)
         if rows[cursorRow].count > columns {
             rows[cursorRow].removeLast(rows[cursorRow].count - columns)
         }
+        repairWideClusters(row: cursorRow)
     }
 
     /// Deletes `count` cells at the cursor, pulling the rest of the row left and backfilling
@@ -619,8 +675,10 @@ struct TerminalScreen {
     private mutating func deleteChars(_ count: Int) {
         guard rows.indices.contains(cursorRow), cursorCol < rows[cursorRow].count else { return }
         let n = min(max(1, count), rows[cursorRow].count - cursorCol)
+        for col in cursorCol..<(cursorCol + n) { blankWideCluster(row: cursorRow, col: col) }
         rows[cursorRow].removeSubrange(cursorCol..<(cursorCol + n))
         rows[cursorRow].append(contentsOf: Array(repeating: .blank, count: n))
+        repairWideClusters(row: cursorRow)
     }
 
     /// Blanks `count` cells from the cursor in place, leaving the rest of the row where it
@@ -630,7 +688,9 @@ struct TerminalScreen {
         padRow(cursorRow, to: cursorCol)
         let end = min(cursorCol + max(1, count), rows[cursorRow].count)
         guard cursorCol < end else { return }
+        for col in cursorCol..<end { blankWideCluster(row: cursorRow, col: col) }
         for col in cursorCol..<end { rows[cursorRow][col] = .blank }
+        repairWideClusters(row: cursorRow)
     }
 
     // MARK: - Erase
@@ -680,13 +740,21 @@ struct TerminalScreen {
     /// Blanks a row from `start` to its end.
     private mutating func blank(row: Int, from start: Int) {
         guard rows.indices.contains(row) else { return }
-        for col in start..<rows[row].count where col >= 0 { rows[row][col] = .blank }
+        let start = max(0, start)
+        guard start < rows[row].count else { return }
+        for col in start..<rows[row].count { blankWideCluster(row: row, col: col) }
+        for col in start..<rows[row].count { rows[row][col] = .blank }
+        repairWideClusters(row: row)
     }
 
     /// Blanks a row from its start through `end` (inclusive).
     private mutating func blank(row: Int, through end: Int) {
         guard rows.indices.contains(row) else { return }
-        for col in 0...min(end, rows[row].count - 1) where col >= 0 { rows[row][col] = .blank }
+        let end = min(end, rows[row].count - 1)
+        guard end >= 0 else { return }
+        for col in 0...end { blankWideCluster(row: row, col: col) }
+        for col in 0...end { rows[row][col] = .blank }
+        repairWideClusters(row: row)
     }
 
     // MARK: - Cursor save / restore

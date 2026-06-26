@@ -251,6 +251,14 @@ struct TerminalGridTests {
         #expect(plain("ABC\(esc)[1G\(esc)[@") == " ABC")  // ICH opens one blank at the start
     }
 
+    @Test func characterEditsDoNotSplitWideCells() {
+        // Targeting the right half of a wide cell must not leave a visible glyph whose
+        // continuation was deleted, blanked, or shifted away.
+        #expect(plain("你Z\(esc)[2G\(esc)[P") == " Z")  // DCH at the continuation
+        #expect(plain("你Z\(esc)[2G\(esc)[X") == "  Z")  // ECH at the continuation
+        #expect(plain("你Z\(esc)[2G\(esc)[@") == "   Z")  // ICH inside the wide cell
+    }
+
     // MARK: - Wide (double-width) characters & combining marks
 
     @Test func wideCharacterAdvancesTwoColumns() {
@@ -283,6 +291,13 @@ struct TerminalGridTests {
         // Redraw over a wide char: the orphaned half must not survive as a stray glyph.
         #expect(plain("你\(esc)[1GX") == "X")  // overwrite the head → continuation cleared
         #expect(plain("你\(esc)[2GY") == " Y")  // overwrite the tail → headless half cleared
+    }
+
+    @Test func erasingFromWideContinuationClearsTheWholeCell() {
+        // EL starts at the cursor. If that cursor is on a wide char's continuation, the head
+        // to its left must be removed too; otherwise the final text shows an impossible
+        // half-erased wide glyph.
+        #expect(plain("A你Z\(esc)[3G\(esc)[K") == "A")
     }
 
     @Test func cjkLineRoundTripsThroughTheGrid() {

@@ -98,7 +98,13 @@ enum ShellInit {
           local _vw="" _vshare="--copy"
           while [[ "$1" == -* ]]; do
             case "$1" in
-              -w|--width) _vw="$2"; shift 2 ;;
+              -w|--width)
+                if (( $# < 2 )) || [[ "$2" != <-> ]] || (( $2 < 1 || $2 > 1000 )); then
+                  print -ru2 -- "usage: vgrab [-w cols] [-e] <command> [args…]"
+                  print -ru2 -- "vgrab: -w/--width needs a numeric column count (1-1000)"
+                  return 2
+                fi
+                _vw="$2"; shift 2 ;;
               -e|--edit) _vshare="--edit"; shift ;;
               --) shift; break ;;
               *) break ;;
@@ -140,7 +146,13 @@ enum ShellInit {
           local _vw="" _vshare="--copy"
           while [ "${1:0:1}" = "-" ]; do
             case "$1" in
-              -w|--width) _vw="$2"; shift 2 ;;
+              -w|--width)
+                if [ "$#" -lt 2 ] || ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt 1 ] || [ "$2" -gt 1000 ]; then
+                  printf 'usage: vgrab [-w cols] [-e] <command> [args…]\n' >&2
+                  printf 'vgrab: -w/--width needs a numeric column count (1-1000)\n' >&2
+                  return 2
+                fi
+                _vw="$2"; shift 2 ;;
               -e|--edit) _vshare="--edit"; shift ;;
               --) shift; break ;;
               *) break ;;
@@ -183,6 +195,19 @@ enum ShellInit {
             while set -q argv[1]; and string match -qr -- '^-' $argv[1]
                 switch $argv[1]
                     case -w --width
+                        if test (count $argv) -lt 2
+                            echo "usage: vgrab [-w cols] [-e] <command> [args…]" >&2
+                            echo "vgrab: -w/--width needs a numeric column count (1-1000)" >&2
+                            return 2
+                        else if not string match -qr '^[0-9]+$' -- $argv[2]
+                            echo "usage: vgrab [-w cols] [-e] <command> [args…]" >&2
+                            echo "vgrab: -w/--width needs a numeric column count (1-1000)" >&2
+                            return 2
+                        else if test $argv[2] -lt 1; or test $argv[2] -gt 1000
+                            echo "usage: vgrab [-w cols] [-e] <command> [args…]" >&2
+                            echo "vgrab: -w/--width needs a numeric column count (1-1000)" >&2
+                            return 2
+                        end
                         set _vw $argv[2]
                         set -e argv[1 2]
                     case -e --edit
