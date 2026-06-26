@@ -135,10 +135,10 @@ enum ANSIRenderer {
     /// background is left unset so the canvas's terminal fill shows through; an
     /// explicit or inverse background is painted per run.
     static func attributedString(
-        _ text: String, font: NSFont, palette: ANSIPalette = .terminal
+        _ text: String, font: NSFont, palette: ANSIPalette = .terminal, columns: Int? = nil
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        for run in styledRuns(text) {
+        for run in styledRuns(text, columns: columns) {
             result.append(
                 NSAttributedString(
                     string: run.text,
@@ -151,8 +151,8 @@ enum ANSIRenderer {
     /// redraws/backspaces resolved — the plain text a reader would copy, matching what
     /// the rendered image shows. Used for the copyable-text sidecar so the shared image
     /// ships with selectable, accessible output rather than only pixels.
-    static func plainText(_ text: String) -> String {
-        styledRuns(text).map(\.text).joined()
+    static func plainText(_ text: String, columns: Int? = nil) -> String {
+        styledRuns(text, columns: columns).map(\.text).joined()
     }
 
     /// The styled runs for terminal `text`, choosing the renderer by content: when the
@@ -164,9 +164,11 @@ enum ANSIRenderer {
     /// Grid mode skips ``normalize(_:)`` on purpose: that collapses the `\r`/`\b` redraws
     /// the emulator interprets itself as cursor motion, and keeps the cursor escapes it
     /// needs intact.
-    private static func styledRuns(_ text: String) -> [ANSIRun] {
+    private static func styledRuns(_ text: String, columns: Int? = nil) -> [ANSIRun] {
         if TerminalScreen.usesScreenAddressing(text) {
-            return TerminalScreen.runs(text)  // infers the screen width and height
+            // `columns` pins the reconstruction width (`--terminal-width`); `nil` lets the
+            // emulator infer it. Line mode reflows to the image, so the width is moot there.
+            return TerminalScreen.runs(text, columns: columns)
         }
         return ANSIParser.parse(normalize(text))
     }

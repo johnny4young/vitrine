@@ -247,7 +247,9 @@ struct SnapshotCanvas: View {
         // the palette still follows the chosen theme (light themes get a light terminal).
         if config.language == .terminal {
             return AttributedString(
-                ANSIRenderer.attributedString(source, font: codeFont, palette: terminalPalette))
+                ANSIRenderer.attributedString(
+                    source, font: codeFont, palette: terminalPalette,
+                    columns: config.terminalColumns))
         }
         let attributed = HighlightManager.shared.attributedString(
             for: source,

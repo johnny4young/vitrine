@@ -137,10 +137,16 @@ struct ANSIRenderTests {
         let zsh = ShellInit.snippet(for: .zsh)
         #expect(zsh.contains("vgrab()"))
         #expect(zsh.contains("script -qe") && zsh.contains("--copy"))
+        #expect(zsh.contains("--terminal-width"))
+        #expect(zsh.contains("numeric column count (1-1000)"))
         let bash = ShellInit.snippet(for: .bash)
         #expect(bash.contains("vgrab()"))
+        #expect(bash.contains("--terminal-width"))
+        #expect(bash.contains("numeric column count (1-1000)"))
         let fish = ShellInit.snippet(for: .fish)
         #expect(fish.contains("function vgrab"))
+        #expect(fish.contains("--terminal-width"))
+        #expect(fish.contains("numeric column count (1-1000)"))
 
         // The integration is `vgrab` only: a plain function with no passive recorder,
         // so the snippet never re-execs the shell, registers a prompt hook, or leaves a
