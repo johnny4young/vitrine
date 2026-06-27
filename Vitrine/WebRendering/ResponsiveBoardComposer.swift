@@ -19,8 +19,17 @@ enum ResponsiveBoardComposer {
     static let spacing: CGFloat = 28
     /// The board's outer padding.
     static let padding: CGFloat = 48
-    /// The reserved height for a card's size label below its image.
-    static let labelHeight: CGFloat = 38
+    /// The reserved height for a card's two-line caption (name + dimensions) below its
+    /// image.
+    static let labelHeight: CGFloat = 46
+    /// The vertical gap between a card's image and its caption.
+    static let labelGap: CGFloat = 12
+    /// The minimum width a card's column occupies, regardless of how narrow the capture
+    /// is. A full-page capture of a tall page yields a thin sliver of an image; flooring
+    /// the column keeps the caption legible (centered under the image) instead of
+    /// truncating it to "Deskt…" / "…". The image keeps its true aspect — only the
+    /// column, and thus the caption's available width, is widened.
+    static let minColumnWidth: CGFloat = 150
 
     /// The board's backing gradient, hard-coded (not theme-derived) so the composite stays
     /// deterministic for the golden suite. Named so the two anchor colors live in one place
@@ -42,14 +51,16 @@ enum ResponsiveBoardComposer {
             let width = CGFloat(capture.asset.cgImage.width)
             let height = CGFloat(capture.asset.cgImage.height)
             let aspect = height > 0 ? width / height : 1
+            let imageWidth = (cardImageHeight * aspect).rounded()
             return SizedCapture(
-                capture: capture, cardWidth: (cardImageHeight * aspect).rounded())
+                capture: capture, imageWidth: imageWidth,
+                columnWidth: max(imageWidth, minColumnWidth))
         }
 
         let totalWidth =
-            padding * 2 + sized.map(\.cardWidth).reduce(0, +)
+            padding * 2 + sized.map(\.columnWidth).reduce(0, +)
             + spacing * CGFloat(max(sized.count - 1, 0))
-        let totalHeight = padding * 2 + cardImageHeight + labelHeight
+        let totalHeight = padding * 2 + cardImageHeight + labelGap + labelHeight
 
         let board = BoardView(sized: sized).frame(width: totalWidth, height: totalHeight)
         let renderer = ImageRenderer(content: board)
@@ -60,11 +71,13 @@ enum ResponsiveBoardComposer {
             cgImage: ExportManager.normalized(cgImage, to: profile), profile: profile)
     }
 
-    /// One capture paired with its computed card width (aspect-derived from the fixed
-    /// card height), so the board layout is fully determined before rendering.
+    /// One capture paired with its computed image width (aspect-derived from the fixed
+    /// card height) and the column width that hosts it (`max(imageWidth, minColumnWidth)`),
+    /// so the board layout is fully determined before rendering.
     struct SizedCapture: Identifiable {
         let capture: CapturedViewport
-        let cardWidth: CGFloat
+        let imageWidth: CGFloat
+        let columnWidth: CGFloat
         var id: WebSnapshotConfig.ViewportPreset.Kind { capture.kind }
     }
 
@@ -76,11 +89,11 @@ enum ResponsiveBoardComposer {
         var body: some View {
             HStack(alignment: .top, spacing: ResponsiveBoardComposer.spacing) {
                 ForEach(sized) { item in
-                    VStack(spacing: 12) {
+                    VStack(spacing: ResponsiveBoardComposer.labelGap) {
                         Image(decorative: item.capture.asset.cgImage, scale: 1)
                             .resizable()
                             .frame(
-                                width: item.cardWidth,
+                                width: item.imageWidth,
                                 height: ResponsiveBoardComposer.cardImageHeight
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -89,11 +102,12 @@ enum ResponsiveBoardComposer {
                                     .strokeBorder(.white.opacity(0.10), lineWidth: 1)
                             )
                             .shadow(color: .black.opacity(0.35), radius: 18, y: 10)
-                        Text(verbatim: item.capture.label)
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.85))
-                            .frame(height: ResponsiveBoardComposer.labelHeight)
+                        caption(for: item.capture.preset)
+                            .frame(
+                                width: item.columnWidth,
+                                height: ResponsiveBoardComposer.labelHeight)
                     }
+                    .frame(width: item.columnWidth)
                 }
             }
             .padding(ResponsiveBoardComposer.padding)
@@ -102,6 +116,26 @@ enum ResponsiveBoardComposer {
                 LinearGradient(
                     colors: ResponsiveBoardComposer.boardGradientColors,
                     startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+
+        /// A card's two-line caption: the preset name above its dimensions. Split across
+        /// two lines (and `minimumScaleFactor`-scaled as a last resort) so a long name like
+        /// "Social card (1200 × 630)" no longer truncates to "…" on a narrow full-page card.
+        @ViewBuilder
+        private func caption(for preset: WebSnapshotConfig.ViewportPreset) -> some View {
+            VStack(spacing: 2) {
+                Text(verbatim: preset.boardName)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.92))
+                if !preset.boardDimensions.isEmpty {
+                    Text(verbatim: preset.boardDimensions)
+                        .font(.system(size: 13, weight: .regular).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .multilineTextAlignment(.center)
         }
     }
 }

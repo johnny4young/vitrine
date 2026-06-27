@@ -87,18 +87,20 @@ struct ResponsiveBoardComposerTests {
         let asset = try #require(
             ResponsiveBoardComposer.compose(captures, scale: 1, profile: .sRGB))
 
-        // Height is fixed: padding*2 + cardImageHeight + labelHeight. Width is
-        // padding*2 + each card's aspect-derived width + the inter-card spacing.
+        // Height is fixed: padding*2 + cardImageHeight + labelGap + labelHeight. Width is
+        // padding*2 + each card's column width + the inter-card spacing, where a column is
+        // at least `minColumnWidth` wide so a narrow capture still hosts a legible caption.
         let expectedHeight =
             ResponsiveBoardComposer.padding * 2 + ResponsiveBoardComposer.cardImageHeight
-            + ResponsiveBoardComposer.labelHeight
-        let cardWidths = captures.map { item -> CGFloat in
+            + ResponsiveBoardComposer.labelGap + ResponsiveBoardComposer.labelHeight
+        let columnWidths = captures.map { item -> CGFloat in
             let width = CGFloat(item.asset.cgImage.width)
             let height = CGFloat(item.asset.cgImage.height)
-            return (ResponsiveBoardComposer.cardImageHeight * (width / height)).rounded()
+            let imageWidth = (ResponsiveBoardComposer.cardImageHeight * (width / height)).rounded()
+            return max(imageWidth, ResponsiveBoardComposer.minColumnWidth)
         }
         let expectedWidth =
-            ResponsiveBoardComposer.padding * 2 + cardWidths.reduce(0, +)
+            ResponsiveBoardComposer.padding * 2 + columnWidths.reduce(0, +)
             + ResponsiveBoardComposer.spacing * CGFloat(captures.count - 1)
 
         // ImageRenderer can round the final bitmap by a pixel; allow a small tolerance.
@@ -110,6 +112,27 @@ struct ResponsiveBoardComposerTests {
             ResponsiveBoardComposer.compose(captures, scale: 1, profile: .sRGB))
         #expect(again.cgImage.width == asset.cgImage.width)
         #expect(again.cgImage.height == asset.cgImage.height)
+    }
+
+    @Test func boardCaptionSplitsNameFromDimensions() {
+        // The board caption is two lines: the name above its dimensions. The split is
+        // asserted structurally (not against a translated name) so it stays locale-robust:
+        // every preset yields a non-empty name with no parenthesized size, and the
+        // dimensions track the displayName's shape — present (and carrying the "×") when it
+        // has a parenthesized size, empty when it does not (the property's documented
+        // fallback).
+        let presets =
+            WebSnapshotConfig.ViewportPreset.fixedPresets
+            + [.custom(clampingWidth: 800, height: 600)]
+        for preset in presets {
+            #expect(!preset.boardName.isEmpty)
+            #expect(!preset.boardName.contains("("))
+            if preset.displayName.contains("(") {
+                #expect(preset.boardDimensions.contains("×"))
+            } else {
+                #expect(preset.boardDimensions.isEmpty)
+            }
+        }
     }
 
     @Test func capturedViewportsKeepASeparateBoundedThumbnail() {
