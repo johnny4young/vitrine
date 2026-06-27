@@ -83,6 +83,10 @@ enum Brand {
         let radius: CGFloat
         let x: CGFloat
         let y: CGFloat
+
+        /// No shadow — a clear, zero-radius recipe, e.g. for a disabled control that
+        /// must not keep its elevation/glow.
+        static let none = ShadowStyle(color: .clear, radius: 0, x: 0, y: 0)
     }
 
     enum Shadow {

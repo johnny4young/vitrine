@@ -83,13 +83,19 @@ struct TokenRow<Content: View>: View {
                         .foregroundStyle(VitrineTokens.Text.primary)
                 }
                 Spacer(minLength: VitrineTokens.Spacing.sm)
+                // Attach the caption to the control as its VoiceOver hint, so the
+                // explanation is announced with the control instead of as a separate,
+                // disconnected element (audit UX). The visible caption is then hidden
+                // from VoiceOver below to avoid reading it twice.
                 content
+                    .accessibilityHint(caption ?? Text(verbatim: ""))
             }
             if let caption {
                 caption
                     .font(.system(size: VitrineTokens.FontSize.caption))
                     .foregroundStyle(VitrineTokens.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(true)
             }
         }
         .padding(.vertical, 9)
@@ -272,6 +278,7 @@ struct GradientCTAButton<Label: View>: View {
     @ViewBuilder var label: Label
     let action: () -> Void
 
+    @Environment(\.isEnabled) private var isEnabled
     @State private var isHovered = false
     @FocusState private var isFocused: Bool
 
@@ -294,9 +301,15 @@ struct GradientCTAButton<Label: View>: View {
                     .inset(by: -2.5)
                     .stroke(isFocused ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
             )
-            .brandShadow(VitrineTokens.Chrome.ctaShadow)
+            // No accent shadow when disabled — a glowing, full-color capsule must not
+            // read as the active primary action when it does nothing (audit UX).
+            .brandShadow(isEnabled ? VitrineTokens.Chrome.ctaShadow : Brand.ShadowStyle.none)
             .brightness(isHovered ? 0.06 : 0)
             .contentShape(Capsule(style: .continuous))
+            // Dim + desaturate the gradient when disabled so the state is visible
+            // (a custom-painted background does not honor `.disabled()` on its own).
+            .saturation(isEnabled ? 1 : 0)
+            .opacity(isEnabled ? 1 : 0.4)
         }
         .buttonStyle(PressScaleButtonStyle())
         .focused($isFocused)
@@ -354,6 +367,7 @@ struct GlassIconButton: View {
     let systemImage: String
     let action: () -> Void
 
+    @Environment(\.isEnabled) private var isEnabled
     @State private var isHovered = false
     @FocusState private var isFocused: Bool
 
@@ -383,6 +397,9 @@ struct GlassIconButton: View {
                         .stroke(isFocused ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                // A `.plain` button over a hand-drawn border does not dim on its own;
+                // fade it so a disabled icon button reads as inert (audit UX).
+                .opacity(isEnabled ? 1 : 0.4)
         }
         .buttonStyle(.plain)
         .focused($isFocused)
