@@ -49,6 +49,26 @@ final class HighlightManager {
     private var highlightOrder: [HighlightKey] = []
     private static let highlightCacheLimit = 8
 
+    /// Cache of the **bridged** SwiftUI `AttributedString` for built-in themes (audit
+    /// Perf-3). The `AttributedString(nsAttributedString)` bridge is an O(n) run/attribute
+    /// walk, and the canvas re-derives it on every `body` pass (a keystroke or any
+    /// inspector tweak). Keyed identically to `highlightCache`; built-in themes only, since
+    /// a custom palette can change under a stable id. FIFO-bounded.
+    private var swiftUICache: [HighlightKey: AttributedString] = [:]
+    private var swiftUIOrder: [HighlightKey] = []
+
+    /// Cache of the bridged terminal (ANSI) `AttributedString` for built-in themes (audit
+    /// Perf-2). Unlike the Highlightr path this had no cache, so a terminal capture was
+    /// fully re-parsed and re-emulated on every `body` pass. FIFO-bounded; built-in only.
+    private struct TerminalKey: Hashable {
+        let code: String
+        let themeID: String
+        let font: NSFont
+        let columns: Int?
+    }
+    private var terminalCache: [TerminalKey: AttributedString] = [:]
+    private var terminalOrder: [TerminalKey] = []
+
     private init() {}
 
     /// Highlights `code` for `language`, using `theme` and the given `font`. Falls
@@ -98,6 +118,60 @@ final class HighlightManager {
             }
         }
         highlightCache[key] = value
+    }
+
+    /// Highlights `code` and returns it as a SwiftUI `AttributedString`, caching the
+    /// `NSAttributedString`→`AttributedString` bridge for built-in themes (audit Perf-3) so
+    /// the canvas does not repeat the O(n) bridge on every `body` pass. A custom theme is
+    /// bridged fresh (its `NSAttributedString` isn't cached either). The value is identical
+    /// to bridging `attributedString(for:…)` by hand.
+    func swiftUIAttributedString(
+        for code: String, language: Language, theme: Theme, font: NSFont
+    ) -> AttributedString {
+        let ns = attributedString(for: code, language: language, theme: theme, font: font)
+        guard theme.palette == nil else { return AttributedString(ns) }
+        let key = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
+        if let cached = swiftUICache[key] { return cached }
+        let bridged = AttributedString(ns)
+        insertFIFO(
+            bridged, forKey: key, into: &swiftUICache, order: &swiftUIOrder,
+            limit: Self.highlightCacheLimit)
+        return bridged
+    }
+
+    /// Renders terminal (ANSI) `code` as a SwiftUI `AttributedString` in `theme`'s palette,
+    /// caching the parse-emulate-and-bridge result for built-in themes (audit Perf-2). The
+    /// value is identical to bridging `ANSIRenderer.attributedString(…)` by hand.
+    func terminalAttributedString(
+        for code: String, theme: Theme, font: NSFont, columns: Int?
+    ) -> AttributedString {
+        let palette = ANSIPalette.forTheme(theme)
+        let render = {
+            AttributedString(
+                ANSIRenderer.attributedString(
+                    code, font: font, palette: palette, columns: columns))
+        }
+        guard theme.palette == nil else { return render() }
+        let key = TerminalKey(code: code, themeID: theme.id, font: font, columns: columns)
+        if let cached = terminalCache[key] { return cached }
+        let bridged = render()
+        insertFIFO(
+            bridged, forKey: key, into: &terminalCache, order: &terminalOrder,
+            limit: Self.highlightCacheLimit)
+        return bridged
+    }
+
+    /// Inserts `value` into a FIFO-bounded cache, evicting the oldest key past `limit`.
+    /// Shared by the SwiftUI-bridge and terminal caches.
+    private func insertFIFO<Key: Hashable, Value>(
+        _ value: Value, forKey key: Key, into cache: inout [Key: Value],
+        order: inout [Key], limit: Int
+    ) {
+        if cache[key] == nil {
+            order.append(key)
+            if order.count > limit { cache.removeValue(forKey: order.removeFirst()) }
+        }
+        cache[key] = value
     }
 
     /// The Highlight.js language identifiers the bundled engine recognizes, or
