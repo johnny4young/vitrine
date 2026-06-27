@@ -408,11 +408,64 @@ struct BackgroundTests {
         // A non-http(s) URL is refused before any fetch, so the field can never be
         // used to read a local file path.
         let store = Self.tempStore()
+        var didLoad = false
         await #expect(throws: BackgroundImageStore.ImportError.downloadFailed) {
             _ = try await store.importImage(downloadedFrom: URL(string: "file:///etc/passwd")!) {
-                _ in (Data(), Self.httpResponse(for: URL(string: "file:///x")!))
+                _ in
+                didLoad = true
+                return (Data(), Self.httpResponse(for: URL(string: "file:///x")!))
             }
         }
+        #expect(!didLoad)
+    }
+
+    @Test func downloadRejectsPrivateInitialHostBeforeLoading() async {
+        // The image URL field cannot be used as an SSRF gadget for loopback/link-local
+        // targets; the loader is never invoked for a refused host.
+        let store = Self.tempStore()
+        var didLoad = false
+        await #expect(throws: BackgroundImageStore.ImportError.downloadFailed) {
+            _ = try await store.importImage(
+                downloadedFrom: URL(string: "http://169.254.169.254/latest/meta-data.png")!
+            ) { url in
+                didLoad = true
+                return (Data(), Self.httpResponse(for: url))
+            }
+        }
+        #expect(!didLoad)
+    }
+
+    @Test func downloadRejectsPrivateFinalResponseURL() async throws {
+        // A public URL that ends at a private host is discarded. The production session
+        // blocks these redirects before following them; this response guard keeps
+        // injected/future loaders honest too.
+        let store = Self.tempStore()
+        let bytes = try Self.makeSamplePNGData()
+        await #expect(throws: BackgroundImageStore.ImportError.downloadFailed) {
+            _ = try await store.importImage(
+                downloadedFrom: URL(string: "https://example.com/banner.png")!
+            ) { _ in
+                (
+                    bytes,
+                    Self.httpResponse(for: URL(string: "http://127.0.0.1/private.png")!)
+                )
+            }
+        }
+    }
+
+    @Test func remoteImageDownloadPolicyAllowsOnlyPublicWebURLs() {
+        #expect(
+            BackgroundImageStore.isAllowedRemoteImageDownloadURL(
+                URL(string: "https://example.com/image.png")!))
+        #expect(
+            !BackgroundImageStore.isAllowedRemoteImageDownloadURL(
+                URL(string: "ftp://example.com/image.png")!))
+        #expect(
+            !BackgroundImageStore.isAllowedRemoteImageDownloadURL(
+                URL(string: "http://127.1/image.png")!))
+        #expect(
+            !BackgroundImageStore.isAllowedRemoteImageDownloadURL(
+                URL(string: "http://[::ffff:127.0.0.1]/image.png")!))
     }
 
     @Test func downloadRejectsNonSuccessStatus() async throws {
@@ -434,6 +487,33 @@ struct BackgroundTests {
             _ = try await store.importImage(
                 downloadedFrom: URL(string: "https://example.com/big.png")!
             ) { url in (huge, Self.httpResponse(for: url)) }
+        }
+    }
+
+    @Test func downloadPreservesBoundedLoaderTooLargeError() async {
+        // The production loader enforces the cap while streaming; `importImage`
+        // must preserve that specific error instead of remapping it to a generic
+        // network failure.
+        let store = Self.tempStore()
+        await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try await store.importImage(
+                downloadedFrom: URL(string: "https://example.com/big.png")!
+            ) { _ in throw BackgroundImageStore.ImportError.tooLarge }
+        }
+    }
+
+    @Test func remoteImageByteCollectorRejectsPayloadPastStreamingCap() async {
+        // Exercise the default loader's streaming cap with a tiny in-memory stream
+        // rather than building a 25 MB network fixture.
+        let stream = AsyncStream<UInt8> { continuation in
+            for _ in 0..<9 {
+                continuation.yield(0x89)
+            }
+            continuation.finish()
+        }
+
+        await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try await BackgroundImageStore.collectRemoteImageBytes(stream, maxBytes: 8)
         }
     }
 

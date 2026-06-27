@@ -60,8 +60,11 @@ import Foundation
     nonisolated struct LemonSqueezyValidator: LicenseKeyValidator {
         /// The activation endpoint. Overridable so a test or a self-host can repoint it.
         var endpoint = URL(string: "https://api.lemonsqueezy.com/v1/licenses/activate")!
+        /// Bound the one online activation attempt so a stalled network does not leave the
+        /// paywall spinner waiting indefinitely.
+        nonisolated static let requestTimeout: TimeInterval = 20
         /// The session used for the one activation request.
-        var session: URLSession = .shared
+        var session: URLSession = Self.defaultSession()
 
         func activate(
             licenseKey: String, instanceName: String
@@ -74,6 +77,7 @@ import Foundation
             request.httpBody = Self.formBody([
                 "license_key": licenseKey, "instance_name": instanceName,
             ])
+            request.timeoutInterval = Self.requestTimeout
             let data: Data
             let response: URLResponse
             do {
@@ -83,6 +87,17 @@ import Foundation
             }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             return try Self.parse(status: status, data: data)
+        }
+
+        /// A privacy-scoped session for license activation. The license key is a credential,
+        /// so this one-off request should not share website cookies or caches with the rest of
+        /// the process.
+        nonisolated static func defaultSession() -> URLSession {
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+            configuration.timeoutIntervalForRequest = requestTimeout
+            configuration.timeoutIntervalForResource = requestTimeout
+            return URLSession(configuration: configuration)
         }
 
         /// Form-url-encodes a flat string dictionary for the request body.
