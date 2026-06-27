@@ -219,12 +219,11 @@ struct SocialCardCanvas: View {
     /// The excerpt, syntax-highlighted with the model's theme and language through
     /// the same engine a snapshot uses, as a SwiftUI `AttributedString`.
     private var highlightedExcerpt: AttributedString {
-        let attributed = HighlightManager.shared.attributedString(
+        HighlightManager.shared.swiftUIAttributedString(
             for: model.codeExcerpt,
             language: model.language,
             theme: model.theme,
             font: excerptFont
         )
-        return AttributedString(attributed)
     }
 }
