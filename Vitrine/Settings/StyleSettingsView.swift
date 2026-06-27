@@ -196,6 +196,35 @@ struct StyleSettingsView: View {
                     .accessibilityIdentifier("line-numbers-toggle")
             }
             TokenRow(
+                label: Text("Wrap long lines"),
+                caption: Text("Soft-wrap past a column width instead of widening the card")
+            ) {
+                Toggle("Wrap long lines", isOn: settings.wrapsLongLines)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("wrap-lines-toggle")
+            }
+            if settings.config.wrapsLongLines {
+                TokenRow(label: Text("Wrap width")) {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: settings.wrapColumnsValue,
+                            in: SettingsDefaults.wrapColumnsSliderRange, step: 4
+                        )
+                        .frame(width: 110)
+                        .accessibilityLabel("Wrap width")
+                        .accessibilityIdentifier("wrap-columns-slider")
+                        Text(
+                            verbatim:
+                                "\(settings.config.wrapColumns ?? SettingsDefaults.wrapColumns)"
+                        )
+                        .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                        .frame(width: 26, alignment: .trailing)
+                    }
+                }
+            }
+            TokenRow(
                 label: Text("Highlight lines"),
                 caption: Text("Highlight specific lines or ranges")
             ) {
