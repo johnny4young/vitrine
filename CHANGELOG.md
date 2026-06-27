@@ -12,6 +12,27 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-06-27
+
+### Added
+
+- **Soft-wrap long code lines.** A new "Wrap long lines" control (editor inspector and the
+  Settings Style pane) wraps a long line at a column width instead of producing an
+  extremely wide image — the slider sets the width and the live preview reflows as you drag.
+  Off by default, so existing snapshots render unchanged. In the line-number view the
+  wrapped continuation hangs under the code column.
+
+### Changed
+
+- **Snappier live preview and recents.** The recents gallery now caches decoded thumbnails
+  (no more re-reading PNGs from disk on every resize), and the editor's terminal and
+  social-card previews cache their highlighted/bridged text, so editing stays smooth on
+  large captures. Rendered output is byte-for-byte identical.
+- **Modernized the state layer.** The settings/document stores moved to Swift's
+  `@Observable` macro (finer-grained view updates, less boilerplate); no behavior change.
+- **Release tooling.** The Homebrew-tap bump is now a reusable, validated script
+  (`scripts/update-homebrew-tap.sh`) that refuses to publish a broken or unchecksummed cask.
+
 ## [0.16.1] - 2026-06-27
 
 ### Added

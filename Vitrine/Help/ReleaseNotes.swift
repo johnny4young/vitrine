@@ -42,6 +42,16 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.17.0",
+            headline: "Wrap long lines, and a snappier preview",
+            highlights: [
+                "New \"Wrap long lines\": a long line now soft-wraps to a column width instead "
+                    + "of making an extremely wide image. Toggle it in the editor inspector and "
+                    + "drag the width — the preview reflows live; off by default.",
+                "Snappier editing: the recents gallery and the terminal / social-card previews "
+                    + "render from a cache, so the app stays smooth even on large captures.",
+            ]),
+        ReleaseNote(
             version: "0.16.1",
             headline: "Sharper responsive boards and safer downloads",
             highlights: [
