@@ -95,6 +95,20 @@ import Testing
             }
         }
 
+        @Test func productionValidatorUsesAPrivateBoundedSession() {
+            let validator = LemonSqueezyValidator()
+            #expect(validator.session !== URLSession.shared)
+            #expect(
+                validator.session.configuration.requestCachePolicy
+                    == .reloadIgnoringLocalCacheData)
+            #expect(
+                validator.session.configuration.timeoutIntervalForRequest
+                    == LemonSqueezyValidator.requestTimeout)
+            #expect(
+                validator.session.configuration.timeoutIntervalForResource
+                    == LemonSqueezyValidator.requestTimeout)
+        }
+
         // MARK: - Activation service (local minting)
 
         @Test func serviceMintsAVerifiableTokenOnSuccess() async throws {

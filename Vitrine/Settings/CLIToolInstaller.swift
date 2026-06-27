@@ -55,7 +55,7 @@ enum CLIToolInstaller {
     /// chosen folder refuses the write. `sudo` because `/usr/local/bin` is
     /// root-owned on a stock macOS.
     static func terminalCommand(for target: URL) -> String {
-        "sudo ln -sf \"\(target.path)\" /usr/local/bin/vitrine"
+        "sudo ln -sf \(ShellCommandQuoter.singleQuoted(target.path)) /usr/local/bin/vitrine"
     }
 
     /// The result of an install attempt into a powerbox-granted folder.
@@ -83,5 +83,14 @@ enum CLIToolInstaller {
         } catch {
             return .failed(error.localizedDescription)
         }
+    }
+}
+
+/// Minimal POSIX-shell quoting for copyable fallback commands. A user can install
+/// Vitrine in a folder whose path contains quotes, spaces, dollar signs, or command
+/// substitutions; the fallback must treat that path as data when pasted into Terminal.
+private enum ShellCommandQuoter {
+    static func singleQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\"'\"'"))'"
     }
 }

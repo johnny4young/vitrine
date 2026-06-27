@@ -357,7 +357,7 @@ DMG install, use **Settings ▸ General ▸ Command-line tool ▸ Install…** �
 link it yourself:
 
 ```bash
-sudo ln -sf /Applications/Vitrine.app/Contents/MacOS/vitrine-cli /usr/local/bin/vitrine
+sudo ln -sf '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' /usr/local/bin/vitrine
 ```
 
 When building from source (`make cli`), the dev binary lands in DerivedData as
