@@ -204,7 +204,7 @@ struct StyleSettingsView: View {
                     .labelsHidden()
                     .accessibilityIdentifier("wrap-lines-toggle")
             }
-            if settings.config.wrapColumns != nil {
+            if settings.config.wrapsLongLines {
                 TokenRow(label: Text("Wrap width")) {
                     HStack(spacing: 8) {
                         Slider(
