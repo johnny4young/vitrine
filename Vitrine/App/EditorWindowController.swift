@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import OSLog
 import SwiftUI
 
@@ -13,7 +12,8 @@ import SwiftUI
 /// produces the ``EditorWindowState`` archived for state restoration and adopts a
 /// restored draft on relaunch.
 @MainActor
-final class EditorSession: ObservableObject {
+@Observable
+final class EditorSession {
     /// This window's identity (and therefore its frame-autosave / restoration name).
     let identity: EditorWindowIdentity
 
@@ -117,11 +117,12 @@ final class EditorWindowController: NSObject {
     /// window's document/style can be resolved for the menu commands and "Make Default".
     private var sessions: [Int: EditorSession] = [:]
 
-    /// Per-window subscriptions that mark a window's restorable state dirty whenever its
-    /// session's config changes, so the archived draft AppKit encodes on quit reflects
-    /// the latest edits rather than the window's initial state (CS-053). Keyed by window
-    /// index and torn down with the window.
-    private var stateInvalidators: [Int: AnyCancellable] = [:]
+    /// The live generation of each window's restorable-state observation, keyed by window
+    /// index. `withObservationTracking` fires once and is re-armed by hand (see
+    /// `trackRestorableState`), so a monotonically increasing generation lets a stale
+    /// re-arm — left over from a closed or reopened window — detect that it is no longer
+    /// current and stop, in place of the cancellable the Combine subscription used to hold.
+    private var restorableStateGeneration: [Int: Int] = [:]
 
     /// The opening content size for a brand-new editor window. Wide enough for the
     /// preset strip plus the code / preview / inspector columns of the redesigned
@@ -203,8 +204,8 @@ final class EditorWindowController: NSObject {
         let session = session(for: identity)
         let hosting = NSHostingController(
             rootView: EditorView()
-                .environmentObject(session.settings)
-                .environmentObject(session))
+                .environment(session.settings)
+                .environment(session))
         let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = identity.windowTitle
         window.styleMask = [
@@ -240,8 +241,7 @@ final class EditorWindowController: NSObject {
 
         // Mark the window's restorable state dirty on every config change so the draft
         // AppKit archives on quit is the user's latest edit, not the initial document.
-        stateInvalidators[identity.index] = session.settings.objectWillChange
-            .sink { [weak window] _ in window?.invalidateRestorableState() }
+        trackRestorableState(ofSessionAt: identity.index)
 
         // A freshly-minted (never-before-saved) window has no autosaved frame to
         // restore. Cap the default size to the screen it opens on — the 1180-point
@@ -259,6 +259,39 @@ final class EditorWindowController: NSObject {
             window.center()
         }
         return window
+    }
+
+    /// Begins (or restarts) observing the session's document so the window at `index` keeps
+    /// its restorable state current (CS-053). Bumps the generation first, so any earlier
+    /// re-arm for this index — from a window that closed or was reopened — sees itself as
+    /// stale and stops, leaving exactly one live observation per index.
+    private func trackRestorableState(ofSessionAt index: Int) {
+        let generation = (restorableStateGeneration[index] ?? 0) + 1
+        restorableStateGeneration[index] = generation
+        armRestorableStateObservation(index: index, generation: generation)
+    }
+
+    /// Arms a single `withObservationTracking` pass over the session's `config` and re-arms
+    /// itself on change (the API fires once). The `onChange` closure is `@Sendable`, so it
+    /// captures only `Sendable` values — `weak self` (this type is `@MainActor`, hence
+    /// `Sendable`) and the `Int` index/generation — and hops back to the main actor to touch
+    /// the window. A re-arm whose generation is no longer current (window closed or
+    /// reopened) returns without re-arming, which is how the chain terminates.
+    private func armRestorableStateObservation(index: Int, generation: Int) {
+        guard restorableStateGeneration[index] == generation,
+            let settings = sessions[index]?.settings
+        else { return }
+        withObservationTracking {
+            _ = settings.config
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self, self.restorableStateGeneration[index] == generation else {
+                    return
+                }
+                self.windows[index]?.invalidateRestorableState()
+                self.armRestorableStateObservation(index: index, generation: generation)
+            }
+        }
     }
 
     /// The accessibility identifier for a window: the stable `editor-window` for the
@@ -329,7 +362,10 @@ extension EditorWindowController: NSWindowDelegate {
             let index = windows.first(where: { $0.value === window })?.key
         else { return }
         windows[index] = nil
-        stateInvalidators[index] = nil
+        // Retire this index's restorable-state observation: the next re-arm finds its
+        // generation cleared and stops (the primary session persists, so without this its
+        // chain would keep firing after the window closed).
+        restorableStateGeneration[index] = nil
         if index != EditorWindowIdentity.primary.index {
             sessions[index]?.discard()
             sessions[index] = nil

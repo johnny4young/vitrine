@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// The single source of truth for Vitrine PRO state (CS-088), the open-core monetization
 /// gate. The gate lives at the **edges** (UI actions, CLI/Shortcuts entry points) and
@@ -14,7 +15,8 @@ import Foundation
 /// `WKWebView`-free and network-free by itself: nothing here logs or transmits anything
 /// about purchases (the CS-048 privacy rule extends to entitlement checks).
 @MainActor
-final class Entitlements: ObservableObject {
+@Observable
+final class Entitlements {
     /// The app-wide entitlement state. Its provider is chosen per build, with a Debug-only
     /// local unlock for development.
     static let shared = Entitlements(provider: Entitlements.defaultProvider())
@@ -22,7 +24,7 @@ final class Entitlements: ObservableObject {
     /// Whether the PRO tier is unlocked. Published so SwiftUI surfaces (the "PRO" badge,
     /// the paywall gate) update the moment it changes. Private setter: only a provider
     /// refresh moves it.
-    @Published private(set) var isPro: Bool
+    private(set) var isPro: Bool
 
     private let provider: EntitlementProvider
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Output pane: clipboard/save behavior, resolution, format (CS-010).
 struct OutputSettingsView: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     var body: some View {
         SettingsPaneScroll {

@@ -11,8 +11,8 @@ import SwiftUI
 /// kit's slightly larger metrics, so there is one accessible set of style
 /// controls in the app rather than two that can drift.
 struct EditorInspectorView: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var themes: CustomThemeStore
+    @Bindable var settings: AppSettings
+    var themes: CustomThemeStore
 
     /// Disclosure state for the advanced sections. All start collapsed so the
     /// inspector opens compact; the primary style cluster above them is always

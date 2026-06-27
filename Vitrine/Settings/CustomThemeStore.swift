@@ -24,12 +24,13 @@ import UniformTypeIdentifiers
 /// matching custom theme, falling back to the built-in lookup for a built-in or
 /// unknown id. `AppSettings` routes its theme reads through the shared store so a
 /// persisted custom theme survives relaunch.
-final class CustomThemeStore: ObservableObject {
+@Observable
+final class CustomThemeStore {
     /// The shared store backed by the app's resolved defaults.
     static let shared = CustomThemeStore(defaults: AppDefaults.current)
 
     /// The user's custom themes, most-recently-added last. Persisted on change.
-    @Published private(set) var customThemes: [Theme] {
+    private(set) var customThemes: [Theme] {
         didSet { persist() }
     }
 

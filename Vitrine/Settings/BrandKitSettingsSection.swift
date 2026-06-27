@@ -8,8 +8,8 @@ import UniformTypeIdentifiers
 /// focused on layout and preview composition, while this view owns the paywall,
 /// logo-import error, and Brand Kit bindings.
 struct BrandKitSettingsSection: View {
-    @ObservedObject var brandKit: BrandKitStore
-    @ObservedObject var entitlements: Entitlements
+    @Bindable var brandKit: BrandKitStore
+    var entitlements: Entitlements
 
     /// True while the Brand Kit upsell's paywall sheet is presented (CS-092).
     @State private var showingPaywall = false

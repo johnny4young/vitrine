@@ -1,12 +1,12 @@
-import Combine
 import Foundation
+import Observation
 
 /// The web URL-capture viewport, capture-mode, wait, and consent settings (CS-044),
 /// extracted from `AppSettings` into a focused sub-store (audit P2-1) so the main
 /// settings object stays cohesive rather than accreting every feature's knobs. It is
-/// held by `AppSettings`, which forwards this store's `objectWillChange`, so SwiftUI
-/// surfaces observing `AppSettings` still refresh when a web-capture knob changes (the
-/// nested-`ObservableObject` reactivity rule).
+/// held by `AppSettings`; because both are `@Observable`, SwiftUI surfaces that read
+/// `settings.webCapture.<field>` observe the nested store directly, so a web-capture
+/// edit refreshes them without any manual change-forwarding.
 ///
 /// Persistence is unchanged from when these lived on `AppSettings`: every property reads
 /// and writes the same `SettingsCodec.Keys` through the same defensively-clamped
@@ -18,49 +18,50 @@ import Foundation
 /// URL capture is a Product Phase 2 feature gated on the network entitlement, so these
 /// settings have no effect in a Phase 1 build; they are still persisted with the same
 /// discipline as every other setting so the choice survives across launches.
-final class WebCaptureSettings: ObservableObject {
+@Observable
+final class WebCaptureSettings {
     private typealias Keys = SettingsCodec.Keys
 
     /// The viewport preset a URL capture lays the page out in (CS-044). Stored as a
     /// flat discriminant; the custom size rides in `customViewportWidth/Height`.
-    @Published var viewportKind: WebSnapshotConfig.ViewportPreset.Kind {
+    var viewportKind: WebSnapshotConfig.ViewportPreset.Kind {
         didSet { defaults.set(viewportKind.rawValue, forKey: Keys.webViewportKind) }
     }
 
     /// The set of viewports a multi-resolution capture renders, ordered and
     /// de-duplicated (CS-044). An empty set falls back to the single `viewportKind`
     /// on read, so the multi-select degrades to today's single-viewport capture.
-    @Published var viewports: [WebSnapshotConfig.ViewportPreset.Kind] {
+    var viewports: [WebSnapshotConfig.ViewportPreset.Kind] {
         didSet { defaults.set(viewports.map(\.rawValue), forKey: Keys.webViewports) }
     }
 
     /// The custom viewport width in points, used only when `viewportKind` is
     /// `.custom` (CS-044). Clamped into the safe range on read.
-    @Published var customViewportWidth: Int {
+    var customViewportWidth: Int {
         didSet { defaults.set(customViewportWidth, forKey: Keys.webCustomViewportWidth) }
     }
 
     /// The custom viewport height in points, used only when `viewportKind` is
     /// `.custom` (CS-044). Clamped into the safe range on read.
-    @Published var customViewportHeight: Int {
+    var customViewportHeight: Int {
         didSet { defaults.set(customViewportHeight, forKey: Keys.webCustomViewportHeight) }
     }
 
     /// Whether a URL capture grabs the visible viewport or the full scrollable page
     /// (CS-044). The default is the deterministic visible viewport.
-    @Published var captureMode: WebSnapshotConfig.CaptureMode {
+    var captureMode: WebSnapshotConfig.CaptureMode {
         didSet { defaults.set(captureMode.rawValue, forKey: Keys.webCaptureMode) }
     }
 
     /// Which wait strategy a URL capture uses before snapshotting (CS-044). Stored
     /// as a flat discriminant; the post-load delay rides in `waitSeconds`.
-    @Published var waitKind: WebSnapshotConfig.WaitStrategy.Kind {
+    var waitKind: WebSnapshotConfig.WaitStrategy.Kind {
         didSet { defaults.set(waitKind.rawValue, forKey: Keys.webWaitKind) }
     }
 
     /// The post-load wait, in seconds, for the fixed-delay and network-quiet
     /// strategies (CS-044). Ignored by `.domContentLoaded`. Clamped non-negative.
-    @Published var waitSeconds: Int {
+    var waitSeconds: Int {
         didSet { defaults.set(waitSeconds, forKey: Keys.webWaitSeconds) }
     }
 
@@ -70,7 +71,7 @@ final class WebCaptureSettings: ObservableObject {
     /// Settings transparency row revokes it (back to `false`), re-arming the
     /// disclosure. Defaults off so a fresh install always discloses before the first
     /// network capture.
-    @Published var consentGiven: Bool {
+    var consentGiven: Bool {
         didSet { defaults.set(consentGiven, forKey: Keys.urlCaptureConsent) }
     }
 
@@ -90,7 +91,7 @@ final class WebCaptureSettings: ObservableObject {
     /// when the selection is empty, so a batch capture always has at least one size.
     var selectedViewportPresets: [WebSnapshotConfig.ViewportPreset] {
         // De-duplicate by kind (stable, keep-first) before resolving: `viewports` is an
-        // unconstrained `@Published` array, and a repeated kind would otherwise render — and
+        // unconstrained stored array, and a repeated kind would otherwise render — and
         // compose into the responsive board — the same viewport twice. The UI toggle already
         // avoids duplicates, so this enforces the documented invariant defensively and keeps a
         // batch capture deterministic.

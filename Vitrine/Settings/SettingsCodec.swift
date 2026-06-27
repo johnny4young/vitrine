@@ -5,11 +5,10 @@ import OSLog
 /// the defensive (de)serialization between the store and the typed model
 /// (CS-050/CS-051).
 ///
-/// `AppSettings` stays the observable state surface — the `@Published` properties and
+/// `AppSettings` stays the observable state surface — the `@Observable` properties and
 /// every `$settings.x` binding live there. Keeping this a plain, non-observable enum
 /// lets the "how settings are read and written" concern be read, tested, and evolved
-/// on its own, without widening the settings object or risking SwiftUI's
-/// nested-`ObservableObject` change-propagation pitfalls.
+/// on its own, without widening the settings object.
 ///
 /// Every read tolerates a missing or garbage value by falling back to a documented
 /// default; nothing here renders or publishes.

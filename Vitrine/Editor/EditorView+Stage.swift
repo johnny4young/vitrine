@@ -11,7 +11,11 @@ extension EditorView {
     /// the format action, then the live-highlighted editor. Carries the
     /// empty-state affordance and the drop target.
     var codeColumn: some View {
-        VStack(spacing: 0) {
+        // `settings` arrives via @Environment (an @Observable), which has no projected
+        // value; this local @Bindable provides the `$settings.config.code` write-binding
+        // the code editor needs.
+        @Bindable var settings = settings
+        return VStack(spacing: 0) {
             HStack(spacing: 10) {
                 TokenGroupLabel(title: Text("Code"))
                 Spacer(minLength: 0)

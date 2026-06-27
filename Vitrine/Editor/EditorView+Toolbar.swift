@@ -10,7 +10,11 @@ extension EditorView {
     /// "Copy image" CTA. Each action mirrors its File-menu command (CS-032),
     /// sharing the command's VoiceOver label and keyboard shortcut.
     var editorToolbar: some View {
-        HStack(spacing: 14) {
+        // `settings` arrives via @Environment (an @Observable), which has no projected
+        // value; this local @Bindable provides the `$settings.config.language` binding the
+        // language picker needs.
+        @Bindable var settings = settings
+        return HStack(spacing: 14) {
             // Just the app mark — the "Vitrine Editor" wordmark was redundant next to
             // the window and only crowded the toolbar (CS-087).
             Image(nsImage: NSApp.applicationIconImage)
