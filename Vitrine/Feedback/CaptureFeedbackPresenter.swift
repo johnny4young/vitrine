@@ -1,5 +1,5 @@
-import Combine
 import Foundation
+import Observation
 
 /// Turns a quick-capture `Result` into the right on-screen feedback and performs
 /// any recovery action the user chooses (CS-038).
@@ -12,13 +12,14 @@ import Foundation
 /// cannot be shown. The most recent feedback is published so the menu-bar menu can
 /// echo the last outcome and offer the same recovery actions there.
 @MainActor
-final class CaptureFeedbackPresenter: ObservableObject {
+@Observable
+final class CaptureFeedbackPresenter {
     static let shared = CaptureFeedbackPresenter()
 
     /// The most recent capture feedback, for the menu-bar surface (CS-038). The
     /// menu shows this as a status line plus any inline recovery actions, so the
     /// last result stays reachable after the transient HUD fades.
-    @Published private(set) var lastFeedback: Notifier.CaptureFeedback?
+    private(set) var lastFeedback: Notifier.CaptureFeedback?
 
     /// The URL detected by the last capture, if any — the payload the "Render as
     /// Text" recovery acts on. Never logged (CS-048 privacy rule).

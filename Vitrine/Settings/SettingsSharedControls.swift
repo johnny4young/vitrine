@@ -5,7 +5,7 @@ import SwiftUI
 /// settings panes use this; the editor's Output disclosure carries its own
 /// two-row variant with the full preset list.
 struct DestinationSegmentedPicker: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     /// Sentinel tag for the "Custom" segment (no preset). Not a valid preset id.
     private static let customTag = ""
@@ -63,7 +63,7 @@ struct DestinationSegmentedPicker: View {
 /// under the caret; the field is re-canonicalized from the config only when it
 /// first appears or the config changes underneath it (e.g. a reset).
 struct HighlightedLinesField: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
     @State private var text: String = ""
 
     var body: some View {
@@ -98,7 +98,7 @@ struct HighlightedLinesField: View {
 /// controls. Every control carries an explicit accessibility label and identifier
 /// (CS-022 acceptance).
 struct MetadataFields: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     var body: some View {
         Group {

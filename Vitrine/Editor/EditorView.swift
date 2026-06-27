@@ -20,26 +20,26 @@ import SwiftUI
 /// properties are therefore module-internal (not `private`) so the extensions can
 /// reach them; nothing outside `EditorView` references them.
 struct EditorView: View {
-    @EnvironmentObject var settings: AppSettings
+    @Environment(AppSettings.self) var settings
 
     /// This window's editor session (CS-053). Each editor window has its own session
     /// (and therefore its own `settings` above), so a window can promote *its* style to
     /// the app-wide default without affecting the others. Injected by
     /// `EditorWindowController` when the window is created.
-    @EnvironmentObject var session: EditorSession
+    @Environment(EditorSession.self) var session
 
     /// The saved-preset catalog and the custom-theme resolver, shared with the
     /// Settings panes so the editor and Preferences operate on the same data
     /// (CS-030/031). Held as observed singletons so the strip and inspector update
     /// live when presets or themes change anywhere in the app.
-    @ObservedObject var presets = PresetStore.shared
-    @ObservedObject var themes = CustomThemeStore.shared
+    let presets = PresetStore.shared
+    let themes = CustomThemeStore.shared
 
     /// The PRO brand kit and entitlement, observed so the live preview shows (or
     /// drops) the watermark the moment the kit, the "apply to captures" switch, or
     /// the PRO state changes anywhere in the app (CS-092).
-    @ObservedObject var brandKit = BrandKitStore.shared
-    @ObservedObject var entitlements = Entitlements.shared
+    @Bindable var brandKit = BrandKitStore.shared
+    let entitlements = Entitlements.shared
 
     /// True while a drag is hovering the editor, used to draw the drop affordance
     /// (CS-028).

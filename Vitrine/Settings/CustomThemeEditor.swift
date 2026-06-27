@@ -9,21 +9,22 @@ import SwiftUI
 /// `editingID` so the same editor handles both "new" and "edit an existing theme".
 /// The draft is the editable form; `palette()` resolves it back to a validated
 /// `ThemePalette` for saving.
-final class CustomThemeDraft: Identifiable, ObservableObject {
+@Observable
+final class CustomThemeDraft: Identifiable {
     let id = UUID()
     /// The id of the theme being edited, or `nil` when creating a new one.
     let editingID: String?
-    @Published var name: String
-    @Published var background: Color
-    @Published var foreground: Color
-    @Published var keyword: Color
-    @Published var string: Color
-    @Published var comment: Color
-    @Published var number: Color
-    @Published var type: Color
-    @Published var function: Color
-    @Published var variable: Color
-    @Published var attribute: Color
+    var name: String
+    var background: Color
+    var foreground: Color
+    var keyword: Color
+    var string: Color
+    var comment: Color
+    var number: Color
+    var type: Color
+    var function: Color
+    var variable: Color
+    var attribute: Color
 
     /// A new draft seeded with a clean, legible dark default palette so the editor
     /// opens on a sensible starting point rather than all-black wells.
@@ -84,8 +85,8 @@ final class CustomThemeDraft: Identifiable, ObservableObject {
 /// sees the exact syntax coloring before committing. Saving resolves the draft to a
 /// validated `ThemePalette` and hands it to the store.
 struct CustomThemeEditor: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var draft: CustomThemeDraft
+    @Bindable var settings: AppSettings
+    @Bindable var draft: CustomThemeDraft
     let onSave: (String, ThemePalette) -> Void
     let onCancel: () -> Void
 

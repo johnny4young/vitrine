@@ -11,7 +11,7 @@ import SwiftUI
 /// the multi-window code editor this surface edits the shared settings directly; its
 /// changes persist immediately through the settings' own observer.
 struct SocialCardEditorView: View {
-    @EnvironmentObject private var settings: AppSettings
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         VStack(spacing: 0) {
@@ -212,8 +212,8 @@ struct SocialCardEditorView: View {
 /// The social-card inspector: a glass column of uppercase-labeled sections — Template,
 /// Content, Code, Footer, Theme, Typography, Background — bound to the working card.
 private struct SocialCardInspector: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject private var themes = CustomThemeStore.shared
+    @Bindable var settings: AppSettings
+    private let themes = CustomThemeStore.shared
     @State private var showTypography = false
     @State private var showBackground = false
 
@@ -512,7 +512,7 @@ private struct SocialCardInspector: View {
 /// own theme rather than `settings.config` (which `ThemeChipPicker` is wired to).
 private struct SocialCardThemePicker: View {
     @Binding var theme: Theme
-    @ObservedObject var themes: CustomThemeStore
+    var themes: CustomThemeStore
 
     var body: some View {
         ChipScroll(topPadding: 2, bottomPadding: 6) {

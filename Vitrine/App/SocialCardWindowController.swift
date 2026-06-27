@@ -49,7 +49,7 @@ final class SocialCardWindowController: NSObject {
     /// settings, so it edits the app-global working card (CS-041).
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingController(
-            rootView: SocialCardEditorView().environmentObject(AppSettings.shared))
+            rootView: SocialCardEditorView().environment(AppSettings.shared))
         let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = String(localized: "Social Card")
         window.styleMask = [

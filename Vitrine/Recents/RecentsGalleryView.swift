@@ -18,8 +18,8 @@ import SwiftUI
 /// `RecentsThumbnailCache`). Nothing in this view is uploaded or shared — it is a
 /// local recognition aid only.
 struct RecentsGalleryView: View {
-    @EnvironmentObject private var recents: RecentsStore
-    @EnvironmentObject private var settings: AppSettings
+    @Environment(RecentsStore.self) private var recents
+    @Environment(AppSettings.self) private var settings
 
     /// Drives the confirmation before clearing recents. Clearing is irreversible —
     /// it empties the capture list and deletes the on-disk thumbnail cache — so the
@@ -233,8 +233,8 @@ final class RecentsGalleryWindowController {
         if window == nil {
             let hosting = NSHostingController(
                 rootView: RecentsGalleryView()
-                    .environmentObject(RecentsStore.shared)
-                    .environmentObject(AppSettings.shared))
+                    .environment(RecentsStore.shared)
+                    .environment(AppSettings.shared))
             let window = NSWindow(contentViewController: hosting)
             window.title = "Recents"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
@@ -252,8 +252,8 @@ final class RecentsGalleryWindowController {
 #if DEBUG
     #Preview("Gallery") {
         RecentsGalleryView(onOpen: {})
-            .environmentObject(RecentsStore.shared)
-            .environmentObject(AppSettings.shared)
+            .environment(RecentsStore.shared)
+            .environment(AppSettings.shared)
             .frame(width: 720, height: 520)
     }
 #endif

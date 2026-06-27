@@ -246,17 +246,15 @@ struct SnapshotCanvas: View {
         // highlighting, so it goes through the ANSI path rather than Highlightr — but
         // the palette still follows the chosen theme (light themes get a light terminal).
         if config.language == .terminal {
-            return AttributedString(
-                ANSIRenderer.attributedString(
-                    source, font: codeFont, palette: terminalPalette,
-                    columns: config.terminalColumns))
+            return HighlightManager.shared.terminalAttributedString(
+                for: source, theme: config.theme, font: codeFont,
+                columns: config.terminalColumns)
         }
-        let attributed = HighlightManager.shared.attributedString(
+        return HighlightManager.shared.swiftUIAttributedString(
             for: source,
             language: config.language,
             theme: config.theme,
             font: codeFont
         )
-        return AttributedString(attributed)
     }
 }

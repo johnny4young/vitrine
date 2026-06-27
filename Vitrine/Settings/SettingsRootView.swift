@@ -9,9 +9,9 @@ import SwiftUI
 /// Style, Library, Output, Input, About) — the UI tests address rows by their
 /// `settings-nav-*` identifiers and panes by their `settings-*-pane` ones.
 struct SettingsRootView: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var presets: PresetStore
-    @ObservedObject var themes: CustomThemeStore
+    @Bindable var settings: AppSettings
+    var presets: PresetStore
+    var themes: CustomThemeStore
 
     /// The selected pane, remembered across openings like the classic window.
     /// Persisted through `AppDefaults` so the UI tests' isolated suite applies.
