@@ -26,9 +26,13 @@ import UniformTypeIdentifiers
 ///   already-rendered image and the locally highlighted code.
 /// - Large outputs are bounded. A `data:` URI and an RTF/HTML blob both grow with
 ///   the input, so each is capped (`maxRepresentationBytes`); past the cap the
-///   representation is omitted rather than ballooning the pasteboard. The heavy
-///   serialization (PNG/base64/RTF/HTML encoding) runs off the main actor through
-///   the `async` builders so a big capture never blocks UI.
+///   representation is omitted rather than ballooning the pasteboard. The styled-text
+///   reps serialize the highlighted *code* (not the image), so they are KB-scale in
+///   practice and the cap keeps the worst case bounded; the data URI is sized from the
+///   PNG byte count before encoding, so an oversized image is rejected without building
+///   the blob. Work stays on the main actor — the render that precedes it (`ImageRenderer`,
+///   the highlight engine) is main-actor bound, and the bounded serialization that follows
+///   is cheap for code-sized input.
 enum RichPasteboard {
     /// The upper bound on a single large non-image representation placed on the
     /// pasteboard (the base64 `data:` URI, the RTF blob, and the HTML blob).
@@ -66,14 +70,19 @@ enum RichPasteboard {
     /// fixed to `image/png` because the only raster the exporter emits to the
     /// clipboard is PNG.
     static func dataURI(forPNG data: Data, maxBytes: Int = maxRepresentationBytes) -> String? {
-        let base64 = data.base64EncodedString()
-        let uri = "data:image/png;base64,\(base64)"
-        guard uri.utf8.count <= maxBytes else {
+        // Size-check before encoding (audit Perf-6): base64 (no line breaks) is a
+        // deterministic 4 chars per 3 input bytes, rounded up, and the prefix is ASCII —
+        // so the final URI byte count is known without allocating the (possibly multi-MB)
+        // encoded string only to discard it. The boundary is identical to measuring the
+        // built URI, since every byte is ASCII.
+        let prefix = "data:image/png;base64,"
+        let uriByteCount = prefix.utf8.count + ((data.count + 2) / 3) * 4
+        guard uriByteCount <= maxBytes else {
             Log.export.error(
-                "Data URI omitted: exceeds cap (\(uri.utf8.count, privacy: .public) bytes)")
+                "Data URI omitted: exceeds cap (\(uriByteCount, privacy: .public) bytes)")
             return nil
         }
-        return uri
+        return prefix + data.base64EncodedString()
     }
 
     // MARK: - Rich text serialization
@@ -162,10 +171,10 @@ enum RichPasteboard {
     /// cannot be rendered or PNG-encoded — a failed or oversized rich
     /// representation is simply omitted, never fatal, so the image always copies.
     ///
-    /// `@MainActor` because it renders the canvas and reads the highlight engine,
-    /// both of which are main-actor bound. The serialization cost is bounded by the
-    /// cap; callers that copy very large captures use the `async` writer below,
-    /// which performs the encoding off the main actor.
+    /// `@MainActor` because it renders the canvas and reads the highlight engine, both of
+    /// which are main-actor bound. The styled-text serialization that follows runs on the
+    /// same actor; it is bounded by the cap and serializes the highlighted code (KB-scale),
+    /// so it does not meaningfully add to the main-actor render cost.
     @MainActor
     static func makePayload(
         for config: SnapshotConfig,
@@ -240,13 +249,12 @@ enum RichPasteboard {
     }
 
     /// Renders `config` and copies the image plus, when `includeRichText` is on,
-    /// highlighted RTF/HTML to the clipboard, performing the bounded serialization
-    /// off the main actor so a large capture never blocks UI (CS-054).
+    /// highlighted RTF/HTML to the clipboard (CS-054).
     ///
-    /// The render itself is main-actor work (it drives `ImageRenderer` and the
-    /// highlight engine), so the payload is built on the main actor and only the
-    /// final pasteboard write is hopped back; the size cap keeps the build cost
-    /// bounded. Returns whether the image was placed on the pasteboard.
+    /// All of it is main-actor work: the render drives `ImageRenderer` and the highlight
+    /// engine, and the styled-text serialization that follows is bounded by the size cap
+    /// and serializes the code (KB-scale), so it stays responsive. Returns whether the
+    /// image was placed on the pasteboard.
     @MainActor
     @discardableResult
     static func copy(
