@@ -87,8 +87,19 @@ struct CLIToolInstallerTests {
     @Test func terminalCommandLinksIntoUsrLocalBinWithSudo() {
         let target = URL(fileURLWithPath: "/Applications/Vitrine.app/Contents/MacOS/vitrine-cli")
         let command = CLIToolInstaller.terminalCommand(for: target)
-        #expect(command.hasPrefix("sudo ln -sf "))
-        #expect(command.contains("/Applications/Vitrine.app/Contents/MacOS/vitrine-cli"))
+        #expect(
+            command
+                == "sudo ln -sf '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' /usr/local/bin/vitrine"
+        )
+    }
+
+    @Test func terminalCommandShellQuotesTheEmbeddedCLIPath() {
+        let target = URL(
+            fileURLWithPath:
+                "/Applications/O'Malley $(touch pwned)/Vitrine.app/Contents/MacOS/vitrine-cli")
+        let command = CLIToolInstaller.terminalCommand(for: target)
+        #expect(command.hasPrefix("sudo ln -sf '"))
+        #expect(command.contains(#"O'"'"'Malley $(touch pwned)"#))
         #expect(command.hasSuffix("/usr/local/bin/vitrine"))
     }
 }
