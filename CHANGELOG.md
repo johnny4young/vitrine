@@ -12,6 +12,27 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-06-27
+
+### Added
+
+- **Responsive-board section on the landing page.** A new "One page, every screen" section
+  shows how a single page is captured at several viewports and composed into one shareable
+  responsive board, with a pure-CSS reconstruction of the real output (no image asset).
+
+### Fixed
+
+- **Responsive board captions no longer truncate.** A full-page capture is a tall, narrow
+  card, so a one-line label like "Desktop (1440 × 900)" overran it and rendered as "Deskt…"
+  in the exported image. The caption is now two lines — the preset name above its dimensions —
+  with each card's column floored to a legible width, so every viewport reads in full.
+- **Hardened remote background-image downloads.** Importing a background from a URL now
+  streams through an ephemeral, size-bounded session that tears the transfer down the moment
+  the cap is hit, and refuses private or redirected hosts before the request is followed.
+- **Hardened PRO activation and CLI install.** License activation uses a private, bounded
+  session instead of shared `URLSession` state, and the command-line tool's manual-symlink
+  fallback POSIX-quotes its paths.
+
 ## [0.16.0] - 2026-06-26
 
 ### Changed
