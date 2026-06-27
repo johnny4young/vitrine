@@ -320,10 +320,30 @@ struct LineWrapTests {
         #expect(wrappedImg.height > wideImg.height)
     }
 
+    /// The wrap width belongs to the code column. Turning on line numbers should add a
+    /// gutter beside that column, not steal columns from it and cause extra wraps.
+    @Test func wrappingWithLineNumbersKeepsTheCodeColumnWidth() throws {
+        var wrapped = SnapshotConfig()
+        wrapped.code = "let a = \"\(String(repeating: "x", count: 400))\""
+        wrapped.language = .swift
+        wrapped.wrapColumns = 80
+
+        var withGutter = wrapped
+        withGutter.showLineNumbers = true
+
+        let wrappedImg = try #require(ExportManager.renderCGImage(wrapped, scale: 1))
+        let gutterImg = try #require(ExportManager.renderCGImage(withGutter, scale: 1))
+
+        #expect(gutterImg.width > wrappedImg.width)
+    }
+
     /// `wrapColumns` round-trips through the settings codec, is cleared when off (so a
     /// later read restores "no wrap"), and a hand-edited out-of-range value is clamped.
     @Test func wrapColumnsPersistAndClampThroughTheCodec() {
         let defaults = UserDefaults(suiteName: "VitrineLineWrapTests-\(UUID().uuidString)")!
+
+        #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.wrapColumns))
+        #expect(SettingsCodec.Keys.editorSessionSeed.contains(SettingsCodec.Keys.wrapColumns))
 
         var config = SnapshotConfig()
         config.wrapColumns = 72

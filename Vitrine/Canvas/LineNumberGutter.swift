@@ -150,6 +150,9 @@ struct CodeLinesView: View {
     /// The per-line vertical gap, matching the canvas's `lineSpacing` so the
     /// row layout and the single-`Text` layout have identical rhythm.
     let lineSpacing: CGFloat
+    /// The optional soft-wrap width for the code column only. The gutter is outside
+    /// this width so enabling line numbers never steals columns from wrapped code.
+    var codeColumnWidth: CGFloat?
     /// The code's foreground color, dimmed for gutter numbers.
     let textColor: Color
     /// The band color drawn behind a highlighted row.
@@ -222,7 +225,18 @@ struct CodeLinesView: View {
     /// One code line as text, preserving its syntax colors. An empty line still
     /// occupies a full row (a zero-width space placeholder) so blank lines keep
     /// the gutter numbering and vertical rhythm intact rather than collapsing.
-    private func lineText(_ line: AttributedString) -> Text {
+    @ViewBuilder
+    private func lineText(_ line: AttributedString) -> some View {
+        let text = textForLine(line)
+        if let codeColumnWidth {
+            text.frame(width: codeColumnWidth, alignment: .leading)
+        } else {
+            text
+        }
+    }
+
+    /// The actual text for one row, before any optional soft-wrap frame is applied.
+    private func textForLine(_ line: AttributedString) -> Text {
         // Verbatim: the zero-width space is a layout placeholder, not user copy, so
         // it must not become a String Catalog key (CS-047).
         if line.characters.isEmpty { return Text(verbatim: "\u{200B}").font(Font(font)) }
