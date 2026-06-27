@@ -199,27 +199,45 @@ struct EditorInspectorView: View {
                     .accessibilityIdentifier("ligatures-toggle")
             }
             InspectorRow(label: Text("Font size")) {
-                Slider(value: $settings.config.fontSize, in: 10...20, step: 1)
-                    .frame(width: 120)
-                    .accessibilityLabel("Font size")
-                    .accessibilityIdentifier("font-size-slider")
+                valueSlider(
+                    "Font size", $settings.config.fontSize, in: 10...20, step: 1,
+                    identifier: "font-size-slider")
             }
+        }
+    }
+
+    /// A slider with a trailing numeric readout, so the user can see (and target) the
+    /// current value instead of guessing from the knob position (audit UX). The value is
+    /// hidden from VoiceOver because the slider already announces it.
+    @ViewBuilder
+    private func valueSlider(
+        _ label: LocalizedStringKey, _ value: Binding<Double>, in range: ClosedRange<Double>,
+        step: Double, identifier: String
+    ) -> some View {
+        HStack(spacing: 8) {
+            Slider(value: value, in: range, step: step)
+                .frame(width: 92)
+                .accessibilityLabel(label)
+                .accessibilityIdentifier(identifier)
+            Text(verbatim: "\(Int(value.wrappedValue.rounded()))")
+                .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .frame(width: 22, alignment: .trailing)
+                .accessibilityHidden(true)
         }
     }
 
     private var canvasSection: some View {
         InspectorSection(title: Text("Canvas")) {
             InspectorRow(label: Text("Padding")) {
-                Slider(value: $settings.config.padding, in: 16...64, step: 4)
-                    .frame(width: 120)
-                    .accessibilityLabel("Padding")
-                    .accessibilityIdentifier("padding-slider")
+                valueSlider(
+                    "Padding", $settings.config.padding, in: 16...64, step: 4,
+                    identifier: "padding-slider")
             }
             InspectorRow(label: Text("Corner radius")) {
-                Slider(value: $settings.config.cornerRadius, in: 0...32, step: 2)
-                    .frame(width: 120)
-                    .accessibilityLabel("Corner radius")
-                    .accessibilityIdentifier("corner-radius-slider")
+                valueSlider(
+                    "Corner radius", $settings.config.cornerRadius, in: 0...32, step: 2,
+                    identifier: "corner-radius-slider")
             }
             InspectorRow(label: Text("Window chrome")) {
                 Toggle("Window chrome", isOn: $settings.config.showChrome)
@@ -244,10 +262,9 @@ struct EditorInspectorView: View {
             }
             if settings.config.showShadow {
                 InspectorRow(label: Text("Shadow depth")) {
-                    Slider(value: $settings.config.shadowRadius, in: 0...40, step: 2)
-                        .frame(width: 120)
-                        .accessibilityLabel("Shadow depth")
-                        .accessibilityIdentifier("shadow-radius-slider")
+                    valueSlider(
+                        "Shadow depth", $settings.config.shadowRadius, in: 0...40, step: 2,
+                        identifier: "shadow-radius-slider")
                 }
             }
         }

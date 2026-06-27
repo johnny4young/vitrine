@@ -48,7 +48,10 @@ struct MenuBarContent: View {
                 .foregroundStyle(VitrineTokens.Text.primary)
             Spacer(minLength: 0)
             if let shortcut = KeyboardShortcuts.getShortcut(for: .quickCapture) {
-                KbdChip(glyphs: shortcut.description)
+                KbdChip(
+                    glyphs: shortcut.description,
+                    accessibilityLabel: String(localized: "Capture hotkey") + ", "
+                        + shortcut.description)
             }
         }
     }
@@ -130,10 +133,17 @@ struct MenuBarContent: View {
             }
 
             if recents.captures.isEmpty {
-                Text("No recent captures")
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                    .padding(.vertical, 4)
+                // Teach the core loop here — this panel is the first surface many users
+                // open, before any capture exists (audit UX). The hotkey chip above shows
+                // exactly which keys "the capture hotkey" means.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("No recent captures")
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                    Text("Copy some code and press the capture hotkey.")
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                }
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .padding(.vertical, 4)
             } else {
                 ForEach(Array(recents.captures.prefix(3))) { capture in
                     RecentCaptureRow(
@@ -294,6 +304,9 @@ struct MenuBarContent: View {
 /// bordered tag.
 private struct KbdChip: View {
     let glyphs: String
+    /// What the shortcut does, so VoiceOver announces e.g. "Capture hotkey, ⇧⌘S"
+    /// instead of reading the bare glyphs with no context. Defaults to the glyphs.
+    var accessibilityLabel: String?
 
     var body: some View {
         Text(verbatim: glyphs)
@@ -305,6 +318,8 @@ private struct KbdChip: View {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
             )
+            .accessibilityElement()
+            .accessibilityLabel(accessibilityLabel ?? glyphs)
     }
 }
 
