@@ -297,3 +297,66 @@ struct QuickCaptureClassificationTests {
         #expect(recents.captures.first?.code == "https://example.com")
     }
 }
+
+// MARK: - Code line wrap (#16)
+
+@MainActor
+@Suite("Code line wrap")
+struct LineWrapTests {
+    /// With wrap on, a long line is bounded to the wrap width instead of widening the
+    /// card; the line reflows onto more rows, so the render is narrower and taller. This
+    /// is the behavioral contract the Style-pane toggle promises.
+    @Test func wrappingLongLinesNarrowsAndHeightensTheCard() throws {
+        var wide = SnapshotConfig()
+        wide.code = "let a = \"\(String(repeating: "x", count: 400))\""
+        wide.language = .swift
+        var wrapped = wide
+        wrapped.wrapColumns = 60
+
+        let wideImg = try #require(ExportManager.renderCGImage(wide, scale: 1))
+        let wrappedImg = try #require(ExportManager.renderCGImage(wrapped, scale: 1))
+
+        #expect(wrappedImg.width < wideImg.width)
+        #expect(wrappedImg.height > wideImg.height)
+    }
+
+    /// The wrap width belongs to the code column. Turning on line numbers should add a
+    /// gutter beside that column, not steal columns from it and cause extra wraps.
+    @Test func wrappingWithLineNumbersKeepsTheCodeColumnWidth() throws {
+        var wrapped = SnapshotConfig()
+        wrapped.code = "let a = \"\(String(repeating: "x", count: 400))\""
+        wrapped.language = .swift
+        wrapped.wrapColumns = 80
+
+        var withGutter = wrapped
+        withGutter.showLineNumbers = true
+
+        let wrappedImg = try #require(ExportManager.renderCGImage(wrapped, scale: 1))
+        let gutterImg = try #require(ExportManager.renderCGImage(withGutter, scale: 1))
+
+        #expect(gutterImg.width > wrappedImg.width)
+    }
+
+    /// `wrapColumns` round-trips through the settings codec, is cleared when off (so a
+    /// later read restores "no wrap"), and a hand-edited out-of-range value is clamped.
+    @Test func wrapColumnsPersistAndClampThroughTheCodec() {
+        let defaults = UserDefaults(suiteName: "VitrineLineWrapTests-\(UUID().uuidString)")!
+
+        #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.wrapColumns))
+        #expect(SettingsCodec.Keys.editorSessionSeed.contains(SettingsCodec.Keys.wrapColumns))
+
+        var config = SnapshotConfig()
+        config.wrapColumns = 72
+        SettingsCodec.persistStyle(config, to: defaults)
+        #expect(SettingsCodec.readConfig(from: defaults).wrapColumns == 72)
+
+        config.wrapColumns = nil
+        SettingsCodec.persistStyle(config, to: defaults)
+        #expect(SettingsCodec.readConfig(from: defaults).wrapColumns == nil)
+
+        defaults.set(5000, forKey: SettingsCodec.Keys.wrapColumns)
+        #expect(
+            SettingsCodec.readConfig(from: defaults).wrapColumns
+                == SettingsDefaults.wrapColumnsRange.upperBound)
+    }
+}

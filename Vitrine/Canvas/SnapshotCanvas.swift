@@ -180,12 +180,28 @@ struct SnapshotCanvas: View {
         .brandShadow(cardShadow)
     }
 
-    /// The code body: a single `Text` for the default look, or a row-by-row layout
+    /// The code body, soft-wrapped to `wrapWidth` when the user enabled line wrapping
+    /// (Style pane). Off — the default — `codeRows` renders at its natural width so the
+    /// signature size-to-content card is byte-for-byte unchanged (the goldens). With wrap
+    /// on, the card sizes to the wrap width and long lines wrap; in the gutter path the
+    /// continuation hangs under the code column (the line number stays on the first row).
+    @ViewBuilder
+    private var codeBody: some View {
+        if config.usesLineRows {
+            codeRows
+        } else if let wrapWidth {
+            codeRows.frame(width: wrapWidth, alignment: .leading)
+        } else {
+            codeRows
+        }
+    }
+
+    /// The code itself: a single `Text` for the default look, or a row-by-row layout
     /// when a line-number gutter or a selected-line highlight is enabled (CS-021).
     /// Keeping the plain path untouched means the signature render is unchanged
     /// unless the user opts into the new chrome.
     @ViewBuilder
-    private var codeBody: some View {
+    private var codeRows: some View {
         if config.usesLineRows {
             CodeLinesView(
                 highlighted: highlightedCode,
@@ -193,6 +209,7 @@ struct SnapshotCanvas: View {
                 highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
                 font: codeFont,
                 lineSpacing: Self.codeLineSpacing,
+                codeColumnWidth: wrapWidth,
                 textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme),
                 highlightColor: HighlightManager.shared.lineHighlightColor(for: config.theme),
                 dimsUnfocused: config.focusHighlightedLines,
@@ -225,6 +242,16 @@ struct SnapshotCanvas: View {
     private var codeFont: NSFont {
         CodeFont.resolved(
             family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
+    }
+
+    /// The soft-wrap width in points when line wrapping is on: `wrapColumns` columns of
+    /// the code font's digit advance, or `nil` to let lines run full width (the default).
+    /// A monospaced code font makes this an exact column count; a proportional font
+    /// approximates it. Measured from `CodeFont.advance` so it tracks the real glyph
+    /// advance of the font the code is drawn in (the same source the gutter column uses).
+    private var wrapWidth: CGFloat? {
+        guard let columns = config.wrapColumns else { return nil }
+        return CGFloat(columns) * CodeFont.advance(of: "0", in: codeFont)
     }
 
     /// The terminal color palette for the active theme — drives both the ANSI text

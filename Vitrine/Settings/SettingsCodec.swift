@@ -23,6 +23,7 @@ enum SettingsCodec {
         static let windowTitle = "windowTitle"
         static let showShadow = "showShadow"
         static let showLineNumbers = "showLineNumbers"
+        static let wrapColumns = "wrapColumns"
         static let highlightedLines = "highlightedLines"
         static let focusHighlightedLines = "focusHighlightedLines"
         static let diffDecorations = "diffDecorations"
@@ -89,7 +90,7 @@ enum SettingsCodec {
         /// the migration step that runs afterward.
         static let all = [
             themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
-            showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
+            showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
             colorProfile, richClipboard, textSidecar, hotkeyAction, appLanguage, treatURLs,
@@ -111,7 +112,7 @@ enum SettingsCodec {
         /// its own copy.
         static let editorSessionSeed = [
             themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
-            showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
+            showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
             colorProfile, richClipboard, textSidecar, selectedPreset,
@@ -163,6 +164,11 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.showLineNumbers) as? Bool {
             config.showLineNumbers = value
+        }
+        // Absent (the default) means no wrap; a stored value is clamped into the safe
+        // column range so a hand-edited number cannot distort the card.
+        if let value = defaults.object(forKey: Keys.wrapColumns) as? Int {
+            config.wrapColumns = SettingsDefaults.clampWrapColumns(value)
         }
         if let value = defaults.object(forKey: Keys.focusHighlightedLines) as? Bool {
             config.focusHighlightedLines = value
@@ -271,6 +277,13 @@ enum SettingsCodec {
         defaults.set(config.windowTitle, forKey: Keys.windowTitle)
         defaults.set(config.showShadow, forKey: Keys.showShadow)
         defaults.set(config.showLineNumbers, forKey: Keys.showLineNumbers)
+        // `wrapColumns` is optional (nil = no wrap): clear the key when off so a later
+        // read restores the default rather than a stale width.
+        if let cols = config.wrapColumns {
+            defaults.set(cols, forKey: Keys.wrapColumns)
+        } else {
+            defaults.removeObject(forKey: Keys.wrapColumns)
+        }
         defaults.set(config.focusHighlightedLines, forKey: Keys.focusHighlightedLines)
         defaults.set(config.diffDecorations, forKey: Keys.diffDecorations)
         defaults.set(

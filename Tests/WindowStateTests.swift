@@ -323,12 +323,14 @@ struct EditorSessionIndependenceTests {
         source.config.theme = .monokai
         source.config.fontName = "Fira Code"
         source.config.padding = 56
+        source.config.wrapColumns = 72
         source.exportScale = 3
 
         let session = AppSettings.makeEditorSession(seededFrom: defaults)
         #expect(session.config.theme.id == "monokai")
         #expect(session.config.fontName == "Fira Code")
         #expect(session.config.padding == 56)
+        #expect(session.config.wrapColumns == 72)
         #expect(session.exportScale == 3)
     }
 

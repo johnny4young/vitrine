@@ -479,3 +479,27 @@ final class AppSettings {
         if !preset.matches(config) { selectedPresetID = nil }
     }
 }
+
+// MARK: - Line-wrap control bindings (#16)
+
+extension AppSettings {
+    /// Binding for the "Wrap long lines" toggle, driving the optional `config.wrapColumns`:
+    /// on adopts the default wrap width, off clears it (no wrap). Lives here so the editor
+    /// inspector and the Settings pane drive the same field identically rather than each
+    /// re-deriving the optional-to-Bool mapping.
+    var wrapsLongLines: Binding<Bool> {
+        Binding(
+            get: { self.config.wrapsLongLines },
+            set: { self.config.wrapColumns = $0 ? SettingsDefaults.wrapColumns : nil }
+        )
+    }
+
+    /// Binding for the wrap-width slider as a `Double`, clamped into the safe range on
+    /// write. Only meaningful while wrapping is on.
+    var wrapColumnsValue: Binding<Double> {
+        Binding(
+            get: { Double(self.config.wrapColumns ?? SettingsDefaults.wrapColumns) },
+            set: { self.config.wrapColumns = SettingsDefaults.clampWrapColumns(Int($0)) }
+        )
+    }
+}

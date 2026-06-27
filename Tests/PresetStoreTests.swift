@@ -80,10 +80,12 @@ struct StyleSnapshotTests {
     @Test func initClampsOutOfRangeNumbers() {
         let snapshot = StyleSnapshot(
             themeID: Theme.oneDark.id, fontSize: 999, padding: 999, cornerRadius: 999,
+            wrapColumns: 999,
             background: .gradient(.aurora))
         #expect(snapshot.fontSize == SettingsDefaults.fontSizeRange.upperBound)
         #expect(snapshot.padding == SettingsDefaults.paddingRange.upperBound)
         #expect(snapshot.cornerRadius == SettingsDefaults.cornerRadiusRange.upperBound)
+        #expect(snapshot.wrapColumns == SettingsDefaults.wrapColumnsRange.upperBound)
     }
 
     @Test func fullInitAlsoDropsNonPortableImageBackground() {
@@ -512,6 +514,19 @@ struct AppSettingsStylePresetTests {
         #expect(settings.config.language == originalLanguage)
         #expect(settings.config.theme.id == StylePreset.midnight.style.themeID)
         #expect(settings.config.background == StylePreset.midnight.style.background)
+    }
+
+    @Test func stylePresetCapturesAndAppliesWrapColumns() {
+        var source = SnapshotConfig()
+        source.wrapColumns = 96
+        let preset = StylePreset.capturing(source, name: "Wrapped")
+
+        var target = SnapshotConfig()
+        target.wrapColumns = nil
+        preset.style.apply(to: &target)
+
+        #expect(preset.style.wrapColumns == 96)
+        #expect(target.wrapColumns == 96)
     }
 
     @Test func appliedStyleDivergesFromAndDropsADestinationPreset() {

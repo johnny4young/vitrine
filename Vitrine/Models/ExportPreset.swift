@@ -193,7 +193,7 @@ extension ExportPreset {
 /// exported, imported, and shared as a reusable preset (CS-030).
 ///
 /// A `StyleSnapshot` is the *style half* of a `SnapshotConfig`: theme, font,
-/// padding, chrome, shadow, line numbers, and the canvas background. It is
+/// padding, chrome, shadow, line numbers, line wrapping, and the canvas background. It is
 /// deliberately **presentation-only** — it never carries `code`, `language`, the
 /// metadata header text, or the highlighted-line ranges, all of which describe a
 /// *particular* capture rather than a reusable brand look. Applying a snapshot
@@ -226,6 +226,8 @@ struct StyleSnapshot: Hashable, Codable {
     var showShadow: Bool
     /// Whether a line-number gutter is drawn (CS-021).
     var showLineNumbers: Bool
+    /// Optional code soft-wrap column count; `nil` keeps the card size-to-content.
+    var wrapColumns: Int?
     /// The canvas background. Round-trips through `BackgroundStyle`'s own tolerant
     /// `Codable`, which degrades an unknown gradient name or a corrupt blob to a
     /// safe value rather than failing the whole decode.
@@ -249,6 +251,7 @@ struct StyleSnapshot: Hashable, Codable {
         self.showChrome = config.showChrome
         self.showShadow = config.showShadow
         self.showLineNumbers = config.showLineNumbers
+        self.wrapColumns = config.wrapColumns.map(SettingsDefaults.clampWrapColumns)
         self.background = Self.portableBackground(config.background)
     }
 
@@ -264,6 +267,7 @@ struct StyleSnapshot: Hashable, Codable {
         showChrome: Bool = true,
         showShadow: Bool = true,
         showLineNumbers: Bool = false,
+        wrapColumns: Int? = nil,
         background: BackgroundStyle
     ) {
         self.themeID = themeID
@@ -275,6 +279,7 @@ struct StyleSnapshot: Hashable, Codable {
         self.showChrome = showChrome
         self.showShadow = showShadow
         self.showLineNumbers = showLineNumbers
+        self.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
         self.background = Self.portableBackground(background)
     }
 
@@ -294,6 +299,7 @@ struct StyleSnapshot: Hashable, Codable {
         config.showChrome = showChrome
         config.showShadow = showShadow
         config.showLineNumbers = showLineNumbers
+        config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
         config.background = background
     }
 
@@ -308,7 +314,7 @@ struct StyleSnapshot: Hashable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case themeID, fontName, fontSize, fontLigatures, padding, cornerRadius
-        case showChrome, showShadow, showLineNumbers, background
+        case showChrome, showShadow, showLineNumbers, wrapColumns, background
     }
 
     init(from decoder: Decoder) throws {
@@ -331,6 +337,11 @@ struct StyleSnapshot: Hashable, Codable {
         showChrome = (try? container.decode(Bool.self, forKey: .showChrome)) ?? true
         showShadow = (try? container.decode(Bool.self, forKey: .showShadow)) ?? true
         showLineNumbers = (try? container.decode(Bool.self, forKey: .showLineNumbers)) ?? false
+        if let columns = try? container.decode(Int.self, forKey: .wrapColumns) {
+            wrapColumns = SettingsDefaults.clampWrapColumns(columns)
+        } else {
+            wrapColumns = nil
+        }
         // A missing or corrupt background degrades to the signature gradient rather
         // than failing the whole snapshot.
         let decodedBackground =

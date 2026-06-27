@@ -2974,6 +2974,39 @@
         }
       }
     },
+    "Soft-wrap past a column width instead of widening the card" : {
+      "comment" : "Style control caption explaining the line-wrap toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajusta a un ancho de columna en lugar de ensanchar la tarjeta"
+          }
+        }
+      }
+    },
+    "Wrap long lines" : {
+      "comment" : "Style control toggle: soft-wrap long code lines.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustar líneas largas"
+          }
+        }
+      }
+    },
+    "Wrap width" : {
+      "comment" : "Style control label: the wrap column width.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancho de ajuste"
+          }
+        }
+      }
+    },
     "Lines" : {
       "comment" : "Inspector and settings section title for line-number controls.",
       "localizations" : {

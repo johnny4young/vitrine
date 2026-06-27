@@ -230,9 +230,25 @@ enum SettingsDefaults {
     static let cornerRadiusRange = 0.0...48.0
     static let cornerRadius = SnapshotConfig().cornerRadius
 
+    /// Line-wrap column bounds (Style pane). Wide enough to be useful for code, capped
+    /// so a hand-edited value cannot ask for an absurdly wide card. The default is the
+    /// width a fresh "wrap long lines" toggle adopts.
+    static let wrapColumnsRange = 40...200
+    static let wrapColumns = 80
+
     static func clampExportScale(_ value: Int) -> Int {
         guard value >= exportScaleRange.lowerBound else { return exportScale }
         return min(value, exportScaleRange.upperBound)
+    }
+
+    /// Clamps a persisted/typed wrap-column count into `wrapColumnsRange`.
+    static func clampWrapColumns(_ value: Int) -> Int {
+        min(max(value, wrapColumnsRange.lowerBound), wrapColumnsRange.upperBound)
+    }
+
+    /// `wrapColumnsRange` as a `Double` range, for the wrap-width `Slider`.
+    static var wrapColumnsSliderRange: ClosedRange<Double> {
+        Double(wrapColumnsRange.lowerBound)...Double(wrapColumnsRange.upperBound)
     }
 
     static func clampFontSize(_ value: Double) -> Double {
