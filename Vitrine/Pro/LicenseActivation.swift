@@ -213,7 +213,7 @@ import Foundation
     enum LemonSqueezyStore {
         /// Checkout for the one-time PRO license.
         static let checkoutURL = URL(
-            string: "https://vitrine.lemonsqueezy.com/checkout/buy/"
+            string: "https://johnny4young.lemonsqueezy.com/checkout/buy/"
                 + "314e7d43-efa1-41be-a319-7474628e5185"
         )!
     }
