@@ -77,6 +77,14 @@ struct SnapshotConfig: Equatable {
     /// untouched.
     var terminalColumns: Int?
 
+    /// Soft-wrap long code lines at this column count, or `nil` to let a line run as wide
+    /// as it needs (the default). Unlike `terminalColumns`, this is a persisted document
+    /// style the user toggles in the Style pane: when set, the card is sized to the wrap
+    /// width and long lines wrap (the gutter path hangs the continuation under the code
+    /// column). `nil` on the default path keeps the single-`Text`, size-to-content render
+    /// byte-for-byte unchanged, so the goldens are untouched.
+    var wrapColumns: Int?
+
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 

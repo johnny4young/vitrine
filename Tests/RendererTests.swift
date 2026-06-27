@@ -297,3 +297,46 @@ struct QuickCaptureClassificationTests {
         #expect(recents.captures.first?.code == "https://example.com")
     }
 }
+
+// MARK: - Code line wrap (#16)
+
+@MainActor
+@Suite("Code line wrap")
+struct LineWrapTests {
+    /// With wrap on, a long line is bounded to the wrap width instead of widening the
+    /// card; the line reflows onto more rows, so the render is narrower and taller. This
+    /// is the behavioral contract the Style-pane toggle promises.
+    @Test func wrappingLongLinesNarrowsAndHeightensTheCard() throws {
+        var wide = SnapshotConfig()
+        wide.code = "let a = \"\(String(repeating: "x", count: 400))\""
+        wide.language = .swift
+        var wrapped = wide
+        wrapped.wrapColumns = 60
+
+        let wideImg = try #require(ExportManager.renderCGImage(wide, scale: 1))
+        let wrappedImg = try #require(ExportManager.renderCGImage(wrapped, scale: 1))
+
+        #expect(wrappedImg.width < wideImg.width)
+        #expect(wrappedImg.height > wideImg.height)
+    }
+
+    /// `wrapColumns` round-trips through the settings codec, is cleared when off (so a
+    /// later read restores "no wrap"), and a hand-edited out-of-range value is clamped.
+    @Test func wrapColumnsPersistAndClampThroughTheCodec() {
+        let defaults = UserDefaults(suiteName: "VitrineLineWrapTests-\(UUID().uuidString)")!
+
+        var config = SnapshotConfig()
+        config.wrapColumns = 72
+        SettingsCodec.persistStyle(config, to: defaults)
+        #expect(SettingsCodec.readConfig(from: defaults).wrapColumns == 72)
+
+        config.wrapColumns = nil
+        SettingsCodec.persistStyle(config, to: defaults)
+        #expect(SettingsCodec.readConfig(from: defaults).wrapColumns == nil)
+
+        defaults.set(5000, forKey: SettingsCodec.Keys.wrapColumns)
+        #expect(
+            SettingsCodec.readConfig(from: defaults).wrapColumns
+                == SettingsDefaults.wrapColumnsRange.upperBound)
+    }
+}
