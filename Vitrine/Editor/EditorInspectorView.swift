@@ -41,6 +41,37 @@ struct EditorInspectorView: View {
                                 .labelsHidden()
                                 .accessibilityIdentifier("line-numbers-toggle")
                         }
+                        InspectorRow(label: Text("Wrap long lines")) {
+                            Toggle("Wrap long lines", isOn: settings.wrapsLongLines)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                                .help("Soft-wrap past a column width instead of widening the card")
+                                .accessibilityIdentifier("wrap-lines-toggle")
+                        }
+                        if settings.config.wrapColumns != nil {
+                            InspectorRow(label: Text("Wrap width")) {
+                                HStack(spacing: 8) {
+                                    Slider(
+                                        value: settings.wrapColumnsValue,
+                                        in: SettingsDefaults.wrapColumnsSliderRange, step: 4
+                                    )
+                                    .frame(width: 90)
+                                    .accessibilityLabel("Wrap width")
+                                    .accessibilityIdentifier("wrap-columns-slider")
+                                    Text(
+                                        verbatim:
+                                            "\(settings.config.wrapColumns ?? SettingsDefaults.wrapColumns)"
+                                    )
+                                    .font(
+                                        .system(
+                                            size: VitrineTokens.FontSize.caption,
+                                            design: .monospaced)
+                                    )
+                                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                                    .frame(width: 26, alignment: .trailing)
+                                }
+                            }
+                        }
                         InspectorRow(label: Text("Highlight lines")) {
                             HighlightedLinesField(settings: settings)
                         }
