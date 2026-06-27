@@ -85,6 +85,11 @@ struct SnapshotConfig: Equatable {
     /// byte-for-byte unchanged, so the goldens are untouched.
     var wrapColumns: Int?
 
+    /// Whether soft-wrap is on — the single source of truth for the optional→Bool mapping
+    /// shared by the wrap toggle's binding and the wrap-width control's visibility, so the
+    /// two can never drift if "off" stops meaning `nil`.
+    var wrapsLongLines: Bool { wrapColumns != nil }
+
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 

@@ -48,7 +48,7 @@ struct EditorInspectorView: View {
                                 .help("Soft-wrap past a column width instead of widening the card")
                                 .accessibilityIdentifier("wrap-lines-toggle")
                         }
-                        if settings.config.wrapColumns != nil {
+                        if settings.config.wrapsLongLines {
                             InspectorRow(label: Text("Wrap width")) {
                                 HStack(spacing: 8) {
                                     Slider(

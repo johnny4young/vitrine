@@ -489,7 +489,7 @@ extension AppSettings {
     /// re-deriving the optional-to-Bool mapping.
     var wrapsLongLines: Binding<Bool> {
         Binding(
-            get: { self.config.wrapColumns != nil },
+            get: { self.config.wrapsLongLines },
             set: { self.config.wrapColumns = $0 ? SettingsDefaults.wrapColumns : nil }
         )
     }
