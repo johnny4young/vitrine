@@ -117,15 +117,21 @@ struct ResponsiveBoardComposerTests {
     @Test func boardCaptionSplitsNameFromDimensions() {
         // The board caption is two lines: the name above its dimensions. The split is
         // asserted structurally (not against a translated name) so it stays locale-robust:
-        // every preset yields a non-empty name with no parenthesized size, and a
-        // dimensions line carrying the "×".
+        // every preset yields a non-empty name with no parenthesized size, and the
+        // dimensions track the displayName's shape — present (and carrying the "×") when it
+        // has a parenthesized size, empty when it does not (the property's documented
+        // fallback).
         let presets =
             WebSnapshotConfig.ViewportPreset.fixedPresets
             + [.custom(clampingWidth: 800, height: 600)]
         for preset in presets {
             #expect(!preset.boardName.isEmpty)
             #expect(!preset.boardName.contains("("))
-            #expect(preset.boardDimensions.contains("×"))
+            if preset.displayName.contains("(") {
+                #expect(preset.boardDimensions.contains("×"))
+            } else {
+                #expect(preset.boardDimensions.isEmpty)
+            }
         }
     }
 
