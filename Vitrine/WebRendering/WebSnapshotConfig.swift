@@ -221,6 +221,26 @@ extension WebSnapshotConfig {
             }
         }
 
+        /// The preset's name without its dimensions, e.g. "Desktop" — the first line of
+        /// the responsive board's caption. Derived from `displayName` (split at its "Name
+        /// (W × H)" shape) so the board reuses the already-localized name rather than
+        /// carrying a second catalog entry; falls back to the whole name if a translation
+        /// drops the parenthetical.
+        var boardName: String {
+            guard let paren = displayName.firstIndex(of: "(") else { return displayName }
+            return String(displayName[..<paren]).trimmingCharacters(in: .whitespaces)
+        }
+
+        /// The preset's dimensions as shown on the board's caption, e.g. "1440 × 900" —
+        /// the second line. Empty when `displayName` carries no parenthesized size, so the
+        /// caption gracefully collapses to just the name.
+        var boardDimensions: String {
+            guard let open = displayName.firstIndex(of: "("),
+                let close = displayName.lastIndex(of: ")"), open < close
+            else { return "" }
+            return String(displayName[displayName.index(after: open)..<close])
+        }
+
         /// The non-custom presets, for listing in a picker. `.custom` is excluded
         /// because it is parameterized; the UI offers it as a separate row with
         /// width/height fields.
