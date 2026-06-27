@@ -241,6 +241,68 @@ final class ScreenshotTourUITests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testWebSnapshotTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--open-web-snapshot"])
+        defer { app.terminate() }
+
+        XCTAssertTrue(element("web-snapshot-inspector", in: app).waitForExistence(timeout: 8))
+        Thread.sleep(forTimeInterval: 1.0)
+        let window = app.windows.firstMatch
+        save(
+            window.screenshot(), as: "60-web-snapshot",
+            note: "Web Snapshot: source picker, viewport chips, branded empty stage")
+
+        // HTML mode swaps the input field and the empty-state copy.
+        let html = element("web-snapshot-mode-html", in: app)
+        if html.waitForExistence(timeout: 3) {
+            html.click()
+            Thread.sleep(forTimeInterval: 0.6)
+            save(
+                window.screenshot(), as: "61-web-snapshot-html",
+                note: "Web Snapshot HTML mode (code field + branded empty state)")
+        } else {
+            miss("61-web-snapshot-html", reason: "HTML segment not found")
+        }
+
+        // The secondary capture controls fold into a disclosure (the editor pattern).
+        let advanced = element("web-advanced-disclosure", in: app)
+        if advanced.waitForExistence(timeout: 3) {
+            advanced.click()
+            Thread.sleep(forTimeInterval: 0.4)
+            save(
+                window.screenshot(), as: "62-web-snapshot-advanced",
+                note: "Web Snapshot inspector with the Capture options disclosure open")
+        } else {
+            miss("62-web-snapshot-advanced", reason: "advanced disclosure not found")
+        }
+    }
+
+    @MainActor
+    func testSocialCardTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--open-social-card"])
+        defer { app.terminate() }
+
+        XCTAssertTrue(element("social-card-inspector", in: app).waitForExistence(timeout: 8))
+        Thread.sleep(forTimeInterval: 1.0)
+        let window = app.windows.firstMatch
+        save(
+            window.screenshot(), as: "63-social-card",
+            note: "Social Card: template, content, code, footer, theme; advanced collapsed")
+
+        // Typography and Background fold into disclosures so the panel leads with content.
+        let typography = element("social-card-typography-disclosure", in: app)
+        if typography.waitForExistence(timeout: 3) {
+            typography.click()
+            Thread.sleep(forTimeInterval: 0.4)
+            save(
+                window.screenshot(), as: "64-social-card-typography",
+                note: "Social Card with the Typography disclosure open")
+        } else {
+            miss("64-social-card-typography", reason: "typography disclosure not found")
+        }
+    }
+
     // MARK: - Harness
 
     @MainActor
