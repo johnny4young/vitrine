@@ -6,14 +6,14 @@ import SwiftUI
 /// the segmented sub-tabs (Appearance / Lines & header / Background) stay
 /// pinned while the groups beneath scroll.
 struct StyleSettingsView: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var themes: CustomThemeStore
+    @Bindable var settings: AppSettings
+    var themes: CustomThemeStore
 
     /// The PRO brand kit + entitlement (CS-092): observed so the Brand Kit sub-tab's
     /// controls and the live preview track changes, and so the locked/unlocked split
     /// re-renders the instant PRO unlocks.
-    @ObservedObject private var brandKit = BrandKitStore.shared
-    @ObservedObject private var entitlements = Entitlements.shared
+    @Bindable private var brandKit = BrandKitStore.shared
+    private let entitlements = Entitlements.shared
 
     /// The active sub-tab, remembered across openings (and seedable by the
     /// design-audit tooling) through the app's defaults store.

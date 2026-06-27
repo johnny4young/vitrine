@@ -15,7 +15,7 @@ extension View {
 private struct ProGateModifier: ViewModifier {
     let feature: ProFeature
     let action: () -> Void
-    @ObservedObject private var entitlements = Entitlements.shared
+    private let entitlements = Entitlements.shared
     @State private var showingPaywall = false
 
     func body(content: Content) -> some View {
@@ -54,7 +54,7 @@ struct ProBadge: View {
 /// it is only ever presented in response to a tap on a gated action, never on launch.
 struct PaywallSheet: View {
     let feature: ProFeature
-    @ObservedObject private var entitlements = Entitlements.shared
+    private let entitlements = Entitlements.shared
     @Environment(\.dismiss) private var dismiss
     @State private var working = false
 

@@ -12,7 +12,7 @@ import SwiftUI
 /// The content is static text, so it is keyboard- and VoiceOver-accessible by
 /// construction and introduces no motion, respecting Reduced Motion.
 struct WhatsNewView: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     /// The release note to present. Injected so previews and tests can supply a
     /// fixture; in the app it is `ReleaseNotes.latest`.

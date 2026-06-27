@@ -1,4 +1,3 @@
-import Combine
 import OSLog
 import SwiftUI
 
@@ -11,11 +10,12 @@ import SwiftUI
 /// by falling back to a documented default (see `SettingsDefaults`). Loading
 /// from empty, partial, or corrupt defaults never traps and always yields a
 /// valid configuration.
-final class AppSettings: ObservableObject {
+@Observable
+final class AppSettings {
     static let shared = AppSettings(defaults: AppDefaults.current)
 
     /// The current snapshot configuration (theme, font, padding, …).
-    @Published var config: SnapshotConfig {
+    var config: SnapshotConfig {
         didSet {
             SettingsCodec.persistStyle(config, to: defaults)
             dropPresetIfStyleDiverged()
@@ -26,15 +26,15 @@ final class AppSettings: ObservableObject {
     /// persisted like `config` so the user's card survives across launches. It is
     /// app-global — there is one working card — so it is shared rather than seeded
     /// per editor window.
-    @Published var socialCard: SocialCardModel {
+    var socialCard: SocialCardModel {
         didSet { SettingsCodec.persistSocialCard(socialCard, to: defaults) }
     }
 
     /// Copy the rendered image to the clipboard automatically (quick mode).
-    @Published var autoCopy: Bool { didSet { defaults.set(autoCopy, forKey: Keys.autoCopy) } }
+    var autoCopy: Bool { didSet { defaults.set(autoCopy, forKey: Keys.autoCopy) } }
 
     /// Also save the rendered image to a file (CS-010 · Output).
-    @Published var alsoSaveToFile: Bool {
+    var alsoSaveToFile: Bool {
         didSet { defaults.set(alsoSaveToFile, forKey: Keys.alsoSaveToFile) }
     }
 
@@ -42,23 +42,23 @@ final class AppSettings: ObservableObject {
     /// default: the window's job is done once the image is on the clipboard, so it
     /// gets out of the way like a focused capture utility. Users who copy repeatedly
     /// can turn it off in Settings.
-    @Published var closeAfterCopy: Bool {
+    var closeAfterCopy: Bool {
         didSet { defaults.set(closeAfterCopy, forKey: Keys.closeAfterCopy) }
     }
 
     /// Export resolution multiplier: 1, 2 (retina), or 3.
-    @Published var exportScale: Int {
+    var exportScale: Int {
         didSet { defaults.set(exportScale, forKey: Keys.exportScale) }
     }
 
     /// Exported image format (CS-010 · Output).
-    @Published var exportFormat: ExportFormat {
+    var exportFormat: ExportFormat {
         didSet { defaults.set(exportFormat.rawValue, forKey: Keys.exportFormat) }
     }
 
     /// PNG color profile: sRGB by default, Display P3 as an advanced option
     /// (CS-024).
-    @Published var colorProfile: ColorProfile {
+    var colorProfile: ColorProfile {
         didSet { defaults.set(colorProfile.rawValue, forKey: Keys.colorProfile) }
     }
 
@@ -66,7 +66,7 @@ final class AppSettings: ObservableObject {
     /// every copy (CS-054). Off by default so the one-shortcut copy stays a plain
     /// image; when on, a paste into a rich-text editor keeps the syntax colors and
     /// font while an image well still receives the picture.
-    @Published var richClipboard: Bool {
+    var richClipboard: Bool {
         didSet { defaults.set(richClipboard, forKey: Keys.richClipboard) }
     }
 
@@ -75,19 +75,19 @@ final class AppSettings: ObservableObject {
     /// (paste the image anywhere, paste the text into an editor) and the multi-size
     /// export writes a `.txt` beside each image. Terminal output is stripped of its
     /// escape codes first, matching the rendered card.
-    @Published var textSidecar: Bool {
+    var textSidecar: Bool {
         didSet { defaults.set(textSidecar, forKey: Keys.textSidecar) }
     }
 
     /// What the global hotkey does (CS-002).
-    @Published var hotkeyAction: HotkeyAction {
+    var hotkeyAction: HotkeyAction {
         didSet { defaults.set(hotkeyAction.rawValue, forKey: Keys.hotkeyAction) }
     }
 
     /// The app's UI language (CS-047). `.system` follows the system language order; the
     /// other cases pin a shipped locale. Persisted, and written into `AppleLanguages` so
     /// macOS loads the chosen localization on the next launch (the Settings picker says so).
-    @Published var appLanguage: AppLanguage {
+    var appLanguage: AppLanguage {
         didSet {
             defaults.set(appLanguage.rawValue, forKey: Keys.appLanguage)
             applyLanguageOverride()
@@ -108,12 +108,12 @@ final class AppSettings: ObservableObject {
     /// The id of the last selected destination preset, or `nil` for "Custom"
     /// (no preset, the user's own settings). Persisted so the last choice is
     /// restored on relaunch (CS-020).
-    @Published private(set) var selectedPresetID: String? {
+    private(set) var selectedPresetID: String? {
         didSet { defaults.set(selectedPresetID, forKey: Keys.selectedPreset) }
     }
 
     /// Treat clipboard URLs as a screenshot target (CS-010 · Input). Product Phase 2.
-    @Published var treatURLsAsScreenshot: Bool {
+    var treatURLsAsScreenshot: Bool {
         didSet { defaults.set(treatURLsAsScreenshot, forKey: Keys.treatURLs) }
     }
 
@@ -123,17 +123,18 @@ final class AppSettings: ObservableObject {
     /// with broken indentation lands clean. The edit is undoable (⌘Z), and the same tidy
     /// is always available on demand via ⌥⌘F. Read globally (it is a behavior preference,
     /// not a per-window style), so it applies in every editor window.
-    @Published var reindentOnPaste: Bool {
+    var reindentOnPaste: Bool {
         didSet { defaults.set(reindentOnPaste, forKey: Keys.reindentOnPaste) }
     }
 
     /// The web URL-capture viewport, capture-mode, wait, and consent settings (CS-044),
     /// in their own focused sub-store rather than as members of this object (audit P2-1,
     /// "AppSettings is a god object"). Access them through `webCapture`, e.g.
-    /// `settings.webCapture.viewportKind`. `AppSettings` forwards the sub-store's change
-    /// notifications (see `init`), so SwiftUI surfaces observing `AppSettings` still refresh
-    /// when a web-capture knob changes. Backed by the same defaults suite, so its settings
-    /// persist alongside the rest and an older store loads unchanged.
+    /// `settings.webCapture.viewportKind`. Both objects are `@Observable`, so a SwiftUI
+    /// surface that reads `settings.webCapture.<field>` observes the nested store directly
+    /// and refreshes on a web-capture edit — no manual change-forwarding needed. Backed by
+    /// the same defaults suite, so its settings persist alongside the rest and an older
+    /// store loads unchanged.
     ///
     /// Declared `var` (never reassigned after `init`) only so a `$settings.webCapture.field`
     /// SwiftUI binding resolves: a `let` class property forms a read-only key path, which
@@ -141,7 +142,7 @@ final class AppSettings: ObservableObject {
     var webCapture: WebCaptureSettings
 
     /// Recently used languages, most-recent first (CS-004).
-    @Published private(set) var recentLanguages: [Language] {
+    private(set) var recentLanguages: [Language] {
         didSet { defaults.set(recentLanguages.map(\.rawValue), forKey: Keys.recentLanguages) }
     }
 
@@ -151,7 +152,7 @@ final class AppSettings: ObservableObject {
     /// settings" returns the user to a first-run experience. Persisting it in the
     /// app's defaults store (which UI tests isolate via `VITRINE_USER_DEFAULTS_SUITE`)
     /// is what lets a test reset the onboarding state without touching real app data.
-    @Published var hasSeenWelcome: Bool {
+    var hasSeenWelcome: Bool {
         didSet { defaults.set(hasSeenWelcome, forKey: Keys.hasSeenWelcome) }
     }
 
@@ -167,17 +168,11 @@ final class AppSettings: ObservableObject {
     /// Storing it in the app's defaults store (which UI tests isolate via
     /// `VITRINE_USER_DEFAULTS_SUITE`) lets a test drive the gate without touching real
     /// app data.
-    @Published var lastSeenWhatsNewVersion: String? {
+    var lastSeenWhatsNewVersion: String? {
         didSet { defaults.set(lastSeenWhatsNewVersion, forKey: Keys.lastSeenWhatsNewVersion) }
     }
 
     private let defaults: UserDefaults
-
-    /// Keeps the forwarded `webCapture` change subscription alive for this instance's
-    /// lifetime (audit P2-1). A nested `ObservableObject` does not re-publish through its
-    /// parent automatically, so without this re-broadcast a view observing `AppSettings`
-    /// would miss web-capture edits.
-    private var webCaptureObserver: AnyCancellable?
 
     /// Guards the `config` observer from clearing the selected preset while we are
     /// applying that very preset (CS-020). Without it, the style writes inside
@@ -239,13 +234,6 @@ final class AppSettings: ObservableObject {
         socialCard = SettingsCodec.readSocialCard(from: defaults)
 
         config = SettingsCodec.readConfig(from: defaults)
-
-        // Re-broadcast the web-capture sub-store's changes as our own (audit P2-1) so
-        // SwiftUI surfaces bound to `AppSettings` refresh when a web-capture knob changes;
-        // a nested `ObservableObject` does not propagate to its parent on its own.
-        webCaptureObserver = webCapture.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }
     }
 
     // MARK: - Per-window editor sessions (CS-053)

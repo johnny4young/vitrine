@@ -4,9 +4,9 @@ import SwiftUI
 /// pane so neither grows an exaggerated height — saved **style presets** (CS-030) and
 /// user **custom themes** (CS-031). Each renders its own section(s), hosted in one Form.
 struct LibrarySettingsView: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var presets: PresetStore
-    @ObservedObject var themes: CustomThemeStore
+    @Bindable var settings: AppSettings
+    var presets: PresetStore
+    var themes: CustomThemeStore
 
     var body: some View {
         SettingsPaneScroll {
@@ -25,8 +25,8 @@ struct LibrarySettingsView: View {
 /// code) under a name the user types; Import/Export move presets as JSON files
 /// through the existing user-selected file-access entitlement.
 struct StylePresetsSection: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var store: PresetStore
+    @Bindable var settings: AppSettings
+    var store: PresetStore
 
     /// The preset id selected in the picker, or `nil` before the user picks one.
     /// This is a selection cursor for the row actions, not an applied-state mirror;
@@ -241,8 +241,8 @@ struct StylePresetsSection: View {
 /// bad color or missing key. Built-in themes are never listed here — they are
 /// immutable and managed by the Theme picker above.
 struct CustomThemesSection: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var store: CustomThemeStore
+    @Bindable var settings: AppSettings
+    var store: CustomThemeStore
 
     /// The custom theme id selected for management, or `nil` before the user picks.
     @State private var selectedID: String?

@@ -27,9 +27,9 @@ struct VitrineApp: App {
         // SF Symbol. See `assets/brand/vitrine-menubar-*` in the design system.
         MenuBarExtra("Vitrine", image: "vitrine-menubar") {
             MenuBarContent()
-                .environmentObject(AppSettings.shared)
-                .environmentObject(RecentsStore.shared)
-                .environmentObject(CaptureFeedbackPresenter.shared)
+                .environment(AppSettings.shared)
+                .environment(RecentsStore.shared)
+                .environment(CaptureFeedbackPresenter.shared)
         }
         .menuBarExtraStyle(.window)
     }

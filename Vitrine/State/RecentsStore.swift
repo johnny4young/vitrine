@@ -1,7 +1,7 @@
 import AppKit
-import Combine
 import Foundation
 import OSLog
+import Observation
 
 /// Persists the last `limit` captures (CS-013) and their preview thumbnails
 /// (CS-029): newest first, capped, and de-duplicated by code. `UserDefaults` is
@@ -18,11 +18,12 @@ import OSLog
 /// with the capture list: adding a capture renders and stores its thumbnail and
 /// prunes any orphans, and clearing recents clears the cache.
 @MainActor
-final class RecentsStore: ObservableObject {
+@Observable
+final class RecentsStore {
     static let shared = RecentsStore(defaults: AppDefaults.current)
     static let limit = 10
 
-    @Published private(set) var captures: [Capture]
+    private(set) var captures: [Capture]
 
     private let defaults: UserDefaults
     private let key = "recentCaptures"

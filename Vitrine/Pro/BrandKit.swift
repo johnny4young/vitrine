@@ -99,7 +99,8 @@ struct BrandKit: Equatable, Codable {
 /// kit can be configured for free, but it only marks an export once PRO is active,
 /// and it is the caller's `isPro` (read from `Entitlements`) that decides.
 @MainActor
-final class BrandKitStore: ObservableObject {
+@Observable
+final class BrandKitStore {
     /// The shared store backed by the app's resolved defaults.
     static let shared = BrandKitStore(defaults: AppDefaults.current)
 
@@ -110,7 +111,7 @@ final class BrandKitStore: ObservableObject {
 
     /// The working brand kit. Persisted on change; the logo cache is refreshed so
     /// the resolver stays fast and free of disk reads in the render path.
-    @Published var brandKit: BrandKit {
+    var brandKit: BrandKit {
         didSet {
             guard !isReloading else {
                 refreshLogoCache()
@@ -123,7 +124,7 @@ final class BrandKitStore: ObservableObject {
 
     /// Whether the brand kit is applied to captures (CS-092). Off by default, so a
     /// fresh install (and the golden suite) renders unbranded until the user opts in.
-    @Published var isEnabled: Bool {
+    var isEnabled: Bool {
         didSet {
             guard !isReloading else { return }
             defaults.set(isEnabled, forKey: Keys.enabled)

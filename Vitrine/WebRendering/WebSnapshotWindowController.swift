@@ -86,33 +86,34 @@ struct CapturedViewport: Identifiable {
 /// `URLRenderer`, so a build without it surfaces a clear "only in the direct-download
 /// build" message rather than a blank result.
 @MainActor
-final class WebSnapshotModel: ObservableObject {
-    @Published var mode: WebInputMode = .url
-    @Published var urlText: String = ""
-    @Published var htmlText: String = ""
+@Observable
+final class WebSnapshotModel {
+    var mode: WebInputMode = .url
+    var urlText: String = ""
+    var htmlText: String = ""
 
     /// The most recent successful render, shown in the preview and exported. In a
     /// multi-resolution batch this is the primary (first selected) captured viewport.
-    @Published var renderedAsset: RenderedAsset?
+    var renderedAsset: RenderedAsset?
 
     /// Every viewport captured in the last multi-resolution batch (CS-044), in selection
     /// order. Drives the result gallery and the responsive board; empty for a failed or
     /// not-yet-run capture.
-    @Published var results: [CapturedViewport] = []
+    var results: [CapturedViewport] = []
 
     /// The composite "responsive board" for a multi-size batch (CS-044): every capture
     /// laid out in one shareable image. `nil` for a single-viewport capture or a failed
     /// batch; when present it is the primary preview/export.
-    @Published var boardAsset: RenderedAsset?
+    var boardAsset: RenderedAsset?
 
     /// Downsampled copy of ``boardAsset`` for the filmstrip. The full board stays in
     /// ``boardAsset`` for export, while the UI keeps layout cheap.
-    @Published var boardThumbnailAsset: RenderedAsset?
+    var boardThumbnailAsset: RenderedAsset?
 
     /// Whether a render is in flight (drives the preview's loading state).
-    @Published var isRendering = false
+    var isRendering = false
     /// A user-facing, non-PII error from the last render attempt, or `nil`.
-    @Published var errorMessage: String?
+    var errorMessage: String?
 
     /// Whether the active input has enough content to attempt a render.
     var canRender: Bool {
@@ -335,7 +336,7 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingController(
-            rootView: WebSnapshotEditorView(model: model).environmentObject(AppSettings.shared))
+            rootView: WebSnapshotEditorView(model: model).environment(AppSettings.shared))
         let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = String(localized: "Web Snapshot")
         window.styleMask = [

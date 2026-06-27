@@ -5,9 +5,9 @@ import SwiftUI
 /// General pane: hotkey, what it triggers, launch at login (CS-002/010/014),
 /// plus a "Reset all settings" action that restores defaults (CS-050).
 struct GeneralSettingsView: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var presets: PresetStore
-    @ObservedObject var brandKit: BrandKitStore = .shared
+    @Bindable var settings: AppSettings
+    var presets: PresetStore
+    var brandKit: BrandKitStore = .shared
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var showResetConfirmation = false
 
