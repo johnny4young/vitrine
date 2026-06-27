@@ -233,12 +233,14 @@ extension WebSnapshotConfig {
 
         /// The preset's dimensions as shown on the board's caption, e.g. "1440 × 900" —
         /// the second line. Empty when `displayName` carries no parenthesized size, so the
-        /// caption gracefully collapses to just the name.
+        /// caption gracefully collapses to just the name. Trimmed (like `boardName`) so a
+        /// translation that pads the parentheses can't leak stray whitespace into the label.
         var boardDimensions: String {
             guard let open = displayName.firstIndex(of: "("),
                 let close = displayName.lastIndex(of: ")"), open < close
             else { return "" }
             return String(displayName[displayName.index(after: open)..<close])
+                .trimmingCharacters(in: .whitespaces)
         }
 
         /// The non-custom presets, for listing in a picker. `.custom` is excluded
