@@ -90,7 +90,7 @@ enum SettingsCodec {
         /// the migration step that runs afterward.
         static let all = [
             themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
-            showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
+            showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
             colorProfile, richClipboard, textSidecar, hotkeyAction, appLanguage, treatURLs,
@@ -112,7 +112,7 @@ enum SettingsCodec {
         /// its own copy.
         static let editorSessionSeed = [
             themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
-            showShadow, showLineNumbers, highlightedLines, focusHighlightedLines,
+            showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
             colorProfile, richClipboard, textSidecar, selectedPreset,

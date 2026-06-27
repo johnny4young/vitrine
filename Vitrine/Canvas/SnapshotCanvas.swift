@@ -187,7 +187,9 @@ struct SnapshotCanvas: View {
     /// continuation hangs under the code column (the line number stays on the first row).
     @ViewBuilder
     private var codeBody: some View {
-        if let wrapWidth {
+        if config.usesLineRows {
+            codeRows
+        } else if let wrapWidth {
             codeRows.frame(width: wrapWidth, alignment: .leading)
         } else {
             codeRows
@@ -207,6 +209,7 @@ struct SnapshotCanvas: View {
                 highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
                 font: codeFont,
                 lineSpacing: Self.codeLineSpacing,
+                codeColumnWidth: wrapWidth,
                 textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme),
                 highlightColor: HighlightManager.shared.lineHighlightColor(for: config.theme),
                 dimsUnfocused: config.focusHighlightedLines,
