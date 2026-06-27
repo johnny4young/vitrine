@@ -216,6 +216,32 @@
   .tcard p { margin: 0; color: var(--text-secondary); font-size: 14px; }
   .tcard code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-inset); padding: 1px 6px; border-radius: var(--radius-sm); }
 
+  /* ---------- responsive board ---------- */
+  /* A pure-CSS reconstruction of the app's real "responsive board" output: one page
+     captured at several viewports, scaled to a uniform height and composed onto a single
+     dark gradient card, each render labelled with its name above its size. The board is
+     deliberately always dark (the app's board gradient is hard-coded, not theme-derived). */
+  .board {
+    margin-top: 40px; display: flex; flex-wrap: wrap; justify-content: center;
+    align-items: flex-end; gap: 30px; padding: 40px 34px;
+    border-radius: var(--radius-xl); box-shadow: var(--shadow-elevated);
+    background: linear-gradient(135deg, #12101f 0%, #1a142e 100%);
+  }
+  .board figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: 120px; }
+  .board figcaption { text-align: center; line-height: 1.25; }
+  .board .vp-name { display: block; font-size: 15px; font-weight: var(--weight-medium); color: rgba(255, 255, 255, 0.92); }
+  .board .vp-dim { display: block; font-family: var(--font-mono); font-size: 12px; color: rgba(255, 255, 255, 0.5); margin-top: 2px; }
+  .vp { height: 190px; border-radius: 12px; overflow: hidden; background: var(--surface-inset); border: 1px solid rgba(255, 255, 255, 0.10); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45); }
+  .vp .page { height: 100%; padding: 10px; display: grid; gap: 7px; align-content: start; background: var(--surface-inset); }
+  .vp .hero { height: 30px; border-radius: var(--radius-sm); background: var(--grad-signature); }
+  .vp .blk { height: 16px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--text-primary) 10%, transparent); }
+  .vp .blk.sm { height: 9px; }
+  .vp .cols { display: grid; gap: 7px; }
+  .vp.social { width: 360px; } .vp.social .cols { grid-template-columns: 1fr 1fr; }
+  .vp.desktop { width: 300px; } .vp.desktop .cols { grid-template-columns: 1fr 1fr 1fr; }
+  .vp.phone { width: 88px; }
+  @media (max-width: 760px) { .vp.social { width: 240px; } .vp.desktop { width: 220px; } }
+
   /* ---------- the loop ---------- */
   .loop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
   @media (max-width: 760px) { .loop { grid-template-columns: 1fr; } }
@@ -480,6 +506,35 @@
   </div>
 </section>
 
+<!-- ============ RESPONSIVE BOARDS ============ -->
+<section id="responsive" style="padding-top:0">
+  <div class="wrap">
+    <span class="eyebrow" data-i18n="vp.eyebrow">One page, every screen</span>
+    <h2 class="title" data-i18n="vp.title">Capture every viewport at once.</h2>
+    <p class="lead" data-i18n="vp.lead">Point Vitrine at a URL or pasted HTML and it renders the page at several viewports in a single pass — social, desktop, Full HD, mobile — then composes them onto one shareable <em>responsive board</em>. The fastest way to show a design reflowing across screens. All local, in WebKit.</p>
+    <div class="board" role="img" aria-label="A responsive board composed by Vitrine: one landing page rendered at several viewports — social, desktop, and phone — scaled to a uniform height on a single dark shareable card, each render labelled with its name and size.">
+      <figure>
+        <div class="vp social">
+          <div class="page"><div class="hero"></div><div class="cols"><div class="blk"></div><div class="blk"></div></div><div class="blk sm"></div></div>
+        </div>
+        <figcaption><span class="vp-name">Social card</span><span class="vp-dim">1200 × 630</span></figcaption>
+      </figure>
+      <figure>
+        <div class="vp desktop">
+          <div class="page"><div class="hero"></div><div class="cols"><div class="blk"></div><div class="blk"></div><div class="blk"></div></div><div class="blk sm"></div><div class="blk sm"></div></div>
+        </div>
+        <figcaption><span class="vp-name">Desktop</span><span class="vp-dim">1440 × 900</span></figcaption>
+      </figure>
+      <figure>
+        <div class="vp phone">
+          <div class="page"><div class="hero"></div><div class="blk"></div><div class="blk sm"></div><div class="blk"></div></div>
+        </div>
+        <figcaption><span class="vp-name">Phone</span><span class="vp-dim">390 × 844</span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
 <!-- ============ TERMINAL TUIs ============ -->
 <section id="terminals" style="padding-top:0">
   <div class="wrap">
@@ -598,6 +653,8 @@
       "more.c1h": "Privada por diseño", "more.c1p": "Totalmente local y en sandbox — sin cuenta, sin red por defecto, sin telemetría. Tu código nunca sale de tu Mac.",
       "more.c2h": "Exporta y comparte", "more.c2p": "PNG/PDF retina al portapapeles, a archivo o al menú Compartir. Presets OpenGraph, Story y banner de GitHub, más una CLI <code>vitrine</code>.",
       "more.c3h": "Capturas web", "more.c3p": "Renderiza HTML pegado, o captura una página en varios viewports a la vez — social, escritorio, Full HD, móvil — compuestos en un tablero responsive para compartir. Todo local en WebKit, con un aviso de privacidad la primera vez.",
+      "vp.eyebrow": "Una página, cada pantalla", "vp.title": "Captura todos los viewports a la vez.",
+      "vp.lead": "Apunta Vitrine a una URL o a HTML pegado y renderiza la página en varios viewports de una sola pasada — social, escritorio, Full HD, móvil — y los compone en un <em>tablero responsive</em> listo para compartir. La forma más rápida de mostrar un diseño adaptándose a cada pantalla. Todo local, en WebKit.",
       "term.eyebrow": "Terminal", "term.title": "Hasta TUIs de pantalla completa.",
       "term.lead": "Pega o usa <code>vgrab</code> con salida de terminal a color — y ahora también apps de pantalla completa como <code>htop</code>, <code>lazygit</code> y Neovim. Vitrine reconstruye la pantalla final — cada movimiento del cursor y su color, con caracteres anchos (CJK y emoji) incluidos — en tu tema.",
       "cl.eyebrow": "Cambios", "cl.title": "Novedades", "cl.lead": "Se cargan en vivo desde el <code>CHANGELOG.md</code> del proyecto — siempre al día, nada que mantener.",
