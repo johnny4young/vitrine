@@ -336,7 +336,7 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingController(
             rootView: WebSnapshotEditorView(model: model).environmentObject(AppSettings.shared))
-        let window = NSWindow(contentViewController: hosting)
+        let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = String(localized: "Web Snapshot")
         window.styleMask = [
             .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView,
