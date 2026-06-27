@@ -151,7 +151,11 @@ struct BackgroundImageStore {
         maxBytes: Int = maxRemoteImageBytes
     ) async throws -> (Data, URLResponse) {
         let session = remoteImageSession()
-        defer { session.finishTasksAndInvalidate() }
+        // Cancel rather than finish: the session is purpose-built and unshared, so on an
+        // early throw (e.g. `.tooLarge` once the cap is hit) the in-flight download must be
+        // torn down instead of allowed to run to completion — that's the "bounded" intent.
+        // On the success path the stream is already fully consumed, so this is a no-op.
+        defer { session.invalidateAndCancel() }
         return try await loadBoundedRemoteImage(from: url, maxBytes: maxBytes, session: session)
     }
 
