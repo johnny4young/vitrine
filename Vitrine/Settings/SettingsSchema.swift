@@ -246,6 +246,11 @@ enum SettingsDefaults {
         min(max(value, wrapColumnsRange.lowerBound), wrapColumnsRange.upperBound)
     }
 
+    /// `wrapColumnsRange` as a `Double` range, for the wrap-width `Slider`.
+    static var wrapColumnsSliderRange: ClosedRange<Double> {
+        Double(wrapColumnsRange.lowerBound)...Double(wrapColumnsRange.upperBound)
+    }
+
     static func clampFontSize(_ value: Double) -> Double {
         clamp(value, to: fontSizeRange, fallback: fontSize)
     }

@@ -185,30 +185,6 @@ struct StyleSettingsView: View {
             : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
     }
 
-    /// The "wrap long lines" toggle maps the optional `wrapColumns` to a Bool: on adopts
-    /// the default column count, off clears it (no wrap).
-    private var wrapsLongLines: Binding<Bool> {
-        Binding(
-            get: { settings.config.wrapColumns != nil },
-            set: { settings.config.wrapColumns = $0 ? SettingsDefaults.wrapColumns : nil }
-        )
-    }
-
-    /// The wrap-column count as a slider-friendly `Double`, clamped into the safe range on
-    /// write. Only shown while wrapping is on.
-    private var wrapColumnsValue: Binding<Double> {
-        Binding(
-            get: { Double(settings.config.wrapColumns ?? SettingsDefaults.wrapColumns) },
-            set: { settings.config.wrapColumns = SettingsDefaults.clampWrapColumns(Int($0)) }
-        )
-    }
-
-    /// The wrap-width slider's bounds as `Double`, from the persisted column range.
-    private var wrapColumnsSliderRange: ClosedRange<Double> {
-        let range = SettingsDefaults.wrapColumnsRange
-        return Double(range.lowerBound)...Double(range.upperBound)
-    }
-
     // MARK: Lines & header
 
     @ViewBuilder private var linesAndHeaderGroups: some View {
@@ -223,7 +199,7 @@ struct StyleSettingsView: View {
                 label: Text("Wrap long lines"),
                 caption: Text("Soft-wrap past a column width instead of widening the card")
             ) {
-                Toggle("Wrap long lines", isOn: wrapsLongLines)
+                Toggle("Wrap long lines", isOn: settings.wrapsLongLines)
                     .toggleStyle(.switch)
                     .labelsHidden()
                     .accessibilityIdentifier("wrap-lines-toggle")
@@ -231,10 +207,13 @@ struct StyleSettingsView: View {
             if settings.config.wrapColumns != nil {
                 TokenRow(label: Text("Wrap width")) {
                     HStack(spacing: 8) {
-                        Slider(value: wrapColumnsValue, in: wrapColumnsSliderRange, step: 4)
-                            .frame(width: 110)
-                            .accessibilityLabel("Wrap width")
-                            .accessibilityIdentifier("wrap-columns-slider")
+                        Slider(
+                            value: settings.wrapColumnsValue,
+                            in: SettingsDefaults.wrapColumnsSliderRange, step: 4
+                        )
+                        .frame(width: 110)
+                        .accessibilityLabel("Wrap width")
+                        .accessibilityIdentifier("wrap-columns-slider")
                         Text(
                             verbatim:
                                 "\(settings.config.wrapColumns ?? SettingsDefaults.wrapColumns)"
