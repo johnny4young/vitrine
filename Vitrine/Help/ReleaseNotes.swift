@@ -42,6 +42,17 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.16.1",
+            headline: "Sharper responsive boards and safer downloads",
+            highlights: [
+                "The responsive board's viewport labels no longer truncate — each render is "
+                    + "captioned with its name above its exact size, so a tall full-page "
+                    + "capture reads cleanly instead of showing \"Deskt…\".",
+                "Hardened remote background-image downloads: size-bounded streaming that "
+                    + "tears the transfer down the moment the cap is hit, with private and "
+                    + "redirected targets refused before the request is followed.",
+            ]),
+        ReleaseNote(
             version: "0.16.0",
             headline: "Web Snapshot & Social Card, refined",
             highlights: [
