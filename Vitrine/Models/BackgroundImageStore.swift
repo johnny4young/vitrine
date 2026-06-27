@@ -35,7 +35,16 @@ struct BackgroundImageStore {
     /// The largest remote image Vitrine will download as a background, guarding
     /// against a pathological or hostile URL. 25 MB comfortably covers a
     /// high-resolution photo while bounding memory and disk use.
-    static let maxRemoteImageBytes = 25 * 1024 * 1024
+    nonisolated static let maxRemoteImageBytes = 25 * 1024 * 1024
+
+    /// Keep the direct remote fetch from lingering forever on a slow or stalled
+    /// host. The cap still comes from `maxRemoteImageBytes`; this only bounds the
+    /// request's wall-clock time.
+    nonisolated private static let remoteImageRequestTimeout: TimeInterval = 20
+
+    /// Avoid preallocating the whole 25 MB ceiling for the common case of a small
+    /// avatar/screenshot while still reducing reallocations during streaming.
+    nonisolated private static let remoteImageInitialCapacity = 256 * 1024
 
     /// The directory holding copied background images. Created on demand.
     let directory: URL
@@ -98,17 +107,11 @@ struct BackgroundImageStore {
     /// one file.
     func importImage(
         downloadedFrom url: URL,
-        using load: (URL) async throws -> (Data, URLResponse) = {
-            try await URLSession.shared.data(from: $0)
+        using load: (URL) async throws -> (Data, URLResponse) = { url in
+            try await BackgroundImageStore.loadBoundedRemoteImage(from: url)
         }
     ) async throws -> ImageReference {
-        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
-            throw ImportError.downloadFailed
-        }
-        // Refuse internal/loopback/link-local hosts as an image source — the same
-        // private-host SSRF defense URL capture uses (audit P1-Security-3). The final URL
-        // is re-checked after the request in case a public host redirects to a private one.
-        if let host = url.host, WebSnapshotConfig.isPrivateLocalhost(host: host) {
+        guard Self.isAllowedRemoteImageDownloadURL(url) else {
             throw ImportError.downloadFailed
         }
 
@@ -116,16 +119,16 @@ struct BackgroundImageStore {
         let response: URLResponse
         do {
             (data, response) = try await load(url)
+        } catch let importError as ImportError {
+            throw importError
         } catch {
             throw ImportError.downloadFailed
         }
 
-        // A public host can 30x-redirect to a private one. Without a session delegate we
-        // can't cancel mid-flight, but discarding the response here prevents an internal
-        // resource from ever being stored as a background.
-        if let finalHost = (response.url ?? url).host,
-            WebSnapshotConfig.isPrivateLocalhost(host: finalHost)
-        {
+        // The production loader blocks private-host redirects before following them. Keep
+        // this response check as a defense-in-depth guard for injected loaders and any future
+        // URLSession path.
+        if !Self.isAllowedRemoteImageDownloadURL(response.url ?? url) {
             throw ImportError.downloadFailed
         }
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
@@ -136,6 +139,81 @@ struct BackgroundImageStore {
 
         return try store(
             data, preferredExtension: sanitizedExtension(for: url, mimeType: response.mimeType))
+    }
+
+    /// Loads a remote background image without ever accumulating more than
+    /// `maxBytes` in memory. This is the default production loader behind
+    /// `importImage(downloadedFrom:)`; tests can inject a tiny cap through
+    /// `collectRemoteImageBytes` to exercise the streaming boundary without a
+    /// 25 MB fixture.
+    nonisolated static func loadBoundedRemoteImage(
+        from url: URL,
+        maxBytes: Int = maxRemoteImageBytes
+    ) async throws -> (Data, URLResponse) {
+        let session = remoteImageSession()
+        defer { session.finishTasksAndInvalidate() }
+        return try await loadBoundedRemoteImage(from: url, maxBytes: maxBytes, session: session)
+    }
+
+    /// The lower-level streaming loader, injectable by tests that need a custom
+    /// `URLSession`. Production uses `remoteImageSession()` so redirects are filtered
+    /// before `URLSession` follows them and no shared cookies/cache are consulted.
+    nonisolated static func loadBoundedRemoteImage(
+        from url: URL,
+        maxBytes: Int,
+        session: URLSession
+    ) async throws -> (Data, URLResponse) {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = remoteImageRequestTimeout
+        let (bytes, response) = try await session.bytes(for: request)
+        let data = try await collectRemoteImageBytes(bytes, maxBytes: maxBytes)
+        return (data, response)
+    }
+
+    /// Whether a URL is safe to request for a remote background image. This mirrors
+    /// URL capture's scheme and private-host policy and is shared by initial validation,
+    /// redirect filtering, and response re-checking.
+    nonisolated static func isAllowedRemoteImageDownloadURL(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
+            let host = url.host, !host.isEmpty
+        else {
+            return false
+        }
+        return !WebSnapshotConfig.isPrivateLocalhost(host: host)
+    }
+
+    /// Builds the privacy-preserving production session for direct image downloads:
+    /// ephemeral storage avoids sending/reading shared website cookies, and the redirect
+    /// delegate refuses private/local targets before `URLSession` follows them.
+    nonisolated private static func remoteImageSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.timeoutIntervalForRequest = remoteImageRequestTimeout
+        configuration.timeoutIntervalForResource = remoteImageRequestTimeout
+        return URLSession(
+            configuration: configuration,
+            delegate: RemoteImageRedirectPolicy(),
+            delegateQueue: nil)
+    }
+
+    /// Collects a byte stream up to `maxBytes`, failing as soon as the next byte
+    /// would exceed the cap. Keeping the accumulator in a nonisolated helper means
+    /// the per-byte loop runs off the main actor while the AppKit image decode stays
+    /// in the caller.
+    nonisolated static func collectRemoteImageBytes<Bytes: AsyncSequence>(
+        _ bytes: Bytes,
+        maxBytes: Int = maxRemoteImageBytes
+    ) async throws -> Data where Bytes.Element == UInt8 {
+        let limit = max(0, maxBytes)
+        var data = Data()
+        data.reserveCapacity(min(limit, remoteImageInitialCapacity))
+
+        for try await byte in bytes {
+            guard data.count < limit else { throw ImportError.tooLarge }
+            data.append(byte)
+        }
+
+        return data
     }
 
     /// Writes validated image `data` into the container under a content-addressed
@@ -210,6 +288,27 @@ struct BackgroundImageStore {
             let ext = type.preferredFilenameExtension
         else { return "" }
         return ext
+    }
+}
+
+/// Refuses private/local redirects for remote background image downloads before
+/// `URLSession` follows them. The entry URL and final response are checked in
+/// `BackgroundImageStore` too; this delegate closes the mid-flight redirect gap.
+nonisolated private final class RemoteImageRedirectPolicy: NSObject, URLSessionTaskDelegate {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping @Sendable (URLRequest?) -> Void
+    ) {
+        guard let redirectedURL = request.url,
+            BackgroundImageStore.isAllowedRemoteImageDownloadURL(redirectedURL)
+        else {
+            completionHandler(nil)
+            return
+        }
+        completionHandler(request)
     }
 }
 
