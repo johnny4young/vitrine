@@ -4,7 +4,7 @@ import SwiftUI
 /// About pane: version, links, copyright (CS-010), and a privacy-safe diagnostics
 /// export for bug reports (CS-048).
 struct AboutSettingsView: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     var body: some View {
         ScrollView {

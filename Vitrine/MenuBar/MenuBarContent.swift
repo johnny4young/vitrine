@@ -10,9 +10,9 @@ import SwiftUI
 /// Titles, SF Symbols, and shortcuts come from `VitrineCommand` so the panel
 /// and the application main menu (CS-032) never drift.
 struct MenuBarContent: View {
-    @EnvironmentObject private var settings: AppSettings
-    @EnvironmentObject private var recents: RecentsStore
-    @EnvironmentObject private var feedback: CaptureFeedbackPresenter
+    @Environment(AppSettings.self) private var settings
+    @Environment(RecentsStore.self) private var recents
+    @Environment(CaptureFeedbackPresenter.self) private var feedback
 
     /// Closes the panel after an action, mirroring how a native menu dismisses
     /// on selection.

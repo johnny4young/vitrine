@@ -15,7 +15,7 @@ import SwiftUI
 /// It lives inside the preview's `scaleEffect`, sharing the canvas coordinate space,
 /// so a pointer drag maps straight to normalized annotation coordinates.
 struct AnnotationEditingOverlay: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
     @Binding var selection: UUID?
     let canvasSize: CGSize
     let activeTool: AnnotationTool

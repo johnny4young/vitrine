@@ -25,12 +25,13 @@ import UniformTypeIdentifiers
 /// Applying a preset is delegated to `AppSettings` so the existing "diverged from
 /// preset" bookkeeping for destination presets (CS-020) is untouched; a style
 /// preset only writes presentation fields into the live config.
-final class PresetStore: ObservableObject {
+@Observable
+final class PresetStore {
     /// The shared store backed by the app's resolved defaults.
     static let shared = PresetStore(defaults: AppDefaults.current)
 
     /// The user's saved presets, most-recently-saved last. Persisted on change.
-    @Published private(set) var userPresets: [StylePreset] {
+    private(set) var userPresets: [StylePreset] {
         didSet { persist() }
     }
 

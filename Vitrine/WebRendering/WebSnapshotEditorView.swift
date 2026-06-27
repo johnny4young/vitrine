@@ -17,8 +17,8 @@ import SwiftUI
 /// share this type's stored state, so those properties are module-internal rather than
 /// `private`; nothing outside this type references them.
 struct WebSnapshotEditorView: View {
-    @ObservedObject var model: WebSnapshotModel
-    @EnvironmentObject var settings: AppSettings
+    @Bindable var model: WebSnapshotModel
+    @Environment(AppSettings.self) var settings
 
     @State var showDisclosure = false
     /// Which captured viewport the big preview is showing (the highlighted filmstrip

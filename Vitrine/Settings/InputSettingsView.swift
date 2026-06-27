@@ -3,7 +3,7 @@ import SwiftUI
 /// Input pane: URL handling (CS-010 · Input) and the web URL-capture viewport and
 /// wait strategy (CS-044).
 struct InputSettingsView: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     var body: some View {
         SettingsPaneScroll {
@@ -45,7 +45,7 @@ struct InputSettingsView: View {
 /// this build. The network model lives here so it is always consultable in Settings,
 /// not only at the first-use sheet.
 struct WebCaptureConsentRow: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     var body: some View {
         TokenRow(
@@ -87,7 +87,7 @@ struct WebCaptureConsentRow: View {
 /// width/height fields appear only for a custom viewport, and the seconds field only
 /// for a timed wait strategy, so the surface stays as small as the chosen options.
 struct WebCaptureControls: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     /// When true, the capture-mode / wait-strategy controls fold into an
     /// `InspectorDisclosure` so the Web Snapshot inspector leads with the viewport

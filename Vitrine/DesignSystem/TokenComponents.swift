@@ -550,8 +550,8 @@ struct ChipFilterField: View {
 /// The horizontally scrolling theme-chip picker shared by the Style settings
 /// pane and the editor inspector. Built-ins lead; custom themes follow.
 struct ThemeChipPicker: View {
-    @ObservedObject var settings: AppSettings
-    @ObservedObject var themes: CustomThemeStore
+    @Bindable var settings: AppSettings
+    var themes: CustomThemeStore
     var chipSize: CGSize = CGSize(width: 50, height: 32)
     var dotSize: CGFloat = 5.5
     var topPadding: CGFloat = 12
@@ -636,7 +636,7 @@ struct FontChip: View {
 /// The horizontally scrolling font-pill picker, one pill per bundled or
 /// system monospace family, each shown in its own face.
 struct FontChipPicker: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
     var fontSize: CGFloat = 11
     var verticalPadding: CGFloat = 5
     var horizontalPadding: CGFloat = 12

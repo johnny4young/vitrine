@@ -1,7 +1,7 @@
 import AppKit
-import Combine
 import Foundation
 import OSLog
+import Observation
 
 /// Persists the last `limit` captures (CS-013) and their preview thumbnails
 /// (CS-029): newest first, capped, and de-duplicated by code. `UserDefaults` is
@@ -18,17 +18,27 @@ import OSLog
 /// with the capture list: adding a capture renders and stores its thumbnail and
 /// prunes any orphans, and clearing recents clears the cache.
 @MainActor
-final class RecentsStore: ObservableObject {
+@Observable
+final class RecentsStore {
     static let shared = RecentsStore(defaults: AppDefaults.current)
     static let limit = 10
 
-    @Published private(set) var captures: [Capture]
+    private(set) var captures: [Capture]
 
     private let defaults: UserDefaults
     private let key = "recentCaptures"
 
     /// The local thumbnail cache backing the visual gallery (CS-029).
     let thumbnails: RecentsThumbnailCache
+
+    /// In-memory cache of decoded thumbnails, keyed by capture id (audit Perf-1). The
+    /// gallery reads `thumbnail(for:)` straight from its `body`, which SwiftUI re-evaluates
+    /// on every capture change *and* on window resize (the adaptive grid reflows); without
+    /// this, each pass re-read and re-decoded up to `limit` PNGs from disk on the main
+    /// actor. `@ObservationIgnored` keeps it a pure cache — populating it during `body`
+    /// never triggers observation. Kept in lock-step with `captures` (pruned on `add`,
+    /// emptied on `clear`).
+    @ObservationIgnored private var decodedThumbnails: [UUID: NSImage] = [:]
 
     /// Renders a capture to thumbnail PNG bytes. Injectable so unit tests can drive
     /// the caching/pruning logic deterministically without invoking the real
@@ -70,12 +80,17 @@ final class RecentsStore: ObservableObject {
         // The thumbnail is rendered synchronously so the gallery shows it the moment a
         // capture lands (the UX + test contract). It is small (320×200 @ 1×), and audit
         // P1-Perf-2 already removed the redundant full-bitmap color copy from this path.
-        cacheThumbnail(for: capture)
-        thumbnails.prune(keeping: Set(captures.map(\.id)))
+        // `store(…keeping:)` reconciles the cache (caps + orphan drop) in a single
+        // directory scan rather than the store-then-prune double scan (audit Perf-4).
+        let keep = Set(captures.map(\.id))
+        cacheThumbnail(for: capture, keeping: keep)
+        // Keep the in-memory cache bounded to the live captures (Perf-1).
+        decodedThumbnails = decodedThumbnails.filter { keep.contains($0.key) }
     }
 
     func clear() {
         captures.removeAll()
+        decodedThumbnails.removeAll()
         persist()
         thumbnails.clear()
     }
@@ -84,18 +99,21 @@ final class RecentsStore: ObservableObject {
     /// (e.g. a capture restored from an older build that predates CS-029). Callers
     /// fall back to a placeholder so the gallery still lists the entry.
     func thumbnail(for capture: Capture) -> NSImage? {
-        thumbnails.image(for: capture.id)
+        if let cached = decodedThumbnails[capture.id] { return cached }
+        guard let image = thumbnails.image(for: capture.id) else { return nil }
+        decodedThumbnails[capture.id] = image
+        return image
     }
 
     /// Renders `capture` to a thumbnail and stores it, tolerating a render miss: a
     /// failed thumbnail just leaves the entry without a preview rather than dropping
     /// the capture. Never logs the code itself (CS-048).
-    private func cacheThumbnail(for capture: Capture) {
+    private func cacheThumbnail(for capture: Capture, keeping keep: Set<UUID>) {
         guard let data = renderThumbnail(capture) else {
             Log.render.error("Recents thumbnail render produced no image")
             return
         }
-        thumbnails.store(data, for: capture.id)
+        thumbnails.store(data, for: capture.id, keeping: keep)
     }
 
     private func persist() {
@@ -192,15 +210,31 @@ struct RecentsThumbnailCache {
     /// Writes thumbnail `data` for `id`, then enforces the count and byte caps. A
     /// write failure is non-fatal — the capture simply has no cached preview.
     func store(_ data: Data, for id: UUID) {
+        guard write(data, for: id) else { return }
+        enforceCaps()
+    }
+
+    /// Writes thumbnail `data` for `id`, then reconciles the cache (orphan drop + caps)
+    /// against the live capture ids in a **single** directory scan, for the hot `add`
+    /// path that would otherwise scan twice — store-then-prune (audit Perf-4).
+    func store(_ data: Data, for id: UUID, keeping keep: Set<UUID>) {
+        guard write(data, for: id) else { return }
+        reconcile(keeping: keep)
+    }
+
+    /// Writes thumbnail bytes for `id`, creating the directory. Returns whether the write
+    /// succeeded; a failure is non-fatal (the entry just renders without a preview).
+    @discardableResult
+    private func write(_ data: Data, for id: UUID) -> Bool {
         do {
             try FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true)
             try data.write(to: fileURL(for: id), options: .atomic)
+            return true
         } catch {
             Log.render.error("Recents thumbnail write failed; entry will have no preview")
-            return
+            return false
         }
-        enforceCaps()
     }
 
     /// Resolves the on-disk URL for `id`'s thumbnail, or `nil` when none is cached.
@@ -211,9 +245,10 @@ struct RecentsThumbnailCache {
     }
 
     /// Loads `id`'s cached thumbnail as an image, or `nil` if absent/undecodable.
+    /// `NSImage(contentsOf:)` already yields `nil` for a missing file, so no separate
+    /// `fileExists` stat is needed (audit Perf-1).
     func image(for id: UUID) -> NSImage? {
-        guard let url = url(for: id) else { return nil }
-        return NSImage(contentsOf: url)
+        NSImage(contentsOf: fileURL(for: id))
     }
 
     /// Number of thumbnails currently cached. Exposed for tests and diagnostics.
@@ -285,7 +320,25 @@ struct RecentsThumbnailCache {
 
     /// Evicts oldest-first until the cache is within both the count and byte caps.
     private func enforceCaps() {
-        var files = cachedFiles()  // newest first
+        _ = evictToCaps(cachedFiles())
+    }
+
+    /// Drops thumbnails whose id is not in `keep`, then enforces the caps — all from a
+    /// single directory scan, so the hot `add` path reconciles in one pass (audit Perf-4).
+    /// Caps are applied before the orphan drop, matching the prior store-then-prune order.
+    private func reconcile(keeping keep: Set<UUID>) {
+        let survivors = evictToCaps(cachedFiles())
+        for file in survivors where !keep.contains(file.id) {
+            try? FileManager.default.removeItem(at: file.url)
+        }
+    }
+
+    /// Evicts oldest-first from `files` (newest first) until within both the count and
+    /// byte caps, and returns the survivors. Shared by `enforceCaps` and `reconcile` so
+    /// the eviction policy lives in one place.
+    @discardableResult
+    private func evictToCaps(_ files: [CachedFile]) -> [CachedFile] {
+        var files = files  // newest first
 
         // Count cap: drop everything past the newest `maxEntries`.
         if files.count > maxEntries {
@@ -302,5 +355,6 @@ struct RecentsThumbnailCache {
             total -= oldest.size
             files.removeLast()
         }
+        return files
     }
 }

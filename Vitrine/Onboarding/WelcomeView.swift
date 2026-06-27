@@ -16,7 +16,7 @@ import SwiftUI
 /// screen recording, or Accessibility permission. That promise is shown *before* the
 /// first capture so the user learns it up front.
 struct WelcomeView: View {
-    @ObservedObject var settings: AppSettings
+    @Bindable var settings: AppSettings
 
     /// Closes the hosting window. Injected by the window controller so the view has
     /// no dependency on how it is presented (window vs. sheet vs. preview).
