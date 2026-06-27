@@ -42,6 +42,18 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.16.0",
+            headline: "Web Snapshot & Social Card, refined",
+            highlights: [
+                "The Web Snapshot and Social Card windows were redesigned to match the "
+                    + "editor — cleaner inspectors, branded empty states, and a centered "
+                    + "preview.",
+                "Capture a webpage at several viewports at once — social, desktop, Full HD, "
+                    + "mobile — composed into a shareable responsive board. New Web Snapshot "
+                    + "and New Social Card are now in the menu-bar icon panel too.",
+                "Fixed the Get Vitrine PRO purchase link after the store moved.",
+            ]),
+        ReleaseNote(
             version: "0.15.0",
             headline: "Sharper terminal captures — emoji, CJK, exact width",
             highlights: [

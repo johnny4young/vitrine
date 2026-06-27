@@ -12,6 +12,26 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-06-26
+
+### Changed
+
+- **Web Snapshot & Social Card windows redesigned to match the Editor.** Both composers now
+  use the shared inspector chrome (uppercase sections, labeled rows, collapsible disclosures
+  for the advanced controls), branded empty states, a centered preview, and a title that sits
+  in the traffic-light row — so they read as part of the same app as the editor instead of
+  one-off panels. The multi-viewport viewport chips wrap into view in the narrow inspector.
+- **Multi-viewport web capture is now discoverable.** "New Web Snapshot" and "New Social
+  Card" appear in the menu-bar icon panel (not only the hidden top menu bar), and the README
+  and landing page describe capturing several viewports at once into a shareable responsive
+  board.
+
+### Fixed
+
+- **PRO purchase link.** The Lemon Squeezy store was renamed, so the checkout moved to a new
+  subdomain; the in-app "Get Vitrine PRO" button and the landing page's buy button now point
+  at the live store instead of a dead URL.
+
 ## [0.15.0] - 2026-06-26
 
 ### Added
