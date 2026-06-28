@@ -42,6 +42,16 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.19.0",
+            headline: "Redact secrets before you share",
+            highlights: [
+                "One-click Redact secrets: Vitrine scans your capture for likely API keys, "
+                    + "tokens, passwords, and private keys and blurs those lines for you — "
+                    + "terminal output included.",
+                "The blur is leak-proof: the copyable text that travels with the image hides "
+                    + "the same lines, so a secret can't slip out through the sidecar or clipboard.",
+            ]),
+        ReleaseNote(
             version: "0.18.0",
             headline: "Editable annotations, tool shortcuts, and a usability pass",
             highlights: [
