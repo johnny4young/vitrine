@@ -46,6 +46,9 @@ struct FramedImageView: View {
                 imageView(image, size: display)
             }
             .frame(width: display.width)
+            // Fill behind the bar + image with the chrome color so a sub-pixel seam at the
+            // rounded clip never lets the background bleed through as a thin line.
+            .background(chrome.bar)
         case .browser:
             let display = displaySize(for: image)
             VStack(spacing: 0) {
@@ -53,6 +56,7 @@ struct FramedImageView: View {
                 imageView(image, size: display)
             }
             .frame(width: display.width)
+            .background(chrome.bar)
         case .macBook:
             LaptopFrameView(image: image, chrome: chrome)
         case .iPhone:
