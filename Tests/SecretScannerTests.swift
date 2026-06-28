@@ -77,4 +77,16 @@ struct SecretScannerTests {
         #expect(SecretScanner.secretLines(in: code) == [1])
         #expect(SecretScanner.scan(code).count >= 2, "both the assignment and the AWS rule match")
     }
+
+    @Test func terminalRedactionScansTheResolvedVisibleText() {
+        // For a terminal capture the canvas renders the ANSI-resolved screen
+        // (`config.sidecarText`), so redaction scans that — not the raw code — to map onto
+        // the rendered rows. A `\r` redraw makes raw vs resolved bytes differ; the secret
+        // must still be found on the resolved line the canvas shows.
+        var config = SnapshotConfig()
+        config.language = .terminal
+        config.terminalColumns = 80  // wide enough that the resolved line is a single row
+        config.code = "fetching...\rexport API_KEY=" + token("", "k", 20)
+        #expect(SecretScanner.secretLines(in: config.sidecarText) == [1])
+    }
 }

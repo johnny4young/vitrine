@@ -98,8 +98,13 @@ struct EditorInspectorView: View {
                         InspectorRow(label: Text("Redact secrets")) {
                             if settings.config.redactedLineRanges.isEmpty {
                                 Button("Scan") {
+                                    // Scan `sidecarText`, not `code`: for a terminal capture
+                                    // the canvas renders the ANSI-resolved screen, so the raw
+                                    // bytes' line numbers would map to the wrong rows (and
+                                    // could leave a secret visible). For other languages
+                                    // `sidecarText == code`.
                                     let lines = SecretScanner.secretLines(
-                                        in: settings.config.code)
+                                        in: settings.config.sidecarText)
                                     settings.config.redactedLineRanges = LineHighlight.normalize(
                                         lines.map { $0...$0 })
                                 }
