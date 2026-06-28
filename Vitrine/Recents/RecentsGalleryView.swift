@@ -107,13 +107,18 @@ struct RecentsGalleryView: View {
 
     // MARK: - Actions
 
-    /// Loads `capture` back into the shared settings (the same fields the text
-    /// Recents submenu restores) and asks the host to surface the editor.
+    /// Loads `capture` into the primary editor window as a per-window document — the same
+    /// path the menu-bar Recents row uses (`EditorWindowController.loadIntoPrimary`,
+    /// CS-053). The earlier version mutated the shared `AppSettings` and only `show()`d the
+    /// window, so reopening from the gallery silently overwrote the global default style
+    /// *and* left the editor on its previous content; this matches the menu's semantics so
+    /// the two recents surfaces behave identically.
     private func open(_ capture: Capture) {
-        settings.config.code = capture.code
-        settings.config.language = capture.language
-        settings.config.theme = capture.theme
-        open()
+        var document = settings.config
+        document.code = capture.code
+        document.language = capture.language
+        document.theme = capture.theme
+        EditorWindowController.shared.loadIntoPrimary(document)
     }
 
     private func open() {
