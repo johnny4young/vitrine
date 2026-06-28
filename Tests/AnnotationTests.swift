@@ -224,4 +224,25 @@ struct AnnotationTests {
             }
         }
     }
+
+    @Test func makeStartsTextCalloutsEmptyForInlineEditing() {
+        // The editor opens a focused inline field on a fresh text callout, so it must
+        // start empty rather than dropping a literal placeholder the user has to clear.
+        let text = Annotation.make(
+            kind: .text, from: CGPoint(x: 0.5, y: 0.5), to: CGPoint(x: 0.5, y: 0.5),
+            color: Annotation.defaultColor, thickness: Annotation.defaultThickness)
+        #expect(text.text.isEmpty)
+    }
+
+    @Test func isBlankTextOnlyFlagsEmptyTextCallouts() {
+        func text(_ value: String) -> Annotation {
+            Annotation(kind: .text, start: .zero, end: .zero, text: value)
+        }
+        #expect(text("").isBlankText)
+        #expect(text("  \n\t ").isBlankText, "a whitespace-only callout counts as blank")
+        #expect(!text("Hi").isBlankText)
+        // Other kinds are never "blank text", even though they carry no text.
+        #expect(!Annotation(kind: .arrow, start: .zero, end: CGPoint(x: 1, y: 1)).isBlankText)
+        #expect(!Annotation(kind: .counter, start: .zero, end: .zero, number: 1).isBlankText)
+    }
 }

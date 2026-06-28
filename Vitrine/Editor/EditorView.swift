@@ -67,6 +67,11 @@ struct EditorView: View {
     /// is selected. Editor-only UI state, not persisted.
     @State var selectedAnnotationID: UUID?
 
+    /// The text callout being edited inline (CS-085 follow-up). Non-nil shows a focused
+    /// field over the mark and blanks its canvas copy so the field is the only text
+    /// drawn; committing keeps non-empty content or drops an empty callout. Editor-only.
+    @State var editingAnnotationID: UUID?
+
     /// The active annotation tool (CS-085). `.select` moves/resizes existing marks;
     /// any other tool puts the preview into draw mode. Editor-only UI state.
     @State var activeTool: AnnotationTool = .select
