@@ -119,6 +119,8 @@ struct EditorWindowState: Codable, Equatable {
     var redactedLines: String
     var background: BackgroundStyle
     var metadata: SnapshotMetadata
+    var foregroundImageFileName: String?
+    var imageFrameID: String
 
     /// Captures `config` for archiving. Line ranges are flattened to their canonical
     /// spec string and the theme/language to their ids, matching how the rest of the
@@ -140,6 +142,8 @@ struct EditorWindowState: Codable, Equatable {
         redactedLines = LineHighlight.describe(config.redactedLineRanges)
         background = config.background
         metadata = config.metadata
+        foregroundImageFileName = config.foregroundImage?.fileName
+        imageFrameID = config.imageFrame.rawValue
     }
 
     /// Rebuilds a `SnapshotConfig`, resolving the theme through `themes` (so a custom
@@ -165,6 +169,10 @@ struct EditorWindowState: Codable, Equatable {
         config.redactedLineRanges = LineHighlight.parse(redactedLines)
         config.background = background
         config.metadata = metadata
+        if let foregroundImageFileName, !foregroundImageFileName.isEmpty {
+            config.foregroundImage = ImageReference(fileName: foregroundImageFileName)
+        }
+        config.imageFrame = ImageFrame(rawValue: imageFrameID) ?? .none
         return config
     }
 
@@ -172,6 +180,7 @@ struct EditorWindowState: Codable, Equatable {
         case code, languageID, themeID, fontName, fontSize, fontLigatures
         case padding, cornerRadius, shadowRadius, showChrome, showShadow
         case showLineNumbers, highlightedLines, redactedLines, background, metadata
+        case foregroundImageFileName, imageFrameID
     }
 
     /// A defensive decoder: every field tolerates being absent or the wrong type by
@@ -208,6 +217,11 @@ struct EditorWindowState: Codable, Equatable {
             ?? fallback.background
         metadata =
             (try? container.decode(SnapshotMetadata.self, forKey: .metadata)) ?? fallback.metadata
+        foregroundImageFileName =
+            try? container.decodeIfPresent(String.self, forKey: .foregroundImageFileName)
+        imageFrameID =
+            (try? container.decode(String.self, forKey: .imageFrameID))
+            ?? fallback.imageFrame.rawValue
     }
 
     /// JSON for archiving this draft into an `NSCoder` restoration record.

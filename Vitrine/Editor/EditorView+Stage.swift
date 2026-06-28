@@ -17,39 +17,47 @@ extension EditorView {
         @Bindable var settings = settings
         return VStack(spacing: 0) {
             HStack(spacing: 10) {
-                TokenGroupLabel(title: Text("Code"))
+                TokenGroupLabel(
+                    title: settings.config.usesImageContent ? Text("Image") : Text("Code"))
                 Spacer(minLength: 0)
-                Text(lineCountLabel)
-                    .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
-                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                formatButton
+                // The line count + format action are code-only; a beautified image hides them.
+                if !settings.config.usesImageContent {
+                    Text(lineCountLabel)
+                        .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                    formatButton
+                }
             }
             .padding(.top, VitrineTokens.Spacing.sm)
             .padding(.horizontal, 18)
 
-            CodeEditorView(
-                text: $settings.config.code,
-                language: settings.config.language,
-                theme: settings.config.theme,
-                fontName: settings.config.fontName,
-                fontSize: settings.config.fontSize,
-                fontLigatures: settings.config.fontLigatures,
-                onReplaceAllPaste: { settings.config.clearContentMarks() }
-            )
-            .overlay {
-                if settings.config.code.isEmpty {
-                    // The overlay is non-interactive except for its "Paste Code" button
-                    // (see EmptyStateView): a click anywhere else falls through to the
-                    // text view so the caret can land and the user can start typing —
-                    // matching the "paste or type" affordance the copy promises.
-                    EmptyStateView(
-                        title: "Nothing to show yet",
-                        message:
-                            "Paste code or terminal output, or drop a file, to turn it into a beautiful image.",
-                        actionTitle: "Paste Code",
-                        action: pasteFromClipboard,
-                        compact: true
-                    )
+            if settings.config.usesImageContent {
+                imagePanel
+            } else {
+                CodeEditorView(
+                    text: $settings.config.code,
+                    language: settings.config.language,
+                    theme: settings.config.theme,
+                    fontName: settings.config.fontName,
+                    fontSize: settings.config.fontSize,
+                    fontLigatures: settings.config.fontLigatures,
+                    onReplaceAllPaste: { settings.config.clearContentMarks() }
+                )
+                .overlay {
+                    if settings.config.code.isEmpty {
+                        // The overlay is non-interactive except for its "Paste Code" button
+                        // (see EmptyStateView): a click anywhere else falls through to the
+                        // text view so the caret can land and the user can start typing —
+                        // matching the "paste or type" affordance the copy promises.
+                        EmptyStateView(
+                            title: "Nothing to show yet",
+                            message:
+                                "Paste code or terminal output, or drop a file, to turn it into a beautiful image.",
+                            actionTitle: "Paste Code",
+                            action: pasteFromClipboard,
+                            compact: true
+                        )
+                    }
                 }
             }
         }
@@ -62,12 +70,45 @@ extension EditorView {
         // Accept a dropped source file or selected text. `.onDrop` with UTType
         // payloads is the current API; the read happens off the closure via a
         // main-actor Task so the handler stays synchronous (CS-028).
-        .onDrop(of: [.fileURL, .text], isTargeted: $isDropTargeted) { providers in
+        .onDrop(of: [.image, .fileURL, .text], isTargeted: $isDropTargeted) { providers in
             Task { await handleDrop(providers) }
             return true
         }
         .overlay { dropAffordance }
         .accessibilityContainerIdentifier("editor-drop-target")
+    }
+
+    /// Replaces the code editor when a beautified image is the content: a thumbnail of the
+    /// loaded image, a hint that dropping replaces it, and a button to remove it (which
+    /// returns the column to the code editor). The whole column is still a drop target.
+    var imagePanel: some View {
+        VStack(spacing: 14) {
+            if let reference = settings.config.foregroundImage,
+                let image = BackgroundImageStore.foregroundContainer.image(for: reference)
+            {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: 180)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(VitrineTokens.Line.border))
+            }
+            Text("Drop a new image here to replace it.")
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .multilineTextAlignment(.center)
+            Button(role: .destructive) {
+                settings.config.foregroundImage = nil
+            } label: {
+                Text("Remove image")
+            }
+            .accessibilityIdentifier("remove-image-button")
+            Spacer(minLength: 0)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// The line count shown beside the CODE label, or an em dash when empty.

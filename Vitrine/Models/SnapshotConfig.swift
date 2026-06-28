@@ -75,6 +75,19 @@ struct SnapshotConfig: Equatable {
     /// untouched.
     var watermark: Watermark?
 
+    /// The "beautify any image" content: when set, the canvas renders this image —
+    /// wrapped in `imageFrame` — as the card body instead of code, on the same
+    /// background / padding / shadow. Stored *by reference* (a file in the app container,
+    /// resolved through `foregroundImageStore`), mirroring image backgrounds, so the
+    /// config stays small, `Equatable`, and deterministic. `nil` on the default path, so
+    /// the code render and every golden are byte-for-byte unchanged.
+    var foregroundImage: ImageReference?
+
+    /// The frame drawn around `foregroundImage` — none, a macOS window, or a browser
+    /// window. Inert unless `foregroundImage` is set; `.none` by default. `.browser` (and
+    /// future device mockups) are PRO.
+    var imageFrame: ImageFrame = .none
+
     /// An explicit width (columns) to reconstruct `.terminal` output at, or `nil` to
     /// infer it from the captured stream (CS-070). Set only by `vitrine render
     /// --terminal-width` (which `vgrab -w` passes), so a known-width capture wraps
@@ -98,6 +111,11 @@ struct SnapshotConfig: Equatable {
 
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
+
+    /// Whether the canvas renders a beautified image (the "beautify any image" path)
+    /// instead of code. When true, the code-only controls (theme, fonts, line marks)
+    /// don't apply and the canvas draws the framed image as the card body.
+    var usesImageContent: Bool { foregroundImage != nil }
 
     /// Whether the row-by-row code layout (gutter, highlight bands, and/or diff
     /// bands) is active. When none of these are on, the canvas keeps drawing the code
@@ -130,15 +148,16 @@ struct SnapshotConfig: Equatable {
         replacingRedactedLines(in: code)
     }
 
-    /// Clears the marks that are tied to *this specific code* — free-form annotations
-    /// (arrows / text / blur) and highlighted line ranges — so loading new content
-    /// (paste, drop, quick capture) starts clean instead of stranding marks that were
-    /// positioned over unrelated code. Style (theme, font, background, header text)
-    /// is reusable and intentionally kept.
+    /// Clears the marks tied to *this specific content* — free-form annotations
+    /// (arrows / text / blur), highlighted/redacted line ranges, and any beautified
+    /// foreground image — so loading new content (paste, drop, quick capture) starts
+    /// clean instead of stranding marks or an image from unrelated content. Style
+    /// (theme, font, background, header text, frame choice) is reusable and kept.
     mutating func clearContentMarks() {
         annotations = []
         highlightedLineRanges = []
         redactedLineRanges = []
+        foregroundImage = nil
     }
 
     private func replacingRedactedLines(in text: String) -> String {
