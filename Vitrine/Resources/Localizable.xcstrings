@@ -6143,6 +6143,12 @@
       "comment" : "Annotation editor: inline text-callout field accessibility label.",
       "extractionState" : "stale",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annotation text"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
