@@ -263,7 +263,8 @@ extension EditorView {
         config.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
         // While a text callout is being edited, blank its canvas copy so the inline
         // field (in the overlay) is the only text drawn — no doubled pill. Preview-only:
-        // the export reads `settings.config`, so this never touches the rendered image.
+        // export surfaces render `settings.exportConfig`, so this never mutates the
+        // rendered/exported image configuration.
         if let editing = editingAnnotationID,
             let index = config.annotations.firstIndex(where: { $0.id == editing }),
             config.annotations[index].kind == .text
