@@ -53,13 +53,26 @@ struct BackgroundImageStore {
     /// in the running app. Falls back to a temporary directory if Application
     /// Support is somehow unavailable, so the store is always usable.
     static var container: BackgroundImageStore {
+        appContainer(subdirectory: "Backgrounds")
+    }
+
+    /// The store for **foreground** images — the "beautify any image" content. Same
+    /// content-addressed import/resolve machinery as backgrounds, rooted at a separate
+    /// directory so foreground captures and background photos never collide.
+    static var foregroundContainer: BackgroundImageStore {
+        appContainer(subdirectory: "Foregrounds")
+    }
+
+    /// A store rooted at `Application Support/<subdirectory>`, falling back to a temporary
+    /// directory if Application Support is unavailable so the store is always usable.
+    private static func appContainer(subdirectory: String) -> BackgroundImageStore {
         let base =
             (try? FileManager.default.url(
                 for: .applicationSupportDirectory, in: .userDomainMask,
                 appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
         return BackgroundImageStore(
-            directory: base.appendingPathComponent("Backgrounds", isDirectory: true))
+            directory: base.appendingPathComponent(subdirectory, isDirectory: true))
     }
 
     /// Copies the user-selected image at `sourceURL` into the container and
@@ -87,6 +100,15 @@ struct BackgroundImageStore {
         guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
 
         return try store(data, preferredExtension: sanitizedExtension(for: sourceURL))
+    }
+
+    /// Imports already-in-memory image `data` — a clipboard paste or an in-app drag that
+    /// carries the image directly rather than as a file. Validates the bytes are a decodable
+    /// image, then writes them through the same content-addressed store as the file path, so
+    /// identical bytes from any source dedupe to one file.
+    func importImage(data: Data, preferredExtension ext: String = "") throws -> ImageReference {
+        guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
+        return try store(data, preferredExtension: ext)
     }
 
     /// Downloads the image at a remote `url` and imports it into the container,
@@ -237,11 +259,11 @@ struct BackgroundImageStore {
                 try data.write(to: destination, options: .atomic)
             }
         } catch {
-            Log.export.error("Background image copy failed; not storing the file")
+            Log.export.error("Image copy failed; not storing the file")
             throw ImportError.copyFailed
         }
 
-        Log.export.info("Imported a background image into the container")
+        Log.export.info("Imported an image into the container")
         return ImageReference(fileName: fileName)
     }
 
@@ -323,4 +345,8 @@ extension EnvironmentValues {
     /// in tests and previews so the render path can resolve fixture images without
     /// touching the user's container.
     @Entry var backgroundImageStore: BackgroundImageStore = .container
+
+    /// The store used to resolve the beautified **foreground** image. Same default-real,
+    /// inject-in-tests contract as `backgroundImageStore`, rooted at a separate directory.
+    @Entry var foregroundImageStore: BackgroundImageStore = .foregroundContainer
 }

@@ -141,6 +141,9 @@ enum ProFeature: String, CaseIterable, Sendable {
     case multiSizeExport
     /// The `vitrine` CLI, Shortcuts, and folder batch rendering (CS-094).
     case automation
+    /// The richer frames for beautified images — browser windows (and future device
+    /// mockups). The plain image and the macOS window frame stay free.
+    case advancedFrames
 
     /// The paywall headline for this feature.
     var paywallTitle: String {
@@ -148,6 +151,7 @@ enum ProFeature: String, CaseIterable, Sendable {
         case .brandKit: String(localized: "Brand Kit")
         case .multiSizeExport: String(localized: "Multi-size export")
         case .automation: String(localized: "Automation")
+        case .advancedFrames: String(localized: "Image frames")
         }
     }
 
@@ -162,6 +166,8 @@ enum ProFeature: String, CaseIterable, Sendable {
             String(
                 localized: "Unlock the vitrine command line, Shortcuts, and folder batch rendering."
             )
+        case .advancedFrames:
+            String(localized: "Frame screenshots in a browser window and more.")
         }
     }
 }
