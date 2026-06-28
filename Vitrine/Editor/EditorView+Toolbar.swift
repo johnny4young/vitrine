@@ -70,12 +70,7 @@ extension EditorView {
             iconButton(
                 .saveImage, "save-button", help: "Render and save the image as a file",
                 systemImage: "square.and.arrow.down",
-                action: {
-                    ExportManager.saveToFile(
-                        settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-                        format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
-                        profile: settings.colorProfile)
-                })
+                action: saveImage)
             iconButton(
                 .shareImage, "share-button", help: "Share the rendered image",
                 systemImage: "square.and.arrow.up", action: share)
@@ -125,10 +120,17 @@ extension EditorView {
     /// it gets out of the way once its job is done (CS-084). Users who copy more than
     /// once can keep it open from Settings.
     func copyImage() {
-        ExportManager.copyToPasteboard(
+        // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
+        // render/encode failure — mirroring the menu command and the quick-capture HUD
+        // (audit UX-1). The HUD shows near the menu bar regardless of `closeAfterCopy`.
+        let copied = ExportManager.copyToPasteboard(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
             richText: settings.richClipboard, plainText: settings.textSidecar)
+        CaptureHUDController.shared.present(
+            copied
+                ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
+                : Notifier.failure(String(localized: "Couldn't copy the image")))
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
         // shared settings (what the Settings toggle edits) rather than this window's
         // per-session copy. Close *this* window — captured via `WindowAccessor`, so it
@@ -137,6 +139,26 @@ extension EditorView {
         guard AppSettings.shared.closeAfterCopy else { return }
         let target = editorWindow ?? NSApp.keyWindow
         DispatchQueue.main.async { target?.close() }
+    }
+
+    /// Renders and saves the image, confirming the outcome through the shared HUD so the
+    /// toolbar Save button gives the same feedback as the File-menu command (audit UX-1).
+    /// A cancelled save panel is silent.
+    func saveImage() {
+        switch ExportManager.saveToFile(
+            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+            format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
+            profile: settings.colorProfile)
+        {
+        case .saved:
+            CaptureHUDController.shared.present(
+                Notifier.confirmation(String(localized: "Image saved")))
+        case .failed:
+            CaptureHUDController.shared.present(
+                Notifier.failure(String(localized: "Couldn't save the image")))
+        case .cancelled:
+            break
+        }
     }
 
     /// The explicit alternative copy targets behind the rich-text icon

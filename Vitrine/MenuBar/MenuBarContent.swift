@@ -48,7 +48,9 @@ struct MenuBarContent: View {
                 .foregroundStyle(VitrineTokens.Text.primary)
             Spacer(minLength: 0)
             if let shortcut = KeyboardShortcuts.getShortcut(for: .quickCapture) {
-                KbdChip(glyphs: shortcut.description)
+                KbdChip(
+                    glyphs: shortcut.description,
+                    purpose: String(localized: "Capture hotkey"))
             }
         }
     }
@@ -130,10 +132,17 @@ struct MenuBarContent: View {
             }
 
             if recents.captures.isEmpty {
-                Text("No recent captures")
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                    .padding(.vertical, 4)
+                // Teach the core loop here — this panel is the first surface many users
+                // open, before any capture exists (audit UX). The hotkey chip above shows
+                // exactly which keys "the capture hotkey" means.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("No recent captures")
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                    Text("Copy some code and press the capture hotkey.")
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                }
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .padding(.vertical, 4)
             } else {
                 ForEach(Array(recents.captures.prefix(3))) { capture in
                     RecentCaptureRow(
@@ -294,9 +303,14 @@ struct MenuBarContent: View {
 /// bordered tag.
 private struct KbdChip: View {
     let glyphs: String
+    /// What the shortcut does. When set, VoiceOver announces it as the element's label
+    /// and the glyphs as its value (e.g. "Capture hotkey: ⇧⌘S") instead of folding both
+    /// into one concatenated, hard-to-localize label. Without it the glyphs are the
+    /// label and there is no separate value.
+    var purpose: String?
 
     var body: some View {
-        Text(verbatim: glyphs)
+        let tag = Text(verbatim: glyphs)
             .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
             .foregroundStyle(VitrineTokens.Text.tertiary)
             .padding(.vertical, 2)
@@ -305,6 +319,13 @@ private struct KbdChip: View {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
             )
+            .accessibilityElement()
+        if let purpose {
+            tag.accessibilityLabel(Text(verbatim: purpose))
+                .accessibilityValue(Text(verbatim: glyphs))
+        } else {
+            tag.accessibilityLabel(Text(verbatim: glyphs))
+        }
     }
 }
 

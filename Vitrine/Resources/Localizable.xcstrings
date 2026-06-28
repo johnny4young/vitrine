@@ -942,6 +942,28 @@
         }
       }
     },
+    "Capture hotkey" : {
+      "comment" : "VoiceOver label prefix for the menu-bar hotkey chip.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajo de captura"
+          }
+        }
+      }
+    },
+    "Copy some code and press the capture hotkey." : {
+      "comment" : "Menu-bar panel empty-recents hint teaching the capture loop.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia código y presiona el atajo de captura."
+          }
+        }
+      }
+    },
     "Captures exactly the viewport size. URL capture loads the page locally in WebKit on this Mac." : {
       "comment" : "Input pane footer for the visible-area web capture mode.",
       "localizations" : {
