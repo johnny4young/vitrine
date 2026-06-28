@@ -54,6 +54,9 @@ enum SettingsCodec {
         static let webCaptureMode = "webCaptureMode"
         static let webWaitKind = "webWaitKind"
         static let webWaitSeconds = "webWaitSeconds"
+        /// Whether URL capture uses the persistent (cookie/logged-in) data store (CS-043).
+        /// Opt-in only; off by default.
+        static let webUsesLoggedInSession = "webUsesLoggedInSession"
         static let recentLanguages = "recentLanguages"
         static let fontName = "fontName"
         static let fontLigatures = "fontLigatures"
@@ -96,7 +99,7 @@ enum SettingsCodec {
             colorProfile, richClipboard, textSidecar, hotkeyAction, appLanguage, treatURLs,
             reindentOnPaste,
             webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,
-            webCaptureMode, webWaitKind, webWaitSeconds, recentLanguages,
+            webCaptureMode, webWaitKind, webWaitSeconds, webUsesLoggedInSession, recentLanguages,
             fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
             hasSeenWelcome, lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
             brandKit, brandKitEnabled,

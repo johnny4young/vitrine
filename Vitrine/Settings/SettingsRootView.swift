@@ -6,8 +6,9 @@ import SwiftUI
 ///
 /// The window is a fixed 720×600 card on `VitrineTokens.Surface.window`; the
 /// sidebar carries its own wash and hairline. Pane order is stable (General,
-/// Style, Library, Output, Input, About) — the UI tests address rows by their
-/// `settings-nav-*` identifiers and panes by their `settings-*-pane` ones.
+/// Style, Brand Kit, Library, Input, Export, About) — the UI tests address rows
+/// by their `settings-nav-*` identifiers and panes by their `settings-*-pane`
+/// ones.
 struct SettingsRootView: View {
     @Bindable var settings: AppSettings
     var presets: PresetStore
@@ -71,6 +72,8 @@ struct SettingsRootView: View {
             GeneralSettingsView(settings: settings, presets: presets)
         case .style:
             StyleSettingsView(settings: settings, themes: themes)
+        case .brandKit:
+            BrandKitSettingsView()
         case .library:
             LibrarySettingsView(settings: settings, presets: presets, themes: themes)
         case .output:
@@ -83,9 +86,13 @@ struct SettingsRootView: View {
     }
 }
 
-/// The six settings panes, in their stable order.
+/// The settings panes, in their stable order.
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case general, style, library, output, input, about
+    // Order = sidebar order: app → look → branding → library → input → export → about.
+    // `input` precedes `output` so the pipeline reads top-to-bottom (you set how content
+    // comes in, then how the image leaves). `output`'s raw value stays "output" so its
+    // `settings-nav-output` identifier and UI tests are unaffected by the "Export" title.
+    case general, style, brandKit, library, input, output, about
 
     var id: String { rawValue }
 
@@ -94,9 +101,12 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .general: Text("General")
         case .style: Text("Style")
+        case .brandKit: Text("Brand Kit")
         case .library: Text("Library")
-        case .output: Text("Output")
         case .input: Text("Input")
+        // Titled "Export" (clearer than "Output" for "how the image leaves"); the raw
+        // value remains "output" to keep the navigation identifier stable.
+        case .output: Text("Export")
         case .about: Text("About")
         }
     }
@@ -106,9 +116,10 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .style: "paintbrush"
+        case .brandKit: "crown"
         case .library: "books.vertical"
-        case .output: "square.and.arrow.up"
         case .input: "doc.on.clipboard"
+        case .output: "square.and.arrow.up"
         case .about: "info.circle"
         }
     }
