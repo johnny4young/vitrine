@@ -1,0 +1,68 @@
+name: Deploy landing to Cloudflare Pages
+
+# The marketing landing (docs/index.html + its assets) is served from Cloudflare
+# Pages, deployed straight from this repo with wrangler — the same "No Git
+# connection" model as the lingua-web project. It deploys on every push that
+# touches the landing, so copy/screenshot changes go live without cutting a
+# release.
+#
+# The Sparkle appcast deliberately STAYS on GitHub Pages (see release.yml):
+# every installed app polls the SUFeedURL `https://johnny4young.github.io/
+# vitrine/appcast.xml`, so that URL must keep resolving. Only the landing moves
+# here. The landing is fully static and fetches its version, download link, and
+# changelog from GitHub at runtime, so there is no build step — we just stage
+# the files the page serves and upload them.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/index.html
+      - docs/vitrine-icon.png
+      - docs/screenshots/**
+      - .github/workflows/deploy-web.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & deploy landing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Stage only what the static landing serves: the page, its icon, and the
+      # screenshots it references (the same set release.yml staged for Pages —
+      # the three terminal shots in the body plus editor.png used as the
+      # OpenGraph/Twitter card image). Everything else under docs/ (APP-STORE.md,
+      # design notes) stays out of the public site.
+      - name: Stage the landing
+        run: |
+          mkdir -p dist-web/screenshots
+          cp docs/index.html docs/vitrine-icon.png dist-web/
+          cp docs/screenshots/editor.png docs/screenshots/annotated.png docs/screenshots/diff.png \
+             docs/screenshots/terminal-htop.png docs/screenshots/terminal-lazygit.png docs/screenshots/terminal-nvim.png \
+             dist-web/screenshots/
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      # Create the Pages project on first run (idempotent — a no-op once it
+      # exists), then deploy. Deploying on the production branch publishes to
+      # vitrine-web.pages.dev and, once attached in the dashboard, the custom
+      # domain. Needs two repo secrets: CLOUDFLARE_API_TOKEN (scope
+      # "Cloudflare Pages: Edit") and CLOUDFLARE_ACCOUNT_ID.
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 pages project create vitrine-web --production-branch=main 2>/dev/null || true
+          npx --yes wrangler@4 pages deploy dist-web --project-name=vitrine-web --branch=main
