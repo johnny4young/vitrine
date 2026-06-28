@@ -292,9 +292,10 @@ final class VitrineUITests: XCTestCase {
         // The free-placement Brand Kit mode is only useful if the preview exposes an
         // actual drag target, not just a picker value hidden in Settings.
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
-        element("settings-nav-style", in: app).click()
-        assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
-        element("style-subtab-brandkit", in: app).click()
+        // Brand Kit is now its own top-level pane (was a Style sub-tab) so the PRO
+        // feature is visible in the sidebar.
+        element("settings-nav-brandKit", in: app).click()
+        assertExists(element("settings-brandkit-pane", in: app), in: app, timeout: 3)
         assertExists(element("settings-brand-kit-controls", in: app), in: app, timeout: 3)
         assertHittable(
             "brand-kit-free-drag-handle", in: app,
