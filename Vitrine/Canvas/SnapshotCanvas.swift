@@ -207,6 +207,7 @@ struct SnapshotCanvas: View {
                 highlighted: highlightedCode,
                 showLineNumbers: config.showLineNumbers,
                 highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
+                redactedRanges: LineHighlight.normalize(config.redactedLineRanges),
                 font: codeFont,
                 lineSpacing: Self.codeLineSpacing,
                 codeColumnWidth: wrapWidth,

@@ -38,6 +38,12 @@ struct SnapshotConfig: Equatable {
     /// ordering.
     var highlightedLineRanges: [ClosedRange<Int>] = []
 
+    /// 1-based, inclusive line ranges to redact (blur) — e.g. secret keys found by
+    /// `SecretScanner` and applied via the editor's "Redact secrets" action. Empty by
+    /// default (no redaction); blurred per-row at render time so each line is fully
+    /// covered. Content-bound, so a new capture clears it (see `clearContentMarks`).
+    var redactedLineRanges: [ClosedRange<Int>] = []
+
     /// Dim the non-highlighted lines so the highlighted ones stand out — the "focus"
     /// mode (CS-021). Off by default, and has no effect without a highlight, so the
     /// default render is unchanged.
@@ -97,7 +103,8 @@ struct SnapshotConfig: Equatable {
     /// bands) is active. When none of these are on, the canvas keeps drawing the code
     /// as a single `Text`, so the default render is byte-for-byte unchanged (CS-021).
     var usesLineRows: Bool {
-        showLineNumbers || !highlightedLineRanges.isEmpty || diffDecorations
+        showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
+            || diffDecorations
     }
 
     /// The plain, copyable text that travels with the rendered image (the clipboard
@@ -116,6 +123,7 @@ struct SnapshotConfig: Equatable {
     mutating func clearContentMarks() {
         annotations = []
         highlightedLineRanges = []
+        redactedLineRanges = []
     }
 }
 

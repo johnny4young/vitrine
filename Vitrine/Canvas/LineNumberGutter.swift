@@ -145,6 +145,10 @@ struct CodeLinesView: View {
     let showLineNumbers: Bool
     /// Normalized 1-based inclusive ranges to highlight.
     let highlightedRanges: [ClosedRange<Int>]
+    /// Normalized 1-based inclusive ranges to redact: the code on these lines is blurred
+    /// (the same softening as a blur annotation) so a shared snapshot never exposes a
+    /// secret. The gutter number stays sharp so it's clear which line was hidden.
+    var redactedRanges: [ClosedRange<Int>] = []
     /// The resolved code font, used for gutter sizing and the number glyphs.
     let font: NSFont
     /// The per-line vertical gap, matching the canvas's `lineSpacing` so the
@@ -193,6 +197,7 @@ struct CodeLinesView: View {
         -> some View
     {
         let isHighlighted = LineHighlight.contains(highlightedRanges, line: lineNumber)
+        let isRedacted = LineHighlight.contains(redactedRanges, line: lineNumber)
         HStack(alignment: .firstTextBaseline, spacing: 0) {
             if showLineNumbers {
                 // Verbatim: a line number is a locale-neutral numeral, not catalog
@@ -206,7 +211,9 @@ struct CodeLinesView: View {
                     .padding(.trailing, GutterMetrics.trailingGap)
                     .accessibilityHidden(true)
             }
+            // Redacted rows blur only the code, leaving the gutter number sharp.
             lineText(line)
+                .blur(radius: isRedacted ? max(6, font.pointSize * 0.45) : 0)
             Spacer(minLength: 0)
         }
         // A full-bleed band so the highlight reads as a selected row across the

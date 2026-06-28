@@ -95,6 +95,22 @@ struct EditorInspectorView: View {
                                 )
                                 .accessibilityIdentifier("diff-decorations-toggle")
                         }
+                        InspectorRow(label: Text("Redact secrets")) {
+                            if settings.config.redactedLineRanges.isEmpty {
+                                Button("Scan") {
+                                    let lines = SecretScanner.secretLines(
+                                        in: settings.config.code)
+                                    settings.config.redactedLineRanges = LineHighlight.normalize(
+                                        lines.map { $0...$0 })
+                                }
+                                .help("Blur lines that look like API keys, tokens, or passwords.")
+                                .disabled(settings.config.code.isEmpty)
+                                .accessibilityIdentifier("redact-secrets-button")
+                            } else {
+                                Button("Clear") { settings.config.redactedLineRanges = [] }
+                                    .accessibilityIdentifier("clear-redactions-button")
+                            }
+                        }
                     }
 
                     InspectorDisclosure(
