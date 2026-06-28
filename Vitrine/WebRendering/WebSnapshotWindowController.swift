@@ -115,6 +115,15 @@ final class WebSnapshotModel {
     /// A user-facing, non-PII error from the last render attempt, or `nil`.
     var errorMessage: String?
 
+    /// Progress through a multi-viewport batch (CS-044 cancel/progress): the 1-based
+    /// index of the viewport being captured and the batch total, so the loading state can
+    /// say "Capturing 2 of 4". `nil` when idle or for a single-viewport capture.
+    struct RenderProgress: Equatable {
+        var current: Int
+        var total: Int
+    }
+    var renderProgress: RenderProgress?
+
     /// Whether the active input has enough content to attempt a render.
     var canRender: Bool {
         switch mode {
@@ -167,7 +176,10 @@ final class WebSnapshotModel {
         guard !isRendering else { return }
         errorMessage = nil
         isRendering = true
-        defer { isRendering = false }
+        defer {
+            isRendering = false
+            renderProgress = nil
+        }
 
         // Resolve the input once; it is identical across viewports.
         let input: CaptureInput
@@ -186,19 +198,33 @@ final class WebSnapshotModel {
         }
 
         let presets = settings.webCapture.selectedViewportPresets
+        let reportsBatchProgress = presets.count > 1
         var captured: [CapturedViewport] = []
         var lastError: RenderError?
         var hadUnknownError = false
-        for preset in presets {
+        for (index, preset) in presets.enumerated() {
+            // Cancellation (the Cancel button) stops the batch between viewports — the
+            // common "trapped for ~60s × N sizes" case — and the in-flight renderer's own
+            // waits are cancellation-aware, so the current viewport aborts promptly too.
+            if Task.isCancelled { break }
+            if reportsBatchProgress {
+                renderProgress = RenderProgress(current: index + 1, total: presets.count)
+            }
             do {
                 let asset = try await renderOne(input: input, preset: preset, settings: settings)
                 captured.append(CapturedViewport(kind: preset.kind, preset: preset, asset: asset))
+            } catch is CancellationError {
+                break
             } catch let error as RenderError {
                 lastError = error
             } catch {
                 hadUnknownError = true
             }
         }
+
+        // A cancel is not a failure: stop cleanly, leaving any prior result in place and
+        // showing no error (`isRendering`/`renderProgress` reset in the `defer`).
+        if Task.isCancelled { return }
 
         guard !captured.isEmpty else {
             results = []

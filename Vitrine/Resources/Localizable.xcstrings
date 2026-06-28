@@ -6423,6 +6423,23 @@
         }
       }
     },
+    "Capturing %lld of %lld" : {
+      "comment" : "CS-044: multi-viewport capture progress shown in the loading state.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturing %lld of %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturando %lld de %lld"
+          }
+        }
+      }
+    },
     "Board" : {
       "comment" : "CS-044: filmstrip tile for the composite responsive board.",
       "localizations" : {
