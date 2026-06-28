@@ -353,6 +353,29 @@ jobs:
              docs/screenshots/terminal-htop.png docs/screenshots/terminal-lazygit.png docs/screenshots/terminal-nvim.png \
              _site/screenshots/
 
+      # Deploy the same landing to Cloudflare Pages (project: vitrine-web) — its new
+      # home on the custom domain. Guarded by the Cloudflare secrets the same way the
+      # appcast is guarded by the EdDSA key, so the release never fails for lack of
+      # them. The Sparkle appcast deliberately STAYS on GitHub Pages (below): every
+      # installed app polls the SUFeedURL there, so that URL must keep resolving.
+      # During the cutover both serve the landing; a follow-up trims GitHub Pages to
+      # the appcast (+ a redirect stub) once the custom domain is verified. The Pages
+      # project is created once from the terminal:
+      #   npx wrangler pages project create vitrine-web --production-branch=main
+      - name: Deploy landing to Cloudflare Pages
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist-web/screenshots
+          cp docs/index.html docs/vitrine-icon.png dist-web/
+          cp docs/screenshots/editor.png docs/screenshots/annotated.png docs/screenshots/diff.png \
+             docs/screenshots/terminal-htop.png docs/screenshots/terminal-lazygit.png docs/screenshots/terminal-nvim.png \
+             dist-web/screenshots/
+          npx --yes wrangler@4 pages deploy dist-web --project-name=vitrine-web --branch=main
+
       # Deploy the signed appcast to GitHub Pages so the SUFeedURL in Info.plist resolves.
       # Skipped when no appcast was produced (no EdDSA key secret), so the release still
       # publishes without it.
