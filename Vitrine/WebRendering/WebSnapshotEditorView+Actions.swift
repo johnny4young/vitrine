@@ -29,6 +29,7 @@ extension WebSnapshotEditorView {
     }
 
     func capture() async {
+        defer { renderTask = nil }
         await model.render(settings: settings)
         if let error = model.errorMessage {
             CaptureHUDController.shared.present(Notifier.failure(error))
