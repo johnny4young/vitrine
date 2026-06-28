@@ -24,6 +24,9 @@ struct WebSnapshotEditorView: View {
     /// Which captured viewport the big preview is showing (the highlighted filmstrip
     /// tile) in a multi-resolution batch.
     @State var previewedKind: WebSnapshotConfig.ViewportPreset.Kind?
+    /// The in-flight capture task, held so the Cancel button can stop a long
+    /// multi-viewport batch (CS-044). `nil` when no capture is running.
+    @State var renderTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,7 +58,7 @@ struct WebSnapshotEditorView: View {
                     // Record consent and proceed with the capture the user asked for.
                     settings.webCapture.consentGiven = true
                     showDisclosure = false
-                    Task { await capture() }
+                    renderTask = Task { await capture() }
                 },
                 onCancel: { showDisclosure = false }
             )

@@ -10,6 +10,10 @@ extension WebSnapshotEditorView {
     /// cannot reach the network) routes through the privacy disclosure before any load;
     /// HTML renders immediately since it never reaches the network.
     func attemptCapture() {
+        // Ignore a re-entrant trigger (e.g. Return in the URL field) while a capture is
+        // already running, so the held `renderTask` always points at the live render and
+        // stays cancellable. `model.render` guards too, but this keeps the handle correct.
+        guard !model.isRendering else { return }
         // Show the privacy disclosure only when URL capture is actually available and the
         // user hasn't consented yet. On a build that can't reach the network the disclosure's
         // confirm button is permanently disabled, so routing through it strands the user in a
@@ -21,7 +25,7 @@ extension WebSnapshotEditorView {
             showDisclosure = true
             return
         }
-        Task { await capture() }
+        renderTask = Task { await capture() }
     }
 
     func capture() async {
@@ -29,6 +33,13 @@ extension WebSnapshotEditorView {
         if let error = model.errorMessage {
             CaptureHUDController.shared.present(Notifier.failure(error))
         }
+    }
+
+    /// Stops an in-flight capture (the Cancel button / Escape). Cancellation propagates
+    /// into `model.render`, which stops between viewports and whose in-flight renderer
+    /// aborts its load and waits, so the user is never stuck waiting out a long batch.
+    func cancelCapture() {
+        renderTask?.cancel()
     }
 
     // MARK: - Export

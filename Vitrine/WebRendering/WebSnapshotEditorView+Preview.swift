@@ -145,24 +145,56 @@ extension WebSnapshotEditorView {
     /// over the network (the non-invasive in-context network notice).
     var loadingView: some View {
         VStack(spacing: 14) {
-            ProgressView()
-                .controlSize(.large)
-            Text(
-                model.mode == .url
-                    ? "Loading the page locally in WebKit…" : "Rendering locally…"
-            )
-            .font(.system(size: 15, weight: .medium))
-            .foregroundStyle(VitrineTokens.Text.secondary)
-            if let host = model.loadingHost {
-                Text(verbatim: host)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(VitrineTokens.Text.tertiary)
+            VStack(spacing: 14) {
+                ProgressView()
+                    .controlSize(.large)
+                Text(
+                    model.mode == .url
+                        ? "Loading the page locally in WebKit…" : "Rendering locally…"
+                )
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                if let host = model.loadingHost {
+                    Text(verbatim: host)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                }
+                // Multi-size batches report which viewport is in flight, so a long
+                // sequential capture shows forward motion instead of an opaque spinner.
+                if let progress = model.renderProgress, progress.total > 1 {
+                    Text("Capturing \(progress.current) of \(progress.total)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                        .monospacedDigit()
+                }
             }
+            // Announce the in-progress state as one element (the spinner alone says
+            // nothing useful), and mark it live so VoiceOver re-reads it — kept separate
+            // from the Cancel button so that stays an actionable control.
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.updatesFrequently)
+
+            cancelCaptureButton
         }
-        // Announce the in-progress state as one element (the spinner alone says
-        // nothing useful), and mark it live so VoiceOver re-reads it.
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.updatesFrequently)
+    }
+
+    /// Stops a running capture so the user is never trapped waiting out a long
+    /// multi-viewport batch (audit). Escape triggers it too.
+    private var cancelCaptureButton: some View {
+        Button(action: cancelCapture) {
+            Text("Cancel")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 7)
+                .background(Capsule().fill(VitrineTokens.Chrome.tile))
+                .overlay(
+                    Capsule().strokeBorder(
+                        VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline))
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(.cancelAction)
+        .accessibilityIdentifier("web-snapshot-cancel-button")
     }
 
     /// The empty state: a branded placeholder (mark + copy over the signature wash),
