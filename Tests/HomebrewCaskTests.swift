@@ -88,8 +88,8 @@ struct HomebrewCaskTests {
             cask.contains("desc \"Menu-bar app that turns code into beautiful images\""),
             "the cask must carry the product description (CS-063)")
         #expect(
-            cask.contains("homepage \"https://github.com/johnny4young/vitrine\""),
-            "the cask homepage must point at the project (CS-063)")
+            cask.contains("homepage \"https://vitrineframe.app\""),
+            "the cask homepage must point at the project site (CS-063)")
     }
 
     /// The desc must satisfy Homebrew's `brew audit --cask --strict` text rules: it must

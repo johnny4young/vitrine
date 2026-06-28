@@ -446,6 +446,14 @@ still publishes a DMG, just without an update entry), it:
 - attaches `appcast.xml` to the GitHub release; and
 - deploys it to **GitHub Pages**, which is exactly the `SUFeedURL` the app polls.
 
+The marketing landing is **not** on GitHub Pages — it lives on **Cloudflare Pages**
+(project `vitrine-web`, canonical domain <https://vitrineframe.app>). The same publish job
+runs `wrangler pages deploy`, gated on the `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`
+secrets, so the landing refreshes with each release. GitHub Pages now serves only the
+appcast plus a redirect stub from the legacy `johnny4young.github.io/vitrine/` URL to the
+custom domain. The Pages project is created once with
+`npx wrangler pages project create vitrine-web --production-branch=main`.
+
 So a tagged release both ships the DMG and refreshes the feed the installed base updates
 from. Sparkle compares the appcast entries to the installed bundle's `CFBundleVersion`, so
 remember to bump `CURRENT_PROJECT_VERSION` (and `MARKETING_VERSION`) in `project.yml` for

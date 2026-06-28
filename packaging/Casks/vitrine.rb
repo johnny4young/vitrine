@@ -17,7 +17,7 @@ cask "vitrine" do
   url "https://github.com/johnny4young/vitrine/releases/download/v#{version}/Vitrine-#{version}.dmg"
   name "Vitrine"
   desc "Menu-bar app that turns code into beautiful images"
-  homepage "https://github.com/johnny4young/vitrine"
+  homepage "https://vitrineframe.app"
 
   # A stable release-URL pattern exists (GitHub release tags), so livecheck can
   # track new versions straight from the releases page (CS-063).

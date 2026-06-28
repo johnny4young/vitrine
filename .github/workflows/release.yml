@@ -339,27 +339,30 @@ jobs:
             --sha256 "${CASK_SHA256}" \
             --template packaging/Casks/vitrine.rb
 
-      # Stage the marketing landing page (docs/) into the same Pages artifact as the
-      # appcast, so a single deploy serves both: the signed appcast.xml at the SUFeedURL
-      # and the site at the Pages root. The page fetches its version, download link, and
-      # What's New live from the Releases API and CHANGELOG.md, so it stays current
-      # between releases without redeploying.
-      - name: Stage the landing page for Pages
+      # The marketing landing now lives on Cloudflare Pages (deployed below). GitHub
+      # Pages keeps serving ONLY the signed appcast — the SUFeedURL the installed base
+      # polls — plus this tiny redirect stub at the old site root, so anyone who hits
+      # the legacy github.io URL is forwarded to the canonical domain.
+      - name: Stage a redirect stub for the legacy Pages site
         if: ${{ steps.appcast.outcome == 'success' }}
         run: |
-          mkdir -p _site/screenshots
-          cp docs/index.html docs/vitrine-icon.png _site/
-          cp docs/screenshots/editor.png docs/screenshots/annotated.png docs/screenshots/diff.png \
-             docs/screenshots/terminal-htop.png docs/screenshots/terminal-lazygit.png docs/screenshots/terminal-nvim.png \
-             _site/screenshots/
+          printf '%s\n' \
+            '<!doctype html>' \
+            '<meta charset="utf-8">' \
+            '<title>Vitrine</title>' \
+            '<link rel="canonical" href="https://vitrineframe.app/">' \
+            '<meta name="robots" content="noindex">' \
+            '<meta http-equiv="refresh" content="0; url=https://vitrineframe.app/">' \
+            '<script>location.replace("https://vitrineframe.app/" + location.hash)</script>' \
+            '<p>Vitrine has moved to <a href="https://vitrineframe.app/">vitrineframe.app</a>.</p>' \
+            > _site/index.html
 
-      # Deploy the same landing to Cloudflare Pages (project: vitrine-web) — its new
-      # home on the custom domain. Guarded by the Cloudflare secrets the same way the
+      # Deploy the landing to Cloudflare Pages (project: vitrine-web) at the canonical
+      # domain vitrineframe.app. Guarded by the Cloudflare secrets the same way the
       # appcast is guarded by the EdDSA key, so the release never fails for lack of
       # them. The Sparkle appcast deliberately STAYS on GitHub Pages (below): every
-      # installed app polls the SUFeedURL there, so that URL must keep resolving.
-      # During the cutover both serve the landing; a follow-up trims GitHub Pages to
-      # the appcast (+ a redirect stub) once the custom domain is verified. The Pages
+      # installed app polls the SUFeedURL there, so that URL must keep resolving — that
+      # is now all GitHub Pages serves (plus the redirect stub above). The Pages
       # project is created once from the terminal:
       #   npx wrangler pages project create vitrine-web --production-branch=main
       - name: Deploy landing to Cloudflare Pages
