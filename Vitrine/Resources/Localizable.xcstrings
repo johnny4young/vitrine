@@ -23,6 +23,28 @@
         }
       }
     },
+    "Capture pages behind a login by sending your existing cookies. Off by default; your code and captures still stay on your Mac." : {
+      "comment" : "Caption for the URL-capture logged-in-session toggle (CS-043).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura páginas detrás de un login enviando tus cookies actuales. Desactivado por defecto; tu código y tus capturas siguen quedándose en tu Mac."
+          }
+        }
+      }
+    },
+    "Use my logged-in session" : {
+      "comment" : "URL-capture toggle: use the persistent (cookie) data store (CS-043).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar mi sesión iniciada"
+          }
+        }
+      }
+    },
     "Render HTML" : {
       "comment" : "Web Snapshot empty-state title, HTML mode.",
       "localizations" : {

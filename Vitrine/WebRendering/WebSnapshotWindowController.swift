@@ -257,7 +257,8 @@ final class WebSnapshotModel {
                 viewportPreset: preset,
                 captureMode: settings.webCapture.captureMode,
                 waitStrategy: settings.webCapture.waitStrategy,
-                profile: settings.colorProfile)
+                profile: settings.colorProfile,
+                dataStoreMode: settings.webCapture.dataStoreMode)
             return try await renderer.render(input, config: settings.config)
         }
     }

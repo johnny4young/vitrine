@@ -75,6 +75,20 @@ final class WebCaptureSettings {
         didSet { defaults.set(consentGiven, forKey: Keys.urlCaptureConsent) }
     }
 
+    /// Whether a URL capture uses the persistent website data store — i.e. your existing
+    /// cookies/logged-in session — so a page behind a login can be captured (CS-043). Off
+    /// by default: the default per-render store sends no cookies and persists nothing, so
+    /// this is a deliberate, privacy-widening opt-in. Drives `dataStoreMode`.
+    var usesLoggedInSession: Bool {
+        didSet { defaults.set(usesLoggedInSession, forKey: Keys.webUsesLoggedInSession) }
+    }
+
+    /// The composed data-store policy for a URL capture: the persistent store (cookies
+    /// available) only when the user opted in, otherwise the private per-render default.
+    var dataStoreMode: WebSnapshotConfig.DataStoreMode {
+        usesLoggedInSession ? .persistent : .nonPersistent
+    }
+
     /// The composed viewport preset for a URL capture (CS-044): the persisted
     /// discriminant resolved with the stored custom size, defensively clamped so a
     /// custom preset is always a usable, memory-safe size.
@@ -132,6 +146,9 @@ final class WebCaptureSettings {
         // Off on a fresh suite, so the first URL capture always shows the privacy
         // disclosure before reaching the network (CS-045).
         consentGiven = defaults.object(forKey: Keys.urlCaptureConsent) as? Bool ?? false
+        // Off by default: cookies/persistent data are opt-in only (CS-043).
+        usesLoggedInSession =
+            defaults.object(forKey: Keys.webUsesLoggedInSession) as? Bool ?? false
     }
 
     /// Restores every web-capture setting to its factory default (CS-050), driven by
@@ -147,5 +164,6 @@ final class WebCaptureSettings {
         waitKind = WebDefaults.waitKind
         waitSeconds = WebDefaults.waitSeconds
         consentGiven = false
+        usesLoggedInSession = false
     }
 }

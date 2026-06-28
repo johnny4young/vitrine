@@ -149,7 +149,8 @@ extension URLRenderer {
             viewportPreset: settings.webCapture.viewportPreset,
             captureMode: settings.webCapture.captureMode,
             waitStrategy: settings.webCapture.waitStrategy,
-            profile: settings.colorProfile)
+            profile: settings.colorProfile,
+            dataStoreMode: settings.webCapture.dataStoreMode)
     }
 }
 
