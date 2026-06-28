@@ -129,14 +129,23 @@ extension Annotation {
     /// Builds a new annotation for `tool` spanning `start`→`end`, inheriting the
     /// toolbar's current `color`/`thickness`. Point-placed kinds (text/counter) use
     /// `start` as the anchor; `number` is assigned by the caller for counters.
+    ///
+    /// Text callouts start **empty**: the editor opens a focused inline field (with a
+    /// "Note" placeholder) so the user types the content, instead of dropping a literal
+    /// "Note" they then have to clear. An empty callout that is never filled is removed.
     static func make(
         kind: Kind, from start: CGPoint, to end: CGPoint, color: RGBAColor, thickness: Double,
         number: Int = 0
     ) -> Annotation {
         Annotation(
             kind: kind, start: start, end: end,
-            text: kind == .text ? String(localized: "Note") : "",
             color: color, thickness: thickness, number: number)
+    }
+
+    /// Whether this is a text callout with no visible content — an empty field the
+    /// editor drops on commit rather than leaving as an invisible mark.
+    var isBlankText: Bool {
+        kind == .text && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 

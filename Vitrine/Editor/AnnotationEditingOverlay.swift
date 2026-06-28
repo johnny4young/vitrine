@@ -17,6 +17,9 @@ import SwiftUI
 struct AnnotationEditingOverlay: View {
     @Bindable var settings: AppSettings
     @Binding var selection: UUID?
+    /// The text callout being edited inline, if any — its handle is hidden and a
+    /// focused field is shown over it instead (CS-085 follow-up).
+    @Binding var editingAnnotationID: UUID?
     let canvasSize: CGSize
     let activeTool: AnnotationTool
     let drawColor: Color
@@ -27,29 +30,41 @@ struct AnnotationEditingOverlay: View {
 
     var body: some View {
         ZStack {
-            if let kind = activeTool.kind {
-                // Draw mode: a click-drag paints a new mark. It sits *below* the
-                // handles, so the just-drawn (selected) mark stays editable.
-                DrawingLayer(
-                    kind: kind, color: drawColor, thickness: drawThickness, canvasSize: canvasSize,
-                    nextCounterNumber: nextCounterNumber,
-                    onBeginDraw: onBeginEdit,
-                    onCommit: { annotation in
-                        settings.config.annotations.append(annotation)
-                        selection = annotation.id
-                    })
-            } else if selection != nil {
-                // Select mode: tapping empty space clears the selection.
+            if editingAnnotationID == nil {
+                if let kind = activeTool.kind {
+                    // Draw mode: a click-drag paints a new mark. It sits *below* the
+                    // handles, so the just-drawn (selected) mark stays editable.
+                    DrawingLayer(
+                        kind: kind, color: drawColor, thickness: drawThickness,
+                        canvasSize: canvasSize,
+                        nextCounterNumber: nextCounterNumber,
+                        onBeginDraw: onBeginEdit,
+                        onCommit: { annotation in
+                            settings.config.annotations.append(annotation)
+                            selection = annotation.id
+                            // A new text callout opens straight into its inline field.
+                            if annotation.kind == .text { editingAnnotationID = annotation.id }
+                        })
+                } else if selection != nil {
+                    // Select mode: tapping empty space clears the selection.
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { selection = nil }
+                }
+            } else {
+                // While editing, a click anywhere outside the field commits the edit.
                 Color.clear
                     .contentShape(Rectangle())
-                    .onTapGesture { selection = nil }
+                    .onTapGesture { endTextEditing() }
             }
             // Handles: every mark in Select mode, and the selected mark even while a
             // draw tool is active — so you can move/resize/delete what you just drew
-            // without leaving the tool (CS-085, CleanShot-style).
+            // without leaving the tool (CS-085, CleanShot-style). The mark being
+            // text-edited shows only its field, so its handle is hidden.
             ForEach(settings.config.annotations) { annotation in
                 let isSelected = selection == annotation.id
-                if activeTool == .select || isSelected,
+                if editingAnnotationID != annotation.id,
+                    activeTool == .select || isSelected,
                     let binding = binding(for: annotation.id)
                 {
                     AnnotationHandle(
@@ -58,8 +73,17 @@ struct AnnotationEditingOverlay: View {
                         canvasSize: canvasSize,
                         onBeginEdit: onBeginEdit,
                         onSelect: { selection = annotation.id },
+                        onEdit: annotation.kind == .text
+                            ? { beginTextEditing(annotation.id) } : nil,
                         onDelete: { delete(annotation.id) })
                 }
+            }
+            // The focused inline field for the text callout being edited.
+            if let id = editingAnnotationID, let binding = binding(for: id),
+                binding.wrappedValue.kind == .text
+            {
+                TextAnnotationEditor(
+                    annotation: binding, canvasSize: canvasSize, onCommit: endTextEditing)
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
@@ -85,10 +109,31 @@ struct AnnotationEditingOverlay: View {
             })
     }
 
+    /// Opens a text callout's inline field, snapshotting first so the whole edit is a
+    /// single undo step.
+    private func beginTextEditing(_ id: UUID) {
+        onBeginEdit()
+        selection = id
+        editingAnnotationID = id
+    }
+
+    /// Leaves inline editing, dropping a callout that was never given content so no
+    /// invisible mark is left behind. Idempotent — safe to call from both `onSubmit`
+    /// and the focus-loss handler.
+    private func endTextEditing() {
+        guard let id = editingAnnotationID else { return }
+        if settings.config.annotations.first(where: { $0.id == id })?.isBlankText == true {
+            settings.config.annotations.removeAll { $0.id == id }
+            if selection == id { selection = nil }
+        }
+        editingAnnotationID = nil
+    }
+
     private func delete(_ id: UUID) {
         onBeginEdit()
         settings.config.annotations.removeAll { $0.id == id }
         if selection == id { selection = nil }
+        if editingAnnotationID == id { editingAnnotationID = nil }
     }
 }
 
@@ -169,6 +214,9 @@ private struct AnnotationHandle: View {
     let canvasSize: CGSize
     let onBeginEdit: () -> Void
     let onSelect: () -> Void
+    /// Re-opens a text callout's inline field on double-click; `nil` for kinds that
+    /// have no editable text.
+    let onEdit: (() -> Void)?
     let onDelete: () -> Void
 
     @State private var dragOrigin: Annotation?
@@ -224,13 +272,23 @@ private struct AnnotationHandle: View {
 
     @ViewBuilder
     private var bodyHitArea: some View {
-        Color.clear
+        let base = Color.clear
             .frame(width: hitSize.width, height: hitSize.height)
             .contentShape(Rectangle())
             .rotationEffect(isLineLike ? .radians(shaftAngle) : .zero)
             .position(hitCenter)
-            .onTapGesture { onSelect() }
-            .gesture(moveGesture)
+        if let onEdit {
+            // A double-click re-opens a text callout's field; the single-click select is
+            // declared after so it yields to the double-click.
+            base
+                .onTapGesture(count: 2) { onEdit() }
+                .onTapGesture { onSelect() }
+                .gesture(moveGesture)
+        } else {
+            base
+                .onTapGesture { onSelect() }
+                .gesture(moveGesture)
+        }
     }
 
     private var hitSize: CGSize {
@@ -337,5 +395,53 @@ private struct AnnotationHandle: View {
                         y: value.location.y / max(canvasSize.height, 1)))
             }
             .onEnded { _ in isResizing = false }
+    }
+}
+
+/// The focused inline field for editing a text callout in place (CS-085 follow-up).
+///
+/// It mirrors `TextMark`'s font, color, pill, and center anchor so editing is WYSIWYG,
+/// and `SnapshotCanvas` blanks the same mark while this is up (see `previewConfig`), so
+/// the field is the only text drawn. Committing on Return / Escape / focus-loss keeps
+/// non-empty content; an empty field is dropped by the overlay.
+private struct TextAnnotationEditor: View {
+    @Binding var annotation: Annotation
+    let canvasSize: CGSize
+    let onCommit: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    /// Matches `TextMark.fontSize` so the field and the rendered callout are the same size.
+    private var fontSize: CGFloat { max(12, annotation.thickness * 4) }
+
+    var body: some View {
+        TextField("Annotation text", text: $annotation.text, prompt: Text("Note"))
+            .textFieldStyle(.plain)
+            .labelsHidden()
+            .font(.system(size: fontSize, weight: .bold, design: .rounded))
+            .foregroundStyle(annotation.color.color)
+            .multilineTextAlignment(.center)
+            .fixedSize()
+            .padding(.horizontal, fontSize * 0.5)
+            .padding(.vertical, fontSize * 0.28)
+            .background(
+                RoundedRectangle(cornerRadius: fontSize * 0.5, style: .continuous)
+                    .fill(Color.black.opacity(0.55))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: fontSize * 0.5, style: .continuous)
+                    .strokeBorder(VitrineTokens.Accent.base, lineWidth: 1.5)
+            )
+            .position(annotation.startPoint(in: canvasSize))
+            .focused($isFocused)
+            // `.task` (MainActor, post-appearance) focuses more reliably than setting
+            // `@FocusState` straight from `.onAppear`.
+            .task { isFocused = true }
+            .onSubmit(onCommit)
+            .onExitCommand(perform: onCommit)
+            .onChange(of: isFocused) { _, focused in
+                if !focused { onCommit() }
+            }
+            .accessibilityIdentifier("annotation-text-field")
     }
 }
