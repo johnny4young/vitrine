@@ -130,18 +130,18 @@ struct EditorInspectorView: View {
 
     // MARK: - Sections
 
-    /// Clarifies the scope the audit flagged as confusing: the controls below are the
-    /// app's single, persistent *style* (the same set lives in Settings ▸ Style and
-    /// carries into every capture), whereas the code and annotations belong to the open
-    /// capture. Without this, tweaking a style here reads as "just this image".
+    /// Clarifies the scope the audit flagged as confusing. The editor binds a *per-window*
+    /// `EditorSession.settings` (see `EditorWindowController.makeWindow`), so these controls
+    /// style only the capture in this window. Settings ▸ Style edits `AppSettings.shared`,
+    /// the global default that new captures start from (`QuickCapture` copies it into the
+    /// primary window). Without this, an inspector tweak reads as "the default", or a
+    /// Settings change reads as "should have changed my open image".
     private var scopeNote: some View {
-        Text(
-            "Style applies to every capture (the same controls are in Settings). Code and annotations stay with this capture."
-        )
-        .font(.system(size: VitrineTokens.FontSize.caption))
-        .foregroundStyle(VitrineTokens.Text.tertiary)
-        .fixedSize(horizontal: false, vertical: true)
-        .accessibilityIdentifier("inspector-scope-note")
+        Text("These style this capture. New captures start from the default in Settings ▸ Style.")
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("inspector-scope-note")
     }
 
     /// Background: the gradient preset swatches plus the dashed "+" leading to
