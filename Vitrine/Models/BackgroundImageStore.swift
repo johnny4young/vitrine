@@ -1,5 +1,6 @@
 import AppKit
 import CryptoKit
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -108,7 +109,11 @@ struct BackgroundImageStore {
     /// identical bytes from any source dedupe to one file.
     func importImage(data: Data, preferredExtension ext: String = "") throws -> ImageReference {
         guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
-        return try store(data, preferredExtension: ext)
+        let preferredExtension = sanitizedExtension(ext)
+        return try store(
+            data,
+            preferredExtension: preferredExtension.isEmpty
+                ? inferredExtension(from: data) : preferredExtension)
     }
 
     /// Downloads the image at a remote `url` and imports it into the container,
@@ -290,16 +295,36 @@ struct BackgroundImageStore {
         return NSImage(contentsOf: url)
     }
 
-    /// A lowercased, image-only file extension for the destination name, or an
-    /// empty string when the source has none. Restricting to known image types
-    /// keeps the stored name tidy and predictable.
-    private func sanitizedExtension(for url: URL) -> String {
-        let ext = url.pathExtension.lowercased()
+    /// Sanitizes a raw extension into a lowercased, image-only destination suffix, or
+    /// returns an empty string when the caller-provided value is not safe to append.
+    private func sanitizedExtension(_ ext: String) -> String {
+        let ext = ext.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let allowedCharacters = CharacterSet.alphanumerics
         guard !ext.isEmpty,
+            ext.unicodeScalars.allSatisfy({ allowedCharacters.contains($0) }),
             let type = UTType(filenameExtension: ext),
             type.conforms(to: .image)
         else { return "" }
         return ext
+    }
+
+    /// Reads the actual image container type from in-memory bytes so clipboard/drag imports
+    /// can keep a tidy extension even when the provider-supplied suffix is unusable.
+    private func inferredExtension(from data: Data) -> String {
+        guard
+            let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let identifier = CGImageSourceGetType(source) as String?,
+            let type = UTType(identifier),
+            type.conforms(to: .image),
+            let ext = type.preferredFilenameExtension
+        else { return "" }
+        return sanitizedExtension(ext)
+    }
+
+    /// Extracts and sanitizes the source URL's image extension for the destination name.
+    private func sanitizedExtension(for url: URL) -> String {
+        let ext = url.pathExtension.lowercased()
+        return sanitizedExtension(ext)
     }
 
     /// Like `sanitizedExtension(for:)` but falls back to the response MIME type when
