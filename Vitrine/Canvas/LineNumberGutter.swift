@@ -211,9 +211,11 @@ struct CodeLinesView: View {
                     .padding(.trailing, GutterMetrics.trailingGap)
                     .accessibilityHidden(true)
             }
-            // Redacted rows blur only the code, leaving the gutter number sharp.
-            lineText(line)
-                .blur(radius: isRedacted ? max(6, font.pointSize * 0.45) : 0)
+            // Redacted rows hide only the code, leaving the gutter number sharp. The
+            // rendered text is a neutral placeholder — not the original source blurred —
+            // so accessibility, text selection, and rich clipboard paths cannot recover
+            // the secret the image is meant to hide.
+            lineText(line, isRedacted: isRedacted)
             Spacer(minLength: 0)
         }
         // A full-bleed band so the highlight reads as a selected row across the
@@ -233,13 +235,20 @@ struct CodeLinesView: View {
     /// occupies a full row (a zero-width space placeholder) so blank lines keep
     /// the gutter numbering and vertical rhythm intact rather than collapsing.
     @ViewBuilder
-    private func lineText(_ line: AttributedString) -> some View {
-        let text = textForLine(line)
-        if let codeColumnWidth {
-            text.frame(width: codeColumnWidth, alignment: .leading)
-        } else {
-            text
+    private func lineText(_ line: AttributedString, isRedacted: Bool) -> some View {
+        Group {
+            if isRedacted {
+                redactedText(for: line)
+                    .foregroundStyle(textColor.opacity(0.55))
+                    .blur(radius: max(6, font.pointSize * 0.45))
+                    .textSelection(.disabled)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text("Redacted line"))
+            } else {
+                textForLine(line)
+            }
         }
+        .frame(width: codeColumnWidth, alignment: .leading)
     }
 
     /// The actual text for one row, before any optional soft-wrap frame is applied.
@@ -248,6 +257,14 @@ struct CodeLinesView: View {
         // it must not become a String Catalog key (CS-047).
         if line.characters.isEmpty { return Text(verbatim: "\u{200B}").font(Font(font)) }
         return Text(line)
+    }
+
+    /// A same-length neutral mask for a redacted row. It keeps the row's approximate
+    /// width without retaining the source text in the SwiftUI accessibility/selection
+    /// tree.
+    private func redactedText(for line: AttributedString) -> Text {
+        let characterCount = max(8, line.characters.count)
+        return Text(verbatim: String(repeating: "█", count: characterCount)).font(Font(font))
     }
 
     /// The band drawn behind a row: a diff add/remove band when diff decorations are

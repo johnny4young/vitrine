@@ -25,12 +25,12 @@ enum SecretScanner {
     /// false-positive; the catch-all requires a 16+ char unbroken value so it skips
     /// ordinary `name = functionCall(x)` assignments.
     private static let rules: [Rule] = [
-        ("aws-access-key", #"\bAKIA[0-9A-Z]{16}\b"#),
-        ("github-token", #"\bgh[pousr]_[A-Za-z0-9]{36,}\b"#),
+        ("aws-access-key", #"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"#),
+        ("github-token", #"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{40,})\b"#),
         ("slack-token", #"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"#),
         ("google-api-key", #"\bAIza[0-9A-Za-z_\-]{35}\b"#),
         ("stripe-key", #"\b(?:sk|rk|pk)_(?:live|test)_[0-9A-Za-z]{16,}\b"#),
-        ("openai-key", #"\bsk-[A-Za-z0-9]{20,}\b"#),
+        ("openai-key", #"\bsk-[A-Za-z0-9_\-]{20,}\b"#),
         ("jwt", #"\beyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b"#),
         ("private-key", #"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----"#),
         (

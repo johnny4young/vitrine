@@ -170,6 +170,33 @@ struct RichExportTests {
         #expect(payload?.plainText == "$ ok")
     }
 
+    @Test func redactedLinesAreRemovedFromRichPayloadTextRepresentations() throws {
+        let secret = "runtime-only-secret"
+        let config = Self.sampleConfig {
+            $0.code = "let visible = 1\nlet hidden = \"\(secret)\"\nlet tail = 2"
+            $0.redactedLineRanges = [2...2]
+        }
+
+        let payload = try #require(
+            RichPasteboard.makePayload(
+                for: config, scale: 1, fixedSize: nil, profile: .sRGB,
+                includeRichText: true, includePlainText: true))
+
+        #expect(payload.plainText == config.richClipboardText)
+        #expect(payload.plainText?.contains(secret) == false)
+        #expect(payload.plainText?.contains(SnapshotConfig.redactedLinePlaceholder) == true)
+
+        let rtf = try #require(payload.rtf)
+        let reread = try #require(NSAttributedString(rtf: rtf, documentAttributes: nil))
+        #expect(!reread.string.contains(secret))
+        #expect(reread.string.contains(SnapshotConfig.redactedLinePlaceholder))
+
+        let html = try #require(payload.html)
+        let markup = try #require(String(data: html, encoding: .utf8))
+        #expect(!markup.contains(secret))
+        #expect(markup.contains(SnapshotConfig.redactedLinePlaceholder))
+    }
+
     @Test func copyToPasteboardPlainTextRoutesThroughTheRichPath() {
         // The public `ExportManager.copyToPasteboard(plainText:)` flag the callers pass:
         // with it on, the general pasteboard ends up with both image and plain text.
@@ -305,6 +332,21 @@ struct RichExportTests {
         // …plus the raw source for a plain-text code editor.
         let plain = try #require(pasteboard.string(forType: .string))
         #expect(plain == config.code)
+    }
+
+    @Test func copyHighlightedCodeRedactsPlainTextFallback() throws {
+        let secret = "runtime-only-secret"
+        let config = Self.sampleConfig {
+            $0.code = "let visible = 1\nlet hidden = \"\(secret)\""
+            $0.redactedLineRanges = [2...2]
+        }
+        let pasteboard = Self.scratchPasteboard()
+        #expect(RichPasteboard.copyHighlightedCode(for: config, to: pasteboard))
+
+        let plain = try #require(pasteboard.string(forType: .string))
+        #expect(plain == config.richClipboardText)
+        #expect(!plain.contains(secret))
+        #expect(plain.contains(SnapshotConfig.redactedLinePlaceholder))
     }
 
     // MARK: - 4. Bounding large outputs

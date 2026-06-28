@@ -210,10 +210,14 @@ enum RichPasteboard {
     /// rendered image's typography (CS-054).
     @MainActor
     static func highlightedCode(for config: SnapshotConfig) -> NSAttributedString {
+        var exportConfig = config
+        exportConfig.code = config.richClipboardText
         let font = CodeFont.resolved(
-            family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
+            family: exportConfig.fontName, size: exportConfig.fontSize,
+            ligatures: exportConfig.fontLigatures)
         return HighlightManager.shared.attributedString(
-            for: config.code, language: config.language, theme: config.theme, font: font)
+            for: exportConfig.code, language: exportConfig.language, theme: exportConfig.theme,
+            font: font)
     }
 
     // MARK: - Writing to the pasteboard
@@ -334,7 +338,7 @@ enum RichPasteboard {
         if let html { item.setData(html, forType: htmlType) }
         // A plain-text representation lets a code editor that ignores styling still
         // receive the source text.
-        item.setString(config.code, forType: .string)
+        item.setString(config.richClipboardText, forType: .string)
         let wrote = pasteboard.writeObjects([item])
         Log.export.info(
             "Copied highlighted code to pasteboard (success \(wrote, privacy: .public))")
