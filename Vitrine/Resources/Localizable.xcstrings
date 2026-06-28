@@ -6157,6 +6157,78 @@
         }
       }
     },
+    "Blur lines that look like API keys, tokens, or passwords." : {
+      "comment" : "Editor inspector: help for the Redact secrets action.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blur lines that look like API keys, tokens, or passwords."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Difumina las líneas que parezcan llaves de API, tokens o contraseñas."
+          }
+        }
+      }
+    },
+    "Clear" : {
+      "comment" : "Editor inspector: button to clear the secret-redaction blur.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar"
+          }
+        }
+      }
+    },
+    "Redact secrets" : {
+      "comment" : "Editor inspector: row label for the secret-redaction action.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redact secrets"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar secretos"
+          }
+        }
+      }
+    },
+    "Scan" : {
+      "comment" : "Editor inspector: button to scan the code for secrets and redact them.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanear"
+          }
+        }
+      }
+    },
     "These style this capture. New captures start from the default in Settings ▸ Style." : {
       "comment" : "Editor inspector scope note: the inspector edits this window's per-window capture, while Settings ▸ Style is the global default new captures start from (UX audit).",
       "extractionState" : "stale",
