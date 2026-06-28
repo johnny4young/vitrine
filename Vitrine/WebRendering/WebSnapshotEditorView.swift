@@ -50,6 +50,13 @@ struct WebSnapshotEditorView: View {
             // a single capture selects its one viewport.
             previewedKind = model.results.count > 1 ? nil : model.results.first?.kind
         }
+        // A prefilled URL (from quick capture) captures itself rather than stranding the
+        // user on a static form: `onAppear` covers a freshly opened window, `onChange`
+        // covers a reused window prefilled while already on screen (UX audit).
+        .onAppear { autoCaptureIfPending() }
+        .onChange(of: model.pendingAutoCapture) { _, pending in
+            if pending { autoCaptureIfPending() }
+        }
         .background(VitrineTokens.Surface.window)
         .tint(VitrineTokens.Accent.system)
         .sheet(isPresented: $showDisclosure) {

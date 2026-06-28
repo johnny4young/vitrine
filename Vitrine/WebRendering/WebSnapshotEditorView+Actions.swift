@@ -32,11 +32,28 @@ extension WebSnapshotEditorView {
     }
 
     func capture() async {
-        defer { renderTask = nil }
+        defer {
+            renderTask = nil
+            // Pick up a prefill that arrived while this capture was in flight (it was
+            // left pending rather than dropped — see `autoCaptureIfPending`).
+            autoCaptureIfPending()
+        }
         await model.render(settings: settings)
         if let error = model.errorMessage {
             CaptureHUDController.shared.present(Notifier.failure(error))
         }
+    }
+
+    /// Fires the capture for a freshly prefilled URL (quick-capture route) so the user
+    /// isn't left on a static form. `attemptCapture` re-checks availability and consent,
+    /// so this routes through the privacy disclosure on first use just like a manual tap.
+    func autoCaptureIfPending() {
+        // Don't consume the flag while a capture is running: `attemptCapture` would early
+        // return on its `renderTask != nil` guard and drop the signal. Leave it set — the
+        // running capture's `defer` calls back here once it finishes.
+        guard model.pendingAutoCapture, renderTask == nil else { return }
+        model.pendingAutoCapture = false
+        attemptCapture()
     }
 
     /// Stops an in-flight capture (the Cancel button / Escape). Cancellation propagates
