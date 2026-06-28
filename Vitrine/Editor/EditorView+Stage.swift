@@ -126,6 +126,7 @@ extension EditorView {
                     .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
                 AnnotationEditingOverlay(
                     settings: settings, selection: $selectedAnnotationID,
+                    editingAnnotationID: $editingAnnotationID,
                     canvasSize: cardSize, activeTool: activeTool,
                     drawColor: newDrawColor, drawThickness: newDrawThickness,
                     onBeginEdit: recordAnnotationUndo)
@@ -260,6 +261,15 @@ extension EditorView {
         // (CS-092), resolved from the observed brand kit + entitlement so it tracks
         // changes live. Off unless the user enabled it and PRO is unlocked.
         config.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
+        // While a text callout is being edited, blank its canvas copy so the inline
+        // field (in the overlay) is the only text drawn — no doubled pill. Preview-only:
+        // the export reads `settings.config`, so this never touches the rendered image.
+        if let editing = editingAnnotationID,
+            let index = config.annotations.firstIndex(where: { $0.id == editing }),
+            config.annotations[index].kind == .text
+        {
+            config.annotations[index].text = ""
+        }
         return config
     }
 
