@@ -12,6 +12,44 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-06-28
+
+A usability pass over the whole app from a 4-agent UX audit, shipped as one release.
+
+### Added
+
+- **Editable text annotations.** The Text annotation tool now opens a focused inline field
+  on the canvas — type the note and press Return to commit; double-click an existing callout
+  to edit it, and an empty one is dropped. (It previously dropped a fixed "Note" with no way
+  to edit it.)
+- **Keyboard shortcuts for annotation tools.** `⌘1`–`⌘8` select Select / Arrow / Line /
+  Rectangle / Text / Highlighter / Blur / Counter; each tool's tooltip shows its shortcut.
+- **Cancel a running web capture, with progress.** A multi-size URL capture now shows a
+  Cancel button (and Escape) plus "Capturing N of M", so a long sequential batch is no
+  longer a trap.
+- **"Use my logged-in session" web capture.** An opt-in toggle captures URLs using your
+  browser cookies/session; off by default, with a private per-render store otherwise.
+- **Auto-capture a prefilled URL.** Quick-capturing a clipboard URL now starts the capture
+  automatically instead of leaving you on a static form.
+
+### Changed
+
+- **Brand Kit is its own Settings pane** (was buried under Style), so the PRO feature is
+  visible; the Settings panes also read clearer (Input → Export rename and a top-to-bottom
+  pipeline order).
+- **Scope clarity in the editor.** A note explains that the inspector styles *this capture*,
+  while Settings ▸ Style sets the default that new captures start from.
+- **Recents open consistently.** Opening a capture from the gallery now loads it into the
+  editor window like the menu-bar Recents row, instead of overwriting your default style.
+- **Quick-win polish.** Copy/Save confirm via the on-screen HUD, disabled buttons dim,
+  inspector sliders show their value, the empty Recents state teaches the capture loop, and
+  more controls carry VoiceOver labels.
+
+### Fixed
+
+- Robustness around the new capture-cancel and prefill flows: no dropped or stale
+  auto-capture, and no capture re-entrancy races.
+
 ## [0.17.0] - 2026-06-27
 
 ### Added

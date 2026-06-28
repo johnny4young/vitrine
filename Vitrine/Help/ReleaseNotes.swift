@@ -42,6 +42,18 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.18.0",
+            headline: "Editable annotations, tool shortcuts, and a usability pass",
+            highlights: [
+                "Text annotations are editable: pick the Text tool and type right on the "
+                    + "canvas — double-click to edit, Return to commit. Switch tools fast with "
+                    + "⌘1–⌘8.",
+                "Web captures you can stop: a long multi-size URL capture now shows progress "
+                    + "and a Cancel button, and a quick-captured URL starts on its own.",
+                "Clearer settings: Brand Kit is its own pane, and the editor explains that its "
+                    + "controls style this capture while Settings sets the default for new ones.",
+            ]),
+        ReleaseNote(
             version: "0.17.0",
             headline: "Wrap long lines, and a snappier preview",
             highlights: [
