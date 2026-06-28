@@ -94,7 +94,10 @@ struct AnnotationToolbar: View {
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
-        .help(tool.label)
+        // ⌘-digit selects the tool (⌘1…⌘8). A Command-modified shortcut fires reliably on
+        // macOS and never hijacks the code editor's typing (a modifier-less key would).
+        .keyboardShortcut(tool.keyEquivalent, modifiers: .command)
+        .help(Text(tool.label) + Text(verbatim: " (⌘\(tool.keyEquivalent.character))"))
         .accessibilityLabel(tool.label)
         .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
     }

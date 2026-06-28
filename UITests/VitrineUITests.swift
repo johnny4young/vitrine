@@ -230,6 +230,47 @@ final class VitrineUITests: XCTestCase {
         element("annotation-tool-select", in: app).click()
     }
 
+    /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and
+    /// never switch tools. Typing 'abc' must reach the text and leave Select active (no
+    /// draw-tool color swatch).
+    @MainActor
+    func testAnnotationShortcutsDoNotHijackCodeTyping() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-editor"])  // empty editor: typed text is exact
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        editor.click()
+        editor.typeText("abc")
+
+        let value = (editor.value as? String) ?? ""
+        XCTAssertTrue(
+            value.contains("abc"),
+            "Tool-shortcut letters typed in the code editor must reach the text. Got: '\(value)'")
+        XCTAssertFalse(
+            element("annotation-color-swatch", in: app).exists,
+            "Typing in the code editor must not activate a draw tool")
+    }
+
+    /// A ⌘-digit shortcut selects its tool from anywhere in the editor — even while the
+    /// code editor holds focus, since a Command shortcut isn't consumed as typing. ⌘2
+    /// (Arrow) reveals the draw-tool color swatch that Select hides.
+    @MainActor
+    func testAnnotationShortcutSelectsTheTool() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        XCTAssertTrue(element("editor-toolbar", in: app).waitForExistence(timeout: 8))
+        XCTAssertFalse(
+            element("annotation-color-swatch", in: app).exists, "Select tool shows no swatch")
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(
+            element("annotation-color-swatch", in: app).waitForExistence(timeout: 3),
+            "⌘2 should select the Arrow tool and reveal its color swatch")
+    }
+
     @MainActor
     func testCopyImageClosesTheEditorWhenEnabled() throws {
         continueAfterFailure = false
