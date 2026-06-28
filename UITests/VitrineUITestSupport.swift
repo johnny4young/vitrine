@@ -78,6 +78,24 @@ extension XCTestCase {
             .allElementsBoundByIndex
     }
 
+    /// Returns whether some element carrying `identifier` becomes hittable.
+    ///
+    /// A single identifier can legitimately match nested AppKit/SwiftUI elements, so
+    /// the control is reachable when any matching element is hittable.
+    @MainActor
+    func waitForHittableElement(
+        _ identifier: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 3
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if matches(identifier, in: app).contains(where: { $0.isHittable }) { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        return false
+    }
+
     /// Asserts some element carrying `identifier` becomes hittable, polling briefly.
     ///
     /// The control is reachable when any matching element is hittable. On failure it
@@ -91,11 +109,7 @@ extension XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let deadline = Date().addingTimeInterval(timeout)
-        repeat {
-            if matches(identifier, in: app).contains(where: { $0.isHittable }) { return }
-            Thread.sleep(forTimeInterval: 0.25)
-        } while Date() < deadline
+        if waitForHittableElement(identifier, in: app, timeout: timeout) { return }
 
         let found = matches(identifier, in: app)
             .map { "match frame=\($0.frame) hittable=\($0.isHittable)" }

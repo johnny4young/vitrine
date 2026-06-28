@@ -449,6 +449,15 @@ final class WelcomeWindowController {
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
+        if let window, let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
+            // Keep the fixed quick-start surface fully inside the visible screen after
+            // AppKit assigns it to a display. Mixed-display setups and menu-bar/Dock
+            // insets can otherwise leave the footer actions just off-screen even
+            // though the window exists.
+            window.setFrame(
+                WindowFrameSolver.clamp(window.frame, into: visibleFrame), display: true)
+            window.makeKeyAndOrderFront(nil)
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 

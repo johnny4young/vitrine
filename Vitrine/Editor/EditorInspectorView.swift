@@ -95,6 +95,27 @@ struct EditorInspectorView: View {
                                 )
                                 .accessibilityIdentifier("diff-decorations-toggle")
                         }
+                        InspectorRow(label: Text("Redact secrets")) {
+                            if settings.config.redactedLineRanges.isEmpty {
+                                Button("Scan") {
+                                    // Scan `sidecarText`, not `code`: for a terminal capture
+                                    // the canvas renders the ANSI-resolved screen, so the raw
+                                    // bytes' line numbers would map to the wrong rows (and
+                                    // could leave a secret visible). For other languages
+                                    // `sidecarText == code`.
+                                    let lines = SecretScanner.secretLines(
+                                        in: settings.config.sidecarText)
+                                    settings.config.redactedLineRanges = LineHighlight.normalize(
+                                        lines.map { $0...$0 })
+                                }
+                                .help("Blur lines that look like API keys, tokens, or passwords.")
+                                .disabled(settings.config.code.isEmpty)
+                                .accessibilityIdentifier("redact-secrets-button")
+                            } else {
+                                Button("Clear") { settings.config.redactedLineRanges = [] }
+                                    .accessibilityIdentifier("clear-redactions-button")
+                            }
+                        }
                     }
 
                     InspectorDisclosure(

@@ -116,12 +116,13 @@ struct EditorWindowState: Codable, Equatable {
     var showShadow: Bool
     var showLineNumbers: Bool
     var highlightedLines: String
+    var redactedLines: String
     var background: BackgroundStyle
     var metadata: SnapshotMetadata
 
     /// Captures `config` for archiving. Line ranges are flattened to their canonical
-    /// spec string and the theme/language to their ids, matching how `AppSettings`
-    /// persists the same fields.
+    /// spec string and the theme/language to their ids, matching how the rest of the
+    /// app persists the same fields.
     init(config: SnapshotConfig) {
         code = config.code
         languageID = config.language.rawValue
@@ -136,6 +137,7 @@ struct EditorWindowState: Codable, Equatable {
         showShadow = config.showShadow
         showLineNumbers = config.showLineNumbers
         highlightedLines = LineHighlight.describe(config.highlightedLineRanges)
+        redactedLines = LineHighlight.describe(config.redactedLineRanges)
         background = config.background
         metadata = config.metadata
     }
@@ -160,6 +162,7 @@ struct EditorWindowState: Codable, Equatable {
         config.showShadow = showShadow
         config.showLineNumbers = showLineNumbers
         config.highlightedLineRanges = LineHighlight.parse(highlightedLines)
+        config.redactedLineRanges = LineHighlight.parse(redactedLines)
         config.background = background
         config.metadata = metadata
         return config
@@ -168,7 +171,7 @@ struct EditorWindowState: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case code, languageID, themeID, fontName, fontSize, fontLigatures
         case padding, cornerRadius, shadowRadius, showChrome, showShadow
-        case showLineNumbers, highlightedLines, background, metadata
+        case showLineNumbers, highlightedLines, redactedLines, background, metadata
     }
 
     /// A defensive decoder: every field tolerates being absent or the wrong type by
@@ -197,6 +200,9 @@ struct EditorWindowState: Codable, Equatable {
         highlightedLines =
             (try? container.decode(String.self, forKey: .highlightedLines))
             ?? LineHighlight.describe(fallback.highlightedLineRanges)
+        redactedLines =
+            (try? container.decode(String.self, forKey: .redactedLines))
+            ?? LineHighlight.describe(fallback.redactedLineRanges)
         background =
             (try? container.decode(BackgroundStyle.self, forKey: .background))
             ?? fallback.background

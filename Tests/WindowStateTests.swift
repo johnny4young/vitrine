@@ -96,6 +96,7 @@ struct EditorWindowStateTests {
         config.showShadow = false
         config.showLineNumbers = true
         config.highlightedLineRanges = [1...1, 3...5]
+        config.redactedLineRanges = [2...2]
         config.background = .gradient(.sunset)
         config.metadata = SnapshotMetadata(
             filename: "main.py", title: "Demo", caption: "A caption", showLanguageBadge: true)
@@ -119,6 +120,7 @@ struct EditorWindowStateTests {
         #expect(restored.showShadow == original.showShadow)
         #expect(restored.showLineNumbers == original.showLineNumbers)
         #expect(restored.highlightedLineRanges == original.highlightedLineRanges)
+        #expect(restored.redactedLineRanges == original.redactedLineRanges)
         #expect(restored.background == original.background)
         #expect(restored.metadata == original.metadata)
     }
@@ -134,6 +136,7 @@ struct EditorWindowStateTests {
         #expect(restored.language == original.language)
         #expect(restored.background == original.background)
         #expect(restored.highlightedLineRanges == original.highlightedLineRanges)
+        #expect(restored.redactedLineRanges == original.redactedLineRanges)
     }
 
     @Test func defaultConfigRoundTripsToItself() {
