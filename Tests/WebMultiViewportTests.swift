@@ -112,6 +112,15 @@ struct WebMultiViewportSelectionTests {
         // The flag tracks this build's URL-capture availability (false under the test host).
         #expect(model.pendingAutoCapture == NetworkCapability.isURLCaptureEnabled)
     }
+
+    @Test func discardingRenderedAssetsClearsPendingAutoCapture() {
+        // Closing the window (windowWillClose → discardRenderedAssets) must not leave a
+        // pending auto-capture behind, or the next open would auto-capture a stale URL.
+        let model = WebSnapshotModel()
+        model.pendingAutoCapture = true
+        model.discardRenderedAssets()
+        #expect(model.pendingAutoCapture == false)
+    }
 }
 
 @Suite("Responsive board composite · CS-044")
