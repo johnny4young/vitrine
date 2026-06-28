@@ -83,19 +83,24 @@ struct TokenRow<Content: View>: View {
                         .foregroundStyle(VitrineTokens.Text.primary)
                 }
                 Spacer(minLength: VitrineTokens.Spacing.sm)
-                // Attach the caption to the control as its VoiceOver hint, so the
-                // explanation is announced with the control instead of as a separate,
-                // disconnected element (audit UX). The visible caption is then hidden
-                // from VoiceOver below to avoid reading it twice.
-                content
-                    .accessibilityHint(caption ?? Text(verbatim: ""))
+                // When a caption exists, attach it to the control as its VoiceOver hint
+                // so the explanation is announced together with the control (audit UX);
+                // no caption means no hint, rather than an empty one. The visible caption
+                // stays accessible below — for a single control that is a harmless second
+                // read, but for a composite control (several buttons in an HStack) the
+                // hint may not reach the focused child, so keeping the caption as its own
+                // element is what stops the explanation from being lost.
+                if let caption {
+                    content.accessibilityHint(caption)
+                } else {
+                    content
+                }
             }
             if let caption {
                 caption
                     .font(.system(size: VitrineTokens.FontSize.caption))
                     .foregroundStyle(VitrineTokens.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityHidden(true)
             }
         }
         .padding(.vertical, 9)

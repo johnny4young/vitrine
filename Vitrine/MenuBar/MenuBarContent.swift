@@ -50,8 +50,7 @@ struct MenuBarContent: View {
             if let shortcut = KeyboardShortcuts.getShortcut(for: .quickCapture) {
                 KbdChip(
                     glyphs: shortcut.description,
-                    accessibilityLabel: String(localized: "Capture hotkey") + ", "
-                        + shortcut.description)
+                    purpose: String(localized: "Capture hotkey"))
             }
         }
     }
@@ -304,12 +303,14 @@ struct MenuBarContent: View {
 /// bordered tag.
 private struct KbdChip: View {
     let glyphs: String
-    /// What the shortcut does, so VoiceOver announces e.g. "Capture hotkey, ⇧⌘S"
-    /// instead of reading the bare glyphs with no context. Defaults to the glyphs.
-    var accessibilityLabel: String?
+    /// What the shortcut does. When set, VoiceOver announces it as the element's label
+    /// and the glyphs as its value (e.g. "Capture hotkey: ⇧⌘S") instead of folding both
+    /// into one concatenated, hard-to-localize label. Without it the glyphs are the
+    /// label and there is no separate value.
+    var purpose: String?
 
     var body: some View {
-        Text(verbatim: glyphs)
+        let tag = Text(verbatim: glyphs)
             .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
             .foregroundStyle(VitrineTokens.Text.tertiary)
             .padding(.vertical, 2)
@@ -319,7 +320,12 @@ private struct KbdChip: View {
                     .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
             )
             .accessibilityElement()
-            .accessibilityLabel(accessibilityLabel ?? glyphs)
+        if let purpose {
+            tag.accessibilityLabel(Text(verbatim: purpose))
+                .accessibilityValue(Text(verbatim: glyphs))
+        } else {
+            tag.accessibilityLabel(Text(verbatim: glyphs))
+        }
     }
 }
 
