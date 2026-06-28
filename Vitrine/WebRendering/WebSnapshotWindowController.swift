@@ -149,6 +149,10 @@ final class WebSnapshotModel {
         boardAsset = nil
         boardThumbnailAsset = nil
         errorMessage = nil
+        // Also drop a not-yet-consumed auto-capture flag so closing the window can't leak
+        // a stale prefilled URL into an auto-capture on the next open. `prepareForPrefillURL`
+        // sets the flag *after* calling this, so its own prefill is unaffected.
+        pendingAutoCapture = false
     }
 
     /// Set when a prefilled URL arrives in a build where URL capture is available, so the
