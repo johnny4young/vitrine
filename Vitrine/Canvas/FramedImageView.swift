@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Renders a beautified **foreground image** (the "beautify any image" feature) wrapped
-/// in an optional window/browser frame, sitting where the code card would.
+/// in an optional window / browser / device frame, sitting where the code card would.
 ///
 /// The image is resolved by reference through `foregroundImageStore` (the same
 /// default-real / inject-in-tests contract as image backgrounds), so an export resolves
@@ -13,6 +13,8 @@ import SwiftUI
 struct FramedImageView: View {
     let reference: ImageReference
     let frame: ImageFrame
+    /// Light or dark chrome for the window/browser bars and device body tint.
+    var appearance: FrameAppearance = .light
     /// Reuses `SnapshotConfig.windowTitle` as the window title / browser address text.
     var title: String = ""
 
@@ -22,9 +24,7 @@ struct FramedImageView: View {
     /// @2x export still captures ample detail. A smaller image is never upscaled.
     private static let maxImageWidth: CGFloat = 1100
 
-    private static let barColor = Color(hex: "#E8E8EA")
-    private static let pillColor = Color(hex: "#FDFDFF")
-    private static let barTextColor = Color(hex: "#3C3C43")
+    private var chrome: FrameChrome { FrameChrome.of(appearance) }
 
     var body: some View {
         if let image = store.image(for: reference) {
@@ -36,22 +36,27 @@ struct FramedImageView: View {
 
     @ViewBuilder
     private func content(_ image: NSImage) -> some View {
-        let display = displaySize(for: image)
         switch frame {
         case .none:
-            imageView(image, size: display)
+            imageView(image, size: displaySize(for: image))
         case .macOSWindow:
+            let display = displaySize(for: image)
             VStack(spacing: 0) {
                 windowBar
                 imageView(image, size: display)
             }
             .frame(width: display.width)
         case .browser:
+            let display = displaySize(for: image)
             VStack(spacing: 0) {
                 browserBar
                 imageView(image, size: display)
             }
             .frame(width: display.width)
+        case .macBook:
+            LaptopFrameView(image: image, chrome: chrome)
+        case .iPhone:
+            PhoneFrameView(image: image, chrome: chrome)
         }
     }
 
@@ -72,7 +77,7 @@ struct FramedImageView: View {
             if !title.isEmpty {
                 Text(verbatim: title)
                     .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(Self.barTextColor)
+                    .foregroundStyle(chrome.text)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .padding(.horizontal, 44)
@@ -80,7 +85,7 @@ struct FramedImageView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 28)
-        .background(Self.barColor)
+        .background(chrome.bar)
     }
 
     /// A browser toolbar: traffic-light dots plus a faux address pill carrying the title.
@@ -90,21 +95,21 @@ struct FramedImageView: View {
             HStack(spacing: 6) {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 8))
-                    .foregroundStyle(Self.barTextColor.opacity(0.45))
+                    .foregroundStyle(chrome.text.opacity(0.45))
                 Text(verbatim: title)
                     .font(.system(size: 11))
-                    .foregroundStyle(Self.barTextColor.opacity(title.isEmpty ? 0 : 1))
+                    .foregroundStyle(chrome.text.opacity(title.isEmpty ? 0 : 1))
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 10)
             .frame(height: 22)
-            .background(Capsule().fill(Self.pillColor))
+            .background(Capsule().fill(chrome.pill))
         }
         .padding(.horizontal, 12)
         .frame(height: 40)
-        .background(Self.barColor)
+        .background(chrome.bar)
     }
 
     private var chromeDots: some View {
@@ -125,13 +130,13 @@ struct FramedImageView: View {
         VStack(spacing: 8) {
             Image(systemName: "photo")
                 .font(.system(size: 28))
-                .foregroundStyle(Self.barTextColor.opacity(0.5))
+                .foregroundStyle(chrome.text.opacity(0.5))
             Text("Image unavailable")
                 .font(.system(size: 12))
-                .foregroundStyle(Self.barTextColor.opacity(0.6))
+                .foregroundStyle(chrome.text.opacity(0.6))
         }
         .frame(width: 320, height: 200)
-        .background(Self.barColor)
+        .background(chrome.bar)
     }
 
     /// The logical display size: the image's own size, scaled down only if wider than

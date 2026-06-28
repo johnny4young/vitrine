@@ -83,10 +83,14 @@ struct SnapshotConfig: Equatable {
     /// the code render and every golden are byte-for-byte unchanged.
     var foregroundImage: ImageReference?
 
-    /// The frame drawn around `foregroundImage` — none, a macOS window, or a browser
-    /// window. Inert unless `foregroundImage` is set; `.none` by default. `.browser` (and
-    /// future device mockups) are PRO.
+    /// The frame drawn around `foregroundImage` — none, a macOS window, a browser window,
+    /// or a device mockup (MacBook / iPhone). Inert unless `foregroundImage` is set; `.none`
+    /// by default. Everything past the macOS window is PRO.
     var imageFrame: ImageFrame = .none
+
+    /// Light or dark chrome for the image frame (window/browser bars, device body tint).
+    /// `.light` by default; inert for `.none`.
+    var imageFrameAppearance: FrameAppearance = .light
 
     /// An explicit width (columns) to reconstruct `.terminal` output at, or `nil` to
     /// infer it from the captured stream (CS-070). Set only by `vitrine render

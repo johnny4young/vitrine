@@ -78,6 +78,7 @@ struct SnapshotCanvas: View {
         FramedImageView(
             reference: reference,
             frame: config.imageFrame,
+            appearance: config.imageFrameAppearance,
             title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         .clipShape(RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous))

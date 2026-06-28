@@ -65,6 +65,16 @@ struct BeautifyImageTests {
         #expect(ImageFrame.none.isPro == false)
         #expect(ImageFrame.macOSWindow.isPro == false)
         #expect(ImageFrame.browser.isPro == true)
+        #expect(ImageFrame.macBook.isPro == true)
+        #expect(ImageFrame.iPhone.isPro == true)
+    }
+
+    @Test func onlyMacBookAndIPhoneAreDeviceFrames() {
+        #expect(ImageFrame.macBook.isDevice)
+        #expect(ImageFrame.iPhone.isDevice)
+        for frame in [ImageFrame.none, .macOSWindow, .browser] {
+            #expect(frame.isDevice == false)
+        }
     }
 
     @Test func usesImageContentTracksTheForegroundImage() {
@@ -112,6 +122,16 @@ struct BeautifyImageTests {
         let restored = EditorWindowState(config: SnapshotConfig()).config()
         #expect(restored.foregroundImage == nil)
         #expect(restored.imageFrame == .none)
+        #expect(restored.imageFrameAppearance == .light)
+    }
+
+    @Test func windowStateRoundTripsTheFrameAppearance() {
+        var config = SnapshotConfig()
+        config.imageFrame = .macBook
+        config.imageFrameAppearance = .dark
+        let restored = EditorWindowState(config: config).config()
+        #expect(restored.imageFrame == .macBook)
+        #expect(restored.imageFrameAppearance == .dark)
     }
 
     @Test func makeDefaultDoesNotPromoteWorkingImageContent() {
@@ -186,6 +206,41 @@ struct BeautifyImageTests {
         #expect(
             try png(none, store: store) != png(window, store: store),
             "wrapping the image in a window frame must change the exported image")
+    }
+
+    @Test func deviceFramesRenderAndDifferFromEachOther() throws {
+        let store = isolatedStore()
+        let reference = try store.importImage(
+            data: makePNG(.systemTeal, CGSize(width: 120, height: 80)))
+
+        var macBook = SnapshotConfig()
+        macBook.foregroundImage = reference
+        macBook.imageFrame = .macBook
+
+        var iPhone = macBook
+        iPhone.imageFrame = .iPhone
+
+        #expect(
+            try png(macBook, store: store) != png(iPhone, store: store),
+            "a MacBook frame and an iPhone frame must render differently")
+    }
+
+    @Test func theFrameAppearanceChangesTheRenderedPixels() throws {
+        let store = isolatedStore()
+        let reference = try store.importImage(
+            data: makePNG(.systemIndigo, CGSize(width: 120, height: 80)))
+
+        var light = SnapshotConfig()
+        light.foregroundImage = reference
+        light.imageFrame = .macOSWindow
+        light.imageFrameAppearance = .light
+
+        var dark = light
+        dark.imageFrameAppearance = .dark
+
+        #expect(
+            try png(light, store: store) != png(dark, store: store),
+            "switching the frame chrome from light to dark must change the exported image")
     }
 
     @Test func aMissingForegroundImageDegradesInsteadOfBlanking() throws {
