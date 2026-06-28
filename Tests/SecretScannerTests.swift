@@ -22,9 +22,12 @@ struct SecretScannerTests {
 
     @Test func detectsCommonProviderTokens() {
         #expect(kinds("let k = \"\(token("AKIA", "A", 16))\"").contains("aws-access-key"))
+        #expect(kinds("let k = \"\(token("ASIA", "A", 16))\"").contains("aws-access-key"))
         #expect(kinds("token: \(token("ghp" + "_", "a", 38))").contains("github-token"))
+        #expect(kinds("token: \(token("github" + "_pat_", "b", 50))").contains("github-token"))
         #expect(kinds(token("AIza", "b", 35)).contains("google-api-key"))
         #expect(kinds("stripe = \(token("sk" + "_live_", "c", 20))").contains("stripe-key"))
+        #expect(kinds("openai = \(token("sk" + "-proj-", "d", 40))").contains("openai-key"))
         #expect(kinds(token("xoxb" + "-", "d", 14)).contains("slack-token"))
         let jwt = "eyJ" + "AAAA" + "." + "eyJ" + "BBBB" + "." + "CCCC"
         #expect(kinds(jwt).contains("jwt"))

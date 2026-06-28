@@ -6211,6 +6211,24 @@
         }
       }
     },
+    "Redacted line" : {
+      "comment" : "Accessibility label for a code line whose secret content has been hidden.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redacted line"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea ocultada"
+          }
+        }
+      }
+    },
     "Scan" : {
       "comment" : "Editor inspector: button to scan the code for secrets and redact them.",
       "extractionState" : "stale",

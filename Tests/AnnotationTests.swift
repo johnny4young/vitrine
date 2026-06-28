@@ -157,8 +157,8 @@ struct AnnotationTests {
     }
 
     @Test func redactingALineChangesTheRenderedPixels() throws {
-        // Both render row-by-row (line numbers on), so the only difference is the blur on
-        // the redacted line — isolating the redaction from the row-layout switch.
+        // Both render row-by-row (line numbers on), so the only difference is the
+        // redacted row mask — isolating redaction from the row-layout switch.
         var base = SnapshotConfig()
         base.code = "let key = \"AKIAIOSFODNN7EXAMPLE\"\nlet ok = 1"
         base.showLineNumbers = true
@@ -166,7 +166,18 @@ struct AnnotationTests {
         redacted.redactedLineRanges = [1...1]
         #expect(
             try png(base) != png(redacted),
-            "redacting a line must blur it and change the exported image")
+            "redacting a line must mask it and change the exported image")
+    }
+
+    @Test func redactedLinesAreRemovedFromCopyableSidecarText() {
+        var config = SnapshotConfig()
+        config.code = "let visible = 1\nlet hidden = \"runtime-only-secret\"\nlet tail = 2"
+        config.redactedLineRanges = [2...2]
+
+        #expect(!config.sidecarText.contains("runtime-only-secret"))
+        #expect(
+            config.sidecarText
+                == "let visible = 1\n\(SnapshotConfig.redactedLinePlaceholder)\nlet tail = 2")
     }
 
     @Test func blurBoxChangesPixelsAndKeepsAValidImage() throws {
