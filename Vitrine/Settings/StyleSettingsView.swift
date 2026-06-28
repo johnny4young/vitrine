@@ -9,9 +9,8 @@ struct StyleSettingsView: View {
     @Bindable var settings: AppSettings
     var themes: CustomThemeStore
 
-    /// The PRO brand kit + entitlement (CS-092): observed so the Brand Kit sub-tab's
-    /// controls and the live preview track changes, and so the locked/unlocked split
-    /// re-renders the instant PRO unlocks.
+    /// The PRO brand kit + entitlement (CS-092): observed so the live preview tracks
+    /// Brand Kit placement changes while the dedicated Brand Kit pane owns the controls.
     @Bindable private var brandKit = BrandKitStore.shared
     private let entitlements = Entitlements.shared
 
