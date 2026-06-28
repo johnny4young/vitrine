@@ -6,8 +6,9 @@ import SwiftUI
 ///
 /// The window is a fixed 720×600 card on `VitrineTokens.Surface.window`; the
 /// sidebar carries its own wash and hairline. Pane order is stable (General,
-/// Style, Library, Output, Input, About) — the UI tests address rows by their
-/// `settings-nav-*` identifiers and panes by their `settings-*-pane` ones.
+/// Style, Brand Kit, Library, Input, Export, About) — the UI tests address rows
+/// by their `settings-nav-*` identifiers and panes by their `settings-*-pane`
+/// ones.
 struct SettingsRootView: View {
     @Bindable var settings: AppSettings
     var presets: PresetStore
@@ -85,7 +86,7 @@ struct SettingsRootView: View {
     }
 }
 
-/// The six settings panes, in their stable order.
+/// The settings panes, in their stable order.
 enum SettingsTab: String, CaseIterable, Identifiable {
     // Order = sidebar order: app → look → branding → library → input → export → about.
     // `input` precedes `output` so the pipeline reads top-to-bottom (you set how content
