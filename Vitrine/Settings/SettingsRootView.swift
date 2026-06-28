@@ -71,6 +71,8 @@ struct SettingsRootView: View {
             GeneralSettingsView(settings: settings, presets: presets)
         case .style:
             StyleSettingsView(settings: settings, themes: themes)
+        case .brandKit:
+            BrandKitSettingsView()
         case .library:
             LibrarySettingsView(settings: settings, presets: presets, themes: themes)
         case .output:
@@ -85,7 +87,11 @@ struct SettingsRootView: View {
 
 /// The six settings panes, in their stable order.
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case general, style, library, output, input, about
+    // Order = sidebar order: app → look → branding → library → input → export → about.
+    // `input` precedes `output` so the pipeline reads top-to-bottom (you set how content
+    // comes in, then how the image leaves). `output`'s raw value stays "output" so its
+    // `settings-nav-output` identifier and UI tests are unaffected by the "Export" title.
+    case general, style, brandKit, library, input, output, about
 
     var id: String { rawValue }
 
@@ -94,9 +100,12 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .general: Text("General")
         case .style: Text("Style")
+        case .brandKit: Text("Brand Kit")
         case .library: Text("Library")
-        case .output: Text("Output")
         case .input: Text("Input")
+        // Titled "Export" (clearer than "Output" for "how the image leaves"); the raw
+        // value remains "output" to keep the navigation identifier stable.
+        case .output: Text("Export")
         case .about: Text("About")
         }
     }
@@ -106,9 +115,10 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .style: "paintbrush"
+        case .brandKit: "crown"
         case .library: "books.vertical"
-        case .output: "square.and.arrow.up"
         case .input: "doc.on.clipboard"
+        case .output: "square.and.arrow.up"
         case .about: "info.circle"
         }
     }

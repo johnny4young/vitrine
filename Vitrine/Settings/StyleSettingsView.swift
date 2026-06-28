@@ -22,7 +22,7 @@ struct StyleSettingsView: View {
 
     /// The Style pane's segmented sub-tabs.
     private enum StyleSubTab: String, CaseIterable {
-        case appearance, linesAndHeader, background, brandKit
+        case appearance, linesAndHeader, background
     }
 
     var body: some View {
@@ -37,8 +37,6 @@ struct StyleSettingsView: View {
                         case .appearance: appearanceGroups
                         case .linesAndHeader: linesAndHeaderGroups
                         case .background: backgroundGroup
-                        case .brandKit:
-                            BrandKitSettingsSection(brandKit: brandKit, entitlements: entitlements)
                         }
                     }
                     .padding(.horizontal, 26)
@@ -61,13 +59,11 @@ struct StyleSettingsView: View {
                     (StyleSubTab.appearance, Text("Appearance")),
                     (.linesAndHeader, Text("Lines & header")),
                     (.background, Text("Background")),
-                    (.brandKit, Text("Brand Kit")),
                 ],
                 selection: $subTab,
                 fillsWidth: true,
                 optionIdentifiers: [
                     "style-subtab-appearance", "style-subtab-lines", "style-subtab-background",
-                    "style-subtab-brandkit",
                 ]
             )
         }

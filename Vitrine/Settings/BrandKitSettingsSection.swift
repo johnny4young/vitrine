@@ -174,3 +174,18 @@ struct BrandKitSettingsSection: View {
         Binding(get: { brandKit.brandKit.placement }, set: { brandKit.brandKit.placement = $0 })
     }
 }
+
+/// The top-level Brand Kit settings pane (CS-092): the Brand Kit controls (or PRO upsell)
+/// in the standard pane chrome, surfaced as its own sidebar row so the headline PRO
+/// feature is visible instead of buried inside a Style sub-tab (audit UX).
+struct BrandKitSettingsView: View {
+    private let brandKit = BrandKitStore.shared
+    private let entitlements = Entitlements.shared
+
+    var body: some View {
+        SettingsPaneScroll {
+            BrandKitSettingsSection(brandKit: brandKit, entitlements: entitlements)
+        }
+        .accessibilityIdentifier("settings-brandkit-pane")
+    }
+}
