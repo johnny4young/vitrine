@@ -59,6 +59,7 @@ struct AnnotationTests {
         var config = SnapshotConfig()
         config.annotations = [Annotation(kind: .text, start: .zero, end: CGPoint(x: 1, y: 1))]
         config.highlightedLineRanges = [3...5]
+        config.redactedLineRanges = [2...2]
         // Style + header that should survive a new capture (reusable, not content-bound).
         config.fontSize = 18
         config.metadata.title = "PR Review"
@@ -68,6 +69,7 @@ struct AnnotationTests {
 
         #expect(config.annotations.isEmpty)
         #expect(config.highlightedLineRanges.isEmpty)
+        #expect(config.redactedLineRanges.isEmpty)
         #expect(config.fontSize == 18)
         #expect(config.metadata.title == "PR Review")
         #expect(config.theme == keptTheme)
@@ -152,6 +154,30 @@ struct AnnotationTests {
                 text: "SECRET")
         ]
         #expect(try png(plain) != png(texted), "a text callout must change the exported image")
+    }
+
+    @Test func redactingALineChangesTheRenderedPixels() throws {
+        // Both render row-by-row (line numbers on), so the only difference is the
+        // redacted row mask — isolating redaction from the row-layout switch.
+        var base = SnapshotConfig()
+        base.code = "let key = \"AKIAIOSFODNN7EXAMPLE\"\nlet ok = 1"
+        base.showLineNumbers = true
+        var redacted = base
+        redacted.redactedLineRanges = [1...1]
+        #expect(
+            try png(base) != png(redacted),
+            "redacting a line must mask it and change the exported image")
+    }
+
+    @Test func redactedLinesAreRemovedFromCopyableSidecarText() {
+        var config = SnapshotConfig()
+        config.code = "let visible = 1\nlet hidden = \"runtime-only-secret\"\nlet tail = 2"
+        config.redactedLineRanges = [2...2]
+
+        #expect(!config.sidecarText.contains("runtime-only-secret"))
+        #expect(
+            config.sidecarText
+                == "let visible = 1\n\(SnapshotConfig.redactedLinePlaceholder)\nlet tail = 2")
     }
 
     @Test func blurBoxChangesPixelsAndKeepsAValidImage() throws {

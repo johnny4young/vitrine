@@ -38,6 +38,12 @@ struct SnapshotConfig: Equatable {
     /// ordering.
     var highlightedLineRanges: [ClosedRange<Int>] = []
 
+    /// 1-based, inclusive line ranges to redact (blur) — e.g. secret keys found by
+    /// `SecretScanner` and applied via the editor's "Redact secrets" action. Empty by
+    /// default (no redaction); blurred per-row at render time so each line is fully
+    /// covered. Content-bound, so a new capture clears it (see `clearContentMarks`).
+    var redactedLineRanges: [ClosedRange<Int>] = []
+
     /// Dim the non-highlighted lines so the highlighted ones stand out — the "focus"
     /// mode (CS-021). Off by default, and has no effect without a highlight, so the
     /// default render is unchanged.
@@ -97,15 +103,31 @@ struct SnapshotConfig: Equatable {
     /// bands) is active. When none of these are on, the canvas keeps drawing the code
     /// as a single `Text`, so the default render is byte-for-byte unchanged (CS-021).
     var usesLineRows: Bool {
-        showLineNumbers || !highlightedLineRanges.isEmpty || diffDecorations
+        showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
+            || diffDecorations
     }
+
+    /// The neutral replacement used anywhere a redacted line would otherwise expose
+    /// the original source through copyable text representations.
+    static let redactedLinePlaceholder = "[redacted]"
 
     /// The plain, copyable text that travels with the rendered image (the clipboard
     /// text rider and the `--text-sidecar` / multi-size `.txt`): terminal output is
     /// reduced to its visible lines with the ANSI escape codes stripped so it matches
-    /// the image, while other languages are the source verbatim.
+    /// the image, while other languages are the source verbatim. Redacted rows are
+    /// replaced with a neutral placeholder so optional text riders cannot leak a
+    /// secret that the image visually hides.
     var sidecarText: String {
-        language == .terminal ? ANSIRenderer.plainText(code, columns: terminalColumns) : code
+        let visibleText =
+            language == .terminal ? ANSIRenderer.plainText(code, columns: terminalColumns) : code
+        return replacingRedactedLines(in: visibleText)
+    }
+
+    /// The source text used for rich/styled clipboard representations. It intentionally
+    /// preserves syntax-highlighting input for non-redacted lines but removes any line
+    /// the user marked as redacted, so RTF/HTML/plain fallbacks cannot bypass the blur.
+    var richClipboardText: String {
+        replacingRedactedLines(in: code)
     }
 
     /// Clears the marks that are tied to *this specific code* — free-form annotations
@@ -116,6 +138,18 @@ struct SnapshotConfig: Equatable {
     mutating func clearContentMarks() {
         annotations = []
         highlightedLineRanges = []
+        redactedLineRanges = []
+    }
+
+    private func replacingRedactedLines(in text: String) -> String {
+        let redactions = LineHighlight.normalize(redactedLineRanges)
+        guard !redactions.isEmpty else { return text }
+
+        var lines = text.components(separatedBy: "\n")
+        for index in lines.indices where LineHighlight.contains(redactions, line: index + 1) {
+            lines[index] = Self.redactedLinePlaceholder
+        }
+        return lines.joined(separator: "\n")
     }
 }
 
