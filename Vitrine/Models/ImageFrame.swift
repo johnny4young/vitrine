@@ -17,16 +17,39 @@ enum ImageFrame: String, Codable, CaseIterable, Identifiable, Sendable {
     case macOSWindow
     /// A browser window: traffic-light dots plus a faux address bar (PRO).
     case browser
+    /// A laptop mockup: the image as the screen, with a thin bezel and a hinge base (PRO).
+    case macBook
+    /// A phone mockup: the image as the screen, with a bezel and a Dynamic Island (PRO).
+    case iPhone
 
     var id: String { rawValue }
 
+    /// Whether this frame draws a hardware **device** mockup (vs. plain/window chrome).
+    /// Device frames size themselves to the device aspect and fill the screen with the
+    /// image, rather than sizing to the image.
+    var isDevice: Bool {
+        switch self {
+        case .macBook, .iPhone: true
+        case .none, .macOSWindow, .browser: false
+        }
+    }
+
     /// Whether this frame is gated behind Vitrine PRO. The plain image and the macOS
     /// window are free (fidelity to "the free tier loses nothing"); the richer browser
-    /// frame is the gentle upsell.
+    /// and device frames are the gentle upsell.
     var isPro: Bool {
         switch self {
         case .none, .macOSWindow: false
-        case .browser: true
+        case .browser, .macBook, .iPhone: true
         }
     }
+}
+
+/// Light or dark chrome for a framed image. Drives the window/browser bar colors and the
+/// device-mockup body tint, so a frame reads well over both light and dark backgrounds.
+enum FrameAppearance: String, Codable, CaseIterable, Identifiable, Sendable {
+    case light
+    case dark
+
+    var id: String { rawValue }
 }

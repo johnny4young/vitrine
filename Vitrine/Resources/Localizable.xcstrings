@@ -1,6 +1,61 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Dark" : {
+      "comment" : "Image frame appearance option: dark chrome.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oscuro"
+          }
+        }
+      }
+    },
+    "Frame appearance" : {
+      "comment" : "Accessibility label for the image frame light/dark picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apariencia del marco"
+          }
+        }
+      }
+    },
+    "Light" : {
+      "comment" : "Image frame appearance option: light chrome.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claro"
+          }
+        }
+      }
+    },
+    "MacBook" : {
+      "comment" : "Image frame option: a MacBook device mockup. Brand name, not translated.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MacBook"
+          }
+        }
+      }
+    },
+    "iPhone" : {
+      "comment" : "Image frame option: an iPhone device mockup. Brand name, not translated.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone"
+          }
+        }
+      }
+    },
     "Drop a new image here to replace it." : {
       "comment" : "Hint in the editor's image panel (beautify any image).",
       "localizations" : {

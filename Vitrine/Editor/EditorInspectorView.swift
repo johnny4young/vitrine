@@ -231,10 +231,11 @@ struct EditorInspectorView: View {
         }
     }
 
-    /// The frame for a beautified image — none, a macOS window, or a browser window.
-    /// Shown only when the content is an image. The browser frame is PRO: selecting it
-    /// without an entitlement opens the paywall instead of applying (the free frames
-    /// stay one tap away). The window title doubles as the window/browser-address text.
+    /// The frame for a beautified image — none, a macOS window, a browser window, or a
+    /// device mockup (MacBook / iPhone). Shown only when the content is an image. Everything
+    /// past the macOS window is PRO: selecting a locked frame opens the paywall instead of
+    /// applying (the free frames stay one tap away). The window title doubles as the
+    /// window/browser-address text.
     private var frameSection: some View {
         InspectorSection(title: Text("Frame")) {
             InspectorRow(label: Text("Style")) {
@@ -243,6 +244,8 @@ struct EditorInspectorView: View {
                         (ImageFrame.none, Text("None")),
                         (ImageFrame.macOSWindow, Text("Window")),
                         (ImageFrame.browser, Text("Browser")),
+                        (ImageFrame.macBook, Text("MacBook")),
+                        (ImageFrame.iPhone, Text("iPhone")),
                     ],
                     selection: Binding(
                         get: { settings.config.imageFrame },
@@ -259,6 +262,21 @@ struct EditorInspectorView: View {
                 .accessibilityIdentifier("image-frame-picker")
             }
             if settings.config.imageFrame != .none {
+                InspectorRow(label: Text("Appearance")) {
+                    TokenSegmentedPicker(
+                        options: [
+                            (FrameAppearance.light, Text("Light")),
+                            (FrameAppearance.dark, Text("Dark")),
+                        ],
+                        selection: $settings.config.imageFrameAppearance
+                    )
+                    .accessibilityLabel("Frame appearance")
+                    .accessibilityIdentifier("image-frame-appearance-picker")
+                }
+            }
+            // The title/address applies only to the window and browser chrome.
+            if settings.config.imageFrame == .macOSWindow || settings.config.imageFrame == .browser
+            {
                 InspectorRow(label: Text("Title")) {
                     TokenTextField(
                         prompt: Text(verbatim: "vitrineframe.app"),
