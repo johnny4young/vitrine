@@ -13,7 +13,7 @@ gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so) and
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v0.18.0%20shipped-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v0.19.0%20shipped-brightgreen.svg)](#status)
 
 </div>
 
@@ -171,6 +171,8 @@ GitHub-style; window chrome, padding, corner radius, and shadow are all yours to
 A CleanShot-style palette in the title bar — arrows, lines, rectangles, text callouts,
 a highlighter, blur/redaction boxes, and numbered counters. Draw them on the live
 preview, move and resize with handles, undo with ⌘Z; they are baked into the export.
+**Redact secrets** goes one better: one click scans the capture for API keys, tokens,
+and passwords and blurs those lines for you — image *and* copyable text.
 
 ### Export & share
 
@@ -197,6 +199,7 @@ Shortcuts and App Intents.
 | **Capture** | Menu-bar app, global hotkey, clipboard auto-detect (code · URL · HTML), Quick and editor modes |
 | **Style** | 13 themes + custom, 160+ languages, fonts, gradient & image backgrounds, focus mode, diff coloring |
 | **Annotate** | Arrows, lines, boxes, text, highlighter, blur, numbered counters — on the live preview, with undo/redo |
+| **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
 | **Export** | Retina PNG/PDF, clipboard · file · Share Sheet, OpenGraph · Story · GitHub-banner presets |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
 | **PRO** | Brand Kit watermark · multi-size one-pass export · automation (`vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
@@ -211,6 +214,7 @@ Shortcuts and App Intents.
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
 - ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows, lines, rectangles, text callouts, a highlighter, blur/redaction boxes, and numbered counters. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
+- 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
 - 🪧 **Social cards** — compose a 1200×630 card from your code (template, theme, background) to copy, save, or share, with **Instagram Story** and **GitHub banner** export presets.
@@ -421,7 +425,7 @@ to leave the repo:
 
 ## Status
 
-🟢 **v0.18.0 — shipped and stable.** Everything under [Features](#features) is built and
+🟢 **v0.19.0 — shipped and stable.** Everything under [Features](#features) is built and
 driven by one design-token system ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in
 light and dark. It is covered by a Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
