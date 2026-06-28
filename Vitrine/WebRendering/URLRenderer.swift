@@ -505,13 +505,27 @@ private final class LoadCoordinator: NSObject, WKNavigationDelegate {
             return
         }
 
-        try await withCheckedThrowingContinuation {
-            (continuation: CheckedContinuation<Void, Error>) in
-            loadContinuation = continuation
-            timeoutTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: timeout)
-                guard !Task.isCancelled else { return }
-                self?.resume(.failure(WebSnapshotError.timedOut))
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation {
+                (continuation: CheckedContinuation<Void, Error>) in
+                // The task may already have been cancelled before we suspended.
+                guard !Task.isCancelled else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                loadContinuation = continuation
+                timeoutTask = Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: timeout)
+                    guard !Task.isCancelled else { return }
+                    self?.resume(.failure(WebSnapshotError.timedOut))
+                }
+            }
+        } onCancel: {
+            // Cancel can arrive on any executor; hop to this type's main-actor isolation
+            // to resume the wait. `resume` is idempotent, so a cancel racing a real
+            // completion is harmless; the renderer's `defer` then stops the load.
+            Task { @MainActor [weak self] in
+                self?.resume(.failure(CancellationError()))
             }
         }
     }
