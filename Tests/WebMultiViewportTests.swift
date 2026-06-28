@@ -93,6 +93,25 @@ struct WebMultiViewportSelectionTests {
         settings.webCapture.viewports = [.mobile, .desktop, .mobile, .desktop]
         #expect(settings.webCapture.selectedViewportPresets == [.mobile, .desktop])
     }
+
+    // MARK: - Prefilled-URL auto-capture (UX audit)
+
+    @Test func autoCaptureGatesOnURLModeAndAvailability() {
+        // Auto-fire a prefilled URL only in URL mode and only where URL capture works, so a
+        // build without it shows the disabled message instead of auto-erroring.
+        #expect(WebSnapshotModel.shouldAutoCapture(mode: .url, urlCaptureEnabled: true))
+        #expect(!WebSnapshotModel.shouldAutoCapture(mode: .url, urlCaptureEnabled: false))
+        #expect(!WebSnapshotModel.shouldAutoCapture(mode: .html, urlCaptureEnabled: true))
+    }
+
+    @Test func prepareForPrefillURLLoadsURLModeAndFlagsAutoCapture() {
+        let model = WebSnapshotModel()
+        model.prepareForPrefillURL("https://example.com")
+        #expect(model.mode == .url)
+        #expect(model.urlText == "https://example.com")
+        // The flag tracks this build's URL-capture availability (false under the test host).
+        #expect(model.pendingAutoCapture == NetworkCapability.isURLCaptureEnabled)
+    }
 }
 
 @Suite("Responsive board composite · CS-044")

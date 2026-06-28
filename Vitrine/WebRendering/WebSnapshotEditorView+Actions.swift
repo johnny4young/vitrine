@@ -39,6 +39,15 @@ extension WebSnapshotEditorView {
         }
     }
 
+    /// Fires the capture for a freshly prefilled URL (quick-capture route) so the user
+    /// isn't left on a static form. `attemptCapture` re-checks availability and consent,
+    /// so this routes through the privacy disclosure on first use just like a manual tap.
+    func autoCaptureIfPending() {
+        guard model.pendingAutoCapture else { return }
+        model.pendingAutoCapture = false
+        attemptCapture()
+    }
+
     /// Stops an in-flight capture (the Cancel button / Escape). Cancellation propagates
     /// into `model.render`, which stops between viewports and whose in-flight renderer
     /// aborts its load and waits, so the user is never stuck waiting out a long batch.

@@ -151,13 +151,28 @@ final class WebSnapshotModel {
         errorMessage = nil
     }
 
+    /// Set when a prefilled URL arrives in a build where URL capture is available, so the
+    /// view fires the capture automatically instead of stranding the user on a prefilled
+    /// form (UX audit). Cleared once the view acts on it.
+    var pendingAutoCapture = false
+
+    /// Whether a prefilled URL should capture automatically: only in URL mode, and only
+    /// where URL capture is actually available — otherwise the window just shows why it is
+    /// disabled rather than auto-firing into an error. Pure for testability.
+    static func shouldAutoCapture(mode: WebInputMode, urlCaptureEnabled: Bool) -> Bool {
+        mode == .url && urlCaptureEnabled
+    }
+
     /// Loads a URL supplied by quick capture or another presenter, clearing all prior
-    /// rendered outputs so stale filmstrip/export-all results cannot survive into the
-    /// new capture session.
+    /// rendered outputs so stale filmstrip/export-all results cannot survive into the new
+    /// capture session, and — where URL capture is available — flags it to auto-capture so
+    /// the user is not left on a static prefilled form (UX audit).
     func prepareForPrefillURL(_ prefillURL: String) {
         mode = .url
         urlText = prefillURL
         discardRenderedAssets()
+        pendingAutoCapture = Self.shouldAutoCapture(
+            mode: .url, urlCaptureEnabled: NetworkCapability.isURLCaptureEnabled)
     }
 
     /// Renders the current input at every selected viewport, publishing the captured
