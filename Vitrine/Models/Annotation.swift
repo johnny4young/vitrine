@@ -203,6 +203,23 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The shortcut digit that selects this tool, used with ⌘ (⌘1…⌘8 in toolbar order).
+    /// A Command-modified shortcut is the reliable, non-hijacking choice on macOS: a
+    /// modifier-less key would either not fire or steal the code editor's typing, so the
+    /// tools take the digit row under ⌘ instead.
+    var keyEquivalent: KeyEquivalent {
+        switch self {
+        case .select: return "1"
+        case .arrow: return "2"
+        case .line: return "3"
+        case .rectangle: return "4"
+        case .text: return "5"
+        case .highlighter: return "6"
+        case .blur: return "7"
+        case .counter: return "8"
+        }
+    }
+
     /// Whether this tool exposes a thickness/size slider (the fill-only highlighter
     /// and blur do not).
     var usesThickness: Bool {

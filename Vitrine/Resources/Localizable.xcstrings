@@ -6157,6 +6157,24 @@
         }
       }
     },
+    "These style this capture. New captures start from the default in Settings ▸ Style." : {
+      "comment" : "Editor inspector scope note: the inspector edits this window's per-window capture, while Settings ▸ Style is the global default new captures start from (UX audit).",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These style this capture. New captures start from the default in Settings ▸ Style."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estos dan estilo a esta captura. Las capturas nuevas parten del predeterminado en Ajustes ▸ Estilo."
+          }
+        }
+      }
+    },
     "Annotations" : {
       "comment" : "Inspector: annotations section title.",
       "extractionState" : "stale",

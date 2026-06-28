@@ -25,6 +25,7 @@ struct EditorInspectorView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
+                scopeNote
                 backgroundSection
                 themeSection
                 typographySection
@@ -128,6 +129,20 @@ struct EditorInspectorView: View {
     }
 
     // MARK: - Sections
+
+    /// Clarifies the scope the audit flagged as confusing. The editor binds a *per-window*
+    /// `EditorSession.settings` (see `EditorWindowController.makeWindow`), so these controls
+    /// style only the capture in this window. Settings ▸ Style edits `AppSettings.shared`,
+    /// the global default that new captures start from (`QuickCapture` copies it into the
+    /// primary window). Without this, an inspector tweak reads as "the default", or a
+    /// Settings change reads as "should have changed my open image".
+    private var scopeNote: some View {
+        Text("These style this capture. New captures start from the default in Settings ▸ Style.")
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("inspector-scope-note")
+    }
 
     /// Background: the gradient preset swatches plus the dashed "+" leading to
     /// the custom kinds. The kind picker and per-kind controls appear only once
@@ -275,27 +290,24 @@ struct EditorInspectorView: View {
     @ViewBuilder private var outputControls: some View {
         VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
             InspectorRow(label: Text("Destination")) {
+                // Row 1: Custom + the first three chips. Labels come from the shared
+                // `DestinationChips` source so the editor and Settings never drift.
                 TokenSegmentedPicker(
-                    options: [
-                        (DestinationTag.custom.rawValue, Text("Custom")),
-                        (DestinationTag.preset("twitter").rawValue, Text(verbatim: "X")),
-                        (DestinationTag.preset("linkedin").rawValue, Text(verbatim: "LinkedIn")),
-                        (DestinationTag.preset("opengraph").rawValue, Text(verbatim: "OG")),
-                    ],
+                    options: [(DestinationTag.custom.rawValue, Text("Custom"))]
+                        + DestinationChips.all.prefix(3).map {
+                            (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))
+                        },
                     selection: destinationBinding
                 )
             }
             HStack {
                 Spacer(minLength: 0)
+                // Row 2: the remaining chips, including Transparent Slide (the editor's
+                // extra segment, absent from the six-wide Settings row by design).
                 TokenSegmentedPicker(
-                    options: [
-                        (DestinationTag.preset("keynote").rawValue, Text(verbatim: "Keynote")),
-                        (DestinationTag.preset("docs").rawValue, Text(verbatim: "Docs")),
-                        (
-                            DestinationTag.preset("transparent-slide").rawValue,
-                            Text(verbatim: "Slide")
-                        ),
-                    ],
+                    options: DestinationChips.all.dropFirst(3).map {
+                        (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))
+                    },
                     selection: destinationBinding
                 )
             }
