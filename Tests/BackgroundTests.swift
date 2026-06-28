@@ -351,6 +351,32 @@ struct BackgroundTests {
         #expect(first == second)
     }
 
+    @Test func inMemoryImportSanitizesThePreferredExtension() throws {
+        // Clipboard and drag providers supply type identifiers, so the in-memory import
+        // path must defend itself instead of trusting the caller-provided suffix.
+        let store = Self.tempStore()
+        let bytes = try Self.makeSamplePNGData(.systemGreen)
+
+        let reference = try store.importImage(data: bytes, preferredExtension: "../evil.png")
+        let resolved = try #require(store.url(for: reference))
+
+        #expect(!reference.fileName.contains("/"))
+        #expect(!reference.fileName.contains(".."))
+        #expect(resolved.deletingLastPathComponent() == store.directory)
+        #expect(resolved.pathExtension == "png")
+        #expect(store.image(for: reference) != nil)
+    }
+
+    @Test func inMemoryImportKeepsSafeImageExtensions() throws {
+        let store = Self.tempStore()
+        let bytes = try Self.makeSamplePNGData(.systemOrange)
+
+        let reference = try store.importImage(data: bytes, preferredExtension: "PNG")
+
+        #expect(reference.fileName.hasSuffix(".png"))
+        #expect(store.image(for: reference) != nil)
+    }
+
     @Test func importingANonImageThrows() throws {
         // A file that is not a decodable image is rejected, so the store never
         // holds junk.
