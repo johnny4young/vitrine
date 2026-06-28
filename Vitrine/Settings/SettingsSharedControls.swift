@@ -1,27 +1,35 @@
 import SwiftUI
 
-/// The destination preset as the redesign's segmented pill row: "Custom"
-/// leading, then the presets under the handoff's short labels (CS-020). The
-/// settings panes use this; the editor's Output disclosure carries its own
-/// two-row variant with the full preset list.
-struct DestinationSegmentedPicker: View {
-    @Bindable var settings: AppSettings
-
-    /// Sentinel tag for the "Custom" segment (no preset). Not a valid preset id.
-    private static let customTag = ""
-
-    /// Preset ids in the handoff's display order with their short chip labels.
-    /// The labels are product/brand tokens shown verbatim in every locale.
-    /// Transparent Slide is deliberately absent (the handoff's list is final
-    /// and the row only fits six segments); it stays selectable through the
-    /// editor header's popup picker.
-    private static let segments: [(id: String, label: String)] = [
+/// Canonical destination-chip ids and their short labels, single-sourced so the
+/// Settings picker and the editor inspector's two-row variant never drift (UX audit).
+/// The labels are product/brand tokens shown verbatim in every locale.
+enum DestinationChips {
+    /// Every chip in display order. The editor inspector shows all of them.
+    static let all: [(id: String, label: String)] = [
         ("twitter", "X"),
         ("linkedin", "LinkedIn"),
         ("opengraph", "OG"),
         ("keynote", "Keynote"),
         ("docs", "Docs"),
+        ("transparent-slide", "Slide"),
     ]
+
+    /// The Settings row, which **deliberately** omits Transparent Slide: the handoff's
+    /// single row fits six segments (Custom + five), and Slide stays reachable via the
+    /// editor's two-row picker and the header popup.
+    static let settingsRow = all.filter { $0.id != "transparent-slide" }
+}
+
+/// The destination preset as the redesign's segmented pill row: "Custom"
+/// leading, then the presets under the handoff's short labels (CS-020). The
+/// settings panes use this; the editor's Output disclosure carries its own
+/// two-row variant that adds Transparent Slide, drawing labels from the same
+/// `DestinationChips` source so the two surfaces stay aligned.
+struct DestinationSegmentedPicker: View {
+    @Bindable var settings: AppSettings
+
+    /// Sentinel tag for the "Custom" segment (no preset). Not a valid preset id.
+    private static let customTag = ""
 
     var body: some View {
         TokenSegmentedPicker(options: options, selection: selectionBinding)
@@ -32,7 +40,7 @@ struct DestinationSegmentedPicker: View {
 
     private var options: [(String, Text)] {
         [(Self.customTag, Text("Custom"))]
-            + Self.segments.map { ($0.id, Text(verbatim: $0.label)) }
+            + DestinationChips.settingsRow.map { ($0.id, Text(verbatim: $0.label)) }
     }
 
     private var presetHelp: String {

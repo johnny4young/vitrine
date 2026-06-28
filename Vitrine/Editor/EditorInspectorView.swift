@@ -290,27 +290,24 @@ struct EditorInspectorView: View {
     @ViewBuilder private var outputControls: some View {
         VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
             InspectorRow(label: Text("Destination")) {
+                // Row 1: Custom + the first three chips. Labels come from the shared
+                // `DestinationChips` source so the editor and Settings never drift.
                 TokenSegmentedPicker(
-                    options: [
-                        (DestinationTag.custom.rawValue, Text("Custom")),
-                        (DestinationTag.preset("twitter").rawValue, Text(verbatim: "X")),
-                        (DestinationTag.preset("linkedin").rawValue, Text(verbatim: "LinkedIn")),
-                        (DestinationTag.preset("opengraph").rawValue, Text(verbatim: "OG")),
-                    ],
+                    options: [(DestinationTag.custom.rawValue, Text("Custom"))]
+                        + DestinationChips.all.prefix(3).map {
+                            (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))
+                        },
                     selection: destinationBinding
                 )
             }
             HStack {
                 Spacer(minLength: 0)
+                // Row 2: the remaining chips, including Transparent Slide (the editor's
+                // extra segment, absent from the six-wide Settings row by design).
                 TokenSegmentedPicker(
-                    options: [
-                        (DestinationTag.preset("keynote").rawValue, Text(verbatim: "Keynote")),
-                        (DestinationTag.preset("docs").rawValue, Text(verbatim: "Docs")),
-                        (
-                            DestinationTag.preset("transparent-slide").rawValue,
-                            Text(verbatim: "Slide")
-                        ),
-                    ],
+                    options: DestinationChips.all.dropFirst(3).map {
+                        (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))
+                    },
                     selection: destinationBinding
                 )
             }
