@@ -290,16 +290,33 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         // The free-placement Brand Kit mode is only useful if the preview exposes an
-        // actual drag target, not just a picker value hidden in Settings.
+        // actual drag target, not just a picker value hidden in Settings. The handle
+        // lives in the Style pane's live preview: the Brand Kit *controls* are now
+        // their own pane, but free placement is still dragged on the Style preview, so
+        // this stays a Style-pane assertion.
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
-        // Brand Kit is now its own top-level pane (was a Style sub-tab) so the PRO
-        // feature is visible in the sidebar.
-        element("settings-nav-brandKit", in: app).click()
-        assertExists(element("settings-brandkit-pane", in: app), in: app, timeout: 3)
-        assertExists(element("settings-brand-kit-controls", in: app), in: app, timeout: 3)
+        element("settings-nav-style", in: app).click()
+        assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
         assertHittable(
             "brand-kit-free-drag-handle", in: app,
             "Free Brand Kit placement should expose a reachable preview drag handle")
+    }
+
+    @MainActor
+    func testBrandKitIsATopLevelSettingsPane() {
+        continueAfterFailure = false
+        let app = launch(
+            arguments: ["--open-settings"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+
+        // Brand Kit (PRO) was promoted from a buried Style sub-tab to its own sidebar
+        // pane so the feature is discoverable (UX audit, #37). Navigating the sidebar
+        // row reveals the pane and its controls.
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-brandKit", in: app).click()
+        assertExists(element("settings-brandkit-pane", in: app), in: app, timeout: 3)
+        assertExists(element("settings-brand-kit-controls", in: app), in: app, timeout: 3)
     }
 
     @MainActor
