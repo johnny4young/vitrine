@@ -12,6 +12,26 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-06-28
+
+A one-click safety net for the most embarrassing way to leak a credential: sharing a
+screenshot with it still in frame.
+
+### Added
+
+- **Redact secrets in one click.** A new "Redact secrets" control in the editor's **Lines**
+  section scans the capture for likely credentials — AWS / GitHub / Slack / Google / Stripe /
+  OpenAI keys, JWTs, `-----BEGIN … PRIVATE KEY-----` blocks, and `name = long-value`
+  assignments (`api_key`, `secret`, `token`, `password`, …) — and blurs the matching lines
+  before you share. It errs toward catching: a false positive only blurs an extra line you
+  can clear, while a miss would leak a key.
+- **Leak-proof redaction, image *and* text.** Redacted lines are blurred in the rendered
+  image, and the copyable text that travels with it — the clipboard text rider and the
+  `--text-sidecar` / multi-size `.txt` — replaces those lines with a neutral `[redacted]`
+  placeholder, so a secret the image hides can't slip out through the text either. For
+  terminal captures the scan reads the ANSI-resolved screen, so the blur lands on the rows
+  you actually see even after `\r`/`\b` redraws.
+
 ## [0.18.0] - 2026-06-28
 
 A usability pass over the whole app from a 4-agent UX audit, shipped as one release.
