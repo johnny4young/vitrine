@@ -79,6 +79,21 @@ struct MultiSizeExportTests {
         }
     }
 
+    @Test func imageContentSkipsEmptyTextSidecars() throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var config = baseConfig()
+        config.foregroundImage = ImageReference(fileName: "missing-placeholder.png")
+
+        let result = ExportManager.exportPresetSizes(
+            config, presets: [.twitter], to: dir, format: .png, textSidecar: true)
+
+        #expect(result.written == 1)
+        #expect(result.failed == 0)
+        let txt = dir.appendingPathComponent("vitrine-\(ExportPreset.twitter.id).txt")
+        #expect(!FileManager.default.fileExists(atPath: txt.path))
+    }
+
     @Test func noTextSidecarByDefault() {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

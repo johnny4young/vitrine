@@ -78,6 +78,17 @@
         }
       }
     },
+    "Image unavailable" : {
+      "comment" : "Placeholder text when a beautified foreground image file cannot be resolved.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen no disponible"
+          }
+        }
+      }
+    },
     "None" : {
       "comment" : "Image frame option: no frame.",
       "localizations" : {

@@ -1,5 +1,6 @@
 import AppKit
 import OSLog
+import UniformTypeIdentifiers
 
 /// Quick mode: read the clipboard, detect the content, render with the saved
 /// settings, store it in Recents, and put the result back on the clipboard — no
@@ -144,9 +145,16 @@ enum QuickCapture {
         pasteboard: NSPasteboard = .general,
         store: BackgroundImageStore = .foregroundContainer
     ) -> ImageReference? {
-        for (type, ext) in [(NSPasteboard.PasteboardType.png, "png"), (.tiff, "tiff")] {
-            if let data = pasteboard.data(forType: type) {
-                return try? store.importImage(data: data, preferredExtension: ext)
+        for pasteboardType in pasteboard.types ?? [] {
+            guard
+                let type = UTType(pasteboardType.rawValue),
+                type.conforms(to: .image),
+                let data = pasteboard.data(forType: pasteboardType)
+            else { continue }
+            if let reference = try? store.importImage(
+                data: data, preferredExtension: type.preferredFilenameExtension ?? "")
+            {
+                return reference
             }
         }
         return nil

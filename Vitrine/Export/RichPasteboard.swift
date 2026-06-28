@@ -194,13 +194,14 @@ enum RichPasteboard {
         }
 
         var payload = Payload(png: png)
-        if includeRichText {
+        if includeRichText, !config.usesImageContent {
             let attributed = highlightedCode(for: config)
             payload.rtf = rtfData(from: attributed)
             payload.html = htmlData(from: attributed)
         }
         if includePlainText {
-            payload.plainText = config.sidecarText
+            let sidecarText = config.sidecarText
+            if !sidecarText.isEmpty { payload.plainText = sidecarText }
         }
         return payload
     }
