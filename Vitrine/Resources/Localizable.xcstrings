@@ -6157,6 +6157,24 @@
         }
       }
     },
+    "Style applies to every capture (the same controls are in Settings). Code and annotations stay with this capture." : {
+      "comment" : "Editor inspector scope note: style is global/persistent (mirrored in Settings), code and annotations are per-capture (UX audit).",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Style applies to every capture (the same controls are in Settings). Code and annotations stay with this capture."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El estilo se aplica a todas las capturas (los mismos controles están en Ajustes). El código y las anotaciones quedan en esta captura."
+          }
+        }
+      }
+    },
     "Annotations" : {
       "comment" : "Inspector: annotations section title.",
       "extractionState" : "stale",

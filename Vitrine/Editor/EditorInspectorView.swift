@@ -25,6 +25,7 @@ struct EditorInspectorView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
+                scopeNote
                 backgroundSection
                 themeSection
                 typographySection
@@ -128,6 +129,20 @@ struct EditorInspectorView: View {
     }
 
     // MARK: - Sections
+
+    /// Clarifies the scope the audit flagged as confusing: the controls below are the
+    /// app's single, persistent *style* (the same set lives in Settings ▸ Style and
+    /// carries into every capture), whereas the code and annotations belong to the open
+    /// capture. Without this, tweaking a style here reads as "just this image".
+    private var scopeNote: some View {
+        Text(
+            "Style applies to every capture (the same controls are in Settings). Code and annotations stay with this capture."
+        )
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .foregroundStyle(VitrineTokens.Text.tertiary)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("inspector-scope-note")
+    }
 
     /// Background: the gradient preset swatches plus the dashed "+" leading to
     /// the custom kinds. The kind picker and per-kind controls appear only once
