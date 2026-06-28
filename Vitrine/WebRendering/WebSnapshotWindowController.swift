@@ -198,6 +198,7 @@ final class WebSnapshotModel {
         }
 
         let presets = settings.webCapture.selectedViewportPresets
+        let reportsBatchProgress = presets.count > 1
         var captured: [CapturedViewport] = []
         var lastError: RenderError?
         var hadUnknownError = false
@@ -206,7 +207,9 @@ final class WebSnapshotModel {
             // common "trapped for ~60s × N sizes" case — and the in-flight renderer's own
             // waits are cancellation-aware, so the current viewport aborts promptly too.
             if Task.isCancelled { break }
-            renderProgress = RenderProgress(current: index + 1, total: presets.count)
+            if reportsBatchProgress {
+                renderProgress = RenderProgress(current: index + 1, total: presets.count)
+            }
             do {
                 let asset = try await renderOne(input: input, preset: preset, settings: settings)
                 captured.append(CapturedViewport(kind: preset.kind, preset: preset, asset: asset))
