@@ -27,10 +27,16 @@ struct RecentsGalleryView: View {
     /// matching every other destructive action in the app (see `EditorView`).
     @State private var isConfirmingClear = false
 
-    /// Invoked after a capture is chosen, so the host can bring the editor
-    /// forward. Injectable for previews/tests; defaults to opening the editor
-    /// window.
+    /// Invoked when the empty state asks to open the editor. Injectable for previews/tests;
+    /// defaults to opening the editor window.
     var onOpen: () -> Void = { EditorWindowController.shared.show() }
+
+    /// Invoked after a capture is chosen, so previews/tests can exercise the gallery without
+    /// touching the global editor window controller. Production loads the capture into the
+    /// primary editor window.
+    var onOpenCapture: (SnapshotConfig) -> Void = {
+        EditorWindowController.shared.loadIntoPrimary($0)
+    }
 
     /// A responsive grid: cards keep a comfortable minimum width and the row
     /// reflows as the window is resized.
@@ -118,7 +124,7 @@ struct RecentsGalleryView: View {
         document.code = capture.code
         document.language = capture.language
         document.theme = capture.theme
-        EditorWindowController.shared.loadIntoPrimary(document)
+        onOpenCapture(document)
     }
 
     private func open() {
