@@ -10,6 +10,7 @@
 gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so) and
 [Carbon](https://carbon.now.sh), but **native, instant, and fully local**.
 
+[![Website](https://img.shields.io/badge/website-vitrineframe.app-6E56CF.svg)](https://vitrineframe.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
@@ -75,9 +76,10 @@ also puts the [`vitrine` CLI](#command-line-renderer) on your PATH (from v0.5.0)
 ### Direct download
 
 Grab `Vitrine-x.y.z.dmg` from the
-[latest release](https://github.com/johnny4young/vitrine/releases/latest),
-open it, and drag **Vitrine** into **Applications**. Each DMG ships with a
-`.sha256` sidecar if you want to verify the download:
+[latest release](https://github.com/johnny4young/vitrine/releases/latest) (or
+from [vitrineframe.app](https://vitrineframe.app)), open it, and drag **Vitrine**
+into **Applications**. Each DMG ships with a `.sha256` sidecar if you want to
+verify the download:
 
 ```bash
 shasum -a 256 -c Vitrine-x.y.z.dmg.sha256
