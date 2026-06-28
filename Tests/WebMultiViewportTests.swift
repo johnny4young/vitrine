@@ -24,6 +24,19 @@ struct WebMultiViewportSelectionTests {
         #expect(WebDefaults.viewports(from: store) == [.mobile, .desktop, .fullHD])
     }
 
+    @Test func loggedInSessionIsOffByDefaultAndDrivesTheDataStoreMode() {
+        let store = defaults()
+        let settings = WebCaptureSettings(defaults: store)
+        // Privacy default: no cookies, private per-render store (CS-043).
+        #expect(settings.usesLoggedInSession == false)
+        #expect(settings.dataStoreMode == .nonPersistent)
+
+        // Opting in switches to the persistent (cookie) store and persists.
+        settings.usesLoggedInSession = true
+        #expect(settings.dataStoreMode == .persistent)
+        #expect(WebCaptureSettings(defaults: store).usesLoggedInSession == true)
+    }
+
     @Test func viewportsDropsDuplicatesKeepingFirstOrder() {
         let store = defaults()
         store.set(["mobile", "desktop", "mobile"], forKey: "webViewports")

@@ -109,11 +109,30 @@ struct WebCaptureControls: View {
                 captureModeRow
                 waitRow
                 if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
+                loggedInSessionRow
             }
         } else {
             captureModeRow
             waitRow
             if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
+            loggedInSessionRow
+        }
+    }
+
+    /// Opt-in to capturing with your existing cookies/logged-in session (CS-043), for
+    /// pages behind a login. Off by default — the private per-render store sends no
+    /// cookies — so this is a deliberate, privacy-widening choice the caption spells out.
+    private var loggedInSessionRow: some View {
+        TokenRow(
+            label: Text("Use my logged-in session"),
+            caption: Text(
+                "Capture pages behind a login by sending your existing cookies. Off by default; your code and captures still stay on your Mac."
+            )
+        ) {
+            Toggle("Use my logged-in session", isOn: $settings.webCapture.usesLoggedInSession)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .accessibilityIdentifier("web-logged-in-session-toggle")
         }
     }
 
