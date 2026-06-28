@@ -126,7 +126,7 @@ struct FramedImageView: View {
             Image(systemName: "photo")
                 .font(.system(size: 28))
                 .foregroundStyle(Self.barTextColor.opacity(0.5))
-            Text(verbatim: "Image unavailable")
+            Text("Image unavailable")
                 .font(.system(size: 12))
                 .foregroundStyle(Self.barTextColor.opacity(0.6))
         }

@@ -105,7 +105,7 @@ extension EditorView {
             copyImage()
         }
         .help("Render and copy the image to the clipboard")
-        .disabled(settings.config.code.isEmpty)
+        .disabled(!settings.config.hasRenderableContent)
         .accessibilityLabel(VitrineCommand.copyImage.accessibilityLabel)
         .accessibilityIdentifier("copy-button")
 
@@ -168,14 +168,16 @@ extension EditorView {
     /// formats stay clearly labeled, one click away.
     var copyOptionsMenu: some View {
         Menu {
-            Button {
-                copyHighlightedCode()
-            } label: {
-                Label(
-                    VitrineCommand.copyHighlightedCode.title,
-                    systemImage: VitrineCommand.copyHighlightedCode.systemImageName)
+            if !settings.config.usesImageContent {
+                Button {
+                    copyHighlightedCode()
+                } label: {
+                    Label(
+                        VitrineCommand.copyHighlightedCode.title,
+                        systemImage: VitrineCommand.copyHighlightedCode.systemImageName)
+                }
+                .accessibilityIdentifier("copy-highlighted-code-button")
             }
-            .accessibilityIdentifier("copy-highlighted-code-button")
 
             Button {
                 copyDataURI()
@@ -202,7 +204,7 @@ extension EditorView {
         .help("Copy the highlighted code as rich text, or the image as a data URI")
         .accessibilityLabel("More copy options")
         .accessibilityIdentifier("copy-options-menu")
-        .disabled(settings.config.code.isEmpty)
+        .disabled(!settings.config.hasRenderableContent)
     }
 
     /// The PRO multi-size export entry (CS-093): when unlocked it opens the size
@@ -217,7 +219,7 @@ extension EditorView {
             if !entitlements.isUnlocked(.multiSizeExport) { ProBadge().accessibilityHidden(true) }
         }
         .help("Export this snapshot to several platform sizes at once")
-        .disabled(settings.config.code.isEmpty)
+        .disabled(!settings.config.hasRenderableContent)
         .accessibilityLabel(Text("Export sizes"))
         .accessibilityIdentifier("export-sizes-button")
         .sheet(item: $multiSizeSheet) { sheet in
@@ -302,7 +304,7 @@ extension EditorView {
     ) -> some View {
         let button = GlassIconButton(systemImage: systemImage, action: action)
             .help(help)
-            .disabled(settings.config.code.isEmpty)
+            .disabled(!settings.config.hasRenderableContent)
             .accessibilityLabel(command.accessibilityLabel)
             .accessibilityIdentifier(identifier)
 

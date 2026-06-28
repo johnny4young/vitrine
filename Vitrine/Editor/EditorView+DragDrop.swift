@@ -87,12 +87,11 @@ extension EditorView {
     /// `nil` when the provider carries no image. Handles both a dropped image **file**
     /// (Finder) and an in-app drag carrying image **bytes** (Preview, a browser).
     func readImageReference(from provider: NSItemProvider) async -> ImageReference? {
-        let store = BackgroundImageStore.foregroundContainer
         if let url = await readImageFileURL(from: provider) {
-            return try? store.importImage(from: url)
+            return try? foregroundImageStore.importImage(from: url)
         }
         if let (data, ext) = await readImageData(from: provider) {
-            return try? store.importImage(data: data, preferredExtension: ext)
+            return try? foregroundImageStore.importImage(data: data, preferredExtension: ext)
         }
         return nil
     }

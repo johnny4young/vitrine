@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Testing
+import UniformTypeIdentifiers
 
 @testable import Vitrine
 
@@ -23,8 +24,10 @@ struct BeautifyImageTests {
         )
     }
 
-    /// A solid-color PNG of `size`, built at runtime so no image fixture lives in the repo.
-    private func makePNG(_ color: NSColor, _ size: CGSize) throws -> Data {
+    /// A solid-color image of `size`, built at runtime so no image fixture lives in the repo.
+    private func makeImageData(
+        _ color: NSColor, _ size: CGSize, using fileType: NSBitmapImageRep.FileType
+    ) throws -> Data {
         let image = NSImage(size: size)
         image.lockFocus()
         color.setFill()
@@ -32,7 +35,12 @@ struct BeautifyImageTests {
         image.unlockFocus()
         let tiff = try #require(image.tiffRepresentation)
         let rep = try #require(NSBitmapImageRep(data: tiff))
-        return try #require(rep.representation(using: .png, properties: [:]))
+        return try #require(rep.representation(using: fileType, properties: [:]))
+    }
+
+    /// A solid-color PNG of `size`, built at runtime so no image fixture lives in the repo.
+    private func makePNG(_ color: NSColor, _ size: CGSize) throws -> Data {
+        try makeImageData(color, size, using: .png)
     }
 
     /// Renders a config through the same `SnapshotCanvas` + `ImageRenderer` path the
@@ -62,11 +70,23 @@ struct BeautifyImageTests {
     @Test func usesImageContentTracksTheForegroundImage() {
         var config = SnapshotConfig()
         #expect(config.usesImageContent == false)
+        #expect(config.hasRenderableContent == false)
         config.foregroundImage = ImageReference(fileName: "abc.png")
         #expect(config.usesImageContent)
+        #expect(config.hasRenderableContent)
     }
 
-    @Test func clearContentMarksDropsTheForegroundImage() {
+    @Test func imageContentDoesNotExportStaleCodeText() {
+        var config = SnapshotConfig()
+        config.code = "let stale = \"do not attach this to a photo\""
+        config.foregroundImage = ImageReference(fileName: "photo.png")
+
+        #expect(config.hasRenderableContent)
+        #expect(config.sidecarText.isEmpty)
+        #expect(config.richClipboardText.isEmpty)
+    }
+
+    @Test func clearContentMarksDropsTheForegroundImageButKeepsReusableFrame() {
         var config = SnapshotConfig()
         config.foregroundImage = ImageReference(fileName: "secret.png")
         config.imageFrame = .browser
@@ -92,6 +112,24 @@ struct BeautifyImageTests {
         let restored = EditorWindowState(config: SnapshotConfig()).config()
         #expect(restored.foregroundImage == nil)
         #expect(restored.imageFrame == .none)
+    }
+
+    @Test func makeDefaultDoesNotPromoteWorkingImageContent() {
+        let defaults = UserDefaults(suiteName: "VitrineImageDefaultTests-\(UUID().uuidString)")!
+        let sessionDefaults =
+            UserDefaults(suiteName: "VitrineImageDefaultSession-\(UUID().uuidString)")!
+        let settings = AppSettings(defaults: defaults)
+        let session = AppSettings(defaults: sessionDefaults)
+        session.config.code = "let working = \"do not seed future captures\""
+        session.config.foregroundImage = ImageReference(fileName: "photo.png")
+        session.config.imageFrame = .browser
+
+        settings.makeDefault(from: session)
+
+        #expect(settings.config.code.isEmpty)
+        #expect(settings.config.foregroundImage == nil)
+        #expect(settings.config.usesImageContent == false)
+        #expect(settings.config.imageFrame == .browser)
     }
 
     // MARK: - Foreground store
@@ -167,6 +205,19 @@ struct BeautifyImageTests {
         pasteboard.clearContents()
         pasteboard.setData(
             try makePNG(.systemOrange, CGSize(width: 20, height: 20)), forType: .png)
+
+        let reference = QuickCapture.clipboardForegroundImage(pasteboard: pasteboard, store: store)
+        #expect(reference != nil)
+        if let reference { #expect(store.image(for: reference) != nil) }
+    }
+
+    @Test func clipboardJPEGImportsToTheForegroundStore() throws {
+        let store = isolatedStore()
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("VitrineTest-\(UUID().uuidString)"))
+        pasteboard.clearContents()
+        pasteboard.setData(
+            try makeImageData(.systemPurple, CGSize(width: 24, height: 18), using: .jpeg),
+            forType: NSPasteboard.PasteboardType(UTType.jpeg.identifier))
 
         let reference = QuickCapture.clipboardForegroundImage(pasteboard: pasteboard, store: store)
         #expect(reference != nil)

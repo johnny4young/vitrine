@@ -117,6 +117,10 @@ struct SnapshotConfig: Equatable {
     /// don't apply and the canvas draws the framed image as the card body.
     var usesImageContent: Bool { foregroundImage != nil }
 
+    /// Whether export/copy/share commands have something visible to render. A beautified
+    /// foreground image is renderable even when the code editor is empty.
+    var hasRenderableContent: Bool { usesImageContent || !code.isEmpty }
+
     /// Whether the row-by-row code layout (gutter, highlight bands, and/or diff
     /// bands) is active. When none of these are on, the canvas keeps drawing the code
     /// as a single `Text`, so the default render is byte-for-byte unchanged (CS-021).
@@ -136,6 +140,7 @@ struct SnapshotConfig: Equatable {
     /// replaced with a neutral placeholder so optional text riders cannot leak a
     /// secret that the image visually hides.
     var sidecarText: String {
+        guard !usesImageContent else { return "" }
         let visibleText =
             language == .terminal ? ANSIRenderer.plainText(code, columns: terminalColumns) : code
         return replacingRedactedLines(in: visibleText)
@@ -145,7 +150,8 @@ struct SnapshotConfig: Equatable {
     /// preserves syntax-highlighting input for non-redacted lines but removes any line
     /// the user marked as redacted, so RTF/HTML/plain fallbacks cannot bypass the blur.
     var richClipboardText: String {
-        replacingRedactedLines(in: code)
+        guard !usesImageContent else { return "" }
+        return replacingRedactedLines(in: code)
     }
 
     /// Clears the marks tied to *this specific content* — free-form annotations

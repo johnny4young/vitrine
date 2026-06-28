@@ -84,7 +84,7 @@ extension EditorView {
     var imagePanel: some View {
         VStack(spacing: 14) {
             if let reference = settings.config.foregroundImage,
-                let image = BackgroundImageStore.foregroundContainer.image(for: reference)
+                let image = foregroundImageStore.image(for: reference)
             {
                 Image(nsImage: image)
                     .resizable()
