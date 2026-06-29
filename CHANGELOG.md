@@ -12,7 +12,24 @@ can never drift.
 
 ## [Unreleased]
 
-## [0.19.0] - 2026-06-28
+## [0.20.0] - 2026-06-28
+
+Turn *any* screenshot into a share-ready image — not just code.
+
+### Added
+
+- **Beautify any image.** Drop, paste, or quick-capture an arbitrary image (a screenshot, a
+  design, a photo) and render it on the same backgrounds, padding, and shadow Vitrine gives
+  your code. Wrap it in a frame — a macOS window, a browser window, or a **MacBook / iPhone**
+  device mockup (drawn as crisp vectors, no bundled artwork). The editor's code column becomes
+  an image panel (thumbnail + Remove), and the inspector swaps its code-only controls for a
+  frame picker.
+- **Auto frame chrome.** A frame's title/toolbar samples the image's top-edge color and tints
+  itself to match, so it blends into the screenshot instead of clashing; the text color is
+  chosen for contrast so it stays legible on any bar. Light and Dark remain manual overrides.
+
+The plain image and the macOS window frame are free; the browser and device frames are part of
+Vitrine PRO.
 
 A one-click safety net for the most embarrassing way to leak a credential: sharing a
 screenshot with it still in frame.
