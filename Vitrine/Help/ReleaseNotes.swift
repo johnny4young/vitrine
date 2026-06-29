@@ -42,6 +42,17 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.20.0",
+            headline: "Beautify any image, not just code",
+            highlights: [
+                "Drop, paste, or quick-capture any screenshot and render it on your "
+                    + "backgrounds, padding, and shadow — then frame it as a macOS window, a "
+                    + "browser, or a MacBook / iPhone mockup.",
+                "Auto frame chrome: the title bar samples the image's top edge and tints "
+                    + "itself to match, so the frame blends into the shot. Browser and device "
+                    + "frames are PRO.",
+            ]),
+        ReleaseNote(
             version: "0.19.0",
             headline: "Redact secrets before you share",
             highlights: [
