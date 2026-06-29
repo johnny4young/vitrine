@@ -265,6 +265,7 @@ struct EditorInspectorView: View {
                 InspectorRow(label: Text("Appearance")) {
                     TokenSegmentedPicker(
                         options: [
+                            (FrameAppearance.auto, Text("Auto")),
                             (FrameAppearance.light, Text("Light")),
                             (FrameAppearance.dark, Text("Dark")),
                         ],

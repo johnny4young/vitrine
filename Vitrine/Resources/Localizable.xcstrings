@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Auto" : {
+      "comment" : "Image frame appearance option: chrome color sampled from the image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto"
+          }
+        }
+      }
+    },
     "Dark" : {
       "comment" : "Image frame appearance option: dark chrome.",
       "localizations" : {
