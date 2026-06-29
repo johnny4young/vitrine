@@ -3,8 +3,8 @@ import Testing
 
 @testable import Vitrine
 
-@Suite("App links")
-struct AppLinksTests {
+@Suite("Vitrine links")
+struct VitrineLinksTests {
     @Test func staticExternalURLsAreCentralizedAndValid() {
         #expect(
             VitrineLinks.githubRepository.absoluteString
