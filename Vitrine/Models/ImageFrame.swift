@@ -4,8 +4,8 @@ import Foundation
 ///
 /// When `SnapshotConfig.foregroundImage` is set, the canvas renders that image as the
 /// card body wrapped in one of these frames, on the same background / padding / shadow
-/// the code path uses. `none` and `macOSWindow` are free; `browser` (and future device
-/// mockups) are PRO.
+/// the code path uses. `none` and `macOSWindow` are free; `browser` and the device
+/// mockups (`macBook`, `iPhone`) are PRO.
 ///
 /// Raw values are stable strings so the choice round-trips through the editor window
 /// state, and an unknown value (a hand-edited store, or a frame added in a newer build)
