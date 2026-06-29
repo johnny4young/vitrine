@@ -55,9 +55,21 @@ struct LicenseVerifier {
     /// silently lock out paying users, audit P1-Security-6), and
     /// `embeddedVerifierRejectsForeignTokens` guards that no foreign-signed token validates.
     static let embedded = LicenseVerifier(
-        publicKey: try! Curve25519.Signing.PublicKey(
-            rawRepresentation: Data(base64Encoded: "GBiLsURlP+jwJGvfAJUAxTACaZbObIVBnBurkOQ+Fd0=")!)
+        publicKey: LicensePublicKeys.production
     )
+}
+
+private enum LicensePublicKeys {
+    nonisolated static let productionBase64 = "GBiLsURlP+jwJGvfAJUAxTACaZbObIVBnBurkOQ+Fd0="
+
+    nonisolated static let production: Curve25519.Signing.PublicKey = {
+        guard let raw = Data(base64Encoded: productionBase64),
+            let key = try? Curve25519.Signing.PublicKey(rawRepresentation: raw)
+        else {
+            preconditionFailure("Invalid embedded production license public key")
+        }
+        return key
+    }()
 }
 
 /// Mints a signed token from a private key (CS-090). Under Architecture B the **app** runs this
