@@ -159,7 +159,7 @@ struct HelpView: View {
         HStack(spacing: Brand.Spacing.sm) {
             Link(
                 "View documentation on GitHub",
-                destination: URL(string: "https://github.com/johnny4young/vitrine")!
+                destination: VitrineLinks.githubRepository
             )
             .help("Open the Vitrine documentation on GitHub")
             Spacer()
