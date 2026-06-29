@@ -55,9 +55,55 @@ struct SnapshotCanvas: View {
         }
     }
 
-    /// The padded code card — the shared content both canvas paths frame and back.
+    /// The padded content card — the shared unit both canvas paths frame and back.
     private var styledContent: some View {
-        codeCard.padding(config.padding)
+        contentCard.padding(config.padding)
+    }
+
+    /// The card body: a beautified framed image ("beautify any image"), or the code card.
+    /// Both receive identical padding / background / shadow framing from the canvas paths.
+    @ViewBuilder
+    private var contentCard: some View {
+        if config.usesImageContent, let reference = config.foregroundImage {
+            imageCard(reference)
+        } else {
+            codeCard
+        }
+    }
+
+    /// The framed image as a card: the image (optionally wrapped in a window/browser
+    /// frame), elevated with the same shadow recipe as the code card. The card treatment is
+    /// frame-aware so each frame reads as one integrated object rather than a generic card:
+    /// - a **device** mockup (MacBook/iPhone) defines its own silhouette, so it gets only the
+    ///   shadow — no rounded-rect clip or hairline border boxing the device;
+    /// - a **window/browser** frame is its own edge (it fills with the chrome color), so it is
+    ///   rounded but carries no extra hairline that would read as a separation line;
+    /// - a **plain** image keeps the rounded clip + hairline, which gives a borderless
+    ///   screenshot a crisp edge against the background.
+    @ViewBuilder
+    private func imageCard(_ reference: ImageReference) -> some View {
+        let framed = FramedImageView(
+            reference: reference,
+            frame: config.imageFrame,
+            appearance: config.imageFrameAppearance,
+            title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        let rounded = RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous)
+
+        switch config.imageFrame {
+        case .macBook, .iPhone:
+            framed.brandShadow(cardShadow)
+        case .macOSWindow, .browser:
+            framed.clipShape(rounded).brandShadow(cardShadow)
+        case .none:
+            framed
+                .clipShape(rounded)
+                .overlay(
+                    rounded.strokeBorder(
+                        Brand.Palette.exportedCardBorder, lineWidth: Brand.Stroke.hairline)
+                )
+                .brandShadow(cardShadow)
+        }
     }
 
     /// The canvas with annotations composited on top (CS-083): the sharp canvas, a

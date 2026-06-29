@@ -348,14 +348,39 @@ struct EditorCommandResponderTests {
         #expect(responder.canPerform(.about))
     }
 
-    @Test func exportCommandsRequireCodeAndAKeyEditorWindow() {
-        // No editor window is key in the unit-test host, so even with code present
+    @Test func exportCommandsRequireAKeyEditorWindow() {
+        // No editor window is key in the unit-test host, so even with content present
         // the editor-scoped commands stay disabled — exactly the validation a menu
         // would apply, proving Save/Share never act on a missing editor.
         let responder = EditorCommandResponder(settings: makeSettings(code: "let x = 1"))
         #expect(!responder.canPerform(.copyImage))
         #expect(!responder.canPerform(.saveImage))
         #expect(!responder.canPerform(.shareImage))
+    }
+
+    @Test func renderCommandsAcceptForegroundImagesWithoutCode() {
+        var imageConfig = SnapshotConfig()
+        imageConfig.foregroundImage = ImageReference(fileName: "photo.png")
+        #expect(
+            EditorCommandResponder.canPerform(.copyImage, isEditorKey: true, config: imageConfig))
+        #expect(
+            EditorCommandResponder.canPerform(.saveImage, isEditorKey: true, config: imageConfig))
+        #expect(
+            EditorCommandResponder.canPerform(.shareImage, isEditorKey: true, config: imageConfig))
+        #expect(
+            !EditorCommandResponder.canPerform(.formatCode, isEditorKey: true, config: imageConfig))
+    }
+
+    @Test func renderCommandsRejectEmptyEditors() {
+        let emptyConfig = SnapshotConfig()
+        #expect(
+            !EditorCommandResponder.canPerform(.copyImage, isEditorKey: true, config: emptyConfig))
+        #expect(
+            !EditorCommandResponder.canPerform(.saveImage, isEditorKey: true, config: emptyConfig))
+        #expect(
+            !EditorCommandResponder.canPerform(.shareImage, isEditorKey: true, config: emptyConfig))
+        #expect(
+            !EditorCommandResponder.canPerform(.formatCode, isEditorKey: true, config: emptyConfig))
     }
 
     @Test func validateMenuItemMatchesCanPerform() {

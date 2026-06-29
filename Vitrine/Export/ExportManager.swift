@@ -310,9 +310,10 @@ enum ExportManager {
                 try payload.data.write(to: url)
                 // The chosen folder is a user-granted directory, so a `.txt` sidecar
                 // beside each image is sandbox-safe here (unlike a single save panel).
-                if textSidecar {
+                let sidecarText = config.sidecarText
+                if textSidecar, !sidecarText.isEmpty {
                     let sidecarURL = url.deletingPathExtension().appendingPathExtension("txt")
-                    try Data(config.sidecarText.utf8).write(to: sidecarURL)
+                    try Data(sidecarText.utf8).write(to: sidecarURL)
                 }
                 written += 1
             } catch {

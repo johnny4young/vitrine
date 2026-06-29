@@ -11,6 +11,16 @@ extension EditorView {
     /// or asks whether to replace or append (non-empty editor). A binary, oversized,
     /// or unreadable file is rejected with a clear alert (CS-028).
     func handleDrop(_ providers: [NSItemProvider]) async {
+        // An image — a dropped picture file or an in-app drag carrying image bytes —
+        // becomes the beautified foreground content (CS "beautify any image"), so it must
+        // be intercepted before the source-file path (which would reject a binary image).
+        for provider in providers {
+            if let reference = await readImageReference(from: provider) {
+                applyImage(reference)
+                return
+            }
+        }
+
         // A dragged file is the richer source, so try file URLs before text — a
         // Finder drag often advertises both.
         for provider in providers {
@@ -71,6 +81,55 @@ extension EditorView {
         Log.capture.info(
             "Editor drop loaded (\(loaded.text.count, privacy: .public) chars, \(loaded.language.rawValue, privacy: .public))"
         )
+    }
+
+    /// Imports a dropped image into the foreground store and returns its reference, or
+    /// `nil` when the provider carries no image. Handles both a dropped image **file**
+    /// (Finder) and an in-app drag carrying image **bytes** (Preview, a browser).
+    func readImageReference(from provider: NSItemProvider) async -> ImageReference? {
+        if let url = await readImageFileURL(from: provider) {
+            return try? foregroundImageStore.importImage(from: url)
+        }
+        if let (data, ext) = await readImageData(from: provider) {
+            return try? foregroundImageStore.importImage(data: data, preferredExtension: ext)
+        }
+        return nil
+    }
+
+    /// A dropped file URL that points at an image file, or `nil` for a non-image file.
+    func readImageFileURL(from provider: NSItemProvider) async -> URL? {
+        guard let url = await readFileURL(from: provider),
+            let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image)
+        else { return nil }
+        return url
+    }
+
+    /// Reads raw image bytes (and a preferred extension) from a provider that carries an
+    /// image directly, or `nil` when it carries none. Loading the original data preserves
+    /// the source format instead of re-encoding through `NSImage`.
+    func readImageData(from provider: NSItemProvider) async -> (Data, String)? {
+        let imageType = provider.registeredTypeIdentifiers.first { identifier in
+            UTType(identifier)?.conforms(to: .image) == true
+        }
+        guard let imageType, let type = UTType(imageType) else { return nil }
+        return await withCheckedContinuation { continuation in
+            provider.loadDataRepresentation(forTypeIdentifier: imageType) { data, _ in
+                guard let data else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: (data, type.preferredFilenameExtension ?? ""))
+            }
+        }
+    }
+
+    /// Loads a beautified foreground image into the live document, replacing any prior
+    /// content marks. The existing `code` is kept (rendered again if the image is later
+    /// cleared), so switching to image mode is non-destructive.
+    func applyImage(_ reference: ImageReference) {
+        settings.config.clearContentMarks()
+        settings.config.foregroundImage = reference
+        Log.capture.info("Editor drop loaded a foreground image")
     }
 
     /// Reads a dropped file's URL from a provider, or `nil` when it carries none.

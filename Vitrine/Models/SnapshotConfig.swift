@@ -75,6 +75,23 @@ struct SnapshotConfig: Equatable {
     /// untouched.
     var watermark: Watermark?
 
+    /// The "beautify any image" content: when set, the canvas renders this image —
+    /// wrapped in `imageFrame` — as the card body instead of code, on the same
+    /// background / padding / shadow. Stored *by reference* (a file in the app container,
+    /// resolved through `foregroundImageStore`), mirroring image backgrounds, so the
+    /// config stays small, `Equatable`, and deterministic. `nil` on the default path, so
+    /// the code render and every golden are byte-for-byte unchanged.
+    var foregroundImage: ImageReference?
+
+    /// The frame drawn around `foregroundImage` — none, a macOS window, a browser window,
+    /// or a device mockup (MacBook / iPhone). Inert unless `foregroundImage` is set; `.none`
+    /// by default. Everything past the macOS window is PRO.
+    var imageFrame: ImageFrame = .none
+
+    /// Chrome tint for the image frame (window/browser bars, device body tint). `.auto` by
+    /// default — the bar is sampled from the image's top edge so it blends in; inert for `.none`.
+    var imageFrameAppearance: FrameAppearance = .auto
+
     /// An explicit width (columns) to reconstruct `.terminal` output at, or `nil` to
     /// infer it from the captured stream (CS-070). Set only by `vitrine render
     /// --terminal-width` (which `vgrab -w` passes), so a known-width capture wraps
@@ -99,6 +116,15 @@ struct SnapshotConfig: Equatable {
     /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 
+    /// Whether the canvas renders a beautified image (the "beautify any image" path)
+    /// instead of code. When true, the code-only controls (theme, fonts, line marks)
+    /// don't apply and the canvas draws the framed image as the card body.
+    var usesImageContent: Bool { foregroundImage != nil }
+
+    /// Whether export/copy/share commands have something visible to render. A beautified
+    /// foreground image is renderable even when the code editor is empty.
+    var hasRenderableContent: Bool { usesImageContent || !code.isEmpty }
+
     /// Whether the row-by-row code layout (gutter, highlight bands, and/or diff
     /// bands) is active. When none of these are on, the canvas keeps drawing the code
     /// as a single `Text`, so the default render is byte-for-byte unchanged (CS-021).
@@ -118,6 +144,7 @@ struct SnapshotConfig: Equatable {
     /// replaced with a neutral placeholder so optional text riders cannot leak a
     /// secret that the image visually hides.
     var sidecarText: String {
+        guard !usesImageContent else { return "" }
         let visibleText =
             language == .terminal ? ANSIRenderer.plainText(code, columns: terminalColumns) : code
         return replacingRedactedLines(in: visibleText)
@@ -127,18 +154,20 @@ struct SnapshotConfig: Equatable {
     /// preserves syntax-highlighting input for non-redacted lines but removes any line
     /// the user marked as redacted, so RTF/HTML/plain fallbacks cannot bypass the blur.
     var richClipboardText: String {
-        replacingRedactedLines(in: code)
+        guard !usesImageContent else { return "" }
+        return replacingRedactedLines(in: code)
     }
 
-    /// Clears the marks that are tied to *this specific code* — free-form annotations
-    /// (arrows / text / blur) and highlighted line ranges — so loading new content
-    /// (paste, drop, quick capture) starts clean instead of stranding marks that were
-    /// positioned over unrelated code. Style (theme, font, background, header text)
-    /// is reusable and intentionally kept.
+    /// Clears the marks tied to *this specific content* — free-form annotations
+    /// (arrows / text / blur), highlighted/redacted line ranges, and any beautified
+    /// foreground image — so loading new content (paste, drop, quick capture) starts
+    /// clean instead of stranding marks or an image from unrelated content. Style
+    /// (theme, font, background, header text, frame choice) is reusable and kept.
     mutating func clearContentMarks() {
         annotations = []
         highlightedLineRanges = []
         redactedLineRanges = []
+        foregroundImage = nil
     }
 
     private func replacingRedactedLines(in text: String) -> String {
