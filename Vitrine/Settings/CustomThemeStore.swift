@@ -180,7 +180,9 @@ final class CustomThemeStore {
     /// theme, which always carry one). Keeps reconstruction total without optionals.
     private static let fallbackPalette = ThemePalette(
         background: HexColor("#1E1E1E") ?? .black,
-        foreground: HexColor("#D4D4D4") ?? .black)
+        // Contrasting fallback: should the foreground hex ever fail to parse, fall back to
+        // white before black so it stays readable instead of collapsing to dark-on-dark.
+        foreground: HexColor("#D4D4D4") ?? HexColor("#FFFFFF") ?? .black)
 
     // MARK: - Persistence
 
