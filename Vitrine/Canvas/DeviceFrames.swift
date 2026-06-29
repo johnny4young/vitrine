@@ -42,16 +42,29 @@ struct FrameChrome {
         }
     }
 
-    /// Builds chrome from a sampled bar color: the text/pill/device tints are derived from
-    /// the color's luminance so the bar stays legible whether the sample is light or dark.
+    /// Builds chrome from a sampled bar color: the text/pill/device tints are derived from the
+    /// color so the bar stays legible whether the sample is light, dark, or a mid-tone.
     static func auto(from color: Color) -> FrameChrome {
-        let light = luminance(color) > 0.6
+        let lum = luminance(color)
+        let isLight = lum > 0.5
+        // Pick the text shade with the higher contrast against the bar, so even a mid-tone bar
+        // (gray, teal) is legible instead of defaulting to one fixed choice.
+        let text =
+            wcagContrast(lum, 0.123) >= wcagContrast(lum, 0.957)
+            ? Color(hex: "#1F1F24") : Color(hex: "#F4F4F8")
         return FrameChrome(
             bar: color,
-            pill: light ? Color.white.opacity(0.85) : Color.white.opacity(0.14),
-            text: light ? Color(hex: "#2A2A30") : Color(hex: "#F2F2F6"),
-            deviceBody: light ? Color(hex: "#D7D8DC") : Color(hex: "#48484B"),
+            // A subtle inset address pill — darker than a light bar, lighter than a dark one —
+            // so it always reads as a field (a white pill vanished on a white bar).
+            pill: isLight ? Color.black.opacity(0.07) : Color.white.opacity(0.16),
+            text: text,
+            deviceBody: isLight ? Color(hex: "#D7D8DC") : Color(hex: "#48484B"),
             screenBezel: screenBezelColor)
+    }
+
+    /// WCAG contrast ratio between two relative luminances (matching `luminance`'s scale).
+    private static func wcagContrast(_ a: Double, _ b: Double) -> Double {
+        (max(a, b) + 0.05) / (min(a, b) + 0.05)
     }
 
     /// Average color of the image's top strip, used to tint Auto chrome so the bar continues
