@@ -21,6 +21,7 @@ import SwiftUI
 /// reach them; nothing outside `EditorView` references them.
 struct EditorView: View {
     @Environment(AppSettings.self) var settings
+    @Environment(\.foregroundImageStore) var foregroundImageStore
 
     /// This window's editor session (CS-053). Each editor window has its own session
     /// (and therefore its own `settings` above), so a window can promote *its* style to

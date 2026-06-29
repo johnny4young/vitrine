@@ -1,6 +1,171 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Auto" : {
+      "comment" : "Image frame appearance option: chrome color sampled from the image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto"
+          }
+        }
+      }
+    },
+    "Dark" : {
+      "comment" : "Image frame appearance option: dark chrome.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oscuro"
+          }
+        }
+      }
+    },
+    "Frame appearance" : {
+      "comment" : "Accessibility label for the image frame light/dark picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apariencia del marco"
+          }
+        }
+      }
+    },
+    "Light" : {
+      "comment" : "Image frame appearance option: light chrome.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claro"
+          }
+        }
+      }
+    },
+    "MacBook" : {
+      "comment" : "Image frame option: a MacBook device mockup. Brand name, not translated.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MacBook"
+          }
+        }
+      }
+    },
+    "iPhone" : {
+      "comment" : "Image frame option: an iPhone device mockup. Brand name, not translated.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone"
+          }
+        }
+      }
+    },
+    "Drop a new image here to replace it." : {
+      "comment" : "Hint in the editor's image panel (beautify any image).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suelta una nueva imagen aquí para reemplazarla."
+          }
+        }
+      }
+    },
+    "Remove image" : {
+      "comment" : "Button in the editor's image panel: clear the beautified image and return to code.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar imagen"
+          }
+        }
+      }
+    },
+    "Browser" : {
+      "comment" : "Image frame option: a browser window.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navegador"
+          }
+        }
+      }
+    },
+    "Frame" : {
+      "comment" : "Inspector section title: the frame around a beautified image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marco"
+          }
+        }
+      }
+    },
+    "Frame screenshots in a browser window and more." : {
+      "comment" : "PRO paywall blurb for advanced image frames.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enmarca capturas en una ventana de navegador y más."
+          }
+        }
+      }
+    },
+    "Frame style" : {
+      "comment" : "Accessibility label for the image frame picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo de marco"
+          }
+        }
+      }
+    },
+    "Image frames" : {
+      "comment" : "PRO paywall title for advanced image frames.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcos de imagen"
+          }
+        }
+      }
+    },
+    "Image unavailable" : {
+      "comment" : "Placeholder text when a beautified foreground image file cannot be resolved.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen no disponible"
+          }
+        }
+      }
+    },
+    "None" : {
+      "comment" : "Image frame option: no frame.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguno"
+          }
+        }
+      }
+    },
     "Capture a webpage" : {
       "comment" : "Web Snapshot empty-state title, URL mode.",
       "localizations" : {

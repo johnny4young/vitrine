@@ -197,6 +197,23 @@ struct RichExportTests {
         #expect(markup.contains(SnapshotConfig.redactedLinePlaceholder))
     }
 
+    @Test func imageContentDoesNotAttachStaleCodeRepresentations() throws {
+        let stale = "let stale = \"do not copy this with an image\""
+        let config = Self.sampleConfig {
+            $0.code = stale
+            $0.foregroundImage = ImageReference(fileName: "missing-but-renderable-placeholder.png")
+        }
+
+        let payload = try #require(
+            RichPasteboard.makePayload(
+                for: config, scale: 1, fixedSize: CGSize(width: 320, height: 220),
+                profile: .sRGB, includeRichText: true, includePlainText: true))
+
+        #expect(payload.plainText == nil)
+        #expect(payload.rtf == nil)
+        #expect(payload.html == nil)
+    }
+
     @Test func copyToPasteboardPlainTextRoutesThroughTheRichPath() {
         // The public `ExportManager.copyToPasteboard(plainText:)` flag the callers pass:
         // with it on, the general pasteboard ends up with both image and plain text.

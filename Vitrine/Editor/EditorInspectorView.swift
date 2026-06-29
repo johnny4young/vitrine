@@ -22,98 +22,118 @@ struct EditorInspectorView: View {
     @State private var showHeader = false
     @State private var showOutput = false
 
+    /// Presents the PRO paywall when the user reaches for a gated image frame (browser).
+    @State private var showingFramePaywall = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 scopeNote
                 backgroundSection
-                themeSection
-                typographySection
+                // A beautified image swaps the code-only style controls (theme, fonts)
+                // for the frame picker; everything else (background, canvas, header,
+                // output) applies to both.
+                if settings.config.usesImageContent {
+                    frameSection
+                } else {
+                    themeSection
+                    typographySection
+                }
                 canvasSection
 
                 VStack(alignment: .leading, spacing: 0) {
-                    InspectorDisclosure(
-                        label: Text("Lines"), identifier: "inspector-disclosure-lines",
-                        isExpanded: $showLines
-                    ) {
-                        InspectorRow(label: Text("Line numbers")) {
-                            Toggle("Line numbers", isOn: $settings.config.showLineNumbers)
-                                .toggleStyle(.switch)
-                                .labelsHidden()
-                                .accessibilityIdentifier("line-numbers-toggle")
-                        }
-                        InspectorRow(label: Text("Wrap long lines")) {
-                            Toggle("Wrap long lines", isOn: settings.wrapsLongLines)
-                                .toggleStyle(.switch)
-                                .labelsHidden()
-                                .help("Soft-wrap past a column width instead of widening the card")
-                                .accessibilityIdentifier("wrap-lines-toggle")
-                        }
-                        if settings.config.wrapsLongLines {
-                            InspectorRow(label: Text("Wrap width")) {
-                                HStack(spacing: 8) {
-                                    Slider(
-                                        value: settings.wrapColumnsValue,
-                                        in: SettingsDefaults.wrapColumnsSliderRange, step: 4
+                    // The line gutter / highlight / redact controls only make sense for
+                    // code, so they're hidden when a beautified image is the content.
+                    if !settings.config.usesImageContent {
+                        InspectorDisclosure(
+                            label: Text("Lines"), identifier: "inspector-disclosure-lines",
+                            isExpanded: $showLines
+                        ) {
+                            InspectorRow(label: Text("Line numbers")) {
+                                Toggle("Line numbers", isOn: $settings.config.showLineNumbers)
+                                    .toggleStyle(.switch)
+                                    .labelsHidden()
+                                    .accessibilityIdentifier("line-numbers-toggle")
+                            }
+                            InspectorRow(label: Text("Wrap long lines")) {
+                                Toggle("Wrap long lines", isOn: settings.wrapsLongLines)
+                                    .toggleStyle(.switch)
+                                    .labelsHidden()
+                                    .help(
+                                        "Soft-wrap past a column width instead of widening the card"
                                     )
-                                    .frame(width: 90)
-                                    .accessibilityLabel("Wrap width")
-                                    .accessibilityIdentifier("wrap-columns-slider")
-                                    Text(
-                                        verbatim:
-                                            "\(settings.config.wrapColumns ?? SettingsDefaults.wrapColumns)"
-                                    )
-                                    .font(
-                                        .system(
-                                            size: VitrineTokens.FontSize.caption,
-                                            design: .monospaced)
-                                    )
-                                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                                    .frame(width: 26, alignment: .trailing)
+                                    .accessibilityIdentifier("wrap-lines-toggle")
+                            }
+                            if settings.config.wrapsLongLines {
+                                InspectorRow(label: Text("Wrap width")) {
+                                    HStack(spacing: 8) {
+                                        Slider(
+                                            value: settings.wrapColumnsValue,
+                                            in: SettingsDefaults.wrapColumnsSliderRange, step: 4
+                                        )
+                                        .frame(width: 90)
+                                        .accessibilityLabel("Wrap width")
+                                        .accessibilityIdentifier("wrap-columns-slider")
+                                        Text(
+                                            verbatim:
+                                                "\(settings.config.wrapColumns ?? SettingsDefaults.wrapColumns)"
+                                        )
+                                        .font(
+                                            .system(
+                                                size: VitrineTokens.FontSize.caption,
+                                                design: .monospaced)
+                                        )
+                                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                                        .frame(width: 26, alignment: .trailing)
+                                    }
                                 }
                             }
-                        }
-                        InspectorRow(label: Text("Highlight lines")) {
-                            HighlightedLinesField(settings: settings)
-                        }
-                        InspectorRow(label: Text("Focus highlighted")) {
-                            Toggle(
-                                "Focus highlighted", isOn: $settings.config.focusHighlightedLines
-                            )
-                            .toggleStyle(.switch)
-                            .labelsHidden()
-                            .disabled(settings.config.highlightedLineRanges.isEmpty)
-                            .help("Dim the lines outside the highlight so it stands out.")
-                            .accessibilityIdentifier("focus-lines-toggle")
-                        }
-                        InspectorRow(label: Text("Diff bands")) {
-                            Toggle("Diff bands", isOn: $settings.config.diffDecorations)
+                            InspectorRow(label: Text("Highlight lines")) {
+                                HighlightedLinesField(settings: settings)
+                            }
+                            InspectorRow(label: Text("Focus highlighted")) {
+                                Toggle(
+                                    "Focus highlighted",
+                                    isOn: $settings.config.focusHighlightedLines
+                                )
                                 .toggleStyle(.switch)
                                 .labelsHidden()
-                                .help(
-                                    "Color lines that start with + green and − red, GitHub-style. Choosing the Diff language turns this on for you."
-                                )
-                                .accessibilityIdentifier("diff-decorations-toggle")
-                        }
-                        InspectorRow(label: Text("Redact secrets")) {
-                            if settings.config.redactedLineRanges.isEmpty {
-                                Button("Scan") {
-                                    // Scan `sidecarText`, not `code`: for a terminal capture
-                                    // the canvas renders the ANSI-resolved screen, so the raw
-                                    // bytes' line numbers would map to the wrong rows (and
-                                    // could leave a secret visible). For other languages
-                                    // `sidecarText == code`.
-                                    let lines = SecretScanner.secretLines(
-                                        in: settings.config.sidecarText)
-                                    settings.config.redactedLineRanges = LineHighlight.normalize(
-                                        lines.map { $0...$0 })
+                                .disabled(settings.config.highlightedLineRanges.isEmpty)
+                                .help("Dim the lines outside the highlight so it stands out.")
+                                .accessibilityIdentifier("focus-lines-toggle")
+                            }
+                            InspectorRow(label: Text("Diff bands")) {
+                                Toggle("Diff bands", isOn: $settings.config.diffDecorations)
+                                    .toggleStyle(.switch)
+                                    .labelsHidden()
+                                    .help(
+                                        "Color lines that start with + green and − red, GitHub-style. Choosing the Diff language turns this on for you."
+                                    )
+                                    .accessibilityIdentifier("diff-decorations-toggle")
+                            }
+                            InspectorRow(label: Text("Redact secrets")) {
+                                if settings.config.redactedLineRanges.isEmpty {
+                                    Button("Scan") {
+                                        // Scan `sidecarText`, not `code`: for a terminal capture
+                                        // the canvas renders the ANSI-resolved screen, so the raw
+                                        // bytes' line numbers would map to the wrong rows (and
+                                        // could leave a secret visible). For other languages
+                                        // `sidecarText == code`.
+                                        let lines = SecretScanner.secretLines(
+                                            in: settings.config.sidecarText)
+                                        settings.config.redactedLineRanges =
+                                            LineHighlight.normalize(
+                                                lines.map { $0...$0 })
+                                    }
+                                    .help(
+                                        "Blur lines that look like API keys, tokens, or passwords."
+                                    )
+                                    .disabled(settings.config.code.isEmpty)
+                                    .accessibilityIdentifier("redact-secrets-button")
+                                } else {
+                                    Button("Clear") { settings.config.redactedLineRanges = [] }
+                                        .accessibilityIdentifier("clear-redactions-button")
                                 }
-                                .help("Blur lines that look like API keys, tokens, or passwords.")
-                                .disabled(settings.config.code.isEmpty)
-                                .accessibilityIdentifier("redact-secrets-button")
-                            } else {
-                                Button("Clear") { settings.config.redactedLineRanges = [] }
-                                    .accessibilityIdentifier("clear-redactions-button")
                             }
                         }
                     }
@@ -147,6 +167,9 @@ struct EditorInspectorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
+        .sheet(isPresented: $showingFramePaywall) {
+            PaywallSheet(feature: .advancedFrames)
+        }
     }
 
     // MARK: - Sections
@@ -204,6 +227,64 @@ struct EditorInspectorView: View {
                     .accessibilityIdentifier("background-kind-picker")
                 }
                 backgroundDetail
+            }
+        }
+    }
+
+    /// The frame for a beautified image — none, a macOS window, a browser window, or a
+    /// device mockup (MacBook / iPhone). Shown only when the content is an image. Everything
+    /// past the macOS window is PRO: selecting a locked frame opens the paywall instead of
+    /// applying (the free frames stay one tap away). The window title doubles as the
+    /// window/browser-address text.
+    private var frameSection: some View {
+        InspectorSection(title: Text("Frame")) {
+            InspectorRow(label: Text("Style")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (ImageFrame.none, Text("None")),
+                        (ImageFrame.macOSWindow, Text("Window")),
+                        (ImageFrame.browser, Text("Browser")),
+                        (ImageFrame.macBook, Text("MacBook")),
+                        (ImageFrame.iPhone, Text("iPhone")),
+                    ],
+                    selection: Binding(
+                        get: { settings.config.imageFrame },
+                        set: { newFrame in
+                            if newFrame.isPro, !Entitlements.shared.isUnlocked(.advancedFrames) {
+                                showingFramePaywall = true
+                            } else {
+                                settings.config.imageFrame = newFrame
+                            }
+                        }
+                    )
+                )
+                .accessibilityLabel("Frame style")
+                .accessibilityIdentifier("image-frame-picker")
+            }
+            if settings.config.imageFrame != .none {
+                InspectorRow(label: Text("Appearance")) {
+                    TokenSegmentedPicker(
+                        options: [
+                            (FrameAppearance.auto, Text("Auto")),
+                            (FrameAppearance.light, Text("Light")),
+                            (FrameAppearance.dark, Text("Dark")),
+                        ],
+                        selection: $settings.config.imageFrameAppearance
+                    )
+                    .accessibilityLabel("Frame appearance")
+                    .accessibilityIdentifier("image-frame-appearance-picker")
+                }
+            }
+            // The title/address applies only to the window and browser chrome.
+            if settings.config.imageFrame == .macOSWindow || settings.config.imageFrame == .browser
+            {
+                InspectorRow(label: Text("Title")) {
+                    TokenTextField(
+                        prompt: Text(verbatim: "vitrineframe.app"),
+                        text: $settings.config.windowTitle
+                    )
+                    .accessibilityIdentifier("image-frame-title-field")
+                }
             }
         }
     }
@@ -275,19 +356,23 @@ struct EditorInspectorView: View {
                     "Corner radius", $settings.config.cornerRadius, in: 0...32, step: 2,
                     identifier: "corner-radius-slider")
             }
-            InspectorRow(label: Text("Window chrome")) {
-                Toggle("Window chrome", isOn: $settings.config.showChrome)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-                    .accessibilityIdentifier("window-chrome-toggle")
-            }
-            if settings.config.showChrome {
-                InspectorRow(label: Text("Title")) {
-                    TokenTextField(
-                        prompt: Text(verbatim: "ContentView.swift"),
-                        text: $settings.config.windowTitle
-                    )
-                    .accessibilityIdentifier("window-title-field")
+            // The code card's macOS chrome. For a beautified image the Frame section
+            // owns the window/browser chrome, so these rows are hidden there.
+            if !settings.config.usesImageContent {
+                InspectorRow(label: Text("Window chrome")) {
+                    Toggle("Window chrome", isOn: $settings.config.showChrome)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("window-chrome-toggle")
+                }
+                if settings.config.showChrome {
+                    InspectorRow(label: Text("Title")) {
+                        TokenTextField(
+                            prompt: Text(verbatim: "ContentView.swift"),
+                            text: $settings.config.windowTitle
+                        )
+                        .accessibilityIdentifier("window-title-field")
+                    }
                 }
             }
             InspectorRow(label: Text("Drop shadow")) {

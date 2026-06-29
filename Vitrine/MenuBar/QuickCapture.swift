@@ -1,5 +1,6 @@
 import AppKit
 import OSLog
+import UniformTypeIdentifiers
 
 /// Quick mode: read the clipboard, detect the content, render with the saved
 /// settings, store it in Recents, and put the result back on the clipboard — no
@@ -136,6 +137,35 @@ enum QuickCapture {
             savedToFile: didSave)
     }
 
+    /// Imports an image from the clipboard into the foreground store, or `nil` when the
+    /// clipboard carries no image (the common text case). Prefers raw PNG/TIFF bytes so the
+    /// original is stored without re-encoding. The pasteboard and store are injectable so
+    /// the path is unit-testable without the real container.
+    static func clipboardForegroundImage(
+        pasteboard: NSPasteboard = .general,
+        store: BackgroundImageStore = .foregroundContainer
+    ) -> ImageReference? {
+        // Prefer lossless PNG/TIFF, then fall back to any other image representation, so a
+        // copied screenshot is stored at full fidelity even when AppKit also offers a JPEG
+        // in `pasteboard.types` (whose order is not guaranteed).
+        let available = pasteboard.types ?? []
+        let preferred: [NSPasteboard.PasteboardType] = [.png, .tiff]
+        let ordered = preferred + available.filter { !preferred.contains($0) }
+        for pasteboardType in ordered {
+            guard
+                let type = UTType(pasteboardType.rawValue),
+                type.conforms(to: .image),
+                let data = pasteboard.data(forType: pasteboardType)
+            else { continue }
+            if let reference = try? store.importImage(
+                data: data, preferredExtension: type.preferredFilenameExtension ?? "")
+            {
+                return reference
+            }
+        }
+        return nil
+    }
+
     // MARK: - Input classification (CS-040)
 
     /// Classifies raw clipboard text into a typed `CaptureInput` for the renderer
@@ -223,6 +253,19 @@ enum QuickCapture {
     /// actions for dead ends (CS-016, CS-038). The menu and the global hotkey both
     /// call this so behavior is consistent across entry points.
     static func perform(settings: AppSettings = .shared) {
+        // A copied image becomes a beautified capture (the "beautify any image" feature):
+        // open the editor with it framed on the saved background, where the user picks a
+        // frame and exports. Checked before the text path, since a screenshot carries image
+        // data, not a string.
+        if let reference = clipboardForegroundImage() {
+            var config = settings.config
+            config.clearContentMarks()
+            config.foregroundImage = reference
+            EditorWindowController.shared.loadIntoPrimary(config)
+            Log.capture.info("Quick capture: clipboard image → editor")
+            return
+        }
+
         let result = capture(settings: settings)
         switch result.outcome {
         case .deferredToEditor:

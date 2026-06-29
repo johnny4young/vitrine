@@ -180,26 +180,32 @@ enum VitrineCommand: String, CaseIterable {
 
 extension VitrineCommand {
     /// Editor-render commands, enabled only when an editor window is key *and* it has
-    /// code to render. Copy / Save / Share each turn the document into an image, so an
-    /// empty editor leaves them disabled.
+    /// visible content to render. Copy / Save / Share each turn the document into an
+    /// image, so an empty editor leaves them disabled; a beautified foreground image is
+    /// renderable even when the code editor is empty.
     static let editorRenderCommands: [VitrineCommand] = [.copyImage, .saveImage, .shareImage]
 
-    /// Editor commands that need code present to act: the render commands (which turn the
-    /// document into an image) plus Format Code, which has nothing to tidy on an empty
-    /// buffer (CS-049). Both are disabled when the editor is empty.
-    static let codeRequiringCommands: [VitrineCommand] = editorRenderCommands + [.formatCode]
+    /// Editor commands that need source text present to act. Format Code has nothing to
+    /// tidy on an empty buffer (CS-049), and it stays code-only even when the editor is
+    /// showing a beautified foreground image.
+    static let codeRequiringCommands: [VitrineCommand] = [.formatCode]
 
     /// All editor/document-scoped commands, enabled only when an editor window is key.
     /// "Make Default" is editor-scoped but code-independent: adopting a window's style
     /// as the app default is meaningful even before any code is typed (CS-053).
-    static let editorCommands: [VitrineCommand] = codeRequiringCommands + [.makeDefault]
+    static let editorCommands: [VitrineCommand] =
+        editorRenderCommands + codeRequiringCommands + [.makeDefault]
 
     /// Whether this command acts on the editor and so is enabled only when an editor is
     /// the key window.
     var isEditorScoped: Bool { Self.editorCommands.contains(self) }
 
-    /// Whether this command additionally requires the editor to hold code (the render
-    /// commands and Format Code), as opposed to merely requiring an editor to be key.
+    /// Whether this command additionally requires visible content (code or a foreground
+    /// image) to render, as opposed to merely requiring an editor to be key.
+    var requiresRenderableContent: Bool { Self.editorRenderCommands.contains(self) }
+
+    /// Whether this command additionally requires the editor to hold source text, as
+    /// opposed to a beautified image or an empty editor.
     var requiresCode: Bool { Self.codeRequiringCommands.contains(self) }
 }
 
@@ -250,11 +256,21 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
 
     /// Whether `command` can run right now. Editor-scoped commands require an editor
     /// window to be key (so a Save/Share/Make Default from the menu acts on the visible
-    /// editor); the render commands additionally require code to render.
+    /// editor); render commands additionally require visible content to render.
     func canPerform(_ command: VitrineCommand) -> Bool {
+        Self.canPerform(command, isEditorKey: isEditorKey, config: activeSettings.config)
+    }
+
+    /// Pure command-gating core, separated so unit tests can cover content states without
+    /// constructing real AppKit editor windows.
+    static func canPerform(
+        _ command: VitrineCommand, isEditorKey: Bool, config: SnapshotConfig
+    ) -> Bool {
         guard command.isEditorScoped else { return true }
         guard isEditorKey else { return false }
-        return command.requiresCode ? !activeSettings.config.code.isEmpty : true
+        if command.requiresRenderableContent { return config.hasRenderableContent }
+        if command.requiresCode { return !config.code.isEmpty }
+        return true
     }
 
     /// True when the key (or, failing that, the main) window is an editor. The fallback

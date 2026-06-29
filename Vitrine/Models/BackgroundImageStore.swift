@@ -1,5 +1,6 @@
 import AppKit
 import CryptoKit
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -53,13 +54,26 @@ struct BackgroundImageStore {
     /// in the running app. Falls back to a temporary directory if Application
     /// Support is somehow unavailable, so the store is always usable.
     static var container: BackgroundImageStore {
+        appContainer(subdirectory: "Backgrounds")
+    }
+
+    /// The store for **foreground** images — the "beautify any image" content. Same
+    /// content-addressed import/resolve machinery as backgrounds, rooted at a separate
+    /// directory so foreground captures and background photos never collide.
+    static var foregroundContainer: BackgroundImageStore {
+        appContainer(subdirectory: "Foregrounds")
+    }
+
+    /// A store rooted at `Application Support/<subdirectory>`, falling back to a temporary
+    /// directory if Application Support is unavailable so the store is always usable.
+    private static func appContainer(subdirectory: String) -> BackgroundImageStore {
         let base =
             (try? FileManager.default.url(
                 for: .applicationSupportDirectory, in: .userDomainMask,
                 appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
         return BackgroundImageStore(
-            directory: base.appendingPathComponent("Backgrounds", isDirectory: true))
+            directory: base.appendingPathComponent(subdirectory, isDirectory: true))
     }
 
     /// Copies the user-selected image at `sourceURL` into the container and
@@ -87,6 +101,19 @@ struct BackgroundImageStore {
         guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
 
         return try store(data, preferredExtension: sanitizedExtension(for: sourceURL))
+    }
+
+    /// Imports already-in-memory image `data` — a clipboard paste or an in-app drag that
+    /// carries the image directly rather than as a file. Validates the bytes are a decodable
+    /// image, then writes them through the same content-addressed store as the file path, so
+    /// identical bytes from any source dedupe to one file.
+    func importImage(data: Data, preferredExtension ext: String = "") throws -> ImageReference {
+        guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
+        let preferredExtension = sanitizedExtension(ext)
+        return try store(
+            data,
+            preferredExtension: preferredExtension.isEmpty
+                ? inferredExtension(from: data) : preferredExtension)
     }
 
     /// Downloads the image at a remote `url` and imports it into the container,
@@ -237,11 +264,11 @@ struct BackgroundImageStore {
                 try data.write(to: destination, options: .atomic)
             }
         } catch {
-            Log.export.error("Background image copy failed; not storing the file")
+            Log.export.error("Image copy failed; not storing the file")
             throw ImportError.copyFailed
         }
 
-        Log.export.info("Imported a background image into the container")
+        Log.export.info("Imported an image into the container")
         return ImageReference(fileName: fileName)
     }
 
@@ -268,16 +295,36 @@ struct BackgroundImageStore {
         return NSImage(contentsOf: url)
     }
 
-    /// A lowercased, image-only file extension for the destination name, or an
-    /// empty string when the source has none. Restricting to known image types
-    /// keeps the stored name tidy and predictable.
-    private func sanitizedExtension(for url: URL) -> String {
-        let ext = url.pathExtension.lowercased()
+    /// Sanitizes a raw extension into a lowercased, image-only destination suffix, or
+    /// returns an empty string when the caller-provided value is not safe to append.
+    private func sanitizedExtension(_ ext: String) -> String {
+        let ext = ext.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let allowedCharacters = CharacterSet.alphanumerics
         guard !ext.isEmpty,
+            ext.unicodeScalars.allSatisfy({ allowedCharacters.contains($0) }),
             let type = UTType(filenameExtension: ext),
             type.conforms(to: .image)
         else { return "" }
         return ext
+    }
+
+    /// Reads the actual image container type from in-memory bytes so clipboard/drag imports
+    /// can keep a tidy extension even when the provider-supplied suffix is unusable.
+    private func inferredExtension(from data: Data) -> String {
+        guard
+            let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let identifier = CGImageSourceGetType(source) as String?,
+            let type = UTType(identifier),
+            type.conforms(to: .image),
+            let ext = type.preferredFilenameExtension
+        else { return "" }
+        return sanitizedExtension(ext)
+    }
+
+    /// Extracts and sanitizes the source URL's image extension for the destination name.
+    private func sanitizedExtension(for url: URL) -> String {
+        let ext = url.pathExtension.lowercased()
+        return sanitizedExtension(ext)
     }
 
     /// Like `sanitizedExtension(for:)` but falls back to the response MIME type when
@@ -323,4 +370,8 @@ extension EnvironmentValues {
     /// in tests and previews so the render path can resolve fixture images without
     /// touching the user's container.
     @Entry var backgroundImageStore: BackgroundImageStore = .container
+
+    /// The store used to resolve the beautified **foreground** image. Same default-real,
+    /// inject-in-tests contract as `backgroundImageStore`, rooted at a separate directory.
+    @Entry var foregroundImageStore: BackgroundImageStore = .foregroundContainer
 }
