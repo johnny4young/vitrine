@@ -22,6 +22,15 @@ import Testing
             }
         }
 
+        /// A validator that would fail the outcome if the service tried to call it.
+        nonisolated struct UnexpectedValidator: LicenseKeyValidator {
+            func activate(
+                licenseKey: String, instanceName: String
+            ) async throws -> LicenseActivation {
+                throw LicenseActivationError.network("unexpected validation call")
+            }
+        }
+
         /// An in-memory token store so the provider round-trip never touches the real Keychain.
         final class InMemoryTokenStore: LicenseTokenStore {
             private var token: String?
@@ -125,6 +134,13 @@ import Testing
             }
             // The minted token verifies against the matching public key and carries the id.
             #expect(LicenseVerifier(publicKey: key.publicKey).verify(token)?.licenseID == "ORD-9")
+        }
+
+        @Test func serviceRejectsBlankKeysWithoutCallingTheNetwork() async {
+            let service = LicenseActivationService(
+                validator: UnexpectedValidator(),
+                signingKey: Curve25519.Signing.PrivateKey())
+            #expect(await service.activate(licenseKey: " \n\t ") == .invalidKey)
         }
 
         @Test func serviceReportsNotConfiguredWithoutASigningKey() async {
