@@ -122,7 +122,21 @@ struct BeautifyImageTests {
         let restored = EditorWindowState(config: SnapshotConfig()).config()
         #expect(restored.foregroundImage == nil)
         #expect(restored.imageFrame == .none)
-        #expect(restored.imageFrameAppearance == .light)
+        #expect(restored.imageFrameAppearance == .auto)
+    }
+
+    @Test func autoIsTheDefaultFrameAppearance() {
+        #expect(SnapshotConfig().imageFrameAppearance == .auto)
+    }
+
+    @Test func autoChromeSamplesTheImageTopEdge() throws {
+        let image = try #require(
+            NSImage(data: try makePNG(.systemBlue, CGSize(width: 40, height: 40))))
+        let sampled = try #require(FrameChrome.topEdgeColor(of: image))
+        let ns = try #require(NSColor(sampled).usingColorSpace(.sRGB))
+        // A solid blue image samples to a blue-dominant chrome bar.
+        #expect(ns.blueComponent > ns.redComponent)
+        #expect(ns.blueComponent > ns.greenComponent)
     }
 
     @Test func windowStateRoundTripsTheFrameAppearance() {

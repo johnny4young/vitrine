@@ -13,8 +13,9 @@ import SwiftUI
 struct FramedImageView: View {
     let reference: ImageReference
     let frame: ImageFrame
-    /// Light or dark chrome for the window/browser bars and device body tint.
-    var appearance: FrameAppearance = .light
+    /// Chrome tint: `.auto` samples the image's top edge so the bar blends with the
+    /// screenshot; `.light`/`.dark` are fixed overrides.
+    var appearance: FrameAppearance = .auto
     /// Reuses `SnapshotConfig.windowTitle` as the window title / browser address text.
     var title: String = ""
 
@@ -24,7 +25,10 @@ struct FramedImageView: View {
     /// @2x export still captures ample detail. A smaller image is never upscaled.
     private static let maxImageWidth: CGFloat = 1100
 
-    private var chrome: FrameChrome { FrameChrome.of(appearance) }
+    /// Resolves the chrome for an image — for `.auto`, sampled from that image's top edge.
+    private func chrome(for image: NSImage?) -> FrameChrome {
+        FrameChrome.of(appearance, image: image)
+    }
 
     var body: some View {
         if let image = store.image(for: reference) {
@@ -36,13 +40,14 @@ struct FramedImageView: View {
 
     @ViewBuilder
     private func content(_ image: NSImage) -> some View {
+        let chrome = chrome(for: image)
         switch frame {
         case .none:
             imageView(image, size: displaySize(for: image))
         case .macOSWindow:
             let display = displaySize(for: image)
             VStack(spacing: 0) {
-                windowBar
+                windowBar(chrome)
                 imageView(image, size: display)
             }
             .frame(width: display.width)
@@ -52,7 +57,7 @@ struct FramedImageView: View {
         case .browser:
             let display = displaySize(for: image)
             VStack(spacing: 0) {
-                browserBar
+                browserBar(chrome)
                 imageView(image, size: display)
             }
             .frame(width: display.width)
@@ -72,7 +77,7 @@ struct FramedImageView: View {
     }
 
     /// A macOS title bar: traffic-light dots, with the optional title centered.
-    private var windowBar: some View {
+    private func windowBar(_ chrome: FrameChrome) -> some View {
         ZStack {
             HStack(spacing: 0) {
                 chromeDots
@@ -93,7 +98,7 @@ struct FramedImageView: View {
     }
 
     /// A browser toolbar: traffic-light dots plus a faux address pill carrying the title.
-    private var browserBar: some View {
+    private func browserBar(_ chrome: FrameChrome) -> some View {
         HStack(spacing: 12) {
             chromeDots
             HStack(spacing: 6) {
@@ -129,9 +134,10 @@ struct FramedImageView: View {
     }
 
     /// Shown when the referenced file can't be resolved (missing/relocated), mirroring the
-    /// background path's graceful degradation.
+    /// background path's graceful degradation. With no image to sample, Auto falls back to dark.
     private var missingPlaceholder: some View {
-        VStack(spacing: 8) {
+        let chrome = chrome(for: nil)
+        return VStack(spacing: 8) {
             Image(systemName: "photo")
                 .font(.system(size: 28))
                 .foregroundStyle(chrome.text.opacity(0.5))

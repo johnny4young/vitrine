@@ -45,9 +45,13 @@ enum ImageFrame: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Light or dark chrome for a framed image. Drives the window/browser bar colors and the
-/// device-mockup body tint, so a frame reads well over both light and dark backgrounds.
+/// The chrome tint for a framed image. `auto` samples the image's top edge so the bar
+/// "continues" the screenshot (no jarring light-bar-over-dark-content seam); `light` and
+/// `dark` are fixed manual overrides. Drives the window/browser bar colors and the
+/// device-mockup body tint.
 enum FrameAppearance: String, Codable, CaseIterable, Identifiable, Sendable {
+    /// Derive the chrome from the image's own top-edge color (the default).
+    case auto
     case light
     case dark
 

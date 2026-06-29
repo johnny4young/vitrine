@@ -88,9 +88,9 @@ struct SnapshotConfig: Equatable {
     /// by default. Everything past the macOS window is PRO.
     var imageFrame: ImageFrame = .none
 
-    /// Light or dark chrome for the image frame (window/browser bars, device body tint).
-    /// `.light` by default; inert for `.none`.
-    var imageFrameAppearance: FrameAppearance = .light
+    /// Chrome tint for the image frame (window/browser bars, device body tint). `.auto` by
+    /// default — the bar is sampled from the image's top edge so it blends in; inert for `.none`.
+    var imageFrameAppearance: FrameAppearance = .auto
 
     /// An explicit width (columns) to reconstruct `.terminal` output at, or `nil` to
     /// infer it from the captured stream (CS-070). Set only by `vitrine render

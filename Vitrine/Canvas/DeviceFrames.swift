@@ -15,23 +15,80 @@ struct FrameChrome {
     /// The black border around a device screen (constant across appearances).
     let screenBezel: Color
 
-    static func of(_ appearance: FrameAppearance) -> FrameChrome {
+    static let screenBezelColor = Color(hex: "#0A0A0C")
+
+    static let light = FrameChrome(
+        bar: Color(hex: "#E8E8EA"),
+        pill: Color(hex: "#FDFDFF"),
+        text: Color(hex: "#3C3C43"),
+        deviceBody: Color(hex: "#D7D8DC"),
+        screenBezel: screenBezelColor)
+
+    static let dark = FrameChrome(
+        bar: Color(hex: "#2B2B2E"),
+        pill: Color(hex: "#3A3A3D"),
+        text: Color(hex: "#E7E7EC"),
+        deviceBody: Color(hex: "#48484B"),
+        screenBezel: screenBezelColor)
+
+    /// Resolves the chrome for an appearance. `.auto` samples `image`'s top edge so the bar
+    /// blends with the screenshot; a nil image or a failed sample falls back to `dark`.
+    static func of(_ appearance: FrameAppearance, image: NSImage? = nil) -> FrameChrome {
         switch appearance {
-        case .light:
-            FrameChrome(
-                bar: Color(hex: "#E8E8EA"),
-                pill: Color(hex: "#FDFDFF"),
-                text: Color(hex: "#3C3C43"),
-                deviceBody: Color(hex: "#D7D8DC"),
-                screenBezel: Color(hex: "#0A0A0C"))
-        case .dark:
-            FrameChrome(
-                bar: Color(hex: "#2B2B2E"),
-                pill: Color(hex: "#3A3A3D"),
-                text: Color(hex: "#E7E7EC"),
-                deviceBody: Color(hex: "#48484B"),
-                screenBezel: Color(hex: "#0A0A0C"))
+        case .light: light
+        case .dark: dark
+        case .auto:
+            if let image, let color = topEdgeColor(of: image) { auto(from: color) } else { dark }
         }
+    }
+
+    /// Builds chrome from a sampled bar color: the text/pill/device tints are derived from
+    /// the color's luminance so the bar stays legible whether the sample is light or dark.
+    static func auto(from color: Color) -> FrameChrome {
+        let light = luminance(color) > 0.6
+        return FrameChrome(
+            bar: color,
+            pill: light ? Color.white.opacity(0.85) : Color.white.opacity(0.14),
+            text: light ? Color(hex: "#2A2A30") : Color(hex: "#F2F2F6"),
+            deviceBody: light ? Color(hex: "#D7D8DC") : Color(hex: "#48484B"),
+            screenBezel: screenBezelColor)
+    }
+
+    /// Average color of the image's top strip, used to tint Auto chrome so the bar continues
+    /// the screenshot. `nil` when the image can't be read. Pure (a function of the pixels), so
+    /// the render stays deterministic and golden-friendly.
+    static func topEdgeColor(of image: NSImage) -> Color? {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return nil
+        }
+        let stripHeight = max(1, cg.height / 12)
+        guard
+            let strip = cg.cropping(
+                to: CGRect(x: 0, y: 0, width: cg.width, height: stripHeight))
+        else { return nil }
+        var pixel = [UInt8](repeating: 0, count: 4)
+        guard
+            let ctx = CGContext(
+                data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        ctx.interpolationQuality = .medium
+        ctx.draw(strip, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        let alpha = CGFloat(pixel[3]) / 255
+        guard alpha > 0 else { return nil }
+        // Un-premultiply so a translucent edge still yields its true hue.
+        return Color(
+            .sRGB,
+            red: Double(CGFloat(pixel[0]) / 255 / alpha),
+            green: Double(CGFloat(pixel[1]) / 255 / alpha),
+            blue: Double(CGFloat(pixel[2]) / 255 / alpha))
+    }
+
+    private static func luminance(_ color: Color) -> Double {
+        let ns = NSColor(color).usingColorSpace(.sRGB) ?? .black
+        return 0.2126 * Double(ns.redComponent) + 0.7152 * Double(ns.greenComponent)
+            + 0.0722 * Double(ns.blueComponent)
     }
 }
 

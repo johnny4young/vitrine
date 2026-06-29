@@ -175,7 +175,7 @@ struct EditorWindowState: Codable, Equatable {
             config.foregroundImage = ImageReference(fileName: foregroundImageFileName)
         }
         config.imageFrame = ImageFrame(rawValue: imageFrameID) ?? .none
-        config.imageFrameAppearance = FrameAppearance(rawValue: imageFrameAppearanceID) ?? .light
+        config.imageFrameAppearance = FrameAppearance(rawValue: imageFrameAppearanceID) ?? .auto
         return config
     }
 
