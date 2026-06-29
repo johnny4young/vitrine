@@ -59,7 +59,7 @@ import Foundation
     /// function (`parse(status:data:)`) exercised with canned payloads.
     nonisolated struct LemonSqueezyValidator: LicenseKeyValidator {
         /// The activation endpoint. Overridable so a test or a self-host can repoint it.
-        var endpoint = URL(string: "https://api.lemonsqueezy.com/v1/licenses/activate")!
+        var endpoint = VitrineLinks.lemonSqueezyActivationEndpoint
         /// Bound the one online activation attempt so a stalled network does not leave the
         /// paywall spinner waiting indefinitely.
         nonisolated static let requestTimeout: TimeInterval = 20
@@ -195,6 +195,7 @@ import Foundation
         func activate(licenseKey: String) async -> ActivationOutcome {
             guard let signingKey else { return .notConfigured }
             let key = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty else { return .invalidKey }
             do {
                 let activation = try await validator.activate(
                     licenseKey: key, instanceName: instanceName)

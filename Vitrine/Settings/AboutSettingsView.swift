@@ -27,7 +27,7 @@ struct AboutSettingsView: View {
                     .font(.system(size: VitrineTokens.FontSize.body))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(VitrineTokens.Text.secondary)
-                Link("GitHub", destination: URL(string: "https://github.com/johnny4young/vitrine")!)
+                Link("GitHub", destination: VitrineLinks.githubRepository)
                     .font(.system(size: VitrineTokens.FontSize.body))
                     .foregroundStyle(VitrineTokens.Accent.system)
                     .padding(.top, 4)
