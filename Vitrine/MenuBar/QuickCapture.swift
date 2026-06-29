@@ -145,7 +145,13 @@ enum QuickCapture {
         pasteboard: NSPasteboard = .general,
         store: BackgroundImageStore = .foregroundContainer
     ) -> ImageReference? {
-        for pasteboardType in pasteboard.types ?? [] {
+        // Prefer lossless PNG/TIFF, then fall back to any other image representation, so a
+        // copied screenshot is stored at full fidelity even when AppKit also offers a JPEG
+        // in `pasteboard.types` (whose order is not guaranteed).
+        let available = pasteboard.types ?? []
+        let preferred: [NSPasteboard.PasteboardType] = [.png, .tiff]
+        let ordered = preferred + available.filter { !preferred.contains($0) }
+        for pasteboardType in ordered {
             guard
                 let type = UTType(pasteboardType.rawValue),
                 type.conforms(to: .image),
