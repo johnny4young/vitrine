@@ -61,7 +61,10 @@ struct FrameChrome {
         guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             return nil
         }
-        let stripHeight = max(1, cg.height / 12)
+        // Sample only the very top edge — the pixels that sit directly under the bar — so
+        // the bar matches the content's first rows. A deeper strip would average in unrelated
+        // content lower down (e.g. a hero card), tinting the bar so it no longer blends.
+        let stripHeight = max(1, min(cg.height, cg.height / 100 + 6))
         guard
             let strip = cg.cropping(
                 to: CGRect(x: 0, y: 0, width: cg.width, height: stripHeight))
