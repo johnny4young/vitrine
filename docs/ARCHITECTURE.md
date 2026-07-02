@@ -367,7 +367,9 @@ Vitrine/
 ├── WebRendering/              # URL/HTML capture via WKWebView, app-only (CS-043/044)
 │   ├── URLRenderer / HTMLRenderer / CodeRenderer / WebSnapshotView
 │   ├── WebSnapshot{WindowController,EditorView}.swift
-│   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode + SSRF host validation
+│   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode value type
+│   ├── WebURLValidation.swift        # http(s)-only + SSRF host blocklist (typed errors)
+│   ├── NetworkCapability.swift       # network-entitlement gate for URL capture
 │   └── ResponsiveBoardComposer.swift # multi-viewport board (deterministic)
 ├── SocialCards/               # social-card editor + renderer (CS-041); Canvas/SocialCardCanvas
 ├── Rendering/                 # shared Renderer / RenderedAsset abstractions
