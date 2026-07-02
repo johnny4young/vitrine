@@ -299,11 +299,20 @@ echo "==> Creating DMG"
 mkdir -p dist
 DMG="dist/Vitrine-$VERSION.dmg"
 rm -f "$DMG"
+# Stage the volume contents so the mounted DMG shows the app next to an
+# /Applications symlink — the drag-to-install affordance every macOS user
+# expects (and the layout the QA checklist in scripts/qa-release.sh describes).
+DMG_STAGE="$(mktemp -d)"
+# ditto (not cp) so the signed, stapled bundle is copied bit-perfect —
+# internal framework symlinks and metadata intact.
+ditto "$APP" "$DMG_STAGE/$(basename "$APP")"
+ln -s /Applications "$DMG_STAGE/Applications"
 hdiutil create \
 	-volname "Vitrine $VERSION" \
-	-srcfolder "$APP" \
+	-srcfolder "$DMG_STAGE" \
 	-ov -format UDZO \
 	"$DMG"
+rm -rf "$DMG_STAGE"
 
 # Sign + (re-)staple the DMG itself so the downloaded container is trusted too.
 # Stapling the DMG lets first launch validate offline once it is mounted.

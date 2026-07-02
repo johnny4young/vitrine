@@ -27,12 +27,14 @@ dist/
 # ---------------------------------------------------------------------------
 # Swift Package Manager
 # ---------------------------------------------------------------------------
-# We commit Package.resolved (pinned versions) but ignore the build/cache dirs.
+# Ignore the SPM build/cache dirs. NOTE: no Package.resolved is committed today —
+# resolved package state lives inside the generated .xcodeproj (ignored below), so
+# `from:` ranges in project.yml re-resolve on every fresh clone/CI run. Pinning
+# (exactVersion in project.yml, or committing a lockfile) is tracked in
+# docs/DEEP-REVIEW-2026-07.md.
 .build/
 .swiftpm/
 Packages/
-# Resolved package state lives inside the generated .xcodeproj; it is ignored
-# below together with the rest of the generated project.
 
 # ---------------------------------------------------------------------------
 # XcodeGen

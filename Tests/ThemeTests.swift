@@ -87,6 +87,9 @@ struct HexColorTests {
         #expect(HexColor("#1234567") == nil)  // 7 digits
         #expect(HexColor("rgb(1,2,3)") == nil)
         #expect(HexColor("not a color") == nil)
+        // Fullwidth digits satisfy `isHexDigit` but stop the scanner mid-string;
+        // they must be rejected, not decoded into a wrong-but-accepted color.
+        #expect(HexColor("FFFFF\u{FF10}") == nil)  // trailing fullwidth ０
     }
 
     @Test func relativeLuminanceSeparatesDarkFromLight() {

@@ -146,3 +146,96 @@ ray.so · carbon-app/carbon (+ HN threads) · snappify.com/changelog · chalk.is
 CodeSnap/Polacode (GitHub issues) · postspark.app · charmbracelet/freeze · homeport/termshot · yartsu ·
 dandavison/delta · codekeep.io · cleanshot.com/features · xnapper.com · shottr.cc · screely.com ·
 pika.style · mockuuups.studio · devmotion.app · Redactly / Snagit Smart Redact · snap-tweet / tweetcapture.
+
+---
+
+# Batch 2 — 30 further ideas grounded in the current codebase (2026-07-02)
+
+Each idea below is realizable with subsystems that already exist in the repo (CLI target,
+App Intents, Services menu, Terminal grid, WebRendering multi-viewport, RecentsStore,
+Brand Kit, `SnapshotConfig` serialization, deterministic SVG subset, xcstrings catalog).
+Same key: effort (S/M/L) and suggested tier.
+
+## I. Ecosystem & integrations (ride the existing CLI + deep links)
+
+40. **`vitrine://` deep-link scheme** — encode a full `SnapshotConfig` in a URL so a snapshot
+    is reproducible/shareable as a link; the on-ramp for every integration below. **S/M · Free.**
+41. **Raycast extension** — "Beautify clipboard / selection" commands driving the CLI or deep
+    links; ray.so users are exactly Vitrine's audience. **M · Free (OSS companion).**
+42. **Xcode Source Editor Extension** — "Beautify Selection in Vitrine" straight from Xcode;
+    reuses the editor handoff pasteboard IPC. **M · Free.**
+43. **VS Code / Cursor extension** — send the current selection to Vitrine via deep link;
+    the editor opens pre-filled. **M · Free (OSS companion).**
+44. **Finder Quick Action + Share extension** — right-click any source file or image →
+    rendered PNG; reuses FileInputLoader + the Services pipeline. **M · Free.**
+45. **Stream Deck plugin** — one-key "beautify clipboard with preset N"; thin shell over the
+    CLI. **S · PRO.**
+46. **GitHub Action (macOS runner) for docs pipelines** — render snippets/terminal output at
+    CI time with the existing `vitrine render`; publishes the CLI beyond the Mac. **M · Free.**
+47. **`vitrine release-notes` subcommand** — render the top CHANGELOG entry as a social card
+    for the release post; pure composition of existing parsers + SocialCardRenderer. **S · PRO.**
+
+## J. New input types (reuse the render engine)
+
+48. **asciinema `.cast` import** — pick a frame (or strip) from a recorded session and render
+    it through the existing ANSI grid. **M · Free.**
+49. **tmux / iTerm pane capture helper** — a `vitrine-pane` shell function that pipes the
+    current pane's ANSI content in via the existing shell integration. **S · Free.**
+50. **Jupyter notebook cell rendering** — paste/drop a `.ipynb`, choose a cell → code +
+    output rendered together. **M · Free.**
+51. **CSV/TSV/JSON table beautifier** — tabular clipboard data → a styled table card
+    (monospace grid is already solved by the terminal renderer). **M · Free.**
+52. **Auto-pretty-print before render** — one-click format for JSON/SQL/XML pastes so the
+    image never ships minified one-liners. **S/M · Free.**
+53. **Git-aware diff render in the CLI** — `vitrine render --git HEAD~1.. path/file.swift`
+    emits the before→after diff image; extends the existing diff rendering. **M · PRO.**
+
+## K. Editor power features
+
+54. **Code folding / ellipsis ranges** — collapse selected line ranges into a `⋯` marker to
+    fit long snippets without shrinking the font. **M · Free.**
+55. **Snippet library** — named, searchable saved snippets (source + config), one step beyond
+    Recents; `SnapshotConfig` serialization already exists. **M · Free (limit) / PRO (unlimited).**
+56. **Command palette (⌘K)** — fuzzy actions for theme/font/background/export; the settings
+    schema already enumerates every knob. **M · Free.**
+57. **Re-render any Recent at a new size/preset** — Recents already stores the config; add
+    "Export again as…" to the gallery context menu. **S · Free.**
+58. **Drag-out export** — drag the live preview straight into Slack/Notion/Finder
+    (`NSItemProvider`); complements Copy/Save. **S · Free.**
+59. **Accessibility contrast audit** — warn when theme-on-background contrast falls below
+    WCAG AA for the caption/watermark layers, with a one-click fix. **S/M · Free.**
+60. **Color-blindness preview** — simulate deuteranopia/protanopia over the live preview so
+    shared teaching material is checked before posting. **M · Free.**
+
+## L. Output & automation
+
+61. **Multi-page PDF for long code** — paginate past a height budget with header/footer and
+    line-number continuity; extends the existing color-managed PDF path. **M · PRO.**
+62. **HEIC export** — ImageIO already writes it; smaller files for docs sites that accept it.
+    **S · Free.**
+63. **Copy as Markdown/HTML embed block** — image + fenced source + alt text in one clipboard
+    flavor for READMEs and blogs; extends RichPasteboard. **S · Free.**
+64. **Copy as `data:` URI** — self-contained embed for HTML emails/single-file docs. **S · Free.**
+65. **Honest SVG for terminal captures** — the terminal grid is deterministic geometry +
+    monospace text runs, so it can serialize to real `<text>`/`<rect>` SVG the same way
+    `VectorTemplateSVG` handles template backgrounds. **L · PRO.**
+66. **Menu-bar "render clipboard with preset…" submenu** — quick capture through any saved
+    destination preset without opening the editor. **S · Free.**
+67. **"Render Terminal Output" App Intent** — Shortcuts automation for the ANSI path (the
+    render service and intent scaffolding already exist). **S · Free.**
+68. **Scheduled watch-clipboard mode** — opt-in: when the clipboard turns into code, pulse
+    the menu-bar icon offering a one-click render (no polling daemon; NSPasteboard
+    changeCount on activation). **M · Free.**
+69. **More locales (fr, de, pt-BR, ja)** — the 570-key xcstrings catalog ships at 100% for
+    en/es and LocalizationTests already enforce coverage; each locale is mechanical. **M · Free.**
+
+## Batch-2 top 5 by leverage
+
+1. **Deep-link scheme (#40)** — unlocks #41–#45 almost for free and makes configs shareable.
+2. **Raycast + VS Code extensions (#41/#43)** — meets developers inside the tools they
+   already use; pure companions, no app changes beyond #40.
+3. **Snippet library + re-render Recents (#55/#57)** — turns one-shot captures into a
+   reusable asset library (retention).
+4. **Copy as Markdown/HTML embed (#63)** — the cheapest answer to the "viewers can't copy
+   the code" complaint, compounding the existing text sidecar.
+5. **asciinema import (#48)** — extends the terminal moat no competitor owns.

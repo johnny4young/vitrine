@@ -120,6 +120,24 @@ enum ExportManager {
         return data as Data
     }
 
+    /// HEIC-encodes a `CGImage` via ImageIO — the same rendered, color-managed
+    /// image the PNG path uses, in a far smaller container for docs sites and
+    /// wikis that accept it. Alpha survives (HEIC carries an alpha plane), and
+    /// the near-lossless quality keeps text crisp; the codec is still lossy, so
+    /// PNG remains the byte-exact default.
+    static func heicData(from cgImage: CGImage) -> Data? {
+        let data = NSMutableData()
+        guard
+            let destination = CGImageDestinationCreateWithData(
+                data, UTType.heic.identifier as CFString, 1, nil
+            )
+        else { return nil }
+        let options = [kCGImageDestinationLossyCompressionQuality: 0.95] as CFDictionary
+        CGImageDestinationAddImage(destination, cgImage, options)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
+    }
+
     /// Renders the snapshot canvas for `config` to single-page PDF data, pinning the
     /// page to `fixedSize` for size presets. A thin wrapper over the shared
     /// `pdfData(_:proposedSize:)` rasterizer so the snapshot and social-card PDF paths
@@ -182,6 +200,10 @@ enum ExportManager {
         switch format {
         case .png: png().flatMap(pngData(from:)).map { ($0, .png, "png") }
         case .pdf: pdf().map { ($0, .pdf, "pdf") }
+        // HEIC encodes the exact rendered, color-managed CGImage the PNG path
+        // produces — the two raster formats differ only in container/codec, so no
+        // call site needs a third closure.
+        case .heic: png().flatMap(heicData(from:)).map { ($0, .heic, "heic") }
         }
     }
 
@@ -209,10 +231,21 @@ enum ExportManager {
         }
         guard
             let cgImage = renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile),
-            let png = pngData(from: cgImage)
+                config, scale: scale, fixedSize: fixedSize, profile: profile)
         else {
-            Log.export.error("Copy to pasteboard failed: render or PNG encode returned nil")
+            Log.export.error("Copy to pasteboard failed: render returned nil")
+            return false
+        }
+        return copyPNGToPasteboard(cgImage)
+    }
+
+    /// Writes a PNG of an already-rendered `cgImage` to the general pasteboard —
+    /// the shared primitive behind the config-based copy above and editors that
+    /// hold a rendered asset (the web snapshot editor). Returns success.
+    @discardableResult
+    static func copyPNGToPasteboard(_ cgImage: CGImage) -> Bool {
+        guard let png = pngData(from: cgImage) else {
+            Log.export.error("Copy to pasteboard failed: PNG encode returned nil")
             return false
         }
         let pasteboard = NSPasteboard.general
@@ -244,10 +277,21 @@ enum ExportManager {
             Log.export.error("Save to file failed: render or encode returned nil")
             return .failed
         }
+        return saveToFile(
+            payload: payload, suggestedName: SuggestedFilename.basename(for: config))
+    }
 
+    /// Presents the save panel for an already-encoded payload and writes it — the
+    /// shared panel/write/log dance behind every save flow (the config path above,
+    /// the social-card renderer, and the web editor), so the CS-048 logging rule
+    /// lives in exactly one place.
+    @discardableResult
+    static func saveToFile(
+        payload: (data: Data, type: UTType, ext: String), suggestedName: String
+    ) -> SaveOutcome {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [payload.type]
-        panel.nameFieldStringValue = "vitrine.\(payload.ext)"
+        panel.nameFieldStringValue = "\(suggestedName).\(payload.ext)"
         guard panel.runModal() == .OK, let url = panel.url else {
             Log.export.info("Save to file cancelled")
             return .cancelled

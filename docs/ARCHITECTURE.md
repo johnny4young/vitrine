@@ -138,7 +138,7 @@ the app's export for the same options — a unit test asserts exactly that.
 **Defaults** match the app: a bare `vitrine render input.swift --out image.png` uses
 `SnapshotConfig()`'s defaults (One Dark, JetBrains Mono, aurora background) at the
 app's default scale. `--theme`, `--language`, `--preset`, `--scale`, `--format`
-(`png`/`pdf`), `--profile` (`srgb`/`p3`), and `--transparent` override individual
+(`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), and `--transparent` override individual
 choices; a preset reframes presentation/output (size, padding, background) and never
 touches the source, exactly as in the GUI (CS-020). Unknown ids and out-of-range
 values are rejected up front with a clear message so an automation pipeline fails loud.
@@ -322,7 +322,15 @@ Vitrine/
 │   └── BackgroundView.swift   # solid or gradient background
 ├── Export/
 │   ├── ExportManager.swift    # PNG, PDF, clipboard
-│   └── ShareManager.swift     # NSSharingService
+│   ├── ShareManager.swift     # NSSharingService
+│   ├── MultiSizeExportView.swift # multi-size export sheet (PRO, CS-093)
+│   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
+│   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset (CS-023)
+├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
+│   ├── ANSIParser.swift       # escape-sequence tokenizer
+│   ├── TerminalGrid.swift     # VT screen model (CSI dispatch, scrollback, alt screen)
+│   ├── ANSIPalette.swift      # 16/256-color + truecolor palettes
+│   └── CharacterWidth.swift   # cell-width classification (wide/combining glyphs)
 ├── Settings/
 │   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)
 │   ├── SettingsWindow.swift / SettingsRootView.swift # custom preferences window
@@ -398,21 +406,14 @@ could be complemented with Tree-sitter.
 
 ## Data model
 
-```swift
-// Models/SnapshotConfig.swift — everything that defines the final image
-struct SnapshotConfig {
-    var code:         String = ""
-    var language:     Language = .swift
-    var theme:        Theme = .oneDark
-    var fontName:     String = "JetBrains Mono"
-    var fontSize:     Double = 14
-    var padding:      Double = 32
-    var background:   BackgroundStyle = .gradient(.aurora)
-    var showChrome:   Bool = true
-    var cornerRadius: Double = 8
-    var shadowRadius: Double = 20
-}
+`Models/SnapshotConfig.swift` is the render contract — everything that defines the
+final image (code, language, theme, typography, padding, background, chrome, line
+numbers, annotations, watermark, redacted ranges, wrap columns, terminal geometry,
+foreground image, …). The struct has outgrown any snippet that could live here
+without rotting; **the source file and the doc comment on each field are
+normative.** The supporting enums below are stable and small enough to quote:
 
+```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }
 
 enum GradientPreset: String, CaseIterable {
