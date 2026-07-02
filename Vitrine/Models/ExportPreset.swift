@@ -510,7 +510,12 @@ struct StylePresetDocument: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         format = (try? container.decode(String.self, forKey: .format)) ?? ""
         schemaVersion = (try? container.decode(Int.self, forKey: .schemaVersion)) ?? 0
-        presets = (try? container.decode([StylePreset].self, forKey: .presets)) ?? []
+        // Decode presets element-tolerantly: one corrupt entry drops itself rather than
+        // collapsing the whole array (which would be misreported as an empty file). The
+        // outer `try?` still guards "presets is not an array at all".
+        presets =
+            ((try? container.decode([FailableDecodable<StylePreset>].self, forKey: .presets)) ?? [])
+            .compactMap(\.value)
     }
 
     /// Encodes a preset document as pretty, stable JSON (sorted keys) so an
