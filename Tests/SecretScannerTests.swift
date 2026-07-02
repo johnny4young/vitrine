@@ -54,6 +54,27 @@ struct SecretScannerTests {
         #expect(SecretScanner.secretLines(in: code) == [3, 5])
     }
 
+    @Test func flagsEveryLineOfAPEMPrivateKeyBlock() {
+        // Only the BEGIN banner matches the private-key rule; the scanner must still
+        // flag the key material and the END banner, or redaction blurs the banner and
+        // leaves the key bytes legible.
+        let code = """
+            // deploy credentials
+            -----BEGIN \("RSA ")PRIVATE KEY-----
+            \(token("", "q", 32))
+            \(token("", "r", 32))
+            -----END \("RSA ")PRIVATE KEY-----
+            let after = "ok"
+            """
+        #expect(SecretScanner.secretLines(in: code) == [2, 3, 4, 5])
+    }
+
+    @Test func unterminatedPrivateKeyBlockIsFlaggedThroughEndOfInput() {
+        let code = "-----BEGIN " + "PRIVATE KEY-----\n" + token("", "s", 32) + "\n"
+            + token("", "t", 32)
+        #expect(SecretScanner.secretLines(in: code) == [1, 2, 3])
+    }
+
     @Test func ignoresOrdinaryCode() {
         let code = """
             func add(_ a: Int, _ b: Int) -> Int { a + b }
