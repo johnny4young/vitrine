@@ -138,7 +138,7 @@ the app's export for the same options — a unit test asserts exactly that.
 **Defaults** match the app: a bare `vitrine render input.swift --out image.png` uses
 `SnapshotConfig()`'s defaults (One Dark, JetBrains Mono, aurora background) at the
 app's default scale. `--theme`, `--language`, `--preset`, `--scale`, `--format`
-(`png`/`pdf`), `--profile` (`srgb`/`p3`), and `--transparent` override individual
+(`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), and `--transparent` override individual
 choices; a preset reframes presentation/output (size, padding, background) and never
 touches the source, exactly as in the GUI (CS-020). Unknown ids and out-of-range
 values are rejected up front with a clear message so an automation pipeline fails loud.

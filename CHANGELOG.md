@@ -21,6 +21,12 @@ can never drift.
   `vpane [-e] [target-pane]`: copy a terminal image of a tmux pane's visible contents —
   colors included, nothing re-run — for what is already on screen (`vgrab` remains the
   run-and-capture path).
+- **HEIC export.** A third output format alongside PNG and PDF — the same rendered,
+  color-managed image in a far smaller container for docs sites and wikis. In the app's
+  format picker and the CLI (`--format heic`).
+- **Smarter save names.** The save panel now proposes a filename derived from the snapshot
+  (the filename chip, else the first declared identifier in the code) instead of a fixed
+  `vitrine.png`.
 - **Markdown sidecar (CLI).** `vitrine render --markdown-sidecar` writes a `.md` next to the
   image: the image reference plus the source in a language-tagged fenced code block, ready to
   paste into a README or post so viewers can copy the code the image shows.
