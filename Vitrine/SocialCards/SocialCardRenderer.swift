@@ -132,25 +132,8 @@ enum SocialCardRenderer {
             Log.export.error("Social card save failed: render or encode returned nil")
             return .failed
         }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [payload.type]
-        panel.nameFieldStringValue = "vitrine-card.\(payload.ext)"
-        guard panel.runModal() == .OK, let url = panel.url else {
-            Log.export.info("Social card save cancelled")
-            return .cancelled
-        }
-        do {
-            try payload.data.write(to: url)
-            Log.export.notice("Saved social card to file (\(payload.ext, privacy: .public))")
-            return .saved
-        } catch {
-            let nsError = error as NSError
-            Log.export.error(
-                "Saving social card failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-            )
-            return .failed
-        }
+        // The shared panel/write path — one CS-048 logging spot for every save flow.
+        return ExportManager.saveToFile(payload: payload, suggestedName: "vitrine-card")
     }
 
     /// Renders the card and presents the macOS share sheet anchored to `view`

@@ -115,27 +115,16 @@ struct SocialCardEditorView: View {
     // MARK: - Export
 
     private func copyCard() {
-        let copied = SocialCardRenderer.copyToPasteboard(
-            card, scale: exportScale, profile: settings.colorProfile)
-        CaptureHUDController.shared.present(
-            copied
-                ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
-                : Notifier.failure(String(localized: "Couldn't copy the image")))
+        ExportFeedback.presentCopy(
+            SocialCardRenderer.copyToPasteboard(
+                card, scale: exportScale, profile: settings.colorProfile))
     }
 
     private func saveCard() {
-        switch SocialCardRenderer.saveToFile(
-            card, scale: exportScale, format: settings.exportFormat, profile: settings.colorProfile)
-        {
-        case .saved:
-            CaptureHUDController.shared.present(
-                Notifier.confirmation(String(localized: "Image saved")))
-        case .failed:
-            CaptureHUDController.shared.present(
-                Notifier.failure(String(localized: "Couldn't save the image")))
-        case .cancelled:
-            break  // the user dismissed the save panel — no feedback needed
-        }
+        ExportFeedback.presentSave(
+            SocialCardRenderer.saveToFile(
+                card, scale: exportScale, format: settings.exportFormat,
+                profile: settings.colorProfile))
     }
 
     private func shareCard() {
@@ -143,8 +132,7 @@ struct SocialCardEditorView: View {
         if !SocialCardRenderer.share(
             card, relativeTo: view, scale: exportScale, profile: settings.colorProfile)
         {
-            CaptureHUDController.shared.present(
-                Notifier.failure(String(localized: "Couldn't share the image")))
+            ExportFeedback.presentShareFailure()
         }
     }
 
