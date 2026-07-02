@@ -19,8 +19,9 @@ enum PurchaseOutcome: Equatable {
 /// provider in the direct-download build is harmless); it is only *selected* on the App
 /// Store build, where `Entitlements.defaultProvider()` gates the choice with
 /// `#if !VITRINE_DIRECT_DOWNLOAD`. The direct-download build uses the license-key provider
-/// instead. Nothing here logs or transmits anything about the purchase beyond StoreKit's
-/// own flow — no receipt is sent anywhere, no analytics (CS-048).
+/// instead. Nothing here transmits anything about the purchase beyond StoreKit's own flow —
+/// no receipt is sent anywhere, no analytics; a failure logs only the error domain/code,
+/// never a receipt, product, or account detail (CS-048).
 ///
 /// Refund handling (decision #4): a refunded purchase is revoked (`revocationDate` set), so
 /// it drops out of `currentEntitlements` and `isPro` flips to `false` on the next refresh —
@@ -58,8 +59,8 @@ final class StoreKitProvider: EntitlementProvider {
 
     /// Buys the PRO product and reports the outcome. Errors (no product, network, payment)
     /// surface as `.failed` rather than being swallowed, so the paywall can tell the user
-    /// something went wrong instead of silently clearing its spinner. Logs nothing about the
-    /// purchase and sends no receipt anywhere.
+    /// something went wrong instead of silently clearing its spinner. On failure it logs
+    /// only the error's domain and code — never a receipt, product, or account detail.
     func purchase() async -> PurchaseOutcome {
         do {
             guard let product = try await Product.products(for: [Self.productID]).first else {
@@ -80,6 +81,12 @@ final class StoreKitProvider: EntitlementProvider {
                 return .failed
             }
         } catch {
+            // A purchase failure is exactly when a Console trace helps support; log the
+            // error domain/code only (non-PII), matching the CS-048 logging discipline.
+            let nsError = error as NSError
+            Log.settings.error(
+                "StoreKit purchase failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
             return .failed
         }
     }
