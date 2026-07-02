@@ -87,6 +87,29 @@ struct ANSIParserTests {
         #expect(runs2 == [ANSIRun(text: "body", style: ANSIStyle())])
     }
 
+    @Test func charsetDesignationLeavesNoStrayByte() {
+        // `tput sgr0` emits `ESC ( B` before its SGR reset; the designation's final
+        // byte must be consumed with the sequence, not leak into the text.
+        let runs = ANSIParser.parse("\(esc)(Bplain")
+        #expect(runs == [ANSIRun(text: "plain", style: ANSIStyle())])
+    }
+
+    @Test func colonSeparatedSGRParametersAreIgnoredNotAReset() {
+        // The ITU colon form (`38:5:196`) is not interpreted yet, but it must never
+        // be misread as SGR 0 — that would wipe accumulated attributes.
+        let runs = ANSIParser.parse("\(esc)[1mbold\(esc)[38:5:196mstill")
+        #expect(runs.count == 2)
+        #expect(runs[1].style.bold, "an uninterpreted colon parameter must not reset bold")
+    }
+
+    @Test func c0ControlInsideCSIAbortsTheSequence() {
+        // A C0 control inside a CSI body means the sequence was truncated or
+        // interleaved; the control byte must survive (a terminal executes it), not
+        // be swallowed into the parameter string.
+        let runs = ANSIParser.parse("A\(esc)[31\nmB")
+        #expect(runs.map(\.text).joined() == "A\nmB")
+    }
+
     @Test func toleratesTruncatedEscapeAtEnd() {
         #expect(ANSIParser.parse("ok\(esc)[31") == [ANSIRun(text: "ok", style: ANSIStyle())])
         #expect(ANSIParser.parse("ok\(esc)") == [ANSIRun(text: "ok", style: ANSIStyle())])
