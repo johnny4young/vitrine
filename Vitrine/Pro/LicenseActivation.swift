@@ -206,8 +206,13 @@ import Foundation
                 return .invalidKey
             } catch LicenseActivationError.activationLimitReached {
                 return .activationLimitReached
-            } catch let LicenseActivationError.server(message) {
-                Log.settings.error("License activation refused: \(message, privacy: .public)")
+            } catch LicenseActivationError.server(let message) {
+                // Log a typed reason plus a derived length only — the server-supplied
+                // message is external, untrusted text and must never be logged at
+                // `.public` (Log.swift privacy rule).
+                Log.settings.error(
+                    "License activation refused by server (message length \(message.count, privacy: .public))"
+                )
                 return .invalidKey
             } catch {
                 return .network
