@@ -312,7 +312,7 @@ enum CLIArguments {
         return value
     }
 
-    /// Parses the output format (`png`/`pdf`).
+    /// Parses the output format (`png`/`pdf`/`heic`).
     private static func resolveFormat(_ raw: String) throws -> ExportFormat {
         guard let format = ExportFormat(rawValue: raw.lowercased()) else {
             throw CLIError.invalidValue(flag: "--format", value: raw)
@@ -362,7 +362,8 @@ nonisolated enum CLIUsage {
           --terminal-width <n>   Reconstruct terminal output at exactly n columns
                                  instead of inferring the width (1-1000). Only
                                  affects --language terminal; set by `vgrab -w`.
-          --format <png|pdf>     Output format. Defaults to png.
+          --format <png|pdf|heic>  Output format. Defaults to png; pdf is the vector
+                                 option, heic the compact raster one.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.
           --transparent          Render a real transparent background.
           --text-sidecar         Also write a .txt next to --out with the source as

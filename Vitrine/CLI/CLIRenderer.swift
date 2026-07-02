@@ -137,7 +137,7 @@ enum CLIRenderer {
             .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
-        let ext = options.format == .pdf ? "pdf" : "png"
+        let ext = options.format.rawValue
         var rendered = 0
         var skipped = 0
         for file in files {
@@ -246,8 +246,9 @@ enum CLIRenderer {
         }
 
         switch options.format {
-        case .png:
-            // `pngImage` is non-nil whenever a PNG payload was produced above.
+        case .png, .heic:
+            // Both raster formats encode the CGImage rendered above, so `pngImage`
+            // is non-nil whenever a payload was produced.
             return (pngImage?.width ?? 0, pngImage?.height ?? 0)
         case .pdf:
             // A PDF is a vector document; report the logical point size it was laid

@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import SwiftUI
 import Testing
 
@@ -38,11 +39,12 @@ struct VectorExportTests {
 
     // MARK: - Format menu accuracy (CS-023 acceptance: "menu shows supported vector outputs")
 
-    @Test("Only PNG and PDF are offered; PDF is the vector option")
+    @Test("PNG, PDF, and HEIC are offered; PDF is the only vector option")
     func formatCasesAndVectorFlag() {
-        #expect(ExportFormat.allCases == [.png, .pdf])
+        #expect(ExportFormat.allCases == [.png, .pdf, .heic])
         #expect(ExportFormat.png.isVector == false)
         #expect(ExportFormat.pdf.isVector == true)
+        #expect(ExportFormat.heic.isVector == false)
         // Exactly one supported vector format is advertised, and it is PDF.
         let vectors = ExportFormat.allCases.filter(\.isVector)
         #expect(vectors == [.pdf])
@@ -56,6 +58,7 @@ struct VectorExportTests {
         }
         #expect(ExportFormat.png.displayName == "PNG")
         #expect(ExportFormat.pdf.displayName == "PDF")
+        #expect(ExportFormat.heic.displayName == "HEIC")
         // The vector summary names the scalable nature so the menu reads honestly.
         #expect(ExportFormat.pdf.summary.lowercased().contains("vector"))
     }
@@ -72,6 +75,7 @@ struct VectorExportTests {
         // drift, or stored preferences would silently change format.
         #expect(ExportFormat.png.rawValue == "png")
         #expect(ExportFormat.pdf.rawValue == "pdf")
+        #expect(ExportFormat.heic.rawValue == "heic")
     }
 
     @Test("Unknown or missing format falls back to PNG")
@@ -80,6 +84,53 @@ struct VectorExportTests {
         #expect(ExportFormat.resolve("") == .png)
         #expect(ExportFormat.resolve("svg") == .png)
         #expect(ExportFormat.fallback == .png)
+    }
+
+    // MARK: - HEIC encoding
+
+    @Test("HEIC export encodes the rendered image into a real HEIC container")
+    func heicEncodesTheRenderedImage() throws {
+        let payload = try #require(
+            ExportManager.encodedPayload(
+                .heic,
+                png: { ExportManager.renderCGImage(Self.sampleConfig(), scale: 1) },
+                pdf: { nil }))
+        #expect(payload.ext == "heic")
+        #expect(!payload.data.isEmpty)
+        // It decodes back to an image of the same pixel size as a PNG render.
+        let source = try #require(CGImageSourceCreateWithData(payload.data as CFData, nil))
+        let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let reference = try #require(ExportManager.renderCGImage(Self.sampleConfig(), scale: 1))
+        #expect(decoded.width == reference.width)
+        #expect(decoded.height == reference.height)
+    }
+
+    // MARK: - Suggested filename
+
+    @Test("Save panel name derives from the metadata filename, then the code")
+    func suggestedFilenameDerivation() {
+        // 1. The metadata filename chip wins, extension dropped.
+        var named = Self.sampleConfig()
+        named.metadata.filename = "ContentView.swift"
+        #expect(SuggestedFilename.basename(for: named) == "ContentView")
+
+        // Path-ish or spaced chips are sanitized, never emitted verbatim.
+        named.metadata.filename = "Sources/App/My View.swift"
+        #expect(SuggestedFilename.basename(for: named) == "My-View")
+
+        // 2. Without a chip, the first declared identifier names the file.
+        var code = Self.sampleConfig()
+        code.code = "import Foundation\n\nfunc renderCard() -> Int { 42 }"
+        #expect(SuggestedFilename.basename(for: code) == "vitrine-renderCard")
+
+        // 3. Nothing derivable falls back to the plain app name.
+        var bare = Self.sampleConfig()
+        bare.code = "let answer = 42"
+        #expect(SuggestedFilename.basename(for: bare) == "vitrine")
+        var terminal = Self.sampleConfig()
+        terminal.language = .terminal
+        terminal.code = "$ def not-code\n"
+        #expect(SuggestedFilename.basename(for: terminal) == "vitrine")
     }
 
     // MARK: - PDF signature (CS-023 tests: "exported PDF signature")
