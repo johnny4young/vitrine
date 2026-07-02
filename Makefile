@@ -107,9 +107,9 @@ build-ui-tests: project
 ## once); the hosted CI images are provisioned for headless automation, so the
 ## `UI tests` job in ci.yml runs this on every PR/push — see docs/RELEASING.md.
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle (CS-060).
-## Set TEST_UI_SKIP="<test> <test>" to skip named tests; CI uses it for the
-## display-geometry-sensitive tests that cannot pass on the runner's small
-## virtual display (each skip is annotated on the run — never silent).
+## Set TEST_UI_SKIP="<test> <test>" to skip named tests when a display cannot
+## host one (the display-geometry-sensitive tests skip themselves below the
+## editor's minimum supported display; CI runs the full suite unskipped).
 TEST_UI_SKIP_FLAGS = $(foreach t,$(TEST_UI_SKIP),-skip-testing:VitrineUITests/VitrineUITests/$(t))
 test-ui: project
 	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
@@ -120,8 +120,11 @@ test-ui: project
 ## Documented budget: default render target 300 ms after warm-up (PERF WARN past
 ## it); the suite fails only past the hard ceiling. Grep the log for `PERF`/`PERF
 ## WARN` lines, which carry median/p95 for each representative fixture.
+## Serialized like `test` (see that target's CoreText rationale): the perf suite
+## is CoreText-heavy, and a serial run also keeps latency numbers comparable.
 perf: project
-	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
+		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' \
 		-only-testing:VitrineTests/PerformanceTests test
 

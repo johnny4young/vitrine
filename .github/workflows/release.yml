@@ -4,14 +4,10 @@ on:
   push:
     tags: ["v*"]
 
+# Default the workflow token to read-only; the `publish` job below elevates
+# exactly what it needs. The `verify` job (lint/build/test) never writes.
 permissions:
-  contents: write
-  # Sparkle auto-update (CS-064): the appcast is deployed to GitHub Pages, which the
-  # SUFeedURL in Info.plist points at. `pages: write` + `id-token: write` are required
-  # by the Pages deploy action; `contents: write` already covers attaching the appcast
-  # and the signed-DMG metadata to the GitHub release.
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -26,6 +22,11 @@ jobs:
   verify:
     name: Verify (lint, build, UI-test build, test)
     runs-on: macos-latest
+    # Cap well under the 6-hour default so a wedged SPM resolve or hung
+    # xcodebuild surfaces in minutes on the tag run.
+    timeout-minutes: 60
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
 
@@ -112,6 +113,17 @@ jobs:
     name: Build & publish DMG
     needs: verify
     runs-on: macos-latest
+    # Notarization (`notarytool submit --wait`, twice: app + DMG) can stall on
+    # Apple-side outages; cap the job instead of waiting out the 6-hour default.
+    timeout-minutes: 90
+    permissions:
+      # Attach the DMG/appcast/sidecars to the GitHub release.
+      contents: write
+      # Sparkle auto-update (CS-064): the appcast is deployed to GitHub Pages,
+      # which the SUFeedURL in Info.plist points at. `pages: write` +
+      # `id-token: write` are required by the Pages deploy action.
+      pages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v5
 
@@ -194,6 +206,20 @@ jobs:
           VITRINE_LICENSE_SIGNING_KEY: ${{ secrets.VITRINE_LICENSE_SIGNING_KEY }}
         run: ./scripts/build-dmg.sh
 
+      # Drop the imported signing identity the moment signing is done: none of the
+      # later steps (checksum, appcast, release upload, tap, Pages) need it, and
+      # third-party actions run after this point. `always()` so a failed build
+      # never leaves the unlocked keychain behind for the rest of the job either.
+      - name: Clean up signing keychain
+        if: ${{ always() }}
+        run: |
+          KEYCHAIN="${RUNNER_TEMP}/vitrine-signing.keychain-db"
+          if [ -f "${KEYCHAIN}" ]; then
+            security list-keychains -d user -s "$(security default-keychain -d user | tr -d ' "')" || true
+            security delete-keychain "${KEYCHAIN}" || true
+            echo "Temporary signing keychain removed and search list restored."
+          fi
+
       # Compute, print, and store the DMG SHA-256 so the Homebrew cask can be
       # bumped without re-downloading the artifact (CS-063). The checksum is
       # written to the job summary (printed), saved as a `.sha256` sidecar that
@@ -265,10 +291,11 @@ jobs:
           # EdDSA key). Pinned to the same version the app embeds from Vendor/ (fetched and
           # checksum-verified by scripts/fetch-sparkle.sh) so the appcast format matches the
           # runtime. The tarball is checksum-verified here too — this binary receives the
-          # EdDSA private key on stdin, so it must never run unverified. Keep the version
-          # and sha256 in sync with scripts/fetch-sparkle.sh.
-          SPARKLE_VERSION="2.9.3"
-          SPARKLE_TARBALL_SHA256="74a07da821f92b79310009954c0e15f350173374a3abe39095b4fc5096916be6"
+          # EdDSA private key on stdin, so it must never run unverified. The version and
+          # sha256 come from the single shared pin in scripts/sparkle-version.env, so the
+          # app framework and the appcast tooling can never drift apart.
+          # shellcheck disable=SC1091
+          source scripts/sparkle-version.env
           curl -fsSL -o "${RUNNER_TEMP}/Sparkle.tar.xz" \
             "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
           echo "${SPARKLE_TARBALL_SHA256}  ${RUNNER_TEMP}/Sparkle.tar.xz" | shasum -a 256 -c -

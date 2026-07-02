@@ -25,6 +25,9 @@ jobs:
   archive:
     name: Archive & validate (dry run)
     runs-on: macos-latest
+    # Cap well under the 6-hour default so a wedged SPM resolve or hung
+    # xcodebuild surfaces in minutes.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
 

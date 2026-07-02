@@ -14,13 +14,77 @@ on:
   # Allow re-running the gate (including the drift check) on demand.
   workflow_dispatch:
 
+# CI only reads the repository; it never pushes, comments, or publishes. Explicit
+# read-only permissions keep the job token harmless if any step is compromised.
+permissions:
+  contents: read
+
 concurrency:
   # Scheduled and manual runs have no PR ref to coalesce on, so key them by run id
   # to avoid cancelling an in-flight drift run.
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'schedule' && github.run_id || '' }}
-  cancel-in-progress: true
+  # Superseded PR pushes are safe to cancel; pushes to main are not — every main
+  # commit should keep a completed run so drift and regressions stay bisectable.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Fast, cheap gate on a Linux runner: shell lint, workflow YAML syntax, the
+  # CHANGELOG↔version lockstep, and the golden manifest↔fixture cross-check all
+  # fail here in well under a minute, before any macOS minutes are spent. The
+  # macOS jobs do not depend on it so a Linux-only hiccup never blocks the build.
+  checks:
+    name: Static checks (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # shellcheck ships preinstalled on ubuntu-latest. Severity is capped at
+      # warning: the scripts carry targeted `# shellcheck disable=` directives
+      # where an info-level finding is a false positive by design.
+      - name: Lint shell scripts (shellcheck)
+        run: shellcheck --severity=warning scripts/*.sh
+
+      # Validate every workflow's YAML syntax. This is the CI counterpart to
+      # WorkflowConfigurationTests, which asserts the *structure* the acceptance
+      # criteria require; this step guards against a malformed YAML edit that the
+      # structural test's targeted reads might not surface.
+      - name: Validate workflow YAML
+        run: |
+          set -euo pipefail
+          for f in .github/workflows/*.yml; do
+            ruby -ryaml -e 'YAML.load_file(ARGV[0])' "$f"
+            echo "✓ $f"
+          done
+
+      # Same assertion as the AppStoreReadinessTests lockstep check, but running
+      # before any macOS build: the newest CHANGELOG entry must match
+      # MARKETING_VERSION and an [Unreleased] section must exist.
+      - name: CHANGELOG matches project version
+        run: make changelog-check
+
+      # Golden baseline integrity (CS-025): every scenario pinned in the manifest
+      # must have its PNG committed, and every committed PNG must be pinned. A gap
+      # means the strict pixel diff silently degrades to render-only coverage.
+      - name: Golden manifest ↔ fixture cross-check
+        run: |
+          set -euo pipefail
+          python3 - <<'EOF'
+          import json, pathlib, sys
+          golden = pathlib.Path("Tests/Fixtures/Golden")
+          scenarios = set(json.loads((golden / "manifest.json").read_text())["scenarios"])
+          pngs = {p.stem for p in golden.glob("*.png")}
+          missing = scenarios - pngs
+          orphaned = pngs - scenarios
+          for name in sorted(missing):
+              print(f"::error title=Golden fixture missing (CS-025)::{name} is pinned in manifest.json but {name}.png is not committed — the strict diff can never run for it.")
+          for name in sorted(orphaned):
+              print(f"::error title=Golden fixture orphaned (CS-025)::{name}.png is committed but not pinned in manifest.json.")
+          if missing or orphaned:
+              sys.exit(1)
+          print(f"✓ {len(scenarios)} golden scenarios all have committed fixtures.")
+          EOF
+
   build:
     name: Lint & build
     # macos-latest is the moving "current" image; the drift job above is what
@@ -28,6 +92,9 @@ jobs:
     # macOS/Xcode/Swift this run built against, satisfying the CS-060 acceptance
     # to log exact versions before building.
     runs-on: macos-latest
+    # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
+    # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
 
@@ -75,19 +142,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      # Validate every workflow's YAML syntax with Ruby's standard-library parser
-      # (ships on the macOS runner; no extra install). This is the CI counterpart
-      # to WorkflowConfigurationTests, which asserts the *structure* the acceptance
-      # criteria require; this step guards against a malformed YAML edit that the
-      # structural test's targeted reads might not surface.
-      - name: Validate workflow YAML
-        run: |
-          set -euo pipefail
-          for f in .github/workflows/*.yml; do
-            ruby -ryaml -e 'YAML.load_file(ARGV[0])' "$f"
-            echo "✓ $f"
-          done
-
       - name: Lint (swift-format)
         run: make lint
 
@@ -102,6 +156,21 @@ jobs:
 
       - name: Test (Swift Testing)
         run: make test RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
+
+      # Surface per-target code coverage in the job summary. The scheme already
+      # gathers coverage (project.yml: gatherCoverageData); without this step the
+      # numbers exist only inside an .xcresult nobody downloads on green runs.
+      # Best-effort: a reporting hiccup must never fail the gate.
+      - name: Report code coverage
+        run: |
+          if [ -d "${RUNNER_TEMP}/test.xcresult" ]; then
+            {
+              echo "### Code coverage (per target)"
+              echo '```'
+              xcrun xccov view --report --only-targets "${RUNNER_TEMP}/test.xcresult" || echo "xccov could not read the result bundle"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # On any failure above, upload the .xcresult bundles so the exact build/test
       # diagnostics are available without re-running CI. Compressed because an
@@ -177,10 +246,15 @@ jobs:
       # while a real regression on the pinned image fails it. A `GOLDEN SKIP` line
       # is promoted to an annotation so it is visible that the strict diff did not
       # run here.
+      # SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 mirrors `make test`: the
+      # golden suite is the most CoreText-heavy in the repo, and concurrent
+      # typesetting intermittently crashes the harness (see the Makefile's `test`
+      # target for the full rationale).
       - name: Golden-image suite (CS-025)
         run: |
           set -o pipefail
-          xcodebuild -project Vitrine.xcodeproj -scheme Vitrine -configuration Debug \
+          env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
+            xcodebuild -project Vitrine.xcodeproj -scheme Vitrine -configuration Debug \
             -destination 'platform=macOS' \
             -only-testing:VitrineTests/GoldenImageTests test 2>&1 | tee golden.log
       - name: Annotate skipped golden comparison
