@@ -63,8 +63,6 @@ Vitrine PRO.
 A one-click safety net for the most embarrassing way to leak a credential: sharing a
 screenshot with it still in frame.
 
-### Added
-
 - **Redact secrets in one click.** A new "Redact secrets" control in the editor's **Lines**
   section scans the capture for likely credentials — AWS / GitHub / Slack / Google / Stripe /
   OpenAI keys, JWTs, `-----BEGIN … PRIVATE KEY-----` blocks, and `name = long-value`

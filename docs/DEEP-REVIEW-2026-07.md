@@ -136,10 +136,11 @@ after a one-shot read. Debug PRO unlocks are `#if DEBUG`-only.
   app (copied via `ditto` to keep the signed bundle bit-perfect) plus the symlink.
 - **I9 — `altool --validate-app` is deprecated** (`appstore.yml`). 🔧 Migrate the dry
   run to App Store Connect API tooling before a future Xcode image drops the verb.
-- **I10 — Release pipeline extras.** 📋 Worth adding when releases warrant it:
-  build-provenance attestation on the DMG, an SBOM asset, and a post-publish job that
-  downloads the published DMG and runs `scripts/qa-release.sh` (its exit codes already
-  distinguish signing vs app failures).
+- **I10 — Release pipeline extras.** ✅ *Mostly implemented:* the DMG now gets a
+  signed build-provenance attestation (`gh attestation verify …`), and a post-publish
+  `qa` job downloads the published DMG and runs `scripts/qa-release.sh` against it
+  (its exit codes already distinguish signing vs app failures; it runs after publish
+  so it flags rather than blocks). 📋 Remaining: an SBOM asset.
 - **I11 — `brew install xcodegen` is unpinned in 5 jobs.** 📋 Same drift class the
   weekly job exists to catch; pin a version (checksummed binary, mirroring the
   fetch-sparkle pattern) if a generation change ever bites.
@@ -185,11 +186,14 @@ export path unchanged. Error handling is consistent (zero empty catch blocks; th
   `ExportSettings` and a `SocialCardStore`, and move per-window session machinery to
   `State/`. Also inject `Entitlements`/`BrandKitStore` through `init` (the
   constructor-injection habit already exists) so `exportConfig` is unit-testable.
-- **A2 — `WebSnapshotConfig.swift` (816 lines) mixes eight concerns,** including the
-  security-relevant URL/SSRF validation and the network-capability gate, and is the
-  one WebRendering file special-cased into the CLI target (`project.yml`). 📋 Split
-  into config + `WebURLValidation` + `NetworkCapability`; the CLI then includes only
-  the config, shrinking the special case.
+- **A2 — `WebSnapshotConfig.swift` (816 lines) mixed eight concerns,** including the
+  security-relevant URL/SSRF validation and the network-capability gate. ✅
+  *Implemented:* validation (+ `URLValidationError` + the SSRF host blocklist) now
+  lives in `WebURLValidation.swift` and the entitlement gate in
+  `NetworkCapability.swift`, each independently reviewable. Note: both remain in the
+  CLI's include list — the config's validating initializer depends on `validate`,
+  and settings surfaces read the gate — so the reviewability goal is met while the
+  CLI include list is three value-only files (documented in `project.yml`).
 - **A3 — Three parallel copy/save/share + HUD flows** (Editor, SocialCards,
   WebSnapshot editors). The Web path had already drifted: it re-implemented the
   pasteboard write and save panel inline and **skipped the CS-048 privacy-logging
@@ -209,8 +213,10 @@ export path unchanged. Error handling is consistent (zero empty catch blocks; th
 - **A6 — Docs drift.** ✅ Fixed in this PR: `ARCHITECTURE.md` now lists the missing
   `Terminal/` module and the three missing `Export/` files, and the stale
   `SnapshotConfig` snippet (which under-described the render contract by ~15 fields)
-  is replaced by a pointer to the normative source. 📋 Optional guard: a CI grep that
-  fails when a top-level `Vitrine/<Dir>` is absent from `ARCHITECTURE.md`.
+  is replaced by a pointer to the normative source. ✅ The guard is now live: the
+  Linux CI job fails when a top-level `Vitrine/<Dir>` is absent from
+  `ARCHITECTURE.md`, and a companion gate fails when a String Catalog key loses its
+  translated `es` entry.
 - **A7 — Small consistency nits.** 🔧 `StoreKitProvider` purchase failures return
   `.failed` with no log (add domain/code logging); CLI batch mode counts per-file
   failures as `skipped` without printing which file/why to stderr.
