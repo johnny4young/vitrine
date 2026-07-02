@@ -21,9 +21,15 @@ import Foundation
 ///
 /// It deliberately does **not** reflow source (no wrapping, no token moves) — only the
 /// leading whitespace of each line changes, so the user's code is never restructured.
+/// Multi-line string literals are preserved: a backtick template literal and a
+/// Swift/Kotlin/Scala triple-quoted string carry their open state across lines, so
+/// their interior lines are emitted verbatim (never re-indented) and braces inside
+/// them do not shift nesting depth.
+///
 /// Heuristic limits (acceptable for a dependency-free display formatter): a Rust
 /// lifetime (`&'a T`) sharing a line with a brace, and an attribute brace that spans
-/// lines inside a JSX open tag, can mis-indent that line.
+/// lines inside a JSX open tag, can mis-indent that line; four or more adjacent
+/// quotes (`""""`) can be misread as a triple-quote opener.
 enum CodeFormatter {
     /// Tidies `code` for display by routing on the language's ``Language/formatStrategy``:
     /// brace/tag languages are structurally re-indented, JSON gets its exact re-indent,
@@ -174,6 +180,13 @@ enum CodeFormatter {
         var inOpenTag = false
         var tagBaseDepth = 0
         var inBlockComment = false
+        // Multi-line string state carried across lines (like `inBlockComment`): a
+        // backtick template literal and a Swift/Kotlin/Scala triple-quoted string are
+        // the only string forms that legally span lines. `"`/`'` stay line-local so an
+        // unterminated one (a Rust lifetime `'a`, a stray apostrophe) cannot poison the
+        // following lines — the documented heuristic limit above.
+        var multilineBacktick = false
+        var inTripleQuote = false
         var out: [String] = []
         out.reserveCapacity(rawLines.count)
 
@@ -187,10 +200,15 @@ enum CodeFormatter {
         }
 
         for raw in rawLines {
+            // Whether this line begins inside a multi-line string literal opened on an
+            // earlier line — if so, its leading whitespace is string *content* and must
+            // be emitted verbatim, never re-indented.
+            let startedInString = multilineBacktick || inTripleQuote
             let chars = Array(raw)
             var masked = chars
             var k = 0
-            var stringQuote: Character?
+            // Seed the per-line scan from a carried-open backtick template.
+            var stringQuote: Character? = multilineBacktick ? "`" : nil
             while k < chars.count {
                 let c = chars[k]
                 if inBlockComment {
@@ -199,6 +217,18 @@ enum CodeFormatter {
                         masked[k + 1] = " "
                         k += 2
                         inBlockComment = false
+                        continue
+                    }
+                    k += 1
+                    continue
+                }
+                if inTripleQuote {
+                    masked[k] = " "
+                    if c == "\"", k + 2 < chars.count, chars[k + 1] == "\"", chars[k + 2] == "\"" {
+                        masked[k + 1] = " "
+                        masked[k + 2] = " "
+                        k += 3
+                        inTripleQuote = false
                         continue
                     }
                     k += 1
@@ -213,6 +243,16 @@ enum CodeFormatter {
                     }
                     if c == quote { stringQuote = nil }
                     k += 1
+                    continue
+                }
+                if c == "\"", k + 2 < chars.count, chars[k + 1] == "\"", chars[k + 2] == "\"" {
+                    // A triple-quoted string (Swift/Kotlin/Scala) opens here; it may span
+                    // lines, so its state is carried like a block comment.
+                    inTripleQuote = true
+                    masked[k] = " "
+                    masked[k + 1] = " "
+                    masked[k + 2] = " "
+                    k += 3
                     continue
                 }
                 if c == "\"" || c == "'" || c == "`" {
@@ -235,26 +275,39 @@ enum CodeFormatter {
                 k += 1
             }
 
-            let trimmed = String(raw.drop { $0 == " " || $0 == "\t" })
-            let maskedStart =
-                masked.firstIndex { $0 != " " && $0 != "\t" }.map { String(masked[$0...]) } ?? ""
+            // Carry an unterminated backtick template into the next line; a `"`/`'`
+            // left open is deliberately dropped (see the state declaration above).
+            multilineBacktick = (stringQuote == "`")
 
-            let renderDepth: Int
-            if inOpenTag {
-                renderDepth =
-                    (maskedStart.hasPrefix(">") || maskedStart.hasPrefix("/>"))
-                    ? tagBaseDepth : tagBaseDepth + 1
-            } else if maskedStart.hasPrefix("</")
-                || (maskedStart.first.map { "})]".contains($0) } ?? false)
-            {
-                renderDepth = depth - 1
+            if startedInString {
+                // This line's leading whitespace is string content: emit it byte-for-byte
+                // rather than re-indenting it. The depth scan below still runs on the
+                // masked line, so a literal that closes mid-line keeps brace counting
+                // correct for the code that follows on the same line.
+                out.append(raw)
             } else {
-                renderDepth = depth
-            }
+                let trimmed = String(raw.drop { $0 == " " || $0 == "\t" })
+                let maskedStart =
+                    masked.firstIndex { $0 != " " && $0 != "\t" }
+                    .map { String(masked[$0...]) } ?? ""
 
-            out.append(
-                trimmed.isEmpty
-                    ? "" : String(repeating: indent, count: max(0, renderDepth)) + trimmed)
+                let renderDepth: Int
+                if inOpenTag {
+                    renderDepth =
+                        (maskedStart.hasPrefix(">") || maskedStart.hasPrefix("/>"))
+                        ? tagBaseDepth : tagBaseDepth + 1
+                } else if maskedStart.hasPrefix("</")
+                    || (maskedStart.first.map { "})]".contains($0) } ?? false)
+                {
+                    renderDepth = depth - 1
+                } else {
+                    renderDepth = depth
+                }
+
+                out.append(
+                    trimmed.isEmpty
+                        ? "" : String(repeating: indent, count: max(0, renderDepth)) + trimmed)
+            }
 
             var i = 0
             var localBracket = 0
