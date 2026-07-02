@@ -12,6 +12,9 @@ import Foundation
 /// - `vgrab <cmd>` runs a command under `script` and copies a terminal image of its
 ///   (colored) output to the clipboard. To capture a command you already ran, recall
 ///   it (↑ or `!!`) and prepend `vgrab` — e.g. `vgrab !!`.
+/// - `vpane [pane]` copies a terminal image of a tmux pane's visible contents
+///   (colors included, via `tmux capture-pane -ep`) — the "capture what is already
+///   on screen" complement to `vgrab`, with nothing re-run.
 enum ShellInit {
     /// The shells the integration can emit. All three define `vgrab` as a plain
     /// function — no hooks, no re-exec, nothing always-on; only the function syntax
@@ -75,9 +78,12 @@ enum ShellInit {
 
         Then, in a new shell:
           vgrab <command>   run a command and copy a terminal image of its output
+          vpane [pane]      copy a terminal image of a tmux pane's visible contents
 
         To capture a command you already ran, recall it (↑ or !!) and prepend
-        vgrab — e.g. `vgrab !!`.
+        vgrab — e.g. `vgrab !!`. Inside tmux, `vpane` captures what is already on
+        screen without re-running anything (pass a tmux target pane to capture
+        another pane, e.g. `vpane %1`).
         """
 
     private static let zsh = """
@@ -128,6 +134,36 @@ enum ShellInit {
           rm -f -- "$_vf"
           return $_vc
         }
+
+        # vpane [-e] [target-pane] — copy a terminal image of a tmux pane's visible
+        # contents (colors included, via `tmux capture-pane -ep`). Captures what is
+        # already on screen without re-running anything: the current pane by default,
+        # or any tmux target (e.g. `vpane %1`, `vpane mysession:1.2`). -e/--edit opens
+        # the capture in Vitrine's editor instead of copying the image.
+        vpane() {
+          emulate -L zsh
+          local _vshare="--copy"
+          if [[ "$1" == "-e" || "$1" == "--edit" ]]; then _vshare="--edit"; shift; fi
+          if ! command -v tmux >/dev/null 2>&1; then
+            print -ru2 -- "vpane: tmux is not installed"
+            return 2
+          fi
+          if [[ -z "${TMUX:-}" && $# -eq 0 ]]; then
+            print -ru2 -- "vpane: not inside tmux — pass a target pane (e.g. vpane mysession:1.2)"
+            return 2
+          fi
+          local _vf
+          _vf="$(mktemp -t vitrine-pane)" || return 1
+          if (( $# > 0 )); then
+            tmux capture-pane -ep -t "$1" > "$_vf" || { rm -f -- "$_vf"; return 1; }
+          else
+            tmux capture-pane -ep > "$_vf" || { rm -f -- "$_vf"; return 1; }
+          fi
+          command vitrine render "$_vf" --language terminal "$_vshare"
+          local _vc=$?
+          rm -f -- "$_vf"
+          return $_vc
+        }
         # <<< vitrine shell integration (zsh) <<<
         """
 
@@ -173,6 +209,35 @@ enum ShellInit {
           local _vwarg=()
           [ -n "$_vw" ] && _vwarg=(--terminal-width "$_vw")
           command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "$_vshare"
+          rm -f -- "$_vf"
+          return $_vc
+        }
+
+        # vpane [-e] [target-pane] — copy a terminal image of a tmux pane's visible
+        # contents (colors included, via `tmux capture-pane -ep`). Captures what is
+        # already on screen without re-running anything: the current pane by default,
+        # or any tmux target (e.g. `vpane %1`, `vpane mysession:1.2`). -e/--edit opens
+        # the capture in Vitrine's editor instead of copying the image.
+        vpane() {
+          local _vshare="--copy"
+          if [ "$1" = "-e" ] || [ "$1" = "--edit" ]; then _vshare="--edit"; shift; fi
+          if ! command -v tmux >/dev/null 2>&1; then
+            printf 'vpane: tmux is not installed\\n' >&2
+            return 2
+          fi
+          if [ -z "${TMUX:-}" ] && [ "$#" -eq 0 ]; then
+            printf 'vpane: not inside tmux — pass a target pane (e.g. vpane mysession:1.2)\\n' >&2
+            return 2
+          fi
+          local _vf
+          _vf="$(mktemp -t vitrine-pane)" || return 1
+          if [ "$#" -gt 0 ]; then
+            tmux capture-pane -ep -t "$1" > "$_vf" || { rm -f -- "$_vf"; return 1; }
+          else
+            tmux capture-pane -ep > "$_vf" || { rm -f -- "$_vf"; return 1; }
+          fi
+          command vitrine render "$_vf" --language terminal "$_vshare"
+          local _vc=$?
           rm -f -- "$_vf"
           return $_vc
         }
@@ -236,6 +301,41 @@ enum ShellInit {
                 set _vwarg --terminal-width $_vw
             end
             command vitrine render $_vf --language terminal $_vwarg $_vshare
+            rm -f -- $_vf
+            return $_vc
+        end
+
+        # vpane [-e] [target-pane] — copy a terminal image of a tmux pane's visible
+        # contents (colors included, via `tmux capture-pane -ep`). Captures what is
+        # already on screen without re-running anything: the current pane by default,
+        # or any tmux target (e.g. `vpane %1`). -e/--edit opens the capture in
+        # Vitrine's editor instead of copying the image.
+        function vpane --description 'copy a terminal image of a tmux pane'
+            set -l _vshare '--copy'
+            if set -q argv[1]; and contains -- $argv[1] -e --edit
+                set _vshare '--edit'
+                set -e argv[1]
+            end
+            if not command -q tmux
+                echo "vpane: tmux is not installed" >&2
+                return 2
+            end
+            if not set -q TMUX; and test (count $argv) -eq 0
+                echo "vpane: not inside tmux — pass a target pane (e.g. vpane mysession:1.2)" >&2
+                return 2
+            end
+            set -l _vf (mktemp -t vitrine-pane); or return 1
+            if test (count $argv) -gt 0
+                tmux capture-pane -ep -t $argv[1] > $_vf
+            else
+                tmux capture-pane -ep > $_vf
+            end
+            if test $status -ne 0
+                rm -f -- $_vf
+                return 1
+            end
+            command vitrine render $_vf --language terminal $_vshare
+            set -l _vc $status
             rm -f -- $_vf
             return $_vc
         end
