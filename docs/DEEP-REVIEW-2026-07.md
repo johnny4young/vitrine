@@ -78,9 +78,11 @@ hardening gaps — not structural rot. No critical vulnerability was found.
   pin in `scripts/sparkle-version.env`. Additionally, `fetch-sparkle.sh` skipped the
   fetch whenever `Vendor/Sparkle.framework` existed, so bumping the pin silently kept
   the old framework; it now stamps `Vendor/.sparkle-version` and re-fetches on mismatch. ✅
-- **S7 — Lemon Squeezy activation errors are logged verbatim at `privacy: .public`**
-  (`LicenseActivation.swift:209-211`). 🔧 Log a typed reason instead, matching the
-  no-PII discipline used everywhere else.
+- **S7 — Lemon Squeezy activation errors were logged verbatim at `privacy: .public`**
+  (`LicenseActivation.swift`). ✅ *Implemented:* the server-refusal catch now logs a
+  typed reason plus the message length only (never the external text), matching the
+  no-PII discipline used everywhere else; a test pins the `.server → .invalidKey`
+  outcome so the mapping survives the log change.
 - **S8 — CLI license token trusts a fixed user-writable path.** 📋 By design (documented
   honor model): only a token signed by the pinned production Ed25519 key verifies, so
   the residual risk is seat-sharing, which the docs accept. Option if ever tightened:
@@ -217,9 +219,9 @@ export path unchanged. Error handling is consistent (zero empty catch blocks; th
   Linux CI job fails when a top-level `Vitrine/<Dir>` is absent from
   `ARCHITECTURE.md`, and a companion gate fails when a String Catalog key loses its
   translated `es` entry.
-- **A7 — Small consistency nits.** 🔧 `StoreKitProvider` purchase failures return
-  `.failed` with no log (add domain/code logging); CLI batch mode counts per-file
-  failures as `skipped` without printing which file/why to stderr.
+- **A7 — Small consistency nits.** ✅ *Implemented:* `StoreKitProvider` purchase
+  failures now log the error domain/code (non-PII) instead of returning `.failed`
+  silently, and CLI batch mode names each skipped file (and why) on stderr.
 
 ---
 
@@ -258,21 +260,19 @@ up under scrutiny. Real bugs that survived verification:
   (`1e12`) reached `.shadow(radius:)` and forced a pathological blur allocation. ✅
   Fixed: new `SettingsDefaults.clampShadowRadius` (0…40, the inspector slider's
   range) applied on restore.
-- **B8 — Reindent-on-paste corrupts multi-line string literals.** 🔧 In
-  `CodeFormatter.reindent`, string-masking state (`stringQuote`) resets per line, so
-  a JS template literal or Swift `"""` spanning lines gets its continuation lines
-  re-indented (string *content* changes) and braces inside literals shift depth.
-  `reindentOnPaste` defaults to on. Fix: carry the multi-line-capable delimiter
-  state across lines (like `inBlockComment`); needs the `CodeEditorReindentTests`
-  suite run before landing.
-- **B9 — One malformed preset discards the whole array.** 🔧 `StylePresetDocument`
-  and `PresetStore.readUserPresets` decode all-or-nothing: one corrupt entry
-  collapses a 10-preset file to `[]` (reported misleadingly as "empty") and can wipe
-  all user presets on next launch. Fix: lossy element-wise decode
-  (`FailableDecodable` wrapper + `compactMap`).
-- **B10 — Wide characters overflow a `columns == 1` terminal grid** (reachable via
-  `vitrine render --terminal-width 1` with CJK/emoji input). 🔧 Guard the degenerate
-  width in `TerminalScreen.putChar`. Cosmetic-severity.
+- **B8 — Reindent-on-paste corrupted multi-line string literals.** ✅ *Implemented
+  (+4 tests):* `CodeFormatter.reindent` now carries backtick-template and triple-quote
+  state across lines (like `inBlockComment`), emits lines that begin inside a literal
+  verbatim, and no longer counts braces inside a literal. `"`/`'` stay line-local so
+  Rust lifetimes and apostrophes are still contained.
+- **B9 — One malformed preset discarded the whole array.** ✅ *Implemented (+3 tests):*
+  a new `Support/FailableDecodable<T>` wrapper makes `StylePresetDocument` and
+  `PresetStore.readUserPresets` decode element-tolerantly — one corrupt entry drops
+  itself instead of collapsing the file to `[]` or wiping all user presets on launch.
+- **B10 — Wide characters overflowed a `columns == 1` terminal grid** (reachable via
+  `vitrine render --terminal-width 1` with CJK/emoji input). ✅ *Implemented (+test):*
+  `TerminalScreen.putChar` clamps the cell count to the grid width, so a wide char
+  collapses to its head instead of writing past the margin.
 
 ## 6. Swift 6 concurrency (focused pass)
 
@@ -285,11 +285,12 @@ genuine data race. Items worth fixing, in order:
   (`CodeImageService.swift:116-121`) — an explicit AGENTS.md legacy-API violation
   that double-encodes on the main actor and can lose the deliberate sRGB tagging
   `ExportManager.pngData` guarantees. 🔧 Route through the existing ImageIO path.
-- **C2 — HTML capture is not cancellation-aware** — the URL path's `LoadCoordinator`
+- **C2 — HTML capture was not cancellation-aware** — the URL path's `LoadCoordinator`
   wraps its continuation in `withTaskCancellationHandler`; the HTML path's
-  `NavigationCoordinator` does not, so Cancel is a no-op for up to 10 s per HTML
-  viewport in a batch. 🔧 Mirror the URL path (mechanical; resume is already
-  idempotent).
+  `NavigationCoordinator` did not, so Cancel was a no-op for up to 10 s per HTML
+  viewport in a batch. ✅ *Implemented:* `NavigationCoordinator.waitForLoad` now
+  mirrors the URL path (pre-suspension `Task.isCancelled` check + `onCancel` hop;
+  `resume` was already idempotent).
 - **C3 — PRO multi-size export runs render→encode→write for every preset in one
   uninterrupted main-actor call** — all presets selected at 2–3× scale beachballs
   the app until the loop ends. 🔧 Keep renders on main, hop encode+write per preset

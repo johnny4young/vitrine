@@ -40,6 +40,15 @@ can never drift.
 - Files saved with a UTF-8 BOM no longer carry an invisible leading character into the editor.
 - Malformed hex colors fall back to black instead of decoding a partial value; window
   restoration clamps the shadow radius like every other numeric field.
+- Format-on-paste no longer re-indents the interior of multi-line string literals
+  (backtick templates, Swift/Kotlin/Scala triple-quoted strings) or miscounts braces inside
+  them.
+- Importing a preset file (or loading the saved presets) with one corrupt entry now keeps
+  the valid presets instead of discarding all of them.
+- A wide (double-width) character rendered on a one-column terminal no longer writes past
+  the right margin.
+- Cancelling a webpage/HTML capture now stops promptly instead of waiting out the load
+  timeout.
 
 ## [0.20.0] - 2026-06-28
 
