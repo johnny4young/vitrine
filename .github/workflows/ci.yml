@@ -63,6 +63,58 @@ jobs:
       - name: CHANGELOG matches project version
         run: make changelog-check
 
+      # Localization completeness (CS-047): every translatable key in the String
+      # Catalog must carry a translated Spanish entry (or fully translated plural
+      # variations). The macOS LocalizationTests enforce deeper invariants; this
+      # cheap gate catches a missing translation before any macOS minutes.
+      - name: String Catalog Spanish coverage
+        run: |
+          set -euo pipefail
+          python3 - <<'EOF'
+          import json, sys
+          catalog = json.load(open("Vitrine/Resources/Localizable.xcstrings"))
+          def translated(localization):
+              unit = localization.get("stringUnit")
+              if unit is not None:
+                  return unit.get("state") == "translated"
+              variations = localization.get("variations", {})
+              units = [
+                  form.get("stringUnit", {})
+                  for kind in variations.values()
+                  for form in kind.values()
+              ]
+              return bool(units) and all(u.get("state") == "translated" for u in units)
+          failures = [
+              key
+              for key, entry in catalog["strings"].items()
+              if entry.get("shouldTranslate", True)
+              and not translated(entry.get("localizations", {}).get("es", {}))
+          ]
+          for key in sorted(failures):
+              print(f"::error title=Missing Spanish translation (CS-047)::{key!r} has no translated 'es' entry in Localizable.xcstrings.")
+          if failures:
+              sys.exit(1)
+          print(f"✓ all {len(catalog['strings'])} catalog keys carry a translated Spanish entry.")
+          EOF
+
+      # Architecture-doc drift guard: docs/ARCHITECTURE.md bills itself as
+      # mirroring the module layout under Vitrine/, and it is the one artifact the
+      # deep review found drifting (a whole module missing). Fail when a top-level
+      # module directory is never mentioned.
+      - name: ARCHITECTURE.md mentions every module
+        run: |
+          set -euo pipefail
+          status=0
+          for dir in Vitrine/*/; do
+            module="$(basename "$dir")"
+            if ! grep -q "${module}/" docs/ARCHITECTURE.md; then
+              echo "::error title=ARCHITECTURE.md drift::Vitrine/${module}/ exists but docs/ARCHITECTURE.md never mentions it."
+              status=1
+            fi
+          done
+          [ "$status" -eq 0 ] && echo "✓ every Vitrine/ module is documented."
+          exit "$status"
+
       # Golden baseline integrity (CS-025): every scenario pinned in the manifest
       # must have its PNG committed, and every committed PNG must be pinned. A gap
       # means the strict pixel diff silently degrades to render-only coverage.
