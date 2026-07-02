@@ -79,6 +79,11 @@ struct CLIOptions: Equatable {
     /// codes first). Lets a shared image ship with accessible, greppable output. Needs
     /// an `--out` path to sit beside; not meaningful with `--edit`.
     var textSidecar: Bool = false
+    /// Also write a Markdown `.md` sidecar next to the rendered image: the image
+    /// reference followed by the source in a language-tagged fenced code block, ready
+    /// to paste into a README or blog post so viewers can copy the code the image
+    /// shows. Same constraints as `textSidecar` (needs `--out`; not with `--edit`).
+    var markdownSidecar: Bool = false
 
     /// The default export scale when neither a preset nor an explicit `--scale`
     /// supplies one — the app's documented default resolution multiplier.

@@ -133,6 +133,7 @@ enum CLIArguments {
         var copyToClipboard = false
         var openInEditor = false
         var textSidecar = false
+        var markdownSidecar = false
 
         /// Pops the value that must follow a `--flag`, or throws if it is absent.
         func value(for flag: String) throws -> String {
@@ -172,6 +173,8 @@ enum CLIArguments {
                 openInEditor = true
             case "--text-sidecar":
                 textSidecar = true
+            case "--markdown-sidecar":
+                markdownSidecar = true
             default:
                 if token.hasPrefix("-") {
                     throw CLIError.unknownFlag(token)
@@ -204,12 +207,20 @@ enum CLIArguments {
             if textSidecar {
                 throw CLIError.incompatibleOptions("Cannot combine --edit with --text-sidecar.")
             }
+            if markdownSidecar {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with --markdown-sidecar.")
+            }
         }
-        // The text sidecar sits next to a written image, so it needs an `--out` path —
+        // A sidecar sits next to a written image, so it needs an `--out` path —
         // a clipboard-only copy (`--copy` with no `--out`) has no file to accompany.
         if textSidecar, outputPath == nil {
             throw CLIError.incompatibleOptions(
                 "--text-sidecar needs an --out path to write beside.")
+        }
+        if markdownSidecar, outputPath == nil {
+            throw CLIError.incompatibleOptions(
+                "--markdown-sidecar needs an --out path to write beside.")
         }
         // Input is a file unless reading stdin; output is required unless copying the
         // image to the clipboard or handing it to the editor (`--edit`), neither of
@@ -249,7 +260,8 @@ enum CLIArguments {
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
-            textSidecar: textSidecar
+            textSidecar: textSidecar,
+            markdownSidecar: markdownSidecar
         )
     }
 
@@ -355,6 +367,9 @@ nonisolated enum CLIUsage {
           --transparent          Render a real transparent background.
           --text-sidecar         Also write a .txt next to --out with the source as
                                  selectable text (terminal escapes stripped).
+          --markdown-sidecar     Also write a .md next to --out: the image reference
+                                 plus the source in a fenced code block, ready to
+                                 paste into a README or post.
           -h, --help             Show this help.
 
         Code rendering is fully local: it never needs the network, screen recording,
