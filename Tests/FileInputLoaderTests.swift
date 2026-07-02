@@ -146,6 +146,15 @@ struct FileInputLoaderDecodeTextTests {
         #expect(data.contains(0))  // precondition: it really has NUL bytes
         #expect(FileInputLoader.decodeText(from: data) == text)
     }
+
+    /// A UTF-8 BOM (common from Windows editors) must be stripped: decoding the
+    /// raw bytes as `.utf8` keeps the U+FEFF, and the invisible scalar would leak
+    /// into the editor, language detection, and sidecar text.
+    @Test func utf8BOMIsStripped() {
+        let text = "let x = 1"
+        let data = Data([0xEF, 0xBB, 0xBF]) + Data(text.utf8)
+        #expect(FileInputLoader.decodeText(from: data) == text)
+    }
 }
 
 // MARK: - Language inference

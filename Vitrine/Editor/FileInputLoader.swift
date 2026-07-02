@@ -200,7 +200,10 @@ enum FileInputLoader {
             return String(data: data, encoding: .utf16)
         }
         if bytes.starts(with: [0xEF, 0xBB, 0xBF]) {
-            return String(data: data, encoding: .utf8)
+            // Drop the BOM bytes: unlike the .utf16 decode above, .utf8 keeps a
+            // leading U+FEFF in the string, and the invisible scalar would leak
+            // into the editor, detection, and sidecar text.
+            return String(data: data.dropFirst(3), encoding: .utf8)
         }
         return nil
     }
