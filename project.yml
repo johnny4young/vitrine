@@ -199,11 +199,15 @@ targets:
           # Local HTML rendering (CS-042) drives an offscreen WKWebView, which needs
           # a window-server connection at runtime that this headless tool does not
           # have. The CLI renders code, not web content, so it neither links WebKit
-          # nor compiles the WebKit renderers. The value-only WebSnapshotConfig below
-          # is included explicitly because shared AppSettings/WebDefaults persist URL
-          # capture preferences even though the CLI never renders webpages.
+          # nor compiles the WebKit renderers. Three value-only files are included
+          # explicitly below: WebSnapshotConfig because shared AppSettings/WebDefaults
+          # persist URL capture preferences, WebURLValidation because the config's
+          # validating initializer depends on it, and NetworkCapability because
+          # settings surfaces read the entitlement gate.
           - "WebRendering"
       - path: Vitrine/WebRendering/WebSnapshotConfig.swift
+      - path: Vitrine/WebRendering/WebURLValidation.swift
+      - path: Vitrine/WebRendering/NetworkCapability.swift
       - path: VitrineCLI
     dependencies:
       - package: Highlightr
