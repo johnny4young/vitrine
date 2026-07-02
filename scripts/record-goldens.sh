@@ -25,7 +25,11 @@ echo "Recording golden fixtures (this renders every scenario through the export 
 # VITRINE_RECORD_GOLDENS is passed as a build-setting argument so the scheme's
 # $(VITRINE_RECORD_GOLDENS) environment-variable macro expands into the test
 # runner; an exported shell var alone is not forwarded to the test process.
-xcodebuild \
+# SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 mirrors `make test`: the
+# recorder drives the same CoreText-heavy render path, and concurrent
+# typesetting intermittently crashes the harness (see the Makefile's `test`
+# target for the full rationale).
+env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 xcodebuild \
     -project "${REPO_ROOT}/${PROJECT}" \
     -scheme "${SCHEME}" \
     -configuration Debug \
@@ -34,8 +38,10 @@ xcodebuild \
     VITRINE_RECORD_GOLDENS=1 \
     test 2>&1 | tee "${log}"
 
-# The recorder prints exactly one `GOLDEN OUTPUT <abs path>` line.
-staging="$(grep -m1 'GOLDEN OUTPUT ' "${log}" | sed 's/^.*GOLDEN OUTPUT //')"
+# The recorder prints exactly one `GOLDEN OUTPUT <abs path>` line. `|| true`
+# keeps a missing line from killing the script under `set -e` before the
+# explicit error message below can fire.
+staging="$(grep -m1 'GOLDEN OUTPUT ' "${log}" | sed 's/^.*GOLDEN OUTPUT //' || true)"
 if [ -z "${staging}" ] || [ ! -d "${staging}" ]; then
     echo "error: could not locate the recorder staging directory (no GOLDEN OUTPUT line)." >&2
     exit 1
