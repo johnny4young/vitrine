@@ -191,15 +191,18 @@ export path unchanged. Error handling is consistent (zero empty catch blocks; th
   into config + `WebURLValidation` + `NetworkCapability`; the CLI then includes only
   the config, shrinking the special case.
 - **A3 — Three parallel copy/save/share + HUD flows** (Editor, SocialCards,
-  WebSnapshot editors). The Web path has already drifted: it re-implements the
-  pasteboard write and save panel inline and **skips the CS-048 privacy-logging
-  rule** on failure. 🔧 Extract an `ExportFeedback` helper + a data-taking
-  `ExportManager.saveToFile` overload; ~80 duplicated lines disappear and the logging
-  rule re-unifies.
-- **A4 — Misplaced/junk-drawer files.** 📋 Quick wins on a Mac: split
-  `Models/Preferences.swift` (it holds `HotkeyAction`/`ExportFormat`/`ColorProfile` —
-  nothing "Preferences"); split `DesignSystem/TokenComponents.swift` (17 unrelated
-  components, 769 lines); co-locate the cross-folder `VitrineCommand` extensions.
+  WebSnapshot editors). The Web path had already drifted: it re-implemented the
+  pasteboard write and save panel inline and **skipped the CS-048 privacy-logging
+  rule** on failure. ✅ *Implemented:* new `Export/ExportFeedback` presenter (one
+  outcome→HUD mapping, one set of strings, cancelled-save-is-silent in one place),
+  a payload-taking `ExportManager.saveToFile(payload:suggestedName:)` that every
+  save flow (config, social card, web) funnels through, and a shared
+  `copyPNGToPasteboard(_:)` primitive — the web path now logs like every other save.
+- **A4 — Misplaced/junk-drawer files.** ✅ *Implemented:* `Models/Preferences.swift`
+  split into `HotkeyAction.swift` + `ExportFormat.swift` (with `ColorProfile`);
+  `DesignSystem/TokenComponents.swift` (769 lines, 17 components) split into
+  form primitives + `TokenButtons` + `ThemeChips` + `FontChips` + `Swatches`;
+  the `VitrineCommand` SwiftUI extension co-located under `App/`.
 - **A5 — Flat 73-file `Tests/` directory.** 📋 Folder by module (`project.yml`
   ingests the path recursively — zero config); keep the golden infra in its own
   subfolder.

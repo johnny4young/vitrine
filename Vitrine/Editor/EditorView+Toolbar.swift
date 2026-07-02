@@ -127,10 +127,7 @@ extension EditorView {
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
             richText: settings.richClipboard, plainText: settings.textSidecar)
-        CaptureHUDController.shared.present(
-            copied
-                ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
-                : Notifier.failure(String(localized: "Couldn't copy the image")))
+        ExportFeedback.presentCopy(copied)
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
         // shared settings (what the Settings toggle edits) rather than this window's
         // per-session copy. Close *this* window — captured via `WindowAccessor`, so it
@@ -145,20 +142,11 @@ extension EditorView {
     /// toolbar Save button gives the same feedback as the File-menu command (audit UX-1).
     /// A cancelled save panel is silent.
     func saveImage() {
-        switch ExportManager.saveToFile(
-            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
-            profile: settings.colorProfile)
-        {
-        case .saved:
-            CaptureHUDController.shared.present(
-                Notifier.confirmation(String(localized: "Image saved")))
-        case .failed:
-            CaptureHUDController.shared.present(
-                Notifier.failure(String(localized: "Couldn't save the image")))
-        case .cancelled:
-            break
-        }
+        ExportFeedback.presentSave(
+            ExportManager.saveToFile(
+                settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+                format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
+                profile: settings.colorProfile))
     }
 
     /// The explicit alternative copy targets behind the rich-text icon
