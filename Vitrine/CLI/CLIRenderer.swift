@@ -229,6 +229,9 @@ enum CLIRenderer {
         guard let payload else { throw CLIError.renderFailed }
         try write(payload.data, to: url, options: options)
         if options.textSidecar { try writeTextSidecar(for: config, options: options, beside: url) }
+        if options.markdownSidecar {
+            try writeMarkdownSidecar(for: config, options: options, beside: url)
+        }
 
         switch options.format {
         case .png:
@@ -243,12 +246,18 @@ enum CLIRenderer {
         }
     }
 
-    /// The "` + card.txt`" tail appended to a success line when a text sidecar was
-    /// written, naming the sidecar file; empty when the sidecar was not requested.
+    /// The "` + card.txt`" tail appended to a success line when sidecars were
+    /// written, naming each sidecar file; empty when none was requested.
     private static func sidecarNote(_ options: CLIOptions, beside imageURL: URL) -> String {
-        guard options.textSidecar else { return "" }
-        let name = imageURL.deletingPathExtension().appendingPathExtension("txt").lastPathComponent
-        return " + \(name)"
+        let base = imageURL.deletingPathExtension()
+        var names: [String] = []
+        if options.textSidecar {
+            names.append(base.appendingPathExtension("txt").lastPathComponent)
+        }
+        if options.markdownSidecar {
+            names.append(base.appendingPathExtension("md").lastPathComponent)
+        }
+        return names.map { " + \($0)" }.joined()
     }
 
     /// Writes the plain-text sidecar next to the rendered image at `imageURL`,
@@ -269,6 +278,53 @@ enum CLIRenderer {
             )
             throw CLIError.writeFailed(path: sidecarURL.path)
         }
+    }
+
+    /// Writes the Markdown sidecar next to the rendered image at `imageURL`
+    /// (`card.png` → `card.md`): the image reference followed by the source in a
+    /// language-tagged fenced code block, ready to paste into a README or post so
+    /// viewers can copy the code the image shows. Terminal output is reduced to its
+    /// visible text first, exactly like the plain-text sidecar.
+    private static func writeMarkdownSidecar(
+        for config: SnapshotConfig, options: CLIOptions, beside imageURL: URL
+    ) throws {
+        let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("md")
+        let contents = markdownSidecarContents(
+            for: config, imageName: imageURL.lastPathComponent)
+        do {
+            try Data(contents.utf8).write(to: sidecarURL)
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "CLI markdown-sidecar write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            throw CLIError.writeFailed(path: sidecarURL.path)
+        }
+    }
+
+    /// Builds the Markdown sidecar body: `![alt](image)` + a fenced code block.
+    /// The fence is one backtick longer than the longest backtick run in the body,
+    /// so code containing ``` can never break out of the block; the info string is
+    /// the language id (`text` for terminal output, whose escapes are stripped).
+    /// Internal (not private) so the exact format is unit-testable.
+    static func markdownSidecarContents(for config: SnapshotConfig, imageName: String) -> String {
+        let body = config.sidecarText
+        let fenceLanguage = config.language == .terminal ? "text" : config.language.rawValue
+        var longestBacktickRun = 0
+        var currentRun = 0
+        for character in body {
+            currentRun = character == "`" ? currentRun + 1 : 0
+            longestBacktickRun = max(longestBacktickRun, currentRun)
+        }
+        let fence = String(repeating: "`", count: max(3, longestBacktickRun + 1))
+        let alt = config.metadata.filename ?? "Code rendered with Vitrine"
+        let trailingNewline = body.hasSuffix("\n") ? "" : "\n"
+        return """
+            ![\(alt)](\(imageName))
+
+            \(fence)\(fenceLanguage)
+            \(body)\(trailingNewline)\(fence)
+            """ + "\n"
     }
 
     /// Writes `data` to `url`, mapping any I/O failure to `CLIError.writeFailed`.
