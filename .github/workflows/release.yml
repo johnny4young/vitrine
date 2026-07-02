@@ -124,6 +124,8 @@ jobs:
       # `id-token: write` are required by the Pages deploy action.
       pages: write
       id-token: write
+      # Signed build-provenance statement for the DMG (attest step below).
+      attestations: write
     steps:
       - uses: actions/checkout@v5
 
@@ -324,6 +326,15 @@ jobs:
             echo "Served at the SUFeedURL in Info.plist; attached to this release as \`appcast.xml\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Signed build-provenance for the DMG (supply-chain posture, CS-061 family):
+      # GitHub's first-party attestation records which workflow run, on which
+      # commit, produced these exact bytes. Anyone can verify a download with:
+      #   gh attestation verify Vitrine-<version>.dmg --repo <owner>/vitrine
+      - name: Attest DMG build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/*.dmg
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v3
         with:
@@ -418,3 +429,33 @@ jobs:
       - name: Deploy appcast to GitHub Pages
         if: ${{ steps.appcast.outcome == 'success' }}
         uses: actions/deploy-pages@v5
+
+  # Post-publish QA (CS-062 posture): download the DMG users will actually get and
+  # run the scripted half of the release QA checklist against it — Gatekeeper's own
+  # codesign/spctl/stapler assessment, version/identity recording, and the
+  # app-vs-signing failure classification qa-release.sh already encodes. Runs after
+  # publish so a failure never blocks the release; it flags the published artifact
+  # for immediate investigation instead.
+  qa:
+    name: QA the published DMG
+    needs: publish
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download the published DMG
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "${GITHUB_REF_NAME}" --pattern '*.dmg' --dir dist
+          ls -l dist
+
+      # No argument: the script auto-detects dist/*.dmg. Exit codes distinguish an
+      # app failure (3) from a signing/notarization failure (2) in the job log.
+      - name: Run the release QA suite
+        run: ./scripts/qa-release.sh
