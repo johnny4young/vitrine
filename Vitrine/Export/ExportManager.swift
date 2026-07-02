@@ -120,6 +120,24 @@ enum ExportManager {
         return data as Data
     }
 
+    /// HEIC-encodes a `CGImage` via ImageIO — the same rendered, color-managed
+    /// image the PNG path uses, in a far smaller container for docs sites and
+    /// wikis that accept it. Alpha survives (HEIC carries an alpha plane), and
+    /// the near-lossless quality keeps text crisp; the codec is still lossy, so
+    /// PNG remains the byte-exact default.
+    static func heicData(from cgImage: CGImage) -> Data? {
+        let data = NSMutableData()
+        guard
+            let destination = CGImageDestinationCreateWithData(
+                data, UTType.heic.identifier as CFString, 1, nil
+            )
+        else { return nil }
+        let options = [kCGImageDestinationLossyCompressionQuality: 0.95] as CFDictionary
+        CGImageDestinationAddImage(destination, cgImage, options)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
+    }
+
     /// Renders the snapshot canvas for `config` to single-page PDF data, pinning the
     /// page to `fixedSize` for size presets. A thin wrapper over the shared
     /// `pdfData(_:proposedSize:)` rasterizer so the snapshot and social-card PDF paths
@@ -182,6 +200,10 @@ enum ExportManager {
         switch format {
         case .png: png().flatMap(pngData(from:)).map { ($0, .png, "png") }
         case .pdf: pdf().map { ($0, .pdf, "pdf") }
+        // HEIC encodes the exact rendered, color-managed CGImage the PNG path
+        // produces — the two raster formats differ only in container/codec, so no
+        // call site needs a third closure.
+        case .heic: png().flatMap(heicData(from:)).map { ($0, .heic, "heic") }
         }
     }
 
@@ -247,7 +269,7 @@ enum ExportManager {
 
         let panel = NSSavePanel()
         panel.allowedContentTypes = [payload.type]
-        panel.nameFieldStringValue = "vitrine.\(payload.ext)"
+        panel.nameFieldStringValue = "\(SuggestedFilename.basename(for: config)).\(payload.ext)"
         guard panel.runModal() == .OK, let url = panel.url else {
             Log.export.info("Save to file cancelled")
             return .cancelled
