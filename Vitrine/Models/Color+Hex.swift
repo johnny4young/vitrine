@@ -32,7 +32,12 @@ extension Color {
     init(hex: String) {
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")).uppercased()
         var value: UInt64 = 0
-        let scanned = Scanner(string: cleaned).scanHexInt64(&value)
+        // `scanHexInt64` succeeds on any leading hex digits, so also require the
+        // scanner to have consumed the whole string — otherwise mixed input of a
+        // valid length ("12GG34") would silently decode the partial value into a
+        // wrong color instead of taking the documented black fallback.
+        let scanner = Scanner(string: cleaned)
+        let scanned = scanner.scanHexInt64(&value) && scanner.isAtEnd
 
         let r: Double
         let g: Double
@@ -67,11 +72,15 @@ extension Color {
             self.init(.sRGB, red: 0, green: 0, blue: 0, opacity: 1)
             return
         }
-        // The length matched a known format but the scan failed, so non-hex
-        // characters slipped in (e.g. a stray letter) — a typo worth surfacing
-        // in DEBUG. This is reachable only from the valid 3/4/6/8 branches.
+        // The length matched a known format but the scan failed or stopped short,
+        // so non-hex characters slipped in (e.g. a stray letter) — a typo worth
+        // surfacing in DEBUG, and worth the documented black fallback in release
+        // rather than a color decoded from a partial value. This is reachable only
+        // from the valid 3/4/6/8 branches.
         if !scanned {
             assertionFailure("Color(hex:) could not parse \"\(hex)\"; falling back to black")
+            self.init(.sRGB, red: 0, green: 0, blue: 0, opacity: 1)
+            return
         }
         self.init(.sRGB, red: r, green: g, blue: b, opacity: a)
     }
