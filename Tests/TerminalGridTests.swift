@@ -275,6 +275,15 @@ struct TerminalGridTests {
         #expect(plain("AB你", columns: 3) == "AB\n你")
     }
 
+    @Test func wideCharacterOnAOneColumnGridStaysInsideTheMargin() {
+        // The degenerate `--terminal-width 1` grid: a wide char cannot fit its
+        // continuation cell, so it collapses to its head instead of writing past
+        // column 0 (and must not burn a blank row on a phantom wrap).
+        #expect(plain("你", columns: 1) == "你")
+        #expect(plain("你你", columns: 1) == "你\n你")
+        #expect(plain("🚀X", columns: 1) == "🚀\nX")
+    }
+
     @Test func emojiCountsAsWide() {
         #expect(plain("🚀X") == "🚀X")
         #expect(plain("A🚀", columns: 2) == "A\n🚀")  // wraps, not split
