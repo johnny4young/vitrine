@@ -175,9 +175,12 @@ final class PresetStore {
     /// cannot shadow or "overwrite" a built-in.
     private static func readUserPresets(from defaults: UserDefaults) -> [StylePreset] {
         guard let data = defaults.data(forKey: storageKey),
-            let decoded = try? JSONDecoder().decode([StylePreset].self, from: data)
+            let decoded = try? JSONDecoder().decode(
+                [FailableDecodable<StylePreset>].self, from: data)
         else { return [] }
-        return decoded.filter { !StylePreset.builtInIDs.contains($0.id) }
+        // One corrupt element drops itself rather than wiping every user preset on the
+        // next launch (deep-review B9).
+        return decoded.compactMap(\.value).filter { !StylePreset.builtInIDs.contains($0.id) }
     }
 
     /// Persists the user presets as a JSON array. An unexpected encode failure
