@@ -12,6 +12,29 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- **asciinema import.** Drop or open an asciinema recording (`.cast`, v2/v3) and Vitrine
+  replays its output events into the terminal renderer — a recorded session becomes a styled
+  terminal image with no conversion step.
+- **`vpane` shell helper.** `vitrine shell-init` (zsh/bash/fish) now also defines
+  `vpane [-e] [target-pane]`: copy a terminal image of a tmux pane's visible contents —
+  colors included, nothing re-run — for what is already on screen (`vgrab` remains the
+  run-and-capture path).
+- **Markdown sidecar (CLI).** `vitrine render --markdown-sidecar` writes a `.md` next to the
+  image: the image reference plus the source in a language-tagged fenced code block, ready to
+  paste into a README or post so viewers can copy the code the image shows.
+
+### Fixed
+
+- Secret redaction now blurs every line of a PEM private key, not just its BEGIN banner.
+- Terminal line mode: `ESC ( B` charset designations no longer leak a stray `B`; colon-form
+  SGR parameters (`38:5:196`) no longer reset accumulated styles; a control byte inside a
+  truncated CSI sequence no longer merges output lines.
+- Files saved with a UTF-8 BOM no longer carry an invisible leading character into the editor.
+- Malformed hex colors fall back to black instead of decoding a partial value; window
+  restoration clamps the shadow radius like every other numeric field.
+
 ## [0.20.0] - 2026-06-28
 
 Turn *any* screenshot into a share-ready image — not just code.

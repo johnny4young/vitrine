@@ -108,6 +108,21 @@ vgrab !!                # capture a command you already ran (re-runs the last on
   `vgrab -e git status` hands the output straight to a Vitrine window (nothing touches
   your clipboard).
 
+### `vpane` — capture a tmux pane
+
+Inside **tmux**, `vpane` captures what is *already on screen* without re-running
+anything: it reads the pane's visible contents with colors (`tmux capture-pane -ep`)
+and copies the rendered terminal image.
+
+```sh
+vpane                   # the current pane, exactly as it looks now
+vpane %1                # any pane, by tmux target (%1, mysession:1.2, …)
+vpane -e                # open the capture in Vitrine's editor instead
+```
+
+`vpane` is the complement to `vgrab`: use `vgrab` when you're about to run something,
+`vpane` when the interesting output is already sitting in a tmux pane.
+
 ### Zero background cost
 
 `vgrab` is just a shell function — it does nothing until you call it. The snippet
