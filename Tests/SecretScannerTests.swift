@@ -70,8 +70,8 @@ struct SecretScannerTests {
     }
 
     @Test func unterminatedPrivateKeyBlockIsFlaggedThroughEndOfInput() {
-        let code = "-----BEGIN " + "PRIVATE KEY-----\n" + token("", "s", 32) + "\n"
-            + token("", "t", 32)
+        let lines = ["-----BEGIN " + "PRIVATE KEY-----", token("", "s", 32), token("", "t", 32)]
+        let code = lines.joined(separator: "\n")
         #expect(SecretScanner.secretLines(in: code) == [1, 2, 3])
     }
 
