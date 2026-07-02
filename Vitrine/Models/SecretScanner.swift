@@ -45,12 +45,31 @@ enum SecretScanner {
     }
 
     /// Every detected secret in line order (a line may match more than one rule).
+    ///
+    /// Per-line and stateless, with one deliberate exception: a PEM private key spans
+    /// many lines but only its `-----BEGIN … PRIVATE KEY-----` banner matches the rule
+    /// above, so the scanner carries a flag across lines and also reports every line of
+    /// the block — the base64 key material and the `-----END …` banner (through EOF when
+    /// the block is never closed). Without this, one-click redaction would blur the
+    /// banner and leave the actual key bytes legible.
     static func scan(_ text: String) -> [Match] {
         var matches: [Match] = []
+        var insidePrivateKeyBlock = false
         for (index, line) in text.components(separatedBy: "\n").enumerated() {
             let range = NSRange(line.startIndex..<line.endIndex, in: line)
+            var matchedPrivateKeyBanner = false
             for rule in rules where rule.regex.firstMatch(in: line, range: range) != nil {
                 matches.append(Match(line: index + 1, kind: rule.kind))
+                if rule.kind == "private-key" { matchedPrivateKeyBanner = true }
+            }
+            let closesBlock = line.contains("-----END") && line.contains("PRIVATE KEY-----")
+            if insidePrivateKeyBlock {
+                if !matchedPrivateKeyBanner {
+                    matches.append(Match(line: index + 1, kind: "private-key"))
+                }
+                if closesBlock { insidePrivateKeyBlock = false }
+            } else if matchedPrivateKeyBanner && !closesBlock {
+                insidePrivateKeyBlock = true
             }
         }
         return matches
