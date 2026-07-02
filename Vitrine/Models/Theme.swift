@@ -376,7 +376,10 @@ struct HexColor: Hashable, Sendable {
         let cleaned = string.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
             .uppercased()
-        guard cleaned.allSatisfy(\.isHexDigit) else { return nil }
+        // `isHexDigit` alone also accepts fullwidth digits (e.g. "Ｆ"), which stop
+        // the Scanner mid-string and would decode a wrong-but-accepted color;
+        // require ASCII so the scan below always consumes the whole string.
+        guard cleaned.allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return nil }
         var value: UInt64 = 0
         guard Scanner(string: cleaned).scanHexInt64(&value) else { return nil }
 
