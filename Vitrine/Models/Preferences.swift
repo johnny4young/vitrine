@@ -39,6 +39,7 @@ enum HotkeyAction: String, CaseIterable, Identifiable, Codable {
 enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     case png
     case pdf
+    case heic
 
     var id: String { rawValue }
 
@@ -46,6 +47,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .png: "PNG"
         case .pdf: "PDF"
+        case .heic: "HEIC"
         }
     }
 
@@ -53,10 +55,10 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     ///
     /// Drives the "vector" label/help shown next to the format picker so the menu
     /// states honestly which output is resolution-independent (CS-023). Raster PNG
-    /// is `false`; PDF is `true`.
+    /// and HEIC are `false`; PDF is `true`.
     var isVector: Bool {
         switch self {
-        case .png: false
+        case .png, .heic: false
         case .pdf: true
         }
     }
@@ -67,6 +69,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .png: "Raster image at the chosen resolution. Best for posting and chat."
         case .pdf: "Scalable vector document. Best for docs, slides, and print."
+        case .heic: "Compressed raster image, much smaller than PNG. Best for docs sites."
         }
     }
 
