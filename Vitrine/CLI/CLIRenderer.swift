@@ -145,8 +145,11 @@ enum CLIRenderer {
             do {
                 loaded = try fileLoader(file)
             } catch {
-                // A binary/unreadable file is skipped, never a fatal batch error.
+                // A binary/unreadable file is skipped, never a fatal batch error —
+                // but the automation user gets the filename and reason on stderr, so
+                // "skipped 3" in the summary is diagnosable without re-running.
                 skipped += 1
+                reportSkipped(file, reason: "not readable text")
                 continue
             }
             let language = options.language ?? loaded.language
@@ -160,6 +163,7 @@ enum CLIRenderer {
                 rendered += 1
             } catch {
                 skipped += 1
+                reportSkipped(file, reason: "render or write failed")
             }
         }
 
@@ -169,6 +173,14 @@ enum CLIRenderer {
         let summary =
             "Rendered \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
+    }
+
+    /// Names a skipped batch file (and why) on stderr. The user chose the input
+    /// folder, so echoing a filename from it leaks nothing (unlike the app's
+    /// no-paths logging rule for system errors); the summary line stays aggregate.
+    private static func reportSkipped(_ file: URL, reason: String) {
+        FileHandle.standardError.write(
+            Data("vitrine: skipped \(file.lastPathComponent): \(reason)\n".utf8))
     }
 
     /// Reads the input file through the injected loader, translating its
