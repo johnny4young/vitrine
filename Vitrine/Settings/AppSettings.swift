@@ -17,6 +17,16 @@ final class AppSettings {
     /// The current snapshot configuration (theme, font, padding, …).
     var config: SnapshotConfig {
         didSet {
+            // Typing changes only `config.code`, which `persistStyle` never writes — so
+            // re-persisting the whole style block (~15 defaults writes + JSON encodes) and
+            // re-checking preset divergence on every keystroke is pure churn. Skip both
+            // when nothing but the code changed. Normalizing `code` before the comparison
+            // means the whole struct is checked, so no persisted style field can ever be
+            // missed — any real change (padding, theme, background, annotations, …) still
+            // persists (audit Perf-7).
+            var normalized = config
+            normalized.code = oldValue.code
+            guard normalized != oldValue else { return }
             SettingsCodec.persistStyle(config, to: defaults)
             dropPresetIfStyleDiverged()
         }
