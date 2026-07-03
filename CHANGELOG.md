@@ -50,6 +50,13 @@ can never drift.
 - Cancelling a webpage/HTML capture now stops promptly instead of waiting out the load
   timeout.
 
+### Performance
+
+- Image backgrounds and foreground ("beautify any image") snapshots are cached after the
+  first decode, so dragging a slider or typing no longer re-reads the file from disk on
+  every preview frame.
+- A code-only edit (typing) no longer re-persists the whole style block to preferences.
+
 ## [0.20.0] - 2026-06-28
 
 Turn *any* screenshot into a share-ready image — not just code.

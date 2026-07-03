@@ -310,13 +310,12 @@ perf audits left real caches in place (highlight/bridge/terminal FIFO caches,
 Recents thumbnail cache, board thumbnails). What remains, by user-visible impact:
 
 - **P1 — Image backgrounds re-read + re-decode from disk on every preview
-  invalidation.** 🔧 `BackgroundImageStore.image(for:)` is `NSImage(contentsOf:)`
-  with no cache, called from SwiftUI `body` in three hot places; the framed-image
-  path additionally forces a full bitmap decode per body pass to sample the chrome
-  color. With a multi-MB photo, every keystroke/slider tick does main-thread file
-  I/O + decode. Fix: an `NSCache` keyed by the content-addressed `fileName` (the
-  same fix `RecentsStore` already got), plus caching the sampled `FrameChrome`.
-  *The single worst hot path for the image features.*
+  invalidation.** ✅ *Implemented (+test):* `BackgroundImageStore.image(for:)` now
+  serves from a process-wide `NSCache` keyed by the resolved (content-addressed, so
+  immutable) path — the same fix `RecentsStore` already has — so an unchanged
+  background/foreground no longer touches the disk on every `body` pass. 📋 Remaining:
+  cache the sampled `FrameChrome` for the framed-image path (a per-body full bitmap
+  decode in `DeviceFrames.topEdgeColor`).
 - **P2 — Settings previews rasterize a full `ImageRenderer` canvas inside `body`**
   (`StyleSettingsView`, `CustomThemeEditor` at scale 2) — a color-picker drag
   re-renders the slowest path in the app per frame. 🔧 Debounce into `@State` via
@@ -338,17 +337,28 @@ Recents thumbnail cache, board thumbnails). What remains, by user-visible impact
   clock). 🔧 Design change: overlap loads with a small-cap task group — WKWebView is
   main-actor bound but each view has its own web-content process; needs runtime
   determinism validation.
-- **P7 — Every keystroke persists the whole style block** (~15 `defaults.set` + 3
-  JSON encodes) even though `code` is not persisted. 🔧 Skip persistence when only
-  content fields changed — or split `SnapshotConfig` into style vs content
-  observables, which also structurally reduces SwiftUI invalidation storms (the
-  whole inspector re-evaluates per keystroke today).
-- **P8 — Smaller:** gutter re-splits the attributed document per body pass (cache
-  next to the highlight cache); terminal renders convert fonts per run (memoize the
-  4 bold/italic variants) and materialize the scalar array 4×; `applicationWillUpdate`
-  DFS-walks all window view trees until the status button is found (bound the
-  search). 📋 CI guardrail: add a custom-theme fixture and a terminal fixture to
-  `PerformanceTests` — none of P1–P6 would be caught by the suite today.
+- **P7 — Every keystroke persisted the whole style block** (~15 `defaults.set` + 3
+  JSON encodes) even though `code` is not persisted. ✅ *Implemented (+test):*
+  `AppSettings.config.didSet` now compares the whole struct with `code` normalized and
+  skips `persistStyle` + the preset-divergence check when only the code changed — so a
+  keystroke does zero defaults churn while any real style change still persists.
+  📋 Larger follow-up: split `SnapshotConfig` into style vs content observables to also
+  cut the SwiftUI invalidation storm (the whole inspector re-evaluates per keystroke).
+- **P8 — Smaller:** ✅ `applicationWillUpdate`'s status-button DFS is now bounded by an
+  attempt budget, so a never-found button can no longer tax every event-loop pass.
+  📋 Remaining: gutter re-splits the attributed document per body pass (cache next to
+  the highlight cache); terminal renders convert fonts per run (memoize the 4
+  bold/italic variants) and materialize the scalar array 4×. CI guardrail: add a
+  custom-theme fixture and a terminal fixture to `PerformanceTests` — none of P2–P6
+  would be caught by the suite today.
+
+**Not done without a Mac (need profiling / visual / concurrency verification, since
+"it compiles and tests pass" cannot confirm a runtime speed property or the absence
+of a visual/behavioral regression):** P2 (debounce Settings previews — SwiftUI
+timing), P3's HTML-importer replacement (the palette-keyed cache is doable; the
+importer swap needs runtime), P4 (ranged re-highlight — selection/correctness risk),
+P5 (quick-capture render-once — image-equality and thumbnail risk), P6 (parallel web
+capture — concurrency determinism).
 
 ---
 
