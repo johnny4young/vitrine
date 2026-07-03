@@ -11,7 +11,11 @@ private func freshDefaults() -> UserDefaults {
 /// `persistStyle` run writes several string keys (theme id, language, font) through
 /// this overload, so a non-zero delta means the style block was persisted — the hook
 /// the Perf-7 test uses to assert a code-only edit does not persist.
-private final class WriteCountingDefaults: UserDefaults {
+///
+/// `nonisolated` so its overrides match the `nonisolated` `UserDefaults` members under
+/// the module's MainActor-default isolation (it is used synchronously on the main
+/// actor by the test).
+private nonisolated final class WriteCountingDefaults: UserDefaults {
     private(set) var writeCount = 0
     override func set(_ value: Any?, forKey defaultName: String) {
         writeCount += 1
