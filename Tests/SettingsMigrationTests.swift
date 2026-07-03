@@ -7,6 +7,18 @@ private func freshDefaults() -> UserDefaults {
     UserDefaults(suiteName: "VitrineMigrationTests-\(UUID().uuidString)")!
 }
 
+/// A `UserDefaults` that counts value writes routed through `set(_:forKey:)`. Every
+/// `persistStyle` run writes several string keys (theme id, language, font) through
+/// this overload, so a non-zero delta means the style block was persisted — the hook
+/// the Perf-7 test uses to assert a code-only edit does not persist.
+private final class WriteCountingDefaults: UserDefaults {
+    private(set) var writeCount = 0
+    override func set(_ value: Any?, forKey defaultName: String) {
+        writeCount += 1
+        super.set(value, forKey: defaultName)
+    }
+}
+
 // MARK: - Schema versioning
 
 @Suite("SettingsSchema versioning")
@@ -219,6 +231,21 @@ struct AppSettingsMigrationTests {
         #expect(settings.autoCopy)
         #expect(settings.config.theme.id == Theme.oneDark.id)
         #expect(settings.config.fontName == CodeFont.default)
+    }
+
+    @Test func typingOnlyCodeDoesNotRepersistTheStyleBlock() {
+        let defaults = WriteCountingDefaults(suiteName: "VitrinePerf-\(UUID().uuidString)")!
+        let settings = AppSettings(defaults: defaults)
+        let baseline = defaults.writeCount
+
+        // A code-only change (a keystroke) must not churn the persisted style block —
+        // `persistStyle` never writes `code` (audit Perf-7).
+        settings.config.code = "let answer = 42"
+        #expect(defaults.writeCount == baseline)
+
+        // A real style change still persists.
+        settings.config.padding = 40
+        #expect(defaults.writeCount > baseline)
     }
 
     @Test func toleratesWronglyTypedValues() {
