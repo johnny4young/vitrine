@@ -341,6 +341,18 @@ struct BackgroundTests {
         #expect(store.image(for: reference) != nil)
     }
 
+    @Test func imageIsServedFromCacheOnRepeatedResolves() throws {
+        // A live preview resolves the same reference on every body pass; the second
+        // resolve must return the cached instance rather than re-decoding from disk
+        // (audit Perf-1). Content-addressed names make the path immutable, so the
+        // cached image can never be stale.
+        let store = Self.tempStore()
+        let reference = try store.importImage(from: Self.makeSamplePNG(.systemTeal))
+        let first = try #require(store.image(for: reference))
+        let second = try #require(store.image(for: reference))
+        #expect(first === second)
+    }
+
     @Test func reimportingIdenticalBytesReusesOneFile() throws {
         // Content-addressed names mean the same image imported twice yields the
         // same reference and a single file (no duplicate accumulation).
