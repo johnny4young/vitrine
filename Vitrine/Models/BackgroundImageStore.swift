@@ -289,10 +289,31 @@ struct BackgroundImageStore {
         return candidate
     }
 
+    /// Process-wide cache of decoded images, keyed by the resolved absolute path.
+    /// Filenames are content-addressed (SHA-256 of the bytes), so a given path is
+    /// immutable — the cached image can never go stale — and one cache safely serves
+    /// every store instance and both the background and foreground directories. This
+    /// is what keeps a photo background/foreground from being re-read and re-decoded
+    /// on every SwiftUI `body` pass (a keystroke or a slider tick re-runs the canvas
+    /// body); it mirrors the decoded-thumbnail cache `RecentsStore` already has
+    /// (audit Perf-1). Touched only from the main actor, like every `image(for:)`
+    /// caller (the canvas/editor views).
+    @MainActor private static let imageCache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 32
+        return cache
+    }()
+
     /// Loads the referenced image, or `nil` if it cannot be resolved or decoded.
+    /// Served from `imageCache` on a hit so an unchanged background/foreground never
+    /// re-touches the disk during a live preview.
     func image(for reference: ImageReference) -> NSImage? {
         guard let url = url(for: reference) else { return nil }
-        return NSImage(contentsOf: url)
+        let key = url.path as NSString
+        if let cached = Self.imageCache.object(forKey: key) { return cached }
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        Self.imageCache.setObject(image, forKey: key)
+        return image
     }
 
     /// Sanitizes a raw extension into a lowercased, image-only destination suffix, or
