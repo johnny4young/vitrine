@@ -326,10 +326,13 @@ Recents thumbnail cache, board thumbnails). What remains, by user-visible impact
   the sampled `FrameChrome` for the framed-image path (the per-body full-bitmap decode
   in `DeviceFrames.topEdgeColor`) is now cached in `FramedImageView` by the image's
   content-addressed (SHA-256) file name, so `.auto` chrome is sampled once per image.
-- **P2 — Settings previews rasterize a full `ImageRenderer` canvas inside `body`**
+- **P2 — Settings previews rasterized a full `ImageRenderer` canvas inside `body`**
   (`StyleSettingsView`, `CustomThemeEditor` at scale 2) — a color-picker drag
-  re-renders the slowest path in the app per frame. 🔧 Debounce into `@State` via
-  the existing `Debouncer`; render the thumbnail at scale 1.
+  re-rendered the slowest path in the app per frame. ✅ *Implemented:* both previews
+  now render off the `body` pass via `.task(id:)` keyed on an `Equatable` snapshot of
+  the render inputs — a `Task.sleep` debounce coalesces a rapid drag into one trailing
+  render, stored in `@State` — and the thumbnail renders at scale 1 (it is a ≤150 pt
+  thumbnail, so scale 2 only burned pixels). The initial render still runs on appear.
 - **P3 — Custom-theme highlighting is uncached and routed through the AppKit HTML
   importer** per body pass (JS tokenize + `NSAttributedString(html:)`, one of the
   slowest paths on macOS), so typing with a custom theme costs 50–200+ ms per pass

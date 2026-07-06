@@ -90,6 +90,11 @@ struct CustomThemeEditor: View {
     let onSave: (String, ThemePalette) -> Void
     let onCancel: () -> Void
 
+    /// The rendered preview, recomputed debounced off the `body` pass (P2): rasterizing
+    /// a full `ImageRenderer` canvas at scale 2 inside `body` re-ran on every color-well
+    /// drag. A `.task(id:)` now coalesces rapid edits into one scale-1 render stored here.
+    @State private var renderedImage: NSImage?
+
     var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.md) {
             Text(draft.editingID == nil ? "New Custom Theme" : "Edit Custom Theme")
@@ -174,12 +179,19 @@ struct CustomThemeEditor: View {
         .frame(width: 460)
         .frame(minHeight: 520)
         .accessibilityIdentifier("custom-theme-editor")
+        // Debounced live preview (P2): coalesce rapid color-well edits into one render
+        // after a short quiet window; run once on appear for the initial thumbnail.
+        .task(id: PreviewKey(config: previewConfig, profile: settings.colorProfile)) {
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
+            renderedImage = renderCurrentPreview()
+        }
     }
 
     /// The live preview: the current code (or a sample) rendered with the draft
     /// palette, so the syntax coloring is visible before saving.
     @ViewBuilder private var previewImage: some View {
-        if let image = renderedPreview {
+        if let image = renderedImage {
             Image(nsImage: image)
                 .resizable()
                 .scaledToFit()
@@ -207,13 +219,30 @@ struct CustomThemeEditor: View {
         }
     }
 
-    private var renderedPreview: NSImage? {
+    /// The config the preview renders: the current code (or a sample) with the draft
+    /// palette applied. Also the `.task(id:)` key — `SnapshotConfig` is `Equatable`, so
+    /// the render re-runs exactly when the code or any draft color changes.
+    private var previewConfig: SnapshotConfig {
         var config = settings.config
         config.theme = Theme(
             id: "custom.preview", displayName: draft.name, palette: draft.palette())
         if config.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             config.code = "func greet(_ name: String) {\n    print(\"Hello, \\(name)!\")\n}"
         }
-        return ExportManager.renderNSImage(config, scale: 2, profile: settings.colorProfile)
+        return config
+    }
+
+    /// Renders the preview thumbnail at scale 1 (the on-screen preview is a small
+    /// thumbnail, so scale 1 is ample and halves the pixel work versus the old 2×, P2).
+    /// Called only from the debounced `.task(id:)`, never inside `body`.
+    private func renderCurrentPreview() -> NSImage? {
+        ExportManager.renderNSImage(previewConfig, scale: 1, profile: settings.colorProfile)
+    }
+
+    /// The `.task(id:)` key: the render inputs (config + color profile) as an `Equatable`
+    /// value, so a change to either re-renders and a rapid drag coalesces to one render.
+    private struct PreviewKey: Equatable {
+        var config: SnapshotConfig
+        var profile: ColorProfile
     }
 }
