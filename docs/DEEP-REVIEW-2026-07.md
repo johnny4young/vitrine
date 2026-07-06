@@ -159,18 +159,18 @@ classification).
 
 ## 3. Dependencies & reproducibility
 
-- **D1 — SPM dependencies float; no lockfile is committed.** 📋 *Highest-priority
-  decision in this review.* `project.yml` uses `from: "2.3.0"` (Highlightr) and
-  `from: "2.4.0"` (KeyboardShortcuts); the resolved state lives only inside the
-  generated, git-ignored `.xcodeproj`, and `.gitignore` *claimed* a `Package.resolved`
-  was committed (comment fixed in this PR ✅). Consequences: releases are not
-  reproducible, and a Highlightr minor bump (which embeds Highlight.js) can change
-  tokenization and invalidate the golden baseline with no code change. Fix on a Mac:
-  either pin `exactVersion:` in `project.yml` to the currently-resolved versions, or
-  commit a `Package.resolved` and copy it into the generated project in `make
-  project`. Not done headlessly here because pinning blind (without knowing the
-  currently-resolved versions the goldens were recorded against) risks *changing*
-  the dependency set this repo actually builds with.
+- **D1 — SPM dependencies float; no lockfile is committed.** ✅ *fixed on a Mac.*
+  `project.yml` used `from: "2.3.0"` (Highlightr) and `from: "2.4.0"`
+  (KeyboardShortcuts); the resolved state lived only inside the generated,
+  git-ignored `.xcodeproj`, and `.gitignore` *claimed* a `Package.resolved`
+  was committed (comment fixed in this PR ✅). Consequences: releases were not
+  reproducible, and a Highlightr minor bump (which embeds Highlight.js) could change
+  tokenization and invalidate the golden baseline with no code change. *Done:* both
+  packages are now pinned with `exactVersion:` to the versions the goldens were
+  recorded against — Highlightr `2.3.0` (commit `05e7fcc`) and KeyboardShortcuts
+  `2.4.0` (commit `1aef855`), read from the generated `Package.resolved` before
+  pinning. Regenerating the project resolves to the identical commits and the full
+  golden suite still passes, so the pin froze the graph without changing it.
 
 ---
 
