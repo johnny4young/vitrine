@@ -45,16 +45,16 @@ coverage for their runtime behavior — these are the ones a green CI does *not*
 These are documented in **`docs/DEEP-REVIEW-2026-07.md`** with `file:line` evidence.
 The two structural ones are worth doing before the next release:
 
-1. **Pin SPM dependencies (D1 — highest priority).** Releases aren't reproducible and a
-   Highlightr minor bump can silently invalidate the golden images.
-   - After `make project`, read the resolved versions from the generated project's
-     `Package.resolved`, then either set `exactVersion:` in `project.yml` (Highlightr,
-     KeyboardShortcuts) or commit a `Package.resolved` and copy it in `make project`.
-   - Re-run `make test` to confirm the goldens still pass at the pinned versions.
-2. **SHA-pin the GitHub Actions (S2).** In `.github/workflows/*.yml`, replace every
-   `uses: owner/action@vN` with the full 40-char commit SHA + a `# vN.n.n` comment.
-   Dependabot (`.github/dependabot.yml`, already added) keeps them fresh once pinned.
-   The cloud session couldn't do this — the sandbox proxy blocked resolving the SHAs.
+1. ✅ **Pin SPM dependencies (D1 — highest priority).** *Done on this branch.* Both
+   packages now use `exactVersion:` in `project.yml` — Highlightr `2.3.0`,
+   KeyboardShortcuts `2.4.0`, the versions the goldens were recorded against
+   (read from the generated `Package.resolved`). Regenerating resolves to the same
+   commits and the golden suite still passes.
+2. ✅ **SHA-pin the GitHub Actions (S2).** *Done on this branch.* All 25 `uses:`
+   references across `ci.yml`, `release.yml`, and `appstore.yml` are pinned to the
+   full 40-char commit SHA + a `# vN.n.n` comment, guarded by a new
+   `WorkflowConfigurationTests.thirdPartyActionsArePinnedToCommitSHAs` test.
+   Dependabot (`.github/dependabot.yml`) keeps them fresh.
 3. **Performance P2/P4/P5/P6** — debounce Settings previews, ranged re-highlight,
    quick-capture render-once, parallel multi-viewport web capture. Each needs profiling
    and visual/concurrency validation. Add a custom-theme and a terminal fixture to

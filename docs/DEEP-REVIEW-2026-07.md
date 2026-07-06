@@ -33,18 +33,20 @@ hardening gaps — not structural rot. No critical vulnerability was found.
   for an unterminated block). Covered by two new `SecretScannerTests` cases.
 
 - **S2 — Third-party GitHub Actions are pinned by mutable tag, not commit SHA, in the
-  workflow that holds every signing secret.** 📋 *partially mitigated in this PR.*
-  `release.yml` runs `maxim-lobanov/setup-xcode@v1` and `softprops/action-gh-release@v3`
+  workflow that holds every signing secret.** ✅ *fixed in this PR.*
+  `release.yml` ran `maxim-lobanov/setup-xcode@v1` and `softprops/action-gh-release@v3`
   (plus `actions/*@vN` everywhere) while the `publish` job holds the Developer ID
   `.p12`, the notary `.p8`, `SPARKLE_EDDSA_PRIVATE_KEY`, `VITRINE_LICENSE_SIGNING_KEY`,
   and `TAP_DEPLOY_KEY`. A hijacked tag on a community action is a direct supply-chain
   path to the code-signing and auto-update keys (the tj-actions incident pattern).
   *Done here:* the imported signing keychain is now deleted (and the search list
   restored) in an `always()` step immediately after the DMG build, so no later step
-  or third-party action can read the identity; `.github/dependabot.yml` now tracks
-  action updates weekly. *Still to do (needs trusted network access to resolve tag →
-  SHA):* replace every `uses: owner/action@vN` with the full 40-char commit SHA and a
-  `# vN.n.n` comment. Dependabot keeps SHA pins fresh once they exist.
+  or third-party action can read the identity; `.github/dependabot.yml` tracks
+  action updates weekly. *Completed on a Mac:* all 25 `uses:` references across
+  `ci.yml`, `release.yml`, and `appstore.yml` are now pinned to the full 40-char
+  commit SHA with a trailing `# vN.n.n` comment (Dependabot rewrites both when it
+  bumps), and a new `WorkflowConfigurationTests.thirdPartyActionsArePinnedToCommitSHAs`
+  guard fails the suite if any workflow ever reverts to a mutable tag.
 
 ### 1.2 Medium
 
@@ -364,10 +366,11 @@ capture — concurrency determinism).
 
 ## 8. Toward a world-class app — strategic recommendations
 
-1. **Pin the world (D1, S2).** Reproducible releases and SHA-pinned actions are the
-   two highest-leverage hardening moves left; everything else is already unusually
-   solid. The golden-image suite's value depends on the syntax-highlighting
-   dependency not floating underneath it.
+1. **Pin the world (D1, S2).** ✅ *Done.* SPM dependencies are pinned with
+   `exactVersion:` (so the golden-image suite's value no longer depends on the
+   syntax-highlighting dependency floating underneath it) and every workflow action
+   is SHA-pinned with a drift-guard test. These were the two highest-leverage
+   hardening moves left; everything else is already unusually solid.
 2. **Extract `VitrineCore` as a local SwiftPM package** (Models, Terminal,
    SettingsCodec/Schema, CLIArguments — already UI-free by discipline). The compiler
    then *enforces* the layering that convention currently protects, `swift test`
@@ -404,7 +407,9 @@ capture — concurrency determinism).
 | Bug | UTF-8 BOM stripped when loading files (+test) |
 | Bug | `Color(hex:)` falls back to black on partial scans; `HexColor` rejects non-ASCII hex digits (+test) |
 | Bug | Window restore clamps `shadowRadius` (new `SettingsDefaults.clampShadowRadius`, 0…40) |
+| Security | All 25 workflow `uses:` refs SHA-pinned (S2) + a drift-guard test that rejects any mutable `@vN` tag |
 | Security | Release job deletes the signing keychain right after the DMG build (`always()`) |
+| Dependencies | SPM deps pinned with `exactVersion:` — Highlightr 2.3.0, KeyboardShortcuts 2.4.0 (D1) |
 | Security | Sparkle version/SHA single-sourced in `scripts/sparkle-version.env`; stale-Vendor re-fetch via `.sparkle-version` stamp |
 | CI | Read-only token defaults; job-level elevation only for `publish` |
 | CI | `timeout-minutes` on all macOS jobs |
