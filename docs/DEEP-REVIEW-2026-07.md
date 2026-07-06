@@ -283,20 +283,27 @@ No `nonisolated(unsafe)`, no `@unchecked Sendable`, no semaphores, no legacy
 audited and none leak (single-resume guards + armed timeouts). Nothing found is a
 genuine data race. Items worth fixing, in order:
 
-- **C1 — Services menu uses the legacy TIFF/`NSBitmapImageRep` round-trip**
-  (`CodeImageService.swift:116-121`) — an explicit AGENTS.md legacy-API violation
-  that double-encodes on the main actor and can lose the deliberate sRGB tagging
-  `ExportManager.pngData` guarantees. 🔧 Route through the existing ImageIO path.
+- **C1 — Services menu used the legacy TIFF/`NSBitmapImageRep` round-trip**
+  (`CodeImageService.swift`) — an explicit AGENTS.md legacy-API violation that
+  double-encoded on the main actor and could lose the deliberate sRGB tagging
+  `ExportManager.pngData` guarantees. ✅ *Implemented:* the Services provider now
+  renders a `CGImage` (new `SnapshotRenderService.renderCGImage`) and PNG-encodes it
+  through the color-managed ImageIO path (`ExportManager.pngData`), writing the
+  `NSImage` object plus those bytes to the pasteboard — no TIFF round-trip.
 - **C2 — HTML capture was not cancellation-aware** — the URL path's `LoadCoordinator`
   wraps its continuation in `withTaskCancellationHandler`; the HTML path's
   `NavigationCoordinator` did not, so Cancel was a no-op for up to 10 s per HTML
   viewport in a batch. ✅ *Implemented:* `NavigationCoordinator.waitForLoad` now
   mirrors the URL path (pre-suspension `Task.isCancelled` check + `onCancel` hop;
   `resume` was already idempotent).
-- **C3 — PRO multi-size export runs render→encode→write for every preset in one
-  uninterrupted main-actor call** — all presets selected at 2–3× scale beachballs
-  the app until the loop ends. 🔧 Keep renders on main, hop encode+write per preset
-  off-main (or at minimum `await Task.yield()` between presets) and show progress.
+- **C3 — PRO multi-size export ran render→encode→write for every preset in one
+  uninterrupted main-actor call** — all presets selected at 2–3× scale beachballed
+  the app until the loop ended. ✅ *Implemented:* `exportPresetSizes` is now `async`;
+  each preset renders on the main actor (`ImageRenderer` requires it), then a
+  `@concurrent nonisolated writePreset` PNG/HEIC-encodes and writes off the main actor
+  (`CGImage`/`Data` are `Sendable`), with `await Task.yield()` between presets and an
+  `onProgress` callback driving a live "n/total" indicator in the export sheet. A byte-
+  equality test confirms the off-main encode is identical to the single-export path.
 - **C4 — Minor modernizations.** 📋 The one `Task.detached` (code formatting) would
   be `@concurrent nonisolated` in idiomatic 6.2; two `DispatchQueue.main.async`
   sites (deferred window close; `WindowAccessor` polling) work but predate the

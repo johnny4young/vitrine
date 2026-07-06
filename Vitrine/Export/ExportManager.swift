@@ -107,8 +107,10 @@ enum ExportManager {
         return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 
-    /// PNG-encodes a `CGImage` via ImageIO.
-    static func pngData(from cgImage: CGImage) -> Data? {
+    /// PNG-encodes a `CGImage` via ImageIO. `nonisolated` because it is a pure
+    /// function of a `Sendable` `CGImage` over thread-safe ImageIO, so the multi-size
+    /// export can encode off the main actor (C3).
+    nonisolated static func pngData(from cgImage: CGImage) -> Data? {
         let data = NSMutableData()
         guard
             let destination = CGImageDestinationCreateWithData(
@@ -125,7 +127,7 @@ enum ExportManager {
     /// wikis that accept it. Alpha survives (HEIC carries an alpha plane), and
     /// the near-lossless quality keeps text crisp; the codec is still lossy, so
     /// PNG remains the byte-exact default.
-    static func heicData(from cgImage: CGImage) -> Data? {
+    nonisolated static func heicData(from cgImage: CGImage) -> Data? {
         let data = NSMutableData()
         guard
             let destination = CGImageDestinationCreateWithData(
@@ -328,50 +330,98 @@ enum ExportManager {
     @discardableResult
     static func exportPresetSizes(
         _ baseConfig: SnapshotConfig, presets: [ExportPreset], to directory: URL,
-        format: ExportFormat = .png, profile: ColorProfile = .sRGB, textSidecar: Bool = false
-    ) -> (written: Int, failed: Int) {
+        format: ExportFormat = .png, profile: ColorProfile = .sRGB, textSidecar: Bool = false,
+        onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
+    ) async -> (written: Int, failed: Int) {
         var written = 0
         var failed = 0
-        for preset in presets {
-            var config = baseConfig
-            preset.apply(to: &config)
-            let size = preset.sizing.fixedSize
-            let payload = encodedPayload(
-                format,
-                png: {
-                    renderCGImage(
+        let total = presets.count
+        // Pipeline the batch: each preset renders on the main actor (`ImageRenderer`
+        // requires it), then its CPU-bound encode + disk write run off-main as a child
+        // task while the main actor immediately moves on to render the next preset. So
+        // a batch of large presets at 2–3× scale neither beachballs the app nor waits
+        // for one preset's encode before starting the next (C3). Each writes a distinct
+        // `vitrine-<preset id>` file, so the concurrent writes never collide.
+        var completed = 0
+        await withTaskGroup(of: Bool.self) { group in
+            for preset in presets {
+                var config = baseConfig
+                preset.apply(to: &config)
+                let size = preset.sizing.fixedSize
+                // PDF is rendered *and* encoded on main because `pdfData` also drives
+                // `ImageRenderer`; only raster formats defer their encode off-main.
+                let raster: CGImage?
+                let pdf: Data?
+                switch format {
+                case .png, .heic:
+                    raster = renderCGImage(
                         config, scale: CGFloat(preset.scale), fixedSize: size, profile: profile)
-                },
-                pdf: { pdfData(config, fixedSize: size) })
-            guard let payload else {
-                Log.export.error("Multi-size export: render/encode returned nil for a preset")
-                failed += 1
-                continue
-            }
-            let url = directory.appendingPathComponent(
-                "vitrine-\(preset.id).\(payload.ext)", isDirectory: false)
-            do {
-                try payload.data.write(to: url)
+                    pdf = nil
+                case .pdf:
+                    raster = nil
+                    pdf = pdfData(config, fixedSize: size)
+                }
                 // The chosen folder is a user-granted directory, so a `.txt` sidecar
                 // beside each image is sandbox-safe here (unlike a single save panel).
-                let sidecarText = config.sidecarText
-                if textSidecar, !sidecarText.isEmpty {
-                    let sidecarURL = url.deletingPathExtension().appendingPathExtension("txt")
-                    try Data(sidecarText.utf8).write(to: sidecarURL)
+                let sidecar = textSidecar ? config.sidecarText : ""
+                let url = directory.appendingPathComponent(
+                    "vitrine-\(preset.id).\(format.fileExtension)", isDirectory: false)
+                group.addTask {
+                    await writePreset(
+                        raster: raster, pdf: pdf, format: format, to: url, sidecarText: sidecar)
                 }
-                written += 1
-            } catch {
-                let nsError = error as NSError
-                Log.export.error(
-                    "Multi-size export write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-                )
-                failed += 1
+                // Release the main actor after dispatching each render so the encode/write
+                // tasks get to run and the next render doesn't monopolize the run loop.
+                await Task.yield()
+            }
+            // Drain results as encodes/writes finish, reporting count-based progress.
+            for await ok in group {
+                if ok { written += 1 } else { failed += 1 }
+                completed += 1
+                onProgress?(completed, total)
             }
         }
         Log.export.notice(
             "Multi-size export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
         )
         return (written, failed)
+    }
+
+    /// Encodes (for raster formats) and writes one multi-size preset off the main
+    /// actor — the CPU-bound ImageIO encode plus the disk write for a single preset,
+    /// hopped off main via `@concurrent` so the UI stays live during a batch (C3). The
+    /// render itself stays on main; only `Sendable` finished pixels (`CGImage`) or
+    /// bytes (`Data`) cross the hop. Returns whether the image file was written; a
+    /// sidecar failure is best-effort and never fails the image.
+    @concurrent nonisolated private static func writePreset(
+        raster cgImage: CGImage?, pdf pdfData: Data?, format: ExportFormat,
+        to url: URL, sidecarText: String
+    ) async -> Bool {
+        let data: Data? =
+            switch format {
+            case .png: cgImage.flatMap(pngData(from:))
+            case .heic: cgImage.flatMap(heicData(from:))
+            case .pdf: pdfData
+            }
+        guard let data else {
+            Log.export.error("Multi-size export: render/encode returned nil for a preset")
+            return false
+        }
+        do {
+            try data.write(to: url)
+            if !sidecarText.isEmpty {
+                let sidecarURL = url.deletingPathExtension().appendingPathExtension("txt")
+                // A missing sidecar must not fail the image it accompanies.
+                try? Data(sidecarText.utf8).write(to: sidecarURL)
+            }
+            return true
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "Multi-size export write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            return false
+        }
     }
 
     /// The outcome of a save-to-file attempt, so callers can tell apart a written

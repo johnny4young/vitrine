@@ -29,6 +29,15 @@ struct MultiSizeExportView: View {
     /// A short result line shown only when some files failed to write.
     @State private var failureNote: String?
 
+    /// Live "completed/total" while the (off-main) batch runs; `nil` when idle. Drives
+    /// the inline progress indicator so a multi-preset export at 2–3× scale shows work
+    /// instead of a frozen sheet (C3).
+    @State private var progress: (completed: Int, total: Int)?
+
+    /// Whether an export is in flight — disables the buttons so the batch can't be
+    /// re-triggered or the sheet dismissed mid-write.
+    private var isExporting: Bool { progress != nil }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
@@ -82,11 +91,22 @@ struct MultiSizeExportView: View {
 
             HStack {
                 Button("Cancel") { dismiss() }
+                    .disabled(isExporting)
                     .accessibilityIdentifier("multi-size-cancel")
                 Spacer()
+                if let progress {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text(verbatim: "\(progress.completed)/\(progress.total)")
+                            .font(.system(size: VitrineTokens.FontSize.caption))
+                            .foregroundStyle(VitrineTokens.Text.secondary)
+                            .monospacedDigit()
+                    }
+                    .accessibilityIdentifier("multi-size-progress")
+                }
                 Button("Export…") { exportSelected() }
                     .buttonStyle(.borderedProminent)
-                    .disabled(selected.isEmpty)
+                    .disabled(selected.isEmpty || isExporting)
                     .accessibilityIdentifier("multi-size-export-confirm")
             }
         }
@@ -120,23 +140,34 @@ struct MultiSizeExportView: View {
         panel.message = String(localized: "Choose a folder for the exported images.")
         guard panel.runModal() == .OK, let directory = panel.url else { return }
 
-        let result = ExportManager.exportPresetSizes(
-            baseConfig, presets: presets, to: directory, format: format, profile: profile,
-            textSidecar: textSidecar)
-        if result.failed == 0 {
-            // Confirm and reveal the folder so the export doesn't finish silently — the
-            // feedback convention every other export follows (audit P1-UX-1).
-            CaptureHUDController.shared.present(
-                Notifier.confirmation(String(localized: "Images exported")))
-            NSWorkspace.shared.activateFileViewerSelecting([directory])
-            dismiss()
-        } else {
-            // Keep the sheet open so the user can retry. The count rides in a verbatim
-            // prefix so the localized sentence stays a plain (non-format) catalog key.
-            failureNote =
-                "\(result.written)/\(selected.count) — "
-                + String(
-                    localized: "Some images couldn't be written. Check the folder and try again.")
+        failureNote = nil
+        let total = presets.count
+        progress = (0, total)
+        // Render each preset on the main actor, but encode+write off-main with a yield
+        // between presets (C3), so the sheet stays responsive and shows live progress.
+        Task {
+            let result = await ExportManager.exportPresetSizes(
+                baseConfig, presets: presets, to: directory, format: format, profile: profile,
+                textSidecar: textSidecar,
+                onProgress: { completed, total in progress = (completed, total) })
+            progress = nil
+            if result.failed == 0 {
+                // Confirm and reveal the folder so the export doesn't finish silently — the
+                // feedback convention every other export follows (audit P1-UX-1).
+                CaptureHUDController.shared.present(
+                    Notifier.confirmation(String(localized: "Images exported")))
+                NSWorkspace.shared.activateFileViewerSelecting([directory])
+                dismiss()
+            } else {
+                // Keep the sheet open so the user can retry. The count rides in a verbatim
+                // prefix so the localized sentence stays a plain (non-format) catalog key.
+                failureNote =
+                    "\(result.written)/\(total) — "
+                    + String(
+                        localized:
+                            "Some images couldn't be written. Check the folder and try again."
+                    )
+            }
         }
     }
 }

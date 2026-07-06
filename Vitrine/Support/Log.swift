@@ -19,7 +19,10 @@ import OSLog
 /// than logged verbatim. `os.Logger` also redacts dynamic strings as `<private>`
 /// by default, but we do not rely on that alone — we simply do not pass user
 /// content in.
-enum Log {
+/// `nonisolated` so logging works from any isolation — including the `@concurrent`
+/// off-main export/encode hops (C3). Every member is a `Sendable` `Logger` (or a
+/// pure factory), so there is no main-actor state to protect.
+nonisolated enum Log {
     /// The single subsystem all categories share. Matches the bundle identifier so
     /// the unified-logging stream is easy to find (`log stream --subsystem com.johnny4young.vitrine`).
     static let subsystem = "com.johnny4young.vitrine"
