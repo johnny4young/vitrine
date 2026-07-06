@@ -26,9 +26,26 @@ struct FramedImageView: View {
     private static let maxImageWidth: CGFloat = 1100
 
     /// Resolves the chrome for an image — for `.auto`, sampled from that image's top edge.
-    private func chrome(for image: NSImage?) -> FrameChrome {
-        FrameChrome.of(appearance, image: image)
+    private func chrome(for image: NSImage) -> FrameChrome {
+        // Fixed appearances resolve to a static `light`/`dark` without touching the
+        // pixels, so there is nothing to cache.
+        guard appearance == .auto else { return FrameChrome.of(appearance, image: image) }
+        // `.auto` decodes the full bitmap to sample a 1×1 top-edge average
+        // (`FrameChrome.topEdgeColor`) — otherwise re-run on every `body` pass (a slider
+        // drag, typing). The foreground image's file name is the SHA-256 of its bytes
+        // (content-addressed, immutable), so cache the resolved chrome by that name, the
+        // same reasoning as `BackgroundImageStore`'s decoded-image cache (P1).
+        let key = reference.fileName as NSString
+        if let cached = Self.autoChromeCache.object(forKey: key) { return cached.chrome }
+        let resolved = FrameChrome.of(.auto, image: image)
+        Self.autoChromeCache.setObject(FrameChromeBox(resolved), forKey: key)
+        return resolved
     }
+
+    /// Process-wide cache of resolved `.auto` chrome, keyed by the content-addressed
+    /// (SHA-256) foreground image file name, so a given name maps to one immutable
+    /// sample. Mirrors `BackgroundImageStore.imageCache` (P1).
+    @MainActor private static let autoChromeCache = NSCache<NSString, FrameChromeBox>()
 
     var body: some View {
         if let image = store.image(for: reference) {
@@ -136,7 +153,9 @@ struct FramedImageView: View {
     /// Shown when the referenced file can't be resolved (missing/relocated), mirroring the
     /// background path's graceful degradation. With no image to sample, Auto falls back to dark.
     private var missingPlaceholder: some View {
-        let chrome = chrome(for: nil)
+        // No image to sample, so resolve chrome directly (Auto falls back to dark); the
+        // cache in `chrome(for:)` is only for the real-image path.
+        let chrome = FrameChrome.of(appearance, image: nil)
         return VStack(spacing: 8) {
             Image(systemName: "photo")
                 .font(.system(size: 28))
@@ -158,4 +177,11 @@ struct FramedImageView: View {
         let scale = Self.maxImageWidth / size.width
         return CGSize(width: Self.maxImageWidth, height: (size.height * scale).rounded())
     }
+}
+
+/// Boxes a `FrameChrome` value so it can be stored in an `NSCache`, which holds
+/// objects. Immutable and holds only `Sendable` values, so it is safe to share.
+private final class FrameChromeBox: Sendable {
+    let chrome: FrameChrome
+    init(_ chrome: FrameChrome) { self.chrome = chrome }
 }

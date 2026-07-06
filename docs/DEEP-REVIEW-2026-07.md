@@ -322,9 +322,10 @@ Recents thumbnail cache, board thumbnails). What remains, by user-visible impact
   invalidation.** ✅ *Implemented (+test):* `BackgroundImageStore.image(for:)` now
   serves from a process-wide `NSCache` keyed by the resolved (content-addressed, so
   immutable) path — the same fix `RecentsStore` already has — so an unchanged
-  background/foreground no longer touches the disk on every `body` pass. 📋 Remaining:
-  cache the sampled `FrameChrome` for the framed-image path (a per-body full bitmap
-  decode in `DeviceFrames.topEdgeColor`).
+  background/foreground no longer touches the disk on every `body` pass. ✅ *Also done:*
+  the sampled `FrameChrome` for the framed-image path (the per-body full-bitmap decode
+  in `DeviceFrames.topEdgeColor`) is now cached in `FramedImageView` by the image's
+  content-addressed (SHA-256) file name, so `.auto` chrome is sampled once per image.
 - **P2 — Settings previews rasterize a full `ImageRenderer` canvas inside `body`**
   (`StyleSettingsView`, `CustomThemeEditor` at scale 2) — a color-picker drag
   re-renders the slowest path in the app per frame. 🔧 Debounce into `@State` via
