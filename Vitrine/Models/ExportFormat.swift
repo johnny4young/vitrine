@@ -26,6 +26,11 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// The lowercase file extension for this format. The raw values already spell the
+    /// extensions, but naming it makes call sites (save panels, multi-size export)
+    /// self-documenting and keeps them from hard-coding a literal.
+    var fileExtension: String { rawValue }
+
     /// Whether this format is a scalable vector format (true for `pdf`).
     ///
     /// Drives the "vector" label/help shown next to the format picker so the menu

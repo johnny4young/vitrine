@@ -24,12 +24,12 @@ struct MultiSizeExportTests {
         return config
     }
 
-    @Test func writesOneFilePerSelectedPreset() throws {
+    @Test func writesOneFilePerSelectedPreset() async throws {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let presets = [ExportPreset.twitter, .linkedIn, .openGraph]
 
-        let result = ExportManager.exportPresetSizes(
+        let result = await ExportManager.exportPresetSizes(
             baseConfig(), presets: presets, to: dir, format: .png)
 
         #expect(result.written == 3)
@@ -40,13 +40,13 @@ struct MultiSizeExportTests {
         }
     }
 
-    @Test func eachFileEqualsASingleExportWithThatPresetSelected() throws {
+    @Test func eachFileEqualsASingleExportWithThatPresetSelected() async throws {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let base = baseConfig()
         let preset = ExportPreset.openGraph
 
-        _ = ExportManager.exportPresetSizes(base, presets: [preset], to: dir, format: .png)
+        _ = await ExportManager.exportPresetSizes(base, presets: [preset], to: dir, format: .png)
 
         // The reference: exactly what a single export with this preset selected
         // produces — its presentation applied, rendered at its pinned size + scale.
@@ -62,12 +62,12 @@ struct MultiSizeExportTests {
         #expect(written == reference)
     }
 
-    @Test func textSidecarWritesATxtBesideEachImage() throws {
+    @Test func textSidecarWritesATxtBesideEachImage() async throws {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let presets = [ExportPreset.twitter, .openGraph]
 
-        let result = ExportManager.exportPresetSizes(
+        let result = await ExportManager.exportPresetSizes(
             baseConfig(), presets: presets, to: dir, format: .png, textSidecar: true)
 
         #expect(result.written == 2)
@@ -79,13 +79,13 @@ struct MultiSizeExportTests {
         }
     }
 
-    @Test func imageContentSkipsEmptyTextSidecars() throws {
+    @Test func imageContentSkipsEmptyTextSidecars() async throws {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         var config = baseConfig()
         config.foregroundImage = ImageReference(fileName: "missing-placeholder.png")
 
-        let result = ExportManager.exportPresetSizes(
+        let result = await ExportManager.exportPresetSizes(
             config, presets: [.twitter], to: dir, format: .png, textSidecar: true)
 
         #expect(result.written == 1)
@@ -94,21 +94,40 @@ struct MultiSizeExportTests {
         #expect(!FileManager.default.fileExists(atPath: txt.path))
     }
 
-    @Test func noTextSidecarByDefault() {
+    @Test func noTextSidecarByDefault() async {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        _ = ExportManager.exportPresetSizes(
+        _ = await ExportManager.exportPresetSizes(
             baseConfig(), presets: [ExportPreset.twitter], to: dir)
         let txt = dir.appendingPathComponent("vitrine-\(ExportPreset.twitter.id).txt")
         #expect(!FileManager.default.fileExists(atPath: txt.path))
     }
 
-    @Test func noPresetsWritesNothing() {
+    @Test func noPresetsWritesNothing() async {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let result = ExportManager.exportPresetSizes(baseConfig(), presets: [], to: dir)
+        let result = await ExportManager.exportPresetSizes(baseConfig(), presets: [], to: dir)
         #expect(result == (written: 0, failed: 0))
         let contents = try? FileManager.default.contentsOfDirectory(atPath: dir.path)
         #expect(contents?.isEmpty ?? true)
+    }
+
+    /// The progress callback (C3) reports monotonically increasing completed counts up
+    /// to the total, so the export sheet can show live progress off the main-actor hop.
+    @Test func progressCallbackReportsEachCompletedPreset() async throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let presets = [ExportPreset.twitter, .linkedIn, .openGraph]
+
+        var reported: [Int] = []
+        let result = await ExportManager.exportPresetSizes(
+            baseConfig(), presets: presets, to: dir, format: .png,
+            onProgress: { completed, total in
+                #expect(total == presets.count)
+                reported.append(completed)
+            })
+
+        #expect(result.written == presets.count)
+        #expect(reported == [1, 2, 3])
     }
 }
