@@ -428,11 +428,19 @@ capture — concurrency determinism).
    with the existing UF-free `RGBAColor` across the models and every reader, and lift the
    AppKit bridging into the UI layer) before any package boundary can be a clean cut.
    🔧 *In progress in this branch* as an incremental epic, golden-validated at each step.
-   *Step 1 done:* `RGBAColor` and the hex parser are now a UI-free struct in their own
-   `RGBAColor.swift` (no `SwiftUI`/`AppKit`), with the `SwiftUI.Color` bridging moved to
-   an extension in `Color+Hex.swift`. Remaining: migrate `Theme`/`Background`/`Annotation`/
-   `SnapshotConfig` to store `RGBAColor`, lift `NSImage`/`NSFont`/`NSColor` out of the
-   models, break `Terminal`'s dependency on `Theme`, then extract the package.
+   ✅ *Model layer is now SwiftUI-free (7 steps):* `RGBAColor` + the hex parser are a
+   UI-free struct; `Annotation`, `Theme`/`HexColor`, `SocialCardModel`, `ExportPreset`,
+   `Background` (colors → `RGBAColor`, gradient/`LinearGradient` adapters split out), and
+   `SnapshotConfig`/`BackgroundImageStore` (alignment + `EnvironmentValues` split out) no
+   longer import `SwiftUI` — every `SwiftUI.Color`/`LinearGradient`/`Alignment`/env bridge
+   lives in a `*+UI.swift` adapter in the UI layer, and the golden suite confirms the
+   render is byte-identical. The pragmatic boundary is **no SwiftUI view layer**; a few
+   models keep AppKit *data* types (`NSImage`/`NSColor`/`NSFont`), so full Linux-runnability
+   is a further step. 📋 *Remaining:* the physical SwiftPM package — a large mechanical step
+   (public API surface across ~42 model/terminal types + their members, resolving in-package
+   vs app-only references like `Log`/`SettingsDefaults`, and the `project.yml`/xcodegen
+   rewire for app+CLI+tests) — which is what turns the now-explicit layering into
+   *compiler-enforced* layering.
 3. **A composition root instead of 22 `static let shared`s.** ✅ *Foundation done
    (+2 tests):* the data stores (`Entitlements`, `BrandKitStore`, `AppSettings`,
    `RecentsStore`, `CustomThemeStore`, `PresetStore`) are now built in one place —
