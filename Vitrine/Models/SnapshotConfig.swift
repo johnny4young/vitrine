@@ -24,8 +24,11 @@ struct SnapshotConfig: Equatable {
     var windowTitle: String = ""
 
     var showShadow: Bool = true
-    var cornerRadius: Double = Brand.Radius.card
-    var shadowRadius: Double = Brand.Shadow.elevated.radius
+    // Defaults mirror the brand tokens `Brand.Radius.card` (8) and
+    // `Brand.Shadow.elevated.radius` (20); kept as literals so the model carries no
+    // dependency on the SwiftUI design-token layer (VitrineCore prerequisite).
+    var cornerRadius: Double = 8
+    var shadowRadius: Double = 20
 
     /// Draw a line-number gutter beside the code, in both preview and export
     /// (CS-021). Off by default so the signature look is unchanged.
