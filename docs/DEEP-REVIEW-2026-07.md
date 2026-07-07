@@ -186,10 +186,13 @@ export path unchanged. Error handling is consistent (zero empty catch blocks; th
 
 - **A1 — `AppSettings` is a managed god object** (~508 lines, 18 persisted knobs +
   live config + social-card model + per-window sessions + presets + diagnostics).
-  📋 Continue the existing `WebCaptureSettings` sub-store precedent: extract
-  `ExportSettings` and a `SocialCardStore`, and move per-window session machinery to
-  `State/`. Also inject `Entitlements`/`BrandKitStore` through `init` (the
-  constructor-injection habit already exists) so `exportConfig` is unit-testable.
+  ✅ *Partially done:* `Entitlements`/`BrandKitStore` are now injected through `init`
+  (defaulting to the shared instances, so no call site changes), and `exportConfig` is
+  covered by three new tests that vary the entitlement and the kit — the "last 10%" that
+  makes the export-config derivation unit-testable. 📋 *Remaining (larger, transversal):*
+  continue the `WebCaptureSettings` sub-store precedent by extracting `ExportSettings`
+  (~140 call sites) and a `SocialCardStore`, and move per-window session machinery to
+  `State/`. Those are best done as their own focused PRs — see the note under §8.
 - **A2 — `WebSnapshotConfig.swift` (816 lines) mixed eight concerns,** including the
   security-relevant URL/SSRF validation and the network-capability gate. ✅
   *Implemented:* validation (+ `URLValidationError` + the SSRF host blocklist) now

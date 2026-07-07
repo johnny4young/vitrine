@@ -184,6 +184,13 @@ final class AppSettings {
 
     private let defaults: UserDefaults
 
+    /// The Brand Kit and entitlement that resolve the export watermark, injected so
+    /// `exportConfig` is unit-testable without the app-global singletons (audit A1).
+    /// Default to the shared instances, so production and every existing call site keep
+    /// the single app-wide brand identity; a test passes its own.
+    private let brandKit: BrandKitStore
+    private let entitlements: Entitlements
+
     /// Guards the `config` observer from clearing the selected preset while we are
     /// applying that very preset (CS-020). Without it, the style writes inside
     /// `selectPreset(_:)` would momentarily look like a user edit.
@@ -191,8 +198,14 @@ final class AppSettings {
 
     private typealias Keys = SettingsCodec.Keys
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        brandKit: BrandKitStore = .shared,
+        entitlements: Entitlements = .shared
+    ) {
         self.defaults = defaults
+        self.brandKit = brandKit
+        self.entitlements = entitlements
 
         // Bring the persisted layout up to the current schema before any typed
         // read runs, so migrations see the raw on-disk shape (CS-050).
@@ -382,13 +395,12 @@ final class AppSettings {
     /// so persistence, the "diverged from preset" bookkeeping, per-window sessions,
     /// and the golden suite (which builds its own `SnapshotConfig`) all stay
     /// byte-for-byte unchanged — the brand mark exists purely on the rendered output.
-    /// It is resolved from the app-global `BrandKitStore` and the global entitlement,
-    /// so every window and the quick-capture path share one brand identity, and it
-    /// appears only when the user enabled it *and* PRO is unlocked.
+    /// It is resolved from the injected `BrandKitStore` and entitlement (the shared
+    /// instances by default), so every window and the quick-capture path share one brand
+    /// identity, and it appears only when the user enabled it *and* PRO is unlocked.
     var exportConfig: SnapshotConfig {
         var resolved = config
-        resolved.watermark = BrandKitStore.shared.resolvedWatermark(
-            isPro: Entitlements.shared.isPro)
+        resolved.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
         return resolved
     }
 
