@@ -77,7 +77,7 @@ extension WebSnapshotEditorView {
         // this flow gets the CS-048 logging discipline like every other save.
         guard
             let payload = ExportManager.encodedPayload(
-                settings.exportFormat,
+                settings.export.format,
                 png: { asset.cgImage },
                 pdf: { ExportManager.pdfData(from: asset.cgImage) })
         else {

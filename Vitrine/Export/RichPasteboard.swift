@@ -19,7 +19,7 @@ import UniformTypeIdentifiers
 ///
 /// - The default one-shortcut copy is unchanged: `ExportManager.copyToPasteboard`
 ///   still writes PNG and only *adds* text representations when the user opts in
-///   (`AppSettings.richClipboard` for styled RTF/HTML, `AppSettings.textSidecar`
+///   (`AppSettings.export.richClipboard` for styled RTF/HTML, `AppSettings.export.textSidecar`
 ///   for plain text). The explicit "Copy as data URI" and "Copy highlighted code"
 ///   commands are separate, clearly labeled actions.
 /// - Nothing leaves the Mac: every representation is produced locally from the
@@ -154,7 +154,7 @@ enum RichPasteboard {
         /// Highlighted code as HTML, when the user opted into rich text and it fit.
         var html: Data?
         /// The source as plain, copyable text, when the user opted into the text rider
-        /// (`AppSettings.textSidecar`) — so a paste into a code editor receives the text
+        /// (`AppSettings.export.textSidecar`) — so a paste into a code editor receives the text
         /// while an image well still receives the picture.
         var plainText: String?
 

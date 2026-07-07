@@ -40,54 +40,16 @@ final class AppSettings {
         didSet { SettingsCodec.persistSocialCard(socialCard, to: defaults) }
     }
 
-    /// Copy the rendered image to the clipboard automatically (quick mode).
-    var autoCopy: Bool { didSet { defaults.set(autoCopy, forKey: Keys.autoCopy) } }
-
-    /// Also save the rendered image to a file (CS-010 · Output).
-    var alsoSaveToFile: Bool {
-        didSet { defaults.set(alsoSaveToFile, forKey: Keys.alsoSaveToFile) }
-    }
-
-    /// Close the editor window after a successful "Copy image" (CS-084). On by
-    /// default: the window's job is done once the image is on the clipboard, so it
-    /// gets out of the way like a focused capture utility. Users who copy repeatedly
-    /// can turn it off in Settings.
-    var closeAfterCopy: Bool {
-        didSet { defaults.set(closeAfterCopy, forKey: Keys.closeAfterCopy) }
-    }
-
-    /// Export resolution multiplier: 1, 2 (retina), or 3.
-    var exportScale: Int {
-        didSet { defaults.set(exportScale, forKey: Keys.exportScale) }
-    }
-
-    /// Exported image format (CS-010 · Output).
-    var exportFormat: ExportFormat {
-        didSet { defaults.set(exportFormat.rawValue, forKey: Keys.exportFormat) }
-    }
-
-    /// PNG color profile: sRGB by default, Display P3 as an advanced option
-    /// (CS-024).
-    var colorProfile: ColorProfile {
-        didSet { defaults.set(colorProfile.rawValue, forKey: Keys.colorProfile) }
-    }
-
-    /// Add a rich-text representation (highlighted RTF/HTML) alongside the PNG on
-    /// every copy (CS-054). Off by default so the one-shortcut copy stays a plain
-    /// image; when on, a paste into a rich-text editor keeps the syntax colors and
-    /// font while an image well still receives the picture.
-    var richClipboard: Bool {
-        didSet { defaults.set(richClipboard, forKey: Keys.richClipboard) }
-    }
-
-    /// Send the source along with the image as plain, copyable text. Off by default so
-    /// a copy stays a plain image; when on, a copy also places the text on the clipboard
-    /// (paste the image anywhere, paste the text into an editor) and the multi-size
-    /// export writes a `.txt` beside each image. Terminal output is stripped of its
-    /// escape codes first, matching the rendered card.
-    var textSidecar: Bool {
-        didSet { defaults.set(textSidecar, forKey: Keys.textSidecar) }
-    }
+    /// The image-output settings (auto-copy, save, scale, format, color profile, rich
+    /// clipboard, text sidecar — CS-010 · Output), extracted into a focused sub-store
+    /// (audit A1) rather than as members of this object. Access them through `export`,
+    /// e.g. `settings.export.scale`. Both objects are `@Observable`, so a SwiftUI surface
+    /// that reads `settings.export.<field>` observes the nested store directly. Backed by
+    /// the same defaults suite, so an older store loads unchanged.
+    ///
+    /// Declared `var` (never reassigned after `init`) only so a `$settings.export.field`
+    /// SwiftUI binding resolves — a `let` class property forms a read-only key path.
+    var export: ExportSettings
 
     /// What the global hotkey does (CS-002).
     var hotkeyAction: HotkeyAction {
@@ -214,14 +176,9 @@ final class AppSettings {
             "Loaded settings (schema \(migratedFrom, privacy: .public) → \(SettingsSchema.current, privacy: .public))"
         )
 
-        autoCopy = defaults.object(forKey: Keys.autoCopy) as? Bool ?? true
-        alsoSaveToFile = defaults.object(forKey: Keys.alsoSaveToFile) as? Bool ?? false
-        closeAfterCopy = defaults.object(forKey: Keys.closeAfterCopy) as? Bool ?? true
-        exportScale = SettingsCodec.readExportScale(from: defaults)
-        exportFormat = ExportFormat.resolve(defaults.string(forKey: Keys.exportFormat))
-        colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
-        richClipboard = defaults.object(forKey: Keys.richClipboard) as? Bool ?? false
-        textSidecar = defaults.object(forKey: Keys.textSidecar) as? Bool ?? false
+        // Image-output settings (CS-010 · Output) live in their own focused sub-store
+        // (audit A1), read defensively from the same defaults suite (CS-050).
+        export = ExportSettings(defaults: defaults)
         hotkeyAction = HotkeyAction.resolve(defaults.string(forKey: Keys.hotkeyAction))
         let resolvedLanguage = AppLanguage.resolve(defaults.string(forKey: Keys.appLanguage))
         appLanguage = resolvedLanguage
@@ -324,11 +281,11 @@ final class AppSettings {
         defaultConfig.code = ""
         defaultConfig.clearContentMarks()
         config = defaultConfig
-        exportScale = session.exportScale
-        exportFormat = session.exportFormat
-        colorProfile = session.colorProfile
-        richClipboard = session.richClipboard
-        textSidecar = session.textSidecar
+        export.scale = session.export.scale
+        export.format = session.export.format
+        export.colorProfile = session.export.colorProfile
+        export.richClipboard = session.export.richClipboard
+        export.textSidecar = session.export.textSidecar
         if let preset = session.selectedPreset {
             selectedPresetID = preset.id
         } else {
@@ -353,7 +310,7 @@ final class AppSettings {
         isApplyingPreset = true
         preset.apply(to: &config)
         isApplyingPreset = false
-        exportScale = SettingsDefaults.clampExportScale(preset.scale)
+        export.scale = SettingsDefaults.clampExportScale(preset.scale)
         selectedPresetID = preset.id
     }
 
@@ -381,8 +338,8 @@ final class AppSettings {
     /// value (e.g. OpenGraph → 1, so logical and pixel sizes match), but the
     /// Resolution control stays authoritative afterward: a later override is
     /// honored ("OpenGraph exports 1200×630 at 1× unless overridden"). So the
-    /// effective scale is simply the current `exportScale`.
-    var effectiveExportScale: Int { exportScale }
+    /// effective scale is simply the current `export.scale`.
+    var effectiveExportScale: Int { export.scale }
 
     /// The exact logical canvas size to render, when the active preset pins one
     /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content (CS-020).
@@ -434,13 +391,13 @@ final class AppSettings {
             showChrome: config.showChrome,
             showShadow: config.showShadow,
             backgroundKind: config.background.diagnosticsKind,
-            autoCopy: autoCopy,
-            alsoSaveToFile: alsoSaveToFile,
-            exportScale: exportScale,
-            exportFormat: exportFormat.rawValue,
-            colorProfile: colorProfile.rawValue,
-            richClipboard: richClipboard,
-            textSidecar: textSidecar,
+            autoCopy: export.autoCopy,
+            alsoSaveToFile: export.alsoSaveToFile,
+            exportScale: export.scale,
+            exportFormat: export.format.rawValue,
+            colorProfile: export.colorProfile.rawValue,
+            richClipboard: export.richClipboard,
+            textSidecar: export.textSidecar,
             hotkeyAction: hotkeyAction.rawValue,
             treatURLsAsScreenshot: treatURLsAsScreenshot,
             recentLanguageCount: recentLanguages.count,
@@ -469,14 +426,9 @@ final class AppSettings {
         defaults.removeObject(forKey: SettingsSchema.versionKey)
         SettingsSchema.migrateToCurrent(defaults)
 
-        autoCopy = true
-        alsoSaveToFile = false
-        closeAfterCopy = true
-        exportScale = SettingsDefaults.exportScale
-        exportFormat = .fallback
-        colorProfile = .fallback
-        richClipboard = false
-        textSidecar = false
+        // The output sub-store resets its own published state (audit A1); its persisted
+        // keys were cleared by the `Keys.all` sweep above.
+        export.resetToDefaults()
         hotkeyAction = .fallback
         appLanguage = .system
         treatURLsAsScreenshot = false

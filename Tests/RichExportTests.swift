@@ -445,33 +445,33 @@ struct RichExportTests {
         let defaults = UserDefaults(suiteName: "VitrineRichExport-\(UUID().uuidString)")!
         let settings = AppSettings(defaults: defaults)
         // Default off keeps the one-shortcut copy a plain image.
-        #expect(settings.richClipboard == false)
+        #expect(settings.export.richClipboard == false)
 
-        settings.richClipboard = true
+        settings.export.richClipboard = true
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.richClipboard)
+        #expect(reloaded.export.richClipboard)
     }
 
     @Test func resetClearsRichClipboard() {
         let defaults = UserDefaults(suiteName: "VitrineRichExport-\(UUID().uuidString)")!
         let settings = AppSettings(defaults: defaults)
-        settings.richClipboard = true
+        settings.export.richClipboard = true
         settings.resetToDefaults()
-        #expect(settings.richClipboard == false)
+        #expect(settings.export.richClipboard == false)
     }
 
     @Test func textSidecarSettingDefaultsOffPersistsAndResets() {
         let defaults = UserDefaults(suiteName: "VitrineRichExport-\(UUID().uuidString)")!
         let settings = AppSettings(defaults: defaults)
         // Default off keeps copy/export unchanged until the user opts into the rider.
-        #expect(settings.textSidecar == false)
+        #expect(settings.export.textSidecar == false)
 
-        settings.textSidecar = true
+        settings.export.textSidecar = true
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.textSidecar)
+        #expect(reloaded.export.textSidecar)
 
         reloaded.resetToDefaults()
-        #expect(reloaded.textSidecar == false)
+        #expect(reloaded.export.textSidecar == false)
     }
 
     // MARK: - Helpers

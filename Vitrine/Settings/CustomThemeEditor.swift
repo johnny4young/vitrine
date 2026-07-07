@@ -181,7 +181,7 @@ struct CustomThemeEditor: View {
         .accessibilityIdentifier("custom-theme-editor")
         // Debounced live preview (P2): coalesce rapid color-well edits into one render
         // after a short quiet window; run once on appear for the initial thumbnail.
-        .task(id: PreviewKey(config: previewConfig, profile: settings.colorProfile)) {
+        .task(id: PreviewKey(config: previewConfig, profile: settings.export.colorProfile)) {
             try? await Task.sleep(for: .milliseconds(120))
             guard !Task.isCancelled else { return }
             renderedImage = renderCurrentPreview()
@@ -236,7 +236,7 @@ struct CustomThemeEditor: View {
     /// thumbnail, so scale 1 is ample and halves the pixel work versus the old 2×, P2).
     /// Called only from the debounced `.task(id:)`, never inside `body`.
     private func renderCurrentPreview() -> NSImage? {
-        ExportManager.renderNSImage(previewConfig, scale: 1, profile: settings.colorProfile)
+        ExportManager.renderNSImage(previewConfig, scale: 1, profile: settings.export.colorProfile)
     }
 
     /// The `.task(id:)` key: the render inputs (config + color profile) as an `Equatable`

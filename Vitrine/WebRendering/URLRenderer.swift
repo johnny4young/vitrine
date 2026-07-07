@@ -145,11 +145,11 @@ extension URLRenderer {
     /// viewport and timing the user selected.
     static func configured(from settings: AppSettings) -> URLRenderer {
         URLRenderer(
-            scale: CGFloat(settings.exportScale),
+            scale: CGFloat(settings.export.scale),
             viewportPreset: settings.webCapture.viewportPreset,
             captureMode: settings.webCapture.captureMode,
             waitStrategy: settings.webCapture.waitStrategy,
-            profile: settings.colorProfile,
+            profile: settings.export.colorProfile,
             dataStoreMode: settings.webCapture.dataStoreMode)
     }
 }

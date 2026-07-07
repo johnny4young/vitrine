@@ -139,24 +139,25 @@ enum QuickCapture {
     ) -> (didCopy: Bool, didSave: Bool) {
         let scale = CGFloat(settings.effectiveExportScale)
         let fixedSize = settings.effectiveFixedSize
-        let profile = settings.colorProfile
+        let profile = settings.export.colorProfile
         let cgImage = ExportManager.renderCGImage(
             config, scale: scale, fixedSize: fixedSize, profile: profile)
 
         var didCopy = false
-        if settings.autoCopy, let cgImage {
-            if settings.richClipboard || settings.textSidecar {
+        if settings.export.autoCopy, let cgImage {
+            if settings.export.richClipboard || settings.export.textSidecar {
                 didCopy = RichPasteboard.copy(
                     cgImage: cgImage, config: config,
-                    includeRichText: settings.richClipboard, includePlainText: settings.textSidecar)
+                    includeRichText: settings.export.richClipboard,
+                    includePlainText: settings.export.textSidecar)
             } else {
                 didCopy = ExportManager.copyPNGToPasteboard(cgImage)
             }
         }
 
         var didSave = false
-        if settings.alsoSaveToFile {
-            if settings.exportFormat == .pdf {
+        if settings.export.alsoSaveToFile {
+            if settings.export.format == .pdf {
                 didSave =
                     ExportManager.saveToFile(
                         config, scale: scale, format: .pdf, fixedSize: fixedSize, profile: profile)
@@ -164,7 +165,7 @@ enum QuickCapture {
             } else if let cgImage {
                 didSave =
                     ExportManager.saveToFile(
-                        cgImage: cgImage, format: settings.exportFormat,
+                        cgImage: cgImage, format: settings.export.format,
                         suggestedName: SuggestedFilename.basename(for: config)) == .saved
             }
         }

@@ -189,10 +189,13 @@ export path unchanged. Error handling is consistent (zero empty catch blocks; th
   ✅ *Partially done:* `Entitlements`/`BrandKitStore` are now injected through `init`
   (defaulting to the shared instances, so no call site changes), and `exportConfig` is
   covered by three new tests that vary the entitlement and the kit — the "last 10%" that
-  makes the export-config derivation unit-testable. 📋 *Remaining (larger, transversal):*
-  continue the `WebCaptureSettings` sub-store precedent by extracting `ExportSettings`
-  (~140 call sites) and a `SocialCardStore`, and move per-window session machinery to
-  `State/`. Those are best done as their own focused PRs — see the note under §8.
+  makes the export-config derivation unit-testable. ✅ *Also done:* the eight image-output
+  knobs (auto-copy, save, scale, format, color profile, rich clipboard, text sidecar,
+  close-after-copy) are extracted into a focused `ExportSettings` sub-store on the
+  `WebCaptureSettings` precedent — `settings.export.<field>`, persistence and schema
+  unchanged — cutting `AppSettings` down and namespacing the output settings. 📋
+  *Remaining:* a `SocialCardStore` and moving the per-window session machinery to
+  `State/` (lower value; the god-object pressure is largely relieved).
 - **A2 — `WebSnapshotConfig.swift` (816 lines) mixed eight concerns,** including the
   security-relevant URL/SSRF validation and the network-capability gate. ✅
   *Implemented:* validation (+ `URLValidationError` + the SSRF host blocklist) now

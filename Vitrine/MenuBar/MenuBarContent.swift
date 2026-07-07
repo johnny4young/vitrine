@@ -292,8 +292,8 @@ struct MenuBarContent: View {
         config.theme = capture.theme
         ExportManager.copyToPasteboard(
             config, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
-            richText: settings.richClipboard, plainText: settings.textSidecar)
+            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
+            richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
     }
 }
 

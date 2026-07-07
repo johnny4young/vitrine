@@ -322,7 +322,8 @@ final class WebSnapshotModel {
         // preview/export; a single capture has none.
         if captured.count > 1 {
             boardAsset = ResponsiveBoardComposer.compose(
-                captured, scale: CGFloat(settings.exportScale), profile: settings.colorProfile)
+                captured, scale: CGFloat(settings.export.scale),
+                profile: settings.export.colorProfile)
             if let board = boardAsset {
                 boardThumbnailAsset = CapturedViewport.makeThumbnail(from: board)
                 renderedAsset = board
@@ -358,16 +359,16 @@ final class WebSnapshotModel {
         case .html:
             let renderer = HTMLRenderer(
                 viewport: preset.size,
-                scale: CGFloat(settings.exportScale),
-                profile: settings.colorProfile)
+                scale: CGFloat(settings.export.scale),
+                profile: settings.export.colorProfile)
             return try await renderer.render(input, config: settings.config)
         case .url:
             let renderer = URLRenderer(
-                scale: CGFloat(settings.exportScale),
+                scale: CGFloat(settings.export.scale),
                 viewportPreset: preset,
                 captureMode: settings.webCapture.captureMode,
                 waitStrategy: settings.webCapture.waitStrategy,
-                profile: settings.colorProfile,
+                profile: settings.export.colorProfile,
                 dataStoreMode: settings.webCapture.dataStoreMode)
             return try await renderer.render(input, config: settings.config)
         case .code:

@@ -264,25 +264,25 @@ struct ColorOutputTests {
 
     @Test func appSettingsDefaultsColorProfileToSRGB() {
         let settings = AppSettings(defaults: Self.freshDefaults())
-        #expect(settings.colorProfile == .sRGB)
+        #expect(settings.export.colorProfile == .sRGB)
     }
 
     @Test func appSettingsPersistsColorProfile() {
         let defaults = Self.freshDefaults()
 
         let settings = AppSettings(defaults: defaults)
-        settings.colorProfile = .displayP3
+        settings.export.colorProfile = .displayP3
 
         // A fresh instance over the same store reads the persisted choice back.
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.colorProfile == .displayP3)
+        #expect(reloaded.export.colorProfile == .displayP3)
     }
 
     @Test func resetRestoresSRGBProfile() {
         let settings = AppSettings(defaults: Self.freshDefaults())
-        settings.colorProfile = .displayP3
+        settings.export.colorProfile = .displayP3
         settings.resetToDefaults()
-        #expect(settings.colorProfile == .sRGB)
+        #expect(settings.export.colorProfile == .sRGB)
     }
 
     // MARK: - Sample gallery comparison

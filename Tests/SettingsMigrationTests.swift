@@ -229,10 +229,10 @@ struct SettingsDefaultsTests {
 struct AppSettingsMigrationTests {
     @Test func loadsFromEmptyDefaultsWithoutCrashing() {
         let settings = AppSettings(defaults: freshDefaults())
-        #expect(settings.exportScale == SettingsDefaults.exportScale)
-        #expect(settings.exportFormat == .png)
+        #expect(settings.export.scale == SettingsDefaults.exportScale)
+        #expect(settings.export.format == .png)
         #expect(settings.hotkeyAction == .quickCapture)
-        #expect(settings.autoCopy)
+        #expect(settings.export.autoCopy)
         #expect(settings.config.theme.id == Theme.oneDark.id)
         #expect(settings.config.fontName == CodeFont.default)
     }
@@ -274,15 +274,15 @@ struct AppSettingsMigrationTests {
         #expect(settings.config.fontSize == SnapshotConfig().fontSize)
         #expect(settings.config.padding == SnapshotConfig().padding)
         #expect(settings.config.cornerRadius == SnapshotConfig().cornerRadius)
-        #expect(settings.exportScale == SettingsDefaults.exportScale)
+        #expect(settings.export.scale == SettingsDefaults.exportScale)
         // Wrong-typed bools fall back to their defaults.
         #expect(settings.config.showChrome)
-        #expect(settings.autoCopy)
+        #expect(settings.export.autoCopy)
         // Unrecognized enum / catalog values fall back.
         #expect(settings.config.theme.id == Theme.oneDark.id)
         #expect(settings.config.language == .swift)
         #expect(settings.config.fontName == CodeFont.default)
-        #expect(settings.exportFormat == .png)
+        #expect(settings.export.format == .png)
         #expect(settings.hotkeyAction == .quickCapture)
         // The one valid recent language survives; the bogus one is dropped.
         #expect(settings.recentLanguages == [.swift])
@@ -297,7 +297,7 @@ struct AppSettingsMigrationTests {
         let settings = AppSettings(defaults: defaults)
         #expect(settings.config.fontSize == SettingsDefaults.fontSizeRange.upperBound)
         #expect(settings.config.padding == SettingsDefaults.paddingRange.lowerBound)
-        #expect(settings.exportScale == SettingsDefaults.exportScaleRange.upperBound)
+        #expect(settings.export.scale == SettingsDefaults.exportScaleRange.upperBound)
     }
 
     @Test func migratesLegacyStoreOnInit() {
@@ -308,7 +308,7 @@ struct AppSettingsMigrationTests {
 
         let settings = AppSettings(defaults: defaults)
         #expect(defaults.integer(forKey: SettingsSchema.versionKey) == SettingsSchema.current)
-        #expect(settings.exportScale == SettingsDefaults.exportScaleRange.upperBound)
+        #expect(settings.export.scale == SettingsDefaults.exportScaleRange.upperBound)
         #expect(settings.config.theme.id == "dracula")
     }
 
@@ -322,7 +322,7 @@ struct AppSettingsMigrationTests {
         #expect(settings.config.theme.id == "github")
         #expect(settings.config.padding == 48)
         #expect(settings.config.fontSize == SnapshotConfig().fontSize)
-        #expect(settings.exportFormat == .png)
+        #expect(settings.export.format == .png)
         #expect(settings.config.showChrome)
     }
 
@@ -340,7 +340,7 @@ struct AppSettingsMigrationTests {
 
         let settings = AppSettings(defaults: defaults)
 
-        #expect(settings.exportScale == SettingsDefaults.exportScaleRange.upperBound)
+        #expect(settings.export.scale == SettingsDefaults.exportScaleRange.upperBound)
         #expect(settings.config.fontSize == SettingsDefaults.fontSizeRange.upperBound)
         #expect(settings.config.padding == SnapshotConfig().padding)
         #expect(settings.config.theme.id == Theme.oneDark.id)
@@ -371,9 +371,9 @@ struct AppSettingsResetTests {
     @Test func resetRestoresDefaultsInMemory() {
         let settings = AppSettings(defaults: freshDefaults())
         settings.hotkeyAction = .openEditor
-        settings.exportFormat = .pdf
-        settings.exportScale = 3
-        settings.autoCopy = false
+        settings.export.format = .pdf
+        settings.export.scale = 3
+        settings.export.autoCopy = false
         settings.treatURLsAsScreenshot = true
         settings.config.theme = .dracula
         settings.config.padding = 64
@@ -382,9 +382,9 @@ struct AppSettingsResetTests {
         settings.resetToDefaults()
 
         #expect(settings.hotkeyAction == .quickCapture)
-        #expect(settings.exportFormat == .png)
-        #expect(settings.exportScale == SettingsDefaults.exportScale)
-        #expect(settings.autoCopy)
+        #expect(settings.export.format == .png)
+        #expect(settings.export.scale == SettingsDefaults.exportScale)
+        #expect(settings.export.autoCopy)
         #expect(!settings.treatURLsAsScreenshot)
         #expect(settings.config.theme.id == Theme.oneDark.id)
         #expect(settings.config.padding == SnapshotConfig().padding)
@@ -394,12 +394,12 @@ struct AppSettingsResetTests {
     @Test func resetPersistsSoAFreshInstanceSeesDefaults() {
         let defaults = freshDefaults()
         let first = AppSettings(defaults: defaults)
-        first.exportFormat = .pdf
+        first.export.format = .pdf
         first.config.theme = .dracula
         first.resetToDefaults()
 
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.exportFormat == .png)
+        #expect(reloaded.export.format == .png)
         #expect(reloaded.config.theme.id == Theme.oneDark.id)
         #expect(defaults.integer(forKey: SettingsSchema.versionKey) == SettingsSchema.current)
     }
@@ -413,8 +413,8 @@ struct AppSettingsRoundTripTests {
     @Test func reloadingDoesNotMutateCleanValues() {
         let defaults = freshDefaults()
         let first = AppSettings(defaults: defaults)
-        first.exportFormat = .pdf
-        first.exportScale = 3
+        first.export.format = .pdf
+        first.export.scale = 3
         first.hotkeyAction = .openEditor
         first.treatURLsAsScreenshot = true
         first.config.theme = .monokai
@@ -431,8 +431,8 @@ struct AppSettingsRoundTripTests {
         let third = AppSettings(defaults: defaults)
 
         for reloaded in [second, third] {
-            #expect(reloaded.exportFormat == .pdf)
-            #expect(reloaded.exportScale == 3)
+            #expect(reloaded.export.format == .pdf)
+            #expect(reloaded.export.scale == 3)
             #expect(reloaded.hotkeyAction == .openEditor)
             #expect(reloaded.treatURLsAsScreenshot)
             #expect(reloaded.config.theme.id == "monokai")

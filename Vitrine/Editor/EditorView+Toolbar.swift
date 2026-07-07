@@ -125,15 +125,15 @@ extension EditorView {
         // (audit UX-1). The HUD shows near the menu bar regardless of `closeAfterCopy`.
         let copied = ExportManager.copyToPasteboard(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile,
-            richText: settings.richClipboard, plainText: settings.textSidecar)
+            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
+            richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
         ExportFeedback.presentCopy(copied)
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
         // shared settings (what the Settings toggle edits) rather than this window's
         // per-session copy. Close *this* window — captured via `WindowAccessor`, so it
         // never depends on `keyWindow` being right — deferred past the button's action,
         // and `close()` (not `performClose`) so it is unconditional.
-        guard AppSettings.shared.closeAfterCopy else { return }
+        guard AppSettings.shared.export.closeAfterCopy else { return }
         let target = editorWindow ?? NSApp.keyWindow
         DispatchQueue.main.async { target?.close() }
     }
@@ -145,8 +145,8 @@ extension EditorView {
         ExportFeedback.presentSave(
             ExportManager.saveToFile(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-                format: settings.exportFormat, fixedSize: settings.effectiveFixedSize,
-                profile: settings.colorProfile))
+                format: settings.export.format, fixedSize: settings.effectiveFixedSize,
+                profile: settings.export.colorProfile))
     }
 
     /// The explicit alternative copy targets behind the rich-text icon
@@ -214,8 +214,8 @@ extension EditorView {
             switch sheet {
             case .export:
                 MultiSizeExportView(
-                    baseConfig: settings.exportConfig, format: settings.exportFormat,
-                    profile: settings.colorProfile, textSidecar: settings.textSidecar)
+                    baseConfig: settings.exportConfig, format: settings.export.format,
+                    profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar)
             case .paywall:
                 PaywallSheet(feature: .multiSizeExport)
             }
@@ -309,7 +309,7 @@ extension EditorView {
         guard
             let image = ExportManager.renderNSImage(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-                fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile),
+                fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile),
             let view = NSApp.keyWindow?.contentView
         else { return }
         ShareManager.share(image, relativeTo: view)
@@ -320,7 +320,7 @@ extension EditorView {
     func copyDataURI() {
         RichPasteboard.copyDataURI(
             for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.colorProfile)
+            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
     }
 
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
