@@ -271,6 +271,16 @@ enum SettingsDefaults {
         clamp(value, to: cornerRadiusRange, fallback: cornerRadius)
     }
 
+    /// Shadow-depth bounds, matching the inspector's "Shadow depth" slider. The
+    /// style codec never persists the shadow radius, but the window-restoration
+    /// blob does — and a corrupt/hand-edited value there must never drive
+    /// `.shadow(radius:)` into a pathological blur allocation on restore.
+    static let shadowRadiusRange: ClosedRange<Double> = 0...40
+
+    static func clampShadowRadius(_ value: Double) -> Double {
+        clamp(value, to: shadowRadiusRange, fallback: Brand.Shadow.elevated.radius)
+    }
+
     /// Clamps `value` into `range`, replacing a non-finite (NaN/∞) value with
     /// `fallback` so corrupt floating-point data can never reach the renderer.
     private static func clamp(

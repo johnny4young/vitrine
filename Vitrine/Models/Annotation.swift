@@ -1,4 +1,5 @@
-import SwiftUI
+import CoreGraphics
+import Foundation
 
 /// A single annotation drawn over the code snapshot (CS-083 / CS-085): an arrow,
 /// line, rectangle, text callout, highlighter, blur/redaction box, or a numbered
@@ -83,7 +84,7 @@ struct Annotation: Identifiable, Equatable, Codable {
 
 extension Annotation {
     /// The default mark color — a vivid red that reads on light and dark code alike.
-    static let defaultColor = RGBAColor(Color(hex: "#FF453A"))
+    static let defaultColor = RGBAColor(hex: "#FF453A") ?? .fallbackBlack
     /// The default stroke/size weight, in canvas points.
     static let defaultThickness: Double = 5
     /// The supported weight range for the toolbar slider.
@@ -187,36 +188,6 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         case .highlighter: return "highlighter"
         case .blur: return "drop.fill"
         case .counter: return "1.circle.fill"
-        }
-    }
-
-    var label: LocalizedStringKey {
-        switch self {
-        case .select: return "Select"
-        case .arrow: return "Arrow"
-        case .line: return "Line"
-        case .rectangle: return "Rectangle"
-        case .text: return "Text"
-        case .highlighter: return "Highlighter"
-        case .blur: return "Blur"
-        case .counter: return "Counter"
-        }
-    }
-
-    /// The shortcut digit that selects this tool, used with ⌘ (⌘1…⌘8 in toolbar order).
-    /// A Command-modified shortcut is the reliable, non-hijacking choice on macOS: a
-    /// modifier-less key would either not fire or steal the code editor's typing, so the
-    /// tools take the digit row under ⌘ instead.
-    var keyEquivalent: KeyEquivalent {
-        switch self {
-        case .select: return "1"
-        case .arrow: return "2"
-        case .line: return "3"
-        case .rectangle: return "4"
-        case .text: return "5"
-        case .highlighter: return "6"
-        case .blur: return "7"
-        case .counter: return "8"
         }
     }
 

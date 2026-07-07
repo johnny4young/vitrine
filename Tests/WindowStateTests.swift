@@ -327,14 +327,14 @@ struct EditorSessionIndependenceTests {
         source.config.fontName = "Fira Code"
         source.config.padding = 56
         source.config.wrapColumns = 72
-        source.exportScale = 3
+        source.export.scale = 3
 
         let session = AppSettings.makeEditorSession(seededFrom: defaults)
         #expect(session.config.theme.id == "monokai")
         #expect(session.config.fontName == "Fira Code")
         #expect(session.config.padding == 56)
         #expect(session.config.wrapColumns == 72)
-        #expect(session.exportScale == 3)
+        #expect(session.export.scale == 3)
     }
 
     @Test func editingASessionDoesNotClobberTheGlobalDefault() {
@@ -382,12 +382,12 @@ struct EditorSessionIndependenceTests {
         let defaults = freshDefaults()
         let appDefault = AppSettings(defaults: defaults)
         appDefault.config.theme = .oneDark
-        appDefault.exportScale = 1
+        appDefault.export.scale = 1
 
         let session = AppSettings.makeEditorSession(seededFrom: defaults)
         session.config.theme = .dracula
         session.config.padding = 64
-        session.exportScale = 3
+        session.export.scale = 3
 
         // Nothing changes until the explicit promotion.
         #expect(appDefault.config.theme.id == Theme.oneDark.id)
@@ -395,12 +395,12 @@ struct EditorSessionIndependenceTests {
 
         #expect(appDefault.config.theme.id == "dracula")
         #expect(appDefault.config.padding == 64)
-        #expect(appDefault.exportScale == 3)
+        #expect(appDefault.export.scale == 3)
 
         let reloaded = AppSettings(defaults: defaults)
         #expect(reloaded.config.theme.id == "dracula")
         #expect(reloaded.config.padding == 64)
-        #expect(reloaded.exportScale == 3)
+        #expect(reloaded.export.scale == 3)
     }
 
     @Test func discardingAVolatileStoreLeavesTheSourceUntouched() {

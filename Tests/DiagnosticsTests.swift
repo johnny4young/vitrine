@@ -72,7 +72,7 @@ struct DiagnosticsRedactionTests {
     /// user picked, so even a chosen color does not leak as identifying data.
     @Test func solidBackgroundIsReportedWithoutColorValue() {
         var config = SnapshotConfig()
-        config.background = .solid(.red)
+        config.background = .solid(RGBAColor(.red))
         #expect(config.background.diagnosticsKind == "solid")
     }
 
@@ -204,7 +204,7 @@ struct DiagnosticsSchemaTests {
     @Test func settingsSnapshotIncludesCopyableTextSidecarKnob() {
         let defaults = UserDefaults(suiteName: "DiagTextSidecar-\(UUID())")!
         let settings = AppSettings(defaults: defaults)
-        settings.textSidecar = true
+        settings.export.textSidecar = true
 
         let lines = settings.diagnosticsSnapshot.redactedLines()
         let sidecarLine = lines.first { $0.key == "textSidecar" }

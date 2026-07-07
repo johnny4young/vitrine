@@ -46,13 +46,13 @@ struct EditorPreviewTests {
         live.code = ""
         live.theme = Theme.dracula
         live.padding = 56
-        live.background = .solid(.white)
+        live.background = .solid(RGBAColor(.white))
 
         let preview = EditorPreview.configForPreview(live)
 
         #expect(preview.theme.id == Theme.dracula.id)
         #expect(preview.padding == 56)
-        #expect(preview.background == .solid(.white))
+        #expect(preview.background == .solid(RGBAColor(.white)))
         // Only the code was swapped.
         #expect(preview.code == EditorPreview.sampleCode)
     }

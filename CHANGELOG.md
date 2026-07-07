@@ -12,6 +12,51 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- **asciinema import.** Drop or open an asciinema recording (`.cast`, v2/v3) and Vitrine
+  replays its output events into the terminal renderer — a recorded session becomes a styled
+  terminal image with no conversion step.
+- **`vpane` shell helper.** `vitrine shell-init` (zsh/bash/fish) now also defines
+  `vpane [-e] [target-pane]`: copy a terminal image of a tmux pane's visible contents —
+  colors included, nothing re-run — for what is already on screen (`vgrab` remains the
+  run-and-capture path).
+- **HEIC export.** A third output format alongside PNG and PDF — the same rendered,
+  color-managed image in a far smaller container for docs sites and wikis. In the app's
+  format picker and the CLI (`--format heic`).
+- **Smarter save names.** The save panel now proposes a filename derived from the snapshot
+  (the filename chip, else the first declared identifier in the code) instead of a fixed
+  `vitrine.png`.
+- **Markdown sidecar (CLI).** `vitrine render --markdown-sidecar` writes a `.md` next to the
+  image: the image reference plus the source in a language-tagged fenced code block, ready to
+  paste into a README or post so viewers can copy the code the image shows.
+
+### Fixed
+
+- Secret redaction now blurs every line of a PEM private key, not just its BEGIN banner.
+- Terminal line mode: `ESC ( B` charset designations no longer leak a stray `B`; colon-form
+  SGR parameters (`38:5:196`) no longer reset accumulated styles; a control byte inside a
+  truncated CSI sequence no longer merges output lines.
+- Files saved with a UTF-8 BOM no longer carry an invisible leading character into the editor.
+- Malformed hex colors fall back to black instead of decoding a partial value; window
+  restoration clamps the shadow radius like every other numeric field.
+- Format-on-paste no longer re-indents the interior of multi-line string literals
+  (backtick templates, Swift/Kotlin/Scala triple-quoted strings) or miscounts braces inside
+  them.
+- Importing a preset file (or loading the saved presets) with one corrupt entry now keeps
+  the valid presets instead of discarding all of them.
+- A wide (double-width) character rendered on a one-column terminal no longer writes past
+  the right margin.
+- Cancelling a webpage/HTML capture now stops promptly instead of waiting out the load
+  timeout.
+
+### Performance
+
+- Image backgrounds and foreground ("beautify any image") snapshots are cached after the
+  first decode, so dragging a slider or typing no longer re-reads the file from disk on
+  every preview frame.
+- A code-only edit (typing) no longer re-persists the whole style block to preferences.
+
 ## [0.20.0] - 2026-06-28
 
 Turn *any* screenshot into a share-ready image — not just code.
@@ -33,8 +78,6 @@ Vitrine PRO.
 
 A one-click safety net for the most embarrassing way to leak a credential: sharing a
 screenshot with it still in frame.
-
-### Added
 
 - **Redact secrets in one click.** A new "Redact secrets" control in the editor's **Lines**
   section scans the capture for likely credentials — AWS / GitHub / Slack / Google / Stripe /

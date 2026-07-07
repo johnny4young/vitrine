@@ -428,7 +428,7 @@ struct EditorInspectorView: View {
                 options: [
                     (1, Text(verbatim: "1×")), (2, Text(verbatim: "2×")), (3, Text(verbatim: "3×")),
                 ],
-                selection: $settings.exportScale
+                selection: $settings.export.scale
             )
             .accessibilityLabel("Resolution")
             .accessibilityIdentifier("inspector-resolution-picker")
@@ -436,9 +436,9 @@ struct EditorInspectorView: View {
         InspectorRow(label: Text("Format")) {
             TokenSegmentedPicker(
                 options: ExportFormat.allCases.map { ($0, Text(verbatim: $0.displayName)) },
-                selection: $settings.exportFormat
+                selection: $settings.export.format
             )
-            .help(settings.exportFormat.summary)
+            .help(settings.export.format.summary)
             .accessibilityLabel("Format")
             .accessibilityIdentifier("inspector-format-picker")
         }
@@ -511,7 +511,8 @@ struct EditorInspectorView: View {
                 ColorPicker(
                     "Color",
                     selection: Binding(
-                        get: { color }, set: { settings.config.background = .solid($0) }),
+                        get: { color.color },
+                        set: { settings.config.background = .solid(RGBAColor($0)) }),
                     supportsOpacity: true
                 )
                 .labelsHidden()

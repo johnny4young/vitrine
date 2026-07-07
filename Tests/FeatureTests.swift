@@ -59,17 +59,17 @@ struct AppSettingsTests {
         let defaults = freshDefaults()
         let first = AppSettings(defaults: defaults)
         first.hotkeyAction = .openEditor
-        first.exportFormat = .pdf
+        first.export.format = .pdf
         first.treatURLsAsScreenshot = true
-        first.exportScale = 3
+        first.export.scale = 3
         first.config.padding = 48
         first.config.theme = .dracula
 
         let second = AppSettings(defaults: defaults)
         #expect(second.hotkeyAction == .openEditor)
-        #expect(second.exportFormat == .pdf)
+        #expect(second.export.format == .pdf)
         #expect(second.treatURLsAsScreenshot)
-        #expect(second.exportScale == 3)
+        #expect(second.export.scale == 3)
         #expect(second.config.padding == 48)
         #expect(second.config.theme.id == "dracula")
     }

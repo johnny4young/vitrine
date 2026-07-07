@@ -45,6 +45,10 @@ struct WorkflowConfigurationTests {
         try text(".github", "workflows", "release.yml")
     }
 
+    private static func appstore() throws -> String {
+        try text(".github", "workflows", "appstore.yml")
+    }
+
     private static func makefile() throws -> String {
         try text("Makefile")
     }
@@ -448,5 +452,47 @@ struct WorkflowConfigurationTests {
         #expect(
             doc.localizedCaseInsensitiveContains(".xcresult"),
             "RELEASING.md must document the .xcresult-on-failure artifacts (CS-060)")
+    }
+
+    // MARK: - Acceptance: third-party actions are commit-SHA pinned (S2)
+
+    /// Every `uses:` in every workflow must reference a full 40-character commit SHA,
+    /// never a mutable `@vN`/`@branch` tag — the release workflow holds the Developer ID
+    /// `.p12`, the notary `.p8`, the Sparkle EdDSA key, the license-signing key, and the
+    /// tap deploy key, so a hijacked tag on a community action is a direct path to those
+    /// secrets (the tj-actions incident pattern; see docs/DEEP-REVIEW-2026-07.md, S2).
+    /// A trailing `# vX.Y.Z` comment must record the human-readable version the SHA
+    /// corresponds to, which is also what Dependabot rewrites when it bumps the pin.
+    @Test func thirdPartyActionsArePinnedToCommitSHAs() throws {
+        let sha40 = try Regex(#"^[0-9a-f]{40}$"#)
+        for (name, yaml) in try [
+            ("ci.yml", Self.ci()),
+            ("release.yml", Self.release()),
+            ("appstore.yml", Self.appstore()),
+        ] {
+            for rawLine in yaml.components(separatedBy: .newlines) {
+                guard let usesRange = rawLine.range(of: "uses:") else { continue }
+                // The reference value: everything after `uses:` up to an inline comment.
+                let afterUses = rawLine[usesRange.upperBound...]
+                let value = afterUses.split(separator: "#", maxSplits: 1)[0]
+                    .trimmingCharacters(in: .whitespaces)
+                // Local (`./…`) and container (`docker://…`) actions are not tag-pinnable.
+                guard !value.hasPrefix("./"), !value.hasPrefix("docker://") else { continue }
+                guard let atIndex = value.lastIndex(of: "@") else {
+                    Issue.record("\(name): `uses: \(value)` has no `@<sha>` pin")
+                    continue
+                }
+                let ref = String(value[value.index(after: atIndex)...])
+                #expect(
+                    ref.wholeMatch(of: sha40) != nil,
+                    "\(name): `uses: \(value)` must pin a 40-char commit SHA, not the mutable ref `\(ref)` (S2)"
+                )
+                // And the line must carry the version the SHA maps to, for auditability
+                // and for Dependabot's bump comment.
+                #expect(
+                    rawLine.contains("# v"),
+                    "\(name): `uses: \(value)` must carry a `# vX.Y.Z` version comment (S2)")
+            }
+        }
     }
 }

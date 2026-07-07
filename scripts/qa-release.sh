@@ -127,6 +127,7 @@ DMG=""
 cleanup() {
 	if [ -n "$MOUNT_POINT" ] && [ -d "$MOUNT_POINT" ]; then
 		hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
+		rmdir "$MOUNT_POINT" 2>/dev/null || true
 	fi
 }
 trap cleanup EXIT

@@ -19,7 +19,7 @@ import UniformTypeIdentifiers
 ///
 /// - The default one-shortcut copy is unchanged: `ExportManager.copyToPasteboard`
 ///   still writes PNG and only *adds* text representations when the user opts in
-///   (`AppSettings.richClipboard` for styled RTF/HTML, `AppSettings.textSidecar`
+///   (`AppSettings.export.richClipboard` for styled RTF/HTML, `AppSettings.export.textSidecar`
 ///   for plain text). The explicit "Copy as data URI" and "Copy highlighted code"
 ///   commands are separate, clearly labeled actions.
 /// - Nothing leaves the Mac: every representation is produced locally from the
@@ -154,7 +154,7 @@ enum RichPasteboard {
         /// Highlighted code as HTML, when the user opted into rich text and it fit.
         var html: Data?
         /// The source as plain, copyable text, when the user opted into the text rider
-        /// (`AppSettings.textSidecar`) — so a paste into a code editor receives the text
+        /// (`AppSettings.export.textSidecar`) — so a paste into a code editor receives the text
         /// while an image well still receives the picture.
         var plainText: String?
 
@@ -186,10 +186,29 @@ enum RichPasteboard {
     ) -> Payload? {
         guard
             let cgImage = ExportManager.renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile),
-            let png = ExportManager.pngData(from: cgImage)
+                config, scale: scale, fixedSize: fixedSize, profile: profile)
         else {
-            Log.export.error("Rich payload build failed: render or PNG encode returned nil")
+            Log.export.error("Rich payload build failed: render returned nil")
+            return nil
+        }
+        return makePayload(
+            cgImage: cgImage, for: config, includeRichText: includeRichText,
+            includePlainText: includePlainText)
+    }
+
+    /// Builds the payload from an **already-rendered** `cgImage` (P5): the quick-capture
+    /// hotkey path renders the styled image once and feeds it to both the copy and the
+    /// save, so the rich clipboard no longer re-renders the identical config. The rich
+    /// text/HTML is still derived from `config`'s highlighted code.
+    @MainActor
+    static func makePayload(
+        cgImage: CGImage,
+        for config: SnapshotConfig,
+        includeRichText: Bool,
+        includePlainText: Bool = false
+    ) -> Payload? {
+        guard let png = ExportManager.pngData(from: cgImage) else {
+            Log.export.error("Rich payload build failed: PNG encode returned nil")
             return nil
         }
 
@@ -275,6 +294,25 @@ enum RichPasteboard {
             let payload = makePayload(
                 for: config, scale: scale, fixedSize: fixedSize, profile: profile,
                 includeRichText: includeRichText, includePlainText: includePlainText)
+        else { return false }
+        return write(payload, to: pasteboard)
+    }
+
+    /// Copies from an **already-rendered** `cgImage` (P5) — the quick-capture path passes
+    /// the single render shared with the file save, rather than re-rendering the config.
+    @MainActor
+    @discardableResult
+    static func copy(
+        cgImage: CGImage,
+        config: SnapshotConfig,
+        includeRichText: Bool,
+        includePlainText: Bool = false,
+        to pasteboard: NSPasteboard = .general
+    ) -> Bool {
+        guard
+            let payload = makePayload(
+                cgImage: cgImage, for: config, includeRichText: includeRichText,
+                includePlainText: includePlainText)
         else { return false }
         return write(payload, to: pasteboard)
     }

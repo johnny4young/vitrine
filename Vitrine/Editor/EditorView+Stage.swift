@@ -244,9 +244,9 @@ extension EditorView {
         case .customGradient(let gradient):
             let stops = gradient.stops.sorted { $0.location < $1.location }
             guard let first = stops.first?.color, let last = stops.last?.color else { return nil }
-            return (first, last)
+            return (first.color, last.color)
         case .solid(let color):
-            return (color, color)
+            return (color.color, color.color)
         case .image, .transparent:
             return nil
         }
@@ -275,7 +275,7 @@ extension EditorView {
         let destination = settings.selectedPreset?.displayName ?? String(localized: "Custom")
         let size = settings.effectiveFixedSize ?? cardSize
         let dimensions = "\(Int(size.width.rounded())) × \(Int(size.height.rounded()))"
-        let output = "\(settings.exportFormat.displayName) \(settings.effectiveExportScale)×"
+        let output = "\(settings.export.format.displayName) \(settings.effectiveExportScale)×"
         var line = "\(destination) · \(dimensions) · \(output)"
         if stageSize.width > 0 {
             let zoom = Int((fitScale(in: stageSize) * 100).rounded())

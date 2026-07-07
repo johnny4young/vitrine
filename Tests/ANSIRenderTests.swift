@@ -139,14 +139,23 @@ struct ANSIRenderTests {
         #expect(zsh.contains("script -qe") && zsh.contains("--copy"))
         #expect(zsh.contains("--terminal-width"))
         #expect(zsh.contains("numeric column count (1-1000)"))
+        #expect(zsh.contains("vpane()"))
         let bash = ShellInit.snippet(for: .bash)
         #expect(bash.contains("vgrab()"))
         #expect(bash.contains("--terminal-width"))
         #expect(bash.contains("numeric column count (1-1000)"))
+        #expect(bash.contains("vpane()"))
         let fish = ShellInit.snippet(for: .fish)
         #expect(fish.contains("function vgrab"))
         #expect(fish.contains("--terminal-width"))
         #expect(fish.contains("numeric column count (1-1000)"))
+        #expect(fish.contains("function vpane"))
+
+        // vpane captures the pane's already-on-screen contents with colors and never
+        // re-runs anything: it must read via `tmux capture-pane -ep` in every shell.
+        for snippet in [zsh, bash, fish] {
+            #expect(snippet.contains("tmux capture-pane -ep"))
+        }
 
         // The integration is `vgrab` only: a plain function with no passive recorder,
         // so the snippet never re-execs the shell, registers a prompt hook, or leaves a

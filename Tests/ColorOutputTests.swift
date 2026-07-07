@@ -129,7 +129,7 @@ struct ColorOutputTests {
         // anti-aliasing or syntax highlighting. A regression that tagged P3
         // without converting would leave the bytes identical and fail here.
         let config = Self.sampleConfig {
-            $0.background = .solid(Color(hex: "#FF0000"))
+            $0.background = .solid(RGBAColor(Color(hex: "#FF0000")))
             $0.showChrome = false
             $0.showShadow = false
         }
@@ -218,7 +218,7 @@ struct ColorOutputTests {
         // A solid (opaque) background must export with a fully opaque corner, so
         // an opaque export never leaks partial transparency.
         let config = Self.sampleConfig {
-            $0.background = .solid(Color(hex: "#3366CC"))
+            $0.background = .solid(RGBAColor(Color(hex: "#3366CC")))
             $0.showShadow = false
         }
         let decoded = try decodedPNG(config, profile: .sRGB)
@@ -264,25 +264,25 @@ struct ColorOutputTests {
 
     @Test func appSettingsDefaultsColorProfileToSRGB() {
         let settings = AppSettings(defaults: Self.freshDefaults())
-        #expect(settings.colorProfile == .sRGB)
+        #expect(settings.export.colorProfile == .sRGB)
     }
 
     @Test func appSettingsPersistsColorProfile() {
         let defaults = Self.freshDefaults()
 
         let settings = AppSettings(defaults: defaults)
-        settings.colorProfile = .displayP3
+        settings.export.colorProfile = .displayP3
 
         // A fresh instance over the same store reads the persisted choice back.
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.colorProfile == .displayP3)
+        #expect(reloaded.export.colorProfile == .displayP3)
     }
 
     @Test func resetRestoresSRGBProfile() {
         let settings = AppSettings(defaults: Self.freshDefaults())
-        settings.colorProfile = .displayP3
+        settings.export.colorProfile = .displayP3
         settings.resetToDefaults()
-        #expect(settings.colorProfile == .sRGB)
+        #expect(settings.export.colorProfile == .sRGB)
     }
 
     // MARK: - Sample gallery comparison
@@ -293,7 +293,7 @@ struct ColorOutputTests {
         // to a valid PNG (magic number) — a structural color-output regression net.
         // Qualified: SwiftUI also declares a `BackgroundStyle` shape style.
         let backgrounds: [Vitrine.BackgroundStyle] = [
-            .gradient(.aurora), .solid(Color(hex: "#1F1C2C")), .transparent,
+            .gradient(.aurora), .solid(RGBAColor(Color(hex: "#1F1C2C"))), .transparent,
         ]
         for background in backgrounds {
             let config = Self.sampleConfig {

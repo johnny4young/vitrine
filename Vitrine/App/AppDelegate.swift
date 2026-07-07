@@ -15,6 +15,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// it has found the status-bar button.
     private var didInstallMenuBarTooltip = false
 
+    /// Remaining attempts to locate the status-bar button before the installer gives
+    /// up. `applicationWillUpdate(_:)` fires on every event-loop pass, so without a
+    /// bound a failure to find the button (e.g. a future SwiftUI hosting change) would
+    /// re-run a full window-tree DFS forever, per event. The button appears within the
+    /// first few update passes on a normal launch; the tooltip is cosmetic, so
+    /// exhausting the budget quietly drops it rather than taxing every event.
+    private var menuBarTooltipAttemptsRemaining = 240
+
     /// Enforce a single running instance. A menu-bar agent must never stack a second
     /// status item, but launching the same bundle id from a different path — several
     /// Xcode DerivedData copies, or `open`-ing more than one built `.app` — starts a
@@ -360,7 +368,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// flag makes it a no-op once the button has been found, so this hot path stays
     /// cheap.
     private func ensureMenuBarTooltip() {
-        guard !didInstallMenuBarTooltip else { return }
+        guard !didInstallMenuBarTooltip, menuBarTooltipAttemptsRemaining > 0 else { return }
+        menuBarTooltipAttemptsRemaining -= 1
         for window in NSApp.windows {
             guard let button = Self.firstStatusBarButton(in: window.contentView) else { continue }
             // "Vitrine" is the verbatim brand wordmark, like the other brand strings

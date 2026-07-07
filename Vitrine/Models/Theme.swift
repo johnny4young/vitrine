@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 /// A code theme is a **syntax/theme palette** (CS-006/052/031). The theme controls
 /// only the syntax colors; the code-card background is taken from the palette's own
@@ -376,7 +375,10 @@ struct HexColor: Hashable, Sendable {
         let cleaned = string.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
             .uppercased()
-        guard cleaned.allSatisfy(\.isHexDigit) else { return nil }
+        // `isHexDigit` alone also accepts fullwidth digits (e.g. "Ｆ"), which stop
+        // the Scanner mid-string and would decode a wrong-but-accepted color;
+        // require ASCII so the scan below always consumes the whole string.
+        guard cleaned.allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return nil }
         var value: UInt64 = 0
         guard Scanner(string: cleaned).scanHexInt64(&value) else { return nil }
 
@@ -434,11 +436,6 @@ struct HexColor: Hashable, Sendable {
         0.299 * red + 0.587 * green + 0.114 * blue
     }
 
-    /// The SwiftUI color, reconstructed in the fixed sRGB space the components were
-    /// parsed in so it renders identically on any display (CS-031 determinism).
-    var color: Color {
-        Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
-    }
 }
 
 extension HexColor: Codable {

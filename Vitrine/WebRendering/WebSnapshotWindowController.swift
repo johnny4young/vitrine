@@ -179,14 +179,34 @@ final class WebSnapshotModel {
             mode: .url, urlCaptureEnabled: NetworkCapability.isURLCaptureEnabled)
     }
 
+    /// The maximum number of viewport captures to run at once (P6). Small so a large
+    /// selection never spawns many heavy `WKWebView`s (and their web-content processes)
+    /// at once; the loads still overlap, cutting a multi-size batch well below N× a single
+    /// capture.
+    private static let maxConcurrentCaptures = 3
+
+    /// The `Sendable` result of one viewport's concurrent capture task (P6): the finished
+    /// `RenderedAsset` (or a typed failure) crosses back from the child task, and the
+    /// main-actor drain loop wraps it in a `CapturedViewport` (whose `preset` accessors are
+    /// main-actor bound) once it knows the completion order.
+    private enum ViewportOutcome: Sendable {
+        case captured(RenderedAsset)
+        case renderFailed(RenderError)
+        case cancelled
+        case unknownFailure
+    }
+
     /// Renders the current input at every selected viewport, publishing the captured
     /// set or a typed error. Safe to call repeatedly; each call replaces the results.
     ///
-    /// Multi-resolution capture (CS-044) is **sequential** — `WKWebView` is main-actor
-    /// bound and two load/snapshot cycles must never overlap — so the viewports are
-    /// rendered one at a time. A single viewport that fails is recorded and skipped, so
-    /// one bad size never aborts the batch; the input (URL/HTML) is validated once up
-    /// front since it is the same across viewports.
+    /// Multi-resolution capture (CS-044) overlaps the per-viewport loads with a small
+    /// concurrency cap (`maxConcurrentCaptures`, P6): each viewport builds its **own**
+    /// `WKWebView` — a separate web-content process — so their loads run in parallel even
+    /// though `WKWebView` is main-actor bound (the `await` on each load releases the main
+    /// actor for the others). A re-entrant `render()` is still refused (`isRendering`), a
+    /// single viewport that fails is recorded and skipped, and the results are reassembled
+    /// in the user's selected order for the board/preview. The input (URL/HTML) is
+    /// validated once up front since it is the same across viewports.
     func render(settings: AppSettings) async {
         // Ignore a re-entrant render while one is already in flight (a fast second
         // Capture tap, or a disclosure-confirm landing while a prefilled render runs),
@@ -218,28 +238,68 @@ final class WebSnapshotModel {
 
         let presets = settings.webCapture.selectedViewportPresets
         let reportsBatchProgress = presets.count > 1
-        var captured: [CapturedViewport] = []
+        var capturedByIndex: [Int: CapturedViewport] = [:]
         var lastError: RenderError?
         var hadUnknownError = false
-        for (index, preset) in presets.enumerated() {
-            // Cancellation (the Cancel button) stops the batch between viewports — the
-            // common "trapped for ~60s × N sizes" case — and the in-flight renderer's own
-            // waits are cancellation-aware, so the current viewport aborts promptly too.
-            if Task.isCancelled { break }
-            if reportsBatchProgress {
-                renderProgress = RenderProgress(current: index + 1, total: presets.count)
+
+        // Overlap the per-viewport loads with a small concurrency cap (P6): keep at most
+        // `maxConcurrentCaptures` in flight, scheduling the next as each finishes. Each
+        // renderer owns its WKWebView/web-content process, so the loads run in parallel;
+        // the awaits release the main actor between them. Cancellation (the Cancel button)
+        // cancels the in-flight children — whose waits are cancellation-aware — and stops
+        // scheduling; a single viewport that fails is recorded and skipped.
+        let maxConcurrent = min(presets.count, Self.maxConcurrentCaptures)
+        await withTaskGroup(of: (Int, ViewportOutcome).self) { group in
+            var nextIndex = 0
+            func scheduleNext() {
+                guard nextIndex < presets.count, !Task.isCancelled else { return }
+                let index = nextIndex
+                let preset = presets[index]
+                nextIndex += 1
+                group.addTask {
+                    do {
+                        let asset = try await self.renderOne(
+                            input: input, preset: preset, settings: settings)
+                        return (index, .captured(asset))
+                    } catch is CancellationError {
+                        return (index, .cancelled)
+                    } catch let error as RenderError {
+                        return (index, .renderFailed(error))
+                    } catch {
+                        return (index, .unknownFailure)
+                    }
+                }
             }
-            do {
-                let asset = try await renderOne(input: input, preset: preset, settings: settings)
-                captured.append(CapturedViewport(kind: preset.kind, preset: preset, asset: asset))
-            } catch is CancellationError {
-                break
-            } catch let error as RenderError {
-                lastError = error
-            } catch {
-                hadUnknownError = true
+            for _ in 0..<maxConcurrent { scheduleNext() }
+
+            var completed = 0
+            while let (index, outcome) = await group.next() {
+                completed += 1
+                if reportsBatchProgress {
+                    renderProgress = RenderProgress(current: completed, total: presets.count)
+                }
+                switch outcome {
+                case .captured(let asset):
+                    // Build the CapturedViewport here on the main actor, where the preset's
+                    // (main-actor) accessors are available.
+                    let preset = presets[index]
+                    capturedByIndex[index] = CapturedViewport(
+                        kind: preset.kind, preset: preset, asset: asset)
+                case .renderFailed(let error): lastError = error
+                case .unknownFailure: hadUnknownError = true
+                case .cancelled: break
+                }
+                if Task.isCancelled {
+                    group.cancelAll()
+                } else {
+                    scheduleNext()
+                }
             }
         }
+
+        // Reassemble in the user's selected order — the concurrent group completes out of
+        // order, but the board composer and the primary preview depend on the order.
+        let captured = capturedByIndex.keys.sorted().compactMap { capturedByIndex[$0] }
 
         // A cancel is not a failure: stop cleanly, leaving any prior result in place and
         // showing no error (`isRendering`/`renderProgress` reset in the `defer`).
@@ -262,7 +322,8 @@ final class WebSnapshotModel {
         // preview/export; a single capture has none.
         if captured.count > 1 {
             boardAsset = ResponsiveBoardComposer.compose(
-                captured, scale: CGFloat(settings.exportScale), profile: settings.colorProfile)
+                captured, scale: CGFloat(settings.export.scale),
+                profile: settings.export.colorProfile)
             if let board = boardAsset {
                 boardThumbnailAsset = CapturedViewport.makeThumbnail(from: board)
                 renderedAsset = board
@@ -282,29 +343,38 @@ final class WebSnapshotModel {
     }
 
     /// Renders `input` at a single `preset` viewport with the user's capture settings.
-    /// Builds a fresh renderer per call (no shared web-view state), so the sequential
-    /// batch loop reuses the exact single-capture path once per size.
+    /// Builds a fresh renderer per call (no shared web-view state), so the concurrent
+    /// batch runs the exact single-capture path once per size.
+    ///
+    /// The renderer branch is chosen from the captured, immutable `input` — not the live
+    /// `mode` — so a parallel batch routes every viewport consistently even if the user
+    /// flips the mode picker mid-render (P6 review): `input` was resolved once from `mode`
+    /// at the top of `render`, so it is the authoritative source for all viewports.
     private func renderOne(
         input: CaptureInput,
         preset: WebSnapshotConfig.ViewportPreset,
         settings: AppSettings
     ) async throws -> RenderedAsset {
-        switch mode {
+        switch input {
         case .html:
             let renderer = HTMLRenderer(
                 viewport: preset.size,
-                scale: CGFloat(settings.exportScale),
-                profile: settings.colorProfile)
+                scale: CGFloat(settings.export.scale),
+                profile: settings.export.colorProfile)
             return try await renderer.render(input, config: settings.config)
         case .url:
             let renderer = URLRenderer(
-                scale: CGFloat(settings.exportScale),
+                scale: CGFloat(settings.export.scale),
                 viewportPreset: preset,
                 captureMode: settings.webCapture.captureMode,
                 waitStrategy: settings.webCapture.waitStrategy,
-                profile: settings.colorProfile,
+                profile: settings.export.colorProfile,
                 dataStoreMode: settings.webCapture.dataStoreMode)
             return try await renderer.render(input, config: settings.config)
+        case .code:
+            // The web snapshot flow only ever resolves `.url`/`.html`; a `.code` input
+            // has no web renderer, so surface it as a typed failure rather than silently.
+            throw RenderError.noRendererFor(kind: "code")
         }
     }
 

@@ -137,7 +137,7 @@ enum CLIRenderer {
             .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
-        let ext = options.format == .pdf ? "pdf" : "png"
+        let ext = options.format.rawValue
         var rendered = 0
         var skipped = 0
         for file in files {
@@ -145,8 +145,11 @@ enum CLIRenderer {
             do {
                 loaded = try fileLoader(file)
             } catch {
-                // A binary/unreadable file is skipped, never a fatal batch error.
+                // A binary/unreadable file is skipped, never a fatal batch error —
+                // but the automation user gets the filename and reason on stderr, so
+                // "skipped 3" in the summary is diagnosable without re-running.
                 skipped += 1
+                reportSkipped(file, reason: "not readable text")
                 continue
             }
             let language = options.language ?? loaded.language
@@ -160,6 +163,7 @@ enum CLIRenderer {
                 rendered += 1
             } catch {
                 skipped += 1
+                reportSkipped(file, reason: "render or write failed")
             }
         }
 
@@ -169,6 +173,14 @@ enum CLIRenderer {
         let summary =
             "Rendered \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
+    }
+
+    /// Names a skipped batch file (and why) on stderr. The user chose the input
+    /// folder, so echoing a filename from it leaks nothing (unlike the app's
+    /// no-paths logging rule for system errors); the summary line stays aggregate.
+    private static func reportSkipped(_ file: URL, reason: String) {
+        FileHandle.standardError.write(
+            Data("vitrine: skipped \(file.lastPathComponent): \(reason)\n".utf8))
     }
 
     /// Reads the input file through the injected loader, translating its
@@ -229,10 +241,14 @@ enum CLIRenderer {
         guard let payload else { throw CLIError.renderFailed }
         try write(payload.data, to: url, options: options)
         if options.textSidecar { try writeTextSidecar(for: config, options: options, beside: url) }
+        if options.markdownSidecar {
+            try writeMarkdownSidecar(for: config, options: options, beside: url)
+        }
 
         switch options.format {
-        case .png:
-            // `pngImage` is non-nil whenever a PNG payload was produced above.
+        case .png, .heic:
+            // Both raster formats encode the CGImage rendered above, so `pngImage`
+            // is non-nil whenever a payload was produced.
             return (pngImage?.width ?? 0, pngImage?.height ?? 0)
         case .pdf:
             // A PDF is a vector document; report the logical point size it was laid
@@ -243,12 +259,18 @@ enum CLIRenderer {
         }
     }
 
-    /// The "` + card.txt`" tail appended to a success line when a text sidecar was
-    /// written, naming the sidecar file; empty when the sidecar was not requested.
+    /// The "` + card.txt`" tail appended to a success line when sidecars were
+    /// written, naming each sidecar file; empty when none was requested.
     private static func sidecarNote(_ options: CLIOptions, beside imageURL: URL) -> String {
-        guard options.textSidecar else { return "" }
-        let name = imageURL.deletingPathExtension().appendingPathExtension("txt").lastPathComponent
-        return " + \(name)"
+        let base = imageURL.deletingPathExtension()
+        var names: [String] = []
+        if options.textSidecar {
+            names.append(base.appendingPathExtension("txt").lastPathComponent)
+        }
+        if options.markdownSidecar {
+            names.append(base.appendingPathExtension("md").lastPathComponent)
+        }
+        return names.map { " + \($0)" }.joined()
     }
 
     /// Writes the plain-text sidecar next to the rendered image at `imageURL`,
@@ -269,6 +291,93 @@ enum CLIRenderer {
             )
             throw CLIError.writeFailed(path: sidecarURL.path)
         }
+    }
+
+    /// Writes the Markdown sidecar next to the rendered image at `imageURL`
+    /// (`card.png` → `card.md`): the image reference followed by the source in a
+    /// language-tagged fenced code block, ready to paste into a README or post so
+    /// viewers can copy the code the image shows. Terminal output is reduced to its
+    /// visible text first, exactly like the plain-text sidecar.
+    private static func writeMarkdownSidecar(
+        for config: SnapshotConfig, options: CLIOptions, beside imageURL: URL
+    ) throws {
+        let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("md")
+        let contents = markdownSidecarContents(
+            for: config, imageName: imageURL.lastPathComponent)
+        do {
+            try Data(contents.utf8).write(to: sidecarURL)
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "CLI markdown-sidecar write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            throw CLIError.writeFailed(path: sidecarURL.path)
+        }
+    }
+
+    /// Builds the Markdown sidecar body: `![alt](image)` + a fenced code block.
+    /// The fence is one backtick longer than the longest backtick run in the body,
+    /// so code containing ``` can never break out of the block; the info string is
+    /// the language id (`text` for terminal output, whose escapes are stripped).
+    /// The image label/destination are escaped because both the input filename and
+    /// output image name are user-controlled strings.
+    /// Internal (not private) so the exact format is unit-testable.
+    static func markdownSidecarContents(for config: SnapshotConfig, imageName: String) -> String {
+        let body = config.sidecarText
+        let fenceLanguage = config.language == .terminal ? "text" : config.language.rawValue
+        var longestBacktickRun = 0
+        var currentRun = 0
+        for character in body {
+            currentRun = character == "`" ? currentRun + 1 : 0
+            longestBacktickRun = max(longestBacktickRun, currentRun)
+        }
+        let fence = String(repeating: "`", count: max(3, longestBacktickRun + 1))
+        let alt = markdownAltText(config.metadata.filename ?? "Code rendered with Vitrine")
+        let destination = markdownImageDestination(imageName)
+        let trailingNewline = body.hasSuffix("\n") ? "" : "\n"
+        return """
+            ![\(alt)](\(destination))
+
+            \(fence)\(fenceLanguage)
+            \(body)\(trailingNewline)\(fence)
+            """ + "\n"
+    }
+
+    /// Escapes Markdown image alt text so a source filename containing `]`, `[`,
+    /// backslashes, or newlines cannot break the generated image syntax.
+    private static func markdownAltText(_ text: String) -> String {
+        var escaped = ""
+        escaped.reserveCapacity(text.count)
+        for character in text {
+            switch character {
+            case "\\":
+                escaped += "\\\\"
+            case "[", "]":
+                escaped += "\\\(character)"
+            case "\n", "\r":
+                escaped += " "
+            default:
+                escaped.append(character)
+            }
+        }
+        return escaped
+    }
+
+    /// Keeps plain filenames readable, but switches to an angle-bracket link
+    /// destination when the output name carries Markdown-significant characters
+    /// such as spaces, parentheses, or `>`.
+    private static func markdownImageDestination(_ imageName: String) -> String {
+        let plainSafeCharacters = CharacterSet.alphanumerics.union(
+            CharacterSet(charactersIn: "-._~/"))
+        if imageName.unicodeScalars.allSatisfy({ plainSafeCharacters.contains($0) }) {
+            return imageName
+        }
+        let escaped = imageName.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "<", with: "\\<")
+            .replacingOccurrences(of: ">", with: "\\>")
+            .replacingOccurrences(of: "\n", with: "%0A")
+            .replacingOccurrences(of: "\r", with: "%0D")
+        return "<\(escaped)>"
     }
 
     /// Writes `data` to `url`, mapping any I/O failure to `CLIError.writeFailed`.

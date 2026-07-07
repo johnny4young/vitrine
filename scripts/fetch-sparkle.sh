@@ -8,23 +8,31 @@
 # the official release tarball with curl and embedding Sparkle.framework directly is
 # deterministic and verified against a pinned checksum.
 #
-# Idempotent: if Vendor/Sparkle.framework already exists (e.g. a cached CI directory
-# or a prior local run), the fetch is skipped.
+# Idempotent: if Vendor/Sparkle.framework already exists at the pinned version
+# (e.g. a cached CI directory or a prior local run), the fetch is skipped. The
+# version actually staged is stamped in Vendor/.sparkle-version so bumping the
+# pin re-fetches instead of silently keeping a stale framework.
 set -euo pipefail
 
-SPARKLE_VERSION="2.9.3"
-# sha256 of Sparkle-<version>.tar.xz from the official GitHub release. Bump together
-# with SPARKLE_VERSION; a mismatch fails the build rather than embedding an unverified
-# binary. Keep in sync with the appcast tooling pin in .github/workflows/release.yml.
-SPARKLE_TARBALL_SHA256="74a07da821f92b79310009954c0e15f350173374a3abe39095b4fc5096916be6"
-
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# The pinned version + tarball checksum live in scripts/sparkle-version.env,
+# shared with the appcast tooling in .github/workflows/release.yml so the
+# embedded framework and the signed feed can never drift apart.
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/sparkle-version.env"
+
 VENDOR="$REPO_ROOT/Vendor"
 FRAMEWORK="$VENDOR/Sparkle.framework"
+STAMP="$VENDOR/.sparkle-version"
 
 if [ -d "$FRAMEWORK" ]; then
-	echo "==> Sparkle.framework already present in Vendor/ (skipping fetch)"
-	exit 0
+	if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$SPARKLE_VERSION" ]; then
+		echo "==> Sparkle.framework $SPARKLE_VERSION already present in Vendor/ (skipping fetch)"
+		exit 0
+	fi
+	echo "==> Vendor/Sparkle.framework is not the pinned $SPARKLE_VERSION (stamp: $(cat "$STAMP" 2>/dev/null || echo none)) — re-fetching"
+	rm -rf "$FRAMEWORK" "$STAMP"
 fi
 
 echo "==> Fetching Sparkle $SPARKLE_VERSION framework into Vendor/"
@@ -41,4 +49,5 @@ echo "${SPARKLE_TARBALL_SHA256}  $TMP/Sparkle.tar.xz" | shasum -a 256 -c -
 # The tarball stores Sparkle.framework at its root; extract only that.
 tar -xf "$TMP/Sparkle.tar.xz" -C "$TMP" Sparkle.framework
 cp -R "$TMP/Sparkle.framework" "$FRAMEWORK"
+printf '%s' "$SPARKLE_VERSION" > "$STAMP"
 echo "==> Sparkle.framework $SPARKLE_VERSION staged in Vendor/"

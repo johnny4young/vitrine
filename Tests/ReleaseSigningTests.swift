@@ -114,7 +114,7 @@ struct ReleaseSigningTests {
             "release.yml must declare a certificate-import step")
         let stepRegion = String(release[importMarker.lowerBound...].prefix(400))
         #expect(
-            stepRegion.contains("MACOS_CERTIFICATE_P12 != ''"),
+            stepRegion.contains(#"[ -z "${MACOS_CERTIFICATE_P12:-}" ]"#),
             "the certificate-import step must be gated on the certificate secret (CS-061)")
     }
 
@@ -281,7 +281,7 @@ struct ReleaseSigningTests {
             "release.yml must declare the App Store Connect key staging step")
         let stepRegion = String(release[stageMarker.lowerBound...].prefix(400))
         #expect(
-            stepRegion.contains("MACOS_NOTARY_KEY_P8 != ''"),
+            stepRegion.contains(#"[ -z "${MACOS_NOTARY_KEY_P8:-}" ]"#),
             "the key-staging step must be gated on the .p8 secret (CS-061)")
     }
 

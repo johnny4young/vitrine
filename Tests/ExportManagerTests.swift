@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import SwiftUI
 import Testing
 
@@ -38,11 +39,12 @@ struct VectorExportTests {
 
     // MARK: - Format menu accuracy (CS-023 acceptance: "menu shows supported vector outputs")
 
-    @Test("Only PNG and PDF are offered; PDF is the vector option")
+    @Test("PNG, PDF, and HEIC are offered; PDF is the only vector option")
     func formatCasesAndVectorFlag() {
-        #expect(ExportFormat.allCases == [.png, .pdf])
+        #expect(ExportFormat.allCases == [.png, .pdf, .heic])
         #expect(ExportFormat.png.isVector == false)
         #expect(ExportFormat.pdf.isVector == true)
+        #expect(ExportFormat.heic.isVector == false)
         // Exactly one supported vector format is advertised, and it is PDF.
         let vectors = ExportFormat.allCases.filter(\.isVector)
         #expect(vectors == [.pdf])
@@ -56,6 +58,7 @@ struct VectorExportTests {
         }
         #expect(ExportFormat.png.displayName == "PNG")
         #expect(ExportFormat.pdf.displayName == "PDF")
+        #expect(ExportFormat.heic.displayName == "HEIC")
         // The vector summary names the scalable nature so the menu reads honestly.
         #expect(ExportFormat.pdf.summary.lowercased().contains("vector"))
     }
@@ -72,6 +75,7 @@ struct VectorExportTests {
         // drift, or stored preferences would silently change format.
         #expect(ExportFormat.png.rawValue == "png")
         #expect(ExportFormat.pdf.rawValue == "pdf")
+        #expect(ExportFormat.heic.rawValue == "heic")
     }
 
     @Test("Unknown or missing format falls back to PNG")
@@ -80,6 +84,53 @@ struct VectorExportTests {
         #expect(ExportFormat.resolve("") == .png)
         #expect(ExportFormat.resolve("svg") == .png)
         #expect(ExportFormat.fallback == .png)
+    }
+
+    // MARK: - HEIC encoding
+
+    @Test("HEIC export encodes the rendered image into a real HEIC container")
+    func heicEncodesTheRenderedImage() throws {
+        let payload = try #require(
+            ExportManager.encodedPayload(
+                .heic,
+                png: { ExportManager.renderCGImage(Self.sampleConfig(), scale: 1) },
+                pdf: { nil }))
+        #expect(payload.ext == "heic")
+        #expect(!payload.data.isEmpty)
+        // It decodes back to an image of the same pixel size as a PNG render.
+        let source = try #require(CGImageSourceCreateWithData(payload.data as CFData, nil))
+        let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let reference = try #require(ExportManager.renderCGImage(Self.sampleConfig(), scale: 1))
+        #expect(decoded.width == reference.width)
+        #expect(decoded.height == reference.height)
+    }
+
+    // MARK: - Suggested filename
+
+    @Test("Save panel name derives from the metadata filename, then the code")
+    func suggestedFilenameDerivation() {
+        // 1. The metadata filename chip wins, extension dropped.
+        var named = Self.sampleConfig()
+        named.metadata.filename = "ContentView.swift"
+        #expect(SuggestedFilename.basename(for: named) == "ContentView")
+
+        // Path-ish or spaced chips are sanitized, never emitted verbatim.
+        named.metadata.filename = "Sources/App/My View.swift"
+        #expect(SuggestedFilename.basename(for: named) == "My-View")
+
+        // 2. Without a chip, the first declared identifier names the file.
+        var code = Self.sampleConfig()
+        code.code = "import Foundation\n\nfunc renderCard() -> Int { 42 }"
+        #expect(SuggestedFilename.basename(for: code) == "vitrine-renderCard")
+
+        // 3. Nothing derivable falls back to the plain app name.
+        var bare = Self.sampleConfig()
+        bare.code = "let answer = 42"
+        #expect(SuggestedFilename.basename(for: bare) == "vitrine")
+        var terminal = Self.sampleConfig()
+        terminal.language = .terminal
+        terminal.code = "$ def not-code\n"
+        #expect(SuggestedFilename.basename(for: terminal) == "vitrine")
     }
 
     // MARK: - PDF signature (CS-023 tests: "exported PDF signature")
@@ -130,7 +181,7 @@ struct VectorExportTests {
     @Test("Solid-background template serializes to a real SVG document")
     func svgSolidSignature() throws {
         let svg = try #require(
-            VectorTemplateSVG.background(.solid(.black), size: Self.cardSize))
+            VectorTemplateSVG.background(.solid(RGBAColor(.black)), size: Self.cardSize))
         #expect(svg.hasPrefix("<?xml"))
         #expect(svg.contains("<svg"))
         #expect(svg.contains("xmlns=\"http://www.w3.org/2000/svg\""))
@@ -158,9 +209,11 @@ struct VectorExportTests {
         let gradient = CustomGradient(
             stops: [
                 GradientStop(
-                    color: Color(.sRGB, red: 1, green: 0, blue: 0, opacity: 1), location: 0),
+                    color: RGBAColor(Color(.sRGB, red: 1, green: 0, blue: 0, opacity: 1)),
+                    location: 0),
                 GradientStop(
-                    color: Color(.sRGB, red: 0, green: 0, blue: 1, opacity: 0.5), location: 1),
+                    color: RGBAColor(Color(.sRGB, red: 0, green: 0, blue: 1, opacity: 0.5)),
+                    location: 1),
             ],
             angle: 90)
         let svg = try #require(
@@ -183,7 +236,7 @@ struct VectorExportTests {
         #expect(VectorTemplateSVG.supports(image) == false)
         // Every other simple-template background is supported.
         for background in [
-            BackgroundStyle.solid(.white), .gradient(.aurora),
+            BackgroundStyle.solid(RGBAColor(.white)), .gradient(.aurora),
             .customGradient(.default), .transparent,
         ] {
             #expect(VectorTemplateSVG.supports(background))
@@ -193,7 +246,7 @@ struct VectorExportTests {
     @Test("No template SVG ever contains an embedded raster image")
     func svgNeverEmbedsRaster() throws {
         for background in [
-            BackgroundStyle.solid(.black), .gradient(.aurora),
+            BackgroundStyle.solid(RGBAColor(.black)), .gradient(.aurora),
             .customGradient(.default), .transparent,
         ] {
             let svg = try #require(
@@ -229,7 +282,8 @@ struct VectorExportTests {
     @Test("Same template input serializes to byte-identical SVG")
     func svgIsDeterministic() throws {
         for background in [
-            BackgroundStyle.solid(Color(.sRGB, red: 0.2, green: 0.4, blue: 0.6, opacity: 0.8)),
+            BackgroundStyle.solid(
+                RGBAColor(Color(.sRGB, red: 0.2, green: 0.4, blue: 0.6, opacity: 0.8))),
             .gradient(.ocean),
             .customGradient(.default),
             .transparent,
@@ -244,10 +298,12 @@ struct VectorExportTests {
     func svgColorIsValueStable() throws {
         // A named color and a hand-built sRGB color for the same value must produce
         // the same hex, mirroring the value-based color equality the app relies on.
-        let named = try #require(VectorTemplateSVG.background(.solid(.white), size: Self.cardSize))
+        let named = try #require(
+            VectorTemplateSVG.background(.solid(RGBAColor(.white)), size: Self.cardSize))
         let built = try #require(
             VectorTemplateSVG.background(
-                .solid(Color(.sRGB, red: 1, green: 1, blue: 1, opacity: 1)), size: Self.cardSize))
+                .solid(RGBAColor(Color(.sRGB, red: 1, green: 1, blue: 1, opacity: 1))),
+                size: Self.cardSize))
         #expect(named == built)
         #expect(named.contains("fill=\"#FFFFFF\""))
     }
@@ -261,7 +317,8 @@ struct VectorExportTests {
         // real, well-formed SVG document — the "valid, well-formed SVG" guarantee
         // CS-023 makes for every case, including the empty transparent canvas.
         for background in [
-            BackgroundStyle.solid(Color(.sRGB, red: 0.1, green: 0.5, blue: 0.9, opacity: 0.7)),
+            BackgroundStyle.solid(
+                RGBAColor(Color(.sRGB, red: 0.1, green: 0.5, blue: 0.9, opacity: 0.7))),
             .gradient(.aurora), .customGradient(.default), .transparent,
         ] {
             let svg = try #require(VectorTemplateSVG.background(background, size: Self.cardSize))
@@ -285,8 +342,8 @@ struct VectorExportTests {
         for angle in [0.0, 45, 90, 135, 270] {
             let gradient = CustomGradient(
                 stops: [
-                    GradientStop(color: .black, location: 0),
-                    GradientStop(color: .white, location: 1),
+                    GradientStop(color: RGBAColor(.black), location: 0),
+                    GradientStop(color: RGBAColor(.white), location: 1),
                 ],
                 angle: angle)
             let svg = try #require(

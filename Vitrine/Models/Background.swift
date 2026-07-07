@@ -1,4 +1,4 @@
-import SwiftUI
+import Foundation
 
 /// The canvas background style (CS-005 / CS-051).
 ///
@@ -18,7 +18,7 @@ import SwiftUI
 /// export with a real alpha channel and never composite the canvas over an
 /// opaque matte (see `BackgroundView`).
 enum BackgroundStyle {
-    case solid(Color)
+    case solid(RGBAColor)
     case gradient(GradientPreset)
     case customGradient(CustomGradient)
     case image(ImageBackground)
@@ -42,19 +42,16 @@ enum BackgroundStyle {
 
 // MARK: - Value equality
 
-/// Equality and hashing are **value-based on color components**, not on
-/// SwiftUI's `Color.==`.
+/// Equality and hashing are **value-based on fixed-sRGB color components**.
 ///
-/// `Color` does not compare equal across construction paths (a named `.red`, a
-/// `Color(hex:)`, and a persisted-then-restored color can hold different
-/// underlying representations for the same visible color). Comparing solid
-/// colors through their fixed-sRGB `RGBAColor` makes a background equal to its
-/// own persistence round-trip — the behavior presets (CS-030) and the "diverged
-/// from preset" check (CS-020) rely on.
+/// Solid colors are stored as `RGBAColor` (quantized fixed-sRGB), so a background
+/// compares equal to its own persistence round-trip — the behavior presets (CS-030)
+/// and the "diverged from preset" check (CS-020) rely on. (A raw `SwiftUI.Color` would
+/// not: a named `.red`, a `Color(hex:)`, and a restored color can differ underneath.)
 extension BackgroundStyle: Equatable, Hashable {
     static func == (lhs: BackgroundStyle, rhs: BackgroundStyle) -> Bool {
         switch (lhs, rhs) {
-        case (.solid(let a), .solid(let b)): RGBAColor(a) == RGBAColor(b)
+        case (.solid(let a), .solid(let b)): a == b
         case (.gradient(let a), .gradient(let b)): a == b
         case (.customGradient(let a), .customGradient(let b)): a == b
         case (.image(let a), .image(let b)): a == b
@@ -67,7 +64,7 @@ extension BackgroundStyle: Equatable, Hashable {
         switch self {
         case .solid(let color):
             hasher.combine(0)
-            hasher.combine(RGBAColor(color))
+            hasher.combine(color)
         case .gradient(let preset):
             hasher.combine(1)
             hasher.combine(preset)
@@ -101,7 +98,7 @@ extension BackgroundStyle: Codable {
         switch self {
         case .solid(let color):
             try container.encode(Kind.solid, forKey: .kind)
-            try container.encode(RGBAColor(color), forKey: .color)
+            try container.encode(color, forKey: .color)
         case .gradient(let preset):
             try container.encode(Kind.gradient, forKey: .kind)
             try container.encode(preset.rawValue, forKey: .preset)
@@ -121,7 +118,7 @@ extension BackgroundStyle: Codable {
         let kind = try container.decode(Kind.self, forKey: .kind)
         switch kind {
         case .solid:
-            self = .solid(try container.decode(RGBAColor.self, forKey: .color).color)
+            self = .solid(try container.decode(RGBAColor.self, forKey: .color))
         case .gradient:
             // An unknown preset name degrades to the signature default rather than
             // failing the whole decode (CS-050 documented fallback).
@@ -155,20 +152,20 @@ enum GradientPreset: String, CaseIterable, Identifiable, Codable {
 
     var id: String { rawValue }
 
-    /// Stop colors, top-leading → bottom-trailing.
-    var colors: [Color] {
+    /// Stop colors (top-leading → bottom-trailing) as fixed-sRGB `RGBAColor`, so the
+    /// preset vocabulary is UI-free; the UI layer's `colors`/`gradient` bridge these to
+    /// `SwiftUI.Color`/`LinearGradient`. `aurora` uses the brand accent/secondary hex so
+    /// it stays in lockstep with `Brand.Palette` without a UI dependency here.
+    var stopColors: [RGBAColor] {
+        func rgba(_ hex: String) -> RGBAColor { RGBAColor(hex: hex) ?? .fallbackBlack }
         switch self {
-        case .aurora: [Brand.Palette.accent.light, Brand.Palette.accentSecondary.light]
-        case .ocean: [Color(hex: "#2E3192"), Color(hex: "#1BFFFF")]
-        case .sunset: [Color(hex: "#FF512F"), Color(hex: "#F09819")]
-        case .forest: [Color(hex: "#11998E"), Color(hex: "#38EF7D")]
-        case .night: [Color(hex: "#0F2027"), Color(hex: "#2C5364")]
-        case .carbon: [Color(hex: "#1F1C2C"), Color(hex: "#928DAB")]
+        case .aurora: return [rgba("#4F46E5"), rgba("#06B6D4")]  // brand accent → secondary
+        case .ocean: return [rgba("#2E3192"), rgba("#1BFFFF")]
+        case .sunset: return [rgba("#FF512F"), rgba("#F09819")]
+        case .forest: return [rgba("#11998E"), rgba("#38EF7D")]
+        case .night: return [rgba("#0F2027"), rgba("#2C5364")]
+        case .carbon: return [rgba("#1F1C2C"), rgba("#928DAB")]
         }
-    }
-
-    var gradient: LinearGradient {
-        LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     /// The equivalent editable custom gradient, used to seed the custom-gradient
@@ -176,7 +173,7 @@ enum GradientPreset: String, CaseIterable, Identifiable, Codable {
     /// (CS-051). Stops are spread evenly; the angle matches the preset's
     /// top-leading → bottom-trailing diagonal.
     var asCustomGradient: CustomGradient {
-        let colors = colors
+        let colors = stopColors
         let stops: [GradientStop]
         switch colors.count {
         case 0: stops = CustomGradient.default.stops
@@ -202,30 +199,32 @@ enum GradientPreset: String, CaseIterable, Identifiable, Codable {
 /// equals its own persistence round-trip.
 struct GradientStop: Codable, Identifiable {
     let id: UUID
-    var color: Color
+    /// The stop color, stored as a fixed-sRGB `RGBAColor` so it is UI-free and survives
+    /// a persistence round-trip; the UI reads `color.color` to render.
+    var color: RGBAColor
     /// Normalized position along the gradient, `0` (start) … `1` (end).
     var location: Double
 
-    init(id: UUID = UUID(), color: Color, location: Double) {
+    init(id: UUID = UUID(), color: RGBAColor, location: Double) {
         self.id = id
         self.color = color
         self.location = min(max(location, 0), 1)
     }
 
-    // MARK: Codable — colors persist as fixed sRGB; `id` is regenerated on decode
+    // MARK: Codable — `id` is regenerated on decode
 
     private enum CodingKeys: String, CodingKey { case color, location }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = UUID()
-        self.color = try container.decode(RGBAColor.self, forKey: .color).color
+        self.color = try container.decode(RGBAColor.self, forKey: .color)
         self.location = min(max(try container.decode(Double.self, forKey: .location), 0), 1)
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(RGBAColor(color), forKey: .color)
+        try container.encode(color, forKey: .color)
         try container.encode(location, forKey: .location)
     }
 }
@@ -233,11 +232,11 @@ struct GradientStop: Codable, Identifiable {
 extension GradientStop: Equatable, Hashable {
     /// Value equality on color + location only (not the `ForEach` identity).
     static func == (lhs: GradientStop, rhs: GradientStop) -> Bool {
-        RGBAColor(lhs.color) == RGBAColor(rhs.color) && lhs.location == rhs.location
+        lhs.color == rhs.color && lhs.location == rhs.location
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(RGBAColor(color))
+        hasher.combine(color)
         hasher.combine(location)
     }
 }
@@ -256,41 +255,21 @@ struct CustomGradient: Equatable, Hashable, Codable {
         self.angle = Self.normalizeAngle(angle)
     }
 
-    /// A neutral two-stop starting point (violet → azure brand vocabulary), used
-    /// as the editor's seed and as the safe fallback for a degenerate decode.
+    /// A neutral two-stop starting point (violet → azure brand vocabulary — the brand
+    /// accent/secondary hex, kept in lockstep with `Brand.Palette`), used as the editor's
+    /// seed and as the safe fallback for a degenerate decode.
     static let `default` = CustomGradient(
         stops: [
-            GradientStop(color: Brand.Palette.accent.light, location: 0),
-            GradientStop(color: Brand.Palette.accentSecondary.light, location: 1),
+            GradientStop(color: RGBAColor(hex: "#4F46E5") ?? .fallbackBlack, location: 0),
+            GradientStop(color: RGBAColor(hex: "#06B6D4") ?? .fallbackBlack, location: 1),
         ],
         angle: 135
     )
 
-    /// The stops sorted by location, the order SwiftUI's `Gradient` expects.
-    var sortedStops: [Gradient.Stop] {
+    /// The stops sorted by location — the order a gradient renderer expects. UI-free
+    /// (the SwiftUI `Gradient.Stop`/`LinearGradient` bridging lives in `Background+UI`).
+    var stopsSortedByLocation: [GradientStop] {
         stops.sorted { $0.location < $1.location }
-            .map { Gradient.Stop(color: $0.color, location: $0.location) }
-    }
-
-    /// The unit-space start/end points for `angle`, mapping a direction in degrees
-    /// onto the `0...1 × 0...1` view rectangle. `0°` points right, increasing
-    /// clockwise (90° points down, matching screen coordinates).
-    var endpoints: (start: UnitPoint, end: UnitPoint) {
-        let radians = angle * .pi / 180
-        let dx = cos(radians)
-        let dy = sin(radians)
-        // Center the axis and extend half a unit each way, then clamp into the
-        // unit square so the endpoints stay on-canvas for any angle.
-        let start = UnitPoint(x: 0.5 - dx / 2, y: 0.5 - dy / 2)
-        let end = UnitPoint(x: 0.5 + dx / 2, y: 0.5 + dy / 2)
-        return (start, end)
-    }
-
-    /// The SwiftUI gradient for this configuration.
-    var linearGradient: LinearGradient {
-        let (start, end) = endpoints
-        return LinearGradient(
-            gradient: Gradient(stops: sortedStops), startPoint: start, endPoint: end)
     }
 
     private static func normalizeAngle(_ value: Double) -> Double {
@@ -324,14 +303,6 @@ enum BackgroundFit: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .fill: "Fill"
         case .fit: "Fit"
-        }
-    }
-
-    /// The SwiftUI content mode this fit maps to.
-    var contentMode: ContentMode {
-        switch self {
-        case .fill: .fill
-        case .fit: .fit
         }
     }
 }

@@ -122,6 +122,42 @@ struct CodeFormatterTests {
         #expect(CodeFormatter.tidy(input, language: .javascript) == expected)
     }
 
+    /// A backtick template literal spans lines: its interior lines are string content,
+    /// so they must be emitted verbatim (leading whitespace untouched) and a `{` inside
+    /// the template must not indent the code after the literal closes.
+    @Test func tidyPreservesTemplateLiteralBodies() {
+        let input =
+            "function f() {\nconst s = `line one\n      keep me   {not a brace}\n`\nreturn s\n}"
+        let expected =
+            "function f() {\n  const s = `line one\n      keep me   {not a brace}\n`\n  return s\n}"
+        #expect(CodeFormatter.tidy(input, language: .javascript) == expected)
+    }
+
+    /// A Swift triple-quoted string spans lines the same way: its body is emitted
+    /// verbatim and the `{` inside it does not shift the trailing `}`.
+    @Test func tidyPreservesSwiftTripleQuoteBodies() {
+        let input = "func f() {\nlet s = \"\"\"\n  { indented content\n\"\"\"\n}"
+        let expected = "func f() {\n  let s = \"\"\"\n  { indented content\n\"\"\"\n}"
+        #expect(CodeFormatter.tidy(input, language: .swift) == expected)
+    }
+
+    /// Reindent is idempotent even across a multi-line literal: a second pass over the
+    /// tidied output is a no-op (the verbatim body never drifts).
+    @Test func tidyIsIdempotentAcrossMultilineStrings() {
+        let input =
+            "function f() {\nconst s = `line one\n      keep me   {not a brace}\n`\nreturn s\n}"
+        let once = CodeFormatter.tidy(input, language: .javascript)
+        #expect(CodeFormatter.tidy(once, language: .javascript) == once)
+    }
+
+    /// A backtick closed on the same line it opened is *not* multi-line: the code after
+    /// it re-indents normally, so the carry-across state never leaks.
+    @Test func tidyReindentsCodeAfterASingleLineBacktick() {
+        let input = "const a = `x`\nif (a) {\nb()\n}"
+        let expected = "const a = `x`\nif (a) {\n  b()\n}"
+        #expect(CodeFormatter.tidy(input, language: .javascript) == expected)
+    }
+
     /// Go re-indents with tabs (gofmt's unit) and is fixed even when already flush-left
     /// — the case dedent cannot help because there is no shared margin to strip.
     @Test func tidyReindentsGoWithTabs() {

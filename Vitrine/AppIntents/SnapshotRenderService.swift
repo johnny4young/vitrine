@@ -37,12 +37,12 @@ enum SnapshotRenderService {
         }
     }
 
-    /// Renders `request` to encoded image data in its chosen format (PNG or PDF).
+    /// Renders `request` to encoded image data in its chosen format.
     ///
-    /// PNG goes through `renderCGImage` + `pngData` (honoring the scale, fixed size,
-    /// and color profile); PDF uses `pdfData`. Throws `RenderError.emptyCode` for
-    /// empty input and `RenderError.renderFailed` when the pipeline yields nothing,
-    /// so a caller never has to interpret a bare `nil`.
+    /// Raster formats go through `renderCGImage` + ImageIO (honoring the scale,
+    /// fixed size, and color profile); PDF uses `pdfData`. Throws
+    /// `RenderError.emptyCode` for empty input and `RenderError.renderFailed` when
+    /// the pipeline yields nothing, so a caller never has to interpret a bare `nil`.
     static func renderData(_ request: SnapshotRenderRequest) throws -> Data {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig()
@@ -67,15 +67,17 @@ enum SnapshotRenderService {
         return data
     }
 
-    /// Renders `request` to an `NSImage` (used by the Services menu, which hands an
-    /// image back through the pasteboard). Honors the chosen scale, fixed size, and
-    /// — for the on-screen image — the sRGB profile. Throws the same errors as
+    /// Renders `request` to a `CGImage` — the raster the Services menu hands back
+    /// through the pasteboard. Honors the chosen scale, fixed size, and sRGB profile.
+    /// Returning the `CGImage` lets the caller PNG-encode through the color-managed
+    /// ImageIO path (`ExportManager.pngData`) rather than a legacy TIFF/
+    /// `NSBitmapImageRep` round-trip (AGENTS.md, C1). Throws the same errors as
     /// `renderData`.
-    static func renderImage(_ request: SnapshotRenderRequest) throws -> NSImage {
+    static func renderCGImage(_ request: SnapshotRenderRequest) throws -> CGImage {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig()
         guard
-            let image = ExportManager.renderNSImage(
+            let cgImage = ExportManager.renderCGImage(
                 config, scale: request.effectiveScale, fixedSize: request.fixedSize,
                 profile: request.profile)
         else {
@@ -83,6 +85,14 @@ enum SnapshotRenderService {
             throw RenderError.renderFailed
         }
         Log.export.notice("Automation rendered an image for the Services menu")
-        return image
+        return cgImage
+    }
+
+    /// Renders `request` to an `NSImage` — a convenience over `renderCGImage` for
+    /// callers that want an image object. Throws the same errors as `renderData`.
+    static func renderImage(_ request: SnapshotRenderRequest) throws -> NSImage {
+        let cgImage = try renderCGImage(request)
+        return NSImage(
+            cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 }

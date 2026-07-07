@@ -1,4 +1,5 @@
-import SwiftUI
+import CoreGraphics
+import Foundation
 
 /// One-click image-size/style presets for the surfaces developers actually post
 /// to (CS-020).
@@ -438,7 +439,8 @@ extension StylePreset {
     static let minimal = StylePreset(
         id: "builtin.minimal", name: "Minimal Light",
         style: StyleSnapshot(
-            themeID: Theme.github.id, padding: 32, showShadow: false, background: .solid(.white)))
+            themeID: Theme.github.id, padding: 32, showShadow: false,
+            background: .solid(RGBAColor(.white))))
 
     /// The built-in presets, in list order. They are immutable; the store offers
     /// "Duplicate" instead of editing or deleting any of them (CS-030).
@@ -510,7 +512,12 @@ struct StylePresetDocument: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         format = (try? container.decode(String.self, forKey: .format)) ?? ""
         schemaVersion = (try? container.decode(Int.self, forKey: .schemaVersion)) ?? 0
-        presets = (try? container.decode([StylePreset].self, forKey: .presets)) ?? []
+        // Decode presets element-tolerantly: one corrupt entry drops itself rather than
+        // collapsing the whole array (which would be misreported as an empty file). The
+        // outer `try?` still guards "presets is not an array at all".
+        presets =
+            ((try? container.decode([FailableDecodable<StylePreset>].self, forKey: .presets)) ?? [])
+            .compactMap(\.value)
     }
 
     /// Encodes a preset document as pretty, stable JSON (sorted keys) so an

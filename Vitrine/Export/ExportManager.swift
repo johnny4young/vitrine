@@ -4,9 +4,9 @@ import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Renders a `SnapshotConfig` to PNG/PDF and exports it to the clipboard or a file
-/// (CS-007/010). PNG encoding goes through ImageIO directly from the rendered
-/// `CGImage`; PDF uses `ImageRenderer.render` into a `CGContext` — no legacy
+/// Renders a `SnapshotConfig` to PNG/PDF/HEIC and exports it to the clipboard or a
+/// file (CS-007/010). Raster encoding goes through ImageIO directly from the
+/// rendered `CGImage`; PDF uses `ImageRenderer.render` into a `CGContext` — no legacy
 /// `NSBitmapImageRep`/TIFF round-trip.
 ///
 /// Color management (CS-024): a render is always normalized into an explicit ICC
@@ -107,8 +107,10 @@ enum ExportManager {
         return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 
-    /// PNG-encodes a `CGImage` via ImageIO.
-    static func pngData(from cgImage: CGImage) -> Data? {
+    /// PNG-encodes a `CGImage` via ImageIO. `nonisolated` because it is a pure
+    /// function of a `Sendable` `CGImage` over thread-safe ImageIO, so the multi-size
+    /// export can encode off the main actor (C3).
+    nonisolated static func pngData(from cgImage: CGImage) -> Data? {
         let data = NSMutableData()
         guard
             let destination = CGImageDestinationCreateWithData(
@@ -116,6 +118,24 @@ enum ExportManager {
             )
         else { return nil }
         CGImageDestinationAddImage(destination, cgImage, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
+    }
+
+    /// HEIC-encodes a `CGImage` via ImageIO — the same rendered, color-managed
+    /// image the PNG path uses, in a far smaller container for docs sites and
+    /// wikis that accept it. Alpha survives (HEIC carries an alpha plane), and
+    /// the near-lossless quality keeps text crisp; the codec is still lossy, so
+    /// PNG remains the byte-exact default.
+    nonisolated static func heicData(from cgImage: CGImage) -> Data? {
+        let data = NSMutableData()
+        guard
+            let destination = CGImageDestinationCreateWithData(
+                data, UTType.heic.identifier as CFString, 1, nil
+            )
+        else { return nil }
+        let options = [kCGImageDestinationLossyCompressionQuality: 0.95] as CFDictionary
+        CGImageDestinationAddImage(destination, cgImage, options)
         guard CGImageDestinationFinalize(destination) else { return nil }
         return data as Data
     }
@@ -168,7 +188,7 @@ enum ExportManager {
         return data as Data
     }
 
-    /// The single PNG/PDF format ladder shared by every save/encode path
+    /// The single PNG/PDF/HEIC format ladder shared by every save/encode path
     /// (CS-007/041). Given a render strategy for each branch — a `png` producer of a
     /// `CGImage` and a `pdf` producer of finished `Data` — it picks the branch for
     /// `format`, encodes PNG through the shared color-managed ImageIO path, and pairs
@@ -182,6 +202,10 @@ enum ExportManager {
         switch format {
         case .png: png().flatMap(pngData(from:)).map { ($0, .png, "png") }
         case .pdf: pdf().map { ($0, .pdf, "pdf") }
+        // HEIC encodes the exact rendered, color-managed CGImage the PNG path
+        // produces — the two raster formats differ only in container/codec, so no
+        // call site needs a third closure.
+        case .heic: png().flatMap(heicData(from:)).map { ($0, .heic, "heic") }
         }
     }
 
@@ -209,10 +233,21 @@ enum ExportManager {
         }
         guard
             let cgImage = renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile),
-            let png = pngData(from: cgImage)
+                config, scale: scale, fixedSize: fixedSize, profile: profile)
         else {
-            Log.export.error("Copy to pasteboard failed: render or PNG encode returned nil")
+            Log.export.error("Copy to pasteboard failed: render returned nil")
+            return false
+        }
+        return copyPNGToPasteboard(cgImage)
+    }
+
+    /// Writes a PNG of an already-rendered `cgImage` to the general pasteboard —
+    /// the shared primitive behind the config-based copy above and editors that
+    /// hold a rendered asset (the web snapshot editor). Returns success.
+    @discardableResult
+    static func copyPNGToPasteboard(_ cgImage: CGImage) -> Bool {
+        guard let png = pngData(from: cgImage) else {
+            Log.export.error("Copy to pasteboard failed: PNG encode returned nil")
             return false
         }
         let pasteboard = NSPasteboard.general
@@ -222,9 +257,9 @@ enum ExportManager {
         return copied
     }
 
-    /// Presents an `NSSavePanel` and writes the image as PNG or PDF.
+    /// Presents an `NSSavePanel` and writes the image as PNG, PDF, or HEIC.
     ///
-    /// `profile` applies to PNG export only (CS-024); PDF is a color-managed
+    /// `profile` applies to raster export only (CS-024); PDF is a color-managed
     /// vector document and is unaffected by the raster color-profile choice.
     ///
     /// Returns the outcome so a caller can give the user precise feedback
@@ -244,10 +279,43 @@ enum ExportManager {
             Log.export.error("Save to file failed: render or encode returned nil")
             return .failed
         }
+        return saveToFile(
+            payload: payload, suggestedName: SuggestedFilename.basename(for: config))
+    }
 
+    /// Saves an **already-rendered** raster `cgImage` as PNG or HEIC (P5): the
+    /// quick-capture path renders the styled image once and reuses it for both the
+    /// clipboard copy and this file save instead of re-rendering the identical config.
+    /// PDF is a vector document and must render its own page, so it is not accepted here
+    /// — callers save PDF through the `config`-based `saveToFile` above.
+    @discardableResult
+    static func saveToFile(
+        cgImage: CGImage, format: ExportFormat, suggestedName: String
+    ) -> SaveOutcome {
+        let payload: (data: Data, type: UTType, ext: String)? =
+            switch format {
+            case .png: pngData(from: cgImage).map { ($0, .png, "png") }
+            case .heic: heicData(from: cgImage).map { ($0, .heic, "heic") }
+            case .pdf: nil
+            }
+        guard let payload else {
+            Log.export.error("Save to file failed: raster encode returned nil or PDF via cgImage")
+            return .failed
+        }
+        return saveToFile(payload: payload, suggestedName: suggestedName)
+    }
+
+    /// Presents the save panel for an already-encoded payload and writes it — the
+    /// shared panel/write/log dance behind every save flow (the config path above,
+    /// the social-card renderer, and the web editor), so the CS-048 logging rule
+    /// lives in exactly one place.
+    @discardableResult
+    static func saveToFile(
+        payload: (data: Data, type: UTType, ext: String), suggestedName: String
+    ) -> SaveOutcome {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [payload.type]
-        panel.nameFieldStringValue = "vitrine.\(payload.ext)"
+        panel.nameFieldStringValue = "\(suggestedName).\(payload.ext)"
         guard panel.runModal() == .OK, let url = panel.url else {
             Log.export.info("Save to file cancelled")
             return .cancelled
@@ -284,50 +352,98 @@ enum ExportManager {
     @discardableResult
     static func exportPresetSizes(
         _ baseConfig: SnapshotConfig, presets: [ExportPreset], to directory: URL,
-        format: ExportFormat = .png, profile: ColorProfile = .sRGB, textSidecar: Bool = false
-    ) -> (written: Int, failed: Int) {
+        format: ExportFormat = .png, profile: ColorProfile = .sRGB, textSidecar: Bool = false,
+        onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
+    ) async -> (written: Int, failed: Int) {
         var written = 0
         var failed = 0
-        for preset in presets {
-            var config = baseConfig
-            preset.apply(to: &config)
-            let size = preset.sizing.fixedSize
-            let payload = encodedPayload(
-                format,
-                png: {
-                    renderCGImage(
+        let total = presets.count
+        // Pipeline the batch: each preset renders on the main actor (`ImageRenderer`
+        // requires it), then its CPU-bound encode + disk write run off-main as a child
+        // task while the main actor immediately moves on to render the next preset. So
+        // a batch of large presets at 2–3× scale neither beachballs the app nor waits
+        // for one preset's encode before starting the next (C3). Each writes a distinct
+        // `vitrine-<preset id>` file, so the concurrent writes never collide.
+        var completed = 0
+        await withTaskGroup(of: Bool.self) { group in
+            for preset in presets {
+                var config = baseConfig
+                preset.apply(to: &config)
+                let size = preset.sizing.fixedSize
+                // PDF is rendered *and* encoded on main because `pdfData` also drives
+                // `ImageRenderer`; only raster formats defer their encode off-main.
+                let raster: CGImage?
+                let pdf: Data?
+                switch format {
+                case .png, .heic:
+                    raster = renderCGImage(
                         config, scale: CGFloat(preset.scale), fixedSize: size, profile: profile)
-                },
-                pdf: { pdfData(config, fixedSize: size) })
-            guard let payload else {
-                Log.export.error("Multi-size export: render/encode returned nil for a preset")
-                failed += 1
-                continue
-            }
-            let url = directory.appendingPathComponent(
-                "vitrine-\(preset.id).\(payload.ext)", isDirectory: false)
-            do {
-                try payload.data.write(to: url)
+                    pdf = nil
+                case .pdf:
+                    raster = nil
+                    pdf = pdfData(config, fixedSize: size)
+                }
                 // The chosen folder is a user-granted directory, so a `.txt` sidecar
                 // beside each image is sandbox-safe here (unlike a single save panel).
-                let sidecarText = config.sidecarText
-                if textSidecar, !sidecarText.isEmpty {
-                    let sidecarURL = url.deletingPathExtension().appendingPathExtension("txt")
-                    try Data(sidecarText.utf8).write(to: sidecarURL)
+                let sidecar = textSidecar ? config.sidecarText : ""
+                let url = directory.appendingPathComponent(
+                    "vitrine-\(preset.id).\(format.fileExtension)", isDirectory: false)
+                group.addTask {
+                    await writePreset(
+                        raster: raster, pdf: pdf, format: format, to: url, sidecarText: sidecar)
                 }
-                written += 1
-            } catch {
-                let nsError = error as NSError
-                Log.export.error(
-                    "Multi-size export write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-                )
-                failed += 1
+                // Release the main actor after dispatching each render so the encode/write
+                // tasks get to run and the next render doesn't monopolize the run loop.
+                await Task.yield()
+            }
+            // Drain results as encodes/writes finish, reporting count-based progress.
+            for await ok in group {
+                if ok { written += 1 } else { failed += 1 }
+                completed += 1
+                onProgress?(completed, total)
             }
         }
         Log.export.notice(
             "Multi-size export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
         )
         return (written, failed)
+    }
+
+    /// Encodes (for raster formats) and writes one multi-size preset off the main
+    /// actor — the CPU-bound ImageIO encode plus the disk write for a single preset,
+    /// hopped off main via `@concurrent` so the UI stays live during a batch (C3). The
+    /// render itself stays on main; only `Sendable` finished pixels (`CGImage`) or
+    /// bytes (`Data`) cross the hop. Returns whether the image file was written; a
+    /// sidecar failure is best-effort and never fails the image.
+    @concurrent nonisolated private static func writePreset(
+        raster cgImage: CGImage?, pdf pdfData: Data?, format: ExportFormat,
+        to url: URL, sidecarText: String
+    ) async -> Bool {
+        let data: Data? =
+            switch format {
+            case .png: cgImage.flatMap(pngData(from:))
+            case .heic: cgImage.flatMap(heicData(from:))
+            case .pdf: pdfData
+            }
+        guard let data else {
+            Log.export.error("Multi-size export: render/encode returned nil for a preset")
+            return false
+        }
+        do {
+            try data.write(to: url)
+            if !sidecarText.isEmpty {
+                let sidecarURL = url.deletingPathExtension().appendingPathExtension("txt")
+                // A missing sidecar must not fail the image it accompanies.
+                try? Data(sidecarText.utf8).write(to: sidecarURL)
+            }
+            return true
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "Multi-size export write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            return false
+        }
     }
 
     /// The outcome of a save-to-file attempt, so callers can tell apart a written

@@ -163,7 +163,7 @@ struct EditorWindowState: Codable, Equatable {
         config.fontLigatures = fontLigatures
         config.padding = SettingsDefaults.clampPadding(padding)
         config.cornerRadius = SettingsDefaults.clampCornerRadius(cornerRadius)
-        config.shadowRadius = shadowRadius
+        config.shadowRadius = SettingsDefaults.clampShadowRadius(shadowRadius)
         config.showChrome = showChrome
         config.showShadow = showShadow
         config.showLineNumbers = showLineNumbers
