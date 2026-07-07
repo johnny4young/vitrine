@@ -1,7 +1,6 @@
 import AppKit
 import CryptoKit
 import ImageIO
-import SwiftUI
 import UniformTypeIdentifiers
 
 /// Stores and resolves image-background files inside the app container (CS-051).
@@ -382,17 +381,4 @@ nonisolated private final class RemoteImageRedirectPolicy: NSObject, URLSessionT
         }
         completionHandler(request)
     }
-}
-
-extension EnvironmentValues {
-    /// The store used to resolve image backgrounds (CS-051).
-    ///
-    /// Defaults to the real app-container store; injected with an isolated store
-    /// in tests and previews so the render path can resolve fixture images without
-    /// touching the user's container.
-    @Entry var backgroundImageStore: BackgroundImageStore = .container
-
-    /// The store used to resolve the beautified **foreground** image. Same default-real,
-    /// inject-in-tests contract as `backgroundImageStore`, rooted at a separate directory.
-    @Entry var foregroundImageStore: BackgroundImageStore = .foregroundContainer
 }

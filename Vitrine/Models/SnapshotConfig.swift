@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 
 /// Everything that defines the final image. This is the single source of truth
 /// shared by the editor preview, the quick-capture path, and the exporter.
@@ -239,18 +238,6 @@ struct Watermark: Equatable {
             }
         }
 
-        /// The SwiftUI alignment used to pin the mark to its corner. `.free` has no
-        /// corner anchor (it is positioned by `freePosition`); it returns `.center`
-        /// only as an exhaustive fallback.
-        var alignment: Alignment {
-            switch self {
-            case .bottomTrailing: .bottomTrailing
-            case .bottomLeading: .bottomLeading
-            case .topTrailing: .topTrailing
-            case .topLeading: .topLeading
-            case .free: .center
-            }
-        }
     }
 
     /// Clamps a normalized point into the canvas (each axis in 0…1), used so a free
