@@ -362,10 +362,19 @@ Recents thumbnail cache, board thumbnails). What remains, by user-visible impact
   of this config — it renders a deliberately simplified default-styled capture at a
   fixed 320×200, so it is left as its own (cheaper) render rather than a downscale that
   would change the gallery's appearance.
-- **P6 — Multi-viewport web capture is strictly sequential** (4 viewports = 4× wall
-  clock). 🔧 Design change: overlap loads with a small-cap task group — WKWebView is
-  main-actor bound but each view has its own web-content process; needs runtime
-  determinism validation.
+- **P6 — Multi-viewport web capture was strictly sequential** (4 viewports = 4× wall
+  clock). ✅ *Implemented:* `render(settings:)` now runs the per-viewport loads through a
+  `withTaskGroup` with a small sliding-window concurrency cap (`maxConcurrentCaptures = 3`)
+  — each viewport owns its `WKWebView`/web-content process, so the loads overlap even
+  though `WKWebView` is main-actor bound (the `await` on each load releases the main
+  actor). Results reassemble into the user's selected order for the board/preview,
+  progress reports by completion count, and Cancel `cancelAll()`s the in-flight children
+  (whose waits are cancellation-aware) and stops scheduling. Per-viewport output is
+  unchanged (independent renderers); reviewed for data-race safety, and `renderOne` now
+  routes on the immutable captured `input` rather than the live `mode`, so a mid-render
+  mode toggle can't route viewports inconsistently across the parallel batch. 📋 A live 4-viewport
+  capture still deserves an eyeball to confirm the wall-clock win and that a shared
+  logged-in-session cookie store behaves under concurrent loads.
 - **P7 — Every keystroke persisted the whole style block** (~15 `defaults.set` + 3
   JSON encodes) even though `code` is not persisted. ✅ *Implemented (+test):*
   `AppSettings.config.didSet` now compares the whole struct with `code` normalized and
