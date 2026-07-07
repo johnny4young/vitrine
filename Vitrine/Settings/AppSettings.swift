@@ -12,7 +12,9 @@ import SwiftUI
 /// valid configuration.
 @Observable
 final class AppSettings {
-    static let shared = AppSettings(defaults: AppDefaults.current)
+    /// The app-wide settings, constructed by the composition root (``AppEnvironment``)
+    /// and reached here as a thin forwarder so existing call sites are unchanged.
+    static var shared: AppSettings { AppEnvironment.shared.appSettings }
 
     /// The current snapshot configuration (theme, font, padding, …).
     var config: SnapshotConfig {

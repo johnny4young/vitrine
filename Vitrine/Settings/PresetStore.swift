@@ -27,8 +27,9 @@ import UniformTypeIdentifiers
 /// preset only writes presentation fields into the live config.
 @Observable
 final class PresetStore {
-    /// The shared store backed by the app's resolved defaults.
-    static let shared = PresetStore(defaults: AppDefaults.current)
+    /// The shared store, constructed by the composition root (``AppEnvironment``) and
+    /// reached here as a thin forwarder so existing call sites are unchanged.
+    static var shared: PresetStore { AppEnvironment.shared.presets }
 
     /// The user's saved presets, most-recently-saved last. Persisted on change.
     private(set) var userPresets: [StylePreset] {

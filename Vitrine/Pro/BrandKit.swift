@@ -101,8 +101,9 @@ struct BrandKit: Equatable, Codable {
 @MainActor
 @Observable
 final class BrandKitStore {
-    /// The shared store backed by the app's resolved defaults.
-    static let shared = BrandKitStore(defaults: AppDefaults.current)
+    /// The shared store, constructed by the composition root (``AppEnvironment``) and
+    /// reached here as a thin forwarder so existing call sites are unchanged.
+    static var shared: BrandKitStore { AppEnvironment.shared.brandKit }
 
     /// Persisted key names. Exposed so the central settings reset/schema registry
     /// clears Brand Kit alongside every other user preference.

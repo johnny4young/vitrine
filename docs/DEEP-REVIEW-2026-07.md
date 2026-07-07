@@ -419,10 +419,17 @@ capture — concurrency determinism).
    runs the core without an app host (and could run on Linux CI), and the CLI's
    include-list special cases disappear. Prerequisite: push the `SwiftUI.Color`
    bridging out of `Models/`.
-3. **A composition root instead of 22 `static let shared`s.** Keep the lifetimes,
-   construct them in one place as an `AppEnvironment`, pass via `@Environment`. The
-   codebase already injects `defaults:`/`provider:` everywhere; this is the last 10%
-   that makes the action layer (copy → HUD → close) unit-testable.
+3. **A composition root instead of 22 `static let shared`s.** ✅ *Foundation done
+   (+2 tests):* the data stores (`Entitlements`, `BrandKitStore`, `AppSettings`,
+   `RecentsStore`, `CustomThemeStore`, `PresetStore`) are now built in one place —
+   `AppEnvironment` — in a single, reviewable dependency order (entitlement + Brand Kit
+   first, handed to `AppSettings`), and each `Store.shared` is a thin forwarder to that
+   root. So there is one construction site and the whole graph is injectable: a test
+   builds its own `AppEnvironment(defaults:)` over an isolated suite. Lifetimes are
+   unchanged and every existing call site keeps working. 📋 *Remaining (incremental):*
+   migrate individual `.shared` reads in the non-view action layer to the injected graph
+   (the copy → HUD → close flow) and thread `AppEnvironment` through `@Environment`; the
+   UI-lifecycle window controllers stay as their own singletons.
 4. **Privacy-preserving product insight.** Extend the existing user-initiated
    `DiagnosticsBundle` with local-only feature-usage counters surfaced in About
    ("your stats") — insight with zero telemetry, consistent with the product promise.
