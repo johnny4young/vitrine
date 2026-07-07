@@ -414,11 +414,21 @@ capture — concurrency determinism).
    is SHA-pinned with a drift-guard test. These were the two highest-leverage
    hardening moves left; everything else is already unusually solid.
 2. **Extract `VitrineCore` as a local SwiftPM package** (Models, Terminal,
-   SettingsCodec/Schema, CLIArguments — already UI-free by discipline). The compiler
-   then *enforces* the layering that convention currently protects, `swift test`
-   runs the core without an app host (and could run on Linux CI), and the CLI's
-   include-list special cases disappear. Prerequisite: push the `SwiftUI.Color`
-   bridging out of `Models/`.
+   SettingsCodec/Schema, CLIArguments). The compiler would then *enforce* the layering
+   that convention currently protects, `swift test` would run the core without an app
+   host (and could run on Linux CI), and the CLI's include-list special cases would
+   disappear. 📋 *Not started — the prerequisite is bigger than "push `SwiftUI.Color`
+   out of `Models/`."* A dependency audit (2026-07) found `Models/` and `Terminal/` are
+   **not** UI-free by discipline: `Theme` (39 `Color` refs), `Background` (23),
+   `Annotation`, `SocialCardModel`, `ExportPreset`, and `Color+Hex` import SwiftUI and
+   model their colors as `SwiftUI.Color`; `BackgroundImageStore`/`SnapshotConfig` import
+   AppKit (`NSImage`); `CodeFont` uses `NSFont`; and `Terminal/ANSIPalette` uses
+   `NSColor` **and depends on `Theme`**. So the real prerequisite is a rendering-critical
+   re-architecture of the core color/image/font representation (replace `SwiftUI.Color`
+   with the existing UF-free `RGBAColor` across the models and every reader, and lift the
+   AppKit bridging into the UI layer) before any package boundary can be a clean cut.
+   That is its own multi-step epic with golden-image regression risk — deferred as a
+   dedicated effort rather than rushed into this review's branch.
 3. **A composition root instead of 22 `static let shared`s.** ✅ *Foundation done
    (+2 tests):* the data stores (`Entitlements`, `BrandKitStore`, `AppSettings`,
    `RecentsStore`, `CustomThemeStore`, `PresetStore`) are now built in one place —
