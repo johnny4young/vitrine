@@ -9,7 +9,9 @@ import Foundation
 /// clipboard, save, and share flows stay decoupled from the input kind. The image
 /// is already normalized and tagged into `profile`'s color space (the exporter's
 /// CS-024 step), so encoding it to PNG is a pure ImageIO call.
-struct RenderedAsset {
+// `nonisolated` + `Sendable` (P6): a pure value type over a `Sendable` `CGImage`, built
+// and passed between the concurrent per-viewport capture tasks and the main actor.
+nonisolated struct RenderedAsset: Sendable {
     /// The rendered image, in `profile`'s color space.
     var cgImage: CGImage
 
@@ -32,7 +34,7 @@ struct RenderedAsset {
 /// tried and could not encode) from *disabled* (URL capture without the network
 /// entitlement) lets the capture layer offer the right recovery and lets tests
 /// assert on the specific reason.
-enum RenderError: Error, Equatable {
+enum RenderError: Error, Equatable, Sendable {
     /// No registered renderer accepts this input. Carries the input kind for
     /// diagnostics; the associated value is a stable, non-PII label, never the
     /// user's content.
