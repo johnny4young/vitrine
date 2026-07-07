@@ -155,7 +155,7 @@ struct AppSettingsPresetTests {
 
         #expect(settings.selectedPresetID == "opengraph")
         #expect(settings.selectedPreset == .openGraph)
-        #expect(settings.exportScale == 1)
+        #expect(settings.export.scale == 1)
         #expect(settings.effectiveExportScale == 1)
         #expect(settings.effectiveFixedSize == CGSize(width: 1200, height: 630))
         #expect(settings.config.background == .gradient(.aurora))
@@ -180,7 +180,7 @@ struct AppSettingsPresetTests {
         #expect(settings.selectedPreset == nil)
         // With no preset, the effective values fall back to the user's own.
         #expect(settings.effectiveFixedSize == nil)
-        #expect(settings.effectiveExportScale == settings.exportScale)
+        #expect(settings.effectiveExportScale == settings.export.scale)
     }
 
     @Test func editingStyleAfterSelectingFallsBackToCustom() {
@@ -212,7 +212,7 @@ struct AppSettingsPresetTests {
         settings.resetToDefaults()
         #expect(settings.selectedPresetID == nil)
         #expect(settings.effectiveFixedSize == nil)
-        #expect(settings.exportScale == SettingsDefaults.exportScale)
+        #expect(settings.export.scale == SettingsDefaults.exportScale)
     }
 
     @Test func overridingScaleAfterSelectingKeepsThePresetAndWins() {
@@ -220,9 +220,9 @@ struct AppSettingsPresetTests {
         // preset seeds the scale, but the Resolution control stays authoritative.
         let settings = AppSettings(defaults: freshDefaults())
         settings.selectPreset(.openGraph)
-        #expect(settings.exportScale == 1)
+        #expect(settings.export.scale == 1)
 
-        settings.exportScale = 3
+        settings.export.scale = 3
 
         // The override wins for the effective scale used by the renderer…
         #expect(settings.effectiveExportScale == 3)
@@ -241,7 +241,7 @@ struct AppSettingsPresetTests {
             sizing: .aspect(width: 1, height: 1), scale: 99, background: nil, padding: 32)
         let settings = AppSettings(defaults: freshDefaults())
         settings.selectPreset(oversized)
-        #expect(settings.exportScale == SettingsDefaults.exportScaleRange.upperBound)
+        #expect(settings.export.scale == SettingsDefaults.exportScaleRange.upperBound)
         #expect(settings.effectiveExportScale == SettingsDefaults.exportScaleRange.upperBound)
     }
 
@@ -257,7 +257,7 @@ struct AppSettingsPresetTests {
 
         #expect(settings.selectedPresetID == "keynote")
         #expect(settings.selectedPreset == .keynote)
-        #expect(settings.exportScale == 1)
+        #expect(settings.export.scale == 1)
         #expect(settings.effectiveFixedSize == CGSize(width: 1920, height: 1080))
         #expect(settings.config.background == .gradient(.night))
         #expect(

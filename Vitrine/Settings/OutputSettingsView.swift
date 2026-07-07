@@ -14,17 +14,17 @@ struct OutputSettingsView: View {
                     DestinationSegmentedPicker(settings: settings)
                 }
                 TokenRow(label: Text("Copy to clipboard automatically")) {
-                    Toggle("Copy to clipboard automatically", isOn: $settings.autoCopy)
+                    Toggle("Copy to clipboard automatically", isOn: $settings.export.autoCopy)
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }
                 TokenRow(label: Text("Also save to a file")) {
-                    Toggle("Also save to a file", isOn: $settings.alsoSaveToFile)
+                    Toggle("Also save to a file", isOn: $settings.export.alsoSaveToFile)
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }
                 TokenRow(label: Text("Close the editor after copying")) {
-                    Toggle("Close the editor after copying", isOn: $settings.closeAfterCopy)
+                    Toggle("Close the editor after copying", isOn: $settings.export.closeAfterCopy)
                         .toggleStyle(.switch)
                         .labelsHidden()
                         .accessibilityIdentifier("close-after-copy-toggle")
@@ -36,19 +36,19 @@ struct OutputSettingsView: View {
                             (2, Text(verbatim: "2×")),
                             (3, Text(verbatim: "3×")),
                         ],
-                        selection: $settings.exportScale
+                        selection: $settings.export.scale
                     )
                     .accessibilityLabel("Resolution")
                     .accessibilityIdentifier("output-resolution-picker")
                 }
                 // The caption states honestly which output is vector: PDF is the
                 // supported scalable format; PNG is raster (CS-023).
-                TokenRow(label: Text("Format"), caption: Text(settings.exportFormat.summary)) {
+                TokenRow(label: Text("Format"), caption: Text(settings.export.format.summary)) {
                     TokenSegmentedPicker(
                         options: ExportFormat.allCases.map {
                             ($0, Text(verbatim: $0.displayName))
                         },
-                        selection: $settings.exportFormat
+                        selection: $settings.export.format
                     )
                     .accessibilityLabel("Format")
                     .accessibilityIdentifier("output-format-picker")
@@ -64,7 +64,7 @@ struct OutputSettingsView: View {
                     caption: Text(
                         "Keeps colors and font when pasting; the image is always included")
                 ) {
-                    Toggle("Rich-text code on copy", isOn: $settings.richClipboard)
+                    Toggle("Rich-text code on copy", isOn: $settings.export.richClipboard)
                         .toggleStyle(.switch)
                         .labelsHidden()
                         .accessibilityIdentifier("rich-clipboard-toggle")
@@ -73,7 +73,7 @@ struct OutputSettingsView: View {
                     label: Text("Copyable text with images"),
                     caption: Text("Adds plain text on copy, and a .txt with multi-size exports")
                 ) {
-                    Toggle("Copyable text with images", isOn: $settings.textSidecar)
+                    Toggle("Copyable text with images", isOn: $settings.export.textSidecar)
                         .toggleStyle(.switch)
                         .labelsHidden()
                         .accessibilityIdentifier("text-sidecar-toggle")
@@ -86,14 +86,14 @@ struct OutputSettingsView: View {
             TokenGroup(title: Text("Advanced")) {
                 TokenRow(
                     label: Text("Color profile"),
-                    caption: Text(settings.colorProfile.summary)
+                    caption: Text(settings.export.colorProfile.summary)
                 ) {
                     TokenSegmentedPicker(
                         options: [
                             (ColorProfile.sRGB, Text(verbatim: "sRGB")),
                             (.displayP3, Text(verbatim: "P3")),
                         ],
-                        selection: $settings.colorProfile
+                        selection: $settings.export.colorProfile
                     )
                     .accessibilityLabel("Color profile")
                     .accessibilityIdentifier("color-profile-picker")

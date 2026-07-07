@@ -204,7 +204,7 @@ struct DiagnosticsSchemaTests {
     @Test func settingsSnapshotIncludesCopyableTextSidecarKnob() {
         let defaults = UserDefaults(suiteName: "DiagTextSidecar-\(UUID())")!
         let settings = AppSettings(defaults: defaults)
-        settings.textSidecar = true
+        settings.export.textSidecar = true
 
         let lines = settings.diagnosticsSnapshot.redactedLines()
         let sidecarLine = lines.first { $0.key == "textSidecar" }

@@ -374,7 +374,7 @@ struct StyleSettingsView: View {
     private func renderCurrentPreview() -> NSImage? {
         ExportManager.renderNSImage(
             previewConfig, scale: previewRenderScale, fixedSize: settings.effectiveFixedSize,
-            profile: settings.colorProfile)
+            profile: settings.export.colorProfile)
     }
 
     /// The inputs the preview render depends on, so `.task(id:)` re-renders exactly when
@@ -382,7 +382,7 @@ struct StyleSettingsView: View {
     private var previewInputs: PreviewInputs {
         PreviewInputs(
             config: previewConfig, fixedSize: settings.effectiveFixedSize,
-            profile: settings.colorProfile)
+            profile: settings.export.colorProfile)
     }
 
     private struct PreviewInputs: Equatable {

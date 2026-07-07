@@ -117,20 +117,20 @@ struct SocialCardEditorView: View {
     private func copyCard() {
         ExportFeedback.presentCopy(
             SocialCardRenderer.copyToPasteboard(
-                card, scale: exportScale, profile: settings.colorProfile))
+                card, scale: exportScale, profile: settings.export.colorProfile))
     }
 
     private func saveCard() {
         ExportFeedback.presentSave(
             SocialCardRenderer.saveToFile(
-                card, scale: exportScale, format: settings.exportFormat,
-                profile: settings.colorProfile))
+                card, scale: exportScale, format: settings.export.format,
+                profile: settings.export.colorProfile))
     }
 
     private func shareCard() {
         guard let view = NSApp.keyWindow?.contentView else { return }
         if !SocialCardRenderer.share(
-            card, relativeTo: view, scale: exportScale, profile: settings.colorProfile)
+            card, relativeTo: view, scale: exportScale, profile: settings.export.colorProfile)
         {
             ExportFeedback.presentShareFailure()
         }
@@ -138,7 +138,7 @@ struct SocialCardEditorView: View {
 
     /// The export scale: the user's chosen resolution multiplier, applied to the
     /// fixed 1200×630 card (so 2× yields a crisp 2400×1260).
-    private var exportScale: CGFloat { CGFloat(settings.exportScale) }
+    private var exportScale: CGFloat { CGFloat(settings.export.scale) }
 
     // MARK: - Preview
 
