@@ -436,11 +436,16 @@ capture — concurrency determinism).
    lives in a `*+UI.swift` adapter in the UI layer, and the golden suite confirms the
    render is byte-identical. The pragmatic boundary is **no SwiftUI view layer**; a few
    models keep AppKit *data* types (`NSImage`/`NSColor`/`NSFont`), so full Linux-runnability
-   is a further step. 📋 *Remaining:* the physical SwiftPM package — a large mechanical step
-   (public API surface across ~42 model/terminal types + their members, resolving in-package
-   vs app-only references like `Log`/`SettingsDefaults`, and the `project.yml`/xcodegen
-   rewire for app+CLI+tests) — which is what turns the now-explicit layering into
-   *compiler-enforced* layering.
+   is a further step. ✅ *Layering is now enforced:* `ModelLayerPurityTests` fails the suite
+   if any file under `Models/`/`Terminal/` imports `SwiftUI` (allowlisting only the
+   `Color+Hex.swift` bridge), so the boundary can't silently regress — the "config as tests"
+   realization of the review's "compiler *enforces* the layering" goal. 📋 *Remaining — the
+   physical SwiftPM package:* this is an **atomic, all-or-nothing** change (moving the model
+   graph into a separate module breaks every cross-module reference until each is made
+   `public` — including hand-written `public` memberwise inits for the value types — plus
+   the `project.yml`/xcodegen rewire for app+CLI+tests). There is no incremental green path,
+   so it is best done as its own focused effort; its unique remaining value over the gate
+   above is `swift test` without an app host and retiring the CLI include-list special cases.
 3. **A composition root instead of 22 `static let shared`s.** ✅ *Foundation done
    (+2 tests):* the data stores (`Entitlements`, `BrandKitStore`, `AppSettings`,
    `RecentsStore`, `CustomThemeStore`, `PresetStore`) are now built in one place —
