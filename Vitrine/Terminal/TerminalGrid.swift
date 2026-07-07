@@ -448,7 +448,9 @@ struct TerminalScreen {
             cursorCol = 0
             indexDown()
         }
-        let cells = max(1, width)  // a base-less combining mark draws as a single cell
+        // A base-less combining mark draws as a single cell; on a degenerate 1-column
+        // grid a wide char collapses to its head so it never writes past the margin.
+        let cells = min(max(1, width), columns)
         // A wide char needs two columns; if only the last one is free, wrap so it isn't
         // split across the right edge.
         if cells == 2, cursorCol == columns - 1 {

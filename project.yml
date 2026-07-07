@@ -57,15 +57,21 @@ settings:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: VITRINE_DIRECT_DOWNLOAD DEBUG
 
 # Swift Package Manager dependencies.
+# Pinned to exact versions (D1): the generated .xcodeproj — and therefore the
+# resolved dependency graph — is git-ignored, so a floating `from:` would let a
+# minor bump slip in on any fresh `make project`. Highlightr in particular embeds
+# Highlight.js, whose tokenization is what the golden-image baseline was recorded
+# against; an unpinned bump could invalidate the goldens with no code change.
+# Bump these deliberately (and re-record goldens if Highlightr moves).
 packages:
   Highlightr:
     url: https://github.com/raspu/Highlightr
-    from: "2.3.0"
+    exactVersion: "2.3.0"
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     # 2.x drops the deprecated `on()` handler API (we use `events(_:for:)`) and
     # tightens strict-concurrency annotations — both aligned with this codebase.
-    from: "2.4.0"
+    exactVersion: "2.4.0"
 
 targets:
   Vitrine:
@@ -199,11 +205,15 @@ targets:
           # Local HTML rendering (CS-042) drives an offscreen WKWebView, which needs
           # a window-server connection at runtime that this headless tool does not
           # have. The CLI renders code, not web content, so it neither links WebKit
-          # nor compiles the WebKit renderers. The value-only WebSnapshotConfig below
-          # is included explicitly because shared AppSettings/WebDefaults persist URL
-          # capture preferences even though the CLI never renders webpages.
+          # nor compiles the WebKit renderers. Three value-only files are included
+          # explicitly below: WebSnapshotConfig because shared AppSettings/WebDefaults
+          # persist URL capture preferences, WebURLValidation because the config's
+          # validating initializer depends on it, and NetworkCapability because
+          # settings surfaces read the entitlement gate.
           - "WebRendering"
       - path: Vitrine/WebRendering/WebSnapshotConfig.swift
+      - path: Vitrine/WebRendering/WebURLValidation.swift
+      - path: Vitrine/WebRendering/NetworkCapability.swift
       - path: VitrineCLI
     dependencies:
       - package: Highlightr

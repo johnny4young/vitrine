@@ -362,7 +362,7 @@ vitrine render --help
 ```
 
 Defaults match the app (One Dark, JetBrains Mono, aurora background); `--theme`,
-`--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`), `--profile`
+`--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), and `--transparent` override individual choices.
 
 The CLI ships **inside the app bundle**

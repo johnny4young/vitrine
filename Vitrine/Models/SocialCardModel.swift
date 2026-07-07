@@ -1,6 +1,6 @@
+import CoreGraphics
 import CryptoKit
 import Foundation
-import SwiftUI
 
 /// The value model behind a **local social-card render** (CS-041).
 ///

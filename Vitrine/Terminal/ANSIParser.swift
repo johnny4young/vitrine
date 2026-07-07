@@ -93,8 +93,21 @@ enum ANSIParser {
                     style.hyperlink = uri.isEmpty ? nil : uri
                 }
                 index = end
-            default:  // a two-byte escape (`ESC <byte>`) or unknown — drop both bytes
-                index += 2
+            default:
+                // A charset designation or other escape with intermediate bytes
+                // (0x20–0x2F, e.g. `ESC ( B` emitted by `tput sgr0`) consumes the
+                // intermediates plus the final byte — mirroring the grid emulator in
+                // `TerminalScreen.feed` — so no stray final byte leaks into the text.
+                // Any other two-byte escape (`ESC <byte>`) drops both bytes.
+                if (0x20...0x2F).contains(next.value) {
+                    var cursor = index + 1
+                    while cursor < scalars.count, (0x20...0x2F).contains(scalars[cursor].value) {
+                        cursor += 1
+                    }
+                    index = cursor < scalars.count ? cursor + 1 : cursor
+                } else {
+                    index += 2
+                }
             }
         }
         flush()
@@ -122,6 +135,13 @@ enum ANSIParser {
             let value = scalars[cursor].value
             if value >= 0x40 && value <= 0x7E {  // final byte
                 return (String(params), scalars[cursor], cursor + 1)
+            }
+            if value < 0x20 {
+                // A C0 control (`\n`, `\r`, BEL) inside a CSI body means the sequence
+                // was truncated or interleaved; a real terminal executes the control
+                // rather than swallowing it into the parameters. Abort the sequence
+                // and leave the control byte for the caller to process as text.
+                return (String(params), nil, cursor)
             }
             params.append(scalars[cursor])
             cursor += 1
@@ -174,10 +194,16 @@ enum ANSIParser {
     /// `ESC[m`, equivalent to `ESC[0m` (full reset).
     static func applySGR(_ params: String, to style: ANSIStyle) -> ANSIStyle {
         var style = style
+        // An empty fragment is 0 by convention (`ESC[;1m` ≡ `0;1`). A non-empty
+        // fragment that is not a plain integer — notably the ITU colon form some
+        // modern emitters use (`38:5:196`, `4:3`) — maps to -1 and is ignored by the
+        // switch below; mapping it to 0 would misread it as a full SGR reset and
+        // wipe accumulated attributes.
         let codes =
             params.isEmpty
             ? [0]
-            : params.split(separator: ";", omittingEmptySubsequences: false).map { Int($0) ?? 0 }
+            : params.split(separator: ";", omittingEmptySubsequences: false)
+                .map { $0.isEmpty ? 0 : (Int($0) ?? -1) }
         var index = 0
         while index < codes.count {
             let code = codes[index]

@@ -206,7 +206,7 @@ struct SocialCardModelCodableTests {
 
     @Test func roundTripPreservesEveryTemplateAndBackground() throws {
         let backgrounds: [BackgroundStyle] = [
-            .gradient(.aurora), .solid(.white), .transparent,
+            .gradient(.aurora), .solid(RGBAColor(.white)), .transparent,
             .customGradient(.default),
         ]
         for template in SocialCardTemplate.allCases {
@@ -286,7 +286,7 @@ struct SocialCardFingerprintTests {
         expectChanged { $0.theme = .dracula }
         expectChanged { $0.fontName = "Fira Code" }
         expectChanged { $0.fontSize = 30 }
-        expectChanged { $0.background = .solid(.white) }
+        expectChanged { $0.background = .solid(RGBAColor(.white)) }
     }
 }
 
@@ -590,7 +590,7 @@ struct SocialCardRenderedContentTests {
         try expectVisiblyDifferent(
             {
                 var c = base
-                c.background = .solid(.white)
+                c.background = .solid(RGBAColor(.white))
                 return c
             }(),
             {

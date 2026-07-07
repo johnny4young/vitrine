@@ -1,35 +1,10 @@
 import CoreGraphics
 import Foundation
 
-/// What the global hotkey triggers (CS-002).
-enum HotkeyAction: String, CaseIterable, Identifiable, Codable {
-    case quickCapture
-    case openEditor
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .quickCapture: "Quick capture from clipboard"
-        case .openEditor: "Open the editor"
-        }
-    }
-
-    /// The value used when nothing is persisted or a stored string no longer
-    /// maps to a case (CS-050 documented fallback).
-    static let fallback: HotkeyAction = .quickCapture
-
-    /// Decodes a persisted raw value, tolerating `nil` or an unrecognized
-    /// string by returning `fallback`.
-    static func resolve(_ rawValue: String?) -> HotkeyAction {
-        HotkeyAction(rawValue: rawValue ?? "") ?? fallback
-    }
-}
-
 /// Exported image format (CS-010 · Output).
 ///
 /// The format menu lists only outputs the exporter can write **faithfully** from
-/// the full code canvas: a raster `png` and a true vector `pdf`. SVG is
+/// the full code canvas: raster `png`/`heic` and a true vector `pdf`. SVG is
 /// deliberately absent (CS-023): SwiftUI / `ImageRenderer` / AppKit expose no
 /// faithful full-canvas SVG path, and Vitrine does not ship a fake `.svg` that is
 /// merely a raster PNG wrapped in an `<image>` tag. PDF is therefore the supported
@@ -39,6 +14,7 @@ enum HotkeyAction: String, CaseIterable, Identifiable, Codable {
 enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     case png
     case pdf
+    case heic
 
     var id: String { rawValue }
 
@@ -46,17 +22,23 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .png: "PNG"
         case .pdf: "PDF"
+        case .heic: "HEIC"
         }
     }
+
+    /// The lowercase file extension for this format. The raw values already spell the
+    /// extensions, but naming it makes call sites (save panels, multi-size export)
+    /// self-documenting and keeps them from hard-coding a literal.
+    var fileExtension: String { rawValue }
 
     /// Whether this format is a scalable vector format (true for `pdf`).
     ///
     /// Drives the "vector" label/help shown next to the format picker so the menu
     /// states honestly which output is resolution-independent (CS-023). Raster PNG
-    /// is `false`; PDF is `true`.
+    /// and HEIC are `false`; PDF is `true`.
     var isVector: Bool {
         switch self {
-        case .png: false
+        case .png, .heic: false
         case .pdf: true
         }
     }
@@ -67,6 +49,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .png: "Raster image at the chosen resolution. Best for posting and chat."
         case .pdf: "Scalable vector document. Best for docs, slides, and print."
+        case .heic: "Compressed raster image, much smaller than PNG. Best for docs sites."
         }
     }
 

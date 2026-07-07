@@ -152,6 +152,16 @@ enum FileInputLoader {
 
         guard let text = decodeText(from: data) else { throw LoadError.binaryFile }
 
+        // An asciinema recording replays into the terminal renderer: the `.cast`
+        // JSONL output events concatenate to the exact bytes the recorded session
+        // wrote, which the ANSI/terminal pipeline renders as-is. A `.cast`-named
+        // file that is not a real recording falls through to the ordinary path.
+        if AsciinemaCast.isCastFilename(filename),
+            let replay = AsciinemaCast.terminalText(from: text)
+        {
+            return LoadedFile(text: replay, language: .terminal, filename: filename)
+        }
+
         let language = inferLanguage(forFilename: filename, content: text)
         return LoadedFile(text: text, language: language, filename: filename)
     }
@@ -200,7 +210,10 @@ enum FileInputLoader {
             return String(data: data, encoding: .utf16)
         }
         if bytes.starts(with: [0xEF, 0xBB, 0xBF]) {
-            return String(data: data, encoding: .utf8)
+            // Drop the BOM bytes: unlike the .utf16 decode above, .utf8 keeps a
+            // leading U+FEFF in the string, and the invisible scalar would leak
+            // into the editor, detection, and sidecar text.
+            return String(data: data.dropFirst(3), encoding: .utf8)
         }
         return nil
     }

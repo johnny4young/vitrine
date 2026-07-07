@@ -20,7 +20,9 @@ import Observation
 @MainActor
 @Observable
 final class RecentsStore {
-    static let shared = RecentsStore(defaults: AppDefaults.current)
+    /// The shared store, constructed by the composition root (``AppEnvironment``) and
+    /// reached here as a thin forwarder so existing call sites are unchanged.
+    static var shared: RecentsStore { AppEnvironment.shared.recents }
     static let limit = 10
 
     private(set) var captures: [Capture]

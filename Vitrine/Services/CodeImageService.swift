@@ -97,9 +97,9 @@ final class CodeImageService: NSObject {
             // marks the Services output too (CS-092). Free/disabled → no watermark.
             baseStyle: AppSettings.shared.exportConfig)
 
-        let image: NSImage
+        let cgImage: CGImage
         do {
-            image = try SnapshotRenderService.renderImage(request)
+            cgImage = try SnapshotRenderService.renderCGImage(request)
         } catch let renderError as SnapshotRenderService.RenderError {
             Log.capture.error("Services render failed")
             return .failed(message: "\(renderError)")
@@ -109,14 +109,16 @@ final class CodeImageService: NSObject {
         }
 
         // Hand the image back on the same pasteboard. Write both an `NSImage` object
-        // (for image wells) and explicit PNG bytes (for apps that read raw PNG), so a
-        // paste or drop into the host app receives the picture.
+        // (for image wells) and explicit PNG bytes for apps that read raw PNG. The
+        // bytes go through the color-managed ImageIO path (`ExportManager.pngData`),
+        // not a legacy TIFF/`NSBitmapImageRep` round-trip — the latter double-encodes
+        // on the main actor and can drop the deliberate sRGB tagging the exporter
+        // guarantees (AGENTS.md, C1).
+        let image = NSImage(
+            cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
         pasteboard.clearContents()
         var wroteImage = pasteboard.writeObjects([image])
-        if let tiff = image.tiffRepresentation,
-            let bitmap = NSBitmapImageRep(data: tiff),
-            let png = bitmap.representation(using: .png, properties: [:])
-        {
+        if let png = ExportManager.pngData(from: cgImage) {
             wroteImage = pasteboard.setData(png, forType: .png) || wroteImage
         }
 

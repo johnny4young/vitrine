@@ -130,20 +130,48 @@ struct CodeEditorView: NSViewRepresentable {
         }
 
         /// Recolors the whole document via Highlightr, preserving the selection.
+        ///
+        /// Highlighting never changes the *characters* — only their colors — so when the
+        /// rendered text matches the storage's text (the normal case), the new attributes
+        /// are applied **in place** over the existing characters rather than replacing the
+        /// whole string. A full `setAttributedString` re-seats every character and forces
+        /// the layout manager to regenerate all glyphs, which is what spiked on a 1–2k-line
+        /// document; an attribute-only pass (`beginEditing`/`endEditing`) reuses the glyphs
+        /// and only re-processes the changed attributes (P4). The rare case where the
+        /// rendered text differs (e.g. a custom theme trims a trailing newline) falls back
+        /// to the selection-preserving full replace.
         func applyHighlight(to textView: NSTextView) {
+            guard let storage = textView.textStorage else { return }
             isHighlighting = true
             defer { isHighlighting = false }
 
-            let selection = textView.selectedRanges
             let attributed = HighlightManager.shared.attributedString(
                 for: textView.string, language: parent.language, theme: parent.theme, font: font)
-            let mutable = NSMutableAttributedString(attributedString: attributed)
             let paragraph = textView.defaultParagraphStyle ?? NSParagraphStyle.default
-            mutable.addAttribute(
-                .paragraphStyle, value: paragraph,
-                range: NSRange(location: 0, length: mutable.length))
-            textView.textStorage?.setAttributedString(mutable)
-            textView.selectedRanges = selection
+
+            if attributed.string == storage.string {
+                // Same characters: recolor in place. Selection is character-index based, so
+                // it survives untouched; no save/restore needed.
+                let full = NSRange(location: 0, length: storage.length)
+                storage.beginEditing()
+                attributed.enumerateAttributes(
+                    in: NSRange(location: 0, length: attributed.length)
+                ) { attributes, range, _ in
+                    storage.setAttributes(attributes, range: range)
+                }
+                storage.addAttribute(.paragraphStyle, value: paragraph, range: full)
+                storage.endEditing()
+            } else {
+                // Characters differ from the render: fall back to a full, selection-
+                // preserving replace.
+                let selection = textView.selectedRanges
+                let mutable = NSMutableAttributedString(attributedString: attributed)
+                mutable.addAttribute(
+                    .paragraphStyle, value: paragraph,
+                    range: NSRange(location: 0, length: mutable.length))
+                storage.setAttributedString(mutable)
+                textView.selectedRanges = selection
+            }
 
             appliedLanguage = parent.language
             appliedThemeID = parent.theme.id

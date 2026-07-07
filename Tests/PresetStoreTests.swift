@@ -121,7 +121,7 @@ struct StylePresetCodableTests {
 
     @Test func everyBackgroundKindRoundTrips() throws {
         let backgrounds: [BackgroundStyle] = [
-            .solid(.black), .gradient(.night), .transparent,
+            .solid(RGBAColor(.black)), .gradient(.night), .transparent,
             .customGradient(.default),
         ]
         for background in backgrounds {
@@ -261,6 +261,34 @@ struct StylePresetDocumentTests {
         #expect(!StylePresetDocument.ImportError.unsupportedSchemaVersion(9).message.isEmpty)
         #expect(!StylePresetDocument.ImportError.empty.message.isEmpty)
     }
+
+    @Test func oneMalformedPresetIsDroppedNotTheWholeFile() throws {
+        // Build a valid one-preset document, then splice a garbage element into its
+        // presets array — a corrupt entry must drop itself, not collapse the import.
+        let valid = StylePresetDocument(presets: [StylePreset(name: "Keep", style: sampleStyle())])
+        var object = try #require(
+            JSONSerialization.jsonObject(with: try valid.jsonData()) as? [String: Any])
+        var presets = try #require(object["presets"] as? [Any])
+        presets.append(42)  // not a preset object
+        object["presets"] = presets
+        let spliced = try JSONSerialization.data(withJSONObject: object)
+
+        let parsed = try StylePresetDocument.presets(from: spliced)
+        #expect(parsed.count == 1)
+        #expect(parsed.first?.name == "Keep")
+    }
+
+    @Test func allPresetsMalformedStillReportsEmpty() {
+        // When every element is garbage, the file has no usable presets — still the
+        // `.empty` error, so the import UI's copy stays correct.
+        let json = """
+            { "format": "\(StylePresetDocument.formatMarker)", "schemaVersion": 1, \
+            "presets": [42, "nope", {"name": "no style"}] }
+            """
+        #expect(throws: StylePresetDocument.ImportError.empty) {
+            _ = try StylePresetDocument.presets(from: Data(json.utf8))
+        }
+    }
 }
 
 // MARK: - PresetStore behavior
@@ -381,6 +409,22 @@ struct PresetStorePersistenceTests {
         #expect(store.userPresets.isEmpty)
         // Built-ins remain usable.
         #expect(store.allPresets.count == StylePreset.builtIns.count)
+    }
+
+    @Test func corruptElementInStoredBlobDropsOnlyThatElement() throws {
+        let defaults = freshDefaults()
+        // A stored array whose second element is garbage must not wipe the first: one
+        // corrupt preset drops itself, the valid one survives the next launch (B9).
+        let valid = StylePreset(name: "Persisted", style: sampleStyle())
+        var array = try #require(
+            JSONSerialization.jsonObject(with: try JSONEncoder().encode([valid])) as? [Any])
+        array.append(42)
+        let spliced = try JSONSerialization.data(withJSONObject: array)
+        defaults.set(spliced, forKey: PresetStore.storageKey)
+
+        let store = PresetStore(defaults: defaults)
+        #expect(store.userPresets.count == 1)
+        #expect(store.userPresets.first?.name == "Persisted")
     }
 
     @Test func reloadReflectsClearedStore() {
@@ -540,6 +584,6 @@ struct AppSettingsStylePresetTests {
         settings.applyStylePreset(.minimal)  // padding 32, solid white, no shadow
 
         #expect(settings.selectedPresetID == nil)
-        #expect(settings.config.background == .solid(.white))
+        #expect(settings.config.background == .solid(RGBAColor(.white)))
     }
 }

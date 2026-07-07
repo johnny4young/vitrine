@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 
 /// Everything that defines the final image. This is the single source of truth
 /// shared by the editor preview, the quick-capture path, and the exporter.
@@ -25,8 +24,11 @@ struct SnapshotConfig: Equatable {
     var windowTitle: String = ""
 
     var showShadow: Bool = true
-    var cornerRadius: Double = Brand.Radius.card
-    var shadowRadius: Double = Brand.Shadow.elevated.radius
+    // Defaults mirror the brand tokens `Brand.Radius.card` (8) and
+    // `Brand.Shadow.elevated.radius` (20); kept as literals so the model carries no
+    // dependency on the SwiftUI design-token layer (VitrineCore prerequisite).
+    var cornerRadius: Double = 8
+    var shadowRadius: Double = 20
 
     /// Draw a line-number gutter beside the code, in both preview and export
     /// (CS-021). Off by default so the signature look is unchanged.
@@ -239,18 +241,6 @@ struct Watermark: Equatable {
             }
         }
 
-        /// The SwiftUI alignment used to pin the mark to its corner. `.free` has no
-        /// corner anchor (it is positioned by `freePosition`); it returns `.center`
-        /// only as an exhaustive fallback.
-        var alignment: Alignment {
-            switch self {
-            case .bottomTrailing: .bottomTrailing
-            case .bottomLeading: .bottomLeading
-            case .topTrailing: .topTrailing
-            case .topLeading: .topLeading
-            case .free: .center
-            }
-        }
     }
 
     /// Clamps a normalized point into the canvas (each axis in 0…1), used so a free

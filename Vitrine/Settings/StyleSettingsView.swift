@@ -14,6 +14,12 @@ struct StyleSettingsView: View {
     @Bindable private var brandKit = BrandKitStore.shared
     private let entitlements = Entitlements.shared
 
+    /// The rendered preview thumbnail, recomputed debounced off the `body` pass (P2):
+    /// rasterizing a full `ImageRenderer` canvas inside `body` re-ran the slowest path
+    /// in the app on every color-picker frame. Now a `.task(id:)` coalesces rapid edits
+    /// into one render after a short quiet window and stores the result here.
+    @State private var previewImage: NSImage?
+
     /// The active sub-tab, remembered across openings (and seedable by the
     /// design-audit tooling) through the app's defaults store.
     @AppStorage("settings.styleSubTab", store: AppDefaults.current)
@@ -46,6 +52,15 @@ struct StyleSettingsView: View {
             .padding(.bottom, 28)
         }
         .accessibilityIdentifier("settings-style-pane")
+        // Debounced live preview (P2): `.task(id:)` cancels the prior render when any
+        // preview input changes, so a color-picker drag coalesces to one render after a
+        // short quiet window instead of rasterizing the canvas on every frame. Runs once
+        // on appear for the initial thumbnail.
+        .task(id: previewInputs) {
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
+            previewImage = renderCurrentPreview()
+        }
     }
 
     /// The pinned header: live preview + sub-tab segments over the window
@@ -294,7 +309,8 @@ struct StyleSettingsView: View {
                 ColorPicker(
                     "Color",
                     selection: Binding(
-                        get: { color }, set: { settings.config.background = .solid($0) }),
+                        get: { color.color },
+                        set: { settings.config.background = .solid(RGBAColor($0)) }),
                     supportsOpacity: true
                 )
                 .labelsHidden()
@@ -351,19 +367,36 @@ struct StyleSettingsView: View {
         return config
     }
 
-    private var previewImage: NSImage? {
-        // Reflect a fixed-size preset's exact framing (e.g. Keynote 1920×1080) in the
-        // live preview without rasterizing a full export canvas on every Settings change.
-        // The renderer still lays out at the preset's logical size, but fixed-size
-        // previews use a fractional thumbnail scale capped below; real Copy/Save/Share
-        // paths keep `effectiveExportScale` and exact output dimensions (CS-020).
-        return ExportManager.renderNSImage(
+    /// Renders the preview thumbnail. Called only from the debounced `.task(id:)`, never
+    /// inside `body` (P2). Reflects a fixed-size preset's exact framing (e.g. Keynote
+    /// 1920×1080) — the renderer lays out at the preset's logical size, but previews use
+    /// a fractional thumbnail scale capped below; real Copy/Save/Share paths keep
+    /// `effectiveExportScale` and exact output dimensions (CS-020).
+    private func renderCurrentPreview() -> NSImage? {
+        ExportManager.renderNSImage(
             previewConfig, scale: previewRenderScale, fixedSize: settings.effectiveFixedSize,
-            profile: settings.colorProfile)
+            profile: settings.export.colorProfile)
+    }
+
+    /// The inputs the preview render depends on, so `.task(id:)` re-renders exactly when
+    /// one changes (and coalesces a rapid drag into a single trailing render).
+    private var previewInputs: PreviewInputs {
+        PreviewInputs(
+            config: previewConfig, fixedSize: settings.effectiveFixedSize,
+            profile: settings.export.colorProfile)
+    }
+
+    private struct PreviewInputs: Equatable {
+        var config: SnapshotConfig
+        var fixedSize: CGSize?
+        var profile: ColorProfile
     }
 
     private var previewRenderScale: CGFloat {
-        guard let fixedSize = settings.effectiveFixedSize else { return 2 }
+        // The on-screen preview is a small thumbnail (≤150 pt), so scale 1 is ample and
+        // halves the per-render pixel work versus the old 2× (P2). Fixed-size presets
+        // still cap the scale below 1 so a 1920×1080 preset doesn't rasterize full size.
+        guard let fixedSize = settings.effectiveFixedSize else { return 1 }
         let longestSide = max(fixedSize.width, fixedSize.height)
         guard longestSide > 0 else { return 1 }
         return max(0.1, min(1, Self.maximumPreviewPixels / longestSide))

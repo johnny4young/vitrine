@@ -115,42 +115,30 @@ struct SocialCardEditorView: View {
     // MARK: - Export
 
     private func copyCard() {
-        let copied = SocialCardRenderer.copyToPasteboard(
-            card, scale: exportScale, profile: settings.colorProfile)
-        CaptureHUDController.shared.present(
-            copied
-                ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
-                : Notifier.failure(String(localized: "Couldn't copy the image")))
+        ExportFeedback.presentCopy(
+            SocialCardRenderer.copyToPasteboard(
+                card, scale: exportScale, profile: settings.export.colorProfile))
     }
 
     private func saveCard() {
-        switch SocialCardRenderer.saveToFile(
-            card, scale: exportScale, format: settings.exportFormat, profile: settings.colorProfile)
-        {
-        case .saved:
-            CaptureHUDController.shared.present(
-                Notifier.confirmation(String(localized: "Image saved")))
-        case .failed:
-            CaptureHUDController.shared.present(
-                Notifier.failure(String(localized: "Couldn't save the image")))
-        case .cancelled:
-            break  // the user dismissed the save panel — no feedback needed
-        }
+        ExportFeedback.presentSave(
+            SocialCardRenderer.saveToFile(
+                card, scale: exportScale, format: settings.export.format,
+                profile: settings.export.colorProfile))
     }
 
     private func shareCard() {
         guard let view = NSApp.keyWindow?.contentView else { return }
         if !SocialCardRenderer.share(
-            card, relativeTo: view, scale: exportScale, profile: settings.colorProfile)
+            card, relativeTo: view, scale: exportScale, profile: settings.export.colorProfile)
         {
-            CaptureHUDController.shared.present(
-                Notifier.failure(String(localized: "Couldn't share the image")))
+            ExportFeedback.presentShareFailure()
         }
     }
 
     /// The export scale: the user's chosen resolution multiplier, applied to the
     /// fixed 1200×630 card (so 2× yields a crisp 2400×1260).
-    private var exportScale: CGFloat { CGFloat(settings.exportScale) }
+    private var exportScale: CGFloat { CGFloat(settings.export.scale) }
 
     // MARK: - Preview
 
@@ -433,7 +421,8 @@ private struct SocialCardInspector: View {
                 ColorPicker(
                     "Color",
                     selection: Binding(
-                        get: { color }, set: { settings.socialCard.background = .solid($0) }),
+                        get: { color.color },
+                        set: { settings.socialCard.background = .solid(RGBAColor($0)) }),
                     supportsOpacity: true
                 )
                 .labelsHidden()

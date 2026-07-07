@@ -162,6 +162,14 @@ import Testing
             let offline = LicenseActivationService(
                 validator: StubValidator(result: .failure(.network("offline"))), signingKey: key)
             #expect(await offline.activate(licenseKey: "KEY") == .network)
+
+            // A server-supplied refusal maps to `.invalidKey`; the refusal message is
+            // external text and must not change the outcome (it is logged as a typed
+            // reason + length only, never at `.public`).
+            let refused = LicenseActivationService(
+                validator: StubValidator(result: .failure(.server("Anything the server says"))),
+                signingKey: key)
+            #expect(await refused.activate(licenseKey: "KEY") == .invalidKey)
         }
 
         // MARK: - Build-injected signing key

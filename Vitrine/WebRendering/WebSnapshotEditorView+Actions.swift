@@ -67,46 +67,25 @@ extension WebSnapshotEditorView {
 
     func copyImage() {
         guard let asset = model.renderedAsset else { return }
-        guard let png = ExportManager.pngData(from: asset.cgImage) else {
-            CaptureHUDController.shared.present(
-                Notifier.failure(String(localized: "Couldn't copy the image")))
-            return
-        }
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        let copied = pasteboard.setData(png, forType: .png)
-        CaptureHUDController.shared.present(
-            copied
-                ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
-                : Notifier.failure(String(localized: "Couldn't copy the image")))
+        ExportFeedback.presentCopy(ExportManager.copyPNGToPasteboard(asset.cgImage))
     }
 
     func saveImage() {
         guard let asset = model.renderedAsset else { return }
-        // Honor the user's chosen export format (PNG/PDF) through the same ladder the
-        // rest of the app uses, rather than always writing PNG.
+        // Honor the user's chosen export format through the same ladder the rest of
+        // the app uses, then funnel the panel/write through the shared save path so
+        // this flow gets the CS-048 logging discipline like every other save.
         guard
             let payload = ExportManager.encodedPayload(
-                settings.exportFormat,
+                settings.export.format,
                 png: { asset.cgImage },
                 pdf: { ExportManager.pdfData(from: asset.cgImage) })
         else {
-            CaptureHUDController.shared.present(
-                Notifier.failure(String(localized: "Couldn't save the image")))
+            ExportFeedback.presentSave(.failed)
             return
         }
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [payload.type]
-        panel.nameFieldStringValue = "vitrine-web.\(payload.ext)"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try payload.data.write(to: url)
-            CaptureHUDController.shared.present(
-                Notifier.confirmation(String(localized: "Image saved")))
-        } catch {
-            CaptureHUDController.shared.present(
-                Notifier.failure(String(localized: "Couldn't save the image")))
-        }
+        ExportFeedback.presentSave(
+            ExportManager.saveToFile(payload: payload, suggestedName: "vitrine-web"))
     }
 
     /// Exports every captured viewport plus the composite board as PNGs into a folder

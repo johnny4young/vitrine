@@ -300,6 +300,32 @@ struct CLITests {
         }
     }
 
+    @Test func parsesMarkdownSidecarFlag() throws {
+        let options = try CLIArguments.parse(
+            ["render", "in.log", "--out", "out.png", "--markdown-sidecar"])
+        #expect(options.markdownSidecar)
+        // Off unless requested; combinable with the plain-text sidecar.
+        let bare = try CLIArguments.parse(["render", "in.log", "--out", "out.png"])
+        #expect(!bare.markdownSidecar)
+        let both = try CLIArguments.parse(
+            ["render", "in.log", "--out", "out.png", "--text-sidecar", "--markdown-sidecar"])
+        #expect(both.textSidecar && both.markdownSidecar)
+    }
+
+    @Test func markdownSidecarRejectsEditAndOutlessCopy() {
+        #expect(
+            throws: CLIError.incompatibleOptions("Cannot combine --edit with --markdown-sidecar.")
+        ) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--markdown-sidecar"])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--markdown-sidecar needs an --out path to write beside.")
+        ) {
+            try CLIArguments.parse(["render", "in.log", "--copy", "--markdown-sidecar"])
+        }
+    }
+
     @Test func editStagesTheHandoffAndReportsSuccess() throws {
         var captured: URL?
         let options = try CLIArguments.parse(["render", "session.log", "--edit"])
@@ -484,6 +510,56 @@ struct CLITests {
 
         // The image is still written alongside the sidecar.
         #expect(FileManager.default.fileExists(atPath: output))
+    }
+
+    @Test func markdownSidecarWritesFencedSourceNextToImage() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let esc = "\u{1B}"
+        let ansi = "\(esc)[32m$ build\(esc)[0m\nsee docs\n"
+        let input = try writeInput(ansi, named: "session.log", in: directory)
+        let output = directory.appendingPathComponent("card.png").path
+        let options = try CLIArguments.parse(
+            ["render", input, "--out", output, "--language", "terminal", "--markdown-sidecar"])
+
+        let summary = try CLIRenderer.run(options)
+        #expect(summary.contains("card.md"))
+
+        let sidecar = directory.appendingPathComponent("card.md")
+        let text = try String(contentsOf: sidecar, encoding: .utf8)
+        // The image reference, then the visible text (escapes stripped) in a fenced
+        // block tagged `text` — ready to paste into a README next to the image.
+        #expect(
+            text == "![Code rendered with Vitrine](card.png)\n\n```text\n$ build\nsee docs\n```\n")
+
+        // The image is still written alongside the sidecar.
+        #expect(FileManager.default.fileExists(atPath: output))
+    }
+
+    @Test func markdownSidecarFenceOutgrowsBackticksInTheSource() {
+        // Code containing a ``` run must not break out of the fenced block: the
+        // fence grows one backtick longer than the longest run in the body.
+        var config = SnapshotConfig()
+        config.language = .swift
+        config.code = "let fence = \"```\"\n"
+        let contents = CLIRenderer.markdownSidecarContents(for: config, imageName: "snip.png")
+        #expect(contents.contains("````swift\n"))
+        #expect(contents.hasSuffix("````\n"))
+        #expect(contents.hasPrefix("![Code rendered with Vitrine](snip.png)\n\n"))
+    }
+
+    @Test func markdownSidecarEscapesUserControlledImageSyntax() {
+        var config = SnapshotConfig()
+        config.language = .swift
+        config.code = "print(\"hi\")\n"
+        config.metadata = SnapshotMetadata(filename: "evil] name [draft")
+
+        let contents = CLIRenderer.markdownSidecarContents(
+            for: config, imageName: "card v1)<final>.png")
+
+        #expect(contents.hasPrefix("![evil\\] name \\[draft](<card v1)\\<final\\>.png>)\n\n"))
+        #expect(contents.contains("```swift\nprint(\"hi\")\n```\n"))
     }
 
     @Test func languageIsInferredFromTheInputExtension() throws {

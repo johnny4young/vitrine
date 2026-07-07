@@ -24,7 +24,7 @@ struct BackgroundView: View {
     var body: some View {
         switch style {
         case .solid(let color):
-            color.opacity(1)
+            color.color.opacity(1)
         case .gradient(let preset):
             preset.gradient.opacity(1)
         case .customGradient(let gradient):

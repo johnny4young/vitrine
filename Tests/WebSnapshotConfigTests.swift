@@ -302,7 +302,7 @@ struct WebCaptureConfigCompositionTests {
         settings.webCapture.captureMode = .fullPage
         settings.webCapture.waitKind = .fixedDelay
         settings.webCapture.waitSeconds = 4
-        settings.exportScale = 1
+        settings.export.scale = 1
 
         let renderer = URLRenderer.configured(from: settings)
         #expect(renderer.viewportPreset == .fullHD)
@@ -474,12 +474,12 @@ struct WebCaptureSettingsPersistenceTests {
         defaults.removePersistentDomain(forName: suite)
 
         let settings = AppSettings(defaults: defaults)
-        settings.autoCopy = false
+        settings.export.autoCopy = false
         settings.webCapture.captureMode = .fullPage
 
         #expect(defaults.integer(forKey: SettingsSchema.versionKey) == SettingsSchema.current)
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.autoCopy == false)
+        #expect(reloaded.export.autoCopy == false)
         #expect(reloaded.webCapture.captureMode == .fullPage)
     }
 }

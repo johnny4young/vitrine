@@ -110,12 +110,12 @@ enum SocialCardRenderer {
         return copied
     }
 
-    /// Presents an `NSSavePanel` and writes the card as PNG or PDF, returning the
+    /// Presents an `NSSavePanel` and writes the card as PNG, PDF, or HEIC, returning the
     /// outcome so a caller can give precise feedback (CS-038): `.saved` on a write,
     /// `.cancelled` on dismiss, `.failed` on a render/encode/write error.
     ///
-    /// `profile` applies to PNG only; PDF is unaffected by the raster color-profile
-    /// choice. The destination path is never logged (CS-048 privacy rule).
+    /// `profile` applies to raster output only; PDF is unaffected by the raster
+    /// color-profile choice. The destination path is never logged (CS-048 privacy rule).
     @discardableResult
     static func saveToFile(
         _ model: SocialCardModel,
@@ -132,25 +132,8 @@ enum SocialCardRenderer {
             Log.export.error("Social card save failed: render or encode returned nil")
             return .failed
         }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [payload.type]
-        panel.nameFieldStringValue = "vitrine-card.\(payload.ext)"
-        guard panel.runModal() == .OK, let url = panel.url else {
-            Log.export.info("Social card save cancelled")
-            return .cancelled
-        }
-        do {
-            try payload.data.write(to: url)
-            Log.export.notice("Saved social card to file (\(payload.ext, privacy: .public))")
-            return .saved
-        } catch {
-            let nsError = error as NSError
-            Log.export.error(
-                "Saving social card failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-            )
-            return .failed
-        }
+        // The shared panel/write path — one CS-048 logging spot for every save flow.
+        return ExportManager.saveToFile(payload: payload, suggestedName: "vitrine-card")
     }
 
     /// Renders the card and presents the macOS share sheet anchored to `view`

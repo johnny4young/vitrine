@@ -26,8 +26,9 @@ import UniformTypeIdentifiers
 /// persisted custom theme survives relaunch.
 @Observable
 final class CustomThemeStore {
-    /// The shared store backed by the app's resolved defaults.
-    static let shared = CustomThemeStore(defaults: AppDefaults.current)
+    /// The shared store, constructed by the composition root (``AppEnvironment``) and
+    /// reached here as a thin forwarder so existing call sites are unchanged.
+    static var shared: CustomThemeStore { AppEnvironment.shared.customThemes }
 
     /// The user's custom themes, most-recently-added last. Persisted on change.
     private(set) var customThemes: [Theme] {

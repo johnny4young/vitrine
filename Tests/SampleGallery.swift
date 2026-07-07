@@ -278,7 +278,7 @@ enum SampleGallery {
         config.language = .swift
         config.theme = highContrastTheme
         config.fontSize = 15
-        config.background = .solid(Color(red: 0.04, green: 0.05, blue: 0.08))
+        config.background = .solid(RGBAColor(Color(red: 0.04, green: 0.05, blue: 0.08)))
         return [
             Sample(
                 id: "a11y-high-contrast",
