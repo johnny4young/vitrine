@@ -17,9 +17,10 @@ import Observation
 @MainActor
 @Observable
 final class Entitlements {
-    /// The app-wide entitlement state. Its provider is chosen per build, with a Debug-only
-    /// local unlock for development.
-    static let shared = Entitlements(provider: Entitlements.defaultProvider())
+    /// The app-wide entitlement state, constructed by the composition root
+    /// (``AppEnvironment``) and reached here as a thin forwarder so existing call sites and
+    /// the non-view action layer are unchanged.
+    static var shared: Entitlements { AppEnvironment.shared.entitlements }
 
     /// Whether the PRO tier is unlocked. Published so SwiftUI surfaces (the "PRO" badge,
     /// the paywall gate) update the moment it changes. Private setter: only a provider
@@ -105,7 +106,7 @@ final class Entitlements {
     /// succeeds. In a **Debug** build only, `VITRINE_PRO_UNLOCK=1` swaps in
     /// `DebugUnlockProvider` so PRO can be exercised locally — that override is compiled
     /// out of release, so a shipped binary has no path to PRO through it.
-    private static func defaultProvider() -> EntitlementProvider {
+    static func defaultProvider() -> EntitlementProvider {
         #if DEBUG
             let environment = ProcessInfo.processInfo.environment
             if environment["VITRINE_PRO_UNLOCK"] == "1" {
