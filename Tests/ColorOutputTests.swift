@@ -129,7 +129,7 @@ struct ColorOutputTests {
         // anti-aliasing or syntax highlighting. A regression that tagged P3
         // without converting would leave the bytes identical and fail here.
         let config = Self.sampleConfig {
-            $0.background = .solid(Color(hex: "#FF0000"))
+            $0.background = .solid(RGBAColor(Color(hex: "#FF0000")))
             $0.showChrome = false
             $0.showShadow = false
         }
@@ -218,7 +218,7 @@ struct ColorOutputTests {
         // A solid (opaque) background must export with a fully opaque corner, so
         // an opaque export never leaks partial transparency.
         let config = Self.sampleConfig {
-            $0.background = .solid(Color(hex: "#3366CC"))
+            $0.background = .solid(RGBAColor(Color(hex: "#3366CC")))
             $0.showShadow = false
         }
         let decoded = try decodedPNG(config, profile: .sRGB)
@@ -293,7 +293,7 @@ struct ColorOutputTests {
         // to a valid PNG (magic number) — a structural color-output regression net.
         // Qualified: SwiftUI also declares a `BackgroundStyle` shape style.
         let backgrounds: [Vitrine.BackgroundStyle] = [
-            .gradient(.aurora), .solid(Color(hex: "#1F1C2C")), .transparent,
+            .gradient(.aurora), .solid(RGBAColor(Color(hex: "#1F1C2C"))), .transparent,
         ]
         for background in backgrounds {
             let config = Self.sampleConfig {

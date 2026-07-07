@@ -103,8 +103,7 @@ enum VectorTemplateSVG {
 
     /// A single filled rectangle covering the canvas, with a separate
     /// `fill-opacity` so a translucent solid color keeps its alpha.
-    private static func solidRect(_ color: Color, width: CGFloat, height: CGFloat) -> String {
-        let rgba = RGBAColor(color)
+    private static func solidRect(_ rgba: RGBAColor, width: CGFloat, height: CGFloat) -> String {
         return """
               <rect x="0" y="0" width="\(number(width))" height="\(number(height))" \
             fill="\(hex(rgba))" fill-opacity="\(number(rgba.opacity))"/>
@@ -122,7 +121,7 @@ enum VectorTemplateSVG {
         let stops = gradient.stops
             .sorted { $0.location < $1.location }
             .map { stop -> String in
-                let rgba = RGBAColor(stop.color)
+                let rgba = stop.color
                 return """
                       <stop offset="\(number(stop.location))" stop-color="\(hex(rgba))" \
                     stop-opacity="\(number(rgba.opacity))"/>

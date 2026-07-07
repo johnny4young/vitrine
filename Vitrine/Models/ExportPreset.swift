@@ -439,7 +439,8 @@ extension StylePreset {
     static let minimal = StylePreset(
         id: "builtin.minimal", name: "Minimal Light",
         style: StyleSnapshot(
-            themeID: Theme.github.id, padding: 32, showShadow: false, background: .solid(.white)))
+            themeID: Theme.github.id, padding: 32, showShadow: false,
+            background: .solid(RGBAColor(.white))))
 
     /// The built-in presets, in list order. They are immutable; the store offers
     /// "Duplicate" instead of editing or deleting any of them (CS-030).

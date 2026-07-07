@@ -244,9 +244,9 @@ extension EditorView {
         case .customGradient(let gradient):
             let stops = gradient.stops.sorted { $0.location < $1.location }
             guard let first = stops.first?.color, let last = stops.last?.color else { return nil }
-            return (first, last)
+            return (first.color, last.color)
         case .solid(let color):
-            return (color, color)
+            return (color.color, color.color)
         case .image, .transparent:
             return nil
         }
