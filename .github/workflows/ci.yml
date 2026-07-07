@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       # shellcheck ships preinstalled on ubuntu-latest. Severity is capped at
       # warning: the scripts carry targeted `# shellcheck disable=` directives
@@ -148,7 +148,7 @@ jobs:
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
@@ -187,7 +187,7 @@ jobs:
       # for the package dependencies (the resolved project is generated, not
       # committed).
       - name: Cache Swift Package Manager
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/Library/Caches/org.swift.swiftpm
           key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
@@ -369,7 +369,7 @@ jobs:
     # so a wedged run surfaces in minutes, not after the 6-hour default.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
@@ -413,7 +413,7 @@ jobs:
         run: brew install xcodegen
 
       - name: Cache Swift Package Manager
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/Library/Caches/org.swift.swiftpm
           key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
