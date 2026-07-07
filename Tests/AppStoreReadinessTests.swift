@@ -533,13 +533,15 @@ struct AppStoreReadinessTests {
         #expect(
             workflow.contains("MACOS_NOTARY_KEY_P8"),
             "appstore.yml must gate validation on the App Store Connect API key (CS-062)")
-        let validateMarker = try #require(
+        _ = try #require(
             workflow.range(of: "--validate-app"),
             "appstore.yml must contain the validate-app step")
-        let beforeValidate = String(workflow[..<validateMarker.lowerBound])
         #expect(
-            beforeValidate.contains("MACOS_NOTARY_KEY_ID != ''"),
+            workflow.contains(#"[ -z "${MACOS_NOTARY_KEY_ID:-}" ]"#),
             "the validate-app step must be gated on the App Store Connect API-key secrets (CS-062)")
+        #expect(
+            workflow.contains(#"--p8-file-path "${APPSTORE_KEY_P8}""#),
+            "the validate-app step must pass altool the staged App Store Connect private key file")
     }
 
     /// The doc must point at the optional workflow and describe it as a credential-gated dry

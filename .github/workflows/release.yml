@@ -147,12 +147,15 @@ jobs:
       # unsigned, ad-hoc path. The certificate is a base64-encoded .p12 export and
       # MACOS_CERTIFICATE_PASSWORD is its export password.
       - name: Import Developer ID certificate
-        if: ${{ env.MACOS_CERTIFICATE_P12 != '' }}
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
         run: |
           set -euo pipefail
+          if [ -z "${MACOS_CERTIFICATE_P12:-}" ]; then
+            echo "Developer ID certificate secret not configured; skipping keychain import."
+            exit 0
+          fi
           KEYCHAIN="${RUNNER_TEMP}/vitrine-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
           CERT_PATH="${RUNNER_TEMP}/developer-id.p12"
@@ -175,11 +178,14 @@ jobs:
       # avoids an app-specific password. Skipped when the secret is absent, leaving
       # the Apple-ID credential path (or no notarization) intact.
       - name: Stage App Store Connect API key
-        if: ${{ env.MACOS_NOTARY_KEY_P8 != '' }}
         env:
           MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
         run: |
           set -euo pipefail
+          if [ -z "${MACOS_NOTARY_KEY_P8:-}" ]; then
+            echo "App Store Connect API key secret not configured; skipping key staging."
+            exit 0
+          fi
           KEY_PATH="${RUNNER_TEMP}/notary-key.p8"
           echo "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
           echo "MACOS_NOTARY_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
@@ -280,13 +286,17 @@ jobs:
       # half of the SUPublicEDKey embedded in Info.plist; it never leaves the secret.
       - name: Generate signed Sparkle appcast
         id: appcast
-        if: ${{ env.SPARKLE_EDDSA_PRIVATE_KEY != '' }}
         env:
           SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
           # The release notes URL Sparkle shows for this version (the GitHub release page).
           RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
         run: |
           set -euo pipefail
+          if [ -z "${SPARKLE_EDDSA_PRIVATE_KEY:-}" ]; then
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+            echo "Sparkle EdDSA key secret not configured; skipping appcast generation."
+            exit 0
+          fi
           VERSION="${GITHUB_REF_NAME#v}"
 
           # Fetch Sparkle's binary tools (generate_appcast, which signs each entry with the
@@ -318,6 +328,7 @@ jobs:
           # Stage the appcast for the GitHub Pages deploy (served at SUFeedURL).
           mkdir -p _site
           cp dist/appcast.xml _site/appcast.xml
+          echo "generated=true" >> "$GITHUB_OUTPUT"
 
           {
             echo "### Sparkle appcast (CS-064)"
@@ -382,7 +393,7 @@ jobs:
       # polls — plus this tiny redirect stub at the old site root, so anyone who hits
       # the legacy github.io URL is forwarded to the canonical domain.
       - name: Stage a redirect stub for the legacy Pages site
-        if: ${{ steps.appcast.outcome == 'success' }}
+        if: ${{ steps.appcast.outputs.generated == 'true' }}
         run: |
           printf '%s\n' \
             '<!doctype html>' \
@@ -404,12 +415,15 @@ jobs:
       # project is created once from the terminal:
       #   npx wrangler pages project create vitrine-web --production-branch=main
       - name: Deploy landing to Cloudflare Pages
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "Cloudflare Pages secrets not configured; skipping landing deploy."
+            exit 0
+          fi
           mkdir -p dist-web/screenshots
           cp docs/index.html docs/vitrine-icon.png dist-web/
           cp docs/screenshots/editor.png docs/screenshots/annotated.png docs/screenshots/diff.png \
@@ -421,13 +435,13 @@ jobs:
       # Skipped when no appcast was produced (no EdDSA key secret), so the release still
       # publishes without it.
       - name: Upload appcast Pages artifact
-        if: ${{ steps.appcast.outcome == 'success' }}
+        if: ${{ steps.appcast.outputs.generated == 'true' }}
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
         with:
           path: _site
 
       - name: Deploy appcast to GitHub Pages
-        if: ${{ steps.appcast.outcome == 'success' }}
+        if: ${{ steps.appcast.outputs.generated == 'true' }}
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5.0.0
 
   # Post-publish QA (CS-062 posture): download the DMG users will actually get and

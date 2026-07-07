@@ -110,12 +110,12 @@ enum SocialCardRenderer {
         return copied
     }
 
-    /// Presents an `NSSavePanel` and writes the card as PNG or PDF, returning the
+    /// Presents an `NSSavePanel` and writes the card as PNG, PDF, or HEIC, returning the
     /// outcome so a caller can give precise feedback (CS-038): `.saved` on a write,
     /// `.cancelled` on dismiss, `.failed` on a render/encode/write error.
     ///
-    /// `profile` applies to PNG only; PDF is unaffected by the raster color-profile
-    /// choice. The destination path is never logged (CS-048 privacy rule).
+    /// `profile` applies to raster output only; PDF is unaffected by the raster
+    /// color-profile choice. The destination path is never logged (CS-048 privacy rule).
     @discardableResult
     static func saveToFile(
         _ model: SocialCardModel,
