@@ -1,4 +1,5 @@
-import SwiftUI
+import CoreGraphics
+import Foundation
 
 /// One-click image-size/style presets for the surfaces developers actually post
 /// to (CS-020).
