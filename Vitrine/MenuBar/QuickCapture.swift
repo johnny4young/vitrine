@@ -109,20 +109,9 @@ enum QuickCapture {
             isPro: Entitlements.shared.isPro)
 
         // Honor the active destination preset's framing (size/scale) so quick
-        // capture produces the same image the editor would (CS-020).
-        let scale = CGFloat(settings.effectiveExportScale)
-        let fixedSize = settings.effectiveFixedSize
-        let profile = settings.colorProfile
-        let didCopy =
-            settings.autoCopy
-            && ExportManager.copyToPasteboard(
-                config, scale: scale, fixedSize: fixedSize, profile: profile,
-                richText: settings.richClipboard, plainText: settings.textSidecar)
-        let didSave =
-            settings.alsoSaveToFile
-            && ExportManager.saveToFile(
-                config, scale: scale, format: settings.exportFormat, fixedSize: fixedSize,
-                profile: profile) == .saved
+        // capture produces the same image the editor would (CS-020). Render once and
+        // reuse the raster for both the copy and the save (P5).
+        let (didCopy, didSave) = copyAndSave(config, settings: settings)
 
         recents.add(
             Capture(
@@ -135,6 +124,51 @@ enum QuickCapture {
             outcome: didCopy ? .copied : .rendered,
             copiedToClipboard: didCopy,
             savedToFile: didSave)
+    }
+
+    /// Renders `config` once and applies the requested clipboard copy and file save from
+    /// that single raster (P5), so the hotkey path no longer renders the identical config
+    /// twice (once to copy, once to save). Returns whether each side effect ran.
+    ///
+    /// The rich-clipboard/plain-text copy reuses the same raster and only adds RTF/HTML
+    /// derived from the code; a PDF save is a vector document, so it renders its own page
+    /// through the `config`-based save rather than the shared raster.
+    @MainActor
+    private static func copyAndSave(
+        _ config: SnapshotConfig, settings: AppSettings
+    ) -> (didCopy: Bool, didSave: Bool) {
+        let scale = CGFloat(settings.effectiveExportScale)
+        let fixedSize = settings.effectiveFixedSize
+        let profile = settings.colorProfile
+        let cgImage = ExportManager.renderCGImage(
+            config, scale: scale, fixedSize: fixedSize, profile: profile)
+
+        var didCopy = false
+        if settings.autoCopy, let cgImage {
+            if settings.richClipboard || settings.textSidecar {
+                didCopy = RichPasteboard.copy(
+                    cgImage: cgImage, config: config,
+                    includeRichText: settings.richClipboard, includePlainText: settings.textSidecar)
+            } else {
+                didCopy = ExportManager.copyPNGToPasteboard(cgImage)
+            }
+        }
+
+        var didSave = false
+        if settings.alsoSaveToFile {
+            if settings.exportFormat == .pdf {
+                didSave =
+                    ExportManager.saveToFile(
+                        config, scale: scale, format: .pdf, fixedSize: fixedSize, profile: profile)
+                    == .saved
+            } else if let cgImage {
+                didSave =
+                    ExportManager.saveToFile(
+                        cgImage: cgImage, format: settings.exportFormat,
+                        suggestedName: SuggestedFilename.basename(for: config)) == .saved
+            }
+        }
+        return (didCopy, didSave)
     }
 
     /// Imports an image from the clipboard into the foreground store, or `nil` when the
@@ -221,19 +255,8 @@ enum QuickCapture {
         config.watermark = BrandKitStore.shared.resolvedWatermark(
             isPro: Entitlements.shared.isPro)
 
-        let scale = CGFloat(settings.effectiveExportScale)
-        let fixedSize = settings.effectiveFixedSize
-        let profile = settings.colorProfile
-        let didCopy =
-            settings.autoCopy
-            && ExportManager.copyToPasteboard(
-                config, scale: scale, fixedSize: fixedSize, profile: profile,
-                richText: settings.richClipboard, plainText: settings.textSidecar)
-        let didSave =
-            settings.alsoSaveToFile
-            && ExportManager.saveToFile(
-                config, scale: scale, format: settings.exportFormat, fixedSize: fixedSize,
-                profile: profile) == .saved
+        // Render once and reuse the raster for both the copy and the save (P5).
+        let (didCopy, didSave) = copyAndSave(config, settings: settings)
 
         recents.add(
             Capture(

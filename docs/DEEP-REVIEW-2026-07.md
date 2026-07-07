@@ -351,11 +351,17 @@ Recents thumbnail cache, board thumbnails). What remains, by user-visible impact
   with the canvas, so an off-main call would race it; and ranged re-highlight risks
   mis-coloring multi-line constructs. Both open up once P3 replaces the HTML importer
   with direct span walking.
-- **P5 — Quick capture renders the same config up to 3× synchronously on the hotkey
-  path** (copy renders, save renders again, Recents thumbnail renders a third
-  time) — ~600–900 ms of main-thread work against the "feels instant" promise. 🔧
-  Render the `CGImage` once; derive pasteboard bytes, file bytes, and a downscaled
-  thumbnail from it.
+- **P5 — Quick capture rendered the same config twice synchronously on the hotkey
+  path** (copy renders, save renders the identical config again). ✅ *Implemented
+  (+3 tests):* `QuickCapture` now renders the styled `CGImage` **once** and feeds it to
+  both the clipboard copy (`copyPNGToPasteboard`, or the new
+  `RichPasteboard.copy(cgImage:…)` for the rich/plain-text variant) and the file save
+  (new `ExportManager.saveToFile(cgImage:format:…)` for raster). A PDF save still
+  renders its own vector page. A byte-equality test pins that the single-render output
+  matches the full-render path. *Note:* the Recents thumbnail is **not** a third render
+  of this config — it renders a deliberately simplified default-styled capture at a
+  fixed 320×200, so it is left as its own (cheaper) render rather than a downscale that
+  would change the gallery's appearance.
 - **P6 — Multi-viewport web capture is strictly sequential** (4 viewports = 4× wall
   clock). 🔧 Design change: overlap loads with a small-cap task group — WKWebView is
   main-actor bound but each view has its own web-content process; needs runtime

@@ -283,6 +283,28 @@ enum ExportManager {
             payload: payload, suggestedName: SuggestedFilename.basename(for: config))
     }
 
+    /// Saves an **already-rendered** raster `cgImage` as PNG or HEIC (P5): the
+    /// quick-capture path renders the styled image once and reuses it for both the
+    /// clipboard copy and this file save instead of re-rendering the identical config.
+    /// PDF is a vector document and must render its own page, so it is not accepted here
+    /// — callers save PDF through the `config`-based `saveToFile` above.
+    @discardableResult
+    static func saveToFile(
+        cgImage: CGImage, format: ExportFormat, suggestedName: String
+    ) -> SaveOutcome {
+        let payload: (data: Data, type: UTType, ext: String)? =
+            switch format {
+            case .png: pngData(from: cgImage).map { ($0, .png, "png") }
+            case .heic: heicData(from: cgImage).map { ($0, .heic, "heic") }
+            case .pdf: nil
+            }
+        guard let payload else {
+            Log.export.error("Save to file failed: raster encode returned nil or PDF via cgImage")
+            return .failed
+        }
+        return saveToFile(payload: payload, suggestedName: suggestedName)
+    }
+
     /// Presents the save panel for an already-encoded payload and writes it — the
     /// shared panel/write/log dance behind every save flow (the config path above,
     /// the social-card renderer, and the web editor), so the CS-048 logging rule
