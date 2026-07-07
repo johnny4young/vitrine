@@ -180,8 +180,9 @@ struct FramedImageView: View {
 }
 
 /// Boxes a `FrameChrome` value so it can be stored in an `NSCache`, which holds
-/// objects. Immutable and holds only `Sendable` values, so it is safe to share.
-private final class FrameChromeBox: Sendable {
+/// objects. The box lives only inside the `@MainActor` `autoChromeCache` and is never
+/// sent across an actor, so it needs no `Sendable` conformance.
+private final class FrameChromeBox {
     let chrome: FrameChrome
     init(_ chrome: FrameChrome) { self.chrome = chrome }
 }
