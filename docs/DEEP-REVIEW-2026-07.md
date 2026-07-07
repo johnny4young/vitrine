@@ -339,8 +339,18 @@ Recents thumbnail cache, board thumbnails). What remains, by user-visible impact
   on a few-hundred-line file. 🔧 Key the caches on palette value (it is hashable)
   and replace the HTML importer with direct span walking.
 - **P4 — Full-document re-highlight + `setAttributedString` per 100 ms debounce
-  tick** in the editor text view — typing latency spikes on 1–2k-line pastes. 🔧
-  Ranged re-highlight or off-main computation with an unchanged-text check.
+  tick** in the editor text view — typing latency spikes on 1–2k-line pastes.
+  ✅ *Partially implemented (+2 tests):* highlighting only recolors, never changes the
+  characters, so `applyHighlight` now applies the new attributes **in place** over the
+  existing text storage (`beginEditing`/`endEditing`) instead of a full
+  `setAttributedString` — the layout manager reuses the glyphs and re-processes only
+  the changed attributes rather than re-seating every character. Selection survives
+  untouched (character-index based). 📋 *Deferred (needs P3 first):* moving the
+  Highlightr **tokenization** off-main is unsafe today — a custom theme renders through
+  the main-thread-only AppKit HTML importer and the built-in path shares one `JSContext`
+  with the canvas, so an off-main call would race it; and ranged re-highlight risks
+  mis-coloring multi-line constructs. Both open up once P3 replaces the HTML importer
+  with direct span walking.
 - **P5 — Quick capture renders the same config up to 3× synchronously on the hotkey
   path** (copy renders, save renders again, Recents thumbnail renders a third
   time) — ~600–900 ms of main-thread work against the "feels instant" promise. 🔧
