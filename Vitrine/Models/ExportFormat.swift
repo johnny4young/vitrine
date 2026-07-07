@@ -4,7 +4,7 @@ import Foundation
 /// Exported image format (CS-010 · Output).
 ///
 /// The format menu lists only outputs the exporter can write **faithfully** from
-/// the full code canvas: a raster `png` and a true vector `pdf`. SVG is
+/// the full code canvas: raster `png`/`heic` and a true vector `pdf`. SVG is
 /// deliberately absent (CS-023): SwiftUI / `ImageRenderer` / AppKit expose no
 /// faithful full-canvas SVG path, and Vitrine does not ship a fake `.svg` that is
 /// merely a raster PNG wrapped in an `<image>` tag. PDF is therefore the supported

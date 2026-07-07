@@ -549,6 +549,19 @@ struct CLITests {
         #expect(contents.hasPrefix("![Code rendered with Vitrine](snip.png)\n\n"))
     }
 
+    @Test func markdownSidecarEscapesUserControlledImageSyntax() {
+        var config = SnapshotConfig()
+        config.language = .swift
+        config.code = "print(\"hi\")\n"
+        config.metadata = SnapshotMetadata(filename: "evil] name [draft")
+
+        let contents = CLIRenderer.markdownSidecarContents(
+            for: config, imageName: "card v1)<final>.png")
+
+        #expect(contents.hasPrefix("![evil\\] name \\[draft](<card v1)\\<final\\>.png>)\n\n"))
+        #expect(contents.contains("```swift\nprint(\"hi\")\n```\n"))
+    }
+
     @Test func languageIsInferredFromTheInputExtension() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

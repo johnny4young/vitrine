@@ -114,11 +114,14 @@ jobs:
       # validation dry run. Skipped (and the validation step below skipped with it)
       # when the secret is absent.
       - name: Stage App Store Connect API key
-        if: ${{ env.MACOS_NOTARY_KEY_P8 != '' }}
         env:
           MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
         run: |
           set -euo pipefail
+          if [ -z "${MACOS_NOTARY_KEY_P8:-}" ]; then
+            echo "App Store Connect API key secret not configured; skipping key staging."
+            exit 0
+          fi
           KEY_PATH="${RUNNER_TEMP}/appstore-key.p8"
           echo "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
           echo "APPSTORE_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
@@ -130,7 +133,6 @@ jobs:
       # hosted runner can get to the Organizer "Validate App" step without submitting
       # anything.
       - name: Validate for App Store (dry run, no upload)
-        if: ${{ env.MACOS_NOTARY_KEY_ID != '' && env.MACOS_NOTARY_KEY_ISSUER_ID != '' && env.MACOS_NOTARY_KEY_P8 != '' }}
         env:
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
@@ -138,6 +140,13 @@ jobs:
           MACOS_SIGN_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
         run: |
           set -euo pipefail
+          if [ -z "${MACOS_NOTARY_KEY_ID:-}" ] \
+            || [ -z "${MACOS_NOTARY_KEY_ISSUER_ID:-}" ] \
+            || [ -z "${MACOS_NOTARY_KEY_P8:-}" ] \
+            || [ -z "${APPSTORE_KEY_P8:-}" ]; then
+            echo "App Store Connect API key secrets not configured; skipping validate-app dry run."
+            exit 0
+          fi
           cat > "${RUNNER_TEMP}/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -157,7 +166,9 @@ jobs:
           PKG="$(ls "${RUNNER_TEMP}/appstore-export"/*.pkg | head -n 1)"
           echo "Validating ${PKG} (dry run — no upload)…"
           xcrun altool --validate-app -f "${PKG}" -t macos \
-            --apiKey "${MACOS_NOTARY_KEY_ID}" --apiIssuer "${MACOS_NOTARY_KEY_ISSUER_ID}"
+            --apiKey "${MACOS_NOTARY_KEY_ID}" \
+            --apiIssuer "${MACOS_NOTARY_KEY_ISSUER_ID}" \
+            --p8-file-path "${APPSTORE_KEY_P8}"
 
       - name: Dry-run summary
         if: always()

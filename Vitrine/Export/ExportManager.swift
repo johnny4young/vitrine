@@ -4,9 +4,9 @@ import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Renders a `SnapshotConfig` to PNG/PDF and exports it to the clipboard or a file
-/// (CS-007/010). PNG encoding goes through ImageIO directly from the rendered
-/// `CGImage`; PDF uses `ImageRenderer.render` into a `CGContext` — no legacy
+/// Renders a `SnapshotConfig` to PNG/PDF/HEIC and exports it to the clipboard or a
+/// file (CS-007/010). Raster encoding goes through ImageIO directly from the
+/// rendered `CGImage`; PDF uses `ImageRenderer.render` into a `CGContext` — no legacy
 /// `NSBitmapImageRep`/TIFF round-trip.
 ///
 /// Color management (CS-024): a render is always normalized into an explicit ICC
@@ -188,7 +188,7 @@ enum ExportManager {
         return data as Data
     }
 
-    /// The single PNG/PDF format ladder shared by every save/encode path
+    /// The single PNG/PDF/HEIC format ladder shared by every save/encode path
     /// (CS-007/041). Given a render strategy for each branch — a `png` producer of a
     /// `CGImage` and a `pdf` producer of finished `Data` — it picks the branch for
     /// `format`, encodes PNG through the shared color-managed ImageIO path, and pairs
@@ -257,9 +257,9 @@ enum ExportManager {
         return copied
     }
 
-    /// Presents an `NSSavePanel` and writes the image as PNG or PDF.
+    /// Presents an `NSSavePanel` and writes the image as PNG, PDF, or HEIC.
     ///
-    /// `profile` applies to PNG export only (CS-024); PDF is a color-managed
+    /// `profile` applies to raster export only (CS-024); PDF is a color-managed
     /// vector document and is unaffected by the raster color-profile choice.
     ///
     /// Returns the outcome so a caller can give the user precise feedback

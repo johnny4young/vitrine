@@ -37,12 +37,12 @@ enum SnapshotRenderService {
         }
     }
 
-    /// Renders `request` to encoded image data in its chosen format (PNG or PDF).
+    /// Renders `request` to encoded image data in its chosen format.
     ///
-    /// PNG goes through `renderCGImage` + `pngData` (honoring the scale, fixed size,
-    /// and color profile); PDF uses `pdfData`. Throws `RenderError.emptyCode` for
-    /// empty input and `RenderError.renderFailed` when the pipeline yields nothing,
-    /// so a caller never has to interpret a bare `nil`.
+    /// Raster formats go through `renderCGImage` + ImageIO (honoring the scale,
+    /// fixed size, and color profile); PDF uses `pdfData`. Throws
+    /// `RenderError.emptyCode` for empty input and `RenderError.renderFailed` when
+    /// the pipeline yields nothing, so a caller never has to interpret a bare `nil`.
     static func renderData(_ request: SnapshotRenderRequest) throws -> Data {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig()
