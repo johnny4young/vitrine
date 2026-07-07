@@ -427,8 +427,12 @@ capture — concurrency determinism).
    re-architecture of the core color/image/font representation (replace `SwiftUI.Color`
    with the existing UF-free `RGBAColor` across the models and every reader, and lift the
    AppKit bridging into the UI layer) before any package boundary can be a clean cut.
-   That is its own multi-step epic with golden-image regression risk — deferred as a
-   dedicated effort rather than rushed into this review's branch.
+   🔧 *In progress in this branch* as an incremental epic, golden-validated at each step.
+   *Step 1 done:* `RGBAColor` and the hex parser are now a UI-free struct in their own
+   `RGBAColor.swift` (no `SwiftUI`/`AppKit`), with the `SwiftUI.Color` bridging moved to
+   an extension in `Color+Hex.swift`. Remaining: migrate `Theme`/`Background`/`Annotation`/
+   `SnapshotConfig` to store `RGBAColor`, lift `NSImage`/`NSFont`/`NSColor` out of the
+   models, break `Terminal`'s dependency on `Theme`, then extract the package.
 3. **A composition root instead of 22 `static let shared`s.** ✅ *Foundation done
    (+2 tests):* the data stores (`Entitlements`, `BrandKitStore`, `AppSettings`,
    `RecentsStore`, `CustomThemeStore`, `PresetStore`) are now built in one place —
