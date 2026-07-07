@@ -121,7 +121,7 @@ struct StylePresetCodableTests {
 
     @Test func everyBackgroundKindRoundTrips() throws {
         let backgrounds: [BackgroundStyle] = [
-            .solid(.black), .gradient(.night), .transparent,
+            .solid(RGBAColor(.black)), .gradient(.night), .transparent,
             .customGradient(.default),
         ]
         for background in backgrounds {
@@ -584,6 +584,6 @@ struct AppSettingsStylePresetTests {
         settings.applyStylePreset(.minimal)  // padding 32, solid white, no shadow
 
         #expect(settings.selectedPresetID == nil)
-        #expect(settings.config.background == .solid(.white))
+        #expect(settings.config.background == .solid(RGBAColor(.white)))
     }
 }

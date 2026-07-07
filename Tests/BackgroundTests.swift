@@ -108,8 +108,9 @@ struct BackgroundTests {
 
     @Test func solidRoundTrips() throws {
         let original = BackgroundStyle.solid(
-            Color(.sRGB, red: 0.2, green: 0.4, blue: 0.6, opacity: 1)
-        )
+            RGBAColor(
+                Color(.sRGB, red: 0.2, green: 0.4, blue: 0.6, opacity: 1)
+            ))
         #expect(try Self.encoded(original) == original)
     }
 
@@ -127,9 +128,9 @@ struct BackgroundTests {
     @Test func customGradientRoundTripsStopsAndAngle() throws {
         let gradient = CustomGradient(
             stops: [
-                GradientStop(color: .red, location: 0),
-                GradientStop(color: .green, location: 0.5),
-                GradientStop(color: .blue, location: 1),
+                GradientStop(color: RGBAColor(.red), location: 0),
+                GradientStop(color: RGBAColor(.green), location: 0.5),
+                GradientStop(color: RGBAColor(.blue), location: 1),
             ],
             angle: 217)
         let original = BackgroundStyle.customGradient(gradient)
@@ -233,7 +234,7 @@ struct BackgroundTests {
         // opaque kind, so background choice never changes export dimensions.
         let size = CGSize(width: 200, height: 120)
         let kinds: [BackgroundStyle] = [
-            .solid(Color(hex: "#3366CC")),
+            .solid(RGBAColor(Color(hex: "#3366CC"))),
             .gradient(.aurora),
             .customGradient(.default),
         ]
@@ -247,7 +248,7 @@ struct BackgroundTests {
     }
 
     @Test func solidBackgroundCornerIsFullyOpaque() throws {
-        let config = Self.sampleConfig(background: .solid(Color(hex: "#3366CC")))
+        let config = Self.sampleConfig(background: .solid(RGBAColor(Color(hex: "#3366CC"))))
         let image = try decodedPNG(config)
         let corner = try pixel(image, x: 1, y: 1)
         #expect(corner.a == 255, "a solid background corner must be fully opaque")
@@ -593,13 +594,13 @@ struct BackgroundTests {
 
     @Test func backgroundPersistsAcrossReloadForEveryKind() {
         let kinds: [BackgroundStyle] = [
-            .solid(Color(hex: "#112233")),
+            .solid(RGBAColor(Color(hex: "#112233"))),
             .gradient(.forest),
             .customGradient(
                 CustomGradient(
                     stops: [
-                        GradientStop(color: .red, location: 0),
-                        GradientStop(color: .blue, location: 1),
+                        GradientStop(color: RGBAColor(.red), location: 0),
+                        GradientStop(color: RGBAColor(.blue), location: 1),
                     ], angle: 90)),
             .image(
                 ImageBackground(
@@ -632,10 +633,10 @@ struct BackgroundTests {
         let defaults = Self.freshDefaults()
         defaults.set(GradientPreset.ocean.rawValue, forKey: "gradientPreset")
         let settings = AppSettings(defaults: defaults)
-        settings.config.background = .solid(.black)
+        settings.config.background = .solid(RGBAColor(.black))
         #expect(defaults.string(forKey: "gradientPreset") == nil)
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.config.background == .solid(.black))
+        #expect(reloaded.config.background == .solid(RGBAColor(.black)))
     }
 
     @Test func corruptBackgroundBlobFallsBackToDefault() {
@@ -683,9 +684,9 @@ struct BackgroundTests {
         // stored — otherwise the same saved gradient could render differently.
         let gradient = CustomGradient(
             stops: [
-                GradientStop(color: .blue, location: 1),
-                GradientStop(color: .red, location: 0),
-                GradientStop(color: .green, location: 0.5),
+                GradientStop(color: RGBAColor(.blue), location: 1),
+                GradientStop(color: RGBAColor(.red), location: 0),
+                GradientStop(color: RGBAColor(.green), location: 0.5),
             ],
             angle: 45)
         let locations = gradient.sortedStops.map(\.location)
@@ -706,7 +707,7 @@ struct BackgroundTests {
     @Test func diagnosticsKindNeverLeaksUserContent() {
         // Solid and image kinds report only their kind, never the RGBA or file
         // name, so a diagnostics bundle cannot echo user-specific data (CS-048).
-        #expect(BackgroundStyle.solid(Color(hex: "#ABCDEF")).diagnosticsKind == "solid")
+        #expect(BackgroundStyle.solid(RGBAColor(Color(hex: "#ABCDEF"))).diagnosticsKind == "solid")
         #expect(
             BackgroundStyle.image(
                 ImageBackground(reference: ImageReference(fileName: "secret.png"))

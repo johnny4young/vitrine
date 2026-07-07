@@ -181,7 +181,7 @@ struct VectorExportTests {
     @Test("Solid-background template serializes to a real SVG document")
     func svgSolidSignature() throws {
         let svg = try #require(
-            VectorTemplateSVG.background(.solid(.black), size: Self.cardSize))
+            VectorTemplateSVG.background(.solid(RGBAColor(.black)), size: Self.cardSize))
         #expect(svg.hasPrefix("<?xml"))
         #expect(svg.contains("<svg"))
         #expect(svg.contains("xmlns=\"http://www.w3.org/2000/svg\""))
@@ -209,9 +209,11 @@ struct VectorExportTests {
         let gradient = CustomGradient(
             stops: [
                 GradientStop(
-                    color: Color(.sRGB, red: 1, green: 0, blue: 0, opacity: 1), location: 0),
+                    color: RGBAColor(Color(.sRGB, red: 1, green: 0, blue: 0, opacity: 1)),
+                    location: 0),
                 GradientStop(
-                    color: Color(.sRGB, red: 0, green: 0, blue: 1, opacity: 0.5), location: 1),
+                    color: RGBAColor(Color(.sRGB, red: 0, green: 0, blue: 1, opacity: 0.5)),
+                    location: 1),
             ],
             angle: 90)
         let svg = try #require(
@@ -234,7 +236,7 @@ struct VectorExportTests {
         #expect(VectorTemplateSVG.supports(image) == false)
         // Every other simple-template background is supported.
         for background in [
-            BackgroundStyle.solid(.white), .gradient(.aurora),
+            BackgroundStyle.solid(RGBAColor(.white)), .gradient(.aurora),
             .customGradient(.default), .transparent,
         ] {
             #expect(VectorTemplateSVG.supports(background))
@@ -244,7 +246,7 @@ struct VectorExportTests {
     @Test("No template SVG ever contains an embedded raster image")
     func svgNeverEmbedsRaster() throws {
         for background in [
-            BackgroundStyle.solid(.black), .gradient(.aurora),
+            BackgroundStyle.solid(RGBAColor(.black)), .gradient(.aurora),
             .customGradient(.default), .transparent,
         ] {
             let svg = try #require(
@@ -280,7 +282,8 @@ struct VectorExportTests {
     @Test("Same template input serializes to byte-identical SVG")
     func svgIsDeterministic() throws {
         for background in [
-            BackgroundStyle.solid(Color(.sRGB, red: 0.2, green: 0.4, blue: 0.6, opacity: 0.8)),
+            BackgroundStyle.solid(
+                RGBAColor(Color(.sRGB, red: 0.2, green: 0.4, blue: 0.6, opacity: 0.8))),
             .gradient(.ocean),
             .customGradient(.default),
             .transparent,
@@ -295,10 +298,12 @@ struct VectorExportTests {
     func svgColorIsValueStable() throws {
         // A named color and a hand-built sRGB color for the same value must produce
         // the same hex, mirroring the value-based color equality the app relies on.
-        let named = try #require(VectorTemplateSVG.background(.solid(.white), size: Self.cardSize))
+        let named = try #require(
+            VectorTemplateSVG.background(.solid(RGBAColor(.white)), size: Self.cardSize))
         let built = try #require(
             VectorTemplateSVG.background(
-                .solid(Color(.sRGB, red: 1, green: 1, blue: 1, opacity: 1)), size: Self.cardSize))
+                .solid(RGBAColor(Color(.sRGB, red: 1, green: 1, blue: 1, opacity: 1))),
+                size: Self.cardSize))
         #expect(named == built)
         #expect(named.contains("fill=\"#FFFFFF\""))
     }
@@ -312,7 +317,8 @@ struct VectorExportTests {
         // real, well-formed SVG document — the "valid, well-formed SVG" guarantee
         // CS-023 makes for every case, including the empty transparent canvas.
         for background in [
-            BackgroundStyle.solid(Color(.sRGB, red: 0.1, green: 0.5, blue: 0.9, opacity: 0.7)),
+            BackgroundStyle.solid(
+                RGBAColor(Color(.sRGB, red: 0.1, green: 0.5, blue: 0.9, opacity: 0.7))),
             .gradient(.aurora), .customGradient(.default), .transparent,
         ] {
             let svg = try #require(VectorTemplateSVG.background(background, size: Self.cardSize))
@@ -336,8 +342,8 @@ struct VectorExportTests {
         for angle in [0.0, 45, 90, 135, 270] {
             let gradient = CustomGradient(
                 stops: [
-                    GradientStop(color: .black, location: 0),
-                    GradientStop(color: .white, location: 1),
+                    GradientStop(color: RGBAColor(.black), location: 0),
+                    GradientStop(color: RGBAColor(.white), location: 1),
                 ],
                 angle: angle)
             let svg = try #require(

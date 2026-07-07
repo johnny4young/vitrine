@@ -129,9 +129,9 @@ struct ExportPresetApplyTests {
 
     @Test func applyLeavesBackgroundUntouchedWhenPresetDeclaresNone() {
         var config = SnapshotConfig()
-        config.background = .solid(.black)
+        config.background = .solid(RGBAColor(.black))
         ExportPreset.docs.apply(to: &config)  // docs declares no background
-        #expect(config.background == .solid(.black))
+        #expect(config.background == .solid(RGBAColor(.black)))
     }
 
     @Test func matchesReflectsAppliedState() {

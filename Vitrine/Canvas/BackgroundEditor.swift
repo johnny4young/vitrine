@@ -36,7 +36,7 @@ struct BackgroundEditor: View {
             ColorPicker(
                 "Color",
                 selection: Binding(
-                    get: { color }, set: { background = .solid($0) }),
+                    get: { color.color }, set: { background = .solid(RGBAColor($0)) }),
                 supportsOpacity: true
             )
             .accessibilityIdentifier("background-solid-color")
@@ -136,7 +136,7 @@ enum BackgroundKind: String, CaseIterable, Identifiable {
             }
         case .solid:
             if case .solid = previous { return previous }
-            return .solid(.black)
+            return .solid(RGBAColor(.black))
         case .image:
             if case .image = previous { return previous }
             // No image chosen yet: present an empty reference so the editor shows
@@ -186,7 +186,10 @@ struct CustomGradientEditor: View {
                 // index, a multi-stop gradient reads as a row of identical
                 // "Stop" / unlabeled-slider pairs.
                 ColorPicker(
-                    "Color stop \(index + 1)", selection: $stop.color, supportsOpacity: true
+                    "Color stop \(index + 1)",
+                    selection: Binding(
+                        get: { stop.color.color }, set: { stop.color = RGBAColor($0) }),
+                    supportsOpacity: true
                 )
                 .labelsHidden()
                 .accessibilityLabel("Color stop \(index + 1)")
@@ -220,7 +223,7 @@ struct CustomGradientEditor: View {
         // Insert a midpoint stop so the new control starts somewhere sensible.
         let sorted = gradient.stops.sorted { $0.location < $1.location }
         let midpoint = ((sorted.first?.location ?? 0) + (sorted.last?.location ?? 1)) / 2
-        let color = sorted.last?.color ?? .white
+        let color = sorted.last?.color ?? RGBAColor(.white)
         gradient.stops.append(GradientStop(color: color, location: midpoint))
     }
 

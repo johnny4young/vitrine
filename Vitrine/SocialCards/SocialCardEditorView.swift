@@ -421,7 +421,8 @@ private struct SocialCardInspector: View {
                 ColorPicker(
                     "Color",
                     selection: Binding(
-                        get: { color }, set: { settings.socialCard.background = .solid($0) }),
+                        get: { color.color },
+                        set: { settings.socialCard.background = .solid(RGBAColor($0)) }),
                     supportsOpacity: true
                 )
                 .labelsHidden()

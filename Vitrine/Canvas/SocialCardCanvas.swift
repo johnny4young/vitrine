@@ -205,7 +205,7 @@ struct SocialCardCanvas: View {
     /// surface, where light text with a shadow is the safer default).
     private var backgroundIsLight: Bool {
         if case .solid(let color) = model.background {
-            return Brand.Contrast.relativeLuminance(color) > 0.55
+            return Brand.Contrast.relativeLuminance(color.color) > 0.55
         }
         return false
     }

@@ -131,11 +131,11 @@ struct SnapshotRenderRequestTests {
         var base = SnapshotConfig()
         base.theme = .nord
         base.fontName = "Fira Code"
-        base.background = .solid(.black)
+        base.background = .solid(RGBAColor(.black))
         let config = SnapshotRenderRequest(code: "x", baseStyle: base).makeConfig()
         #expect(config.theme == .nord)
         #expect(config.fontName == "Fira Code")
-        #expect(config.background == .solid(.black))
+        #expect(config.background == .solid(RGBAColor(.black)))
     }
 }
 

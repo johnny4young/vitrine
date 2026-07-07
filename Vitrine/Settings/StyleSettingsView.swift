@@ -309,7 +309,8 @@ struct StyleSettingsView: View {
                 ColorPicker(
                     "Color",
                     selection: Binding(
-                        get: { color }, set: { settings.config.background = .solid($0) }),
+                        get: { color.color },
+                        set: { settings.config.background = .solid(RGBAColor($0)) }),
                     supportsOpacity: true
                 )
                 .labelsHidden()

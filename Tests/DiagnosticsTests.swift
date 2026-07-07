@@ -72,7 +72,7 @@ struct DiagnosticsRedactionTests {
     /// user picked, so even a chosen color does not leak as identifying data.
     @Test func solidBackgroundIsReportedWithoutColorValue() {
         var config = SnapshotConfig()
-        config.background = .solid(.red)
+        config.background = .solid(RGBAColor(.red))
         #expect(config.background.diagnosticsKind == "solid")
     }
 
