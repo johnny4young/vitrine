@@ -93,6 +93,10 @@ struct CLIOptions: Equatable {
     /// the output folder. Off by default so existing batch jobs keep their top-level
     /// behavior unless they opt in.
     var recursiveBatch: Bool = false
+    /// For `batch`, return a failing CLI exit if any file was skipped after rendering
+    /// the readable files. Useful for CI/docs pipelines that must not silently ignore
+    /// invalid input.
+    var failOnSkipped: Bool = false
 
     /// Read the source from standard input instead of a file (e.g.
     /// `some-command | vitrine render --stdin`), so the language is inferred from the

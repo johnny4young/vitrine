@@ -94,7 +94,9 @@ In-process surfaces gate on `Entitlements.shared.isUnlocked(.automation)`:
 boundary via `CLIEntitlement.isProUnlocked()` (which verifies the signed token and honors the
 Debug bypass) before dispatching `render`/`batch`, so `CLIRenderer.run`/`runBatch` stay ungated
 and fully testable. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
-`--recursive` opts into nested folders while preserving their relative output paths.
+`--recursive` opts into nested folders while preserving their relative output paths, and
+`--fail-on-skipped` turns any skipped file into a non-zero automation exit after the
+readable files are rendered.
 
 ## Build flags & local unlock
 

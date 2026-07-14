@@ -362,7 +362,7 @@ vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font-size 12 --padding 24 --no-shadow
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render snippet.swift --out card.png --sidecars all
-vitrine batch Sources --out docs/cards --recursive --sidecars all
+vitrine batch Sources --out docs/cards --recursive --sidecars all --fail-on-skipped
 vitrine render --help
 ```
 
@@ -374,7 +374,8 @@ controls (`--window-title`, `--filename`, `--title`, `--caption`, `--language-ba
 override individual choices. `--text-sidecar`, `--markdown-sidecar`, `--html-sidecar`,
 or `--sidecars all` write copyable source beside the image for accessible docs,
 README, or web embeds. `vitrine batch --recursive` walks nested folders and mirrors
-their relative paths under the output folder.
+their relative paths under the output folder; add `--fail-on-skipped` when CI should
+fail if any unreadable or non-text file was skipped.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)

@@ -158,6 +158,9 @@ default for backward compatibility. `--recursive` opts into a full nested walk a
 mirrors each input file's relative path under the output folder, so
 `docs/examples/A.swift` becomes `out/docs/examples/A.png` (plus sidecars, when
 requested) instead of colliding with another `A.swift` elsewhere in the tree.
+`--fail-on-skipped` keeps successful renders but returns a failing exit when any
+unreadable or non-text file was skipped, which lets CI/docs jobs catch accidental
+inputs without losing the valid output artifacts.
 
 **Local only.** Rendering needs no network, screen recording, or Accessibility — it is
 the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it
