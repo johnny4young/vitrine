@@ -26,6 +26,13 @@ enum CLIRenderer {
         var reason: String
     }
 
+    /// One successfully loaded batch input, kept between discovery and render/write
+    /// so output collision planning considers only files that can produce artifacts.
+    private struct BatchLoadedInput {
+        var file: URL
+        var loaded: FileInputLoader.LoadedFile
+    }
+
     /// One successful (or dry-run planned) batch output in the optional manifest.
     private struct BatchManifestEntry: Encodable, Equatable {
         /// Slash-separated input path relative to the batch input folder.
@@ -170,15 +177,12 @@ enum CLIRenderer {
             excludeExtensions: options.batchExcludeExtensions,
             directoryLister: directoryLister)
 
-        let ext = options.format.rawValue
-        var rendered = 0
+        var loadedInputs: [BatchLoadedInput] = []
         var skipped = 0
         var skippedReport: [SkippedReportEntry] = []
-        var manifest: [BatchManifestEntry] = []
         for file in files {
-            let loaded: FileInputLoader.LoadedFile
             do {
-                loaded = try fileLoader(file)
+                loadedInputs.append(BatchLoadedInput(file: file, loaded: try fileLoader(file)))
             } catch {
                 // A binary/unreadable file is skipped, never a fatal batch error —
                 // but the automation user gets the filename and reason on stderr, so
@@ -188,12 +192,24 @@ enum CLIRenderer {
                 skippedReport.append(
                     skippedReportEntry(for: file, under: inputDirectory, reason: reason))
                 reportSkipped(file, reason: reason)
-                continue
             }
+        }
+
+        let ext = options.format.rawValue
+        let outputURLs = batchOutputURLs(
+            for: loadedInputs.map(\.file), inputDirectory: inputDirectory,
+            outputDirectory: outputDirectory, recursive: options.recursiveBatch, fileExtension: ext)
+        var rendered = 0
+        var manifest: [BatchManifestEntry] = []
+        for input in loadedInputs {
+            let file = input.file
+            let loaded = input.loaded
             let language = options.language ?? loaded.language
-            let outputURL = batchOutputURL(
-                for: file, inputDirectory: inputDirectory, outputDirectory: outputDirectory,
-                recursive: options.recursiveBatch, fileExtension: ext)
+            let outputURL =
+                outputURLs[batchOutputKey(for: file)]
+                ?? batchOutputURL(
+                    for: file, inputDirectory: inputDirectory, outputDirectory: outputDirectory,
+                    recursive: options.recursiveBatch, fileExtension: ext)
             if options.dryRunBatch {
                 rendered += 1
                 manifest.append(
@@ -294,8 +310,42 @@ enum CLIRenderer {
         return !excludeExtensions.contains(ext)
     }
 
-    /// Builds the output image URL for one batched input. Recursive batches preserve
-    /// relative folders; top-level batches keep the historical flat output names.
+    /// Builds the output image URLs for a batch. The historical mapping drops the
+    /// input extension (`Widget.swift` → `Widget.png`), but that collides when a
+    /// folder contains several files with the same stem. Keep legacy names for
+    /// non-colliding files and preserve the input extension only for colliding groups.
+    private static func batchOutputURLs(
+        for files: [URL],
+        inputDirectory: URL,
+        outputDirectory: URL,
+        recursive: Bool,
+        fileExtension ext: String
+    ) -> [String: URL] {
+        let baseRelativePaths = files.map { file in
+            (
+                file: file,
+                relativePath: batchOutputRelativePath(
+                    for: file, inputDirectory: inputDirectory, recursive: recursive,
+                    preservingInputExtension: false, fileExtension: ext)
+            )
+        }
+        let collisions = Dictionary(grouping: baseRelativePaths) { $0.relativePath }
+
+        var outputs: [String: URL] = [:]
+        for entry in baseRelativePaths {
+            let shouldPreserveInputExtension = (collisions[entry.relativePath]?.count ?? 0) > 1
+            let relativePath = batchOutputRelativePath(
+                for: entry.file, inputDirectory: inputDirectory, recursive: recursive,
+                preservingInputExtension: shouldPreserveInputExtension, fileExtension: ext)
+            outputs[batchOutputKey(for: entry.file)] = outputDirectory.appendingPathComponent(
+                relativePath)
+        }
+        return outputs
+    }
+
+    /// Builds the output image URL for one batched input using the legacy mapping.
+    /// Callers that know the full file set should prefer `batchOutputURLs(...)` so
+    /// same-stem inputs do not overwrite each other.
     private static func batchOutputURL(
         for file: URL,
         inputDirectory: URL,
@@ -303,15 +353,34 @@ enum CLIRenderer {
         recursive: Bool,
         fileExtension ext: String
     ) -> URL {
-        let stem =
+        outputDirectory.appendingPathComponent(
+            batchOutputRelativePath(
+                for: file, inputDirectory: inputDirectory, recursive: recursive,
+                preservingInputExtension: false, fileExtension: ext))
+    }
+
+    /// Builds the slash-separated relative output path for one batch input. Recursive
+    /// batches preserve relative folders; top-level batches keep flat output names.
+    private static func batchOutputRelativePath(
+        for file: URL,
+        inputDirectory: URL,
+        recursive: Bool,
+        preservingInputExtension: Bool,
+        fileExtension ext: String
+    ) -> String {
+        let sourcePath =
             recursive
             ? batchRelativePath(for: file, under: inputDirectory)
             : file.lastPathComponent
-        return
-            outputDirectory
-            .appendingPathComponent(stem)
-            .deletingPathExtension()
-            .appendingPathExtension(ext)
+        let outputStem =
+            preservingInputExtension
+            ? sourcePath
+            : (sourcePath as NSString).deletingPathExtension
+        return (outputStem as NSString).appendingPathExtension(ext) ?? outputStem + "." + ext
+    }
+
+    private static func batchOutputKey(for file: URL) -> String {
+        file.standardizedFileURL.path
     }
 
     /// Returns a slash-separated relative path when `file` sits below `root`,
