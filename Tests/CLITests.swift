@@ -114,6 +114,11 @@ struct CLITests {
             "--format", "png",
             "--profile", "p3",
             "--transparent",
+            "--window-title", "Release build",
+            "--filename", "Sources/App.swift",
+            "--title", "Launch checklist",
+            "--caption", "Ready for the docs site.",
+            "--language-badge",
         ])
         #expect(options.inputPath == "snippet.py")
         #expect(options.outputPath == "image.png")
@@ -124,6 +129,11 @@ struct CLITests {
         #expect(options.terminalColumns == 100)
         #expect(options.profile == .displayP3)
         #expect(options.transparent)
+        #expect(options.windowTitle == "Release build")
+        #expect(options.metadataFilename == "Sources/App.swift")
+        #expect(options.metadataTitle == "Launch checklist")
+        #expect(options.metadataCaption == "Ready for the docs site.")
+        #expect(options.showLanguageBadge)
     }
 
     @Test func terminalWidthDefaultsToNilAndFlowsIntoTheConfig() throws {
@@ -137,6 +147,25 @@ struct CLITests {
             "render", "out.log", "-o", "o.png", "--terminal-width", "120",
         ])
         #expect(pinned.makeConfig(code: "", language: .terminal).terminalColumns == 120)
+    }
+
+    @Test func metadataHeaderOptionsFlowIntoTheRenderedConfig() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift",
+            "--out", "card.png",
+            "--window-title", "Release checklist",
+            "--filename", "Sources/Release.swift",
+            "--title", "Ship the app",
+            "--caption", "Every exported image can carry context.",
+            "--language-badge",
+        ])
+
+        let config = options.makeConfig(code: "print(\"ship\")", language: .swift)
+        #expect(config.windowTitle == "Release checklist")
+        #expect(config.metadata.filename == "Sources/Release.swift")
+        #expect(config.metadata.title == "Ship the app")
+        #expect(config.metadata.caption == "Every exported image can carry context.")
+        #expect(config.metadata.showLanguageBadge)
     }
 
     @Test func shortFlagsAndOrderingAreAccepted() throws {
@@ -360,6 +389,25 @@ struct CLITests {
         }
     }
 
+    @Test func editRejectsMetadataHeaderOptionsThatWouldBeIgnored() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with metadata header options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--title", "Ignored title",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with metadata header options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--language-badge",
+            ])
+        }
+    }
+
     @Test func invalidValuesAreRejected() {
         #expect(throws: CLIError.invalidValue(flag: "--theme", value: "neon")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--theme", "neon"])
@@ -484,6 +532,38 @@ struct CLITests {
         let image = try decodePNG(at: output)
         #expect(image.width > 0)
         #expect(image.height > 0)
+    }
+
+    @Test func renderWithMetadataHeaderAddsVisibleContext() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput("print(\"ship\")\n", named: "Release.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let titledOutput = directory.appendingPathComponent("titled.png").path
+
+        try CLIRenderer.run(
+            try CLIArguments.parse([
+                "render", input, "--out", plainOutput, "--scale", "1",
+            ]))
+        try CLIRenderer.run(
+            try CLIArguments.parse([
+                "render", input,
+                "--out", titledOutput,
+                "--scale", "1",
+                "--window-title", "Release",
+                "--filename", "Release.swift",
+                "--title", "Ship checklist",
+                "--caption", "Context travels with the image.",
+                "--language-badge",
+            ]))
+
+        let plain = try decodePNG(at: plainOutput)
+        let titled = try decodePNG(at: titledOutput)
+        // The metadata header and window title are rendered, not just parsed:
+        // the contextual image needs more layout height than the same code alone.
+        #expect(titled.height > plain.height)
+        #expect(titled.width >= plain.width)
     }
 
     @Test func textSidecarWritesPlainTextNextToImage() throws {
