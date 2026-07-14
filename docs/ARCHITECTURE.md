@@ -144,10 +144,13 @@ app's default scale. `--quiet` suppresses the success summary without hiding err
 `--no-shadow`), and the header controls (`--window-title`, `--filename`, `--title`,
 `--caption`, `--language-badge`) override individual choices. For piped input,
 `--stdin-name <name>` supplies filename context for extension-based language inference
-and default metadata while still reading the source only from standard input. A preset
-reframes presentation/output (size, padding, background) and never touches the source,
-exactly as in the GUI (CS-020). Unknown ids and out-of-range values are rejected up
-front with a clear message so an automation pipeline fails loud.
+and default metadata while still reading the source only from standard input.
+`--no-overwrite` / `--no-clobber` is an opt-in artifact safety guard: single renders
+fail before replacing an image or sidecar, while batch jobs skip existing targets and
+can pair that with skipped reports or `--fail-on-skipped`. A preset reframes
+presentation/output (size, padding, background) and never touches the source, exactly
+as in the GUI (CS-020). Unknown ids and out-of-range values are rejected up front with
+a clear message so an automation pipeline fails loud.
 
 **Copyable sidecars.** `--text-sidecar`, `--markdown-sidecar`, `--html-sidecar`, and
 the bundle shortcut `--sidecars <text|markdown|html|all>` write accessible source next

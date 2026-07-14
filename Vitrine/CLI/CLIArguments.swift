@@ -30,6 +30,8 @@ nonisolated enum CLIError: Error, Equatable {
     case inputNotText(path: String)
     /// Rendering produced no image (an internal renderer failure).
     case renderFailed
+    /// An output path already exists and `--no-overwrite` requested a safe run.
+    case outputExists(path: String)
     /// Encoding or writing the output file failed.
     case writeFailed(path: String)
     /// A batch completed at least some work, but `--fail-on-skipped` requested a
@@ -66,6 +68,8 @@ nonisolated enum CLIError: Error, Equatable {
             "The input file at \"\(path)\" is not text."
         case .renderFailed:
             "Rendering failed to produce an image."
+        case .outputExists(let path):
+            "The output already exists at \"\(path)\". Remove it or omit --no-overwrite."
         case .writeFailed(let path):
             "Could not write the output to \"\(path)\"."
         case .batchSkipped(let rendered, let skipped):
@@ -140,6 +144,7 @@ enum CLIArguments {
         var format: ExportFormat = .png
         var profile: ColorProfile = .fallback
         var transparent = false
+        var noOverwrite = false
         var windowTitle: String?
         var metadataFilename: String?
         var stdinFilename: String?
@@ -201,6 +206,8 @@ enum CLIArguments {
                 profile = try resolveProfile(try value(for: token))
             case "--transparent":
                 transparent = true
+            case "--no-overwrite", "--no-clobber":
+                noOverwrite = true
             case "--window-title":
                 windowTitle = try value(for: token)
             case "--filename":
@@ -399,6 +406,7 @@ enum CLIArguments {
             format: format,
             profile: profile,
             transparent: transparent,
+            noOverwrite: noOverwrite,
             windowTitle: windowTitle,
             metadataFilename: metadataFilename,
             stdinFilename: stdinFilename,
@@ -609,6 +617,8 @@ nonisolated enum CLIUsage {
                                  option, heic the compact raster one.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.
           --transparent          Render a real transparent background.
+          --no-overwrite         Refuse to replace existing image/sidecar outputs
+                                 (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.
           --filename <text>      Filename chip shown in the metadata header.
           --title <text>         Title shown in the metadata header.

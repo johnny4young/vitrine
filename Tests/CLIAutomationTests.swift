@@ -137,6 +137,7 @@ struct CLIAutomationTests {
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
                 "--recursive", "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
                 "--manifest", "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
+                "--no-overwrite",
             ])
         #expect(options.command == .batch)
         #expect(options.quiet)
@@ -150,6 +151,7 @@ struct CLIAutomationTests {
         #expect(options.dryRunBatch)
         #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
         #expect(options.batchExcludeExtensions == Set(["tmp"]))
+        #expect(options.noOverwrite)
     }
 
     @Test func recursiveIsBatchOnly() {
@@ -414,6 +416,38 @@ struct CLIAutomationTests {
         #expect(outputs["Solo.py"] == "Solo.png")
         #expect(outputs["Widget.swift"] == "Widget.swift.png")
         #expect(outputs["Widget.ts"] == "Widget.ts.png")
+    }
+
+    @Test func batchNoOverwriteSkipsExistingTargetsAndReportsThem() throws {
+        let root = tempDirectory()
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("out", isDirectory: true)
+        let report = root.appendingPathComponent("skipped.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        try "let old = true\n".write(
+            to: input.appendingPathComponent("Old.swift"), atomically: true, encoding: .utf8)
+        try "print('fresh')\n".write(
+            to: input.appendingPathComponent("Fresh.py"), atomically: true, encoding: .utf8)
+        let existing = output.appendingPathComponent("Old.png")
+        try Data("existing image".utf8).write(to: existing)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--no-overwrite",
+            "--skipped-report", report.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Rendered 1 image"))
+        #expect(summary.contains("skipped 1"))
+        #expect(try Data(contentsOf: existing) == Data("existing image".utf8))
+        #expect(
+            FileManager.default.fileExists(atPath: output.appendingPathComponent("Fresh.png").path))
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: report)) as? [[String: String]])
+        #expect(decoded == [["path": "Old.swift", "reason": "output already exists"]])
     }
 
     @Test func batchExtensionFiltersAreAppliedBeforeLoading() throws {

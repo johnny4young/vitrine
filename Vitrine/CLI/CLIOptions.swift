@@ -75,6 +75,9 @@ struct CLIOptions: Equatable {
     /// Render with a real transparent background (no gradient/solid), preserving the
     /// alpha channel on export (CS-024). Overrides any preset background.
     var transparent: Bool = false
+    /// Refuse to replace existing image or sidecar files. For batch jobs, existing
+    /// outputs are skipped so valid new artifacts can still be produced.
+    var noOverwrite: Bool = false
 
     /// Optional title shown in the rendered window chrome. Separate from the metadata
     /// header, matching the editor's Window Title control.
