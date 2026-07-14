@@ -268,6 +268,29 @@ struct CLITests {
         #expect(pdf.format == .pdf)
     }
 
+    @Test func renderInfersFormatFromKnownOutputExtensions() throws {
+        let pdf = try CLIArguments.parse(["render", "a.swift", "-o", "a.pdf"])
+        #expect(pdf.format == .pdf)
+
+        let heic = try CLIArguments.parse(["render", "a.swift", "-o", "a.HEIC"])
+        #expect(heic.format == .heic)
+
+        let unknown = try CLIArguments.parse(["render", "a.swift", "-o", "a.export"])
+        #expect(unknown.format == .png)
+
+        let batchDirectory = try CLIArguments.parse(["batch", "Sources", "-o", "cards.pdf"])
+        #expect(batchDirectory.format == .png)
+    }
+
+    @Test func renderRejectsExplicitFormatExtensionMismatches() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Output extension .png does not match --format pdf.")
+        ) {
+            try CLIArguments.parse(["render", "a.swift", "-o", "a.png", "--format", "pdf"])
+        }
+    }
+
     // MARK: - Argument parsing: errors are specific
 
     @Test func helpIsRequestedNotAFailure() {

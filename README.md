@@ -365,6 +365,7 @@ vitrine render snippet.swift --out card.png --sidecars all
 cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
 vitrine render input.swift --out image.png --quiet --no-overwrite
 vitrine render input.swift --out image.png --json --no-overwrite
+vitrine render input.swift --out image.pdf
 vitrine list themes
 vitrine list languages --json
 vitrine list all --json
@@ -388,7 +389,10 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 (`srgb`/`p3`), `--transparent`, style controls (`--font-size`, `--padding`,
 `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--no-shadow`), and the header
 controls (`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`)
-override individual choices. With `--stdin`, `--stdin-name <name>` supplies a
+override individual choices. For single-file `render`, a known `--out` extension
+(`.png`, `.pdf`, or `.heic`) selects the matching format when `--format` is omitted;
+if both are present, they must agree so scripts never write mislabeled artifacts. With
+`--stdin`, `--stdin-name <name>` supplies a
 filename hint for extension-based language inference and default metadata without
 reading that file. `--no-overwrite` (alias `--no-clobber`) refuses to replace
 existing image or sidecar outputs; in `batch`, existing targets are reported as
