@@ -125,6 +125,8 @@ enum CLIArguments {
         var languageID: String?
         var presetID: String?
         var scale: Int?
+        var fontSize: Double?
+        var padding: Double?
         var terminalColumns: Int?
         var wrapColumns: Int?
         var format: ExportFormat = .png
@@ -135,6 +137,9 @@ enum CLIArguments {
         var metadataTitle: String?
         var metadataCaption: String?
         var showLanguageBadge = false
+        var showLineNumbers: Bool?
+        var showChrome: Bool?
+        var showShadow: Bool?
         var readStdin = false
         var copyToClipboard = false
         var openInEditor = false
@@ -163,6 +168,10 @@ enum CLIArguments {
                 presetID = try resolvePreset(try value(for: token))
             case "--scale":
                 scale = try resolveScale(try value(for: token), flag: token)
+            case "--font-size":
+                fontSize = try resolveFontSize(try value(for: token), flag: token)
+            case "--padding":
+                padding = try resolvePadding(try value(for: token), flag: token)
             case "--terminal-width":
                 terminalColumns = try resolveColumns(try value(for: token), flag: token)
             case "--wrap-columns", "--wrap":
@@ -183,6 +192,18 @@ enum CLIArguments {
                 metadataCaption = try value(for: token)
             case "--language-badge", "--show-language-badge":
                 showLanguageBadge = true
+            case "--line-numbers":
+                showLineNumbers = true
+            case "--no-line-numbers":
+                showLineNumbers = false
+            case "--chrome":
+                showChrome = true
+            case "--no-chrome":
+                showChrome = false
+            case "--shadow":
+                showShadow = true
+            case "--no-shadow":
+                showShadow = false
             case "--stdin":
                 readStdin = true
             case "--copy":
@@ -216,6 +237,9 @@ enum CLIArguments {
         let metadataHeaderRequested =
             windowTitle != nil || metadataFilename != nil
             || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
+        let styleOptionsRequested =
+            fontSize != nil || padding != nil || wrapColumns != nil
+            || showLineNumbers != nil || showChrome != nil || showShadow != nil
 
         // `--edit` hands the source to the running editor instead of rendering, so it
         // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
@@ -240,6 +264,10 @@ enum CLIArguments {
             if wrapColumns != nil {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --wrap-columns.")
+            }
+            if styleOptionsRequested {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with render-only style options.")
             }
         }
         // A sidecar sits next to a written image, so it needs an `--out` path —
@@ -283,6 +311,8 @@ enum CLIArguments {
             language: languageID.flatMap(Language.init(rawValue:)),
             presetID: presetID,
             scale: scale,
+            fontSize: fontSize,
+            padding: padding,
             terminalColumns: terminalColumns,
             wrapColumns: wrapColumns,
             format: format,
@@ -293,6 +323,9 @@ enum CLIArguments {
             metadataTitle: metadataTitle,
             metadataCaption: metadataCaption,
             showLanguageBadge: showLanguageBadge,
+            showLineNumbers: showLineNumbers,
+            showChrome: showChrome,
+            showShadow: showShadow,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
@@ -333,6 +366,22 @@ enum CLIArguments {
         guard let value = Int(raw),
             SettingsDefaults.exportScaleRange.contains(value)
         else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Parses and range-checks the code font size in points (Style pane bounds).
+    private static func resolveFontSize(_ raw: String, flag: String) throws -> Double {
+        guard let value = Double(raw), SettingsDefaults.fontSizeRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Parses and range-checks the canvas padding in points (Style pane bounds).
+    private static func resolvePadding(_ raw: String, flag: String) throws -> Double {
+        guard let value = Double(raw), SettingsDefaults.paddingRange.contains(value) else {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return value
@@ -404,6 +453,8 @@ nonisolated enum CLIUsage {
                                  docs, transparent-slide, opengraph).
           --scale <1|2|3>        Export resolution multiplier. Defaults to the app
                                  default, or the preset's recommended scale.
+          --font-size <n>        Code font size in points (10-20).
+          --padding <n>          Canvas padding in points (16-64).
           --terminal-width <n>   Reconstruct terminal output at exactly n columns
                                  instead of inferring the width (1-1000). Only
                                  affects --language terminal; set by `vgrab -w`.
@@ -417,6 +468,10 @@ nonisolated enum CLIUsage {
           --title <text>         Title shown in the metadata header.
           --caption <text>       Caption shown below the metadata title.
           --language-badge       Show the language badge in the metadata header.
+          --line-numbers         Show the line-number gutter.
+          --no-line-numbers      Hide the line-number gutter.
+          --chrome / --no-chrome Show or hide the rendered window chrome.
+          --shadow / --no-shadow Show or hide the rendered drop shadow.
           --text-sidecar         Also write a .txt next to --out with the source as
                                  selectable text (terminal escapes stripped).
           --markdown-sidecar     Also write a .md next to --out: the image reference

@@ -110,6 +110,8 @@ struct CLITests {
             "--language", "python",
             "--preset", "opengraph",
             "--scale", "3",
+            "--font-size", "16",
+            "--padding", "48",
             "--terminal-width", "100",
             "--wrap-columns", "88",
             "--format", "png",
@@ -120,6 +122,9 @@ struct CLITests {
             "--title", "Launch checklist",
             "--caption", "Ready for the docs site.",
             "--language-badge",
+            "--line-numbers",
+            "--no-chrome",
+            "--no-shadow",
         ])
         #expect(options.inputPath == "snippet.py")
         #expect(options.outputPath == "image.png")
@@ -127,6 +132,8 @@ struct CLITests {
         #expect(options.language == .python)
         #expect(options.presetID == "opengraph")
         #expect(options.scale == 3)
+        #expect(options.fontSize == 16)
+        #expect(options.padding == 48)
         #expect(options.terminalColumns == 100)
         #expect(options.wrapColumns == 88)
         #expect(options.profile == .displayP3)
@@ -136,6 +143,9 @@ struct CLITests {
         #expect(options.metadataTitle == "Launch checklist")
         #expect(options.metadataCaption == "Ready for the docs site.")
         #expect(options.showLanguageBadge)
+        #expect(options.showLineNumbers == true)
+        #expect(options.showChrome == false)
+        #expect(options.showShadow == false)
     }
 
     @Test func terminalWidthDefaultsToNilAndFlowsIntoTheConfig() throws {
@@ -163,6 +173,32 @@ struct CLITests {
         ])
         #expect(wrapped.wrapColumns == 96)
         #expect(wrapped.makeConfig(code: "", language: .swift).wrapColumns == 96)
+    }
+
+    @Test func styleOptionsDefaultToNilAndFlowIntoTheConfig() throws {
+        let defaults = try CLIArguments.parse(["render", "snippet.swift", "-o", "o.png"])
+        #expect(defaults.fontSize == nil)
+        #expect(defaults.padding == nil)
+        #expect(defaults.showLineNumbers == nil)
+        #expect(defaults.showChrome == nil)
+        #expect(defaults.showShadow == nil)
+
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift",
+            "-o", "o.png",
+            "--font-size", "15.5",
+            "--padding", "40",
+            "--line-numbers",
+            "--no-chrome",
+            "--no-shadow",
+        ])
+
+        let config = options.makeConfig(code: "print(\"styled\")", language: .swift)
+        #expect(config.fontSize == 15.5)
+        #expect(config.padding == 40)
+        #expect(config.showLineNumbers)
+        #expect(!config.showChrome)
+        #expect(!config.showShadow)
     }
 
     @Test func metadataHeaderOptionsFlowIntoTheRenderedConfig() throws {
@@ -433,6 +469,17 @@ struct CLITests {
         }
     }
 
+    @Test func editRejectsRenderOnlyStyleOptionsThatWouldBeIgnored() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--font-size", "15",
+            ])
+        }
+    }
+
     @Test func invalidValuesAreRejected() {
         #expect(throws: CLIError.invalidValue(flag: "--theme", value: "neon")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--theme", "neon"])
@@ -445,6 +492,20 @@ struct CLITests {
         }
         #expect(throws: CLIError.invalidValue(flag: "--scale", value: "9")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--scale", "9"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--font-size", value: "9")) {
+            try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--font-size", "9"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--font-size", value: "large")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--font-size", "large",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--padding", value: "12")) {
+            try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--padding", "12"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--padding", value: "wide")) {
+            try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--padding", "wide"])
         }
         #expect(throws: CLIError.invalidValue(flag: "--format", value: "svg")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--format", "svg"])

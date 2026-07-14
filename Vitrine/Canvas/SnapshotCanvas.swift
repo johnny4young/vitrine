@@ -270,12 +270,15 @@ struct SnapshotCanvas: View {
         }
     }
 
-    /// The exported card's drop shadow: the `Brand.Shadow.elevated` recipe with
-    /// its radius driven by the config's effective shadow radius.
+    /// The exported card's drop shadow: the `Brand.Shadow.elevated` recipe, or a true
+    /// no-op style when shadows are disabled. A zero-radius shadow with non-zero offsets
+    /// draws a crisp duplicate of the card contents in SwiftUI, so disabling the feature
+    /// must clear the whole recipe rather than just the blur radius.
     private var cardShadow: Brand.ShadowStyle {
-        Brand.ShadowStyle(
+        guard config.showShadow else { return .none }
+        return Brand.ShadowStyle(
             color: Brand.Shadow.elevated.color,
-            radius: config.effectiveShadowRadius,
+            radius: config.shadowRadius,
             x: Brand.Shadow.elevated.x,
             y: Brand.Shadow.elevated.y
         )
