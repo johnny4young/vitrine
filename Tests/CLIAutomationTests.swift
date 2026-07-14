@@ -205,7 +205,7 @@ struct CLIAutomationTests {
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
                 "--recursive", "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
                 "--manifest", "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
-                "--no-overwrite",
+                "--fail-on-empty", "--no-overwrite",
             ])
         #expect(options.command == .batch)
         #expect(options.quiet)
@@ -219,6 +219,7 @@ struct CLIAutomationTests {
         #expect(options.dryRunBatch)
         #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
         #expect(options.batchExcludeExtensions == Set(["tmp"]))
+        #expect(options.failOnEmpty)
         #expect(options.noOverwrite)
         #expect(!options.jsonOutput)
     }
@@ -236,6 +237,17 @@ struct CLIAutomationTests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "--out", "out.png", "--fail-on-skipped",
+            ])
+        }
+    }
+
+    @Test func failOnEmptyIsBatchOnly() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine render with --fail-on-empty.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "out.png", "--fail-on-empty",
             ])
         }
     }
@@ -548,6 +560,31 @@ struct CLIAutomationTests {
         #expect(decoded == [["path": "Old.swift", "reason": "output already exists"]])
     }
 
+    @Test func batchFailOnEmptyFailsAfterWritingRequestedArtifacts() throws {
+        let root = tempDirectory()
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("out", isDirectory: true)
+        let manifest = root.appendingPathComponent("manifest.json")
+        let report = root.appendingPathComponent("skipped.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        try "let ignored = true\n".write(
+            to: input.appendingPathComponent("Ignored.swift"), atomically: true, encoding: .utf8)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--dry-run", "--include-ext", "go",
+            "--fail-on-empty", "--manifest", manifest.path, "--skipped-report", report.path,
+        ])
+
+        #expect(throws: CLIError.batchEmpty(skipped: 0)) {
+            try CLIRenderer.runBatch(options)
+        }
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+        #expect(try String(contentsOf: manifest, encoding: .utf8) == "[]\n")
+        #expect(try String(contentsOf: report, encoding: .utf8) == "[]\n")
+    }
+
     @Test func batchExtensionFiltersAreAppliedBeforeLoading() throws {
         let input = tempDirectory()
         let output = tempDirectory()
@@ -613,6 +650,14 @@ struct CLIAutomationTests {
         let decoded = try #require(
             JSONSerialization.jsonObject(with: data) as? [[String: String]])
         #expect(decoded == [["path": "Blob.bin", "reason": "not readable text"]])
+    }
+
+    @Test func batchEmptyReportsAClearMessageAndFailureExitCode() {
+        #expect(CLIError.batchEmpty(skipped: 0).message == "Batch found no renderable input files.")
+        #expect(
+            CLIError.batchEmpty(skipped: 2).message
+                == "Batch found no renderable input files (skipped 2 files).")
+        #expect(CLIError.batchEmpty(skipped: 0).exitCode == 1)
     }
 
     @Test func proRequiredReportsAClearMessageAndFailureExitCode() {
