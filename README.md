@@ -372,9 +372,10 @@ vitrine list formats
 vitrine list profiles --json
 vitrine --version
 vitrine version --json
-vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift,md
+vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift,md \
+  --fail-on-empty
 vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --exclude-ext tmp \
-  --sidecars all --fail-on-skipped --skipped-report docs/cards/skipped.json \
+  --sidecars all --fail-on-empty --fail-on-skipped --skipped-report docs/cards/skipped.json \
   --manifest docs/cards/manifest.json
 vitrine render --help
 ```
@@ -398,7 +399,8 @@ walks nested folders and mirrors their relative paths under the output folder; `
 scans and decodes the matching
 inputs without writing images or sidecars. `--include-ext <list>` and
 `--exclude-ext <list>` let docs pipelines pre-filter known source extensions before
-loading files. Add `--fail-on-skipped` when CI should fail if any unreadable or non-text
+loading files. Add `--fail-on-empty` when CI should fail if those filters leave no
+renderable inputs, `--fail-on-skipped` when CI should fail if any unreadable or non-text
 file was skipped, and `--skipped-report <json>` to write a parseable skipped-files
 artifact. `--manifest <json>` writes a positive manifest of rendered outputs (or
 planned outputs during `--dry-run`) with relative paths and dimensions when available.

@@ -111,6 +111,10 @@ struct CLIOptions: Equatable {
     /// the readable files. Useful for CI/docs pipelines that must not silently ignore
     /// invalid input.
     var failOnSkipped: Bool = false
+    /// For `batch`, return a failing CLI exit when discovery produces no renderable
+    /// files. Useful for CI/docs pipelines with extension filters that must not pass
+    /// after doing no work.
+    var failOnEmpty: Bool = false
     /// For `batch`, optionally write a JSON report describing skipped input files.
     /// The report is local to the requested path and is written before strict skipped
     /// failures are thrown, so CI can upload it as an artifact.

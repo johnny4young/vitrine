@@ -212,6 +212,7 @@ enum CLIRenderer {
     /// docs job can preflight a batch cheaply.
     /// `--manifest` writes the successful/planned output list as a JSON artifact with
     /// relative input/output paths and rendered dimensions when available.
+    /// `--fail-on-empty` turns an empty discovery/preflight into a failing CLI exit.
     /// `--fail-on-skipped` preserves successful renders but converts any skipped file
     /// into a failing CLI exit for strict CI/docs pipelines.
     /// `--skipped-report` writes a local JSON report before any strict failure is
@@ -330,6 +331,9 @@ enum CLIRenderer {
             "\(action) \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
         try writeSkippedReport(skippedReport, path: options.skippedReportPath)
         try writeBatchManifest(manifest, path: options.batchManifestPath)
+        if rendered == 0, options.failOnEmpty {
+            throw CLIError.batchEmpty(skipped: skipped)
+        }
         if skipped > 0, options.failOnSkipped {
             throw CLIError.batchSkipped(rendered: rendered, skipped: skipped)
         }

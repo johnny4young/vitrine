@@ -170,9 +170,10 @@ requested) instead of colliding with another `A.swift` elsewhere in the tree.
 or writing images/sidecars, so CI can preflight a batch before spending render time.
 `--include-ext <list>` narrows a batch to known source extensions, while
 `--exclude-ext <list>` removes generated or temporary extensions before loading, so
-filtered files are neither rendered nor reported as skipped. `--fail-on-skipped` keeps
-successful renders but returns a failing exit when any unreadable or non-text file was
-skipped, which lets CI/docs jobs catch accidental inputs without losing the valid output
+filtered files are neither rendered nor reported as skipped. `--fail-on-empty` turns an
+empty discovery/preflight into a failing exit, while `--fail-on-skipped` keeps successful
+renders but returns a failing exit when any unreadable or non-text file was skipped,
+which lets CI/docs jobs catch accidental inputs without losing the valid output
 artifacts. `--skipped-report <json>` writes a local JSON array of skipped
 `{path, reason}` entries before that strict exit, using paths relative to the input
 folder so the artifact stays machine-independent; dry runs only write this artifact when

@@ -34,6 +34,8 @@ nonisolated enum CLIError: Error, Equatable {
     case outputExists(path: String)
     /// Encoding or writing the output file failed.
     case writeFailed(path: String)
+    /// A batch found no renderable inputs and `--fail-on-empty` requested a failing exit.
+    case batchEmpty(skipped: Int)
     /// A batch completed at least some work, but `--fail-on-skipped` requested a
     /// failing exit when unreadable/non-text files were skipped.
     case batchSkipped(rendered: Int, skipped: Int)
@@ -72,6 +74,10 @@ nonisolated enum CLIError: Error, Equatable {
             "The output already exists at \"\(path)\". Remove it or omit --no-overwrite."
         case .writeFailed(let path):
             "Could not write the output to \"\(path)\"."
+        case .batchEmpty(let skipped):
+            "Batch found no renderable input files"
+                + (skipped > 0 ? " (skipped \(skipped) file\(skipped == 1 ? "" : "s"))" : "")
+                + "."
         case .batchSkipped(let rendered, let skipped):
             "Batch rendered \(rendered) image\(rendered == 1 ? "" : "s") but skipped "
                 + "\(skipped) file\(skipped == 1 ? "" : "s")."
@@ -157,6 +163,7 @@ enum CLIArguments {
         var showShadow: Bool?
         var recursiveBatch = false
         var failOnSkipped = false
+        var failOnEmpty = false
         var skippedReportPath: String?
         var batchManifestPath: String?
         var dryRunBatch = false
@@ -239,6 +246,8 @@ enum CLIArguments {
                 recursiveBatch = true
             case "--fail-on-skipped":
                 failOnSkipped = true
+            case "--fail-on-empty":
+                failOnEmpty = true
             case "--skipped-report":
                 skippedReportPath = try value(for: token)
             case "--manifest":
@@ -303,6 +312,9 @@ enum CLIArguments {
         }
         if mode == .render, failOnSkipped {
             throw CLIError.incompatibleOptions("Cannot combine render with --fail-on-skipped.")
+        }
+        if mode == .render, failOnEmpty {
+            throw CLIError.incompatibleOptions("Cannot combine render with --fail-on-empty.")
         }
         if mode == .render, skippedReportPath != nil {
             throw CLIError.incompatibleOptions("Cannot combine render with --skipped-report.")
@@ -425,6 +437,7 @@ enum CLIArguments {
             showShadow: showShadow,
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
+            failOnEmpty: failOnEmpty,
             skippedReportPath: skippedReportPath,
             batchManifestPath: batchManifestPath,
             dryRunBatch: dryRunBatch,
@@ -642,6 +655,7 @@ nonisolated enum CLIUsage {
           --recursive            Batch only: include nested folders and preserve
                                  relative output paths.
           --fail-on-skipped      Batch only: exit non-zero if any file is skipped.
+          --fail-on-empty        Batch only: exit non-zero when no files would render.
           --skipped-report <json>
                                  Batch only: write skipped files as a JSON report.
           --manifest <json>      Batch only: write rendered/planned outputs as JSON.
