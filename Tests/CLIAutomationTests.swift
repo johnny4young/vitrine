@@ -137,7 +137,7 @@ struct CLIAutomationTests {
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
                 "--recursive", "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
                 "--manifest", "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
-                "--no-overwrite", "--json",
+                "--no-overwrite",
             ])
         #expect(options.command == .batch)
         #expect(options.quiet)
@@ -152,7 +152,7 @@ struct CLIAutomationTests {
         #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
         #expect(options.batchExcludeExtensions == Set(["tmp"]))
         #expect(options.noOverwrite)
-        #expect(options.jsonOutput)
+        #expect(!options.jsonOutput)
     }
 
     @Test func recursiveIsBatchOnly() {

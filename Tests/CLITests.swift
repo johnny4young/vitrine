@@ -119,7 +119,6 @@ struct CLITests {
             "--profile", "p3",
             "--transparent",
             "--no-overwrite",
-            "--json",
             "--window-title", "Release build",
             "--filename", "Sources/App.swift",
             "--title", "Launch checklist",
@@ -142,7 +141,7 @@ struct CLITests {
         #expect(options.profile == .displayP3)
         #expect(options.transparent)
         #expect(options.noOverwrite)
-        #expect(options.jsonOutput)
+        #expect(!options.jsonOutput)
         #expect(options.windowTitle == "Release build")
         #expect(options.metadataFilename == "Sources/App.swift")
         #expect(options.metadataTitle == "Launch checklist")
@@ -359,6 +358,19 @@ struct CLITests {
         #expect(throws: CLIError.incompatibleOptions("--stdin-name requires --stdin.")) {
             try CLIArguments.parse([
                 "render", "in.swift", "--stdin-name", "in.swift", "--out", "x.png",
+            ])
+        }
+    }
+
+    @Test func quietAndJsonAreMutuallyExclusive() {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --quiet with --json.")) {
+            try CLIArguments.parse([
+                "render", "input.swift", "--out", "out.png", "--quiet", "--json",
+            ])
+        }
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --quiet with --json.")) {
+            try CLIArguments.parse([
+                "batch", "input", "--out", "out", "--quiet", "--json",
             ])
         }
     }

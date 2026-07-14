@@ -378,7 +378,8 @@ vitrine render --help
 
 Defaults match the app (One Dark, JetBrains Mono, aurora background); `--quiet`
 suppresses the success summary for scripts while leaving errors visible, and `--json`
-prints `render`/`batch` success summaries as structured JSON. `--theme`,
+prints `render`/`batch` success summaries as structured JSON (mutually exclusive with
+`--quiet`). `--theme`,
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--transparent`, style controls (`--font-size`, `--padding`,
 `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--no-shadow`), and the header
