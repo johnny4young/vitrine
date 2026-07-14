@@ -54,6 +54,10 @@ struct CLIOptions: Equatable {
     /// the captured output. Only meaningful for `--language terminal`; set by `vgrab -w`
     /// so a known-width capture wraps exactly as it did in the live terminal (CS-070).
     var terminalColumns: Int?
+    /// Optional soft-wrap column count for long code lines. Mirrors the editor's
+    /// "Wrap long lines" control and stays nil by default so bare renders still
+    /// size to content.
+    var wrapColumns: Int?
     /// The output format. Defaults to PNG; PDF is the supported vector format.
     var format: ExportFormat = .png
     /// The ICC color profile for PNG export (CS-024). PDF ignores this.
@@ -110,7 +114,7 @@ struct CLIOptions: Equatable {
     ///   2. The destination preset's presentation guidance (padding/background).
     ///   3. The theme override.
     ///   4. The transparent-background override (wins over a preset's background).
-    ///   5. CLI-only metadata/header overrides.
+    ///   5. CLI presentation overrides.
     ///
     /// `code` and `language` are set from the input file and never altered by a
     /// preset, exactly as in the GUI (a preset is presentation/output only, CS-020).
@@ -120,6 +124,7 @@ struct CLIOptions: Equatable {
         config.code = code
         config.language = language
         config.terminalColumns = terminalColumns
+        if let wrapColumns { config.wrapColumns = wrapColumns }
         if let windowTitle { config.windowTitle = windowTitle }
         config.metadata = SnapshotMetadata(
             filename: metadataFilename,

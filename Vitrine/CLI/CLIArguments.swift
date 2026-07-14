@@ -126,6 +126,7 @@ enum CLIArguments {
         var presetID: String?
         var scale: Int?
         var terminalColumns: Int?
+        var wrapColumns: Int?
         var format: ExportFormat = .png
         var profile: ColorProfile = .fallback
         var transparent = false
@@ -164,6 +165,8 @@ enum CLIArguments {
                 scale = try resolveScale(try value(for: token), flag: token)
             case "--terminal-width":
                 terminalColumns = try resolveColumns(try value(for: token), flag: token)
+            case "--wrap-columns", "--wrap":
+                wrapColumns = try resolveWrapColumns(try value(for: token), flag: token)
             case "--format":
                 format = try resolveFormat(try value(for: token))
             case "--profile":
@@ -234,6 +237,10 @@ enum CLIArguments {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with metadata header options.")
             }
+            if wrapColumns != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with --wrap-columns.")
+            }
         }
         // A sidecar sits next to a written image, so it needs an `--out` path —
         // a clipboard-only copy (`--copy` with no `--out`) has no file to accompany.
@@ -277,6 +284,7 @@ enum CLIArguments {
             presetID: presetID,
             scale: scale,
             terminalColumns: terminalColumns,
+            wrapColumns: wrapColumns,
             format: format,
             profile: profile,
             transparent: transparent,
@@ -340,6 +348,15 @@ enum CLIArguments {
         return value
     }
 
+    /// Parses and range-checks the editor's code soft-wrap width. Uses the same
+    /// bounds as the Style pane, so a CLI render and a saved editor config agree.
+    private static func resolveWrapColumns(_ raw: String, flag: String) throws -> Int {
+        guard let value = Int(raw), SettingsDefaults.wrapColumnsRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     /// Parses the output format (`png`/`pdf`/`heic`).
     private static func resolveFormat(_ raw: String) throws -> ExportFormat {
         guard let format = ExportFormat(rawValue: raw.lowercased()) else {
@@ -390,6 +407,7 @@ nonisolated enum CLIUsage {
           --terminal-width <n>   Reconstruct terminal output at exactly n columns
                                  instead of inferring the width (1-1000). Only
                                  affects --language terminal; set by `vgrab -w`.
+          --wrap-columns <n>     Soft-wrap long code lines at n columns (40-200).
           --format <png|pdf|heic>  Output format. Defaults to png; pdf is the vector
                                  option, heic the compact raster one.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.
