@@ -31,6 +31,9 @@ struct CLIOptions: Equatable {
     /// Suppresses the success summary on stdout. Errors and explicit skipped-file
     /// diagnostics still go to stderr so automation logs stay actionable.
     var quiet: Bool = false
+    /// Prints the success summary as JSON for scripts that need structured stdout.
+    /// Errors remain human-readable stderr, matching the rest of the CLI contract.
+    var jsonOutput: Bool = false
 
     /// The source file to read the code from (a folder for `batch`). The language is
     /// inferred from its extension (falling back to content detection), matching the
