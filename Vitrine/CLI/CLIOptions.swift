@@ -101,6 +101,9 @@ struct CLIOptions: Equatable {
     /// The report is local to the requested path and is written before strict skipped
     /// failures are thrown, so CI can upload it as an artifact.
     var skippedReportPath: String?
+    /// For `batch`, scan and load matching files without rendering or writing images.
+    /// Useful for CI preflight checks before a docs job spends time producing cards.
+    var dryRunBatch: Bool = false
     /// For `batch`, only consider files whose extension is in this normalized lowercase
     /// set. Empty means every regular file is considered before text decoding.
     var batchIncludeExtensions: Set<String> = []

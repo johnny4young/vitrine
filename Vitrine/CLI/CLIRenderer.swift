@@ -110,6 +110,8 @@ enum CLIRenderer {
     /// `--recursive` walks nested folders and preserves their relative paths under the
     /// output directory. `--include-ext` / `--exclude-ext` filter regular files by
     /// extension before loading, which keeps known non-code assets out of skipped counts.
+    /// `--dry-run` still scans and decodes inputs but skips image/sidecar writes, so a
+    /// docs job can preflight a batch cheaply.
     /// `--fail-on-skipped` preserves successful renders but converts any skipped file
     /// into a failing CLI exit for strict CI/docs pipelines.
     /// `--skipped-report` writes a local JSON report before any strict failure is
@@ -132,11 +134,13 @@ enum CLIRenderer {
     ) throws -> String {
         let inputDirectory = URL(fileURLWithPath: options.inputPath)
         let outputDirectory = URL(fileURLWithPath: options.outputPath)
-        do {
-            try FileManager.default.createDirectory(
-                at: outputDirectory, withIntermediateDirectories: true)
-        } catch {
-            throw CLIError.writeFailed(path: options.outputPath)
+        if !options.dryRunBatch {
+            do {
+                try FileManager.default.createDirectory(
+                    at: outputDirectory, withIntermediateDirectories: true)
+            } catch {
+                throw CLIError.writeFailed(path: options.outputPath)
+            }
         }
 
         let files = try batchInputFiles(
@@ -165,6 +169,11 @@ enum CLIRenderer {
                 reportSkipped(file, reason: reason)
                 continue
             }
+            if options.dryRunBatch {
+                rendered += 1
+                continue
+            }
+
             let language = options.language ?? loaded.language
             let config = options.makeConfig(code: loaded.text, language: language)
             let outputURL = batchOutputURL(
@@ -184,11 +193,13 @@ enum CLIRenderer {
             }
         }
 
+        let action = options.dryRunBatch ? "Dry run: would render" : "Rendered"
+        let logAction = options.dryRunBatch ? "dry-run would render" : "rendered"
         Log.export.notice(
-            "CLI batch rendered \(rendered, privacy: .public), skipped \(skipped, privacy: .public)"
+            "CLI batch \(logAction, privacy: .public) \(rendered, privacy: .public), skipped \(skipped, privacy: .public)"
         )
         let summary =
-            "Rendered \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
+            "\(action) \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
         try writeSkippedReport(skippedReport, path: options.skippedReportPath)
         if skipped > 0, options.failOnSkipped {
             throw CLIError.batchSkipped(rendered: rendered, skipped: skipped)

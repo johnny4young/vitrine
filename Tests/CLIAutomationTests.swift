@@ -85,7 +85,7 @@ struct CLIAutomationTests {
         let options = try CLIArguments.parse(
             [
                 "batch", "in-dir", "--out", "out-dir", "--theme", "dracula", "--recursive",
-                "--fail-on-skipped", "--skipped-report", "skipped.json",
+                "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
                 "--include-ext", ".swift,md", "--exclude-ext", "tmp",
             ])
         #expect(options.command == .batch)
@@ -95,6 +95,7 @@ struct CLIAutomationTests {
         #expect(options.recursiveBatch)
         #expect(options.failOnSkipped)
         #expect(options.skippedReportPath == "skipped.json")
+        #expect(options.dryRunBatch)
         #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
         #expect(options.batchExcludeExtensions == Set(["tmp"]))
     }
@@ -122,6 +123,14 @@ struct CLIAutomationTests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "--out", "out.png", "--skipped-report", "skipped.json",
+            ])
+        }
+    }
+
+    @Test func dryRunIsBatchOnly() {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine render with --dry-run.")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "out.png", "--dry-run",
             ])
         }
     }
@@ -209,6 +218,34 @@ struct CLIAutomationTests {
         #expect(
             !FileManager.default.fileExists(
                 atPath: output.appendingPathComponent("Sample.png").path))
+    }
+
+    @Test func batchDryRunDoesNotWriteImagesOrSidecars() throws {
+        let root = tempDirectory()
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("out", isDirectory: true)
+        let report = root.appendingPathComponent("skipped.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        try "let ok = true\n".write(
+            to: input.appendingPathComponent("Ok.swift"), atomically: true, encoding: .utf8)
+        try Data([0x00, 0x01, 0x02]).write(to: input.appendingPathComponent("Blob.bin"))
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path,
+            "--dry-run",
+            "--sidecars", "text",
+            "--skipped-report", report.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Dry run: would render 1 image"))
+        #expect(summary.contains("skipped 1"))
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: report)) as? [[String: String]])
+        #expect(decoded == [["path": "Blob.bin", "reason": "not readable text"]])
     }
 
     @Test func batchExtensionFiltersAreAppliedBeforeLoading() throws {
