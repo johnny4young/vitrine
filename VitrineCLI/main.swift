@@ -27,9 +27,28 @@ func printError(_ message: String) {
     FileHandle.standardError.write(Data((message + "\n").utf8))
 }
 
-// `shell-init` only prints the shell integration text — no rendering, so it needs
-// neither AppKit nor the PRO gate. Handle it before anything else and exit.
+// `--version` and `shell-init` are pure metadata/text commands — no rendering, so
+// they need neither AppKit nor the PRO gate. Handle them before anything else and exit.
 let rawArguments = Array(CommandLine.arguments.dropFirst())
+if let versionInvocation = CLIVersion.invocation(for: rawArguments) {
+    switch versionInvocation {
+    case .help:
+        print(CLIVersion.usage)
+        exit(0)
+    case .version(let format):
+        print(CLIVersion.output(format: format), terminator: "")
+        exit(0)
+    case .unknownFlag(let flag):
+        printError("error: unknown version option \"\(flag)\".\n\n" + CLIVersion.usage)
+        exit(2)
+    case .extraArguments(let extras):
+        printError(
+            "error: unexpected argument(s) \"\(extras.joined(separator: " "))\" after version.\n\n"
+                + CLIVersion.usage)
+        exit(2)
+    }
+}
+
 if rawArguments.first == "shell-init" {
     switch ShellInit.invocation(for: Array(rawArguments.dropFirst())) {
     case .help:

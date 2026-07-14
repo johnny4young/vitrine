@@ -79,6 +79,51 @@ struct CLIAutomationTests {
             "the CLI env bypass must be inside #if DEBUG so it never ships")
     }
 
+    // MARK: - Version metadata
+
+    @Test func versionInvocationAcceptsTopLevelCommandsAndJson() {
+        #expect(CLIVersion.invocation(for: ["--version"]) == .version(format: .text))
+        #expect(CLIVersion.invocation(for: ["-v"]) == .version(format: .text))
+        #expect(CLIVersion.invocation(for: ["version"]) == .version(format: .text))
+        #expect(CLIVersion.invocation(for: ["version", "--json"]) == .version(format: .json))
+        #expect(CLIVersion.invocation(for: ["--version", "--json"]) == .version(format: .json))
+        #expect(CLIVersion.invocation(for: ["version", "--help"]) == .help)
+        #expect(CLIVersion.invocation(for: ["version", "--bad"]) == .unknownFlag("--bad"))
+        #expect(CLIVersion.invocation(for: ["version", "extra"]) == .extraArguments(["extra"]))
+        #expect(CLIVersion.invocation(for: ["render"]) == nil)
+    }
+
+    @Test func versionOutputUsesBundleValuesAndFallbackConstants() throws {
+        let output = CLIVersion.output(
+            format: .text,
+            infoDictionary: ["CFBundleShortVersionString": "1.2.3", "CFBundleVersion": "456"],
+            executablePath: "/missing/vitrine-cli")
+        #expect(output == "vitrine 1.2.3 (456)\n")
+
+        let jsonData = Data(
+            CLIVersion.output(
+                format: .json,
+                infoDictionary: [
+                    "CFBundleShortVersionString": "1.2.3",
+                    "CFBundleVersion": "456",
+                ],
+                executablePath: "/missing/vitrine-cli"
+            ).utf8)
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: jsonData) as? [String: String])
+        #expect(decoded == ["build": "456", "product": "vitrine", "version": "1.2.3"])
+
+        let fallback = CLIVersion.output(
+            format: .text, infoDictionary: [:], executablePath: "/missing/vitrine-cli")
+        #expect(fallback == "vitrine 0.20.0 (21)\n")
+    }
+
+    @Test func versionFallbackConstantsMatchProjectSettings() throws {
+        let project = try String(contentsOf: Self.repoFile("project.yml"), encoding: .utf8)
+        #expect(project.contains("MARKETING_VERSION: \"\(CLIVersion.fallbackMarketingVersion)\""))
+        #expect(project.contains("CURRENT_PROJECT_VERSION: \"\(CLIVersion.fallbackBuildNumber)\""))
+    }
+
     // MARK: - Catalog listing
 
     @Test func catalogListInvocationAcceptsTextJsonAndSingularAliases() {

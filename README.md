@@ -369,6 +369,8 @@ vitrine list themes
 vitrine list languages --json
 vitrine list formats
 vitrine list profiles --json
+vitrine --version
+vitrine version --json
 vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift,md
 vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --exclude-ext tmp \
   --sidecars all --fail-on-skipped --skipped-report docs/cards/skipped.json \
@@ -404,6 +406,8 @@ that colliding group preserves the input extension (`Widget.swift.png`,
 `Widget.ts.png`) so one artifact never overwrites the other.
 `vitrine list <themes|languages|presets|formats|profiles> [--json]` prints the local
 catalog ids accepted by those flags so scripts can discover them without scraping docs.
+`vitrine --version` / `vitrine version --json` reports the installed CLI version before
+AppKit initialization or the PRO render gate, which makes CI install checks cheap.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)
