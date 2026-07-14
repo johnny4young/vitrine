@@ -10,6 +10,7 @@ import Foundation
 @MainActor
 enum CLICatalog {
     enum Catalog: Equatable, Sendable {
+        case all
         case themes
         case languages
         case presets
@@ -18,6 +19,7 @@ enum CLICatalog {
 
         init?(argument: String) {
             switch argument.lowercased() {
+            case "all": self = .all
             case "theme", "themes": self = .themes
             case "language", "languages": self = .languages
             case "preset", "presets": self = .presets
@@ -46,11 +48,19 @@ enum CLICatalog {
         var name: String
     }
 
+    struct Bundle: Encodable, Equatable, Sendable {
+        var themes: [Entry]
+        var languages: [Entry]
+        var presets: [Entry]
+        var formats: [Entry]
+        var profiles: [Entry]
+    }
+
     static let usage = """
-        vitrine list <themes|languages|presets|formats|profiles> [--json]
+        vitrine list <all|themes|languages|presets|formats|profiles> [--json]
 
         Prints the local ids accepted by --theme, --language, --preset, --format, and --profile.
-        Use --json for a machine-readable array of {id, name} entries.
+        Use `all --json` for one machine-readable object with every catalog.
         """
 
     static func invocation(for arguments: [String]) -> Invocation {
@@ -84,20 +94,53 @@ enum CLICatalog {
     }
 
     static func output(for catalog: Catalog, format: Format) -> String {
-        let entries = entries(for: catalog)
-        switch format {
-        case .text:
-            return entries.map { "\($0.id)\t\($0.name)" }.joined(separator: "\n") + "\n"
-        case .json:
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = (try? encoder.encode(entries)) ?? Data("[]".utf8)
-            return (String(data: data, encoding: .utf8) ?? "[]") + "\n"
+        switch (catalog, format) {
+        case (.all, .text):
+            allCatalogsText()
+        case (.all, .json):
+            encodedJSON(bundle())
+        case (_, .text):
+            entries(for: catalog).map { "\($0.id)\t\($0.name)" }.joined(separator: "\n") + "\n"
+        case (_, .json):
+            encodedJSON(entries(for: catalog))
         }
     }
 
+    private static func allCatalogsText() -> String {
+        concreteCatalogs.map { catalog, title in
+            let lines = entries(for: catalog).map { "  \($0.id)\t\($0.name)" }
+            return (["\(title):"] + lines).joined(separator: "\n")
+        }.joined(separator: "\n\n") + "\n"
+    }
+
+    private static func bundle() -> Bundle {
+        Bundle(
+            themes: entries(for: .themes),
+            languages: entries(for: .languages),
+            presets: entries(for: .presets),
+            formats: entries(for: .formats),
+            profiles: entries(for: .profiles))
+    }
+
+    private static func encodedJSON<T: Encodable>(_ value: T) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = (try? encoder.encode(value)) ?? Data("{}".utf8)
+        return (String(data: data, encoding: .utf8) ?? "{}") + "\n"
+    }
+
+    private static let concreteCatalogs: [(catalog: Catalog, title: String)] = [
+        (.themes, "themes"),
+        (.languages, "languages"),
+        (.presets, "presets"),
+        (.formats, "formats"),
+        (.profiles, "profiles"),
+    ]
+
     private static func entries(for catalog: Catalog) -> [Entry] {
         switch catalog {
+        case .all:
+            []
         case .themes:
             Theme.builtIns.map { Entry(id: $0.id, name: $0.displayName) }
         case .languages:

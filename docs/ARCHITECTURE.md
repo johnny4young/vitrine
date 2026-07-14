@@ -185,10 +185,11 @@ so non-colliding legacy output names stay unchanged.
 
 **Catalog discovery.** `vitrine list <themes|languages|presets|formats|profiles>
 [--json]` prints the same local catalog ids the parser validates for `--theme`,
-`--language`, `--preset`, `--format`, and `--profile`. It runs before AppKit
-initialization and before the PRO render gate because it reads only bundled metadata,
-so scripts can cheaply discover valid options without touching user files or rendering
-images.
+`--language`, `--preset`, `--format`, and `--profile`; `vitrine list all --json`
+returns one keyed object with every catalog for setup scripts that want a single
+metadata call. It runs before AppKit initialization and before the PRO render gate
+because it reads only bundled metadata, so scripts can cheaply discover valid options
+without touching user files or rendering images.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the PRO render
