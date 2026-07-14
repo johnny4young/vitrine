@@ -101,6 +101,12 @@ struct CLIOptions: Equatable {
     /// The report is local to the requested path and is written before strict skipped
     /// failures are thrown, so CI can upload it as an artifact.
     var skippedReportPath: String?
+    /// For `batch`, only consider files whose extension is in this normalized lowercase
+    /// set. Empty means every regular file is considered before text decoding.
+    var batchIncludeExtensions: Set<String> = []
+    /// For `batch`, ignore files whose extension is in this normalized lowercase set.
+    /// Excluded files are filtered out before loading, so they are not counted as skipped.
+    var batchExcludeExtensions: Set<String> = []
 
     /// Read the source from standard input instead of a file (e.g.
     /// `some-command | vitrine render --stdin`), so the language is inferred from the

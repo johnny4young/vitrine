@@ -86,6 +86,7 @@ struct CLIAutomationTests {
             [
                 "batch", "in-dir", "--out", "out-dir", "--theme", "dracula", "--recursive",
                 "--fail-on-skipped", "--skipped-report", "skipped.json",
+                "--include-ext", ".swift,md", "--exclude-ext", "tmp",
             ])
         #expect(options.command == .batch)
         #expect(options.inputPath == "in-dir")
@@ -94,6 +95,8 @@ struct CLIAutomationTests {
         #expect(options.recursiveBatch)
         #expect(options.failOnSkipped)
         #expect(options.skippedReportPath == "skipped.json")
+        #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
+        #expect(options.batchExcludeExtensions == Set(["tmp"]))
     }
 
     @Test func recursiveIsBatchOnly() {
@@ -119,6 +122,32 @@ struct CLIAutomationTests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "--out", "out.png", "--skipped-report", "skipped.json",
+            ])
+        }
+    }
+
+    @Test func batchExtensionFiltersAreBatchOnly() {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine render with --include-ext.")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "out.png", "--include-ext", "swift",
+            ])
+        }
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine render with --exclude-ext.")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "out.png", "--exclude-ext", "tmp",
+            ])
+        }
+    }
+
+    @Test func batchExtensionFiltersRejectInvalidValues() {
+        #expect(throws: CLIError.invalidValue(flag: "--include-ext", value: ",")) {
+            try CLIArguments.parse([
+                "batch", "in-dir", "--out", "out-dir", "--include-ext", ",",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--exclude-ext", value: "swift/evil")) {
+            try CLIArguments.parse([
+                "batch", "in-dir", "--out", "out-dir", "--exclude-ext", "swift/evil",
             ])
         }
     }
@@ -180,6 +209,44 @@ struct CLIAutomationTests {
         #expect(
             !FileManager.default.fileExists(
                 atPath: output.appendingPathComponent("Sample.png").path))
+    }
+
+    @Test func batchExtensionFiltersAreAppliedBeforeLoading() throws {
+        let input = tempDirectory()
+        let output = tempDirectory()
+        let report = tempDirectory().appendingPathComponent("skipped.json")
+        defer {
+            try? FileManager.default.removeItem(at: input)
+            try? FileManager.default.removeItem(at: output)
+            try? FileManager.default.removeItem(at: report.deletingLastPathComponent())
+        }
+        try "let ok = true\n".write(
+            to: input.appendingPathComponent("Ok.swift"), atomically: true, encoding: .utf8)
+        try "# Notes\n".write(
+            to: input.appendingPathComponent("Guide.md"), atomically: true, encoding: .utf8)
+        try Data([0x00, 0x01, 0x02]).write(to: input.appendingPathComponent("Blob.bin"))
+        try "plain text".write(
+            to: input.appendingPathComponent("README"), atomically: true, encoding: .utf8)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path,
+            "--include-ext", ".swift,md",
+            "--exclude-ext", "md",
+            "--skipped-report", report.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Rendered 1 image"))
+        #expect(
+            FileManager.default.fileExists(atPath: output.appendingPathComponent("Ok.png").path))
+        #expect(
+            !FileManager.default.fileExists(atPath: output.appendingPathComponent("Guide.png").path)
+        )
+        #expect(
+            !FileManager.default.fileExists(atPath: output.appendingPathComponent("Blob.png").path))
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: report)) as? [[String: String]])
+        #expect(decoded.isEmpty)
     }
 
     @Test func batchCanFailWhenAnyFileIsSkippedAndStillWritesASkippedReport() throws {

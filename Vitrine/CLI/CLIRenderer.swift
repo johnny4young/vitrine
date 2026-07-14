@@ -108,8 +108,10 @@ enum CLIRenderer {
     /// Non-text/unreadable files are skipped (not fatal), so a mixed folder still
     /// produces images for the code in it; the summary reports how many were skipped.
     /// `--recursive` walks nested folders and preserves their relative paths under the
-    /// output directory. `--fail-on-skipped` preserves successful renders but converts
-    /// any skipped file into a failing CLI exit for strict CI/docs pipelines.
+    /// output directory. `--include-ext` / `--exclude-ext` filter regular files by
+    /// extension before loading, which keeps known non-code assets out of skipped counts.
+    /// `--fail-on-skipped` preserves successful renders but converts any skipped file
+    /// into a failing CLI exit for strict CI/docs pipelines.
     /// `--skipped-report` writes a local JSON report before any strict failure is
     /// thrown. Each file goes through the same render-and-write path as `vitrine
     /// render`, so a batched image is pixel-identical to rendering that file alone
@@ -138,7 +140,11 @@ enum CLIRenderer {
         }
 
         let files = try batchInputFiles(
-            in: inputDirectory, recursive: options.recursiveBatch, directoryLister: directoryLister)
+            in: inputDirectory,
+            recursive: options.recursiveBatch,
+            includeExtensions: options.batchIncludeExtensions,
+            excludeExtensions: options.batchExcludeExtensions,
+            directoryLister: directoryLister)
 
         let ext = options.format.rawValue
         var rendered = 0
@@ -196,6 +202,8 @@ enum CLIRenderer {
     private static func batchInputFiles(
         in inputDirectory: URL,
         recursive: Bool,
+        includeExtensions: Set<String>,
+        excludeExtensions: Set<String>,
         directoryLister: (URL) throws -> [URL]
     ) throws -> [URL] {
         let entries: [URL]
@@ -220,10 +228,27 @@ enum CLIRenderer {
         return
             entries
             .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
+            .filter {
+                isIncludedByBatchExtensionFilters(
+                    $0, includeExtensions: includeExtensions, excludeExtensions: excludeExtensions)
+            }
             .sorted {
                 batchRelativePath(for: $0, under: inputDirectory)
                     < batchRelativePath(for: $1, under: inputDirectory)
             }
+    }
+
+    /// Applies normalized extension include/exclude sets to a candidate batch file.
+    /// Files without an extension are included by default, but an include list narrows
+    /// the batch to only named extensions.
+    private static func isIncludedByBatchExtensionFilters(
+        _ file: URL,
+        includeExtensions: Set<String>,
+        excludeExtensions: Set<String>
+    ) -> Bool {
+        let ext = file.pathExtension.lowercased()
+        guard includeExtensions.isEmpty || includeExtensions.contains(ext) else { return false }
+        return !excludeExtensions.contains(ext)
     }
 
     /// Builds the output image URL for one batched input. Recursive batches preserve
