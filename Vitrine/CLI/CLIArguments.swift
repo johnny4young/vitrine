@@ -149,6 +149,8 @@ enum CLIArguments {
         var recursiveBatch = false
         var failOnSkipped = false
         var skippedReportPath: String?
+        var batchIncludeExtensions: Set<String> = []
+        var batchExcludeExtensions: Set<String> = []
         var readStdin = false
         var copyToClipboard = false
         var openInEditor = false
@@ -220,6 +222,12 @@ enum CLIArguments {
                 failOnSkipped = true
             case "--skipped-report":
                 skippedReportPath = try value(for: token)
+            case "--include-ext":
+                batchIncludeExtensions.formUnion(
+                    try resolveExtensionList(try value(for: token), flag: token))
+            case "--exclude-ext":
+                batchExcludeExtensions.formUnion(
+                    try resolveExtensionList(try value(for: token), flag: token))
             case "--stdin":
                 readStdin = true
             case "--copy":
@@ -265,6 +273,12 @@ enum CLIArguments {
         }
         if mode == .render, skippedReportPath != nil {
             throw CLIError.incompatibleOptions("Cannot combine render with --skipped-report.")
+        }
+        if mode == .render, !batchIncludeExtensions.isEmpty {
+            throw CLIError.incompatibleOptions("Cannot combine render with --include-ext.")
+        }
+        if mode == .render, !batchExcludeExtensions.isEmpty {
+            throw CLIError.incompatibleOptions("Cannot combine render with --exclude-ext.")
         }
         let metadataHeaderRequested =
             windowTitle != nil || metadataFilename != nil
@@ -369,6 +383,8 @@ enum CLIArguments {
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             skippedReportPath: skippedReportPath,
+            batchIncludeExtensions: batchIncludeExtensions,
+            batchExcludeExtensions: batchExcludeExtensions,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
@@ -468,6 +484,28 @@ enum CLIArguments {
         }
     }
 
+    /// Parses a comma-separated batch extension list, accepting either `swift` or
+    /// `.swift` spellings and normalizing everything to lowercase without the dot.
+    private static func resolveExtensionList(_ raw: String, flag: String) throws -> Set<String> {
+        let allowedCharacters = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        let parts =
+            raw.split(separator: ",", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !parts.isEmpty else { throw CLIError.invalidValue(flag: flag, value: raw) }
+
+        var extensions: Set<String> = []
+        for part in parts {
+            let normalized = part.hasPrefix(".") ? String(part.dropFirst()) : part
+            guard !normalized.isEmpty,
+                normalized.unicodeScalars.allSatisfy({ allowedCharacters.contains($0) })
+            else {
+                throw CLIError.invalidValue(flag: flag, value: raw)
+            }
+            extensions.insert(normalized.lowercased())
+        }
+        return extensions
+    }
+
     /// Parses the convenience sidecar bundle list. Comma-separated values compose
     /// with the explicit `--*-sidecar` flags, so scripts can say `--sidecars all` or
     /// keep enabling individual sidecars as their needs grow.
@@ -550,6 +588,10 @@ nonisolated enum CLIUsage {
           --fail-on-skipped      Batch only: exit non-zero if any file is skipped.
           --skipped-report <json>
                                  Batch only: write skipped files as a JSON report.
+          --include-ext <list>   Batch only: only render these comma-separated
+                                 extensions (for example swift,md).
+          --exclude-ext <list>   Batch only: ignore these comma-separated extensions
+                                 before loading files.
           --text-sidecar         Also write a .txt next to --out with the source as
                                  selectable text (terminal escapes stripped).
           --markdown-sidecar     Also write a .md next to --out: the image reference
