@@ -171,6 +171,12 @@ artifacts. `--skipped-report <json>` writes a local JSON array of skipped
 folder so the artifact stays machine-independent; dry runs only write this artifact when
 it is explicitly requested.
 
+**Catalog discovery.** `vitrine list <themes|languages|presets> [--json]` prints the
+same local catalog ids the parser validates for `--theme`, `--language`, and
+`--preset`. It runs before AppKit initialization and before the PRO render gate because
+it reads only bundled metadata, so scripts can cheaply discover valid options without
+touching user files or rendering images.
+
 **Local only.** Rendering needs no network, screen recording, or Accessibility — it is
 the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it
 has no entitlements; it reads only the input file you name and writes only the output
@@ -376,6 +382,7 @@ Vitrine/
 │   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…" (CS-048)
 ├── CLI/                       # `vitrine render` core, shared with VitrineCLI (CS-033)
 │   ├── CLIArguments.swift     # dependency-free arg parser + CLIError/CLIUsage
+│   ├── CLICatalog.swift       # local theme/language/preset discovery for automation
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
 │   ├── CLIRenderer.swift      # load input → ExportManager (unchanged) → write file
 │   └── CLIFontRegistration.swift # register bundled fonts with Core Text at launch
