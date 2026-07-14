@@ -176,14 +176,16 @@ vitrine render <input-file> --out <image> [--language terminal]
 vitrine render --stdin --copy                 # read a pipe, copy the image
 vitrine render <input-file> --edit            # open it in the editor (no image)
 vitrine render <input-file> --out <image> --text-sidecar   # image + .txt of the output
+vitrine render <input-file> --out <image> --sidecars all    # image + txt/md/html
 vitrine shell-init [zsh|bash|fish]            # print the helpers
 ```
 
 `--copy` puts the rendered image on the clipboard; `--stdin` reads the source from a
 pipe; `--edit` (`-e`) opens the source in Vitrine's editor instead of rendering — useful
-to tweak before exporting; `--text-sidecar` also writes a `.txt` of the output next to
-`--out` (terminal escapes stripped). Each detects terminal output by its ANSI escapes
-when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--out`.
+to tweak before exporting; `--text-sidecar` writes a `.txt` of the output next to
+`--out` (terminal escapes stripped), while `--sidecars all` adds the Markdown and HTML
+embeds too. Each detects terminal output by its ANSI escapes when `--language` is
+omitted. `--edit` is mutually exclusive with `--copy`/`--out`.
 
 ## Notes
 
@@ -202,11 +204,13 @@ when `--language` is omitted. `--edit` is mutually exclusive with `--copy`/`--ou
   present. (Install any Nerd Font to light these up.)
 - **Copyable text alongside the image.** From the command line, `--text-sidecar` writes
   a `.txt` next to the rendered image holding the output as selectable, greppable text —
-  the terminal escapes stripped to the visible lines. In the app, **Settings ▸ Output ▸
-  Clipboard ▸ "Copyable text with images"** does the same idea sandbox-safely: it adds
-  the text to the clipboard when you copy (paste the image anywhere, paste the text into
-  an editor) and writes a `.txt` beside each image in a multi-size export. Handy for
-  accessibility and for pairing a shared image with copy-pasteable output.
+  the terminal escapes stripped to the visible lines. `--markdown-sidecar`,
+  `--html-sidecar`, or `--sidecars all` add README/web embeds with the same stripped
+  visible text. In the app, **Settings ▸ Output ▸ Clipboard ▸ "Copyable text with
+  images"** does the same idea sandbox-safely: it adds the text to the clipboard when
+  you copy (paste the image anywhere, paste the text into an editor) and writes a `.txt`
+  beside each image in a multi-size export. Handy for accessibility and for pairing a
+  shared image with copy-pasteable output.
 - Everything else about a snapshot still applies: background, padding, window title,
   annotations (arrow a failing assert, blur a secret), multi-size export, Brand Kit.
 
