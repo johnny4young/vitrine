@@ -362,13 +362,15 @@ vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font-size 12 --padding 24 --no-shadow
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render snippet.swift --out card.png --sidecars all
+vitrine render input.swift --out image.png --quiet
 vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift,md
 vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --exclude-ext tmp \
   --sidecars all --fail-on-skipped --skipped-report docs/cards/skipped.json
 vitrine render --help
 ```
 
-Defaults match the app (One Dark, JetBrains Mono, aurora background); `--theme`,
+Defaults match the app (One Dark, JetBrains Mono, aurora background); `--quiet`
+suppresses the success summary for scripts while leaving errors visible. `--theme`,
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--transparent`, style controls (`--font-size`, `--padding`,
 `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--no-shadow`), and the header
