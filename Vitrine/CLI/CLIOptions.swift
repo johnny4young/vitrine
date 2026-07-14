@@ -62,6 +62,18 @@ struct CLIOptions: Equatable {
     /// alpha channel on export (CS-024). Overrides any preset background.
     var transparent: Bool = false
 
+    /// Optional title shown in the rendered window chrome. Separate from the metadata
+    /// header, matching the editor's Window Title control.
+    var windowTitle: String?
+    /// Optional filename chip shown in the metadata header.
+    var metadataFilename: String?
+    /// Optional title shown in the metadata header.
+    var metadataTitle: String?
+    /// Optional caption shown below the metadata title.
+    var metadataCaption: String?
+    /// Whether to show the language badge in the metadata header.
+    var showLanguageBadge: Bool = false
+
     /// Read the source from standard input instead of a file (e.g.
     /// `some-command | vitrine render --stdin`), so the language is inferred from the
     /// content — ANSI-colored terminal output is detected by its escape codes.
@@ -98,6 +110,7 @@ struct CLIOptions: Equatable {
     ///   2. The destination preset's presentation guidance (padding/background).
     ///   3. The theme override.
     ///   4. The transparent-background override (wins over a preset's background).
+    ///   5. CLI-only metadata/header overrides.
     ///
     /// `code` and `language` are set from the input file and never altered by a
     /// preset, exactly as in the GUI (a preset is presentation/output only, CS-020).
@@ -107,6 +120,12 @@ struct CLIOptions: Equatable {
         config.code = code
         config.language = language
         config.terminalColumns = terminalColumns
+        if let windowTitle { config.windowTitle = windowTitle }
+        config.metadata = SnapshotMetadata(
+            filename: metadataFilename,
+            title: metadataTitle,
+            caption: metadataCaption,
+            showLanguageBadge: showLanguageBadge)
         return config
     }
 

@@ -129,6 +129,11 @@ enum CLIArguments {
         var format: ExportFormat = .png
         var profile: ColorProfile = .fallback
         var transparent = false
+        var windowTitle: String?
+        var metadataFilename: String?
+        var metadataTitle: String?
+        var metadataCaption: String?
+        var showLanguageBadge = false
         var readStdin = false
         var copyToClipboard = false
         var openInEditor = false
@@ -165,6 +170,16 @@ enum CLIArguments {
                 profile = try resolveProfile(try value(for: token))
             case "--transparent":
                 transparent = true
+            case "--window-title":
+                windowTitle = try value(for: token)
+            case "--filename":
+                metadataFilename = try value(for: token)
+            case "--title":
+                metadataTitle = try value(for: token)
+            case "--caption":
+                metadataCaption = try value(for: token)
+            case "--language-badge", "--show-language-badge":
+                showLanguageBadge = true
             case "--stdin":
                 readStdin = true
             case "--copy":
@@ -195,6 +210,10 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --stdin with input file \"\(inputPath)\".")
         }
+        let metadataHeaderRequested =
+            windowTitle != nil || metadataFilename != nil
+            || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
+
         // `--edit` hands the source to the running editor instead of rendering, so it
         // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
         if openInEditor {
@@ -210,6 +229,10 @@ enum CLIArguments {
             if markdownSidecar {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --markdown-sidecar.")
+            }
+            if metadataHeaderRequested {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with metadata header options.")
             }
         }
         // A sidecar sits next to a written image, so it needs an `--out` path —
@@ -257,6 +280,11 @@ enum CLIArguments {
             format: format,
             profile: profile,
             transparent: transparent,
+            windowTitle: windowTitle,
+            metadataFilename: metadataFilename,
+            metadataTitle: metadataTitle,
+            metadataCaption: metadataCaption,
+            showLanguageBadge: showLanguageBadge,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
@@ -366,6 +394,11 @@ nonisolated enum CLIUsage {
                                  option, heic the compact raster one.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.
           --transparent          Render a real transparent background.
+          --window-title <text>  Title shown in the rendered window chrome.
+          --filename <text>      Filename chip shown in the metadata header.
+          --title <text>         Title shown in the metadata header.
+          --caption <text>       Caption shown below the metadata title.
+          --language-badge       Show the language badge in the metadata header.
           --text-sidecar         Also write a .txt next to --out with the source as
                                  selectable text (terminal escapes stripped).
           --markdown-sidecar     Also write a .md next to --out: the image reference
