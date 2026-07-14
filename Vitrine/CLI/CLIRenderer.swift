@@ -99,10 +99,11 @@ enum CLIRenderer {
     ///
     /// Non-text/unreadable files are skipped (not fatal), so a mixed folder still
     /// produces images for the code in it; the summary reports how many were skipped.
-    /// Each file goes through the same render-and-write path as `vitrine render`, so a
-    /// batched image is pixel-identical to rendering that file alone with the same
-    /// options. `directoryLister` is injected so the file-discovery half is
-    /// unit-testable without a real directory tree.
+    /// `--recursive` walks nested folders and preserves their relative paths under the
+    /// output directory. Each file goes through the same render-and-write path as
+    /// `vitrine render`, so a batched image is pixel-identical to rendering that file
+    /// alone with the same options. `directoryLister` is injected so the top-level
+    /// file-discovery half is unit-testable without a real directory tree.
     @discardableResult
     static func runBatch(
         _ options: CLIOptions,
@@ -124,18 +125,8 @@ enum CLIRenderer {
             throw CLIError.writeFailed(path: options.outputPath)
         }
 
-        let entries: [URL]
-        do {
-            entries = try directoryLister(inputDirectory)
-        } catch {
-            throw CLIError.inputUnreadable(path: options.inputPath)
-        }
-        // Sort for a deterministic batch regardless of filesystem enumeration order,
-        // and drop subdirectories so only files are rendered.
-        let files =
-            entries
-            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let files = try batchInputFiles(
+            in: inputDirectory, recursive: options.recursiveBatch, directoryLister: directoryLister)
 
         let ext = options.format.rawValue
         var rendered = 0
@@ -154,11 +145,12 @@ enum CLIRenderer {
             }
             let language = options.language ?? loaded.language
             let config = options.makeConfig(code: loaded.text, language: language)
-            let outputURL =
-                outputDirectory
-                .appendingPathComponent(file.deletingPathExtension().lastPathComponent)
-                .appendingPathExtension(ext)
+            let outputURL = batchOutputURL(
+                for: file, inputDirectory: inputDirectory, outputDirectory: outputDirectory,
+                recursive: options.recursiveBatch, fileExtension: ext)
             do {
+                try FileManager.default.createDirectory(
+                    at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                 _ = try renderAndWrite(config, options: options, to: outputURL)
                 rendered += 1
             } catch {
@@ -173,6 +165,72 @@ enum CLIRenderer {
         let summary =
             "Rendered \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
+    }
+
+    /// Lists regular files for batch rendering. Non-recursive mode keeps the legacy
+    /// top-level behavior; recursive mode uses FileManager's enumerator so nested
+    /// folders can be mirrored under the output directory.
+    private static func batchInputFiles(
+        in inputDirectory: URL,
+        recursive: Bool,
+        directoryLister: (URL) throws -> [URL]
+    ) throws -> [URL] {
+        let entries: [URL]
+        do {
+            if recursive {
+                guard
+                    let enumerator = FileManager.default.enumerator(
+                        at: inputDirectory,
+                        includingPropertiesForKeys: [.isRegularFileKey],
+                        options: [.skipsHiddenFiles])
+                else { throw CLIError.inputUnreadable(path: inputDirectory.path) }
+                entries = enumerator.compactMap { $0 as? URL }
+            } else {
+                entries = try directoryLister(inputDirectory)
+            }
+        } catch let error as CLIError {
+            throw error
+        } catch {
+            throw CLIError.inputUnreadable(path: inputDirectory.path)
+        }
+
+        return
+            entries
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
+            .sorted {
+                batchRelativePath(for: $0, under: inputDirectory)
+                    < batchRelativePath(for: $1, under: inputDirectory)
+            }
+    }
+
+    /// Builds the output image URL for one batched input. Recursive batches preserve
+    /// relative folders; top-level batches keep the historical flat output names.
+    private static func batchOutputURL(
+        for file: URL,
+        inputDirectory: URL,
+        outputDirectory: URL,
+        recursive: Bool,
+        fileExtension ext: String
+    ) -> URL {
+        let stem =
+            recursive
+            ? batchRelativePath(for: file, under: inputDirectory)
+            : file.lastPathComponent
+        return
+            outputDirectory
+            .appendingPathComponent(stem)
+            .deletingPathExtension()
+            .appendingPathExtension(ext)
+    }
+
+    /// Returns a slash-separated relative path when `file` sits below `root`,
+    /// falling back to the filename if the URLs are not parent/child.
+    private static func batchRelativePath(for file: URL, under root: URL) -> String {
+        let rootPath = root.standardizedFileURL.path
+        let filePath = file.standardizedFileURL.path
+        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        guard filePath.hasPrefix(prefix) else { return file.lastPathComponent }
+        return String(filePath.dropFirst(prefix.count))
     }
 
     /// Names a skipped batch file (and why) on stderr. The user chose the input

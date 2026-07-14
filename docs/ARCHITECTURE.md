@@ -153,6 +153,12 @@ visible text (ANSI escapes and OSC links stripped) so the sidecar matches the pi
 Markdown and HTML sidecars escape user-controlled filenames, image names, and source in
 their respective syntax contexts before producing README or web embed blocks.
 
+**Batch recursion.** `vitrine batch <folder> --out <folder>` remains top-level by
+default for backward compatibility. `--recursive` opts into a full nested walk and
+mirrors each input file's relative path under the output folder, so
+`docs/examples/A.swift` becomes `out/docs/examples/A.png` (plus sidecars, when
+requested) instead of colliding with another `A.swift` elsewhere in the tree.
+
 **Local only.** Rendering needs no network, screen recording, or Accessibility — it is
 the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it
 has no entitlements; it reads only the input file you name and writes only the output

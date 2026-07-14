@@ -83,11 +83,18 @@ struct CLIAutomationTests {
 
     @Test func parsesTheBatchCommandAndItsStyleFlags() throws {
         let options = try CLIArguments.parse(
-            ["batch", "in-dir", "--out", "out-dir", "--theme", "dracula"])
+            ["batch", "in-dir", "--out", "out-dir", "--theme", "dracula", "--recursive"])
         #expect(options.command == .batch)
         #expect(options.inputPath == "in-dir")
         #expect(options.outputPath == "out-dir")
         #expect(options.themeID == "dracula")
+        #expect(options.recursiveBatch)
+    }
+
+    @Test func recursiveIsBatchOnly() {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine render with --recursive.")) {
+            try CLIArguments.parse(["render", "in.swift", "--out", "out.png", "--recursive"])
+        }
     }
 
     @Test func batchRendersEveryTextFileInTheFolder() throws {
@@ -110,6 +117,43 @@ struct CLIAutomationTests {
             FileManager.default.fileExists(atPath: output.appendingPathComponent("A.png").path))
         #expect(
             FileManager.default.fileExists(atPath: output.appendingPathComponent("b.png").path))
+    }
+
+    @Test func batchCanRenderNestedFoldersRecursively() throws {
+        let input = tempDirectory()
+        let output = tempDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: input)
+            try? FileManager.default.removeItem(at: output)
+        }
+
+        let docs = input.appendingPathComponent("docs", isDirectory: true)
+        let scripts = input.appendingPathComponent("scripts", isDirectory: true)
+        try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
+        try "let title = \"Docs\"".write(
+            to: docs.appendingPathComponent("Sample.swift"), atomically: true, encoding: .utf8)
+        try "print('script')\n".write(
+            to: scripts.appendingPathComponent("Sample.py"), atomically: true, encoding: .utf8)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--recursive", "--sidecars", "text",
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Rendered 2 image"))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: output.appendingPathComponent("docs/Sample.png").path))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: output.appendingPathComponent("docs/Sample.txt").path))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: output.appendingPathComponent("scripts/Sample.png").path))
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: output.appendingPathComponent("Sample.png").path))
     }
 
     @Test func proRequiredReportsAClearMessageAndFailureExitCode() {

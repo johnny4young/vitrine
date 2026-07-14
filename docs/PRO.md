@@ -93,7 +93,8 @@ In-process surfaces gate on `Entitlements.shared.isUnlocked(.automation)`:
 (→ `.failed`, injectable for tests). The CLI is out-of-process: `main.swift` gates at the
 boundary via `CLIEntitlement.isProUnlocked()` (which verifies the signed token and honors the
 Debug bypass) before dispatching `render`/`batch`, so `CLIRenderer.run`/`runBatch` stay ungated
-and fully testable. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder.
+and fully testable. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
+`--recursive` opts into nested folders while preserving their relative output paths.
 
 ## Build flags & local unlock
 
