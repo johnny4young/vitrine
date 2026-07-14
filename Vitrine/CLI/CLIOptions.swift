@@ -50,6 +50,12 @@ struct CLIOptions: Equatable {
     /// explicit scale is given, the preset's recommended scale is used, mirroring the
     /// GUI's "preset seeds the scale, an explicit value overrides it" rule (CS-020).
     var scale: Int?
+    /// Optional font-size override, in points. Uses the same bounds as the editor's
+    /// Style pane.
+    var fontSize: Double?
+    /// Optional canvas-padding override, in points. Uses the same bounds as the editor's
+    /// Style pane.
+    var padding: Double?
     /// An explicit terminal reconstruction width (columns), or `nil` to infer it from
     /// the captured output. Only meaningful for `--language terminal`; set by `vgrab -w`
     /// so a known-width capture wraps exactly as it did in the live terminal (CS-070).
@@ -77,6 +83,12 @@ struct CLIOptions: Equatable {
     var metadataCaption: String?
     /// Whether to show the language badge in the metadata header.
     var showLanguageBadge: Bool = false
+    /// Optional line-number override. Nil preserves the app/preset default.
+    var showLineNumbers: Bool?
+    /// Optional window-chrome override. Nil preserves the app/preset default.
+    var showChrome: Bool?
+    /// Optional drop-shadow override. Nil preserves the app/preset default.
+    var showShadow: Bool?
 
     /// Read the source from standard input instead of a file (e.g.
     /// `some-command | vitrine render --stdin`), so the language is inferred from the
@@ -124,8 +136,13 @@ struct CLIOptions: Equatable {
         config.code = code
         config.language = language
         config.terminalColumns = terminalColumns
+        if let fontSize { config.fontSize = fontSize }
+        if let padding { config.padding = padding }
         if let wrapColumns { config.wrapColumns = wrapColumns }
         if let windowTitle { config.windowTitle = windowTitle }
+        if let showLineNumbers { config.showLineNumbers = showLineNumbers }
+        if let showChrome { config.showChrome = showChrome }
+        if let showShadow { config.showShadow = showShadow }
         config.metadata = SnapshotMetadata(
             filename: metadataFilename,
             title: metadataTitle,
