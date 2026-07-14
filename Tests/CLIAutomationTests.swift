@@ -122,7 +122,7 @@ struct CLIAutomationTests {
             [
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
                 "--recursive", "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
-                "--include-ext", ".swift,md", "--exclude-ext", "tmp",
+                "--manifest", "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
             ])
         #expect(options.command == .batch)
         #expect(options.quiet)
@@ -132,6 +132,7 @@ struct CLIAutomationTests {
         #expect(options.recursiveBatch)
         #expect(options.failOnSkipped)
         #expect(options.skippedReportPath == "skipped.json")
+        #expect(options.batchManifestPath == "manifest.json")
         #expect(options.dryRunBatch)
         #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
         #expect(options.batchExcludeExtensions == Set(["tmp"]))
@@ -160,6 +161,14 @@ struct CLIAutomationTests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "--out", "out.png", "--skipped-report", "skipped.json",
+            ])
+        }
+    }
+
+    @Test func manifestIsBatchOnly() {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine render with --manifest.")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "out.png", "--manifest", "manifest.json",
             ])
         }
     }
@@ -295,6 +304,67 @@ struct CLIAutomationTests {
         let decoded = try #require(
             JSONSerialization.jsonObject(with: Data(contentsOf: report)) as? [[String: String]])
         #expect(decoded == [["path": "Blob.bin", "reason": "not readable text"]])
+    }
+
+    @Test func batchManifestListsRenderedOutputsWithRelativePathsAndDimensions() throws {
+        let input = tempDirectory()
+        let output = tempDirectory()
+        let manifest = tempDirectory().appendingPathComponent("manifest.json")
+        defer {
+            try? FileManager.default.removeItem(at: input)
+            try? FileManager.default.removeItem(at: output)
+            try? FileManager.default.removeItem(at: manifest.deletingLastPathComponent())
+        }
+        let docs = input.appendingPathComponent("docs", isDirectory: true)
+        try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
+        try "let ok = true\n".write(
+            to: docs.appendingPathComponent("Ok.swift"), atomically: true, encoding: .utf8)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--recursive", "--manifest", manifest.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Rendered 1 image"))
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
+        let entry = try #require(decoded.first)
+        #expect(entry["input"] as? String == "docs/Ok.swift")
+        #expect(entry["output"] as? String == "docs/Ok.png")
+        #expect(entry["language"] as? String == "swift")
+        #expect(entry["format"] as? String == "png")
+        #expect(entry["status"] as? String == "rendered")
+        #expect((entry["width"] as? Int ?? 0) > 0)
+        #expect((entry["height"] as? Int ?? 0) > 0)
+    }
+
+    @Test func batchDryRunManifestListsPlannedOutputsWithoutWritingImages() throws {
+        let root = tempDirectory()
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("out", isDirectory: true)
+        let manifest = root.appendingPathComponent("manifest.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        try "print('planned')\n".write(
+            to: input.appendingPathComponent("Planned.py"), atomically: true, encoding: .utf8)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--dry-run", "--manifest", manifest.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Dry run: would render 1 image"))
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
+        let entry = try #require(decoded.first)
+        #expect(entry["input"] as? String == "Planned.py")
+        #expect(entry["output"] as? String == "Planned.png")
+        #expect(entry["language"] as? String == "python")
+        #expect(entry["status"] as? String == "planned")
+        #expect(entry["width"] == nil)
+        #expect(entry["height"] == nil)
     }
 
     @Test func batchExtensionFiltersAreAppliedBeforeLoading() throws {
