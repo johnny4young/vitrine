@@ -363,6 +363,8 @@ vitrine render snippet.swift --out compact.png --font-size 12 --padding 24 --no-
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render snippet.swift --out card.png --sidecars all
 vitrine render input.swift --out image.png --quiet
+vitrine list themes
+vitrine list languages --json
 vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift,md
 vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --exclude-ext tmp \
   --sidecars all --fail-on-skipped --skipped-report docs/cards/skipped.json
@@ -383,7 +385,8 @@ inputs without writing images or sidecars. `--include-ext <list>` and
 `--exclude-ext <list>` let docs pipelines pre-filter known source extensions before
 loading files. Add `--fail-on-skipped` when CI should fail if any unreadable or non-text
 file was skipped, and `--skipped-report <json>` to write a parseable skipped-files
-artifact.
+artifact. `vitrine list <themes|languages|presets> [--json]` prints the local catalog
+ids accepted by those flags so scripts can discover them without scraping docs.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)

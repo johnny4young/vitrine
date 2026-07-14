@@ -49,7 +49,7 @@ nonisolated enum CLIError: Error, Equatable {
         case .helpRequested:
             CLIUsage.text
         case .unknownCommand(let command):
-            "Unknown command \"\(command)\". The commands are \"render\" and \"batch\"."
+            "Unknown command \"\(command)\". The commands are \"render\", \"batch\", \"list\", and \"shell-init\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
         case .missingValue(let flag):
@@ -92,10 +92,11 @@ nonisolated enum CLIError: Error, Equatable {
 /// Parses `vitrine` command-line arguments into a `CLIOptions` (CS-033).
 ///
 /// The grammar is deliberately tiny and dependency-free (no third-party arg parser):
-/// a single `render` subcommand, one positional input path, a required `--out`, and
-/// a handful of `--flag value` options plus the boolean `--transparent`. Keeping it
-/// hand-rolled means the CLI adds no new package to the app and the parser is a pure,
-/// synchronous function that is trivial to unit-test.
+/// a `render` or `batch` subcommand, one positional input path/folder, a command-specific
+/// `--out` requirement, and a small set of boolean / `--flag value` options. Pure
+/// metadata commands such as `list` and `shell-init` are handled before this parser so
+/// they can run without AppKit or the PRO render gate. Keeping the parser hand-rolled
+/// means the CLI adds no new package to the app and remains straightforward to unit-test.
 ///
 /// Unknown flags, missing values, and bad enum/number values all throw a specific
 /// `CLIError` so a docs/automation pipeline fails loudly with a clear message instead
@@ -547,7 +548,7 @@ enum CLIArguments {
     }
 }
 
-/// The `vitrine render` usage text, shown for `--help` and on a usage error.
+/// The `vitrine` usage text, shown for `--help` and on a usage error.
 ///
 /// `nonisolated` (a pure static string) so `CLIError.message` — itself nonisolated —
 /// can compose it, and so the executable and tests can read it from any context.
@@ -560,6 +561,7 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --copy [options]
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
+          vitrine list <themes|languages|presets> [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
 
         OPTIONS:
@@ -605,6 +607,7 @@ nonisolated enum CLIUsage {
                                  extensions (for example swift,md).
           --exclude-ext <list>   Batch only: ignore these comma-separated extensions
                                  before loading files.
+          --json                 List only: print the catalog as JSON.
           --text-sidecar         Also write a .txt next to --out with the source as
                                  selectable text (terminal escapes stripped).
           --markdown-sidecar     Also write a .md next to --out: the image reference

@@ -22,6 +22,11 @@ import Foundation
 /// `main.swift` top-level code runs on the main actor under the module's
 /// MainActor-default isolation, so the `@MainActor` renderer is called directly.
 
+/// Writes a line to standard error without buffering surprises.
+func printError(_ message: String) {
+    FileHandle.standardError.write(Data((message + "\n").utf8))
+}
+
 // `shell-init` only prints the shell integration text — no rendering, so it needs
 // neither AppKit nor the PRO gate. Handle it before anything else and exit.
 let rawArguments = Array(CommandLine.arguments.dropFirst())
@@ -49,6 +54,32 @@ if rawArguments.first == "shell-init" {
     }
 }
 
+// Catalog listing is also pure metadata: it prints the local ids accepted by the
+// renderer options, so it should not initialize AppKit or require the PRO render gate.
+if rawArguments.first == "list" {
+    switch CLICatalog.invocation(for: Array(rawArguments.dropFirst())) {
+    case .help:
+        print(CLICatalog.usage)
+        exit(0)
+    case .listing(let catalog, let format):
+        print(CLICatalog.output(for: catalog, format: format), terminator: "")
+        exit(0)
+    case .unknownCatalog(let name):
+        printError(
+            "error: unknown catalog \"\(name)\". Use themes, languages, or presets.\n\n"
+                + CLICatalog.usage)
+        exit(2)
+    case .unknownFlag(let flag):
+        printError("error: unknown list option \"\(flag)\".\n\n" + CLICatalog.usage)
+        exit(2)
+    case .extraArguments(let extras):
+        printError(
+            "error: unexpected argument(s) \"\(extras.joined(separator: " "))\" after list.\n\n"
+                + CLICatalog.usage)
+        exit(2)
+    }
+}
+
 // Bring up the shared application as a background accessory: this initializes AppKit
 // enough for `ImageRenderer`/Highlightr without showing a Dock icon or menu bar.
 let application = NSApplication.shared
@@ -58,11 +89,6 @@ application.setActivationPolicy(.accessory)
 // default font (JetBrains Mono) and every other bundled family render exactly as in
 // the GUI. The `Fonts` directory is copied into the build output beside the binary.
 CLIFontRegistration.registerBundledFonts(in: CLIEnvironment.bundledFontsDirectory)
-
-/// Writes a line to standard error without buffering surprises.
-func printError(_ message: String) {
-    FileHandle.standardError.write(Data((message + "\n").utf8))
-}
 
 do {
     let options = try CLIArguments.parse(Array(CommandLine.arguments.dropFirst()))

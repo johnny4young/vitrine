@@ -79,6 +79,42 @@ struct CLIAutomationTests {
             "the CLI env bypass must be inside #if DEBUG so it never ships")
     }
 
+    // MARK: - Catalog listing
+
+    @Test func catalogListInvocationAcceptsTextJsonAndSingularAliases() {
+        #expect(CLICatalog.invocation(for: ["themes"]) == .listing(.themes, format: .text))
+        #expect(
+            CLICatalog.invocation(for: ["theme", "--json"]) == .listing(.themes, format: .json))
+        #expect(
+            CLICatalog.invocation(for: ["--json", "language"])
+                == .listing(.languages, format: .json))
+        #expect(CLICatalog.invocation(for: ["preset"]) == .listing(.presets, format: .text))
+        #expect(CLICatalog.invocation(for: []) == .help)
+    }
+
+    @Test func catalogListRejectsUnknownTargetsFlagsAndExtraArguments() {
+        #expect(CLICatalog.invocation(for: ["fonts"]) == .unknownCatalog("fonts"))
+        #expect(CLICatalog.invocation(for: ["themes", "--bad"]) == .unknownFlag("--bad"))
+        #expect(
+            CLICatalog.invocation(for: ["themes", "languages"]) == .extraArguments(["languages"]))
+    }
+
+    @Test func catalogListPrintsStableTextAndJsonFromTheModelCatalogs() throws {
+        let themeText = CLICatalog.output(for: .themes, format: .text)
+        #expect(themeText.contains("dracula\tDracula\n"))
+        #expect(themeText.contains("one-dark\tOne Dark\n"))
+
+        let presetText = CLICatalog.output(for: .presets, format: .text)
+        #expect(presetText.contains("opengraph\tOpenGraph 1200×630\n"))
+        #expect(presetText.contains("transparent-slide\tTransparent Slide\n"))
+
+        let data = Data(CLICatalog.output(for: .languages, format: .json).utf8)
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: data) as? [[String: String]])
+        #expect(decoded.contains { $0["id"] == "swift" && $0["name"] == "Swift" })
+        #expect(decoded.contains { $0["id"] == "terminal" && $0["name"] == "Terminal" })
+    }
+
     // MARK: - Batch command
 
     @Test func parsesTheBatchCommandAndItsStyleFlags() throws {
