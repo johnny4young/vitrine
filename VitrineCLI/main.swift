@@ -81,7 +81,7 @@ do {
             ? try CLIRenderer.openInEditor(options) : try CLIRenderer.run(options)
     case .batch: summary = try CLIRenderer.runBatch(options)
     }
-    print(summary)
+    if !options.quiet { print(summary) }
     exit(0)
 } catch let error as CLIError {
     // `--help` is not a failure: print usage to stdout and exit cleanly.

@@ -127,6 +127,7 @@ enum CLIArguments {
 
         var inputPath: String?
         var outputPath: String?
+        var quiet = false
         var themeID: String?
         var languageID: String?
         var presetID: String?
@@ -173,6 +174,8 @@ enum CLIArguments {
                 throw CLIError.helpRequested
             case "--out", "-o":
                 outputPath = try value(for: token)
+            case "--quiet", "-q":
+                quiet = true
             case "--theme":
                 themeID = try resolveTheme(try value(for: token))
             case "--language", "--lang":
@@ -365,6 +368,7 @@ enum CLIArguments {
 
         return CLIOptions(
             command: mode,
+            quiet: quiet,
             inputPath: resolvedInput,
             outputPath: resolvedOutput,
             themeID: themeID,
@@ -560,6 +564,7 @@ nonisolated enum CLIUsage {
 
         OPTIONS:
           -o, --out <path>       Output image path (required unless --copy / --edit).
+          -q, --quiet            Suppress success output; errors still print.
           --copy                 Copy the rendered image to the clipboard.
           -e, --edit             Open the source in Vitrine's editor instead of
                                  rendering (no image is written; not with --copy/--out).

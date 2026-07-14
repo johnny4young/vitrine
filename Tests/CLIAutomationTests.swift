@@ -84,11 +84,12 @@ struct CLIAutomationTests {
     @Test func parsesTheBatchCommandAndItsStyleFlags() throws {
         let options = try CLIArguments.parse(
             [
-                "batch", "in-dir", "--out", "out-dir", "--theme", "dracula", "--recursive",
-                "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
+                "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
+                "--recursive", "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
                 "--include-ext", ".swift,md", "--exclude-ext", "tmp",
             ])
         #expect(options.command == .batch)
+        #expect(options.quiet)
         #expect(options.inputPath == "in-dir")
         #expect(options.outputPath == "out-dir")
         #expect(options.themeID == "dracula")
@@ -125,6 +126,18 @@ struct CLIAutomationTests {
                 "render", "in.swift", "--out", "out.png", "--skipped-report", "skipped.json",
             ])
         }
+    }
+
+    @Test func quietParsesForRenderAndBatch() throws {
+        let render = try CLIArguments.parse([
+            "render", "in.swift", "--out", "out.png", "--quiet",
+        ])
+        #expect(render.quiet)
+
+        let batch = try CLIArguments.parse([
+            "batch", "in-dir", "--out", "out-dir", "-q",
+        ])
+        #expect(batch.quiet)
     }
 
     @Test func dryRunIsBatchOnly() {

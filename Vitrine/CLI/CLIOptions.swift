@@ -28,6 +28,10 @@ struct CLIOptions: Equatable {
     /// in a folder into an output folder (CS-094).
     enum Command: String, Equatable, Sendable { case render, batch }
 
+    /// Suppresses the success summary on stdout. Errors and explicit skipped-file
+    /// diagnostics still go to stderr so automation logs stay actionable.
+    var quiet: Bool = false
+
     /// The source file to read the code from (a folder for `batch`). The language is
     /// inferred from its extension (falling back to content detection), matching the
     /// editor's drag-and-drop loader (CS-027/028).
