@@ -51,7 +51,7 @@ nonisolated enum CLIError: Error, Equatable {
         case .helpRequested:
             CLIUsage.text
         case .unknownCommand(let command):
-            "Unknown command \"\(command)\". The commands are \"render\", \"batch\", \"list\", and \"shell-init\"."
+            "Unknown command \"\(command)\". The commands are \"render\", \"batch\", \"list\", \"shell-init\", and \"version\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
         case .missingValue(let flag):
@@ -596,12 +596,15 @@ nonisolated enum CLIUsage {
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
           vitrine list <themes|languages|presets|formats|profiles> [--json]
+          vitrine --version [--json]
+          vitrine version [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
 
         OPTIONS:
           -o, --out <path>       Output image path (required unless --copy / --edit).
           -q, --quiet            Suppress success output; errors still print.
-          --json                 Print success output as JSON (not with --quiet).
+          --json                 Print render/batch success output or metadata as JSON
+                                 (render/batch: not with --quiet).
           --copy                 Copy the rendered image to the clipboard.
           -e, --edit             Open the source in Vitrine's editor instead of
                                  rendering (no image is written; not with --copy/--out).

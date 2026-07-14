@@ -190,6 +190,13 @@ initialization and before the PRO render gate because it reads only bundled meta
 so scripts can cheaply discover valid options without touching user files or rendering
 images.
 
+**Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
+prints the installed CLI version before AppKit initialization and before the PRO render
+gate. The helper prefers runtime bundle metadata, falls back to the enclosing app
+bundle when the CLI is launched from `Vitrine.app/Contents/MacOS`, and finally uses
+project-version constants guarded by tests against `project.yml` for development tool
+builds.
+
 **Local only.** Rendering needs no network, screen recording, or Accessibility — it is
 the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it
 has no entitlements; it reads only the input file you name and writes only the output
