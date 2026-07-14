@@ -89,6 +89,10 @@ struct CLIOptions: Equatable {
     var showChrome: Bool?
     /// Optional drop-shadow override. Nil preserves the app/preset default.
     var showShadow: Bool?
+    /// For `batch`, walk nested input folders and preserve their relative paths under
+    /// the output folder. Off by default so existing batch jobs keep their top-level
+    /// behavior unless they opt in.
+    var recursiveBatch: Bool = false
 
     /// Read the source from standard input instead of a file (e.g.
     /// `some-command | vitrine render --stdin`), so the language is inferred from the

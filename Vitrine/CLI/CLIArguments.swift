@@ -140,6 +140,7 @@ enum CLIArguments {
         var showLineNumbers: Bool?
         var showChrome: Bool?
         var showShadow: Bool?
+        var recursiveBatch = false
         var readStdin = false
         var copyToClipboard = false
         var openInEditor = false
@@ -205,6 +206,8 @@ enum CLIArguments {
                 showShadow = true
             case "--no-shadow":
                 showShadow = false
+            case "--recursive":
+                recursiveBatch = true
             case "--stdin":
                 readStdin = true
             case "--copy":
@@ -241,6 +244,9 @@ enum CLIArguments {
         if readStdin, let inputPath {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --stdin with input file \"\(inputPath)\".")
+        }
+        if mode == .render, recursiveBatch {
+            throw CLIError.incompatibleOptions("Cannot combine render with --recursive.")
         }
         let metadataHeaderRequested =
             windowTitle != nil || metadataFilename != nil
@@ -342,6 +348,7 @@ enum CLIArguments {
             showLineNumbers: showLineNumbers,
             showChrome: showChrome,
             showShadow: showShadow,
+            recursiveBatch: recursiveBatch,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
@@ -518,6 +525,8 @@ nonisolated enum CLIUsage {
           --no-line-numbers      Hide the line-number gutter.
           --chrome / --no-chrome Show or hide the rendered window chrome.
           --shadow / --no-shadow Show or hide the rendered drop shadow.
+          --recursive            Batch only: include nested folders and preserve
+                                 relative output paths.
           --text-sidecar         Also write a .txt next to --out with the source as
                                  selectable text (terminal escapes stripped).
           --markdown-sidecar     Also write a .md next to --out: the image reference
