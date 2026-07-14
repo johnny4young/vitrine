@@ -18,6 +18,14 @@ import OSLog
 /// or Accessibility — code rendering is fully local.
 @MainActor
 enum CLIRenderer {
+    /// One skipped input in the optional batch JSON report.
+    private struct SkippedReportEntry: Encodable, Equatable {
+        /// Slash-separated input path relative to the batch input folder.
+        var path: String
+        /// Stable user-facing reason matching the stderr line.
+        var reason: String
+    }
+
     /// Runs the full pipeline for `options` and returns a human-readable success
     /// line (the path written and the pixel dimensions), or throws a `CLIError`.
     ///
@@ -101,10 +109,12 @@ enum CLIRenderer {
     /// produces images for the code in it; the summary reports how many were skipped.
     /// `--recursive` walks nested folders and preserves their relative paths under the
     /// output directory. `--fail-on-skipped` preserves successful renders but converts
-    /// any skipped file into a failing CLI exit for strict CI/docs pipelines. Each file
-    /// goes through the same render-and-write path as `vitrine render`, so a batched
-    /// image is pixel-identical to rendering that file alone with the same options.
-    /// `directoryLister` is injected so the top-level file-discovery half is
+    /// any skipped file into a failing CLI exit for strict CI/docs pipelines.
+    /// `--skipped-report` writes a local JSON report before any strict failure is
+    /// thrown. Each file goes through the same render-and-write path as `vitrine
+    /// render`, so a batched image is pixel-identical to rendering that file alone
+    /// with the same options. `directoryLister` is injected so the top-level
+    /// file-discovery half is
     /// unit-testable without a real directory tree.
     @discardableResult
     static func runBatch(
@@ -133,6 +143,7 @@ enum CLIRenderer {
         let ext = options.format.rawValue
         var rendered = 0
         var skipped = 0
+        var skippedReport: [SkippedReportEntry] = []
         for file in files {
             let loaded: FileInputLoader.LoadedFile
             do {
@@ -142,7 +153,10 @@ enum CLIRenderer {
                 // but the automation user gets the filename and reason on stderr, so
                 // "skipped 3" in the summary is diagnosable without re-running.
                 skipped += 1
-                reportSkipped(file, reason: "not readable text")
+                let reason = "not readable text"
+                skippedReport.append(
+                    skippedReportEntry(for: file, under: inputDirectory, reason: reason))
+                reportSkipped(file, reason: reason)
                 continue
             }
             let language = options.language ?? loaded.language
@@ -157,7 +171,10 @@ enum CLIRenderer {
                 rendered += 1
             } catch {
                 skipped += 1
-                reportSkipped(file, reason: "render or write failed")
+                let reason = "render or write failed"
+                skippedReport.append(
+                    skippedReportEntry(for: file, under: inputDirectory, reason: reason))
+                reportSkipped(file, reason: reason)
             }
         }
 
@@ -166,6 +183,7 @@ enum CLIRenderer {
         )
         let summary =
             "Rendered \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
+        try writeSkippedReport(skippedReport, path: options.skippedReportPath)
         if skipped > 0, options.failOnSkipped {
             throw CLIError.batchSkipped(rendered: rendered, skipped: skipped)
         }
@@ -236,6 +254,45 @@ enum CLIRenderer {
         let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
         guard filePath.hasPrefix(prefix) else { return file.lastPathComponent }
         return String(filePath.dropFirst(prefix.count))
+    }
+
+    /// Builds the manifest entry for one skipped file using the same relative-path
+    /// logic as recursive output mirroring, so the report is stable across machines.
+    private static func skippedReportEntry(
+        for file: URL,
+        under inputDirectory: URL,
+        reason: String
+    ) -> SkippedReportEntry {
+        SkippedReportEntry(
+            path: batchRelativePath(for: file, under: inputDirectory),
+            reason: reason)
+    }
+
+    /// Writes the optional skipped-files report. An empty requested report is still a
+    /// useful CI artifact (`[]`) because it proves the batch scanned without omissions.
+    private static func writeSkippedReport(
+        _ skippedReport: [SkippedReportEntry],
+        path: String?
+    ) throws {
+        guard let path, !path.isEmpty else { return }
+        let url = URL(fileURLWithPath: path)
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data: Data
+            if skippedReport.isEmpty {
+                data = Data("[]\n".utf8)
+            } else {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                var encoded = try encoder.encode(skippedReport)
+                encoded.append(0x0A)
+                data = encoded
+            }
+            try data.write(to: url, options: .atomic)
+        } catch {
+            throw CLIError.writeFailed(path: path)
+        }
     }
 
     /// Names a skipped batch file (and why) on stderr. The user chose the input

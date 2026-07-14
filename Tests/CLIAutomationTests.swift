@@ -85,7 +85,7 @@ struct CLIAutomationTests {
         let options = try CLIArguments.parse(
             [
                 "batch", "in-dir", "--out", "out-dir", "--theme", "dracula", "--recursive",
-                "--fail-on-skipped",
+                "--fail-on-skipped", "--skipped-report", "skipped.json",
             ])
         #expect(options.command == .batch)
         #expect(options.inputPath == "in-dir")
@@ -93,6 +93,7 @@ struct CLIAutomationTests {
         #expect(options.themeID == "dracula")
         #expect(options.recursiveBatch)
         #expect(options.failOnSkipped)
+        #expect(options.skippedReportPath == "skipped.json")
     }
 
     @Test func recursiveIsBatchOnly() {
@@ -108,6 +109,16 @@ struct CLIAutomationTests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "--out", "out.png", "--fail-on-skipped",
+            ])
+        }
+    }
+
+    @Test func skippedReportIsBatchOnly() {
+        #expect(
+            throws: CLIError.incompatibleOptions("Cannot combine render with --skipped-report.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "out.png", "--skipped-report", "skipped.json",
             ])
         }
     }
@@ -171,12 +182,14 @@ struct CLIAutomationTests {
                 atPath: output.appendingPathComponent("Sample.png").path))
     }
 
-    @Test func batchCanFailWhenAnyFileIsSkipped() throws {
+    @Test func batchCanFailWhenAnyFileIsSkippedAndStillWritesASkippedReport() throws {
         let input = tempDirectory()
         let output = tempDirectory()
+        let report = tempDirectory().appendingPathComponent("skipped.json")
         defer {
             try? FileManager.default.removeItem(at: input)
             try? FileManager.default.removeItem(at: output)
+            try? FileManager.default.removeItem(at: report.deletingLastPathComponent())
         }
         try "let ok = true\n".write(
             to: input.appendingPathComponent("Ok.swift"), atomically: true, encoding: .utf8)
@@ -184,6 +197,7 @@ struct CLIAutomationTests {
 
         let options = try CLIArguments.parse([
             "batch", input.path, "--out", output.path, "--fail-on-skipped",
+            "--skipped-report", report.path,
         ])
 
         #expect(throws: CLIError.batchSkipped(rendered: 1, skipped: 1)) {
@@ -191,6 +205,10 @@ struct CLIAutomationTests {
         }
         #expect(
             FileManager.default.fileExists(atPath: output.appendingPathComponent("Ok.png").path))
+        let data = try Data(contentsOf: report)
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: data) as? [[String: String]])
+        #expect(decoded == [["path": "Blob.bin", "reason": "not readable text"]])
     }
 
     @Test func proRequiredReportsAClearMessageAndFailureExitCode() {

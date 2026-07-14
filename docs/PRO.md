@@ -96,7 +96,8 @@ Debug bypass) before dispatching `render`/`batch`, so `CLIRenderer.run`/`runBatc
 and fully testable. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
 `--recursive` opts into nested folders while preserving their relative output paths, and
 `--fail-on-skipped` turns any skipped file into a non-zero automation exit after the
-readable files are rendered.
+readable files are rendered. `--skipped-report <json>` can be paired with either mode
+to save a local skipped-files artifact for CI upload.
 
 ## Build flags & local unlock
 
