@@ -148,7 +148,7 @@ enum CLIArguments {
         var padding: Double?
         var terminalColumns: Int?
         var wrapColumns: Int?
-        var format: ExportFormat = .png
+        var explicitFormat: ExportFormat?
         var profile: ColorProfile = .fallback
         var transparent = false
         var noOverwrite = false
@@ -211,7 +211,7 @@ enum CLIArguments {
             case "--wrap-columns", "--wrap":
                 wrapColumns = try resolveWrapColumns(try value(for: token), flag: token)
             case "--format":
-                format = try resolveFormat(try value(for: token))
+                explicitFormat = try resolveFormat(try value(for: token))
             case "--profile":
                 profile = try resolveProfile(try value(for: token))
             case "--transparent":
@@ -408,6 +408,9 @@ enum CLIArguments {
             resolvedOutput = outputPath
         }
 
+        let resolvedFormat = try resolveFormat(
+            explicitFormat, command: mode, outputPath: resolvedOutput)
+
         return CLIOptions(
             command: mode,
             quiet: quiet,
@@ -422,7 +425,7 @@ enum CLIArguments {
             padding: padding,
             terminalColumns: terminalColumns,
             wrapColumns: wrapColumns,
-            format: format,
+            format: resolvedFormat,
             profile: profile,
             transparent: transparent,
             noOverwrite: noOverwrite,
@@ -522,6 +525,35 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return value
+    }
+
+    /// Resolves the output format for a command after all flags are parsed.
+    ///
+    /// A single-file `render` can infer the format from a known output extension, which
+    /// keeps `vitrine render source.swift --out card.pdf` from writing PNG bytes into a
+    /// `.pdf` path. If the user passes both `--format` and a known extension, they must
+    /// agree so automation never produces misleading artifacts. `batch` writes into a
+    /// folder and derives each output extension from the chosen format, so its directory
+    /// name is intentionally ignored here.
+    private static func resolveFormat(
+        _ explicitFormat: ExportFormat?, command: CLIOptions.Command, outputPath: String
+    ) throws -> ExportFormat {
+        guard command == .render, !outputPath.isEmpty else { return explicitFormat ?? .png }
+
+        let outputExtension = URL(fileURLWithPath: outputPath).pathExtension.lowercased()
+        guard let extensionFormat = ExportFormat(rawValue: outputExtension) else {
+            return explicitFormat ?? .png
+        }
+
+        if let explicitFormat {
+            guard explicitFormat == extensionFormat else {
+                throw CLIError.incompatibleOptions(
+                    "Output extension .\(outputExtension) does not match --format \(explicitFormat.rawValue)."
+                )
+            }
+            return explicitFormat
+        }
+        return extensionFormat
     }
 
     /// Parses the output format (`png`/`pdf`/`heic`).
