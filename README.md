@@ -361,6 +361,7 @@ vitrine render notes.go   --out clear.png --transparent --scale 3
 vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font-size 12 --padding 24 --no-shadow
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
+vitrine render snippet.swift --out card.png --markdown-sidecar --html-sidecar
 vitrine render --help
 ```
 
@@ -369,7 +370,9 @@ Defaults match the app (One Dark, JetBrains Mono, aurora background); `--theme`,
 (`srgb`/`p3`), `--transparent`, style controls (`--font-size`, `--padding`,
 `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--no-shadow`), and the header
 controls (`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`)
-override individual choices.
+override individual choices. `--text-sidecar`, `--markdown-sidecar`, and
+`--html-sidecar` write copyable source beside the image for accessible docs, README,
+or web embeds.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)

@@ -145,6 +145,7 @@ enum CLIArguments {
         var openInEditor = false
         var textSidecar = false
         var markdownSidecar = false
+        var htmlSidecar = false
 
         /// Pops the value that must follow a `--flag`, or throws if it is absent.
         func value(for flag: String) throws -> String {
@@ -214,6 +215,8 @@ enum CLIArguments {
                 textSidecar = true
             case "--markdown-sidecar":
                 markdownSidecar = true
+            case "--html-sidecar":
+                htmlSidecar = true
             default:
                 if token.hasPrefix("-") {
                     throw CLIError.unknownFlag(token)
@@ -257,6 +260,10 @@ enum CLIArguments {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --markdown-sidecar.")
             }
+            if htmlSidecar {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with --html-sidecar.")
+            }
             if metadataHeaderRequested {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with metadata header options.")
@@ -279,6 +286,10 @@ enum CLIArguments {
         if markdownSidecar, outputPath == nil {
             throw CLIError.incompatibleOptions(
                 "--markdown-sidecar needs an --out path to write beside.")
+        }
+        if htmlSidecar, outputPath == nil {
+            throw CLIError.incompatibleOptions(
+                "--html-sidecar needs an --out path to write beside.")
         }
         // Input is a file unless reading stdin; output is required unless copying the
         // image to the clipboard or handing it to the editor (`--edit`), neither of
@@ -330,7 +341,8 @@ enum CLIArguments {
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
             textSidecar: textSidecar,
-            markdownSidecar: markdownSidecar
+            markdownSidecar: markdownSidecar,
+            htmlSidecar: htmlSidecar
         )
     }
 
@@ -477,6 +489,8 @@ nonisolated enum CLIUsage {
           --markdown-sidecar     Also write a .md next to --out: the image reference
                                  plus the source in a fenced code block, ready to
                                  paste into a README or post.
+          --html-sidecar         Also write a .html next to --out: the image embed
+                                 plus escaped source in a <pre><code> block.
           -h, --help             Show this help.
 
         Code rendering is fully local: it never needs the network, screen recording,
