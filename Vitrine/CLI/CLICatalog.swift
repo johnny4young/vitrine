@@ -1,6 +1,7 @@
 import Foundation
 
-/// Lists the local CLI catalogs used to validate themes, languages, and export presets.
+/// Lists the local CLI catalogs used to validate themes, languages, export presets, formats,
+/// and color profiles.
 ///
 /// `vitrine list` is intentionally separate from `CLIArguments`: it does not render,
 /// read user files, or need AppKit. The executable handles it before the PRO render
@@ -12,16 +13,19 @@ enum CLICatalog {
         case themes
         case languages
         case presets
+        case formats
+        case profiles
 
         init?(argument: String) {
             switch argument.lowercased() {
             case "theme", "themes": self = .themes
             case "language", "languages": self = .languages
             case "preset", "presets": self = .presets
+            case "format", "formats": self = .formats
+            case "profile", "profiles": self = .profiles
             default: return nil
             }
         }
-
     }
 
     enum Format: Equatable, Sendable {
@@ -43,9 +47,9 @@ enum CLICatalog {
     }
 
     static let usage = """
-        vitrine list <themes|languages|presets> [--json]
+        vitrine list <themes|languages|presets|formats|profiles> [--json]
 
-        Prints the local ids accepted by --theme, --language, and --preset.
+        Prints the local ids accepted by --theme, --language, --preset, --format, and --profile.
         Use --json for a machine-readable array of {id, name} entries.
         """
 
@@ -100,6 +104,13 @@ enum CLICatalog {
             Language.allCases.map { Entry(id: $0.rawValue, name: $0.displayName) }
         case .presets:
             ExportPreset.all.map { Entry(id: $0.id, name: $0.displayName) }
+        case .formats:
+            ExportFormat.allCases.map { Entry(id: $0.rawValue, name: $0.displayName) }
+        case .profiles:
+            [
+                Entry(id: "srgb", name: ColorProfile.sRGB.displayName),
+                Entry(id: "p3", name: ColorProfile.displayP3.displayName),
+            ]
         }
     }
 }

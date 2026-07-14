@@ -89,6 +89,8 @@ struct CLIAutomationTests {
             CLICatalog.invocation(for: ["--json", "language"])
                 == .listing(.languages, format: .json))
         #expect(CLICatalog.invocation(for: ["preset"]) == .listing(.presets, format: .text))
+        #expect(CLICatalog.invocation(for: ["format"]) == .listing(.formats, format: .text))
+        #expect(CLICatalog.invocation(for: ["profiles"]) == .listing(.profiles, format: .text))
         #expect(CLICatalog.invocation(for: []) == .help)
     }
 
@@ -108,11 +110,23 @@ struct CLIAutomationTests {
         #expect(presetText.contains("opengraph\tOpenGraph 1200×630\n"))
         #expect(presetText.contains("transparent-slide\tTransparent Slide\n"))
 
+        let formatText = CLICatalog.output(for: .formats, format: .text)
+        #expect(formatText == "png\tPNG\npdf\tPDF\nheic\tHEIC\n")
+
+        let profileText = CLICatalog.output(for: .profiles, format: .text)
+        #expect(profileText == "srgb\tsRGB\np3\tDisplay P3 (advanced)\n")
+
         let data = Data(CLICatalog.output(for: .languages, format: .json).utf8)
         let decoded = try #require(
             JSONSerialization.jsonObject(with: data) as? [[String: String]])
         #expect(decoded.contains { $0["id"] == "swift" && $0["name"] == "Swift" })
         #expect(decoded.contains { $0["id"] == "terminal" && $0["name"] == "Terminal" })
+
+        let profileData = Data(CLICatalog.output(for: .profiles, format: .json).utf8)
+        let profiles = try #require(
+            JSONSerialization.jsonObject(with: profileData) as? [[String: String]])
+        #expect(profiles.contains { $0["id"] == "srgb" && $0["name"] == "sRGB" })
+        #expect(profiles.contains { $0["id"] == "p3" && $0["name"] == "Display P3 (advanced)" })
     }
 
     // MARK: - Batch command
