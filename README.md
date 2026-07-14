@@ -358,14 +358,16 @@ make cli   # builds `vitrine` into DerivedData, next to its Fonts/ and Highlight
 vitrine render input.swift --out image.png
 vitrine render snippet.py --out card.png --theme dracula --preset opengraph
 vitrine render notes.go   --out clear.png --transparent --scale 3
+vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render --help
 ```
 
 Defaults match the app (One Dark, JetBrains Mono, aurora background); `--theme`,
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
-(`srgb`/`p3`), `--transparent`, and the header controls (`--window-title`,
-`--filename`, `--title`, `--caption`, `--language-badge`) override individual choices.
+(`srgb`/`p3`), `--transparent`, `--wrap-columns`, and the header controls
+(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`) override
+individual choices.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)

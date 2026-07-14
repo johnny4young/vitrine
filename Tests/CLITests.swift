@@ -111,6 +111,7 @@ struct CLITests {
             "--preset", "opengraph",
             "--scale", "3",
             "--terminal-width", "100",
+            "--wrap-columns", "88",
             "--format", "png",
             "--profile", "p3",
             "--transparent",
@@ -127,6 +128,7 @@ struct CLITests {
         #expect(options.presetID == "opengraph")
         #expect(options.scale == 3)
         #expect(options.terminalColumns == 100)
+        #expect(options.wrapColumns == 88)
         #expect(options.profile == .displayP3)
         #expect(options.transparent)
         #expect(options.windowTitle == "Release build")
@@ -147,6 +149,20 @@ struct CLITests {
             "render", "out.log", "-o", "o.png", "--terminal-width", "120",
         ])
         #expect(pinned.makeConfig(code: "", language: .terminal).terminalColumns == 120)
+    }
+
+    @Test func wrapColumnsDefaultsToNilAndFlowsIntoTheConfig() throws {
+        // Absent flag → size to content; present → use the same soft-wrap setting as
+        // the editor's "Wrap long lines" control.
+        let unwrapped = try CLIArguments.parse(["render", "snippet.swift", "-o", "o.png"])
+        #expect(unwrapped.wrapColumns == nil)
+        #expect(unwrapped.makeConfig(code: "", language: .swift).wrapColumns == nil)
+
+        let wrapped = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--wrap-columns", "96",
+        ])
+        #expect(wrapped.wrapColumns == 96)
+        #expect(wrapped.makeConfig(code: "", language: .swift).wrapColumns == 96)
     }
 
     @Test func metadataHeaderOptionsFlowIntoTheRenderedConfig() throws {
@@ -408,6 +424,15 @@ struct CLITests {
         }
     }
 
+    @Test func editRejectsWrapColumnsThatWouldBeIgnored() {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --edit with --wrap-columns."))
+        {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--wrap-columns", "80",
+            ])
+        }
+    }
+
     @Test func invalidValuesAreRejected() {
         #expect(throws: CLIError.invalidValue(flag: "--theme", value: "neon")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--theme", "neon"])
@@ -431,6 +456,19 @@ struct CLITests {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--terminal-width", "huge",
             ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--wrap-columns", value: "39")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--wrap-columns", "39",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--wrap-columns", value: "201")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--wrap-columns", "201",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--wrap", value: "wide")) {
+            try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--wrap", "wide"])
         }
     }
 
@@ -564,6 +602,33 @@ struct CLITests {
         // the contextual image needs more layout height than the same code alone.
         #expect(titled.height > plain.height)
         #expect(titled.width >= plain.width)
+    }
+
+    @Test func renderWithWrapColumnsNarrowsAndHeightensLongLines() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let longLine = "let message = \"\(String(repeating: "ship-", count: 90))\""
+        let input = try writeInput(longLine, named: "LongLine.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let wrappedOutput = directory.appendingPathComponent("wrapped.png").path
+
+        try CLIRenderer.run(
+            try CLIArguments.parse([
+                "render", input, "--out", plainOutput, "--scale", "1",
+            ]))
+        try CLIRenderer.run(
+            try CLIArguments.parse([
+                "render", input,
+                "--out", wrappedOutput,
+                "--scale", "1",
+                "--wrap-columns", "60",
+            ]))
+
+        let plain = try decodePNG(at: plainOutput)
+        let wrapped = try decodePNG(at: wrappedOutput)
+        #expect(wrapped.width < plain.width)
+        #expect(wrapped.height > plain.height)
     }
 
     @Test func textSidecarWritesPlainTextNextToImage() throws {
