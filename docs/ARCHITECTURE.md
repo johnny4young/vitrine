@@ -174,7 +174,9 @@ folder so the artifact stays machine-independent; dry runs only write this artif
 it is explicitly requested. `--manifest <json>` is the positive companion artifact: it
 writes the successfully rendered outputs (or `planned` outputs during `--dry-run`) with
 relative input/output paths, language ids, formats, and rendered dimensions when
-available.
+available. Same-stem inputs that would collide (`Widget.swift` and `Widget.ts` →
+`Widget.png`) are disambiguated only for that group by preserving the input extension,
+so non-colliding legacy output names stay unchanged.
 
 **Catalog discovery.** `vitrine list <themes|languages|presets|formats|profiles>
 [--json]` prints the same local catalog ids the parser validates for `--theme`,

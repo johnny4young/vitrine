@@ -381,6 +381,41 @@ struct CLIAutomationTests {
         #expect(entry["height"] == nil)
     }
 
+    @Test func batchManifestDisambiguatesSameStemOutputs() throws {
+        let root = tempDirectory()
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("out", isDirectory: true)
+        let manifest = root.appendingPathComponent("manifest.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        try "let value = 1\n".write(
+            to: input.appendingPathComponent("Widget.swift"), atomically: true, encoding: .utf8)
+        try "export const value = 1\n".write(
+            to: input.appendingPathComponent("Widget.ts"), atomically: true, encoding: .utf8)
+        try "print('solo')\n".write(
+            to: input.appendingPathComponent("Solo.py"), atomically: true, encoding: .utf8)
+        try Data([0x00, 0x01, 0x02]).write(to: input.appendingPathComponent("Solo.bin"))
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--dry-run", "--manifest", manifest.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Dry run: would render 3 images"))
+        #expect(summary.contains("skipped 1"))
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
+        let outputs = decoded.reduce(into: [String: String]()) { result, entry in
+            if let input = entry["input"] as? String, let output = entry["output"] as? String {
+                result[input] = output
+            }
+        }
+        #expect(outputs["Solo.py"] == "Solo.png")
+        #expect(outputs["Widget.swift"] == "Widget.swift.png")
+        #expect(outputs["Widget.ts"] == "Widget.ts.png")
+    }
+
     @Test func batchExtensionFiltersAreAppliedBeforeLoading() throws {
         let input = tempDirectory()
         let output = tempDirectory()
