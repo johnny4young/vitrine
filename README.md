@@ -364,6 +364,7 @@ vitrine render changelog.md --out release.png --title "Release notes" --language
 vitrine render snippet.swift --out card.png --sidecars all
 cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
 vitrine render input.swift --out image.png --quiet --no-overwrite
+vitrine render input.swift --out image.png --json --no-overwrite
 vitrine list themes
 vitrine list languages --json
 vitrine list formats
@@ -376,7 +377,8 @@ vitrine render --help
 ```
 
 Defaults match the app (One Dark, JetBrains Mono, aurora background); `--quiet`
-suppresses the success summary for scripts while leaving errors visible. `--theme`,
+suppresses the success summary for scripts while leaving errors visible, and `--json`
+prints `render`/`batch` success summaries as structured JSON. `--theme`,
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--transparent`, style controls (`--font-size`, `--padding`,
 `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--no-shadow`), and the header

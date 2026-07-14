@@ -137,7 +137,7 @@ struct CLIAutomationTests {
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
                 "--recursive", "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
                 "--manifest", "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
-                "--no-overwrite",
+                "--no-overwrite", "--json",
             ])
         #expect(options.command == .batch)
         #expect(options.quiet)
@@ -152,6 +152,7 @@ struct CLIAutomationTests {
         #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
         #expect(options.batchExcludeExtensions == Set(["tmp"]))
         #expect(options.noOverwrite)
+        #expect(options.jsonOutput)
     }
 
     @Test func recursiveIsBatchOnly() {
@@ -352,6 +353,35 @@ struct CLIAutomationTests {
         #expect(entry["status"] as? String == "rendered")
         #expect((entry["width"] as? Int ?? 0) > 0)
         #expect((entry["height"] as? Int ?? 0) > 0)
+    }
+
+    @Test func batchJsonSummaryReportsRenderedAndSkippedCounts() throws {
+        let root = tempDirectory()
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("out", isDirectory: true)
+        let report = root.appendingPathComponent("skipped.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        try "let ok = true\n".write(
+            to: input.appendingPathComponent("Ok.swift"), atomically: true, encoding: .utf8)
+        try Data([0x00, 0x01, 0x02]).write(to: input.appendingPathComponent("Blob.bin"))
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--json", "--skipped-report", report.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(summary.utf8)) as? [String: Any])
+        #expect(decoded["command"] as? String == "batch")
+        #expect(decoded["status"] as? String == "rendered")
+        #expect(decoded["outputDirectory"] as? String == output.path)
+        #expect(decoded["rendered"] as? Int == 1)
+        #expect(decoded["skipped"] as? Int == 1)
+        #expect(decoded["dryRun"] as? Bool == false)
+        #expect(decoded["skippedReport"] as? String == report.path)
+        #expect(decoded["manifest"] == nil)
     }
 
     @Test func batchDryRunManifestListsPlannedOutputsWithoutWritingImages() throws {

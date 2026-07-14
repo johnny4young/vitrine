@@ -74,6 +74,7 @@ struct CLITests {
         #expect(options.format == .png)
         #expect(options.profile == .sRGB)
         #expect(options.transparent == false)
+        #expect(options.jsonOutput == false)
     }
 
     @Test func defaultConfigMatchesTheAppDefaultConfig() throws {
@@ -118,6 +119,7 @@ struct CLITests {
             "--profile", "p3",
             "--transparent",
             "--no-overwrite",
+            "--json",
             "--window-title", "Release build",
             "--filename", "Sources/App.swift",
             "--title", "Launch checklist",
@@ -140,6 +142,7 @@ struct CLITests {
         #expect(options.profile == .displayP3)
         #expect(options.transparent)
         #expect(options.noOverwrite)
+        #expect(options.jsonOutput)
         #expect(options.windowTitle == "Release build")
         #expect(options.metadataFilename == "Sources/App.swift")
         #expect(options.metadataTitle == "Launch checklist")
@@ -730,6 +733,32 @@ struct CLITests {
         let image = try decodePNG(at: output)
         #expect(image.width > 0)
         #expect(image.height > 0)
+    }
+
+    @Test func renderJsonSummaryReportsOutputDimensionsAndSidecars() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let output = directory.appendingPathComponent("out.png")
+        let sidecar = directory.appendingPathComponent("out.txt")
+        let options = try CLIArguments.parse([
+            "render", input, "--out", output.path, "--json", "--text-sidecar",
+        ])
+
+        let summary = try CLIRenderer.run(options)
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(summary.utf8)) as? [String: Any])
+        #expect(decoded["command"] as? String == "render")
+        #expect(decoded["status"] as? String == "rendered")
+        #expect(decoded["output"] as? String == output.path)
+        #expect(decoded["format"] as? String == "png")
+        #expect(decoded["copied"] as? Bool == false)
+        #expect((decoded["width"] as? Int ?? 0) > 0)
+        #expect((decoded["height"] as? Int ?? 0) > 0)
+        #expect(decoded["sidecars"] as? [String] == [sidecar.path])
+        #expect(FileManager.default.fileExists(atPath: output.path))
+        #expect(FileManager.default.fileExists(atPath: sidecar.path))
     }
 
     @Test func renderWithMetadataHeaderAddsVisibleContext() throws {

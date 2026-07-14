@@ -51,6 +51,30 @@ enum CLIRenderer {
         var height: Int?
     }
 
+    /// Machine-readable success summary for a `render` invocation.
+    private struct RenderSummary: Encodable, Equatable {
+        var command = "render"
+        var status: String
+        var output: String?
+        var format: String?
+        var width: Int?
+        var height: Int?
+        var copied: Bool
+        var sidecars: [String]
+    }
+
+    /// Machine-readable success summary for a `batch` invocation.
+    private struct BatchSummary: Encodable, Equatable {
+        var command = "batch"
+        var status: String
+        var outputDirectory: String
+        var rendered: Int
+        var skipped: Int
+        var dryRun: Bool
+        var manifest: String?
+        var skippedReport: String?
+    }
+
     /// Runs the full pipeline for `options` and returns a human-readable success
     /// line (the path written and the pixel dimensions), or throws a `CLIError`.
     ///
@@ -88,9 +112,31 @@ enum CLIRenderer {
             Log.export.notice("CLI copied an image to the clipboard")
             if let outputURL = optionalOutputURL {
                 let dimensions = try renderAndWrite(config, options: options, to: outputURL)
+                if options.jsonOutput {
+                    return encodedJSON(
+                        RenderSummary(
+                            status: "copied_and_rendered",
+                            output: outputURL.path,
+                            format: options.format.rawValue,
+                            width: dimensions.width,
+                            height: dimensions.height,
+                            copied: true,
+                            sidecars: sidecarURLs(options, beside: outputURL).map(\.path)))
+                }
                 return
                     "Copied the image to the clipboard and wrote \(outputURL.path) "
                     + "(\(dimensions.width)×\(dimensions.height))\(sidecarNote(options, beside: outputURL))"
+            }
+            if options.jsonOutput {
+                return encodedJSON(
+                    RenderSummary(
+                        status: "copied",
+                        output: nil,
+                        format: options.format.rawValue,
+                        width: nil,
+                        height: nil,
+                        copied: true,
+                        sidecars: []))
             }
             return "Copied the image to the clipboard"
         }
@@ -100,6 +146,17 @@ enum CLIRenderer {
 
         Log.export.notice(
             "CLI rendered an image (\(options.format.rawValue, privacy: .public))")
+        if options.jsonOutput {
+            return encodedJSON(
+                RenderSummary(
+                    status: "rendered",
+                    output: outputURL.path,
+                    format: options.format.rawValue,
+                    width: dimensions.width,
+                    height: dimensions.height,
+                    copied: false,
+                    sidecars: sidecarURLs(options, beside: outputURL).map(\.path)))
+        }
         return
             "Rendered \(outputURL.path) "
             + "(\(dimensions.width)×\(dimensions.height))\(sidecarNote(options, beside: outputURL))"
@@ -129,6 +186,17 @@ enum CLIRenderer {
         let url = EditorHandoff.stage(content: loaded.text, language: language)
         guard open(url) else { throw CLIError.editorOpenFailed }
         Log.export.notice("CLI handed the source to the editor (--edit)")
+        if options.jsonOutput {
+            return encodedJSON(
+                RenderSummary(
+                    status: "opened_editor",
+                    output: nil,
+                    format: nil,
+                    width: nil,
+                    height: nil,
+                    copied: false,
+                    sidecars: []))
+        }
         return "Opened the captured output in Vitrine's editor."
     }
 
@@ -264,6 +332,17 @@ enum CLIRenderer {
         try writeBatchManifest(manifest, path: options.batchManifestPath)
         if skipped > 0, options.failOnSkipped {
             throw CLIError.batchSkipped(rendered: rendered, skipped: skipped)
+        }
+        if options.jsonOutput {
+            return encodedJSON(
+                BatchSummary(
+                    status: options.dryRunBatch ? "planned" : "rendered",
+                    outputDirectory: outputDirectory.path,
+                    rendered: rendered,
+                    skipped: skipped,
+                    dryRun: options.dryRunBatch,
+                    manifest: nonEmptyPath(options.batchManifestPath),
+                    skippedReport: nonEmptyPath(options.skippedReportPath)))
         }
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
     }
@@ -538,17 +617,35 @@ enum CLIRenderer {
         return outputURL
     }
 
+    private static func encodedJSON<T: Encodable>(_ value: T) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        let data = (try? encoder.encode(value)) ?? Data("{}".utf8)
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    private static func nonEmptyPath(_ path: String?) -> String? {
+        guard let path, !path.isEmpty else { return nil }
+        return path
+    }
+
     /// Returns every file a render would write beside its primary image output.
     private static func outputTargets(beside imageURL: URL, options: CLIOptions) -> [URL] {
-        var targets = [imageURL]
+        [imageURL] + sidecarURLs(options, beside: imageURL)
+    }
+
+    /// Returns sidecar files a render would write next to its primary image.
+    private static func sidecarURLs(_ options: CLIOptions, beside imageURL: URL) -> [URL] {
+        let base = imageURL.deletingPathExtension()
+        var targets: [URL] = []
         if options.textSidecar {
-            targets.append(imageURL.deletingPathExtension().appendingPathExtension("txt"))
+            targets.append(base.appendingPathExtension("txt"))
         }
         if options.markdownSidecar {
-            targets.append(imageURL.deletingPathExtension().appendingPathExtension("md"))
+            targets.append(base.appendingPathExtension("md"))
         }
         if options.htmlSidecar {
-            targets.append(imageURL.deletingPathExtension().appendingPathExtension("html"))
+            targets.append(base.appendingPathExtension("html"))
         }
         return targets
     }
@@ -622,18 +719,7 @@ enum CLIRenderer {
     /// The "` + card.txt`" tail appended to a success line when sidecars were
     /// written, naming each sidecar file; empty when none was requested.
     private static func sidecarNote(_ options: CLIOptions, beside imageURL: URL) -> String {
-        let base = imageURL.deletingPathExtension()
-        var names: [String] = []
-        if options.textSidecar {
-            names.append(base.appendingPathExtension("txt").lastPathComponent)
-        }
-        if options.markdownSidecar {
-            names.append(base.appendingPathExtension("md").lastPathComponent)
-        }
-        if options.htmlSidecar {
-            names.append(base.appendingPathExtension("html").lastPathComponent)
-        }
-        return names.map { " + \($0)" }.joined()
+        sidecarURLs(options, beside: imageURL).map { " + \($0.lastPathComponent)" }.joined()
     }
 
     /// Writes the plain-text sidecar next to the rendered image at `imageURL`,
