@@ -138,7 +138,8 @@ the app's export for the same options — a unit test asserts exactly that.
 **Defaults** match the app: a bare `vitrine render input.swift --out image.png` uses
 `SnapshotConfig()`'s defaults (One Dark, JetBrains Mono, aurora background) at the
 app's default scale. `--quiet` suppresses the success summary without hiding errors,
-and `--json` swaps human success text for structured `render`/`batch` summaries.
+and `--json` swaps human success text for structured `render`/`batch` summaries; the
+two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--theme`, `--language`, `--preset`, `--scale`, `--format`
 (`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), `--transparent`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--line-numbers`, `--no-chrome`,

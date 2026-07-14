@@ -291,6 +291,9 @@ enum CLIArguments {
         if stdinFilename != nil, !readStdin {
             throw CLIError.incompatibleOptions("--stdin-name requires --stdin.")
         }
+        if quiet, jsonOutput {
+            throw CLIError.incompatibleOptions("Cannot combine --quiet with --json.")
+        }
         if readStdin, let inputPath {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --stdin with input file \"\(inputPath)\".")
@@ -598,7 +601,7 @@ nonisolated enum CLIUsage {
         OPTIONS:
           -o, --out <path>       Output image path (required unless --copy / --edit).
           -q, --quiet            Suppress success output; errors still print.
-          --json                 Print success output as JSON.
+          --json                 Print success output as JSON (not with --quiet).
           --copy                 Copy the rendered image to the clipboard.
           -e, --edit             Open the source in Vitrine's editor instead of
                                  rendering (no image is written; not with --copy/--out).
