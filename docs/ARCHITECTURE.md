@@ -169,7 +169,10 @@ skipped, which lets CI/docs jobs catch accidental inputs without losing the vali
 artifacts. `--skipped-report <json>` writes a local JSON array of skipped
 `{path, reason}` entries before that strict exit, using paths relative to the input
 folder so the artifact stays machine-independent; dry runs only write this artifact when
-it is explicitly requested.
+it is explicitly requested. `--manifest <json>` is the positive companion artifact: it
+writes the successfully rendered outputs (or `planned` outputs during `--dry-run`) with
+relative input/output paths, language ids, formats, and rendered dimensions when
+available.
 
 **Catalog discovery.** `vitrine list <themes|languages|presets> [--json]` prints the
 same local catalog ids the parser validates for `--theme`, `--language`, and

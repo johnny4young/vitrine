@@ -105,6 +105,9 @@ struct CLIOptions: Equatable {
     /// The report is local to the requested path and is written before strict skipped
     /// failures are thrown, so CI can upload it as an artifact.
     var skippedReportPath: String?
+    /// For `batch`, optionally write a JSON manifest of rendered outputs (or planned
+    /// outputs during `--dry-run`) so CI/docs jobs can publish an exact artifact index.
+    var batchManifestPath: String?
     /// For `batch`, scan and load matching files without rendering or writing images.
     /// Useful for CI preflight checks before a docs job spends time producing cards.
     var dryRunBatch: Bool = false

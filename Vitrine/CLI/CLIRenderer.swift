@@ -26,6 +26,24 @@ enum CLIRenderer {
         var reason: String
     }
 
+    /// One successful (or dry-run planned) batch output in the optional manifest.
+    private struct BatchManifestEntry: Encodable, Equatable {
+        /// Slash-separated input path relative to the batch input folder.
+        var input: String
+        /// Slash-separated output path relative to the batch output folder.
+        var output: String
+        /// The language id actually used for this input.
+        var language: String
+        /// The requested output format (`png`, `pdf`, or `heic`).
+        var format: String
+        /// `rendered` for real output, `planned` for `--dry-run`.
+        var status: String
+        /// Rendered width in pixels/points. Omitted for dry-run entries.
+        var width: Int?
+        /// Rendered height in pixels/points. Omitted for dry-run entries.
+        var height: Int?
+    }
+
     /// Runs the full pipeline for `options` and returns a human-readable success
     /// line (the path written and the pixel dimensions), or throws a `CLIError`.
     ///
@@ -112,6 +130,8 @@ enum CLIRenderer {
     /// extension before loading, which keeps known non-code assets out of skipped counts.
     /// `--dry-run` still scans and decodes inputs but skips image/sidecar writes, so a
     /// docs job can preflight a batch cheaply.
+    /// `--manifest` writes the successful/planned output list as a JSON artifact with
+    /// relative input/output paths and rendered dimensions when available.
     /// `--fail-on-skipped` preserves successful renders but converts any skipped file
     /// into a failing CLI exit for strict CI/docs pipelines.
     /// `--skipped-report` writes a local JSON report before any strict failure is
@@ -154,6 +174,7 @@ enum CLIRenderer {
         var rendered = 0
         var skipped = 0
         var skippedReport: [SkippedReportEntry] = []
+        var manifest: [BatchManifestEntry] = []
         for file in files {
             let loaded: FileInputLoader.LoadedFile
             do {
@@ -169,20 +190,30 @@ enum CLIRenderer {
                 reportSkipped(file, reason: reason)
                 continue
             }
-            if options.dryRunBatch {
-                rendered += 1
-                continue
-            }
-
             let language = options.language ?? loaded.language
-            let config = options.makeConfig(code: loaded.text, language: language)
             let outputURL = batchOutputURL(
                 for: file, inputDirectory: inputDirectory, outputDirectory: outputDirectory,
                 recursive: options.recursiveBatch, fileExtension: ext)
+            if options.dryRunBatch {
+                rendered += 1
+                manifest.append(
+                    batchManifestEntry(
+                        for: file, outputURL: outputURL, inputDirectory: inputDirectory,
+                        outputDirectory: outputDirectory, language: language, format: ext,
+                        status: "planned", dimensions: nil))
+                continue
+            }
+
+            let config = options.makeConfig(code: loaded.text, language: language)
             do {
                 try FileManager.default.createDirectory(
                     at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                _ = try renderAndWrite(config, options: options, to: outputURL)
+                let dimensions = try renderAndWrite(config, options: options, to: outputURL)
+                manifest.append(
+                    batchManifestEntry(
+                        for: file, outputURL: outputURL, inputDirectory: inputDirectory,
+                        outputDirectory: outputDirectory, language: language, format: ext,
+                        status: "rendered", dimensions: dimensions))
                 rendered += 1
             } catch {
                 skipped += 1
@@ -201,6 +232,7 @@ enum CLIRenderer {
         let summary =
             "\(action) \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
         try writeSkippedReport(skippedReport, path: options.skippedReportPath)
+        try writeBatchManifest(manifest, path: options.batchManifestPath)
         if skipped > 0, options.failOnSkipped {
             throw CLIError.batchSkipped(rendered: rendered, skipped: skipped)
         }
@@ -304,6 +336,28 @@ enum CLIRenderer {
             reason: reason)
     }
 
+    /// Builds the manifest entry for one successfully loaded batch file using stable,
+    /// slash-separated paths so CI artifacts are independent of the build machine.
+    private static func batchManifestEntry(
+        for file: URL,
+        outputURL: URL,
+        inputDirectory: URL,
+        outputDirectory: URL,
+        language: Language,
+        format: String,
+        status: String,
+        dimensions: (width: Int, height: Int)?
+    ) -> BatchManifestEntry {
+        BatchManifestEntry(
+            input: batchRelativePath(for: file, under: inputDirectory),
+            output: batchRelativePath(for: outputURL, under: outputDirectory),
+            language: language.rawValue,
+            format: format,
+            status: status,
+            width: dimensions?.width,
+            height: dimensions?.height)
+    }
+
     /// Writes the optional skipped-files report. An empty requested report is still a
     /// useful CI artifact (`[]`) because it proves the batch scanned without omissions.
     private static func writeSkippedReport(
@@ -322,6 +376,33 @@ enum CLIRenderer {
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
                 var encoded = try encoder.encode(skippedReport)
+                encoded.append(0x0A)
+                data = encoded
+            }
+            try data.write(to: url, options: .atomic)
+        } catch {
+            throw CLIError.writeFailed(path: path)
+        }
+    }
+
+    /// Writes the optional positive batch manifest. A requested empty manifest is useful
+    /// for CI because it proves discovery completed even when no inputs matched.
+    private static func writeBatchManifest(
+        _ manifest: [BatchManifestEntry],
+        path: String?
+    ) throws {
+        guard let path, !path.isEmpty else { return }
+        let url = URL(fileURLWithPath: path)
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data: Data
+            if manifest.isEmpty {
+                data = Data("[]\n".utf8)
+            } else {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                var encoded = try encoder.encode(manifest)
                 encoded.append(0x0A)
                 data = encoded
             }

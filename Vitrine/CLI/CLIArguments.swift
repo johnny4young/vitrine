@@ -151,6 +151,7 @@ enum CLIArguments {
         var recursiveBatch = false
         var failOnSkipped = false
         var skippedReportPath: String?
+        var batchManifestPath: String?
         var dryRunBatch = false
         var batchIncludeExtensions: Set<String> = []
         var batchExcludeExtensions: Set<String> = []
@@ -227,6 +228,8 @@ enum CLIArguments {
                 failOnSkipped = true
             case "--skipped-report":
                 skippedReportPath = try value(for: token)
+            case "--manifest":
+                batchManifestPath = try value(for: token)
             case "--dry-run":
                 dryRunBatch = true
             case "--include-ext":
@@ -280,6 +283,9 @@ enum CLIArguments {
         }
         if mode == .render, skippedReportPath != nil {
             throw CLIError.incompatibleOptions("Cannot combine render with --skipped-report.")
+        }
+        if mode == .render, batchManifestPath != nil {
+            throw CLIError.incompatibleOptions("Cannot combine render with --manifest.")
         }
         if mode == .render, dryRunBatch {
             throw CLIError.incompatibleOptions("Cannot combine render with --dry-run.")
@@ -394,6 +400,7 @@ enum CLIArguments {
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             skippedReportPath: skippedReportPath,
+            batchManifestPath: batchManifestPath,
             dryRunBatch: dryRunBatch,
             batchIncludeExtensions: batchIncludeExtensions,
             batchExcludeExtensions: batchExcludeExtensions,
@@ -602,6 +609,7 @@ nonisolated enum CLIUsage {
           --fail-on-skipped      Batch only: exit non-zero if any file is skipped.
           --skipped-report <json>
                                  Batch only: write skipped files as a JSON report.
+          --manifest <json>      Batch only: write rendered/planned outputs as JSON.
           --dry-run              Batch only: scan/load inputs without writing images.
           --include-ext <list>   Batch only: only render these comma-separated
                                  extensions (for example swift,md).
