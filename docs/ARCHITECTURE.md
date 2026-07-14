@@ -158,6 +158,8 @@ default for backward compatibility. `--recursive` opts into a full nested walk a
 mirrors each input file's relative path under the output folder, so
 `docs/examples/A.swift` becomes `out/docs/examples/A.png` (plus sidecars, when
 requested) instead of colliding with another `A.swift` elsewhere in the tree.
+`--dry-run` runs the discovery and text-decoding pass without creating the output folder
+or writing images/sidecars, so CI can preflight a batch before spending render time.
 `--include-ext <list>` narrows a batch to known source extensions, while
 `--exclude-ext <list>` removes generated or temporary extensions before loading, so
 filtered files are neither rendered nor reported as skipped. `--fail-on-skipped` keeps
@@ -165,7 +167,8 @@ successful renders but returns a failing exit when any unreadable or non-text fi
 skipped, which lets CI/docs jobs catch accidental inputs without losing the valid output
 artifacts. `--skipped-report <json>` writes a local JSON array of skipped
 `{path, reason}` entries before that strict exit, using paths relative to the input
-folder so the artifact stays machine-independent.
+folder so the artifact stays machine-independent; dry runs only write this artifact when
+it is explicitly requested.
 
 **Local only.** Rendering needs no network, screen recording, or Accessibility — it is
 the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it

@@ -149,6 +149,7 @@ enum CLIArguments {
         var recursiveBatch = false
         var failOnSkipped = false
         var skippedReportPath: String?
+        var dryRunBatch = false
         var batchIncludeExtensions: Set<String> = []
         var batchExcludeExtensions: Set<String> = []
         var readStdin = false
@@ -222,6 +223,8 @@ enum CLIArguments {
                 failOnSkipped = true
             case "--skipped-report":
                 skippedReportPath = try value(for: token)
+            case "--dry-run":
+                dryRunBatch = true
             case "--include-ext":
                 batchIncludeExtensions.formUnion(
                     try resolveExtensionList(try value(for: token), flag: token))
@@ -273,6 +276,9 @@ enum CLIArguments {
         }
         if mode == .render, skippedReportPath != nil {
             throw CLIError.incompatibleOptions("Cannot combine render with --skipped-report.")
+        }
+        if mode == .render, dryRunBatch {
+            throw CLIError.incompatibleOptions("Cannot combine render with --dry-run.")
         }
         if mode == .render, !batchIncludeExtensions.isEmpty {
             throw CLIError.incompatibleOptions("Cannot combine render with --include-ext.")
@@ -383,6 +389,7 @@ enum CLIArguments {
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             skippedReportPath: skippedReportPath,
+            dryRunBatch: dryRunBatch,
             batchIncludeExtensions: batchIncludeExtensions,
             batchExcludeExtensions: batchExcludeExtensions,
             readStdin: readStdin,
@@ -588,6 +595,7 @@ nonisolated enum CLIUsage {
           --fail-on-skipped      Batch only: exit non-zero if any file is skipped.
           --skipped-report <json>
                                  Batch only: write skipped files as a JSON report.
+          --dry-run              Batch only: scan/load inputs without writing images.
           --include-ext <list>   Batch only: only render these comma-separated
                                  extensions (for example swift,md).
           --exclude-ext <list>   Batch only: ignore these comma-separated extensions
