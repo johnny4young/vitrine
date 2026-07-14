@@ -174,11 +174,12 @@ writes the successfully rendered outputs (or `planned` outputs during `--dry-run
 relative input/output paths, language ids, formats, and rendered dimensions when
 available.
 
-**Catalog discovery.** `vitrine list <themes|languages|presets> [--json]` prints the
-same local catalog ids the parser validates for `--theme`, `--language`, and
-`--preset`. It runs before AppKit initialization and before the PRO render gate because
-it reads only bundled metadata, so scripts can cheaply discover valid options without
-touching user files or rendering images.
+**Catalog discovery.** `vitrine list <themes|languages|presets|formats|profiles>
+[--json]` prints the same local catalog ids the parser validates for `--theme`,
+`--language`, `--preset`, `--format`, and `--profile`. It runs before AppKit
+initialization and before the PRO render gate because it reads only bundled metadata,
+so scripts can cheaply discover valid options without touching user files or rendering
+images.
 
 **Local only.** Rendering needs no network, screen recording, or Accessibility — it is
 the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it

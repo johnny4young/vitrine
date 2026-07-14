@@ -568,7 +568,7 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --copy [options]
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
-          vitrine list <themes|languages|presets> [--json]
+          vitrine list <themes|languages|presets|formats|profiles> [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
 
         OPTIONS:

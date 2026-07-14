@@ -365,6 +365,8 @@ vitrine render snippet.swift --out card.png --sidecars all
 vitrine render input.swift --out image.png --quiet
 vitrine list themes
 vitrine list languages --json
+vitrine list formats
+vitrine list profiles --json
 vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift,md
 vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --exclude-ext tmp \
   --sidecars all --fail-on-skipped --skipped-report docs/cards/skipped.json \
@@ -388,8 +390,8 @@ loading files. Add `--fail-on-skipped` when CI should fail if any unreadable or 
 file was skipped, and `--skipped-report <json>` to write a parseable skipped-files
 artifact. `--manifest <json>` writes a positive manifest of rendered outputs (or
 planned outputs during `--dry-run`) with relative paths and dimensions when available.
-`vitrine list <themes|languages|presets> [--json]` prints the local catalog ids
-accepted by those flags so scripts can discover them without scraping docs.
+`vitrine list <themes|languages|presets|formats|profiles> [--json]` prints the local
+catalog ids accepted by those flags so scripts can discover them without scraping docs.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)
