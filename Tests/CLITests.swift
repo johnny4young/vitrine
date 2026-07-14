@@ -592,6 +592,7 @@ struct CLITests {
             .missingValue(flag: "--out"), .missingRequired("input file"),
             .invalidValue(flag: "--theme", value: "x"), .inputUnreadable(path: "/x"),
             .inputNotText(path: "/x"), .renderFailed, .writeFailed(path: "/x"),
+            .batchSkipped(rendered: 1, skipped: 1),
         ]
         for error in errors {
             #expect(!error.message.isEmpty)

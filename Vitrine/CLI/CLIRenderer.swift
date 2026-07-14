@@ -100,10 +100,12 @@ enum CLIRenderer {
     /// Non-text/unreadable files are skipped (not fatal), so a mixed folder still
     /// produces images for the code in it; the summary reports how many were skipped.
     /// `--recursive` walks nested folders and preserves their relative paths under the
-    /// output directory. Each file goes through the same render-and-write path as
-    /// `vitrine render`, so a batched image is pixel-identical to rendering that file
-    /// alone with the same options. `directoryLister` is injected so the top-level
-    /// file-discovery half is unit-testable without a real directory tree.
+    /// output directory. `--fail-on-skipped` preserves successful renders but converts
+    /// any skipped file into a failing CLI exit for strict CI/docs pipelines. Each file
+    /// goes through the same render-and-write path as `vitrine render`, so a batched
+    /// image is pixel-identical to rendering that file alone with the same options.
+    /// `directoryLister` is injected so the top-level file-discovery half is
+    /// unit-testable without a real directory tree.
     @discardableResult
     static func runBatch(
         _ options: CLIOptions,
@@ -164,6 +166,9 @@ enum CLIRenderer {
         )
         let summary =
             "Rendered \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
+        if skipped > 0, options.failOnSkipped {
+            throw CLIError.batchSkipped(rendered: rendered, skipped: skipped)
+        }
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
     }
 

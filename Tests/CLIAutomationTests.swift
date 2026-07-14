@@ -83,17 +83,32 @@ struct CLIAutomationTests {
 
     @Test func parsesTheBatchCommandAndItsStyleFlags() throws {
         let options = try CLIArguments.parse(
-            ["batch", "in-dir", "--out", "out-dir", "--theme", "dracula", "--recursive"])
+            [
+                "batch", "in-dir", "--out", "out-dir", "--theme", "dracula", "--recursive",
+                "--fail-on-skipped",
+            ])
         #expect(options.command == .batch)
         #expect(options.inputPath == "in-dir")
         #expect(options.outputPath == "out-dir")
         #expect(options.themeID == "dracula")
         #expect(options.recursiveBatch)
+        #expect(options.failOnSkipped)
     }
 
     @Test func recursiveIsBatchOnly() {
         #expect(throws: CLIError.incompatibleOptions("Cannot combine render with --recursive.")) {
             try CLIArguments.parse(["render", "in.swift", "--out", "out.png", "--recursive"])
+        }
+    }
+
+    @Test func failOnSkippedIsBatchOnly() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine render with --fail-on-skipped.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "out.png", "--fail-on-skipped",
+            ])
         }
     }
 
@@ -154,6 +169,28 @@ struct CLIAutomationTests {
         #expect(
             !FileManager.default.fileExists(
                 atPath: output.appendingPathComponent("Sample.png").path))
+    }
+
+    @Test func batchCanFailWhenAnyFileIsSkipped() throws {
+        let input = tempDirectory()
+        let output = tempDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: input)
+            try? FileManager.default.removeItem(at: output)
+        }
+        try "let ok = true\n".write(
+            to: input.appendingPathComponent("Ok.swift"), atomically: true, encoding: .utf8)
+        try Data([0x00, 0x01, 0x02]).write(to: input.appendingPathComponent("Blob.bin"))
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--fail-on-skipped",
+        ])
+
+        #expect(throws: CLIError.batchSkipped(rendered: 1, skipped: 1)) {
+            try CLIRenderer.runBatch(options)
+        }
+        #expect(
+            FileManager.default.fileExists(atPath: output.appendingPathComponent("Ok.png").path))
     }
 
     @Test func proRequiredReportsAClearMessageAndFailureExitCode() {

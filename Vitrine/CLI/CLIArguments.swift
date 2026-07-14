@@ -32,6 +32,9 @@ nonisolated enum CLIError: Error, Equatable {
     case renderFailed
     /// Encoding or writing the output file failed.
     case writeFailed(path: String)
+    /// A batch completed at least some work, but `--fail-on-skipped` requested a
+    /// failing exit when unreadable/non-text files were skipped.
+    case batchSkipped(rendered: Int, skipped: Int)
     /// `--edit` could not open Vitrine to receive the handoff (no app registered for the
     /// `vitrine://` scheme, or a Launch Services failure). Surfaced so a script sees a
     /// non-zero exit instead of a false success.
@@ -65,6 +68,9 @@ nonisolated enum CLIError: Error, Equatable {
             "Rendering failed to produce an image."
         case .writeFailed(let path):
             "Could not write the output to \"\(path)\"."
+        case .batchSkipped(let rendered, let skipped):
+            "Batch rendered \(rendered) image\(rendered == 1 ? "" : "s") but skipped "
+                + "\(skipped) file\(skipped == 1 ? "" : "s")."
         case .editorOpenFailed:
             "Could not open Vitrine to receive the output. Is Vitrine installed?"
         case .proRequired:
@@ -141,6 +147,7 @@ enum CLIArguments {
         var showChrome: Bool?
         var showShadow: Bool?
         var recursiveBatch = false
+        var failOnSkipped = false
         var readStdin = false
         var copyToClipboard = false
         var openInEditor = false
@@ -208,6 +215,8 @@ enum CLIArguments {
                 showShadow = false
             case "--recursive":
                 recursiveBatch = true
+            case "--fail-on-skipped":
+                failOnSkipped = true
             case "--stdin":
                 readStdin = true
             case "--copy":
@@ -247,6 +256,9 @@ enum CLIArguments {
         }
         if mode == .render, recursiveBatch {
             throw CLIError.incompatibleOptions("Cannot combine render with --recursive.")
+        }
+        if mode == .render, failOnSkipped {
+            throw CLIError.incompatibleOptions("Cannot combine render with --fail-on-skipped.")
         }
         let metadataHeaderRequested =
             windowTitle != nil || metadataFilename != nil
@@ -349,6 +361,7 @@ enum CLIArguments {
             showChrome: showChrome,
             showShadow: showShadow,
             recursiveBatch: recursiveBatch,
+            failOnSkipped: failOnSkipped,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
@@ -527,6 +540,7 @@ nonisolated enum CLIUsage {
           --shadow / --no-shadow Show or hide the rendered drop shadow.
           --recursive            Batch only: include nested folders and preserve
                                  relative output paths.
+          --fail-on-skipped      Batch only: exit non-zero if any file is skipped.
           --text-sidecar         Also write a .txt next to --out with the source as
                                  selectable text (terminal escapes stripped).
           --markdown-sidecar     Also write a .md next to --out: the image reference
