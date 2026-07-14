@@ -148,6 +148,7 @@ enum CLIArguments {
         var showShadow: Bool?
         var recursiveBatch = false
         var failOnSkipped = false
+        var skippedReportPath: String?
         var readStdin = false
         var copyToClipboard = false
         var openInEditor = false
@@ -217,6 +218,8 @@ enum CLIArguments {
                 recursiveBatch = true
             case "--fail-on-skipped":
                 failOnSkipped = true
+            case "--skipped-report":
+                skippedReportPath = try value(for: token)
             case "--stdin":
                 readStdin = true
             case "--copy":
@@ -259,6 +262,9 @@ enum CLIArguments {
         }
         if mode == .render, failOnSkipped {
             throw CLIError.incompatibleOptions("Cannot combine render with --fail-on-skipped.")
+        }
+        if mode == .render, skippedReportPath != nil {
+            throw CLIError.incompatibleOptions("Cannot combine render with --skipped-report.")
         }
         let metadataHeaderRequested =
             windowTitle != nil || metadataFilename != nil
@@ -362,6 +368,7 @@ enum CLIArguments {
             showShadow: showShadow,
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
+            skippedReportPath: skippedReportPath,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
@@ -541,6 +548,8 @@ nonisolated enum CLIUsage {
           --recursive            Batch only: include nested folders and preserve
                                  relative output paths.
           --fail-on-skipped      Batch only: exit non-zero if any file is skipped.
+          --skipped-report <json>
+                                 Batch only: write skipped files as a JSON report.
           --text-sidecar         Also write a .txt next to --out with the source as
                                  selectable text (terminal escapes stripped).
           --markdown-sidecar     Also write a .md next to --out: the image reference

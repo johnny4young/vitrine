@@ -97,6 +97,10 @@ struct CLIOptions: Equatable {
     /// the readable files. Useful for CI/docs pipelines that must not silently ignore
     /// invalid input.
     var failOnSkipped: Bool = false
+    /// For `batch`, optionally write a JSON report describing skipped input files.
+    /// The report is local to the requested path and is written before strict skipped
+    /// failures are thrown, so CI can upload it as an artifact.
+    var skippedReportPath: String?
 
     /// Read the source from standard input instead of a file (e.g.
     /// `some-command | vitrine render --stdin`), so the language is inferred from the
