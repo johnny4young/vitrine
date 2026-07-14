@@ -217,6 +217,11 @@ enum CLIArguments {
                 markdownSidecar = true
             case "--html-sidecar":
                 htmlSidecar = true
+            case "--sidecars":
+                let sidecars = try resolveSidecars(try value(for: token), flag: token)
+                textSidecar = textSidecar || sidecars.text
+                markdownSidecar = markdownSidecar || sidecars.markdown
+                htmlSidecar = htmlSidecar || sidecars.html
             default:
                 if token.hasPrefix("-") {
                     throw CLIError.unknownFlag(token)
@@ -435,6 +440,35 @@ enum CLIArguments {
         default: throw CLIError.invalidValue(flag: "--profile", value: raw)
         }
     }
+
+    /// Parses the convenience sidecar bundle list. Comma-separated values compose
+    /// with the explicit `--*-sidecar` flags, so scripts can say `--sidecars all` or
+    /// keep enabling individual sidecars as their needs grow.
+    private static func resolveSidecars(
+        _ raw: String, flag: String
+    ) throws -> (text: Bool, markdown: Bool, html: Bool) {
+        var result = (text: false, markdown: false, html: false)
+        let parts =
+            raw.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        guard !parts.isEmpty else { throw CLIError.invalidValue(flag: flag, value: raw) }
+
+        for part in parts {
+            switch part {
+            case "all":
+                result = (text: true, markdown: true, html: true)
+            case "text", "txt":
+                result.text = true
+            case "markdown", "md":
+                result.markdown = true
+            case "html":
+                result.html = true
+            default:
+                throw CLIError.invalidValue(flag: flag, value: raw)
+            }
+        }
+        return result
+    }
 }
 
 /// The `vitrine render` usage text, shown for `--help` and on a usage error.
@@ -491,6 +525,8 @@ nonisolated enum CLIUsage {
                                  paste into a README or post.
           --html-sidecar         Also write a .html next to --out: the image embed
                                  plus escaped source in a <pre><code> block.
+          --sidecars <list>      Enable sidecars by comma-separated list: text,
+                                 markdown, html, or all.
           -h, --help             Show this help.
 
         Code rendering is fully local: it never needs the network, screen recording,

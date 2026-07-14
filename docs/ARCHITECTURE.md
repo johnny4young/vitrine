@@ -146,12 +146,12 @@ presentation/output (size, padding, background) and never touches the source, ex
 as in the GUI (CS-020). Unknown ids and out-of-range values are rejected up front with
 a clear message so an automation pipeline fails loud.
 
-**Copyable sidecars.** `--text-sidecar`, `--markdown-sidecar`, and `--html-sidecar`
-write accessible source next to the rendered image when `--out` is present. Terminal
-captures use the resolved visible text (ANSI escapes and OSC links stripped) so the
-sidecar matches the pixels. Markdown and HTML sidecars escape user-controlled filenames,
-image names, and source in their respective syntax contexts before producing README or
-web embed blocks.
+**Copyable sidecars.** `--text-sidecar`, `--markdown-sidecar`, `--html-sidecar`, and
+the bundle shortcut `--sidecars <text|markdown|html|all>` write accessible source next
+to the rendered image when `--out` is present. Terminal captures use the resolved
+visible text (ANSI escapes and OSC links stripped) so the sidecar matches the pixels.
+Markdown and HTML sidecars escape user-controlled filenames, image names, and source in
+their respective syntax contexts before producing README or web embed blocks.
 
 **Local only.** Rendering needs no network, screen recording, or Accessibility — it is
 the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it

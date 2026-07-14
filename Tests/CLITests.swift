@@ -435,6 +435,26 @@ struct CLITests {
         }
     }
 
+    @Test func parsesSidecarBundleFlag() throws {
+        let all = try CLIArguments.parse([
+            "render", "in.swift", "--out", "out.png", "--sidecars", "all",
+        ])
+        #expect(all.textSidecar && all.markdownSidecar && all.htmlSidecar)
+
+        let subset = try CLIArguments.parse([
+            "render", "in.swift", "--out", "out.png", "--sidecars", "text,html",
+        ])
+        #expect(subset.textSidecar)
+        #expect(!subset.markdownSidecar)
+        #expect(subset.htmlSidecar)
+
+        let aliases = try CLIArguments.parse([
+            "render", "in.swift", "--out", "out.png", "--sidecars", "txt, md",
+        ])
+        #expect(aliases.textSidecar && aliases.markdownSidecar)
+        #expect(!aliases.htmlSidecar)
+    }
+
     @Test func editStagesTheHandoffAndReportsSuccess() throws {
         var captured: URL?
         let options = try CLIArguments.parse(["render", "session.log", "--edit"])
@@ -558,6 +578,11 @@ struct CLITests {
         }
         #expect(throws: CLIError.invalidValue(flag: "--wrap", value: "wide")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--wrap", "wide"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--sidecars", value: "rich")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--sidecars", "rich",
+            ])
         }
     }
 
