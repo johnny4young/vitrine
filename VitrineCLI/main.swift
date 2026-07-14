@@ -85,7 +85,7 @@ if rawArguments.first == "list" {
         exit(0)
     case .unknownCatalog(let name):
         printError(
-            "error: unknown catalog \"\(name)\". Use themes, languages, presets, formats, or profiles.\n\n"
+            "error: unknown catalog \"\(name)\". Use all, themes, languages, presets, formats, or profiles.\n\n"
                 + CLICatalog.usage)
         exit(2)
     case .unknownFlag(let flag):

@@ -367,6 +367,7 @@ vitrine render input.swift --out image.png --quiet --no-overwrite
 vitrine render input.swift --out image.png --json --no-overwrite
 vitrine list themes
 vitrine list languages --json
+vitrine list all --json
 vitrine list formats
 vitrine list profiles --json
 vitrine --version
@@ -404,8 +405,9 @@ planned outputs during `--dry-run`) with relative paths and dimensions when avai
 When a batch contains same-stem files such as `Widget.swift` and `Widget.ts`, only
 that colliding group preserves the input extension (`Widget.swift.png`,
 `Widget.ts.png`) so one artifact never overwrites the other.
-`vitrine list <themes|languages|presets|formats|profiles> [--json]` prints the local
-catalog ids accepted by those flags so scripts can discover them without scraping docs.
+`vitrine list <all|themes|languages|presets|formats|profiles> [--json]` prints the local
+catalog ids accepted by those flags so scripts can discover them without scraping docs;
+`vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before
 AppKit initialization or the PRO render gate, which makes CI install checks cheap.
 

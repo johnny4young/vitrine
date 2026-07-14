@@ -127,6 +127,8 @@ struct CLIAutomationTests {
     // MARK: - Catalog listing
 
     @Test func catalogListInvocationAcceptsTextJsonAndSingularAliases() {
+        #expect(CLICatalog.invocation(for: ["all"]) == .listing(.all, format: .text))
+        #expect(CLICatalog.invocation(for: ["all", "--json"]) == .listing(.all, format: .json))
         #expect(CLICatalog.invocation(for: ["themes"]) == .listing(.themes, format: .text))
         #expect(
             CLICatalog.invocation(for: ["theme", "--json"]) == .listing(.themes, format: .json))
@@ -174,7 +176,28 @@ struct CLIAutomationTests {
         #expect(profiles.contains { $0["id"] == "p3" && $0["name"] == "Display P3 (advanced)" })
     }
 
-    // MARK: - Batch command
+    @Test func catalogListAllPrintsEveryCatalogAsTextAndJson() throws {
+        let allText = CLICatalog.output(for: .all, format: .text)
+        #expect(allText.contains("themes:\n"))
+        #expect(allText.contains("  one-dark\tOne Dark\n"))
+        #expect(allText.contains("languages:\n"))
+        #expect(allText.contains("  swift\tSwift\n"))
+        #expect(allText.contains("formats:\n  png\tPNG\n"))
+        #expect(allText.contains("profiles:\n  srgb\tsRGB\n"))
+
+        let data = Data(CLICatalog.output(for: .all, format: .json).utf8)
+        let decoded = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let themes = try #require(decoded["themes"] as? [[String: String]])
+        let languages = try #require(decoded["languages"] as? [[String: String]])
+        let presets = try #require(decoded["presets"] as? [[String: String]])
+        let formats = try #require(decoded["formats"] as? [[String: String]])
+        let profiles = try #require(decoded["profiles"] as? [[String: String]])
+        #expect(themes.contains { $0["id"] == "one-dark" })
+        #expect(languages.contains { $0["id"] == "swift" })
+        #expect(presets.contains { $0["id"] == "opengraph" })
+        #expect(formats.contains { $0["id"] == "png" })
+        #expect(profiles.contains { $0["id"] == "p3" })
+    }
 
     @Test func parsesTheBatchCommandAndItsStyleFlags() throws {
         let options = try CLIArguments.parse(
