@@ -427,12 +427,12 @@ enum CLIRenderer {
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile
     ) throws -> FileInputLoader.LoadedFile {
         // `--stdin`: read the piped source (the shell integration feeds captured
-        // terminal output here) and infer the language from the content — no filename,
-        // so ANSI escapes route it to the terminal renderer.
+        // terminal output here). A user-supplied stdin name is only a hint: it is
+        // never read from disk, but it lets extension-based inference match file input.
         if options.readStdin {
             let data = FileHandle.standardInput.readDataToEndOfFile()
             do {
-                return try FileInputLoader.decode(data: data, filename: "")
+                return try FileInputLoader.decode(data: data, filename: options.stdinFilename ?? "")
             } catch FileInputLoader.LoadError.binaryFile {
                 throw CLIError.inputNotText(path: "<stdin>")
             } catch {

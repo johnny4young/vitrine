@@ -81,6 +81,10 @@ struct CLIOptions: Equatable {
     var windowTitle: String?
     /// Optional filename chip shown in the metadata header.
     var metadataFilename: String?
+    /// Optional filename hint for piped stdin input. It is never read from disk; it
+    /// only gives extension-based language inference (and default metadata) the same
+    /// filename context a real input file would have.
+    var stdinFilename: String?
     /// Optional title shown in the metadata header.
     var metadataTitle: String?
     /// Optional caption shown below the metadata title.
@@ -177,7 +181,7 @@ struct CLIOptions: Equatable {
         if let showChrome { config.showChrome = showChrome }
         if let showShadow { config.showShadow = showShadow }
         config.metadata = SnapshotMetadata(
-            filename: metadataFilename,
+            filename: metadataFilename ?? (readStdin ? stdinFilename : nil),
             title: metadataTitle,
             caption: metadataCaption,
             showLanguageBadge: showLanguageBadge)

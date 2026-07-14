@@ -142,6 +142,7 @@ enum CLIArguments {
         var transparent = false
         var windowTitle: String?
         var metadataFilename: String?
+        var stdinFilename: String?
         var metadataTitle: String?
         var metadataCaption: String?
         var showLanguageBadge = false
@@ -204,6 +205,8 @@ enum CLIArguments {
                 windowTitle = try value(for: token)
             case "--filename":
                 metadataFilename = try value(for: token)
+            case "--stdin-name", "--stdin-filename":
+                stdinFilename = try value(for: token)
             case "--title":
                 metadataTitle = try value(for: token)
             case "--caption":
@@ -266,10 +269,17 @@ enum CLIArguments {
             }
         }
 
-        // `--stdin`, `--copy`, and `--edit` are render-only (a batch needs real folders).
-        if mode == .batch, readStdin || copyToClipboard || openInEditor {
-            let flag = readStdin ? "--stdin" : (copyToClipboard ? "--copy" : "--edit")
+        // `--stdin`, stdin filename hints, `--copy`, and `--edit` are render-only
+        // (a batch needs real folders).
+        if mode == .batch, readStdin || stdinFilename != nil || copyToClipboard || openInEditor {
+            let flag =
+                readStdin
+                ? "--stdin"
+                : (stdinFilename != nil ? "--stdin-name" : (copyToClipboard ? "--copy" : "--edit"))
             throw CLIError.unknownFlag(flag)
+        }
+        if stdinFilename != nil, !readStdin {
+            throw CLIError.incompatibleOptions("--stdin-name requires --stdin.")
         }
         if readStdin, let inputPath {
             throw CLIError.incompatibleOptions(
@@ -391,6 +401,7 @@ enum CLIArguments {
             transparent: transparent,
             windowTitle: windowTitle,
             metadataFilename: metadataFilename,
+            stdinFilename: stdinFilename,
             metadataTitle: metadataTitle,
             metadataCaption: metadataCaption,
             showLanguageBadge: showLanguageBadge,
@@ -566,6 +577,7 @@ nonisolated enum CLIUsage {
         USAGE:
           vitrine render <input-file> --out <image> [options]
           vitrine render --stdin --copy [options]
+          vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
           vitrine list <themes|languages|presets|formats|profiles> [--json]
@@ -578,6 +590,8 @@ nonisolated enum CLIUsage {
           -e, --edit             Open the source in Vitrine's editor instead of
                                  rendering (no image is written; not with --copy/--out).
           --stdin                Read the source from standard input (e.g. a pipe).
+          --stdin-name <name>    With --stdin, infer language and default metadata
+                                 from this filename; no file is read.
           --theme <id>           Syntax theme id (e.g. one-dark, dracula, nord).
           --language <id>        Language id (e.g. swift, python, terminal). Inferred
                                  when omitted.

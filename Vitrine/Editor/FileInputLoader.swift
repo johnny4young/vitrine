@@ -226,9 +226,30 @@ enum FileInputLoader {
         // ANSI escape codes are a definitive "terminal output" signal that overrides
         // the extension — a `.txt` or `.log` of colored output renders as a terminal.
         if ANSIParser.containsANSI(content) { return .terminal }
-        if let byExtension = LanguageDetector.language(forPath: filename) {
-            return byExtension
+        if let byFilename = languageHint(forFilename: filename) {
+            return byFilename
         }
         return LanguageDetector.detect(content)
+    }
+
+    /// Extracts a language hint from a known filename context. Unlike quick-capture
+    /// path detection, this accepts spaces because callers pass an explicit filename
+    /// (a real loaded file or `--stdin-name`), not arbitrary clipboard prose.
+    private static func languageHint(forFilename filename: String) -> Language? {
+        let trimmed = filename.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let lastComponent: String
+        if let url = URL(string: trimmed), url.isFileURL {
+            lastComponent = url.lastPathComponent
+        } else {
+            lastComponent = (trimmed as NSString).lastPathComponent
+        }
+
+        if lastComponent.caseInsensitiveCompare("Dockerfile") == .orderedSame {
+            return .dockerfile
+        }
+        return LanguageDetector.language(
+            forFileExtension: (lastComponent as NSString).pathExtension)
     }
 }
