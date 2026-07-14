@@ -117,6 +117,7 @@ struct CLITests {
             "--format", "png",
             "--profile", "p3",
             "--transparent",
+            "--no-overwrite",
             "--window-title", "Release build",
             "--filename", "Sources/App.swift",
             "--title", "Launch checklist",
@@ -138,6 +139,7 @@ struct CLITests {
         #expect(options.wrapColumns == 88)
         #expect(options.profile == .displayP3)
         #expect(options.transparent)
+        #expect(options.noOverwrite)
         #expect(options.windowTitle == "Release build")
         #expect(options.metadataFilename == "Sources/App.swift")
         #expect(options.metadataTitle == "Launch checklist")
@@ -634,8 +636,8 @@ struct CLITests {
             .helpRequested, .unknownCommand("x"), .unknownFlag("-x"),
             .missingValue(flag: "--out"), .missingRequired("input file"),
             .invalidValue(flag: "--theme", value: "x"), .inputUnreadable(path: "/x"),
-            .inputNotText(path: "/x"), .renderFailed, .writeFailed(path: "/x"),
-            .batchSkipped(rendered: 1, skipped: 1),
+            .inputNotText(path: "/x"), .renderFailed, .outputExists(path: "/x"),
+            .writeFailed(path: "/x"), .batchSkipped(rendered: 1, skipped: 1),
         ]
         for error in errors {
             #expect(!error.message.isEmpty)
@@ -905,6 +907,45 @@ struct CLITests {
                 "<img src=\"card &quot;x&quot; &amp; &lt;final&gt;.png\" alt=\"evil&quot; &lt;script&gt;\">"
             ))
         #expect(contents.contains("print(\"&lt;script&gt;alert('&amp;') &lt;/script&gt;\")"))
+    }
+
+    @Test func noOverwriteRejectsExistingRenderOutput() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let output = directory.appendingPathComponent("card.png")
+        try Data("existing".utf8).write(to: output)
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "--out", output.path, "--no-overwrite",
+        ])
+
+        #expect(throws: CLIError.outputExists(path: output.path)) {
+            try CLIRenderer.run(options) { _ in
+                FileInputLoader.LoadedFile(text: "let x = 1", language: .swift, filename: "")
+            }
+        }
+        #expect(try Data(contentsOf: output) == Data("existing".utf8))
+    }
+
+    @Test func noOverwriteRejectsExistingSidecarOutput() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let output = directory.appendingPathComponent("card.png")
+        let sidecar = directory.appendingPathComponent("card.md")
+        try Data("existing sidecar".utf8).write(to: sidecar)
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "--out", output.path, "--markdown-sidecar",
+            "--no-clobber",
+        ])
+
+        #expect(throws: CLIError.outputExists(path: sidecar.path)) {
+            try CLIRenderer.run(options) { _ in
+                FileInputLoader.LoadedFile(text: "let x = 1", language: .swift, filename: "")
+            }
+        }
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+        #expect(try String(contentsOf: sidecar, encoding: .utf8) == "existing sidecar")
     }
 
     @Test func languageIsInferredFromTheInputExtension() throws {

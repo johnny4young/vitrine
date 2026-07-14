@@ -72,6 +72,12 @@ enum CLIRenderer {
         let language = options.language ?? loaded.language
         let config = options.makeConfig(code: loaded.text, language: language)
 
+        let optionalOutputURL =
+            options.outputPath.isEmpty ? nil : URL(fileURLWithPath: options.outputPath)
+        if let optionalOutputURL {
+            try guardNoOverwriteTargetsAvailable(beside: optionalOutputURL, options: options)
+        }
+
         // `--copy`: put the rendered image on the clipboard (the share-now flow). A
         // `--out` given alongside still writes the file too.
         if options.copyToClipboard {
@@ -80,8 +86,7 @@ enum CLIRenderer {
                 profile: options.profile)
             guard copied else { throw CLIError.renderFailed }
             Log.export.notice("CLI copied an image to the clipboard")
-            if !options.outputPath.isEmpty {
-                let outputURL = URL(fileURLWithPath: options.outputPath)
+            if let outputURL = optionalOutputURL {
                 let dimensions = try renderAndWrite(config, options: options, to: outputURL)
                 return
                     "Copied the image to the clipboard and wrote \(outputURL.path) "
@@ -90,7 +95,7 @@ enum CLIRenderer {
             return "Copied the image to the clipboard"
         }
 
-        let outputURL = URL(fileURLWithPath: options.outputPath)
+        let outputURL = try requireOutputURL(optionalOutputURL)
         let dimensions = try renderAndWrite(config, options: options, to: outputURL)
 
         Log.export.notice(
@@ -210,6 +215,14 @@ enum CLIRenderer {
                 ?? batchOutputURL(
                     for: file, inputDirectory: inputDirectory, outputDirectory: outputDirectory,
                     recursive: options.recursiveBatch, fileExtension: ext)
+            if existingNoOverwriteTarget(beside: outputURL, options: options) != nil {
+                skipped += 1
+                let reason = "output already exists"
+                skippedReport.append(
+                    skippedReportEntry(for: file, under: inputDirectory, reason: reason))
+                reportSkipped(file, reason: reason)
+                continue
+            }
             if options.dryRunBatch {
                 rendered += 1
                 manifest.append(
@@ -517,6 +530,46 @@ enum CLIRenderer {
             // `.unreadable`, `.tooLarge`, and any unexpected error all surface as an
             // unreadable input; the CLI never leaks a raw error string.
             throw CLIError.inputUnreadable(path: options.inputPath)
+        }
+    }
+
+    private static func requireOutputURL(_ outputURL: URL?) throws -> URL {
+        guard let outputURL else { throw CLIError.missingRequired("--out output path") }
+        return outputURL
+    }
+
+    /// Returns every file a render would write beside its primary image output.
+    private static func outputTargets(beside imageURL: URL, options: CLIOptions) -> [URL] {
+        var targets = [imageURL]
+        if options.textSidecar {
+            targets.append(imageURL.deletingPathExtension().appendingPathExtension("txt"))
+        }
+        if options.markdownSidecar {
+            targets.append(imageURL.deletingPathExtension().appendingPathExtension("md"))
+        }
+        if options.htmlSidecar {
+            targets.append(imageURL.deletingPathExtension().appendingPathExtension("html"))
+        }
+        return targets
+    }
+
+    /// Finds the first existing output target when `--no-overwrite` is active.
+    private static func existingNoOverwriteTarget(beside imageURL: URL, options: CLIOptions) -> URL?
+    {
+        guard options.noOverwrite else { return nil }
+        return outputTargets(beside: imageURL, options: options).first {
+            FileManager.default.fileExists(atPath: $0.path)
+        }
+    }
+
+    /// Enforces `--no-overwrite` before rendering/copying so a run fails without
+    /// partially replacing images, sidecars, or the clipboard.
+    private static func guardNoOverwriteTargetsAvailable(
+        beside imageURL: URL,
+        options: CLIOptions
+    ) throws {
+        if let existing = existingNoOverwriteTarget(beside: imageURL, options: options) {
+            throw CLIError.outputExists(path: existing.path)
         }
     }
 

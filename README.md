@@ -363,7 +363,7 @@ vitrine render snippet.swift --out compact.png --font-size 12 --padding 24 --no-
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render snippet.swift --out card.png --sidecars all
 cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
-vitrine render input.swift --out image.png --quiet
+vitrine render input.swift --out image.png --quiet --no-overwrite
 vitrine list themes
 vitrine list languages --json
 vitrine list formats
@@ -383,10 +383,13 @@ suppresses the success summary for scripts while leaving errors visible. `--them
 controls (`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`)
 override individual choices. With `--stdin`, `--stdin-name <name>` supplies a
 filename hint for extension-based language inference and default metadata without
-reading that file. `--text-sidecar`, `--markdown-sidecar`, `--html-sidecar`,
-or `--sidecars all` write copyable source beside the image for accessible docs,
-README, or web embeds. `vitrine batch --recursive` walks nested folders and mirrors
-their relative paths under the output folder; `--dry-run` scans and decodes the matching
+reading that file. `--no-overwrite` (alias `--no-clobber`) refuses to replace
+existing image or sidecar outputs; in `batch`, existing targets are reported as
+skipped so the remaining new cards can still be produced. `--text-sidecar`,
+`--markdown-sidecar`, `--html-sidecar`, or `--sidecars all` write copyable source
+beside the image for accessible docs, README, or web embeds. `vitrine batch --recursive`
+walks nested folders and mirrors their relative paths under the output folder; `--dry-run`
+scans and decodes the matching
 inputs without writing images or sidecars. `--include-ext <list>` and
 `--exclude-ext <list>` let docs pipelines pre-filter known source extensions before
 loading files. Add `--fail-on-skipped` when CI should fail if any unreadable or non-text
