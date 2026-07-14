@@ -318,6 +318,46 @@ struct CLITests {
         #expect(both.copyToClipboard && both.outputPath == "x.png")
     }
 
+    @Test func stdinNameProvidesFilenameContextForPipedInput() throws {
+        let options = try CLIArguments.parse([
+            "render", "--stdin", "--stdin-name", "Component.tsx", "--out", "card.png",
+            "--language-badge",
+        ])
+        #expect(options.readStdin)
+        #expect(options.stdinFilename == "Component.tsx")
+        #expect(options.inputPath.isEmpty)
+
+        let loaded = try FileInputLoader.decode(
+            data: Data("export const Button = () => <button>Save</button>\n".utf8),
+            filename: options.stdinFilename ?? "")
+        #expect(loaded.language == .typescript)
+        #expect(loaded.filename == "Component.tsx")
+
+        let config = options.makeConfig(code: loaded.text, language: loaded.language)
+        #expect(config.metadata.filename == "Component.tsx")
+        #expect(config.metadata.showLanguageBadge)
+    }
+
+    @Test func stdinFilenameAliasAndExplicitMetadataOverride() throws {
+        let options = try CLIArguments.parse([
+            "render", "--stdin", "--stdin-filename", "Snippet.py", "--filename",
+            "Published.py", "--out", "card.png",
+        ])
+        #expect(options.stdinFilename == "Snippet.py")
+        #expect(options.metadataFilename == "Published.py")
+        #expect(
+            options.makeConfig(code: "print('ok')", language: .python).metadata.filename
+                == "Published.py")
+    }
+
+    @Test func stdinNameRequiresStdin() {
+        #expect(throws: CLIError.incompatibleOptions("--stdin-name requires --stdin.")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--stdin-name", "in.swift", "--out", "x.png",
+            ])
+        }
+    }
+
     @Test func stdinRejectsPositionalInput() {
         #expect(
             throws: CLIError.incompatibleOptions(
@@ -330,6 +370,9 @@ struct CLITests {
     @Test func stdinAndCopyAreRejectedForBatch() {
         #expect(throws: CLIError.unknownFlag("--stdin")) {
             try CLIArguments.parse(["batch", "dir", "--out", "out", "--stdin"])
+        }
+        #expect(throws: CLIError.unknownFlag("--stdin-name")) {
+            try CLIArguments.parse(["batch", "dir", "--out", "out", "--stdin-name", "File.swift"])
         }
     }
 

@@ -362,6 +362,7 @@ vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font-size 12 --padding 24 --no-shadow
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render snippet.swift --out card.png --sidecars all
+cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
 vitrine render input.swift --out image.png --quiet
 vitrine list themes
 vitrine list languages --json
@@ -380,7 +381,9 @@ suppresses the success summary for scripts while leaving errors visible. `--them
 (`srgb`/`p3`), `--transparent`, style controls (`--font-size`, `--padding`,
 `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--no-shadow`), and the header
 controls (`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`)
-override individual choices. `--text-sidecar`, `--markdown-sidecar`, `--html-sidecar`,
+override individual choices. With `--stdin`, `--stdin-name <name>` supplies a
+filename hint for extension-based language inference and default metadata without
+reading that file. `--text-sidecar`, `--markdown-sidecar`, `--html-sidecar`,
 or `--sidecars all` write copyable source beside the image for accessible docs,
 README, or web embeds. `vitrine batch --recursive` walks nested folders and mirrors
 their relative paths under the output folder; `--dry-run` scans and decodes the matching
