@@ -407,6 +407,34 @@ struct CLITests {
         }
     }
 
+    @Test func parsesHTMLSidecarFlag() throws {
+        let options = try CLIArguments.parse(
+            ["render", "in.log", "--out", "out.png", "--html-sidecar"])
+        #expect(options.htmlSidecar)
+        // Off unless requested; combinable with the existing text and Markdown sidecars.
+        let bare = try CLIArguments.parse(["render", "in.log", "--out", "out.png"])
+        #expect(!bare.htmlSidecar)
+        let all = try CLIArguments.parse([
+            "render", "in.log", "--out", "out.png",
+            "--text-sidecar", "--markdown-sidecar", "--html-sidecar",
+        ])
+        #expect(all.textSidecar && all.markdownSidecar && all.htmlSidecar)
+    }
+
+    @Test func htmlSidecarRejectsEditAndOutlessCopy() {
+        #expect(
+            throws: CLIError.incompatibleOptions("Cannot combine --edit with --html-sidecar.")
+        ) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--html-sidecar"])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--html-sidecar needs an --out path to write beside.")
+        ) {
+            try CLIArguments.parse(["render", "in.log", "--copy", "--html-sidecar"])
+        }
+    }
+
     @Test func editStagesTheHandoffAndReportsSuccess() throws {
         var captured: URL?
         let options = try CLIArguments.parse(["render", "session.log", "--edit"])
@@ -766,6 +794,48 @@ struct CLITests {
 
         #expect(contents.hasPrefix("![evil\\] name \\[draft](<card v1)\\<final\\>.png>)\n\n"))
         #expect(contents.contains("```swift\nprint(\"hi\")\n```\n"))
+    }
+
+    @Test func htmlSidecarWritesEscapedSourceNextToImage() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let source = "let title = \"<Ship & share>\"\n"
+        let input = try writeInput(source, named: "snippet.swift", in: directory)
+        let output = directory.appendingPathComponent("card.png").path
+        let options = try CLIArguments.parse([
+            "render", input, "--out", output, "--language", "swift",
+            "--filename", "Sources/App.swift", "--html-sidecar",
+        ])
+
+        let summary = try CLIRenderer.run(options)
+        #expect(summary.contains("card.html"))
+
+        let sidecar = directory.appendingPathComponent("card.html")
+        let html = try String(contentsOf: sidecar, encoding: .utf8)
+        #expect(html.contains("<img src=\"card.png\" alt=\"Sources/App.swift\">"))
+        #expect(html.contains("<pre><code class=\"language-swift\">"))
+        #expect(html.contains("let title = \"&lt;Ship &amp; share&gt;\""))
+        #expect(FileManager.default.fileExists(atPath: output))
+    }
+
+    @Test func htmlSidecarEscapesUserControlledImageSyntax() {
+        var config = SnapshotConfig()
+        config.language = .swift
+        config.code = "print(\"<script>alert('&') </script>\")\n"
+        config.metadata = SnapshotMetadata(
+            filename: "evil\" <script>",
+            title: "Docs <Embed> & \"copy\"")
+
+        let contents = CLIRenderer.htmlSidecarContents(
+            for: config, imageName: "card \"x\" & <final>.png")
+
+        #expect(contents.contains("<title>Docs &lt;Embed&gt; &amp; \"copy\"</title>"))
+        #expect(
+            contents.contains(
+                "<img src=\"card &quot;x&quot; &amp; &lt;final&gt;.png\" alt=\"evil&quot; &lt;script&gt;\">"
+            ))
+        #expect(contents.contains("print(\"&lt;script&gt;alert('&amp;') &lt;/script&gt;\")"))
     }
 
     @Test func languageIsInferredFromTheInputExtension() throws {

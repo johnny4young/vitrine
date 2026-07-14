@@ -244,6 +244,7 @@ enum CLIRenderer {
         if options.markdownSidecar {
             try writeMarkdownSidecar(for: config, options: options, beside: url)
         }
+        if options.htmlSidecar { try writeHTMLSidecar(for: config, options: options, beside: url) }
 
         switch options.format {
         case .png, .heic:
@@ -269,6 +270,9 @@ enum CLIRenderer {
         }
         if options.markdownSidecar {
             names.append(base.appendingPathExtension("md").lastPathComponent)
+        }
+        if options.htmlSidecar {
+            names.append(base.appendingPathExtension("html").lastPathComponent)
         }
         return names.map { " + \($0)" }.joined()
     }
@@ -315,6 +319,26 @@ enum CLIRenderer {
         }
     }
 
+    /// Writes the HTML sidecar next to the rendered image at `imageURL`
+    /// (`card.png` → `card.html`): the image embed followed by the source in an
+    /// escaped, language-tagged `<pre><code>` block. Terminal output is reduced to its
+    /// visible text first, exactly like the plain-text and Markdown sidecars.
+    private static func writeHTMLSidecar(
+        for config: SnapshotConfig, options: CLIOptions, beside imageURL: URL
+    ) throws {
+        let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("html")
+        let contents = htmlSidecarContents(for: config, imageName: imageURL.lastPathComponent)
+        do {
+            try Data(contents.utf8).write(to: sidecarURL)
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "CLI html-sidecar write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            throw CLIError.writeFailed(path: sidecarURL.path)
+        }
+    }
+
     /// Builds the Markdown sidecar body: `![alt](image)` + a fenced code block.
     /// The fence is one backtick longer than the longest backtick run in the body,
     /// so code containing ``` can never break out of the block; the info string is
@@ -340,6 +364,34 @@ enum CLIRenderer {
 
             \(fence)\(fenceLanguage)
             \(body)\(trailingNewline)\(fence)
+            """ + "\n"
+    }
+
+    /// Builds a small, self-contained HTML sidecar with every user-controlled string
+    /// escaped for its context. This makes the sidecar safe to paste into docs even
+    /// when the source filename, output name, or code contains HTML markup.
+    /// Internal (not private) so the exact escaping contract is unit-testable.
+    static func htmlSidecarContents(for config: SnapshotConfig, imageName: String) -> String {
+        let body = htmlText(config.sidecarText)
+        let title = htmlText(config.metadata.title ?? config.metadata.filename ?? "Vitrine render")
+        let alt = htmlAttribute(config.metadata.filename ?? "Code rendered with Vitrine")
+        let imageSource = htmlAttribute(imageName)
+        let language = config.language == .terminal ? "text" : config.language.rawValue
+        let codeClass = htmlAttribute("language-\(language)")
+        return """
+            <!doctype html>
+            <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <title>\(title)</title>
+            </head>
+            <body>
+              <figure>
+                <img src="\(imageSource)" alt="\(alt)">
+                <pre><code class="\(codeClass)">\(body)</code></pre>
+              </figure>
+            </body>
+            </html>
             """ + "\n"
     }
 
@@ -378,6 +430,51 @@ enum CLIRenderer {
             .replacingOccurrences(of: "\n", with: "%0A")
             .replacingOccurrences(of: "\r", with: "%0D")
         return "<\(escaped)>"
+    }
+
+    /// Escapes text-node content for HTML sidecars.
+    private static func htmlText(_ text: String) -> String {
+        var escaped = ""
+        escaped.reserveCapacity(text.count)
+        for character in text {
+            switch character {
+            case "&":
+                escaped += "&amp;"
+            case "<":
+                escaped += "&lt;"
+            case ">":
+                escaped += "&gt;"
+            default:
+                escaped.append(character)
+            }
+        }
+        return escaped
+    }
+
+    /// Escapes attribute values for HTML sidecars, also flattening line breaks so a
+    /// user-controlled filename cannot create surprising multi-line attributes.
+    private static func htmlAttribute(_ text: String) -> String {
+        var escaped = ""
+        escaped.reserveCapacity(text.count)
+        for character in text {
+            switch character {
+            case "&":
+                escaped += "&amp;"
+            case "\"":
+                escaped += "&quot;"
+            case "'":
+                escaped += "&#39;"
+            case "<":
+                escaped += "&lt;"
+            case ">":
+                escaped += "&gt;"
+            case "\n", "\r":
+                escaped += " "
+            default:
+                escaped.append(character)
+            }
+        }
+        return escaped
     }
 
     /// Writes `data` to `url`, mapping any I/O failure to `CLIError.writeFailed`.

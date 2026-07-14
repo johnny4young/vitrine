@@ -112,6 +112,11 @@ struct CLIOptions: Equatable {
     /// to paste into a README or blog post so viewers can copy the code the image
     /// shows. Same constraints as `textSidecar` (needs `--out`; not with `--edit`).
     var markdownSidecar: Bool = false
+    /// Also write a self-contained HTML `.html` sidecar next to the rendered image:
+    /// the escaped image embed followed by the escaped source in a language-tagged
+    /// `<pre><code>` block, ready to paste into web docs without trusting the source
+    /// filename or code as markup. Same constraints as the other sidecars.
+    var htmlSidecar: Bool = false
 
     /// The default export scale when neither a preset nor an explicit `--scale`
     /// supplies one — the app's documented default resolution multiplier.
