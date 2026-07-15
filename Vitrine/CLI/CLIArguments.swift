@@ -181,6 +181,11 @@ enum CLIArguments {
         var calloutY: Double?
         var calloutColor: RGBAColor?
         var calloutSize: Double?
+        var counterNumber: Int?
+        var counterX: Double?
+        var counterY: Double?
+        var counterColor: RGBAColor?
+        var counterSize: Double?
         var imageFrame: CLIOptions.ImageFrameOption?
         var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
@@ -308,6 +313,16 @@ enum CLIArguments {
                 calloutColor = try resolveCalloutColor(try value(for: token))
             case "--callout-size":
                 calloutSize = try resolveCalloutSize(try value(for: token))
+            case "--counter":
+                counterNumber = try resolveCounterNumber(try value(for: token))
+            case "--counter-x":
+                counterX = try resolveNormalizedCoordinate(try value(for: token), flag: token)
+            case "--counter-y":
+                counterY = try resolveNormalizedCoordinate(try value(for: token), flag: token)
+            case "--counter-color":
+                counterColor = try resolveHexColor(try value(for: token), flag: token)
+            case "--counter-size":
+                counterSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--frame":
                 imageFrame = try resolveImageFrame(try value(for: token))
             case "--frame-appearance":
@@ -505,6 +520,16 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--callout-x and --callout-y must be provided together.")
         }
+        if counterNumber == nil,
+            counterX != nil || counterY != nil || counterColor != nil || counterSize != nil
+        {
+            throw CLIError.incompatibleOptions(
+                "--counter-x, --counter-y, --counter-color, and --counter-size require --counter.")
+        }
+        if (counterX == nil) != (counterY == nil) {
+            throw CLIError.incompatibleOptions(
+                "--counter-x and --counter-y must be provided together.")
+        }
         if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
             throw CLIError.incompatibleOptions(
                 "--frame and --frame-appearance require --image.")
@@ -555,6 +580,7 @@ enum CLIArguments {
             || formatCode
             || watermarkContentRequested
             || calloutText != nil
+            || counterNumber != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -673,6 +699,12 @@ enum CLIArguments {
             } else {
                 nil
             }
+        let counterPosition: CGPoint? =
+            if let counterX, let counterY {
+                CGPoint(x: counterX, y: counterY)
+            } else {
+                nil
+            }
 
         return CLIOptions(
             command: mode,
@@ -711,6 +743,10 @@ enum CLIArguments {
             calloutPosition: calloutPosition,
             calloutColor: calloutColor,
             calloutSize: calloutSize,
+            counterNumber: counterNumber,
+            counterPosition: counterPosition,
+            counterColor: counterColor,
+            counterSize: counterSize,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
@@ -917,10 +953,23 @@ enum CLIArguments {
 
     /// Parses the editor annotation toolbar's supported size-weight range.
     private static func resolveCalloutSize(_ raw: String) throws -> Double {
+        try resolveAnnotationSize(raw, flag: "--callout-size")
+    }
+
+    /// Parses an annotation size using the editor toolbar's shared bounds.
+    private static func resolveAnnotationSize(_ raw: String, flag: String) throws -> Double {
         guard let size = Double(raw), size.isFinite, Annotation.thicknessRange.contains(size) else {
-            throw CLIError.invalidValue(flag: "--callout-size", value: raw)
+            throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return size
+    }
+
+    /// Parses a compact positive counter label that remains legible in the badge.
+    private static func resolveCounterNumber(_ raw: String) throws -> Int {
+        guard let number = Int(raw), CLIOptions.counterNumberRange.contains(number) else {
+            throw CLIError.invalidValue(flag: "--counter", value: raw)
+        }
+        return number
     }
 
     /// Resolves a stable image-frame id advertised by `vitrine list frames`.
@@ -1244,6 +1293,13 @@ nonisolated enum CLIUsage {
           --callout-color <hex>  Callout RGB/RGBA text color; requires --callout.
           --callout-size <2...28>
                                  Callout size weight; requires --callout.
+          --counter <1...99>     Add a numbered annotation badge.
+          --counter-x <0...1>    Normalized horizontal center (defaults to 0.5).
+          --counter-y <0...1>    Normalized vertical center (defaults to 0.5); x/y
+                                 must be provided together.
+          --counter-color <hex>  Counter RGB/RGBA fill color; requires --counter.
+          --counter-size <2...28>
+                                 Counter size weight; requires --counter.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.

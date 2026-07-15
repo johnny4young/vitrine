@@ -90,6 +90,10 @@ struct CLITests {
         #expect(options.calloutPosition == nil)
         #expect(options.calloutColor == nil)
         #expect(options.calloutSize == nil)
+        #expect(options.counterNumber == nil)
+        #expect(options.counterPosition == nil)
+        #expect(options.counterColor == nil)
+        #expect(options.counterSize == nil)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -587,6 +591,66 @@ struct CLITests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--callout-color", "#FFF",
+            ])
+        }
+    }
+
+    @Test func counterOptionsBuildTheRenderCoreAnnotation() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--counter", "7",
+            "--counter-x", "0.2", "--counter-y", "0.75",
+            "--counter-color", "#22C55E", "--counter-size", "8",
+        ])
+
+        #expect(options.counterNumber == 7)
+        #expect(options.counterPosition == CGPoint(x: 0.2, y: 0.75))
+        #expect(options.counterColor == RGBAColor(hex: "#22C55E"))
+        #expect(options.counterSize == 8)
+        let annotation = try #require(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).annotations.first)
+        #expect(annotation.kind == .counter)
+        #expect(annotation.start == CGPoint(x: 0.2, y: 0.75))
+        #expect(annotation.end == annotation.start)
+        #expect(annotation.number == 7)
+        #expect(annotation.color == RGBAColor(hex: "#22C55E"))
+        #expect(annotation.thickness == 8)
+    }
+
+    @Test func counterDefaultsToTheEditorStyleAtCanvasCenter() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--counter", "1",
+        ])
+        let annotation = try #require(
+            options.makeConfig(code: "x", language: .swift).annotations.first)
+        #expect(annotation.start == CGPoint(x: 0.5, y: 0.5))
+        #expect(annotation.color == Annotation.defaultColor)
+        #expect(annotation.thickness == Annotation.defaultThickness)
+        #expect(annotation.number == 1)
+    }
+
+    @Test func counterRejectsInvalidOrInertModifiers() {
+        for raw in ["0", "100", "1.5", "seven"] {
+            #expect(throws: CLIError.invalidValue(flag: "--counter", value: raw)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--counter", raw,
+                ])
+            }
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--counter-x and --counter-y must be provided together.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--counter", "2",
+                "--counter-x", "0.3",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--counter-x, --counter-y, --counter-color, and --counter-size require --counter.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--counter-size", "7",
             ])
         }
     }
@@ -1246,6 +1310,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--callout", "Review this",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--counter", "1",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -1715,6 +1787,31 @@ struct CLITests {
                 != Data(contentsOf: URL(fileURLWithPath: calloutOutput)))
         #expect(calloutImage.width == plainImage.width)
         #expect(calloutImage.height == plainImage.height)
+    }
+
+    @Test func numberedCounterChangesPixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let counterOutput = directory.appendingPathComponent("counter.png").path
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", counterOutput, "--scale", "1",
+                "--counter", "7", "--counter-x", "0.82", "--counter-y", "0.2",
+                "--counter-color", "#22C55E", "--counter-size", "8",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let counterImage = try decodePNG(at: counterOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: counterOutput)))
+        #expect(counterImage.width == plainImage.width)
+        #expect(counterImage.height == plainImage.height)
     }
 
     @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {
