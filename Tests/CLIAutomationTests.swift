@@ -439,15 +439,23 @@ struct CLIAutomationTests {
 
         let options = try CLIArguments.parse([
             "batch", input.path, "--out", output.path, "--recursive", "--manifest", manifest.path,
+            "--sidecars", "text,html",
         ])
         let summary = try CLIRenderer.runBatch(options)
 
         #expect(summary.contains("Rendered 1 image"))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: output.appendingPathComponent("docs/Ok.txt").path))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: output.appendingPathComponent("docs/Ok.html").path))
         let decoded = try #require(
             JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
         let entry = try #require(decoded.first)
         #expect(entry["input"] as? String == "docs/Ok.swift")
         #expect(entry["output"] as? String == "docs/Ok.png")
+        #expect(entry["sidecars"] as? [String] == ["docs/Ok.txt", "docs/Ok.html"])
         #expect(entry["language"] as? String == "swift")
         #expect(entry["format"] as? String == "png")
         #expect(entry["status"] as? String == "rendered")
@@ -497,6 +505,7 @@ struct CLIAutomationTests {
 
         let options = try CLIArguments.parse([
             "batch", input.path, "--out", output.path, "--dry-run", "--manifest", manifest.path,
+            "--text-sidecar",
         ])
         let summary = try CLIRenderer.runBatch(options)
 
@@ -507,6 +516,7 @@ struct CLIAutomationTests {
         let entry = try #require(decoded.first)
         #expect(entry["input"] as? String == "Planned.py")
         #expect(entry["output"] as? String == "Planned.png")
+        #expect(entry["sidecars"] as? [String] == ["Planned.txt"])
         #expect(entry["language"] as? String == "python")
         #expect(entry["status"] as? String == "planned")
         #expect(entry["width"] == nil)

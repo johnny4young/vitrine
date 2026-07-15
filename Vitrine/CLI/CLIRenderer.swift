@@ -39,6 +39,8 @@ enum CLIRenderer {
         var input: String
         /// Slash-separated output path relative to the batch output folder.
         var output: String
+        /// Slash-separated sidecar paths relative to the batch output folder.
+        var sidecars: [String]
         /// The language id actually used for this input.
         var language: String
         /// The requested output format (`png`, `pdf`, or `heic`).
@@ -298,7 +300,7 @@ enum CLIRenderer {
                     batchManifestEntry(
                         for: file, outputURL: outputURL, inputDirectory: inputDirectory,
                         outputDirectory: outputDirectory, language: language, format: ext,
-                        status: "planned", dimensions: nil))
+                        status: "planned", dimensions: nil, options: options))
                 continue
             }
 
@@ -311,7 +313,7 @@ enum CLIRenderer {
                     batchManifestEntry(
                         for: file, outputURL: outputURL, inputDirectory: inputDirectory,
                         outputDirectory: outputDirectory, language: language, format: ext,
-                        status: "rendered", dimensions: dimensions))
+                        status: "rendered", dimensions: dimensions, options: options))
                 rendered += 1
             } catch {
                 skipped += 1
@@ -511,11 +513,15 @@ enum CLIRenderer {
         language: Language,
         format: String,
         status: String,
-        dimensions: (width: Int, height: Int)?
+        dimensions: (width: Int, height: Int)?,
+        options: CLIOptions
     ) -> BatchManifestEntry {
         BatchManifestEntry(
             input: batchRelativePath(for: file, under: inputDirectory),
             output: batchRelativePath(for: outputURL, under: outputDirectory),
+            sidecars: sidecarURLs(options, beside: outputURL).map {
+                batchRelativePath(for: $0, under: outputDirectory)
+            },
             language: language.rawValue,
             format: format,
             status: status,
