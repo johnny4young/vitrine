@@ -145,17 +145,19 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--font-ligatures`, `--no-font-ligatures`, `--transparent`, style controls
 (`--font-size`, `--padding`, `--corner-radius`, `--shadow-radius`, `--wrap-columns`,
 `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
-`--redact-lines <spec>`, `--focus-lines`, `--no-focus-lines`, `--diff-bands`,
-`--no-diff-bands`), and the header controls (`--window-title`, `--filename`, `--title`,
-`--caption`, `--language-badge`) override individual choices. Line specs are strict
-1-based line/range lists such as `3,7-9,12`, so automation fails loud instead of
-silently dropping malformed fragments; redacted rows are also replaced with
-`[redacted]` before copyable sidecars are written. For single-file renders, known
-output extensions (`.png`, `.pdf`, `.heic`) infer the export format when `--format` is
-omitted; if an explicit `--format` is present, the extension must match so automation
-never receives mislabeled bytes. For piped input, `--stdin-name <name>` supplies
-filename context for extension-based language inference and default metadata while
-still reading the source only from standard input.
+`--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
+`--diff-bands`, `--no-diff-bands`), and the header controls (`--window-title`,
+`--filename`, `--title`, `--caption`, `--language-badge`) override individual choices.
+Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation fails
+loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
+same deterministic `SecretScanner` as the editor and merges detected rows with any
+manual `--redact-lines` ranges. Redacted rows are replaced with `[redacted]` before
+copyable sidecars are written. For single-file renders, known output extensions
+(`.png`, `.pdf`, `.heic`) infer the export format when `--format` is omitted; if an
+explicit `--format` is present, the extension must match so automation never receives
+mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
+extension-based language inference and default metadata while still reading the source
+only from standard input.
 `--no-overwrite` / `--no-clobber` is an opt-in artifact safety guard: single renders
 fail before replacing an image or sidecar, while batch jobs skip existing targets and
 can pair that with skipped reports or `--fail-on-skipped`. A preset reframes
@@ -169,8 +171,9 @@ to the rendered image when `--out` is present. Terminal captures use the resolve
 visible text (ANSI escapes and OSC links stripped) so the sidecar matches the pixels.
 Markdown and HTML sidecars escape user-controlled filenames, image names, and source in
 their respective syntax contexts before producing README or web embed blocks. If
-`--redact-lines` is present, every sidecar is built from `SnapshotConfig.sidecarText`,
-so the neutral placeholder is the only copyable representation of those rows.
+`--redact-lines` or `--redact-secrets` is present, every sidecar is built from
+`SnapshotConfig.sidecarText`, so the neutral placeholder is the only copyable
+representation of those rows.
 
 **Batch recursion.** `vitrine batch <folder> --out <folder>` remains top-level by
 default for backward compatibility. `--recursive` opts into a full nested walk and

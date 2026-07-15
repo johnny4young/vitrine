@@ -141,6 +141,7 @@ struct CLITests {
             "--no-shadow",
             "--highlight-lines", "2, 4-6",
             "--redact-lines", "7, 9-10",
+            "--redact-secrets",
             "--focus-lines",
             "--diff-bands",
         ])
@@ -172,6 +173,7 @@ struct CLITests {
         #expect(options.showShadow == false)
         #expect(options.highlightedLineRanges == [2...2, 4...6])
         #expect(options.redactedLineRanges == [7...7, 9...10])
+        #expect(options.redactSecrets)
         #expect(options.focusHighlightedLines == true)
         #expect(options.diffDecorations == true)
     }
@@ -187,6 +189,21 @@ struct CLITests {
             "render", "out.log", "-o", "o.png", "--terminal-width", "120",
         ])
         #expect(pinned.makeConfig(code: "", language: .terminal).terminalColumns == 120)
+    }
+
+    @Test func redactSecretsScansTerminalVisibleText() throws {
+        let options = try CLIArguments.parse([
+            "render", "session.log", "-o", "o.png", "--language", "terminal",
+            "--terminal-width", "80", "--redact-secrets",
+        ])
+
+        let config = options.makeConfig(
+            code: "fetching...\rexport API_KEY=\(String(repeating: "k", count: 20))",
+            language: .terminal)
+
+        #expect(options.redactSecrets)
+        #expect(config.redactedLineRanges == [1...1])
+        #expect(config.sidecarText == SnapshotConfig.redactedLinePlaceholder)
     }
 
     @Test func wrapColumnsDefaultsToNilAndFlowsIntoTheConfig() throws {
@@ -215,6 +232,7 @@ struct CLITests {
         #expect(defaults.showShadow == nil)
         #expect(defaults.highlightedLineRanges == nil)
         #expect(defaults.redactedLineRanges == nil)
+        #expect(defaults.redactSecrets == false)
         #expect(defaults.focusHighlightedLines == nil)
         #expect(defaults.diffDecorations == nil)
 
@@ -232,11 +250,14 @@ struct CLITests {
             "--no-shadow",
             "--highlight-lines", "2, 4-6",
             "--redact-lines", "8-9",
+            "--redact-secrets",
             "--focus-lines",
             "--diff-bands",
         ])
 
-        let config = options.makeConfig(code: "print(\"styled\")", language: .swift)
+        let config = options.makeConfig(
+            code: "print(\"styled\")\nlet token = \"sk-\(String(repeating: "a", count: 24))\"",
+            language: .swift)
         #expect(config.fontName == "Fira Code")
         #expect(config.fontLigatures)
         #expect(config.fontSize == 15.5)
@@ -247,7 +268,7 @@ struct CLITests {
         #expect(!config.showChrome)
         #expect(!config.showShadow)
         #expect(config.highlightedLineRanges == [2...2, 4...6])
-        #expect(config.redactedLineRanges == [8...9])
+        #expect(config.redactedLineRanges == [2...2, 8...9])
         #expect(config.focusHighlightedLines)
         #expect(config.diffDecorations)
 
@@ -1031,6 +1052,44 @@ struct CLITests {
         #expect(!text.contains("runtime-only-secret"))
         #expect(!markdown.contains("runtime-only-secret"))
         #expect(!html.contains("runtime-only-secret"))
+        #expect(FileManager.default.fileExists(atPath: output.path))
+    }
+
+    @Test func redactSecretsScrubsCopyableSidecars() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let secret = "sk-\(String(repeating: "s", count: 24))"
+        let source = "let visible = 1\nlet apiKey = \"\(secret)\"\nlet tail = 2\n"
+        let input = try writeInput(source, named: "Secret.swift", in: directory)
+        let output = directory.appendingPathComponent("card.png")
+        let options = try CLIArguments.parse([
+            "render", input,
+            "--out", output.path,
+            "--language", "swift",
+            "--redact-secrets",
+            "--sidecars", "all",
+        ])
+
+        let summary = try CLIRenderer.run(options)
+        #expect(summary.contains("card.txt"))
+        #expect(summary.contains("card.md"))
+        #expect(summary.contains("card.html"))
+
+        let expected = "let visible = 1\n[redacted]\nlet tail = 2\n"
+        let text = try String(
+            contentsOf: directory.appendingPathComponent("card.txt"), encoding: .utf8)
+        let markdown = try String(
+            contentsOf: directory.appendingPathComponent("card.md"), encoding: .utf8)
+        let html = try String(
+            contentsOf: directory.appendingPathComponent("card.html"), encoding: .utf8)
+
+        #expect(text == expected)
+        #expect(markdown.contains(expected))
+        #expect(html.contains("[redacted]"))
+        #expect(!text.contains(secret))
+        #expect(!markdown.contains(secret))
+        #expect(!html.contains(secret))
         #expect(FileManager.default.fileExists(atPath: output.path))
     }
 
