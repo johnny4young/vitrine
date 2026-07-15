@@ -78,6 +78,9 @@ struct CLITests {
         #expect(options.transparent == false)
         #expect(options.background == nil)
         #expect(options.backgroundImagePath == nil)
+        #expect(options.backgroundImageFit == nil)
+        #expect(options.backgroundImageBlur == nil)
+        #expect(options.backgroundImageDimming == nil)
         #expect(options.watermarkText == nil)
         #expect(options.watermarkColor == nil)
         #expect(options.watermarkPosition == nil)
@@ -1363,6 +1366,64 @@ struct CLITests {
         #expect(config.background == .image(ImageBackground(reference: reference)))
     }
 
+    @Test func localBackgroundImageControlsMapToTheExistingRenderModel() throws {
+        let options = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--background-image", "photo.png",
+            "--background-fit", "FIT", "--background-blur", "12.5",
+            "--background-dimming", "0.35",
+        ])
+        #expect(options.backgroundImageFit == .fit)
+        #expect(options.backgroundImageBlur == 12.5)
+        #expect(options.backgroundImageDimming == 0.35)
+
+        let reference = ImageReference(fileName: "imported.png")
+        let config = options.makeConfig(
+            code: "X", language: .swift, backgroundImageReference: reference)
+        #expect(
+            config.background
+                == .image(
+                    ImageBackground(
+                        reference: reference, fit: .fit, blur: 12.5, dimming: 0.35)))
+    }
+
+    @Test func localBackgroundImageControlsRejectInvalidOrInertValues() {
+        #expect(throws: CLIError.invalidValue(flag: "--background-fit", value: "stretch")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--background-image", "photo.png",
+                "--background-fit", "stretch",
+            ])
+        }
+        for value in ["-1", "41", "nan"] {
+            #expect(throws: CLIError.invalidValue(flag: "--background-blur", value: value)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--background-image", "photo.png",
+                    "--background-blur", value,
+                ])
+            }
+        }
+        for value in ["-0.1", "1.1", "infinity"] {
+            #expect(throws: CLIError.invalidValue(flag: "--background-dimming", value: value)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--background-image", "photo.png",
+                    "--background-dimming", value,
+                ])
+            }
+        }
+        for (flag, value) in [
+            ("--background-fit", "fit"),
+            ("--background-blur", "10"),
+            ("--background-dimming", "0.2"),
+        ] {
+            #expect(
+                throws: CLIError.incompatibleOptions("\(flag) requires --background-image.")
+            ) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", flag, value,
+                ])
+            }
+        }
+    }
+
     @Test func backgroundModesRejectAmbiguousCombinations() {
         #expect(
             throws: CLIError.incompatibleOptions(
@@ -1486,6 +1547,37 @@ struct CLITests {
         #expect(imageBackground.width == defaultImage.width)
         #expect(imageBackground.height == defaultImage.height)
         #expect(try Data(contentsOf: background) == originalBackground)
+    }
+
+    @Test func localBackgroundImageEffectsChangePixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let background = directory.appendingPathComponent("background.png")
+        try writeFixtureImage(to: background, size: CGSize(width: 320, height: 180))
+        let plainOutput = directory.appendingPathComponent("plain-background.png").path
+        let styledOutput = directory.appendingPathComponent("styled-background.png").path
+
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", plainOutput, "--scale", "1",
+                "--background-image", background.path,
+            ]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", styledOutput, "--scale", "1",
+                "--background-image", background.path, "--background-fit", "fit",
+                "--background-blur", "8", "--background-dimming", "0.4",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let styledImage = try decodePNG(at: styledOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: styledOutput)))
+        #expect(styledImage.width == plainImage.width)
+        #expect(styledImage.height == plainImage.height)
     }
 
     @Test func localBackgroundImageReportsUnreadableAndUnsupportedFilesPrecisely() throws {

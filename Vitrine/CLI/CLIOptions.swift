@@ -106,6 +106,13 @@ struct CLIOptions: Equatable {
     /// an invocation-scoped temporary store before rendering, so automation inputs
     /// never enter the app's persistent background library.
     var backgroundImagePath: String?
+    /// Optional fill/fit behavior for a local image background. Nil uses the app's
+    /// edge-to-edge fill default.
+    var backgroundImageFit: BackgroundFit?
+    /// Optional local image-background blur in the app model's 0...40 point range.
+    var backgroundImageBlur: Double?
+    /// Optional local image-background dark overlay in the normalized 0...1 range.
+    var backgroundImageDimming: Double?
     /// Optional text-only watermark composited by the same overlay as the PRO Brand Kit.
     /// Nil preserves the unwatermarked CLI default.
     var watermarkText: String?
@@ -317,7 +324,12 @@ struct CLIOptions: Equatable {
             presetID: presetID, themeID: themeID, transparent: transparent)
         if let background { config.background = background }
         if let backgroundImageReference {
-            config.background = .image(ImageBackground(reference: backgroundImageReference))
+            config.background = .image(
+                ImageBackground(
+                    reference: backgroundImageReference,
+                    fit: backgroundImageFit ?? .fill,
+                    blur: backgroundImageBlur ?? 0,
+                    dimming: backgroundImageDimming ?? 0))
         }
         config.code = formatCode ? CodeFormatter.tidy(code, language: language) : code
         config.language = language

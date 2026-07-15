@@ -1,8 +1,8 @@
 import Foundation
 
 /// Lists the local CLI catalogs used to validate themes, languages, export presets, fonts,
-/// backgrounds, image frames, frame appearances, watermark positions, formats, and
-/// color profiles.
+/// backgrounds, image-background fits, image frames, frame appearances, watermark
+/// positions, formats, and color profiles.
 ///
 /// `vitrine list` is intentionally separate from `CLIArguments`: it does not render,
 /// read user files, or need AppKit. The executable handles it before the PRO render
@@ -17,6 +17,7 @@ enum CLICatalog {
         case presets
         case fonts
         case backgrounds
+        case backgroundFits
         case frames
         case frameAppearances
         case watermarkPositions
@@ -31,6 +32,7 @@ enum CLICatalog {
             case "preset", "presets": self = .presets
             case "font", "fonts": self = .fonts
             case "background", "backgrounds": self = .backgrounds
+            case "background-fit", "background-fits": self = .backgroundFits
             case "frame", "frames": self = .frames
             case "frame-appearance", "frame-appearances": self = .frameAppearances
             case "watermark-position", "watermark-positions": self = .watermarkPositions
@@ -65,6 +67,7 @@ enum CLICatalog {
         var presets: [Entry]
         var fonts: [Entry]
         var backgrounds: [Entry]
+        var backgroundFits: [Entry]
         var frames: [Entry]
         var frameAppearances: [Entry]
         var watermarkPositions: [Entry]
@@ -73,7 +76,7 @@ enum CLICatalog {
     }
 
     static let usage = """
-        vitrine list <all|themes|languages|presets|fonts|backgrounds|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
+        vitrine list <all|themes|languages|presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
 
         Prints the local ids accepted by render options, including --background,
         --frame, --frame-appearance, and --watermark-position.
@@ -137,6 +140,7 @@ enum CLICatalog {
             presets: entries(for: .presets),
             fonts: entries(for: .fonts),
             backgrounds: entries(for: .backgrounds),
+            backgroundFits: entries(for: .backgroundFits),
             frames: entries(for: .frames),
             frameAppearances: entries(for: .frameAppearances),
             watermarkPositions: entries(for: .watermarkPositions),
@@ -157,6 +161,7 @@ enum CLICatalog {
         (.presets, "presets"),
         (.fonts, "fonts"),
         (.backgrounds, "backgrounds"),
+        (.backgroundFits, "background-fits"),
         (.frames, "frames"),
         (.frameAppearances, "frame-appearances"),
         (.watermarkPositions, "watermark-positions"),
@@ -180,6 +185,8 @@ enum CLICatalog {
             GradientPreset.allCases.map {
                 Entry(id: $0.rawValue.lowercased(), name: $0.rawValue)
             }
+        case .backgroundFits:
+            BackgroundFit.allCases.map { Entry(id: $0.rawValue, name: $0.displayName) }
         case .frames:
             CLIOptions.ImageFrameOption.allCases.map {
                 Entry(id: $0.rawValue, name: $0.displayName)

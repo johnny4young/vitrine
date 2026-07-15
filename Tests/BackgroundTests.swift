@@ -294,6 +294,30 @@ struct BackgroundTests {
         #expect(corner.a == 255, "a resolvable image background must render opaque")
     }
 
+    @Test func fittedAndBlurredImageBackgroundEdgesRemainOpaque() throws {
+        let store = Self.tempStore()
+        let reference = try store.importImage(from: Self.makeSamplePNG())
+        for imageBackground in [
+            ImageBackground(reference: reference, fit: .fit),
+            ImageBackground(reference: reference, fit: .fill, blur: 16, dimming: 0.35),
+        ] {
+            let config = Self.sampleConfig(background: .image(imageBackground))
+            let rendered = try #require(
+                ExportManager.renderCGImage(
+                    config, scale: 1, fixedSize: CGSize(width: 200, height: 120),
+                    backgroundImageStore: store))
+            let png = try #require(ExportManager.pngData(from: rendered))
+            let source = try #require(CGImageSourceCreateWithData(png as CFData, nil))
+            let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+
+            for point in [(1, 1), (decoded.width - 2, 1), (1, decoded.height - 2)] {
+                #expect(
+                    try pixel(decoded, x: point.0, y: point.1).a == 255,
+                    "image-background fit and blur must not leak transparent edges")
+            }
+        }
+    }
+
     // MARK: - Missing-image fallback (Acceptance: degrade gracefully)
 
     @Test func missingImageResolvesToNilFromStore() {

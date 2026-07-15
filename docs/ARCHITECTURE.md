@@ -143,7 +143,8 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--theme`, `--language`, `--preset`, `--scale`, `--format`
 (`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), `--font <family>`,
 `--font-ligatures`, `--no-font-ligatures`, `--transparent`, `--background <id>`,
-`--background-color <hex>`, `--background-image <path>`, style controls
+`--background-color <hex>`, `--background-image <path>`, `--background-fit <fill|fit>`,
+`--background-blur <0...40>`, `--background-dimming <0...1>`, style controls
 (`--font-size`, `--padding`, `--corner-radius`, `--shadow-radius`, `--wrap-columns`,
 `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
@@ -165,6 +166,9 @@ the foreground-image store through `ExportManager`, then removes it after a sing
 render or the complete batch. Automation inputs therefore never enter Application
 Support, while every output still uses the shared `SnapshotCanvas` image-background
 path.
+Fit, blur, and dimming map directly to `ImageBackground`; their parser ranges are the
+model's own bounds, and they are rejected without `--background-image` so inert style
+options cannot silently pass in automation.
 `--no-overwrite` / `--no-clobber` is an opt-in artifact safety guard: single renders
 fail before replacing an image or sidecar, while batch jobs skip existing targets and
 can pair that with skipped reports or `--fail-on-skipped`. A preset reframes

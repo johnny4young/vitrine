@@ -49,7 +49,11 @@ enum ExportManager {
                 "Render produced no image (scale \(Int(scale), privacy: .public))")
             return nil
         }
-        return normalized(cgImage, to: profile)
+        let normalizedImage = normalized(cgImage, to: profile)
+        if case .image = config.background {
+            return compositedOverBlack(normalizedImage)
+        }
+        return normalizedImage
     }
 
     /// Converts a rendered `CGImage` into `profile`'s color space, redrawing it
@@ -95,6 +99,34 @@ enum ExportManager {
             return cgImage
         }
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage() ?? cgImage
+    }
+
+    /// Makes an image-backed snapshot fully opaque after the complete SwiftUI
+    /// hierarchy has rendered. Applying a matte inside `BackgroundView` can make
+    /// `ImageRenderer` composite that layer above selectable text in fit mode;
+    /// flattening the finished bitmap preserves the foreground while filling fit
+    /// letterboxes and translucent blur edges deterministically.
+    private static func compositedOverBlack(_ cgImage: CGImage) -> CGImage {
+        guard
+            let colorSpace = cgImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB),
+            let context = CGContext(
+                data: nil,
+                width: cgImage.width,
+                height: cgImage.height,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else {
+            Log.render.error("Opaque image-background context creation failed")
+            return cgImage
+        }
+        let bounds = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
+        context.setFillColor(CGColor(gray: 0, alpha: 1))
+        context.fill(bounds)
+        context.draw(cgImage, in: bounds)
         return context.makeImage() ?? cgImage
     }
 
@@ -158,18 +190,22 @@ enum ExportManager {
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> Data? {
-        pdfData(
+        let opaqueMatte: CGColor? =
+            if case .image = config.background { CGColor(gray: 0, alpha: 1) } else { nil }
+        return pdfData(
             SnapshotCanvas(config: config, fixedSize: fixedSize)
                 .environment(\.backgroundImageStore, backgroundImageStore)
                 .environment(\.foregroundImageStore, foregroundImageStore),
-            proposedSize: fixedSize)
+            proposedSize: fixedSize, opaqueMatte: opaqueMatte)
     }
 
     /// Renders any SwiftUI `content` to single-page PDF data, pinning the page to
     /// `proposedSize` when given. The single-page `CGDataConsumer`/`CGContext` dance
     /// lives here once and is shared by both the snapshot and social-card PDF exports
     /// (CS-007/041). Returns nil if the page context cannot be created.
-    static func pdfData<Content: View>(_ content: Content, proposedSize: CGSize?) -> Data? {
+    static func pdfData<Content: View>(
+        _ content: Content, proposedSize: CGSize?, opaqueMatte: CGColor? = nil
+    ) -> Data? {
         let renderer = ImageRenderer(content: content)
         if let proposedSize { renderer.proposedSize = ProposedViewSize(proposedSize) }
         let data = NSMutableData()
@@ -180,6 +216,10 @@ enum ExportManager {
                 let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
             else { return }
             context.beginPDFPage(nil)
+            if let opaqueMatte {
+                context.setFillColor(opaqueMatte)
+                context.fill(mediaBox)
+            }
             renderInContext(context)
             context.endPDFPage()
             context.closePDF()
