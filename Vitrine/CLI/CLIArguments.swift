@@ -176,6 +176,11 @@ enum CLIArguments {
         var watermarkPosition: CLIOptions.WatermarkPosition?
         var watermarkX: Double?
         var watermarkY: Double?
+        var calloutText: String?
+        var calloutX: Double?
+        var calloutY: Double?
+        var calloutColor: RGBAColor?
+        var calloutSize: Double?
         var imageFrame: CLIOptions.ImageFrameOption?
         var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
@@ -293,6 +298,16 @@ enum CLIArguments {
                 watermarkX = try resolveNormalizedCoordinate(try value(for: token), flag: token)
             case "--watermark-y":
                 watermarkY = try resolveNormalizedCoordinate(try value(for: token), flag: token)
+            case "--callout":
+                calloutText = try resolveCalloutText(try value(for: token))
+            case "--callout-x":
+                calloutX = try resolveNormalizedCoordinate(try value(for: token), flag: token)
+            case "--callout-y":
+                calloutY = try resolveNormalizedCoordinate(try value(for: token), flag: token)
+            case "--callout-color":
+                calloutColor = try resolveCalloutColor(try value(for: token))
+            case "--callout-size":
+                calloutSize = try resolveCalloutSize(try value(for: token))
             case "--frame":
                 imageFrame = try resolveImageFrame(try value(for: token))
             case "--frame-appearance":
@@ -480,6 +495,16 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--watermark-x and --watermark-y require --watermark-position free.")
         }
+        if calloutText == nil,
+            calloutX != nil || calloutY != nil || calloutColor != nil || calloutSize != nil
+        {
+            throw CLIError.incompatibleOptions(
+                "--callout-x, --callout-y, --callout-color, and --callout-size require --callout.")
+        }
+        if (calloutX == nil) != (calloutY == nil) {
+            throw CLIError.incompatibleOptions(
+                "--callout-x and --callout-y must be provided together.")
+        }
         if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
             throw CLIError.incompatibleOptions(
                 "--frame and --frame-appearance require --image.")
@@ -529,6 +554,7 @@ enum CLIArguments {
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
             || watermarkContentRequested
+            || calloutText != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -641,6 +667,12 @@ enum CLIArguments {
             } else {
                 nil
             }
+        let calloutPosition: CGPoint? =
+            if let calloutX, let calloutY {
+                CGPoint(x: calloutX, y: calloutY)
+            } else {
+                nil
+            }
 
         return CLIOptions(
             command: mode,
@@ -675,6 +707,10 @@ enum CLIArguments {
             watermarkColor: watermarkColor,
             watermarkPosition: watermarkPosition,
             watermarkFreePosition: watermarkFreePosition,
+            calloutText: calloutText,
+            calloutPosition: calloutPosition,
+            calloutColor: calloutColor,
+            calloutSize: calloutSize,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
@@ -826,19 +862,12 @@ enum CLIArguments {
     /// Normalizes the text in the same way as Brand Kit fields and rejects a blank
     /// badge so a successful command can never silently render no watermark.
     private static func resolveWatermarkText(_ raw: String) throws -> String {
-        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalized.isEmpty else {
-            throw CLIError.invalidValue(flag: "--watermark", value: raw)
-        }
-        return normalized
+        try resolveVisibleText(raw, flag: "--watermark")
     }
 
     /// Parses a CSS-style RGB/RGBA hex tint for the watermark text.
     private static func resolveWatermarkColor(_ raw: String) throws -> RGBAColor {
-        guard let color = RGBAColor(hex: raw) else {
-            throw CLIError.invalidValue(flag: "--watermark-color", value: raw)
-        }
-        return color
+        try resolveHexColor(raw, flag: "--watermark-color")
     }
 
     /// Resolves one of the stable corner ids advertised by the watermark-position catalog.
@@ -857,6 +886,41 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return value
+    }
+
+    /// Normalizes callout copy and rejects blank content that would render no mark.
+    private static func resolveCalloutText(_ raw: String) throws -> String {
+        try resolveVisibleText(raw, flag: "--callout")
+    }
+
+    /// Trims user-facing badge copy and rejects values that cannot produce pixels.
+    private static func resolveVisibleText(_ raw: String, flag: String) throws -> String {
+        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return normalized
+    }
+
+    /// Parses the same fixed-sRGB hex color accepted by the annotation toolbar model.
+    private static func resolveCalloutColor(_ raw: String) throws -> RGBAColor {
+        try resolveHexColor(raw, flag: "--callout-color")
+    }
+
+    /// Parses a CSS-style fixed-sRGB color for any CLI overlay control.
+    private static func resolveHexColor(_ raw: String, flag: String) throws -> RGBAColor {
+        guard let color = RGBAColor(hex: raw) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return color
+    }
+
+    /// Parses the editor annotation toolbar's supported size-weight range.
+    private static func resolveCalloutSize(_ raw: String) throws -> Double {
+        guard let size = Double(raw), size.isFinite, Annotation.thicknessRange.contains(size) else {
+            throw CLIError.invalidValue(flag: "--callout-size", value: raw)
+        }
+        return size
     }
 
     /// Resolves a stable image-frame id advertised by `vitrine list frames`.
@@ -1173,6 +1237,13 @@ nonisolated enum CLIUsage {
           --watermark-x <0...1>  Normalized horizontal center for free placement.
           --watermark-y <0...1>  Normalized vertical center for free placement; x/y
                                  must be provided together with position free.
+          --callout <text>       Add a text callout through the annotation layer.
+          --callout-x <0...1>    Normalized horizontal anchor (defaults to 0.5).
+          --callout-y <0...1>    Normalized vertical anchor (defaults to 0.5); x/y
+                                 must be provided together.
+          --callout-color <hex>  Callout RGB/RGBA text color; requires --callout.
+          --callout-size <2...28>
+                                 Callout size weight; requires --callout.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.
