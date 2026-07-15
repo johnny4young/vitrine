@@ -213,8 +213,8 @@ struct CLIAutomationTests {
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
                 "--font", "Hack", "--font-ligatures", "--corner-radius", "14",
                 "--shadow-radius", "22", "--highlight-lines", "3, 7-9", "--focus-lines",
-                "--redact-lines", "4-5", "--diff-bands", "--recursive", "--fail-on-skipped",
-                "--skipped-report", "skipped.json", "--dry-run", "--manifest",
+                "--redact-lines", "4-5", "--redact-secrets", "--diff-bands", "--recursive",
+                "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run", "--manifest",
                 "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
                 "--fail-on-empty", "--no-overwrite",
             ])
@@ -236,6 +236,7 @@ struct CLIAutomationTests {
         #expect(options.shadowRadius == 22)
         #expect(options.highlightedLineRanges == [3...3, 7...9])
         #expect(options.redactedLineRanges == [4...5])
+        #expect(options.redactSecrets)
         #expect(options.focusHighlightedLines == true)
         #expect(options.diffDecorations == true)
         #expect(options.failOnEmpty)

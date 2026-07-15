@@ -119,6 +119,9 @@ struct CLIOptions: Equatable {
     /// Optional redacted line ranges, using the same 1-based inclusive model as the
     /// editor's secret-redaction control. Nil preserves the app/preset default.
     var redactedLineRanges: [ClosedRange<Int>]?
+    /// Automatically scan the rendered visible text for likely secrets and redact the
+    /// matching rows before the image or copyable sidecars are written.
+    var redactSecrets: Bool = false
     /// Optional focus-mode override. Nil preserves the app/preset default.
     var focusHighlightedLines: Bool?
     /// Optional GitHub-style diff-band override. Nil preserves the app/preset default.
@@ -216,6 +219,11 @@ struct CLIOptions: Equatable {
         if let showShadow { config.showShadow = showShadow }
         if let highlightedLineRanges { config.highlightedLineRanges = highlightedLineRanges }
         if let redactedLineRanges { config.redactedLineRanges = redactedLineRanges }
+        if redactSecrets {
+            let secretRanges = SecretScanner.secretLines(in: config.sidecarText).map { $0...$0 }
+            config.redactedLineRanges = LineHighlight.normalize(
+                config.redactedLineRanges + secretRanges)
+        }
         if let focusHighlightedLines { config.focusHighlightedLines = focusHighlightedLines }
         if let diffDecorations { config.diffDecorations = diffDecorations }
         config.metadata = SnapshotMetadata(
