@@ -97,6 +97,7 @@ struct CLITests {
         #expect(options.arrow == nil)
         #expect(options.line == nil)
         #expect(options.rectangle == nil)
+        #expect(options.highlighter == nil)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -811,6 +812,54 @@ struct CLITests {
         }
     }
 
+    @Test func highlighterOptionsBuildTheRenderCoreAnnotation() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--highlighter", "0.12,0.42,0.88,0.54",
+            "--highlighter-color", "#FFD60A",
+        ])
+
+        let highlighter = try #require(options.highlighter)
+        #expect(highlighter.start == CGPoint(x: 0.12, y: 0.42))
+        #expect(highlighter.end == CGPoint(x: 0.88, y: 0.54))
+        #expect(highlighter.color == RGBAColor(hex: "#FFD60A"))
+        #expect(highlighter.size == nil)
+        let annotation = try #require(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).annotations.first)
+        #expect(annotation.kind == .highlighter)
+        #expect(annotation.start == CGPoint(x: 0.12, y: 0.42))
+        #expect(annotation.end == CGPoint(x: 0.88, y: 0.54))
+        #expect(annotation.color == RGBAColor(hex: "#FFD60A"))
+    }
+
+    @Test func highlighterDefaultsToTheEditorColor() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--highlighter", "0.1,0.4,0.9,0.52",
+        ])
+        let annotation = try #require(
+            options.makeConfig(code: "x", language: .swift).annotations.first)
+        #expect(annotation.color == Annotation.defaultColor)
+    }
+
+    @Test func highlighterRejectsMalformedDegenerateOrInertValues() {
+        for raw in [
+            "0.1,0.2,0.9", "0.1,0.2,0.9,0.4,0.5", "0.1,0.2,nan,0.4",
+            "0.1,0.2,1.1,0.4", "0.3,0.3,0.3,0.7", "0.3,0.3,0.7,0.3",
+        ] {
+            #expect(throws: CLIError.invalidValue(flag: "--highlighter", value: raw)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--highlighter", raw,
+                ])
+            }
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions("--highlighter-color requires --highlighter.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--highlighter-color", "#FFD60A",
+            ])
+        }
+    }
+
     @Test func styleOptionsDefaultToNilAndFlowIntoTheConfig() throws {
         let defaults = try CLIArguments.parse(["render", "snippet.swift", "-o", "o.png"])
         #expect(defaults.fontLigatures == nil)
@@ -1498,6 +1547,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--rectangle", "0.1,0.2,0.9,0.8",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--highlighter", "0.1,0.4,0.9,0.52",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -2067,6 +2124,30 @@ struct CLITests {
                 != Data(contentsOf: URL(fileURLWithPath: rectangleOutput)))
         #expect(rectangleImage.width == plainImage.width)
         #expect(rectangleImage.height == plainImage.height)
+    }
+
+    @Test func highlighterChangesPixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let highlighterOutput = directory.appendingPathComponent("highlighter.png").path
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", highlighterOutput, "--scale", "1",
+                "--highlighter", "0.12,0.4,0.88,0.54", "--highlighter-color", "#FFD60A",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let highlighterImage = try decodePNG(at: highlighterOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: highlighterOutput)))
+        #expect(highlighterImage.width == plainImage.width)
+        #expect(highlighterImage.height == plainImage.height)
     }
 
     @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {
