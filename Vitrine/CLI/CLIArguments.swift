@@ -190,6 +190,10 @@ enum CLIArguments {
         var arrowEnd: CGPoint?
         var arrowColor: RGBAColor?
         var arrowSize: Double?
+        var lineStart: CGPoint?
+        var lineEnd: CGPoint?
+        var lineColor: RGBAColor?
+        var lineSize: Double?
         var imageFrame: CLIOptions.ImageFrameOption?
         var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
@@ -328,13 +332,21 @@ enum CLIArguments {
             case "--counter-size":
                 counterSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--arrow":
-                let segment = try resolveArrowSegment(try value(for: token))
+                let segment = try resolveNormalizedSegment(try value(for: token), flag: token)
                 arrowStart = segment.start
                 arrowEnd = segment.end
             case "--arrow-color":
                 arrowColor = try resolveHexColor(try value(for: token), flag: token)
             case "--arrow-size":
                 arrowSize = try resolveAnnotationSize(try value(for: token), flag: token)
+            case "--line":
+                let segment = try resolveNormalizedSegment(try value(for: token), flag: token)
+                lineStart = segment.start
+                lineEnd = segment.end
+            case "--line-color":
+                lineColor = try resolveHexColor(try value(for: token), flag: token)
+            case "--line-size":
+                lineSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--frame":
                 imageFrame = try resolveImageFrame(try value(for: token))
             case "--frame-appearance":
@@ -546,6 +558,10 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--arrow-color and --arrow-size require --arrow.")
         }
+        if lineStart == nil, lineColor != nil || lineSize != nil {
+            throw CLIError.incompatibleOptions(
+                "--line-color and --line-size require --line.")
+        }
         if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
             throw CLIError.incompatibleOptions(
                 "--frame and --frame-appearance require --image.")
@@ -598,6 +614,7 @@ enum CLIArguments {
             || calloutText != nil
             || counterNumber != nil
             || arrowStart != nil
+            || lineStart != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -722,6 +739,20 @@ enum CLIArguments {
             } else {
                 nil
             }
+        let arrow: CLIOptions.SegmentAnnotation? =
+            if let arrowStart, let arrowEnd {
+                CLIOptions.SegmentAnnotation(
+                    start: arrowStart, end: arrowEnd, color: arrowColor, size: arrowSize)
+            } else {
+                nil
+            }
+        let line: CLIOptions.SegmentAnnotation? =
+            if let lineStart, let lineEnd {
+                CLIOptions.SegmentAnnotation(
+                    start: lineStart, end: lineEnd, color: lineColor, size: lineSize)
+            } else {
+                nil
+            }
 
         return CLIOptions(
             command: mode,
@@ -764,10 +795,8 @@ enum CLIArguments {
             counterPosition: counterPosition,
             counterColor: counterColor,
             counterSize: counterSize,
-            arrowStart: arrowStart,
-            arrowEnd: arrowEnd,
-            arrowColor: arrowColor,
-            arrowSize: arrowSize,
+            arrow: arrow,
+            line: line,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
@@ -993,12 +1022,13 @@ enum CLIArguments {
         return number
     }
 
-    /// Parses one normalized tail-to-head segment and rejects invisible zero-length arrows.
-    private static func resolveArrowSegment(_ raw: String) throws -> (start: CGPoint, end: CGPoint)
-    {
+    /// Parses two normalized endpoints and rejects invisible zero-length marks.
+    private static func resolveNormalizedSegment(
+        _ raw: String, flag: String
+    ) throws -> (start: CGPoint, end: CGPoint) {
         let components = raw.split(separator: ",", omittingEmptySubsequences: false)
         guard components.count == 4 else {
-            throw CLIError.invalidValue(flag: "--arrow", value: raw)
+            throw CLIError.invalidValue(flag: flag, value: raw)
         }
         let values = components.compactMap { component -> Double? in
             let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1008,12 +1038,12 @@ enum CLIArguments {
             return value
         }
         guard values.count == 4 else {
-            throw CLIError.invalidValue(flag: "--arrow", value: raw)
+            throw CLIError.invalidValue(flag: flag, value: raw)
         }
         let start = CGPoint(x: values[0], y: values[1])
         let end = CGPoint(x: values[2], y: values[3])
         guard start != end else {
-            throw CLIError.invalidValue(flag: "--arrow", value: raw)
+            throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return (start, end)
     }
@@ -1349,6 +1379,9 @@ nonisolated enum CLIUsage {
           --arrow <x1,y1,x2,y2> Add an arrow from normalized tail to head coordinates.
           --arrow-color <hex>   Arrow RGB/RGBA stroke color; requires --arrow.
           --arrow-size <2...28> Arrow stroke weight; requires --arrow.
+          --line <x1,y1,x2,y2>  Add a line between normalized canvas coordinates.
+          --line-color <hex>    Line RGB/RGBA stroke color; requires --line.
+          --line-size <2...28>  Line stroke weight; requires --line.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.

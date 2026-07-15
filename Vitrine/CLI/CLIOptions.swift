@@ -33,6 +33,21 @@ struct CLIOptions: Equatable {
     /// the app's persistent foreground-image library.
     enum InputKind: String, Equatable, Sendable { case code, image }
 
+    /// Shared normalized geometry and optional editor styling for a two-point mark.
+    struct SegmentAnnotation: Equatable {
+        var start: CGPoint
+        var end: CGPoint
+        var color: RGBAColor?
+        var size: Double?
+
+        func modelValue(kind: Annotation.Kind) -> Annotation {
+            Annotation(
+                kind: kind, start: start, end: end,
+                color: color ?? Annotation.defaultColor,
+                thickness: size ?? Annotation.defaultThickness)
+        }
+    }
+
     /// Suppresses the success summary on stdout. Errors and explicit skipped-file
     /// diagnostics still go to stderr so automation logs stay actionable.
     var quiet: Bool = false
@@ -142,14 +157,10 @@ struct CLIOptions: Equatable {
     var counterColor: RGBAColor?
     /// Optional counter size weight in the editor's supported 2...28 range.
     var counterSize: Double?
-    /// Optional normalized tail for a straight arrow annotation.
-    var arrowStart: CGPoint?
-    /// Optional normalized head for `arrowStart`; the parser always supplies both.
-    var arrowEnd: CGPoint?
-    /// Optional arrow stroke color; nil uses the editor's annotation red.
-    var arrowColor: RGBAColor?
-    /// Optional arrow stroke weight in the editor's supported 2...28 range.
-    var arrowSize: Double?
+    /// Optional straight arrow described by normalized tail/head points and editor styling.
+    var arrow: SegmentAnnotation?
+    /// Optional straight line described by normalized endpoints and editor styling.
+    var line: SegmentAnnotation?
     /// Optional frame around `--image` content. Nil preserves the model's plain-image
     /// default; stable CLI ids map onto the app's existing frame enum.
     var imageFrame: ImageFrameOption?
@@ -392,13 +403,8 @@ struct CLIOptions: Equatable {
                     thickness: counterSize ?? Annotation.defaultThickness,
                     number: counterNumber))
         }
-        if let arrowStart, let arrowEnd {
-            config.annotations.append(
-                Annotation(
-                    kind: .arrow, start: arrowStart, end: arrowEnd,
-                    color: arrowColor ?? Annotation.defaultColor,
-                    thickness: arrowSize ?? Annotation.defaultThickness))
-        }
+        if let arrow { config.annotations.append(arrow.modelValue(kind: .arrow)) }
+        if let line { config.annotations.append(line.modelValue(kind: .line)) }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
         config.terminalColumns = terminalColumns
