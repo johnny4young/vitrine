@@ -363,6 +363,7 @@ vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatur
   --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
 vitrine render diff.patch --out review.png --language diff --highlight-lines 3,7-9 \
   --focus-lines --diff-bands
+vitrine render secrets.swift --out share.png --redact-lines 2,5 --sidecars all
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render snippet.swift --out card.png --sidecars all
 cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
@@ -393,9 +394,9 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
 `--transparent`, style controls (`--font-size`, `--padding`, `--wrap-columns`,
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
-`--no-shadow`, `--highlight-lines <spec>`, `--focus-lines`, `--no-focus-lines`,
-`--diff-bands`, `--no-diff-bands`), and the header controls (`--window-title`,
-`--filename`, `--title`, `--caption`, `--language-badge`) override
+`--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`, `--focus-lines`,
+`--no-focus-lines`, `--diff-bands`, `--no-diff-bands`), and the header controls
+(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`) override
 individual choices. For single-file `render`, a known
 `--out` extension (`.png`, `.pdf`, or `.heic`) selects the matching format when
 `--format` is omitted; if both are present, they must agree so scripts never write
@@ -405,7 +406,9 @@ for extension-based language inference and default metadata without reading that
 existing image or sidecar outputs; in `batch`, existing targets are reported as
 skipped so the remaining new cards can still be produced. `--text-sidecar`,
 `--markdown-sidecar`, `--html-sidecar`, or `--sidecars all` write copyable source
-beside the image for accessible docs, README, or web embeds. `vitrine batch --recursive`
+beside the image for accessible docs, README, or web embeds; rows selected with
+`--redact-lines` are replaced with `[redacted]` in every sidecar so hidden secrets do
+not leak through copyable text. `vitrine batch --recursive`
 walks nested folders and mirrors their relative paths under the output folder; `--dry-run`
 scans and decodes the matching
 inputs without writing images or sidecars. `--include-ext <list>` and

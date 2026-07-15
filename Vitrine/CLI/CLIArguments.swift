@@ -166,6 +166,7 @@ enum CLIArguments {
         var showChrome: Bool?
         var showShadow: Bool?
         var highlightedLineRanges: [ClosedRange<Int>]?
+        var redactedLineRanges: [ClosedRange<Int>]?
         var focusHighlightedLines: Bool?
         var diffDecorations: Bool?
         var recursiveBatch = false
@@ -261,6 +262,8 @@ enum CLIArguments {
                 showShadow = false
             case "--highlight-lines":
                 highlightedLineRanges = try resolveLineRanges(try value(for: token), flag: token)
+            case "--redact-lines":
+                redactedLineRanges = try resolveLineRanges(try value(for: token), flag: token)
             case "--focus-lines":
                 focusHighlightedLines = true
             case "--no-focus-lines":
@@ -365,8 +368,8 @@ enum CLIArguments {
             fontName != nil || fontLigatures != nil || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
-            || highlightedLineRanges != nil || focusHighlightedLines != nil
-            || diffDecorations != nil
+            || highlightedLineRanges != nil || redactedLineRanges != nil
+            || focusHighlightedLines != nil || diffDecorations != nil
 
         // `--edit` hands the source to the running editor instead of rendering, so it
         // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
@@ -473,6 +476,7 @@ enum CLIArguments {
             showChrome: showChrome,
             showShadow: showShadow,
             highlightedLineRanges: highlightedLineRanges,
+            redactedLineRanges: redactedLineRanges,
             focusHighlightedLines: focusHighlightedLines,
             diffDecorations: diffDecorations,
             recursiveBatch: recursiveBatch,
@@ -801,6 +805,8 @@ nonisolated enum CLIUsage {
           --highlight-lines <spec>
                                  Highlight 1-based lines/ranges (for example
                                  3,7-9,12).
+          --redact-lines <spec>  Redact 1-based lines/ranges; sidecars replace
+                                 them with [redacted].
           --focus-lines / --no-focus-lines
                                  Dim or undim non-highlighted rows.
           --diff-bands / --no-diff-bands

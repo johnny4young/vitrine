@@ -95,6 +95,7 @@ struct CLITests {
         #expect(config.showShadow == appDefault.showShadow)
         #expect(config.showLineNumbers == appDefault.showLineNumbers)
         #expect(config.highlightedLineRanges == appDefault.highlightedLineRanges)
+        #expect(config.redactedLineRanges == appDefault.redactedLineRanges)
         #expect(config.focusHighlightedLines == appDefault.focusHighlightedLines)
         #expect(config.diffDecorations == appDefault.diffDecorations)
         // Only code and language come from the input.
@@ -139,6 +140,7 @@ struct CLITests {
             "--no-chrome",
             "--no-shadow",
             "--highlight-lines", "2, 4-6",
+            "--redact-lines", "7, 9-10",
             "--focus-lines",
             "--diff-bands",
         ])
@@ -169,6 +171,7 @@ struct CLITests {
         #expect(options.showChrome == false)
         #expect(options.showShadow == false)
         #expect(options.highlightedLineRanges == [2...2, 4...6])
+        #expect(options.redactedLineRanges == [7...7, 9...10])
         #expect(options.focusHighlightedLines == true)
         #expect(options.diffDecorations == true)
     }
@@ -211,6 +214,7 @@ struct CLITests {
         #expect(defaults.showChrome == nil)
         #expect(defaults.showShadow == nil)
         #expect(defaults.highlightedLineRanges == nil)
+        #expect(defaults.redactedLineRanges == nil)
         #expect(defaults.focusHighlightedLines == nil)
         #expect(defaults.diffDecorations == nil)
 
@@ -227,6 +231,7 @@ struct CLITests {
             "--no-chrome",
             "--no-shadow",
             "--highlight-lines", "2, 4-6",
+            "--redact-lines", "8-9",
             "--focus-lines",
             "--diff-bands",
         ])
@@ -242,6 +247,7 @@ struct CLITests {
         #expect(!config.showChrome)
         #expect(!config.showShadow)
         #expect(config.highlightedLineRanges == [2...2, 4...6])
+        #expect(config.redactedLineRanges == [8...9])
         #expect(config.focusHighlightedLines)
         #expect(config.diffDecorations)
 
@@ -733,6 +739,21 @@ struct CLITests {
                 "render", "in.swift", "-o", "o.png", "--highlight-lines", "1-2-3",
             ])
         }
+        #expect(throws: CLIError.invalidValue(flag: "--redact-lines", value: "0")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--redact-lines", "0",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--redact-lines", value: "1, nope")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--redact-lines", "1, nope",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--redact-lines", value: "1-2-3")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--redact-lines", "1-2-3",
+            ])
+        }
         #expect(throws: CLIError.invalidValue(flag: "--format", value: "svg")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--format", "svg"])
         }
@@ -974,6 +995,43 @@ struct CLITests {
 
         // The image is still written alongside the sidecar.
         #expect(FileManager.default.fileExists(atPath: output))
+    }
+
+    @Test func redactLinesScrubsCopyableSidecars() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let source = "let visible = 1\nlet token = \"runtime-only-secret\"\nlet tail = 2\n"
+        let input = try writeInput(source, named: "Secret.swift", in: directory)
+        let output = directory.appendingPathComponent("card.png")
+        let options = try CLIArguments.parse([
+            "render", input,
+            "--out", output.path,
+            "--language", "swift",
+            "--redact-lines", "2",
+            "--sidecars", "all",
+        ])
+
+        let summary = try CLIRenderer.run(options)
+        #expect(summary.contains("card.txt"))
+        #expect(summary.contains("card.md"))
+        #expect(summary.contains("card.html"))
+
+        let expected = "let visible = 1\n[redacted]\nlet tail = 2\n"
+        let text = try String(
+            contentsOf: directory.appendingPathComponent("card.txt"), encoding: .utf8)
+        let markdown = try String(
+            contentsOf: directory.appendingPathComponent("card.md"), encoding: .utf8)
+        let html = try String(
+            contentsOf: directory.appendingPathComponent("card.html"), encoding: .utf8)
+
+        #expect(text == expected)
+        #expect(markdown.contains(expected))
+        #expect(html.contains("[redacted]"))
+        #expect(!text.contains("runtime-only-secret"))
+        #expect(!markdown.contains("runtime-only-secret"))
+        #expect(!html.contains("runtime-only-secret"))
+        #expect(FileManager.default.fileExists(atPath: output.path))
     }
 
     @Test func markdownSidecarWritesFencedSourceNextToImage() throws {
