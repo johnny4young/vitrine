@@ -358,6 +358,8 @@ make cli   # builds `vitrine` into DerivedData, next to its Fonts/ and Highlight
 vitrine render input.swift --out image.png
 vitrine render snippet.py --out card.png --theme dracula --preset opengraph
 vitrine render notes.go   --out clear.png --transparent --scale 3
+vitrine render server.go  --out night.png --background night
+vitrine render query.sql  --out solid.png --background-color '#1E293B'
 vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatures \
   --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
@@ -393,7 +395,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--quiet`). `--theme`,
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
-`--transparent`, style controls (`--font-size`, `--padding`, `--wrap-columns`,
+`--transparent`, `--background <id>`, `--background-color <hex>`, style controls
+(`--font-size`, `--padding`, `--wrap-columns`,
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
 `--redact-secrets`, `--focus-lines`, `--no-focus-lines`, `--diff-bands`,

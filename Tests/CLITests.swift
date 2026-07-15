@@ -74,6 +74,7 @@ struct CLITests {
         #expect(options.format == .png)
         #expect(options.profile == .sRGB)
         #expect(options.transparent == false)
+        #expect(options.background == nil)
         #expect(options.jsonOutput == false)
     }
 
@@ -708,6 +709,16 @@ struct CLITests {
         #expect(throws: CLIError.invalidValue(flag: "--font", value: "Comic Sans")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--font", "Comic Sans"])
         }
+        #expect(throws: CLIError.invalidValue(flag: "--background", value: "neon")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--background", "neon",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--background-color", value: "blue")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--background-color", "blue",
+            ])
+        }
         #expect(throws: CLIError.invalidValue(flag: "--scale", value: "9")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--scale", "9"])
         }
@@ -874,6 +885,44 @@ struct CLITests {
         // supplies a gradient.
         let config = options.makeConfig(code: "X", language: .swift)
         #expect(config.background == .transparent)
+    }
+
+    @Test func backgroundOverridesPresetBackground() throws {
+        let gradient = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--preset", "twitter", "--background",
+            "carbon",
+        ])
+        #expect(gradient.background == .gradient(.carbon))
+        #expect(gradient.makeConfig(code: "X", language: .swift).background == .gradient(.carbon))
+
+        let solid = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--preset", "twitter",
+            "--background-color", "#1E293BCC",
+        ])
+        let expected = try #require(RGBAColor(hex: "#1E293BCC"))
+        #expect(solid.background == .solid(expected))
+        #expect(solid.makeConfig(code: "X", language: .swift).background == .solid(expected))
+    }
+
+    @Test func backgroundModesRejectAmbiguousCombinations() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --background with --background-color.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--background", "night",
+                "--background-color", "#000",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --transparent with --background or --background-color.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--transparent", "--background",
+                "ocean",
+            ])
+        }
     }
 
     @Test func themeOverrideIsApplied() throws {

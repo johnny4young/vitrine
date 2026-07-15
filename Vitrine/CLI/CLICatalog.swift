@@ -65,7 +65,7 @@ enum CLICatalog {
     static let usage = """
         vitrine list <all|themes|languages|presets|fonts|backgrounds|formats|profiles> [--json]
 
-        Prints local render catalogs, including every built-in gradient background.
+        Prints the local ids accepted by render options, including --background.
         Use `all --json` for one machine-readable object with every catalog.
         """
 

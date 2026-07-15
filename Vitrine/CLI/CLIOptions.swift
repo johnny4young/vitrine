@@ -88,6 +88,9 @@ struct CLIOptions: Equatable {
     /// Render with a real transparent background (no gradient/solid), preserving the
     /// alpha channel on export (CS-024). Overrides any preset background.
     var transparent: Bool = false
+    /// Optional built-in gradient or solid-color canvas override. Nil preserves the
+    /// app/preset background; the parser keeps it mutually exclusive with transparency.
+    var background: BackgroundStyle?
     /// Refuse to replace existing image or sidecar files. For batch jobs, existing
     /// outputs are skipped so valid new artifacts can still be produced.
     var noOverwrite: Bool = false
@@ -203,6 +206,7 @@ struct CLIOptions: Equatable {
     func makeConfig(code: String, language: Language) -> SnapshotConfig {
         var config = SnapshotConfig().styled(
             presetID: presetID, themeID: themeID, transparent: transparent)
+        if let background { config.background = background }
         config.code = code
         config.language = language
         config.terminalColumns = terminalColumns

@@ -155,6 +155,9 @@ enum CLIArguments {
         var explicitFormat: ExportFormat?
         var profile: ColorProfile = .fallback
         var transparent = false
+        var background: BackgroundStyle?
+        var gradientBackgroundRequested = false
+        var solidBackgroundRequested = false
         var noOverwrite = false
         var windowTitle: String?
         var metadataFilename: String?
@@ -235,6 +238,12 @@ enum CLIArguments {
                 profile = try resolveProfile(try value(for: token))
             case "--transparent":
                 transparent = true
+            case "--background":
+                background = .gradient(try resolveBackground(try value(for: token)))
+                gradientBackgroundRequested = true
+            case "--background-color":
+                background = .solid(try resolveBackgroundColor(try value(for: token)))
+                solidBackgroundRequested = true
             case "--no-overwrite", "--no-clobber":
                 noOverwrite = true
             case "--window-title":
@@ -336,6 +345,14 @@ enum CLIArguments {
         if quiet, jsonOutput {
             throw CLIError.incompatibleOptions("Cannot combine --quiet with --json.")
         }
+        if gradientBackgroundRequested, solidBackgroundRequested {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --background with --background-color.")
+        }
+        if transparent, background != nil {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --transparent with --background or --background-color.")
+        }
         if readStdin, let inputPath {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --stdin with input file \"\(inputPath)\".")
@@ -368,7 +385,8 @@ enum CLIArguments {
             windowTitle != nil || metadataFilename != nil
             || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
         let styleOptionsRequested =
-            fontName != nil || fontLigatures != nil || fontSize != nil || padding != nil
+            background != nil || transparent || fontName != nil || fontLigatures != nil
+            || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
@@ -468,6 +486,7 @@ enum CLIArguments {
             format: resolvedFormat,
             profile: profile,
             transparent: transparent,
+            background: background,
             noOverwrite: noOverwrite,
             windowTitle: windowTitle,
             metadataFilename: metadataFilename,
@@ -533,6 +552,27 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: "--font", value: raw)
         }
         return raw
+    }
+
+    /// Validates a gradient id against the same built-in catalog exposed by
+    /// `vitrine list backgrounds`.
+    private static func resolveBackground(_ raw: String) throws -> GradientPreset {
+        guard
+            let preset = GradientPreset.allCases.first(where: {
+                $0.rawValue.lowercased() == raw
+            })
+        else {
+            throw CLIError.invalidValue(flag: "--background", value: raw)
+        }
+        return preset
+    }
+
+    /// Parses a CSS-style RGB/RGBA hex value into the model's fixed-sRGB color type.
+    private static func resolveBackgroundColor(_ raw: String) throws -> RGBAColor {
+        guard let color = RGBAColor(hex: raw) else {
+            throw CLIError.invalidValue(flag: "--background-color", value: raw)
+        }
+        return color
     }
 
     /// Parses and range-checks the export scale (1...3).
@@ -795,6 +835,9 @@ nonisolated enum CLIUsage {
                                  option, heic the compact raster one.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.
           --transparent          Render a real transparent background.
+          --background <id>      Built-in gradient. Use `vitrine list backgrounds`.
+          --background-color <hex>
+                                 Solid RGB/RGBA hex color (for example '#1E293B').
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.
