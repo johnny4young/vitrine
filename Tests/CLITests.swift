@@ -94,6 +94,10 @@ struct CLITests {
         #expect(options.counterPosition == nil)
         #expect(options.counterColor == nil)
         #expect(options.counterSize == nil)
+        #expect(options.arrowStart == nil)
+        #expect(options.arrowEnd == nil)
+        #expect(options.arrowColor == nil)
+        #expect(options.arrowSize == nil)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -651,6 +655,56 @@ struct CLITests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--counter-size", "7",
+            ])
+        }
+    }
+
+    @Test func arrowOptionsBuildTheRenderCoreAnnotation() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--arrow", "0.15,0.8,0.7,0.25",
+            "--arrow-color", "#38BDF8", "--arrow-size", "9",
+        ])
+
+        #expect(options.arrowStart == CGPoint(x: 0.15, y: 0.8))
+        #expect(options.arrowEnd == CGPoint(x: 0.7, y: 0.25))
+        #expect(options.arrowColor == RGBAColor(hex: "#38BDF8"))
+        #expect(options.arrowSize == 9)
+        let annotation = try #require(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).annotations.first)
+        #expect(annotation.kind == .arrow)
+        #expect(annotation.start == CGPoint(x: 0.15, y: 0.8))
+        #expect(annotation.end == CGPoint(x: 0.7, y: 0.25))
+        #expect(annotation.color == RGBAColor(hex: "#38BDF8"))
+        #expect(annotation.thickness == 9)
+    }
+
+    @Test func arrowDefaultsToTheEditorStrokeStyle() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--arrow", "0.1,0.9,0.8,0.2",
+        ])
+        let annotation = try #require(
+            options.makeConfig(code: "x", language: .swift).annotations.first)
+        #expect(annotation.color == Annotation.defaultColor)
+        #expect(annotation.thickness == Annotation.defaultThickness)
+    }
+
+    @Test func arrowRejectsMalformedInvisibleOrInertValues() {
+        for raw in [
+            "0.1,0.2,0.9", "0.1,0.2,0.9,0.4,0.5", "0.1,0.2,nan,0.4",
+            "0.1,0.2,1.1,0.4", "0.3,0.3,0.3,0.3",
+        ] {
+            #expect(throws: CLIError.invalidValue(flag: "--arrow", value: raw)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--arrow", raw,
+                ])
+            }
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--arrow-color and --arrow-size require --arrow.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--arrow-size", "7",
             ])
         }
     }
@@ -1318,6 +1372,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--counter", "1",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--arrow", "0.1,0.8,0.8,0.2",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -1812,6 +1874,31 @@ struct CLITests {
                 != Data(contentsOf: URL(fileURLWithPath: counterOutput)))
         #expect(counterImage.width == plainImage.width)
         #expect(counterImage.height == plainImage.height)
+    }
+
+    @Test func arrowChangesPixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let arrowOutput = directory.appendingPathComponent("arrow.png").path
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", arrowOutput, "--scale", "1",
+                "--arrow", "0.15,0.8,0.72,0.24", "--arrow-color", "#38BDF8",
+                "--arrow-size", "9",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let arrowImage = try decodePNG(at: arrowOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: arrowOutput)))
+        #expect(arrowImage.width == plainImage.width)
+        #expect(arrowImage.height == plainImage.height)
     }
 
     @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {
