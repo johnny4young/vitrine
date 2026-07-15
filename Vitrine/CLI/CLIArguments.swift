@@ -159,6 +159,9 @@ enum CLIArguments {
         var background: BackgroundStyle?
         var gradientBackgroundRequested = false
         var solidBackgroundRequested = false
+        var watermarkText: String?
+        var watermarkColor: RGBAColor?
+        var watermarkPosition: CLIOptions.WatermarkPosition?
         var noOverwrite = false
         var windowTitle: String?
         var metadataFilename: String?
@@ -247,6 +250,12 @@ enum CLIArguments {
             case "--background-color":
                 background = .solid(try resolveBackgroundColor(try value(for: token)))
                 solidBackgroundRequested = true
+            case "--watermark":
+                watermarkText = try resolveWatermarkText(try value(for: token))
+            case "--watermark-color":
+                watermarkColor = try resolveWatermarkColor(try value(for: token))
+            case "--watermark-position":
+                watermarkPosition = try resolveWatermarkPosition(try value(for: token))
             case "--no-overwrite", "--no-clobber":
                 noOverwrite = true
             case "--window-title":
@@ -356,6 +365,10 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --transparent with --background or --background-color.")
         }
+        if watermarkText == nil, watermarkColor != nil || watermarkPosition != nil {
+            throw CLIError.incompatibleOptions(
+                "--watermark-color and --watermark-position require --watermark.")
+        }
         if readStdin, let inputPath {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --stdin with input file \"\(inputPath)\".")
@@ -392,6 +405,7 @@ enum CLIArguments {
             || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
+            || watermarkText != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -492,6 +506,9 @@ enum CLIArguments {
             profile: profile,
             transparent: transparent,
             background: background,
+            watermarkText: watermarkText,
+            watermarkColor: watermarkColor,
+            watermarkPosition: watermarkPosition,
             noOverwrite: noOverwrite,
             windowTitle: windowTitle,
             metadataFilename: metadataFilename,
@@ -578,6 +595,34 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: "--background-color", value: raw)
         }
         return color
+    }
+
+    /// Normalizes the text in the same way as Brand Kit fields and rejects a blank
+    /// badge so a successful command can never silently render no watermark.
+    private static func resolveWatermarkText(_ raw: String) throws -> String {
+        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            throw CLIError.invalidValue(flag: "--watermark", value: raw)
+        }
+        return normalized
+    }
+
+    /// Parses a CSS-style RGB/RGBA hex tint for the watermark text.
+    private static func resolveWatermarkColor(_ raw: String) throws -> RGBAColor {
+        guard let color = RGBAColor(hex: raw) else {
+            throw CLIError.invalidValue(flag: "--watermark-color", value: raw)
+        }
+        return color
+    }
+
+    /// Resolves one of the stable corner ids advertised by the watermark-position catalog.
+    private static func resolveWatermarkPosition(
+        _ raw: String
+    ) throws -> CLIOptions.WatermarkPosition {
+        guard let position = CLIOptions.WatermarkPosition(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: "--watermark-position", value: raw)
+        }
+        return position
     }
 
     /// Parses and range-checks the export scale (1...3).
@@ -802,7 +847,7 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
-          vitrine list <all|themes|languages|presets|fonts|backgrounds|formats|profiles> [--json]
+          vitrine list <all|themes|languages|presets|fonts|backgrounds|watermark-positions|formats|profiles> [--json]
           vitrine --version [--json]
           vitrine version [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
@@ -845,6 +890,12 @@ nonisolated enum CLIUsage {
           --background <id>      Built-in gradient. Use `vitrine list backgrounds`.
           --background-color <hex>
                                  Solid RGB/RGBA hex color (for example '#1E293B').
+          --watermark <text>     Add a text-only watermark to the rendered image.
+          --watermark-color <hex>
+                                 Watermark RGB/RGBA tint; requires --watermark.
+          --watermark-position <corner>
+                                 Watermark corner: bottom-right, bottom-left,
+                                 top-right, or top-left; requires --watermark.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.

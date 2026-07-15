@@ -75,6 +75,9 @@ struct CLITests {
         #expect(options.profile == .sRGB)
         #expect(options.transparent == false)
         #expect(options.background == nil)
+        #expect(options.watermarkText == nil)
+        #expect(options.watermarkColor == nil)
+        #expect(options.watermarkPosition == nil)
         #expect(!options.formatCode)
         #expect(options.jsonOutput == false)
     }
@@ -133,6 +136,9 @@ struct CLITests {
             "--format", "png",
             "--profile", "p3",
             "--transparent",
+            "--watermark", "@jane · vitrine",
+            "--watermark-color", "#7DD3FC",
+            "--watermark-position", "top-left",
             "--no-overwrite",
             "--window-title", "Release build",
             "--filename", "Sources/App.swift",
@@ -165,6 +171,9 @@ struct CLITests {
         #expect(options.formatCode)
         #expect(options.profile == .displayP3)
         #expect(options.transparent)
+        #expect(options.watermarkText == "@jane · vitrine")
+        #expect(options.watermarkColor == RGBAColor(hex: "#7DD3FC"))
+        #expect(options.watermarkPosition == .topLeft)
         #expect(options.noOverwrite)
         #expect(!options.jsonOutput)
         #expect(options.windowTitle == "Release build")
@@ -261,6 +270,64 @@ struct CLITests {
         #expect(config.code.contains("  let token"))
         #expect(!config.sidecarText.contains(token))
         #expect(config.sidecarText.contains(SnapshotConfig.redactedLinePlaceholder))
+    }
+
+    @Test func watermarkOptionsBuildTheRenderCoreWatermark() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png",
+            "--watermark", "  @jane · vitrine  ",
+            "--watermark-color", "#38BDF8CC",
+            "--watermark-position", "TOP-LEFT",
+        ])
+
+        let watermark = try #require(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).watermark)
+        #expect(watermark.text == "@jane · vitrine")
+        #expect(watermark.logoImageData == nil)
+        #expect(watermark.tint == RGBAColor(hex: "#38BDF8CC"))
+        #expect(watermark.placement == .topLeading)
+    }
+
+    @Test func everyWatermarkCornerMapsToTheExpectedModelPlacement() throws {
+        let expected: [(String, Watermark.Placement)] = [
+            ("bottom-right", .bottomTrailing),
+            ("bottom-left", .bottomLeading),
+            ("top-right", .topTrailing),
+            ("top-left", .topLeading),
+        ]
+
+        for (raw, placement) in expected {
+            let options = try CLIArguments.parse([
+                "render", "snippet.swift", "-o", "o.png",
+                "--watermark", "Vitrine", "--watermark-position", raw,
+            ])
+            #expect(
+                options.makeConfig(code: "x", language: .swift).watermark?.placement == placement)
+        }
+    }
+
+    @Test func watermarkModifiersRequireVisibleText() {
+        #expect(throws: CLIError.invalidValue(flag: "--watermark", value: "   ")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark", "   ",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--watermark-color and --watermark-position require --watermark.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark-color", "#FFF",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--watermark-color and --watermark-position require --watermark.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark-position", "top-right",
+            ])
+        }
     }
 
     @Test func styleOptionsDefaultToNilAndFlowIntoTheConfig() throws {
@@ -761,6 +828,20 @@ struct CLITests {
                 "render", "in.swift", "-o", "o.png", "--background-color", "blue",
             ])
         }
+        #expect(throws: CLIError.invalidValue(flag: "--watermark-color", value: "cyan")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark", "Vitrine",
+                "--watermark-color", "cyan",
+            ])
+        }
+        #expect(
+            throws: CLIError.invalidValue(flag: "--watermark-position", value: "center")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark", "Vitrine",
+                "--watermark-position", "center",
+            ])
+        }
         #expect(throws: CLIError.invalidValue(flag: "--scale", value: "9")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--scale", "9"])
         }
@@ -996,6 +1077,32 @@ struct CLITests {
         let image = try decodePNG(at: output)
         #expect(image.width > 0)
         #expect(image.height > 0)
+    }
+
+    @Test func renderWithWatermarkChangesPixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let markedOutput = directory.appendingPathComponent("marked.png").path
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", markedOutput,
+                "--watermark", "@jane · vitrine",
+                "--watermark-color", "#7DD3FC",
+                "--watermark-position", "top-left",
+            ]))
+
+        let plainData = try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+        let markedData = try Data(contentsOf: URL(fileURLWithPath: markedOutput))
+        let plainImage = try decodePNG(at: plainOutput)
+        let markedImage = try decodePNG(at: markedOutput)
+        #expect(markedData != plainData)
+        #expect(markedImage.width == plainImage.width)
+        #expect(markedImage.height == plainImage.height)
     }
 
     @Test func renderJsonSummaryReportsOutputDimensionsAndSidecars() throws {

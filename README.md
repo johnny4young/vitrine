@@ -361,6 +361,8 @@ vitrine render notes.go   --out clear.png --transparent --scale 3
 vitrine render server.go  --out night.png --background night
 vitrine render query.sql  --out solid.png --background-color '#1E293B'
 vitrine render payload.json --out payload.png --format-code --text-sidecar
+vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
+  --watermark-color '#7DD3FC' --watermark-position top-left
 vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatures \
   --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
@@ -378,6 +380,7 @@ vitrine list languages --json
 vitrine list all --json
 vitrine list fonts
 vitrine list backgrounds
+vitrine list watermark-positions
 vitrine list formats
 vitrine list profiles --json
 vitrine --version
@@ -396,7 +399,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--quiet`). `--theme`,
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
-`--transparent`, `--background <id>`, `--background-color <hex>`, style controls
+`--transparent`, `--background <id>`, `--background-color <hex>`,
+`--watermark <text>`, `--watermark-color <hex>`, `--watermark-position <corner>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
@@ -411,6 +415,10 @@ for extension-based language inference and default metadata without reading that
 `--format-code` uses Vitrine's dependency-free, language-aware indentation tidy before
 rendering; the formatted source is also used by sidecars and secret scanning so every
 artifact describes the same visible code.
+`--watermark <text>` adds a deterministic text badge through the same render-core
+overlay as Brand Kit. `--watermark-color <hex>` changes its tint and
+`--watermark-position <corner>` selects one of the ids printed by
+`vitrine list watermark-positions`; both modifiers require visible watermark text.
 `--no-overwrite` (alias `--no-clobber`) refuses to replace
 existing image or sidecar outputs; in `batch`, existing targets are reported as
 skipped so the remaining new cards can still be produced. `--text-sidecar`,
@@ -430,7 +438,7 @@ planned outputs during `--dry-run`) with relative image paths, requested sidecar
 and dimensions when available. When a batch contains same-stem files such as
 `Widget.swift` and `Widget.ts`, only that colliding group preserves the input extension
 (`Widget.swift.png`, `Widget.ts.png`) so one artifact never overwrites the other.
-`vitrine list <all|themes|languages|presets|fonts|backgrounds|formats|profiles> [--json]` prints
+`vitrine list <all|themes|languages|presets|fonts|backgrounds|watermark-positions|formats|profiles> [--json]` prints
 the local render catalogs so scripts can discover valid choices without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before
