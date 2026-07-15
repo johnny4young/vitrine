@@ -113,6 +113,13 @@ struct CLIOptions: Equatable {
     var showChrome: Bool?
     /// Optional drop-shadow override. Nil preserves the app/preset default.
     var showShadow: Bool?
+    /// Optional highlighted line ranges, using the same 1-based inclusive model as the
+    /// editor's line-highlighting control. Nil preserves the app/preset default.
+    var highlightedLineRanges: [ClosedRange<Int>]?
+    /// Optional focus-mode override. Nil preserves the app/preset default.
+    var focusHighlightedLines: Bool?
+    /// Optional GitHub-style diff-band override. Nil preserves the app/preset default.
+    var diffDecorations: Bool?
     /// For `batch`, walk nested input folders and preserve their relative paths under
     /// the output folder. Off by default so existing batch jobs keep their top-level
     /// behavior unless they opt in.
@@ -204,6 +211,9 @@ struct CLIOptions: Equatable {
         if let showLineNumbers { config.showLineNumbers = showLineNumbers }
         if let showChrome { config.showChrome = showChrome }
         if let showShadow { config.showShadow = showShadow }
+        if let highlightedLineRanges { config.highlightedLineRanges = highlightedLineRanges }
+        if let focusHighlightedLines { config.focusHighlightedLines = focusHighlightedLines }
+        if let diffDecorations { config.diffDecorations = diffDecorations }
         config.metadata = SnapshotMetadata(
             filename: metadataFilename ?? (readStdin ? stdinFilename : nil),
             title: metadataTitle,
