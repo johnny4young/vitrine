@@ -163,6 +163,9 @@ enum CLIArguments {
         var transparent = false
         var background: BackgroundStyle?
         var backgroundImagePath: String?
+        var backgroundImageFit: BackgroundFit?
+        var backgroundImageBlur: Double?
+        var backgroundImageDimming: Double?
         var gradientBackgroundRequested = false
         var solidBackgroundRequested = false
         var customGradientColors: [RGBAColor]?
@@ -270,6 +273,13 @@ enum CLIArguments {
                 customGradientAngle = try resolveBackgroundAngle(try value(for: token))
             case "--background-image":
                 backgroundImagePath = try value(for: token)
+            case "--background-fit":
+                backgroundImageFit = try resolveBackgroundFit(try value(for: token))
+            case "--background-blur":
+                backgroundImageBlur = try resolveBackgroundBlur(try value(for: token), flag: token)
+            case "--background-dimming":
+                backgroundImageDimming = try resolveBackgroundDimming(
+                    try value(for: token), flag: token)
             case "--watermark":
                 watermarkText = try resolveWatermarkText(try value(for: token))
             case "--watermark-color":
@@ -425,6 +435,18 @@ enum CLIArguments {
         {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --background-image with another background option.")
+        }
+        if backgroundImagePath == nil {
+            if backgroundImageFit != nil {
+                throw CLIError.incompatibleOptions("--background-fit requires --background-image.")
+            }
+            if backgroundImageBlur != nil {
+                throw CLIError.incompatibleOptions("--background-blur requires --background-image.")
+            }
+            if backgroundImageDimming != nil {
+                throw CLIError.incompatibleOptions(
+                    "--background-dimming requires --background-image.")
+            }
         }
         if let customGradientColors {
             background = .customGradient(
@@ -637,6 +659,9 @@ enum CLIArguments {
             transparent: transparent,
             background: background,
             backgroundImagePath: backgroundImagePath,
+            backgroundImageFit: backgroundImageFit,
+            backgroundImageBlur: backgroundImageBlur,
+            backgroundImageDimming: backgroundImageDimming,
             watermarkText: watermarkText,
             watermarkColor: watermarkColor,
             watermarkPosition: watermarkPosition,
@@ -761,6 +786,32 @@ enum CLIArguments {
             GradientStop(color: color, location: Double(index) / lastIndex)
         }
         return CustomGradient(stops: stops, angle: angle ?? CustomGradient.default.angle)
+    }
+
+    /// Resolves the app's stable local image-background sizing behavior.
+    private static func resolveBackgroundFit(_ raw: String) throws -> BackgroundFit {
+        guard let fit = BackgroundFit(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: "--background-fit", value: raw)
+        }
+        return fit
+    }
+
+    /// Parses the image-background blur range exposed by the editor.
+    private static func resolveBackgroundBlur(_ raw: String, flag: String) throws -> Double {
+        guard let value = Double(raw), value.isFinite, ImageBackground.blurRange.contains(value)
+        else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Parses the normalized image-background dimming range exposed by the editor.
+    private static func resolveBackgroundDimming(_ raw: String, flag: String) throws -> Double {
+        guard let value = Double(raw), value.isFinite, ImageBackground.dimmingRange.contains(value)
+        else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
     }
 
     /// Normalizes the text in the same way as Brand Kit fields and rejects a blank
@@ -1040,7 +1091,7 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
-          vitrine list <all|themes|languages|presets|fonts|backgrounds|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
+          vitrine list <all|themes|languages|presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
           vitrine --version [--json]
           vitrine version [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
@@ -1095,6 +1146,12 @@ nonisolated enum CLIUsage {
                                  --background-gradient (defaults to 135).
           --background-image <path>
                                  Local image used as the canvas background.
+          --background-fit <fill|fit>
+                                 Sizing for --background-image (defaults to fill).
+          --background-blur <0...40>
+                                 Blur radius for --background-image in points.
+          --background-dimming <0...1>
+                                 Dark overlay strength for --background-image.
           --watermark <text>     Add a text-only watermark to the rendered image.
           --watermark-color <hex>
                                  Watermark RGB/RGBA tint; requires --watermark.

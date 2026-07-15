@@ -362,7 +362,8 @@ vitrine render server.go  --out night.png --background night
 vitrine render query.sql  --out solid.png --background-color '#1E293B'
 vitrine render app.swift --out gradient.png \
   --background-gradient '#FF453A,#FFD60A,#64D2FF' --background-angle 215
-vitrine render app.swift --out photo.png --background-image landscape.png
+vitrine render app.swift --out photo.png --background-image landscape.png \
+  --background-fit fill --background-blur 8 --background-dimming 0.35
 vitrine render payload.json --out payload.png --format-code --text-sidecar
 vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
   --watermark-color '#7DD3FC' --watermark-position top-left
@@ -389,6 +390,7 @@ vitrine list languages --json
 vitrine list all --json
 vitrine list fonts
 vitrine list backgrounds
+vitrine list background-fits
 vitrine list frames
 vitrine list frame-appearances
 vitrine list watermark-positions
@@ -413,6 +415,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--transparent`, `--background <id>`, `--background-color <hex>`,
 `--background-gradient <hex,hex,...>`, `--background-angle <degrees>`,
 `--background-image <path>`,
+`--background-fit <fill|fit>`, `--background-blur <0...40>`,
+`--background-dimming <0...1>`,
 `--frame <id>`, `--frame-appearance <auto|light|dark>`,
 `--watermark <text>`, `--watermark-color <hex>`, `--watermark-position <corner|free>`,
 `--watermark-x <0...1>`, `--watermark-y <0...1>`, style controls
@@ -438,6 +442,10 @@ exclusive with preset, solid, and transparent backgrounds.
 `batch`. Vitrine imports it once per invocation into an isolated temporary store,
 reuses it for every batch output, and removes the copy when the command exits; the
 source image and the app's persistent background library remain unchanged.
+Use `--background-fit` to choose edge-to-edge cropping or whole-image fitting,
+`--background-blur` for a 0–40 point local blur, and `--background-dimming` for a
+normalized dark overlay. These modifiers require `--background-image`; their bounds
+match the editor and invalid values fail before any output is written.
 `--watermark <text>` adds a deterministic text badge through the same render-core
 overlay as Brand Kit. `--watermark-color <hex>` changes its tint and
 `--watermark-position <corner|free>` selects one of the ids printed by
@@ -473,7 +481,7 @@ planned outputs during `--dry-run`) with relative image paths, requested sidecar
 and dimensions when available. When a batch contains same-stem files such as
 `Widget.swift` and `Widget.ts`, only that colliding group preserves the input extension
 (`Widget.swift.png`, `Widget.ts.png`) so one artifact never overwrites the other.
-`vitrine list <all|themes|languages|presets|fonts|backgrounds|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
+`vitrine list <all|themes|languages|presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
 the local render catalogs so scripts can discover valid choices without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before

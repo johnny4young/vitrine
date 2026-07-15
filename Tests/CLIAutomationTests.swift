@@ -141,6 +141,9 @@ struct CLIAutomationTests {
         #expect(
             CLICatalog.invocation(for: ["backgrounds"])
                 == .listing(.backgrounds, format: .text))
+        #expect(
+            CLICatalog.invocation(for: ["background-fit"])
+                == .listing(.backgroundFits, format: .text))
         #expect(CLICatalog.invocation(for: ["frame"]) == .listing(.frames, format: .text))
         #expect(
             CLICatalog.invocation(for: ["frame-appearances", "--json"])
@@ -185,6 +188,9 @@ struct CLIAutomationTests {
                 == "aurora\tAurora\nocean\tOcean\nsunset\tSunset\nforest\tForest\nnight\tNight\ncarbon\tCarbon\n"
         )
 
+        let backgroundFitText = CLICatalog.output(for: .backgroundFits, format: .text)
+        #expect(backgroundFitText == "fill\tFill\nfit\tFit\n")
+
         let watermarkPositionText = CLICatalog.output(for: .watermarkPositions, format: .text)
         #expect(
             watermarkPositionText
@@ -221,6 +227,7 @@ struct CLIAutomationTests {
         #expect(allText.contains("  swift\tSwift\n"))
         #expect(allText.contains("fonts:\n  JetBrains Mono\tJetBrains Mono\n"))
         #expect(allText.contains("backgrounds:\n  aurora\tAurora\n"))
+        #expect(allText.contains("background-fits:\n  fill\tFill\n"))
         #expect(allText.contains("frames:\n  none\tNone\n"))
         #expect(allText.contains("frame-appearances:\n  auto\tAuto\n"))
         #expect(allText.contains("watermark-positions:\n  bottom-right\tBottom right\n"))
@@ -234,6 +241,7 @@ struct CLIAutomationTests {
         let presets = try #require(decoded["presets"] as? [[String: String]])
         let fonts = try #require(decoded["fonts"] as? [[String: String]])
         let backgrounds = try #require(decoded["backgrounds"] as? [[String: String]])
+        let backgroundFits = try #require(decoded["backgroundFits"] as? [[String: String]])
         let frames = try #require(decoded["frames"] as? [[String: String]])
         let frameAppearances = try #require(
             decoded["frameAppearances"] as? [[String: String]])
@@ -246,6 +254,7 @@ struct CLIAutomationTests {
         #expect(presets.contains { $0["id"] == "opengraph" })
         #expect(fonts.contains { $0["id"] == "Fira Code" && $0["name"] == "Fira Code" })
         #expect(backgrounds.contains { $0["id"] == "aurora" && $0["name"] == "Aurora" })
+        #expect(backgroundFits.contains { $0["id"] == "fit" && $0["name"] == "Fit" })
         #expect(frames.contains { $0["id"] == "macos-window" && $0["name"] == "macOS window" })
         #expect(frameAppearances.contains { $0["id"] == "dark" && $0["name"] == "Dark" })
         #expect(
