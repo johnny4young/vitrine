@@ -165,6 +165,8 @@ struct CLIOptions: Equatable {
     var rectangle: SegmentAnnotation?
     /// Optional translucent highlighter described by normalized opposite corners.
     var highlighter: SegmentAnnotation?
+    /// Optional visual blur box described by normalized opposite corners.
+    var blurBox: SegmentAnnotation?
     /// Optional frame around `--image` content. Nil preserves the model's plain-image
     /// default; stable CLI ids map onto the app's existing frame enum.
     var imageFrame: ImageFrameOption?
@@ -411,6 +413,7 @@ struct CLIOptions: Equatable {
         if let line { config.annotations.append(line.modelValue(kind: .line)) }
         if let rectangle { config.annotations.append(rectangle.modelValue(kind: .rectangle)) }
         if let highlighter { config.annotations.append(highlighter.modelValue(kind: .highlighter)) }
+        if let blurBox { config.annotations.append(blurBox.modelValue(kind: .blur)) }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
         config.terminalColumns = terminalColumns
