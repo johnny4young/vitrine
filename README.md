@@ -363,6 +363,7 @@ vitrine render query.sql  --out solid.png --background-color '#1E293B'
 vitrine render payload.json --out payload.png --format-code --text-sidecar
 vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
   --watermark-color '#7DD3FC' --watermark-position top-left
+vitrine render --image dashboard.png --out showcase.png --background night --padding 40
 vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatures \
   --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
@@ -419,6 +420,11 @@ artifact describes the same visible code.
 overlay as Brand Kit. `--watermark-color <hex>` changes its tint and
 `--watermark-position <corner>` selects one of the ids printed by
 `vitrine list watermark-positions`; both modifiers require visible watermark text.
+`--image <path>` beautifies a local image through the same canvas as the editor. The
+source is decoded locally, copied only into an invocation-scoped temporary store, and
+removed when the command exits; it is never added to Vitrine's persistent image library.
+Code-only controls and source sidecars are rejected for image input instead of silently
+doing nothing, while canvas, background, export, shadow, and watermark controls remain available.
 `--no-overwrite` (alias `--no-clobber`) refuses to replace
 existing image or sidecar outputs; in `batch`, existing targets are reported as
 skipped so the remaining new cards can still be produced. `--text-sidecar`,

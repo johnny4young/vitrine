@@ -91,12 +91,57 @@ enum CLIRenderer {
             try FileInputLoader.load(from: $0)
         }
     ) throws -> String {
-        let loaded = try loadInput(options, fileLoader: fileLoader)
+        switch options.inputKind {
+        case .code:
+            let loaded = try loadInput(options, fileLoader: fileLoader)
+            // An explicit `--language` overrides the inferred one; otherwise the loader's
+            // extension/content inference wins, exactly as the editor does (CS-027/028).
+            let language = options.language ?? loaded.language
+            let config = options.makeConfig(code: loaded.text, language: language)
+            return try render(config, options: options, foregroundStore: .foregroundContainer)
+        case .image:
+            return try renderImageInput(options)
+        }
+    }
 
-        // An explicit `--language` overrides the inferred one; otherwise the loader's
-        // extension/content inference wins, exactly as the editor does (CS-027/028).
-        let language = options.language ?? loaded.language
-        let config = options.makeConfig(code: loaded.text, language: language)
+    /// Imports one local image into an invocation-scoped store, renders it through the
+    /// shared canvas, then removes the temporary copy. This keeps `--image` local and
+    /// side-effect free: unlike the editor, the CLI never adds automation inputs to the
+    /// user's persistent foreground-image library.
+    private static func renderImageInput(_ options: CLIOptions) throws -> String {
+        let sourceURL = URL(fileURLWithPath: options.inputPath)
+        let data: Data
+        do {
+            data = try Data(contentsOf: sourceURL)
+        } catch {
+            throw CLIError.inputUnreadable(path: options.inputPath)
+        }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "VitrineCLI-\(UUID().uuidString)", isDirectory: true)
+        let store = BackgroundImageStore(directory: directory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let reference: ImageReference
+        do {
+            reference = try store.importImage(
+                data: data, preferredExtension: sourceURL.pathExtension)
+        } catch BackgroundImageStore.ImportError.notAnImage {
+            throw CLIError.inputNotImage(path: options.inputPath)
+        } catch {
+            throw CLIError.renderFailed
+        }
+
+        var config = options.makeConfig(code: "", language: .swift)
+        config.foregroundImage = reference
+        return try render(config, options: options, foregroundStore: store)
+    }
+
+    /// Performs the common copy/write/report path once code or image input has produced
+    /// a render-ready config and the store that resolves any foreground image.
+    private static func render(
+        _ config: SnapshotConfig, options: CLIOptions,
+        foregroundStore: BackgroundImageStore
+    ) throws -> String {
 
         let optionalOutputURL =
             options.outputPath.isEmpty ? nil : URL(fileURLWithPath: options.outputPath)
@@ -109,11 +154,12 @@ enum CLIRenderer {
         if options.copyToClipboard {
             let copied = ExportManager.copyToPasteboard(
                 config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                profile: options.profile)
+                profile: options.profile, foregroundImageStore: foregroundStore)
             guard copied else { throw CLIError.renderFailed }
             Log.export.notice("CLI copied an image to the clipboard")
             if let outputURL = optionalOutputURL {
-                let dimensions = try renderAndWrite(config, options: options, to: outputURL)
+                let dimensions = try renderAndWrite(
+                    config, options: options, foregroundStore: foregroundStore, to: outputURL)
                 if options.jsonOutput {
                     return encodedJSON(
                         RenderSummary(
@@ -144,7 +190,8 @@ enum CLIRenderer {
         }
 
         let outputURL = try requireOutputURL(optionalOutputURL)
-        let dimensions = try renderAndWrite(config, options: options, to: outputURL)
+        let dimensions = try renderAndWrite(
+            config, options: options, foregroundStore: foregroundStore, to: outputURL)
 
         Log.export.notice(
             "CLI rendered an image (\(options.format.rawValue, privacy: .public))")
@@ -691,7 +738,8 @@ enum CLIRenderer {
     /// failure maps to `CLIError.renderFailed`; a write failure to
     /// `CLIError.writeFailed` — neither ever crashes the process.
     private static func renderAndWrite(
-        _ config: SnapshotConfig, options: CLIOptions, to url: URL
+        _ config: SnapshotConfig, options: CLIOptions,
+        foregroundStore: BackgroundImageStore = .foregroundContainer, to url: URL
     ) throws -> (width: Int, height: Int) {
         var pngImage: CGImage?
         let payload = ExportManager.encodedPayload(
@@ -699,11 +747,15 @@ enum CLIRenderer {
             png: {
                 let image = ExportManager.renderCGImage(
                     config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                    profile: options.profile)
+                    profile: options.profile, foregroundImageStore: foregroundStore)
                 pngImage = image
                 return image
             },
-            pdf: { ExportManager.pdfData(config, fixedSize: options.fixedSize) })
+            pdf: {
+                ExportManager.pdfData(
+                    config, fixedSize: options.fixedSize,
+                    foregroundImageStore: foregroundStore)
+            })
         guard let payload else { throw CLIError.renderFailed }
         try write(payload.data, to: url, options: options)
         if options.textSidecar { try writeTextSidecar(for: config, options: options, beside: url) }

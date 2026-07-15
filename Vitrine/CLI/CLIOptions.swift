@@ -28,6 +28,11 @@ struct CLIOptions: Equatable {
     /// in a folder into an output folder (CS-094).
     enum Command: String, Equatable, Sendable { case render, batch }
 
+    /// Whether `inputPath` names source text or a local image to beautify. Image input
+    /// is render-only and is copied into an invocation-scoped temporary store, never
+    /// the app's persistent foreground-image library.
+    enum InputKind: String, Equatable, Sendable { case code, image }
+
     /// Suppresses the success summary on stdout. Errors and explicit skipped-file
     /// diagnostics still go to stderr so automation logs stay actionable.
     var quiet: Bool = false
@@ -35,9 +40,12 @@ struct CLIOptions: Equatable {
     /// Errors remain human-readable stderr, matching the rest of the CLI contract.
     var jsonOutput: Bool = false
 
-    /// The source file to read the code from (a folder for `batch`). The language is
-    /// inferred from its extension (falling back to content detection), matching the
-    /// editor's drag-and-drop loader (CS-027/028).
+    /// The kind of file carried by `inputPath`. Defaults to code so existing render
+    /// and batch invocations keep their original behavior.
+    var inputKind: InputKind = .code
+
+    /// The source file to read (a folder for `batch`). Code language is inferred from
+    /// its extension/content; image input is decoded locally and never persisted.
     var inputPath: String
     /// Where the rendered image is written (an output folder for `batch`).
     var outputPath: String
