@@ -144,6 +144,7 @@ enum CLIArguments {
         var languageID: String?
         var presetID: String?
         var scale: Int?
+        var fontName: String?
         var fontSize: Double?
         var padding: Double?
         var terminalColumns: Int?
@@ -202,6 +203,8 @@ enum CLIArguments {
                 presetID = try resolvePreset(try value(for: token))
             case "--scale":
                 scale = try resolveScale(try value(for: token), flag: token)
+            case "--font":
+                fontName = try resolveFont(try value(for: token))
             case "--font-size":
                 fontSize = try resolveFontSize(try value(for: token), flag: token)
             case "--padding":
@@ -335,7 +338,7 @@ enum CLIArguments {
             windowTitle != nil || metadataFilename != nil
             || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
         let styleOptionsRequested =
-            fontSize != nil || padding != nil || wrapColumns != nil
+            fontName != nil || fontSize != nil || padding != nil || wrapColumns != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
 
         // `--edit` hands the source to the running editor instead of rendering, so it
@@ -421,6 +424,7 @@ enum CLIArguments {
             language: languageID.flatMap(Language.init(rawValue:)),
             presetID: presetID,
             scale: scale,
+            fontName: fontName,
             fontSize: fontSize,
             padding: padding,
             terminalColumns: terminalColumns,
@@ -478,6 +482,14 @@ enum CLIArguments {
     private static func resolvePreset(_ raw: String) throws -> String {
         guard ExportPreset.preset(withID: raw) != nil else {
             throw CLIError.invalidValue(flag: "--preset", value: raw)
+        }
+        return raw
+    }
+
+    /// Validates a code font family against the same catalog exposed in the editor.
+    private static func resolveFont(_ raw: String) throws -> String {
+        guard CodeFont.all.contains(raw) else {
+            throw CLIError.invalidValue(flag: "--font", value: raw)
         }
         return raw
     }
@@ -640,7 +652,7 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
-          vitrine list <all|themes|languages|presets|formats|profiles> [--json]
+          vitrine list <all|themes|languages|presets|fonts|formats|profiles> [--json]
           vitrine --version [--json]
           vitrine version [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
@@ -663,6 +675,7 @@ nonisolated enum CLIUsage {
                                  docs, transparent-slide, opengraph).
           --scale <1|2|3>        Export resolution multiplier. Defaults to the app
                                  default, or the preset's recommended scale.
+          --font <family>        Code font family. Use `vitrine list fonts`.
           --font-size <n>        Code font size in points (10-20).
           --padding <n>          Canvas padding in points (16-64).
           --terminal-width <n>   Reconstruct terminal output at exactly n columns

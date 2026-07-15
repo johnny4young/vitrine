@@ -136,13 +136,14 @@ struct CLIAutomationTests {
             CLICatalog.invocation(for: ["--json", "language"])
                 == .listing(.languages, format: .json))
         #expect(CLICatalog.invocation(for: ["preset"]) == .listing(.presets, format: .text))
+        #expect(CLICatalog.invocation(for: ["font"]) == .listing(.fonts, format: .text))
         #expect(CLICatalog.invocation(for: ["format"]) == .listing(.formats, format: .text))
         #expect(CLICatalog.invocation(for: ["profiles"]) == .listing(.profiles, format: .text))
         #expect(CLICatalog.invocation(for: []) == .help)
     }
 
     @Test func catalogListRejectsUnknownTargetsFlagsAndExtraArguments() {
-        #expect(CLICatalog.invocation(for: ["fonts"]) == .unknownCatalog("fonts"))
+        #expect(CLICatalog.invocation(for: ["colors"]) == .unknownCatalog("colors"))
         #expect(CLICatalog.invocation(for: ["themes", "--bad"]) == .unknownFlag("--bad"))
         #expect(
             CLICatalog.invocation(for: ["themes", "languages"]) == .extraArguments(["languages"]))
@@ -163,6 +164,10 @@ struct CLIAutomationTests {
         let profileText = CLICatalog.output(for: .profiles, format: .text)
         #expect(profileText == "srgb\tsRGB\np3\tDisplay P3 (advanced)\n")
 
+        let fontText = CLICatalog.output(for: .fonts, format: .text)
+        #expect(fontText.contains("JetBrains Mono\tJetBrains Mono\n"))
+        #expect(fontText.contains("Fira Code\tFira Code\n"))
+
         let data = Data(CLICatalog.output(for: .languages, format: .json).utf8)
         let decoded = try #require(
             JSONSerialization.jsonObject(with: data) as? [[String: String]])
@@ -182,6 +187,7 @@ struct CLIAutomationTests {
         #expect(allText.contains("  one-dark\tOne Dark\n"))
         #expect(allText.contains("languages:\n"))
         #expect(allText.contains("  swift\tSwift\n"))
+        #expect(allText.contains("fonts:\n  JetBrains Mono\tJetBrains Mono\n"))
         #expect(allText.contains("formats:\n  png\tPNG\n"))
         #expect(allText.contains("profiles:\n  srgb\tsRGB\n"))
 
@@ -190,11 +196,13 @@ struct CLIAutomationTests {
         let themes = try #require(decoded["themes"] as? [[String: String]])
         let languages = try #require(decoded["languages"] as? [[String: String]])
         let presets = try #require(decoded["presets"] as? [[String: String]])
+        let fonts = try #require(decoded["fonts"] as? [[String: String]])
         let formats = try #require(decoded["formats"] as? [[String: String]])
         let profiles = try #require(decoded["profiles"] as? [[String: String]])
         #expect(themes.contains { $0["id"] == "one-dark" })
         #expect(languages.contains { $0["id"] == "swift" })
         #expect(presets.contains { $0["id"] == "opengraph" })
+        #expect(fonts.contains { $0["id"] == "Fira Code" && $0["name"] == "Fira Code" })
         #expect(formats.contains { $0["id"] == "png" })
         #expect(profiles.contains { $0["id"] == "p3" })
     }
@@ -203,9 +211,9 @@ struct CLIAutomationTests {
         let options = try CLIArguments.parse(
             [
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
-                "--recursive", "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run",
-                "--manifest", "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
-                "--fail-on-empty", "--no-overwrite",
+                "--font", "Hack", "--recursive", "--fail-on-skipped", "--skipped-report",
+                "skipped.json", "--dry-run", "--manifest", "manifest.json", "--include-ext",
+                ".swift,md", "--exclude-ext", "tmp", "--fail-on-empty", "--no-overwrite",
             ])
         #expect(options.command == .batch)
         #expect(options.quiet)
@@ -219,6 +227,7 @@ struct CLIAutomationTests {
         #expect(options.dryRunBatch)
         #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
         #expect(options.batchExcludeExtensions == Set(["tmp"]))
+        #expect(options.fontName == "Hack")
         #expect(options.failOnEmpty)
         #expect(options.noOverwrite)
         #expect(!options.jsonOutput)

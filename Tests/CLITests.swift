@@ -111,6 +111,7 @@ struct CLITests {
             "--language", "python",
             "--preset", "opengraph",
             "--scale", "3",
+            "--font", "Fira Code",
             "--font-size", "16",
             "--padding", "48",
             "--terminal-width", "100",
@@ -134,6 +135,7 @@ struct CLITests {
         #expect(options.language == .python)
         #expect(options.presetID == "opengraph")
         #expect(options.scale == 3)
+        #expect(options.fontName == "Fira Code")
         #expect(options.fontSize == 16)
         #expect(options.padding == 48)
         #expect(options.terminalColumns == 100)
@@ -190,6 +192,7 @@ struct CLITests {
         let options = try CLIArguments.parse([
             "render", "snippet.swift",
             "-o", "o.png",
+            "--font", "Fira Code",
             "--font-size", "15.5",
             "--padding", "40",
             "--line-numbers",
@@ -198,6 +201,7 @@ struct CLITests {
         ])
 
         let config = options.makeConfig(code: "print(\"styled\")", language: .swift)
+        #expect(config.fontName == "Fira Code")
         #expect(config.fontSize == 15.5)
         #expect(config.padding == 40)
         #expect(config.showLineNumbers)
@@ -620,6 +624,9 @@ struct CLITests {
         }
         #expect(throws: CLIError.invalidValue(flag: "--preset", value: "billboard")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--preset", "billboard"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--font", value: "Comic Sans")) {
+            try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--font", "Comic Sans"])
         }
         #expect(throws: CLIError.invalidValue(flag: "--scale", value: "9")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--scale", "9"])
