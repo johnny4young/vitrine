@@ -107,8 +107,11 @@ struct CLIOptions: Equatable {
     var watermarkText: String?
     /// Optional fixed-sRGB tint for `watermarkText`; nil uses the overlay's legible white.
     var watermarkColor: RGBAColor?
-    /// Optional corner for `watermarkText`; nil uses the Brand Kit's bottom-right default.
+    /// Optional placement for `watermarkText`; nil uses the Brand Kit's bottom-right default.
     var watermarkPosition: WatermarkPosition?
+    /// Optional normalized center for a freely placed watermark. Present only when
+    /// `watermarkPosition` is `.free`; the parser requires both coordinates together.
+    var watermarkFreePosition: CGPoint?
     /// Optional frame around `--image` content. Nil preserves the model's plain-image
     /// default; stable CLI ids map onto the app's existing frame enum.
     var imageFrame: ImageFrameOption?
@@ -209,13 +212,14 @@ struct CLIOptions: Equatable {
     /// filename or code as markup. Same constraints as the other sidecars.
     var htmlSidecar: Bool = false
 
-    /// Stable, CLI-facing corner names. Free placement stays an editor-only interaction
-    /// because it needs normalized coordinates and visual dragging feedback.
+    /// Stable CLI-facing watermark placements. Free placement uses normalized coordinates
+    /// supplied by `--watermark-x` and `--watermark-y`.
     enum WatermarkPosition: String, CaseIterable, Equatable, Sendable {
         case bottomRight = "bottom-right"
         case bottomLeft = "bottom-left"
         case topRight = "top-right"
         case topLeft = "top-left"
+        case free
 
         var displayName: String {
             switch self {
@@ -223,6 +227,7 @@ struct CLIOptions: Equatable {
             case .bottomLeft: "Bottom left"
             case .topRight: "Top right"
             case .topLeft: "Top left"
+            case .free: "Free"
             }
         }
 
@@ -232,6 +237,7 @@ struct CLIOptions: Equatable {
             case .bottomLeft: .bottomLeading
             case .topRight: .topTrailing
             case .topLeft: .topLeading
+            case .free: .free
             }
         }
     }
@@ -307,11 +313,15 @@ struct CLIOptions: Equatable {
         config.code = formatCode ? CodeFormatter.tidy(code, language: language) : code
         config.language = language
         if let watermarkText {
-            config.watermark = Watermark(
+            var watermark = Watermark(
                 text: watermarkText,
                 logoImageData: nil,
                 tint: watermarkColor,
                 placement: watermarkPosition?.modelValue ?? .bottomTrailing)
+            if let watermarkFreePosition {
+                watermark.freePosition = watermarkFreePosition
+            }
+            config.watermark = watermark
         }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }

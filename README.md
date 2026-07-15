@@ -365,6 +365,8 @@ vitrine render app.swift --out gradient.png \
 vitrine render payload.json --out payload.png --format-code --text-sidecar
 vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
   --watermark-color '#7DD3FC' --watermark-position top-left
+vitrine render release.swift --out centered.png --watermark '@jane · vitrine' \
+  --watermark-position free --watermark-x 0.5 --watermark-y 0.18
 vitrine render --image dashboard.png --out showcase.png --background night --padding 40
 vitrine render --image dashboard.png --out browser.png --frame browser \
   --frame-appearance dark --window-title 'app.example.com'
@@ -410,7 +412,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--transparent`, `--background <id>`, `--background-color <hex>`,
 `--background-gradient <hex,hex,...>`, `--background-angle <degrees>`,
 `--frame <id>`, `--frame-appearance <auto|light|dark>`,
-`--watermark <text>`, `--watermark-color <hex>`, `--watermark-position <corner>`, style controls
+`--watermark <text>`, `--watermark-color <hex>`, `--watermark-position <corner|free>`,
+`--watermark-x <0...1>`, `--watermark-y <0...1>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
@@ -431,8 +434,11 @@ direction from 0 through 360 degrees and defaults to 135; custom gradients are m
 exclusive with preset, solid, and transparent backgrounds.
 `--watermark <text>` adds a deterministic text badge through the same render-core
 overlay as Brand Kit. `--watermark-color <hex>` changes its tint and
-`--watermark-position <corner>` selects one of the ids printed by
-`vitrine list watermark-positions`; both modifiers require visible watermark text.
+`--watermark-position <corner|free>` selects one of the ids printed by
+`vitrine list watermark-positions`; all modifiers require visible watermark text.
+The `free` placement additionally requires both normalized coordinates through
+`--watermark-x` and `--watermark-y`, making scripted placement deterministic while the
+four corner placements keep their existing behavior.
 `--image <path>` beautifies a local image through the same canvas as the editor. The
 source is decoded locally, copied only into an invocation-scoped temporary store, and
 removed when the command exits; it is never added to Vitrine's persistent image library.

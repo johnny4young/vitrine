@@ -169,6 +169,8 @@ enum CLIArguments {
         var watermarkText: String?
         var watermarkColor: RGBAColor?
         var watermarkPosition: CLIOptions.WatermarkPosition?
+        var watermarkX: Double?
+        var watermarkY: Double?
         var imageFrame: CLIOptions.ImageFrameOption?
         var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
@@ -271,6 +273,10 @@ enum CLIArguments {
                 watermarkColor = try resolveWatermarkColor(try value(for: token))
             case "--watermark-position":
                 watermarkPosition = try resolveWatermarkPosition(try value(for: token))
+            case "--watermark-x":
+                watermarkX = try resolveNormalizedCoordinate(try value(for: token), flag: token)
+            case "--watermark-y":
+                watermarkY = try resolveNormalizedCoordinate(try value(for: token), flag: token)
             case "--frame":
                 imageFrame = try resolveImageFrame(try value(for: token))
             case "--frame-appearance":
@@ -418,6 +424,22 @@ enum CLIArguments {
         if watermarkText == nil, watermarkColor != nil || watermarkPosition != nil {
             throw CLIError.incompatibleOptions(
                 "--watermark-color and --watermark-position require --watermark.")
+        }
+        if watermarkText == nil, watermarkX != nil || watermarkY != nil {
+            throw CLIError.incompatibleOptions(
+                "--watermark-x and --watermark-y require --watermark.")
+        }
+        if (watermarkX == nil) != (watermarkY == nil) {
+            throw CLIError.incompatibleOptions(
+                "--watermark-x and --watermark-y must be provided together.")
+        }
+        if watermarkPosition == .free, watermarkX == nil {
+            throw CLIError.incompatibleOptions(
+                "--watermark-position free requires --watermark-x and --watermark-y.")
+        }
+        if watermarkX != nil, watermarkPosition != .free {
+            throw CLIError.incompatibleOptions(
+                "--watermark-x and --watermark-y require --watermark-position free.")
         }
         if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
             throw CLIError.incompatibleOptions(
@@ -573,6 +595,12 @@ enum CLIArguments {
 
         let resolvedFormat = try resolveFormat(
             explicitFormat, command: mode, outputPath: resolvedOutput)
+        let watermarkFreePosition: CGPoint? =
+            if let watermarkX, let watermarkY {
+                CGPoint(x: watermarkX, y: watermarkY)
+            } else {
+                nil
+            }
 
         return CLIOptions(
             command: mode,
@@ -601,6 +629,7 @@ enum CLIArguments {
             watermarkText: watermarkText,
             watermarkColor: watermarkColor,
             watermarkPosition: watermarkPosition,
+            watermarkFreePosition: watermarkFreePosition,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
@@ -749,6 +778,14 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: "--watermark-position", value: raw)
         }
         return position
+    }
+
+    /// Parses a normalized canvas coordinate for deterministic free watermark placement.
+    private static func resolveNormalizedCoordinate(_ raw: String, flag: String) throws -> Double {
+        guard let value = Double(raw), value.isFinite, (0...1).contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
     }
 
     /// Resolves a stable image-frame id advertised by `vitrine list frames`.
@@ -1048,9 +1085,12 @@ nonisolated enum CLIUsage {
           --watermark <text>     Add a text-only watermark to the rendered image.
           --watermark-color <hex>
                                  Watermark RGB/RGBA tint; requires --watermark.
-          --watermark-position <corner>
-                                 Watermark corner: bottom-right, bottom-left,
-                                 top-right, or top-left; requires --watermark.
+          --watermark-position <corner|free>
+                                 Watermark placement: bottom-right, bottom-left,
+                                 top-right, top-left, or free; requires --watermark.
+          --watermark-x <0...1>  Normalized horizontal center for free placement.
+          --watermark-y <0...1>  Normalized vertical center for free placement; x/y
+                                 must be provided together with position free.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.
