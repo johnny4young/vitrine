@@ -86,6 +86,10 @@ struct CLITests {
         #expect(options.watermarkColor == nil)
         #expect(options.watermarkPosition == nil)
         #expect(options.watermarkFreePosition == nil)
+        #expect(options.calloutText == nil)
+        #expect(options.calloutPosition == nil)
+        #expect(options.calloutColor == nil)
+        #expect(options.calloutSize == nil)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -513,6 +517,76 @@ struct CLITests {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--watermark-logo", "brand.png",
                 "--watermark-color", "#FFF",
+            ])
+        }
+    }
+
+    @Test func calloutOptionsBuildTheRenderCoreAnnotation() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png",
+            "--callout", "  Review this branch  ", "--callout-x", "0.25",
+            "--callout-y", "0.72", "--callout-color", "#FDE047",
+            "--callout-size", "7",
+        ])
+
+        #expect(options.calloutText == "Review this branch")
+        #expect(options.calloutPosition == CGPoint(x: 0.25, y: 0.72))
+        #expect(options.calloutColor == RGBAColor(hex: "#FDE047"))
+        #expect(options.calloutSize == 7)
+        let annotation = try #require(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).annotations.first)
+        #expect(annotation.kind == .text)
+        #expect(annotation.start == CGPoint(x: 0.25, y: 0.72))
+        #expect(annotation.end == annotation.start)
+        #expect(annotation.text == "Review this branch")
+        #expect(annotation.color == RGBAColor(hex: "#FDE047"))
+        #expect(annotation.thickness == 7)
+    }
+
+    @Test func calloutDefaultsToTheEditorStyleAtCanvasCenter() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--callout", "Ship it",
+        ])
+        let annotation = try #require(
+            options.makeConfig(code: "x", language: .swift).annotations.first)
+        #expect(annotation.start == CGPoint(x: 0.5, y: 0.5))
+        #expect(annotation.color == Annotation.defaultColor)
+        #expect(annotation.thickness == Annotation.defaultThickness)
+    }
+
+    @Test func calloutRejectsBlankInvalidOrInertModifiers() {
+        #expect(throws: CLIError.invalidValue(flag: "--callout", value: "   ")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--callout", "   ",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--callout-x", value: "-0.1")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--callout", "Note",
+                "--callout-x", "-0.1", "--callout-y", "0.5",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--callout-size", value: "29")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--callout", "Note",
+                "--callout-size", "29",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--callout-x and --callout-y must be provided together.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--callout", "Note",
+                "--callout-x", "0.3",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--callout-x, --callout-y, --callout-color, and --callout-size require --callout.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--callout-color", "#FFF",
             ])
         }
     }
@@ -1164,6 +1238,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--watermark-logo", "brand.png",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--callout", "Review this",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -1607,6 +1689,32 @@ struct CLITests {
             try CLIRenderer.run(invalidOptions)
         }
         #expect(!FileManager.default.fileExists(atPath: output))
+    }
+
+    @Test func textCalloutChangesPixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let calloutOutput = directory.appendingPathComponent("callout.png").path
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", calloutOutput, "--scale", "1",
+                "--callout", "Review this branch", "--callout-x", "0.68",
+                "--callout-y", "0.2", "--callout-color", "#FDE047",
+                "--callout-size", "6",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let calloutImage = try decodePNG(at: calloutOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: calloutOutput)))
+        #expect(calloutImage.width == plainImage.width)
+        #expect(calloutImage.height == plainImage.height)
     }
 
     @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {

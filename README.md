@@ -371,6 +371,8 @@ vitrine render release.swift --out logo.png --watermark-logo brand.png \
   --watermark-position bottom-left
 vitrine render release.swift --out centered.png --watermark '@jane · vitrine' \
   --watermark-position free --watermark-x 0.5 --watermark-y 0.18
+vitrine render release.swift --out reviewed.png --callout 'Review this branch' \
+  --callout-x 0.68 --callout-y 0.2 --callout-color '#FDE047' --callout-size 6
 vitrine render --image dashboard.png --out showcase.png --background night --padding 40
 vitrine render --image dashboard.png --out browser.png --frame browser \
   --frame-appearance dark --window-title 'app.example.com'
@@ -422,7 +424,9 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--frame <id>`, `--frame-appearance <auto|light|dark>`,
 `--watermark <text>`, `--watermark-logo <path>`, `--watermark-color <hex>`,
 `--watermark-position <corner|free>`,
-`--watermark-x <0...1>`, `--watermark-y <0...1>`, style controls
+`--watermark-x <0...1>`, `--watermark-y <0...1>`,
+`--callout <text>`, `--callout-x <0...1>`, `--callout-y <0...1>`,
+`--callout-color <hex>`, `--callout-size <2...28>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
@@ -459,6 +463,11 @@ color requires visible text.
 The `free` placement additionally requires both normalized coordinates through
 `--watermark-x` and `--watermark-y`, making scripted placement deterministic while the
 four corner placements keep their existing behavior.
+`--callout <text>` adds one deterministic text pill through the same normalized
+annotation layer as the editor. It defaults to the canvas center and the editor's red
+annotation style; optional x/y coordinates move its anchor, while color and size tune
+its appearance. Coordinates must be supplied together, and every modifier requires
+visible callout text.
 `--image <path>` beautifies a local image through the same canvas as the editor. The
 source is decoded locally, copied only into an invocation-scoped temporary store, and
 removed when the command exits; it is never added to Vitrine's persistent image library.

@@ -126,6 +126,14 @@ struct CLIOptions: Equatable {
     /// Optional normalized center for a freely placed watermark. Present only when
     /// `watermarkPosition` is `.free`; the parser requires both coordinates together.
     var watermarkFreePosition: CGPoint?
+    /// Optional text callout composited through the shared annotation layer.
+    var calloutText: String?
+    /// Optional normalized anchor for `calloutText`; nil uses the canvas center.
+    var calloutPosition: CGPoint?
+    /// Optional callout text color; nil uses the editor's annotation red.
+    var calloutColor: RGBAColor?
+    /// Optional annotation size weight in the editor's supported 2...28 range.
+    var calloutSize: Double?
     /// Optional frame around `--image` content. Nil preserves the model's plain-image
     /// default; stable CLI ids map onto the app's existing frame enum.
     var imageFrame: ImageFrameOption?
@@ -347,6 +355,14 @@ struct CLIOptions: Equatable {
                 watermark.freePosition = watermarkFreePosition
             }
             config.watermark = watermark
+        }
+        if let calloutText {
+            let position = calloutPosition ?? CGPoint(x: 0.5, y: 0.5)
+            config.annotations.append(
+                Annotation(
+                    kind: .text, start: position, end: position, text: calloutText,
+                    color: calloutColor ?? Annotation.defaultColor,
+                    thickness: calloutSize ?? Annotation.defaultThickness))
         }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
