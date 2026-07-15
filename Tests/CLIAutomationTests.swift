@@ -137,6 +137,9 @@ struct CLIAutomationTests {
                 == .listing(.languages, format: .json))
         #expect(CLICatalog.invocation(for: ["preset"]) == .listing(.presets, format: .text))
         #expect(CLICatalog.invocation(for: ["font"]) == .listing(.fonts, format: .text))
+        #expect(
+            CLICatalog.invocation(for: ["backgrounds"])
+                == .listing(.backgrounds, format: .text))
         #expect(CLICatalog.invocation(for: ["format"]) == .listing(.formats, format: .text))
         #expect(CLICatalog.invocation(for: ["profiles"]) == .listing(.profiles, format: .text))
         #expect(CLICatalog.invocation(for: []) == .help)
@@ -168,6 +171,12 @@ struct CLIAutomationTests {
         #expect(fontText.contains("JetBrains Mono\tJetBrains Mono\n"))
         #expect(fontText.contains("Fira Code\tFira Code\n"))
 
+        let backgroundText = CLICatalog.output(for: .backgrounds, format: .text)
+        #expect(
+            backgroundText
+                == "aurora\tAurora\nocean\tOcean\nsunset\tSunset\nforest\tForest\nnight\tNight\ncarbon\tCarbon\n"
+        )
+
         let data = Data(CLICatalog.output(for: .languages, format: .json).utf8)
         let decoded = try #require(
             JSONSerialization.jsonObject(with: data) as? [[String: String]])
@@ -188,6 +197,7 @@ struct CLIAutomationTests {
         #expect(allText.contains("languages:\n"))
         #expect(allText.contains("  swift\tSwift\n"))
         #expect(allText.contains("fonts:\n  JetBrains Mono\tJetBrains Mono\n"))
+        #expect(allText.contains("backgrounds:\n  aurora\tAurora\n"))
         #expect(allText.contains("formats:\n  png\tPNG\n"))
         #expect(allText.contains("profiles:\n  srgb\tsRGB\n"))
 
@@ -197,12 +207,14 @@ struct CLIAutomationTests {
         let languages = try #require(decoded["languages"] as? [[String: String]])
         let presets = try #require(decoded["presets"] as? [[String: String]])
         let fonts = try #require(decoded["fonts"] as? [[String: String]])
+        let backgrounds = try #require(decoded["backgrounds"] as? [[String: String]])
         let formats = try #require(decoded["formats"] as? [[String: String]])
         let profiles = try #require(decoded["profiles"] as? [[String: String]])
         #expect(themes.contains { $0["id"] == "one-dark" })
         #expect(languages.contains { $0["id"] == "swift" })
         #expect(presets.contains { $0["id"] == "opengraph" })
         #expect(fonts.contains { $0["id"] == "Fira Code" && $0["name"] == "Fira Code" })
+        #expect(backgrounds.contains { $0["id"] == "aurora" && $0["name"] == "Aurora" })
         #expect(formats.contains { $0["id"] == "png" })
         #expect(profiles.contains { $0["id"] == "p3" })
     }
