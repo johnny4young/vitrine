@@ -381,6 +381,8 @@ vitrine render release.swift --out underlined.png --line 0.16,0.76,0.84,0.76 \
   --line-color '#A78BFA' --line-size 10
 vitrine render release.swift --out boxed.png --rectangle 0.12,0.28,0.88,0.8 \
   --rectangle-color '#FB7185' --rectangle-size 9
+vitrine render release.swift --out highlighted.png --highlighter 0.12,0.42,0.88,0.54 \
+  --highlighter-color '#FFD60A'
 vitrine render --image dashboard.png --out showcase.png --background night --padding 40
 vitrine render --image dashboard.png --out browser.png --frame browser \
   --frame-appearance dark --window-title 'app.example.com'
@@ -440,7 +442,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--arrow <x1,y1,x2,y2>`, `--arrow-color <hex>`, `--arrow-size <2...28>`,
 `--line <x1,y1,x2,y2>`, `--line-color <hex>`, `--line-size <2...28>`,
 `--rectangle <x1,y1,x2,y2>`, `--rectangle-color <hex>`,
-`--rectangle-size <2...28>`, style controls
+`--rectangle-size <2...28>`, `--highlighter <x1,y1,x2,y2>`,
+`--highlighter-color <hex>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
@@ -495,6 +498,9 @@ out-of-canvas, or zero-length segments before rendering.
 `--rectangle <x1,y1,x2,y2>` outlines the region between two normalized opposite
 corners. Color and size match the editor toolbar; collapsed width or height is rejected
 so every successful command produces a visible box.
+`--highlighter <x1,y1,x2,y2>` draws the editor's translucent marker fill between two
+normalized opposite corners. Its optional color uses fixed-sRGB input, while collapsed
+width or height is rejected before rendering.
 `--image <path>` beautifies a local image through the same canvas as the editor. The
 source is decoded locally, copied only into an invocation-scoped temporary store, and
 removed when the command exits; it is never added to Vitrine's persistent image library.
