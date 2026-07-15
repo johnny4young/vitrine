@@ -359,7 +359,7 @@ vitrine render input.swift --out image.png
 vitrine render snippet.py --out card.png --theme dracula --preset opengraph
 vitrine render notes.go   --out clear.png --transparent --scale 3
 vitrine render long-line.swift --out wrapped.png --wrap-columns 80
-vitrine render snippet.swift --out compact.png --font-size 12 --padding 24 --no-shadow
+vitrine render snippet.swift --out compact.png --font "Fira Code" --font-size 12 --padding 24 --no-shadow
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render snippet.swift --out card.png --sidecars all
 cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
@@ -369,6 +369,7 @@ vitrine render input.swift --out image.pdf
 vitrine list themes
 vitrine list languages --json
 vitrine list all --json
+vitrine list fonts
 vitrine list formats
 vitrine list profiles --json
 vitrine --version
@@ -386,15 +387,15 @@ suppresses the success summary for scripts while leaving errors visible, and `--
 prints `render`/`batch` success summaries as structured JSON (mutually exclusive with
 `--quiet`). `--theme`,
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
-(`srgb`/`p3`), `--transparent`, style controls (`--font-size`, `--padding`,
-`--wrap-columns`, `--line-numbers`, `--no-chrome`, `--no-shadow`), and the header
-controls (`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`)
-override individual choices. For single-file `render`, a known `--out` extension
-(`.png`, `.pdf`, or `.heic`) selects the matching format when `--format` is omitted;
-if both are present, they must agree so scripts never write mislabeled artifacts. With
-`--stdin`, `--stdin-name <name>` supplies a
-filename hint for extension-based language inference and default metadata without
-reading that file. `--no-overwrite` (alias `--no-clobber`) refuses to replace
+(`srgb`/`p3`), `--font <family>`, `--transparent`, style controls (`--font-size`,
+`--padding`, `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--no-shadow`), and
+the header controls (`--window-title`, `--filename`, `--title`, `--caption`,
+`--language-badge`) override individual choices. For single-file `render`, a known
+`--out` extension (`.png`, `.pdf`, or `.heic`) selects the matching format when
+`--format` is omitted; if both are present, they must agree so scripts never write
+mislabeled artifacts. With `--stdin`, `--stdin-name <name>` supplies a filename hint
+for extension-based language inference and default metadata without reading that file.
+`--no-overwrite` (alias `--no-clobber`) refuses to replace
 existing image or sidecar outputs; in `batch`, existing targets are reported as
 skipped so the remaining new cards can still be produced. `--text-sidecar`,
 `--markdown-sidecar`, `--html-sidecar`, or `--sidecars all` write copyable source
@@ -411,8 +412,8 @@ planned outputs during `--dry-run`) with relative paths and dimensions when avai
 When a batch contains same-stem files such as `Widget.swift` and `Widget.ts`, only
 that colliding group preserves the input extension (`Widget.swift.png`,
 `Widget.ts.png`) so one artifact never overwrites the other.
-`vitrine list <all|themes|languages|presets|formats|profiles> [--json]` prints the local
-catalog ids accepted by those flags so scripts can discover them without scraping docs;
+`vitrine list <all|themes|languages|presets|fonts|formats|profiles> [--json]` prints
+the local catalog ids accepted by those flags so scripts can discover them without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before
 AppKit initialization or the PRO render gate, which makes CI install checks cheap.

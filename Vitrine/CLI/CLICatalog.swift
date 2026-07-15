@@ -1,7 +1,7 @@
 import Foundation
 
-/// Lists the local CLI catalogs used to validate themes, languages, export presets, formats,
-/// and color profiles.
+/// Lists the local CLI catalogs used to validate themes, languages, export presets, fonts,
+/// formats, and color profiles.
 ///
 /// `vitrine list` is intentionally separate from `CLIArguments`: it does not render,
 /// read user files, or need AppKit. The executable handles it before the PRO render
@@ -14,6 +14,7 @@ enum CLICatalog {
         case themes
         case languages
         case presets
+        case fonts
         case formats
         case profiles
 
@@ -23,6 +24,7 @@ enum CLICatalog {
             case "theme", "themes": self = .themes
             case "language", "languages": self = .languages
             case "preset", "presets": self = .presets
+            case "font", "fonts": self = .fonts
             case "format", "formats": self = .formats
             case "profile", "profiles": self = .profiles
             default: return nil
@@ -52,14 +54,15 @@ enum CLICatalog {
         var themes: [Entry]
         var languages: [Entry]
         var presets: [Entry]
+        var fonts: [Entry]
         var formats: [Entry]
         var profiles: [Entry]
     }
 
     static let usage = """
-        vitrine list <all|themes|languages|presets|formats|profiles> [--json]
+        vitrine list <all|themes|languages|presets|fonts|formats|profiles> [--json]
 
-        Prints the local ids accepted by --theme, --language, --preset, --format, and --profile.
+        Prints the local ids accepted by --theme, --language, --preset, --font, --format, and --profile.
         Use `all --json` for one machine-readable object with every catalog.
         """
 
@@ -118,6 +121,7 @@ enum CLICatalog {
             themes: entries(for: .themes),
             languages: entries(for: .languages),
             presets: entries(for: .presets),
+            fonts: entries(for: .fonts),
             formats: entries(for: .formats),
             profiles: entries(for: .profiles))
     }
@@ -133,6 +137,7 @@ enum CLICatalog {
         (.themes, "themes"),
         (.languages, "languages"),
         (.presets, "presets"),
+        (.fonts, "fonts"),
         (.formats, "formats"),
         (.profiles, "profiles"),
     ]
@@ -147,6 +152,8 @@ enum CLICatalog {
             Language.allCases.map { Entry(id: $0.rawValue, name: $0.displayName) }
         case .presets:
             ExportPreset.all.map { Entry(id: $0.id, name: $0.displayName) }
+        case .fonts:
+            CodeFont.all.map { Entry(id: $0, name: $0) }
         case .formats:
             ExportFormat.allCases.map { Entry(id: $0.rawValue, name: $0.displayName) }
         case .profiles:

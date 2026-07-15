@@ -57,6 +57,9 @@ struct CLIOptions: Equatable {
     /// explicit scale is given, the preset's recommended scale is used, mirroring the
     /// GUI's "preset seeds the scale, an explicit value overrides it" rule (CS-020).
     var scale: Int?
+    /// Optional code font family override. Resolved through `CodeFont.all` so the CLI
+    /// accepts the same bundled/system programming fonts as the editor.
+    var fontName: String?
     /// Optional font-size override, in points. Uses the same bounds as the editor's
     /// Style pane.
     var fontSize: Double?
@@ -183,6 +186,7 @@ struct CLIOptions: Equatable {
         config.code = code
         config.language = language
         config.terminalColumns = terminalColumns
+        if let fontName { config.fontName = fontName }
         if let fontSize { config.fontSize = fontSize }
         if let padding { config.padding = padding }
         if let wrapColumns { config.wrapColumns = wrapColumns }
