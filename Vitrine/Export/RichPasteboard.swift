@@ -182,11 +182,13 @@ enum RichPasteboard {
         fixedSize: CGSize?,
         profile: ColorProfile,
         includeRichText: Bool,
-        includePlainText: Bool = false
+        includePlainText: Bool = false,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> Payload? {
         guard
             let cgImage = ExportManager.renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile)
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                foregroundImageStore: foregroundImageStore)
         else {
             Log.export.error("Rich payload build failed: render returned nil")
             return nil
@@ -288,12 +290,14 @@ enum RichPasteboard {
         profile: ColorProfile,
         includeRichText: Bool,
         includePlainText: Bool = false,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
         guard
             let payload = makePayload(
                 for: config, scale: scale, fixedSize: fixedSize, profile: profile,
-                includeRichText: includeRichText, includePlainText: includePlainText)
+                includeRichText: includeRichText, includePlainText: includePlainText,
+                foregroundImageStore: foregroundImageStore)
         else { return false }
         return write(payload, to: pasteboard)
     }

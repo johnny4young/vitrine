@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import CoreText
 import Foundation
@@ -66,6 +67,7 @@ struct CLITests {
         let options = try CLIArguments.parse(["render", "input.swift", "--out", "out.png"])
         #expect(options.inputPath == "input.swift")
         #expect(options.outputPath == "out.png")
+        #expect(options.inputKind == .code)
         // No overrides → the app's own defaults.
         #expect(options.themeID == nil)
         #expect(options.language == nil)
@@ -537,6 +539,66 @@ struct CLITests {
         // --copy + --out does both.
         let both = try CLIArguments.parse(["render", "in.swift", "--copy", "--out", "x.png"])
         #expect(both.copyToClipboard && both.outputPath == "x.png")
+    }
+
+    @Test func imageInputParsesAsARenderOnlyLocalSource() throws {
+        let options = try CLIArguments.parse([
+            "render", "--image", "Screenshot.png", "--out", "card.png",
+            "--background", "night", "--padding", "24", "--copy",
+        ])
+
+        #expect(options.inputKind == .image)
+        #expect(options.inputPath == "Screenshot.png")
+        #expect(options.outputPath == "card.png")
+        #expect(options.copyToClipboard)
+        #expect(options.padding == 24)
+        #expect(options.background == .gradient(.night))
+    }
+
+    @Test func imageInputRejectsAmbiguousSourcesAndUnsupportedCommands() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --image with input file \"source.swift\".")
+        ) {
+            try CLIArguments.parse([
+                "render", "source.swift", "--image", "photo.png", "--out", "card.png",
+            ])
+        }
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --image with --stdin.")) {
+            try CLIArguments.parse([
+                "render", "--stdin", "--image", "photo.png", "--out", "card.png",
+            ])
+        }
+        #expect(throws: CLIError.unknownFlag("--image")) {
+            try CLIArguments.parse([
+                "batch", "Sources", "--image", "photo.png", "--out", "Cards",
+            ])
+        }
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --image with --edit.")) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--edit",
+            ])
+        }
+    }
+
+    @Test func imageInputRejectsCodeOnlyAndSidecarOptions() {
+        let incompatible = CLIError.incompatibleOptions(
+            "Cannot combine --image with code-only or sidecar options.")
+        #expect(throws: incompatible) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png", "--theme", "nord",
+            ])
+        }
+        #expect(throws: incompatible) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png", "--line-numbers",
+            ])
+        }
+        #expect(throws: incompatible) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png", "--text-sidecar",
+            ])
+        }
     }
 
     @Test func stdinNameProvidesFilenameContextForPipedInput() throws {
@@ -1519,6 +1581,50 @@ struct CLITests {
 
     // MARK: - Rendering: transparent background keeps real alpha
 
+    @Test func localImageInputRendersThroughAnEphemeralForegroundStore() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = directory.appendingPathComponent("source.png")
+        try writeFixtureImage(to: input, size: CGSize(width: 180, height: 100))
+        let output = directory.appendingPathComponent("beautified.png").path
+        let options = try CLIArguments.parse([
+            "render", "--image", input.path, "--out", output,
+            "--background", "sunset", "--padding", "24", "--scale", "1",
+            "--watermark", "Local image",
+        ])
+
+        let summary = try CLIRenderer.run(options)
+        let image = try decodePNG(at: output)
+        #expect(summary.contains(output))
+        #expect(image.width > 180)
+        #expect(image.height > 100)
+        #expect(FileManager.default.fileExists(atPath: input.path))
+    }
+
+    @Test func imageInputReportsUnreadableAndUnsupportedFilesPrecisely() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let missing = directory.appendingPathComponent("missing.png").path
+        let output = directory.appendingPathComponent("out.png").path
+        let missingOptions = try CLIArguments.parse([
+            "render", "--image", missing, "--out", output,
+        ])
+        #expect(throws: CLIError.inputUnreadable(path: missing)) {
+            try CLIRenderer.run(missingOptions)
+        }
+
+        let text = directory.appendingPathComponent("not-image.png")
+        try Data("not an image".utf8).write(to: text)
+        let invalidOptions = try CLIArguments.parse([
+            "render", "--image", text.path, "--out", output,
+        ])
+        #expect(throws: CLIError.inputNotImage(path: text.path)) {
+            try CLIRenderer.run(invalidOptions)
+        }
+    }
+
     @Test func transparentRenderHasRealAlpha() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -1711,6 +1817,24 @@ struct CLITests {
         let data = try Data(contentsOf: URL(fileURLWithPath: path))
         let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
         return try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    }
+
+    /// Writes a small two-tone PNG fixture without relying on a checked-in asset.
+    private func writeFixtureImage(to url: URL, size: CGSize) throws {
+        let width = Int(size.width)
+        let height = Int(size.height)
+        let context = try #require(
+            CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(NSColor.systemIndigo.cgColor)
+        context.fill(CGRect(origin: .zero, size: size))
+        context.setFillColor(NSColor.systemTeal.cgColor)
+        context.fill(CGRect(x: size.width / 2, y: 0, width: size.width / 2, height: size.height))
+        let image = try #require(context.makeImage())
+        let data = try #require(ExportManager.pngData(from: image))
+        try data.write(to: url, options: .atomic)
     }
 
     /// Reads the straight-alpha RGBA of the image's top-left pixel by redrawing it

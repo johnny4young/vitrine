@@ -27,14 +27,17 @@ enum ExportManager {
     /// length and scale), never the code itself.
     static func renderCGImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
-        profile: ColorProfile = .sRGB
+        profile: ColorProfile = .sRGB,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> CGImage? {
         let signposter = RenderSignpost.signposter
         let state = signposter.beginInterval(
             RenderSignpost.renderName, "scale=\(Int(scale)) length=\(config.code.count)")
         defer { signposter.endInterval(RenderSignpost.renderName, state) }
 
-        let renderer = ImageRenderer(content: SnapshotCanvas(config: config, fixedSize: fixedSize))
+        let renderer = ImageRenderer(
+            content: SnapshotCanvas(config: config, fixedSize: fixedSize)
+                .environment(\.foregroundImageStore, foregroundImageStore))
         renderer.scale = scale
         // Pin the layout size for fixed-size presets so the rendered pixel size
         // is exactly `fixedSize × scale` (e.g. OpenGraph 1200×630 at 1×, CS-020).
@@ -96,11 +99,13 @@ enum ExportManager {
     /// Renders the canvas to an `NSImage` (used by the share sheet, CS-008).
     static func renderNSImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
-        profile: ColorProfile = .sRGB
+        profile: ColorProfile = .sRGB,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> NSImage? {
         guard
             let cgImage = renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile)
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                foregroundImageStore: foregroundImageStore)
         else {
             return nil
         }
@@ -144,8 +149,14 @@ enum ExportManager {
     /// page to `fixedSize` for size presets. A thin wrapper over the shared
     /// `pdfData(_:proposedSize:)` rasterizer so the snapshot and social-card PDF paths
     /// share one `CGContext` page dance instead of copying it.
-    static func pdfData(_ config: SnapshotConfig, fixedSize: CGSize? = nil) -> Data? {
-        pdfData(SnapshotCanvas(config: config, fixedSize: fixedSize), proposedSize: fixedSize)
+    static func pdfData(
+        _ config: SnapshotConfig, fixedSize: CGSize? = nil,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+    ) -> Data? {
+        pdfData(
+            SnapshotCanvas(config: config, fixedSize: fixedSize)
+                .environment(\.foregroundImageStore, foregroundImageStore),
+            proposedSize: fixedSize)
     }
 
     /// Renders any SwiftUI `content` to single-page PDF data, pinning the page to
@@ -221,7 +232,8 @@ enum ExportManager {
     @discardableResult
     static func copyToPasteboard(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
-        profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false
+        profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> Bool {
         // Either opt-in (rich styled text, or the plain-text rider) needs the
         // multi-representation item, so route both through RichPasteboard; the plain
@@ -229,11 +241,13 @@ enum ExportManager {
         if richText || plainText {
             return RichPasteboard.copy(
                 config, scale: scale, fixedSize: fixedSize, profile: profile,
-                includeRichText: richText, includePlainText: plainText)
+                includeRichText: richText, includePlainText: plainText,
+                foregroundImageStore: foregroundImageStore)
         }
         guard
             let cgImage = renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile)
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                foregroundImageStore: foregroundImageStore)
         else {
             Log.export.error("Copy to pasteboard failed: render returned nil")
             return false

@@ -28,6 +28,8 @@ nonisolated enum CLIError: Error, Equatable {
     case inputUnreadable(path: String)
     /// The input file decoded but is not text (likely a binary file).
     case inputNotText(path: String)
+    /// `--image` input decoded as bytes but is not an image supported by AppKit.
+    case inputNotImage(path: String)
     /// Rendering produced no image (an internal renderer failure).
     case renderFailed
     /// An output path already exists and `--no-overwrite` requested a safe run.
@@ -68,6 +70,8 @@ nonisolated enum CLIError: Error, Equatable {
             "Could not read the input file at \"\(path)\"."
         case .inputNotText(let path):
             "The input file at \"\(path)\" is not text."
+        case .inputNotImage(let path):
+            "The input file at \"\(path)\" is not a supported image."
         case .renderFailed:
             "Rendering failed to produce an image."
         case .outputExists(let path):
@@ -137,6 +141,7 @@ enum CLIArguments {
         remaining = remaining.dropFirst()
 
         var inputPath: String?
+        var imageInputPath: String?
         var outputPath: String?
         var quiet = false
         var jsonOutput = false
@@ -206,6 +211,8 @@ enum CLIArguments {
                 throw CLIError.helpRequested
             case "--out", "-o":
                 outputPath = try value(for: token)
+            case "--image":
+                imageInputPath = try value(for: token)
             case "--quiet", "-q":
                 quiet = true
             case "--json":
@@ -342,13 +349,19 @@ enum CLIArguments {
             }
         }
 
-        // `--stdin`, stdin filename hints, `--copy`, and `--edit` are render-only
+        // `--stdin`, `--image`, stdin filename hints, `--copy`, and `--edit` are render-only
         // (a batch needs real folders).
-        if mode == .batch, readStdin || stdinFilename != nil || copyToClipboard || openInEditor {
+        if mode == .batch,
+            readStdin || imageInputPath != nil || stdinFilename != nil || copyToClipboard
+                || openInEditor
+        {
             let flag =
                 readStdin
                 ? "--stdin"
-                : (stdinFilename != nil ? "--stdin-name" : (copyToClipboard ? "--copy" : "--edit"))
+                : (imageInputPath != nil
+                    ? "--image"
+                    : (stdinFilename != nil
+                        ? "--stdin-name" : (copyToClipboard ? "--copy" : "--edit")))
             throw CLIError.unknownFlag(flag)
         }
         if stdinFilename != nil, !readStdin {
@@ -372,6 +385,13 @@ enum CLIArguments {
         if readStdin, let inputPath {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --stdin with input file \"\(inputPath)\".")
+        }
+        if imageInputPath != nil, let inputPath {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --image with input file \"\(inputPath)\".")
+        }
+        if imageInputPath != nil, readStdin {
+            throw CLIError.incompatibleOptions("Cannot combine --image with --stdin.")
         }
         if mode == .render, recursiveBatch {
             throw CLIError.incompatibleOptions("Cannot combine render with --recursive.")
@@ -409,6 +429,24 @@ enum CLIArguments {
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
+
+        if imageInputPath != nil {
+            if openInEditor {
+                throw CLIError.incompatibleOptions("Cannot combine --image with --edit.")
+            }
+            let codeOnlyOptionsRequested =
+                themeID != nil || languageID != nil || fontName != nil || fontLigatures != nil
+                || fontSize != nil || terminalColumns != nil || wrapColumns != nil || formatCode
+                || windowTitle != nil || metadataFilename != nil || metadataTitle != nil
+                || metadataCaption != nil || showLanguageBadge || showLineNumbers != nil
+                || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
+                || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
+                || textSidecar || markdownSidecar || htmlSidecar
+            if codeOnlyOptionsRequested {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --image with code-only or sidecar options.")
+            }
+        }
 
         // `--edit` hands the source to the running editor instead of rendering, so it
         // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
@@ -457,11 +495,13 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--html-sidecar needs an --out path to write beside.")
         }
-        // Input is a file unless reading stdin; output is required unless copying the
+        // Input is a code file, local image, or stdin; output is required unless copying the
         // image to the clipboard or handing it to the editor (`--edit`), neither of
         // which writes a file.
         let resolvedInput: String
-        if readStdin {
+        if let imageInputPath {
+            resolvedInput = imageInputPath
+        } else if readStdin {
             resolvedInput = ""
         } else {
             guard let inputPath else {
@@ -487,6 +527,7 @@ enum CLIArguments {
             command: mode,
             quiet: quiet,
             jsonOutput: jsonOutput,
+            inputKind: imageInputPath == nil ? .code : .image,
             inputPath: resolvedInput,
             outputPath: resolvedOutput,
             themeID: themeID,
@@ -843,6 +884,7 @@ nonisolated enum CLIUsage {
 
         USAGE:
           vitrine render <input-file> --out <image> [options]
+          vitrine render --image <input-image> --out <image> [options]
           vitrine render --stdin --copy [options]
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render (<input-file> | --stdin) --edit [options]
@@ -861,6 +903,7 @@ nonisolated enum CLIUsage {
           -e, --edit             Open the source in Vitrine's editor instead of
                                  rendering (no image is written; not with --copy/--out).
           --stdin                Read the source from standard input (e.g. a pipe).
+          --image <path>         Beautify a local image instead of rendering code.
           --stdin-name <name>    With --stdin, infer language and default metadata
                                  from this filename; no file is read.
           --theme <id>           Syntax theme id (e.g. one-dark, dracula, nord).
