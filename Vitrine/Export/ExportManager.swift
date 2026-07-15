@@ -28,6 +28,7 @@ enum ExportManager {
     static func renderCGImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB,
+        backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> CGImage? {
         let signposter = RenderSignpost.signposter
@@ -37,6 +38,7 @@ enum ExportManager {
 
         let renderer = ImageRenderer(
             content: SnapshotCanvas(config: config, fixedSize: fixedSize)
+                .environment(\.backgroundImageStore, backgroundImageStore)
                 .environment(\.foregroundImageStore, foregroundImageStore))
         renderer.scale = scale
         // Pin the layout size for fixed-size presets so the rendered pixel size
@@ -100,11 +102,13 @@ enum ExportManager {
     static func renderNSImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB,
+        backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> NSImage? {
         guard
             let cgImage = renderCGImage(
                 config, scale: scale, fixedSize: fixedSize, profile: profile,
+                backgroundImageStore: backgroundImageStore,
                 foregroundImageStore: foregroundImageStore)
         else {
             return nil
@@ -151,10 +155,12 @@ enum ExportManager {
     /// share one `CGContext` page dance instead of copying it.
     static func pdfData(
         _ config: SnapshotConfig, fixedSize: CGSize? = nil,
+        backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> Data? {
         pdfData(
             SnapshotCanvas(config: config, fixedSize: fixedSize)
+                .environment(\.backgroundImageStore, backgroundImageStore)
                 .environment(\.foregroundImageStore, foregroundImageStore),
             proposedSize: fixedSize)
     }
@@ -233,6 +239,7 @@ enum ExportManager {
     static func copyToPasteboard(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false,
+        backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> Bool {
         // Either opt-in (rich styled text, or the plain-text rider) needs the
@@ -242,11 +249,13 @@ enum ExportManager {
             return RichPasteboard.copy(
                 config, scale: scale, fixedSize: fixedSize, profile: profile,
                 includeRichText: richText, includePlainText: plainText,
+                backgroundImageStore: backgroundImageStore,
                 foregroundImageStore: foregroundImageStore)
         }
         guard
             let cgImage = renderCGImage(
                 config, scale: scale, fixedSize: fixedSize, profile: profile,
+                backgroundImageStore: backgroundImageStore,
                 foregroundImageStore: foregroundImageStore)
         else {
             Log.export.error("Copy to pasteboard failed: render returned nil")

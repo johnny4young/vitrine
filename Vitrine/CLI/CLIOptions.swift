@@ -102,6 +102,10 @@ struct CLIOptions: Equatable {
     /// Optional built-in gradient or solid-color canvas override. Nil preserves the
     /// app/preset background; the parser keeps it mutually exclusive with transparency.
     var background: BackgroundStyle?
+    /// Optional local image used as the canvas background. The path is imported into
+    /// an invocation-scoped temporary store before rendering, so automation inputs
+    /// never enter the app's persistent background library.
+    var backgroundImagePath: String?
     /// Optional text-only watermark composited by the same overlay as the PRO Brand Kit.
     /// Nil preserves the unwatermarked CLI default.
     var watermarkText: String?
@@ -306,10 +310,15 @@ struct CLIOptions: Equatable {
     ///
     /// `code` and `language` are set from the input file and never altered by a
     /// preset, exactly as in the GUI (a preset is presentation/output only, CS-020).
-    func makeConfig(code: String, language: Language) -> SnapshotConfig {
+    func makeConfig(
+        code: String, language: Language, backgroundImageReference: ImageReference? = nil
+    ) -> SnapshotConfig {
         var config = SnapshotConfig().styled(
             presetID: presetID, themeID: themeID, transparent: transparent)
         if let background { config.background = background }
+        if let backgroundImageReference {
+            config.background = .image(ImageBackground(reference: backgroundImageReference))
+        }
         config.code = formatCode ? CodeFormatter.tidy(code, language: language) : code
         config.language = language
         if let watermarkText {

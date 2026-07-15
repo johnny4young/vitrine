@@ -1,3 +1,4 @@
+import CoreGraphics
 import CryptoKit
 import Foundation
 import Testing
@@ -415,6 +416,32 @@ struct CLIAutomationTests {
             FileManager.default.fileExists(atPath: output.appendingPathComponent("b.png").path))
     }
 
+    @Test func batchReusesOneLocalImageBackgroundForEveryOutput() throws {
+        let root = tempDirectory()
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let background = root.appendingPathComponent("background.png")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        try "let a = 1\n".write(
+            to: input.appendingPathComponent("A.swift"), atomically: true, encoding: .utf8)
+        try "let b = 2\n".write(
+            to: input.appendingPathComponent("B.swift"), atomically: true, encoding: .utf8)
+        try writeBackgroundImage(to: background)
+        let backgroundData = try Data(contentsOf: background)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--background-image", background.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Rendered 2 image"))
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("A.png").path))
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("B.png").path))
+        #expect(try Data(contentsOf: background) == backgroundData)
+    }
+
     @Test func batchFormattingKeepsRenderedAndCopyableSourceAligned() throws {
         let input = tempDirectory()
         let output = tempDirectory()
@@ -784,6 +811,20 @@ struct CLIAutomationTests {
             .appendingPathComponent("VitrineCLIAuto-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
+    }
+
+    private func writeBackgroundImage(to url: URL) throws {
+        let size = CGSize(width: 64, height: 40)
+        let context = try #require(
+            CGContext(
+                data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
+                bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(red: 0.2, green: 0.1, blue: 0.6, alpha: 1)
+        context.fill(CGRect(origin: .zero, size: size))
+        let image = try #require(context.makeImage())
+        let data = try #require(ExportManager.pngData(from: image))
+        try data.write(to: url, options: .atomic)
     }
 
     private static func repoFile(_ components: String...) -> URL {

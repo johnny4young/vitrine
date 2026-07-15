@@ -362,6 +362,7 @@ vitrine render server.go  --out night.png --background night
 vitrine render query.sql  --out solid.png --background-color '#1E293B'
 vitrine render app.swift --out gradient.png \
   --background-gradient '#FF453A,#FFD60A,#64D2FF' --background-angle 215
+vitrine render app.swift --out photo.png --background-image landscape.png
 vitrine render payload.json --out payload.png --format-code --text-sidecar
 vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
   --watermark-color '#7DD3FC' --watermark-position top-left
@@ -411,6 +412,7 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
 `--transparent`, `--background <id>`, `--background-color <hex>`,
 `--background-gradient <hex,hex,...>`, `--background-angle <degrees>`,
+`--background-image <path>`,
 `--frame <id>`, `--frame-appearance <auto|light|dark>`,
 `--watermark <text>`, `--watermark-color <hex>`, `--watermark-position <corner|free>`,
 `--watermark-x <0...1>`, `--watermark-y <0...1>`, style controls
@@ -432,6 +434,10 @@ artifact describes the same visible code.
 RGB/RGBA colors, spaced evenly across the canvas. `--background-angle` selects a
 direction from 0 through 360 degrees and defaults to 135; custom gradients are mutually
 exclusive with preset, solid, and transparent backgrounds.
+`--background-image <path>` uses a local image for the canvas in both `render` and
+`batch`. Vitrine imports it once per invocation into an isolated temporary store,
+reuses it for every batch output, and removes the copy when the command exits; the
+source image and the app's persistent background library remain unchanged.
 `--watermark <text>` adds a deterministic text badge through the same render-core
 overlay as Brand Kit. `--watermark-color <hex>` changes its tint and
 `--watermark-position <corner|free>` selects one of the ids printed by
