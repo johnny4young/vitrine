@@ -167,6 +167,8 @@ enum CLIArguments {
         var watermarkText: String?
         var watermarkColor: RGBAColor?
         var watermarkPosition: CLIOptions.WatermarkPosition?
+        var imageFrame: CLIOptions.ImageFrameOption?
+        var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
         var windowTitle: String?
         var metadataFilename: String?
@@ -263,6 +265,10 @@ enum CLIArguments {
                 watermarkColor = try resolveWatermarkColor(try value(for: token))
             case "--watermark-position":
                 watermarkPosition = try resolveWatermarkPosition(try value(for: token))
+            case "--frame":
+                imageFrame = try resolveImageFrame(try value(for: token))
+            case "--frame-appearance":
+                frameAppearance = try resolveFrameAppearance(try value(for: token))
             case "--no-overwrite", "--no-clobber":
                 noOverwrite = true
             case "--window-title":
@@ -349,19 +355,28 @@ enum CLIArguments {
             }
         }
 
-        // `--stdin`, `--image`, stdin filename hints, `--copy`, and `--edit` are render-only
-        // (a batch needs real folders).
+        // `--stdin`, image-input controls, stdin filename hints, `--copy`, and `--edit`
+        // are render-only (a batch needs real folders).
         if mode == .batch,
             readStdin || imageInputPath != nil || stdinFilename != nil || copyToClipboard
-                || openInEditor
+                || openInEditor || imageFrame != nil || frameAppearance != nil
         {
-            let flag =
-                readStdin
-                ? "--stdin"
-                : (imageInputPath != nil
-                    ? "--image"
-                    : (stdinFilename != nil
-                        ? "--stdin-name" : (copyToClipboard ? "--copy" : "--edit")))
+            let flag: String
+            if readStdin {
+                flag = "--stdin"
+            } else if imageInputPath != nil {
+                flag = "--image"
+            } else if stdinFilename != nil {
+                flag = "--stdin-name"
+            } else if copyToClipboard {
+                flag = "--copy"
+            } else if openInEditor {
+                flag = "--edit"
+            } else if imageFrame != nil {
+                flag = "--frame"
+            } else {
+                flag = "--frame-appearance"
+            }
             throw CLIError.unknownFlag(flag)
         }
         if stdinFilename != nil, !readStdin {
@@ -381,6 +396,10 @@ enum CLIArguments {
         if watermarkText == nil, watermarkColor != nil || watermarkPosition != nil {
             throw CLIError.incompatibleOptions(
                 "--watermark-color and --watermark-position require --watermark.")
+        }
+        if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
+            throw CLIError.incompatibleOptions(
+                "--frame and --frame-appearance require --image.")
         }
         if readStdin, let inputPath {
             throw CLIError.incompatibleOptions(
@@ -437,7 +456,7 @@ enum CLIArguments {
             let codeOnlyOptionsRequested =
                 themeID != nil || languageID != nil || fontName != nil || fontLigatures != nil
                 || fontSize != nil || terminalColumns != nil || wrapColumns != nil || formatCode
-                || windowTitle != nil || metadataFilename != nil || metadataTitle != nil
+                || metadataFilename != nil || metadataTitle != nil
                 || metadataCaption != nil || showLanguageBadge || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
                 || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -445,6 +464,16 @@ enum CLIArguments {
             if codeOnlyOptionsRequested {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --image with code-only or sidecar options.")
+            }
+            if frameAppearance != nil,
+                imageFrame == nil || imageFrame == CLIOptions.ImageFrameOption.none
+            {
+                throw CLIError.incompatibleOptions(
+                    "--frame-appearance requires --frame with a framed image.")
+            }
+            if windowTitle != nil, imageFrame?.supportsWindowTitle != true {
+                throw CLIError.incompatibleOptions(
+                    "--window-title with --image requires --frame macos-window or browser.")
             }
         }
 
@@ -550,6 +579,8 @@ enum CLIArguments {
             watermarkText: watermarkText,
             watermarkColor: watermarkColor,
             watermarkPosition: watermarkPosition,
+            imageFrame: imageFrame,
+            frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
             windowTitle: windowTitle,
             metadataFilename: metadataFilename,
@@ -664,6 +695,24 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: "--watermark-position", value: raw)
         }
         return position
+    }
+
+    /// Resolves a stable image-frame id advertised by `vitrine list frames`.
+    private static func resolveImageFrame(_ raw: String) throws -> CLIOptions.ImageFrameOption {
+        guard let frame = CLIOptions.ImageFrameOption(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: "--frame", value: raw)
+        }
+        return frame
+    }
+
+    /// Resolves a stable frame-appearance id advertised by the CLI catalog.
+    private static func resolveFrameAppearance(
+        _ raw: String
+    ) throws -> CLIOptions.ImageFrameAppearance {
+        guard let appearance = CLIOptions.ImageFrameAppearance(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: "--frame-appearance", value: raw)
+        }
+        return appearance
     }
 
     /// Parses and range-checks the export scale (1...3).
@@ -889,7 +938,7 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
-          vitrine list <all|themes|languages|presets|fonts|backgrounds|watermark-positions|formats|profiles> [--json]
+          vitrine list <all|themes|languages|presets|fonts|backgrounds|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
           vitrine --version [--json]
           vitrine version [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
@@ -904,6 +953,10 @@ nonisolated enum CLIUsage {
                                  rendering (no image is written; not with --copy/--out).
           --stdin                Read the source from standard input (e.g. a pipe).
           --image <path>         Beautify a local image instead of rendering code.
+          --frame <id>           Frame for --image: none, macos-window, browser,
+                                 macbook, or iphone. Use `vitrine list frames`.
+          --frame-appearance <id>
+                                 Framed-image chrome: auto, light, or dark.
           --stdin-name <name>    With --stdin, infer language and default metadata
                                  from this filename; no file is read.
           --theme <id>           Syntax theme id (e.g. one-dark, dracula, nord).

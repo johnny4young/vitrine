@@ -364,6 +364,9 @@ vitrine render payload.json --out payload.png --format-code --text-sidecar
 vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
   --watermark-color '#7DD3FC' --watermark-position top-left
 vitrine render --image dashboard.png --out showcase.png --background night --padding 40
+vitrine render --image dashboard.png --out browser.png --frame browser \
+  --frame-appearance dark --window-title 'app.example.com'
+vitrine render --image dashboard.png --out device.png --frame macbook
 vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatures \
   --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
@@ -381,6 +384,8 @@ vitrine list languages --json
 vitrine list all --json
 vitrine list fonts
 vitrine list backgrounds
+vitrine list frames
+vitrine list frame-appearances
 vitrine list watermark-positions
 vitrine list formats
 vitrine list profiles --json
@@ -401,6 +406,7 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
 `--transparent`, `--background <id>`, `--background-color <hex>`,
+`--frame <id>`, `--frame-appearance <auto|light|dark>`,
 `--watermark <text>`, `--watermark-color <hex>`, `--watermark-position <corner>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
@@ -423,8 +429,12 @@ overlay as Brand Kit. `--watermark-color <hex>` changes its tint and
 `--image <path>` beautifies a local image through the same canvas as the editor. The
 source is decoded locally, copied only into an invocation-scoped temporary store, and
 removed when the command exits; it is never added to Vitrine's persistent image library.
+Use `--frame <id>` to wrap it in one of the frames printed by `vitrine list frames`;
+`--frame-appearance <auto|light|dark>` controls the chrome and requires a frame other
+than `none`. `--window-title` is available with the `macos-window` and `browser` frames.
 Code-only controls and source sidecars are rejected for image input instead of silently
-doing nothing, while canvas, background, export, shadow, and watermark controls remain available.
+doing nothing, while canvas, background, export, shadow, frame, and watermark controls
+remain available.
 `--no-overwrite` (alias `--no-clobber`) refuses to replace
 existing image or sidecar outputs; in `batch`, existing targets are reported as
 skipped so the remaining new cards can still be produced. `--text-sidecar`,
@@ -444,7 +454,7 @@ planned outputs during `--dry-run`) with relative image paths, requested sidecar
 and dimensions when available. When a batch contains same-stem files such as
 `Widget.swift` and `Widget.ts`, only that colliding group preserves the input extension
 (`Widget.swift.png`, `Widget.ts.png`) so one artifact never overwrites the other.
-`vitrine list <all|themes|languages|presets|fonts|backgrounds|watermark-positions|formats|profiles> [--json]` prints
+`vitrine list <all|themes|languages|presets|fonts|backgrounds|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
 the local render catalogs so scripts can discover valid choices without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before
