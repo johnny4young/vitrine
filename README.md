@@ -373,6 +373,8 @@ vitrine render release.swift --out centered.png --watermark '@jane · vitrine' \
   --watermark-position free --watermark-x 0.5 --watermark-y 0.18
 vitrine render release.swift --out reviewed.png --callout 'Review this branch' \
   --callout-x 0.68 --callout-y 0.2 --callout-color '#FDE047' --callout-size 6
+vitrine render release.swift --out steps.png --counter 1 \
+  --counter-x 0.82 --counter-y 0.2 --counter-color '#22C55E' --counter-size 8
 vitrine render --image dashboard.png --out showcase.png --background night --padding 40
 vitrine render --image dashboard.png --out browser.png --frame browser \
   --frame-appearance dark --window-title 'app.example.com'
@@ -426,7 +428,9 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--watermark-position <corner|free>`,
 `--watermark-x <0...1>`, `--watermark-y <0...1>`,
 `--callout <text>`, `--callout-x <0...1>`, `--callout-y <0...1>`,
-`--callout-color <hex>`, `--callout-size <2...28>`, style controls
+`--callout-color <hex>`, `--callout-size <2...28>`,
+`--counter <1...99>`, `--counter-x <0...1>`, `--counter-y <0...1>`,
+`--counter-color <hex>`, `--counter-size <2...28>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
@@ -468,6 +472,9 @@ annotation layer as the editor. It defaults to the canvas center and the editor'
 annotation style; optional x/y coordinates move its anchor, while color and size tune
 its appearance. Coordinates must be supplied together, and every modifier requires
 visible callout text.
+`--counter <1...99>` adds one numbered badge through the same annotation layer. It
+defaults to the canvas center and editor annotation style; optional paired coordinates,
+fill color, and size keep scripted walkthrough steps deterministic and legible.
 `--image <path>` beautifies a local image through the same canvas as the editor. The
 source is decoded locally, copied only into an invocation-scoped temporary store, and
 removed when the command exits; it is never added to Vitrine's persistent image library.

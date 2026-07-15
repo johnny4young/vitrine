@@ -134,6 +134,14 @@ struct CLIOptions: Equatable {
     var calloutColor: RGBAColor?
     /// Optional annotation size weight in the editor's supported 2...28 range.
     var calloutSize: Double?
+    /// Optional numbered badge composited through the shared annotation layer.
+    var counterNumber: Int?
+    /// Optional normalized center for `counterNumber`; nil uses the canvas center.
+    var counterPosition: CGPoint?
+    /// Optional counter fill color; nil uses the editor's annotation red.
+    var counterColor: RGBAColor?
+    /// Optional counter size weight in the editor's supported 2...28 range.
+    var counterSize: Double?
     /// Optional frame around `--image` content. Nil preserves the model's plain-image
     /// default; stable CLI ids map onto the app's existing frame enum.
     var imageFrame: ImageFrameOption?
@@ -315,6 +323,9 @@ struct CLIOptions: Equatable {
     /// supplies one — the app's documented default resolution multiplier.
     static let defaultScale = SettingsDefaults.exportScale
 
+    /// Keeps CLI counter labels legible inside the fixed circular badge.
+    static let counterNumberRange = 1...99
+
     /// Builds the `SnapshotConfig` to render from these options plus the loaded
     /// source `code`, applying the same precedence the GUI uses so the produced
     /// image matches the app.
@@ -363,6 +374,15 @@ struct CLIOptions: Equatable {
                     kind: .text, start: position, end: position, text: calloutText,
                     color: calloutColor ?? Annotation.defaultColor,
                     thickness: calloutSize ?? Annotation.defaultThickness))
+        }
+        if let counterNumber {
+            let position = counterPosition ?? CGPoint(x: 0.5, y: 0.5)
+            config.annotations.append(
+                Annotation(
+                    kind: .counter, start: position, end: position,
+                    color: counterColor ?? Annotation.defaultColor,
+                    thickness: counterSize ?? Annotation.defaultThickness,
+                    number: counterNumber))
         }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
