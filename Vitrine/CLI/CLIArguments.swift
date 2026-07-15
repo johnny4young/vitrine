@@ -194,6 +194,10 @@ enum CLIArguments {
         var lineEnd: CGPoint?
         var lineColor: RGBAColor?
         var lineSize: Double?
+        var rectangleStart: CGPoint?
+        var rectangleEnd: CGPoint?
+        var rectangleColor: RGBAColor?
+        var rectangleSize: Double?
         var imageFrame: CLIOptions.ImageFrameOption?
         var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
@@ -347,6 +351,14 @@ enum CLIArguments {
                 lineColor = try resolveHexColor(try value(for: token), flag: token)
             case "--line-size":
                 lineSize = try resolveAnnotationSize(try value(for: token), flag: token)
+            case "--rectangle":
+                let segment = try resolveRectangleSegment(try value(for: token))
+                rectangleStart = segment.start
+                rectangleEnd = segment.end
+            case "--rectangle-color":
+                rectangleColor = try resolveHexColor(try value(for: token), flag: token)
+            case "--rectangle-size":
+                rectangleSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--frame":
                 imageFrame = try resolveImageFrame(try value(for: token))
             case "--frame-appearance":
@@ -562,6 +574,10 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--line-color and --line-size require --line.")
         }
+        if rectangleStart == nil, rectangleColor != nil || rectangleSize != nil {
+            throw CLIError.incompatibleOptions(
+                "--rectangle-color and --rectangle-size require --rectangle.")
+        }
         if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
             throw CLIError.incompatibleOptions(
                 "--frame and --frame-appearance require --image.")
@@ -615,6 +631,7 @@ enum CLIArguments {
             || counterNumber != nil
             || arrowStart != nil
             || lineStart != nil
+            || rectangleStart != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -753,6 +770,14 @@ enum CLIArguments {
             } else {
                 nil
             }
+        let rectangle: CLIOptions.SegmentAnnotation? =
+            if let rectangleStart, let rectangleEnd {
+                CLIOptions.SegmentAnnotation(
+                    start: rectangleStart, end: rectangleEnd, color: rectangleColor,
+                    size: rectangleSize)
+            } else {
+                nil
+            }
 
         return CLIOptions(
             command: mode,
@@ -797,6 +822,7 @@ enum CLIArguments {
             counterSize: counterSize,
             arrow: arrow,
             line: line,
+            rectangle: rectangle,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
@@ -1046,6 +1072,17 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return (start, end)
+    }
+
+    /// Parses opposite rectangle corners and rejects collapsed width or height.
+    private static func resolveRectangleSegment(
+        _ raw: String
+    ) throws -> (start: CGPoint, end: CGPoint) {
+        let segment = try resolveNormalizedSegment(raw, flag: "--rectangle")
+        guard segment.start.x != segment.end.x, segment.start.y != segment.end.y else {
+            throw CLIError.invalidValue(flag: "--rectangle", value: raw)
+        }
+        return segment
     }
 
     /// Resolves a stable image-frame id advertised by `vitrine list frames`.
@@ -1382,6 +1419,12 @@ nonisolated enum CLIUsage {
           --line <x1,y1,x2,y2>  Add a line between normalized canvas coordinates.
           --line-color <hex>    Line RGB/RGBA stroke color; requires --line.
           --line-size <2...28>  Line stroke weight; requires --line.
+          --rectangle <x1,y1,x2,y2>
+                                 Outline the box between normalized opposite corners.
+          --rectangle-color <hex>
+                                 Rectangle RGB/RGBA stroke color; requires --rectangle.
+          --rectangle-size <2...28>
+                                 Rectangle stroke weight; requires --rectangle.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.

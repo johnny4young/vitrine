@@ -161,6 +161,8 @@ struct CLIOptions: Equatable {
     var arrow: SegmentAnnotation?
     /// Optional straight line described by normalized endpoints and editor styling.
     var line: SegmentAnnotation?
+    /// Optional outlined rectangle described by normalized opposite corners.
+    var rectangle: SegmentAnnotation?
     /// Optional frame around `--image` content. Nil preserves the model's plain-image
     /// default; stable CLI ids map onto the app's existing frame enum.
     var imageFrame: ImageFrameOption?
@@ -405,6 +407,7 @@ struct CLIOptions: Equatable {
         }
         if let arrow { config.annotations.append(arrow.modelValue(kind: .arrow)) }
         if let line { config.annotations.append(line.modelValue(kind: .line)) }
+        if let rectangle { config.annotations.append(rectangle.modelValue(kind: .rectangle)) }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
         config.terminalColumns = terminalColumns
