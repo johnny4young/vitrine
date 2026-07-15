@@ -148,6 +148,8 @@ enum CLIArguments {
         var fontLigatures: Bool?
         var fontSize: Double?
         var padding: Double?
+        var cornerRadius: Double?
+        var shadowRadius: Double?
         var terminalColumns: Int?
         var wrapColumns: Int?
         var explicitFormat: ExportFormat?
@@ -214,6 +216,10 @@ enum CLIArguments {
                 fontSize = try resolveFontSize(try value(for: token), flag: token)
             case "--padding":
                 padding = try resolvePadding(try value(for: token), flag: token)
+            case "--corner-radius":
+                cornerRadius = try resolveCornerRadius(try value(for: token), flag: token)
+            case "--shadow-radius":
+                shadowRadius = try resolveShadowRadius(try value(for: token), flag: token)
             case "--terminal-width":
                 terminalColumns = try resolveColumns(try value(for: token), flag: token)
             case "--wrap-columns", "--wrap":
@@ -344,8 +350,8 @@ enum CLIArguments {
             || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
         let styleOptionsRequested =
             fontName != nil || fontLigatures != nil || fontSize != nil || padding != nil
-            || wrapColumns != nil || showLineNumbers != nil || showChrome != nil
-            || showShadow != nil
+            || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
+            || showLineNumbers != nil || showChrome != nil || showShadow != nil
 
         // `--edit` hands the source to the running editor instead of rendering, so it
         // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
@@ -434,6 +440,8 @@ enum CLIArguments {
             fontLigatures: fontLigatures,
             fontSize: fontSize,
             padding: padding,
+            cornerRadius: cornerRadius,
+            shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,
             wrapColumns: wrapColumns,
             format: resolvedFormat,
@@ -522,6 +530,22 @@ enum CLIArguments {
     /// Parses and range-checks the canvas padding in points (Style pane bounds).
     private static func resolvePadding(_ raw: String, flag: String) throws -> Double {
         guard let value = Double(raw), SettingsDefaults.paddingRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Parses and range-checks the code-card corner radius in points.
+    private static func resolveCornerRadius(_ raw: String, flag: String) throws -> Double {
+        guard let value = Double(raw), SettingsDefaults.cornerRadiusRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Parses and range-checks the drop-shadow blur radius in points.
+    private static func resolveShadowRadius(_ raw: String, flag: String) throws -> Double {
+        guard let value = Double(raw), SettingsDefaults.shadowRadiusRange.contains(value) else {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return value
@@ -687,6 +711,8 @@ nonisolated enum CLIUsage {
           --no-font-ligatures    Disable programming ligatures.
           --font-size <n>        Code font size in points (10-20).
           --padding <n>          Canvas padding in points (16-64).
+          --corner-radius <n>    Code-card corner radius in points (0-48).
+          --shadow-radius <n>    Drop-shadow blur radius in points (0-40).
           --terminal-width <n>   Reconstruct terminal output at exactly n columns
                                  instead of inferring the width (1-1000). Only
                                  affects --language terminal; set by `vgrab -w`.

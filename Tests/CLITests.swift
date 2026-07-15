@@ -88,6 +88,8 @@ struct CLITests {
         #expect(config.fontLigatures == appDefault.fontLigatures)
         #expect(config.fontSize == appDefault.fontSize)
         #expect(config.padding == appDefault.padding)
+        #expect(config.cornerRadius == appDefault.cornerRadius)
+        #expect(config.shadowRadius == appDefault.shadowRadius)
         #expect(config.background == appDefault.background)
         #expect(config.showChrome == appDefault.showChrome)
         #expect(config.showShadow == appDefault.showShadow)
@@ -116,6 +118,8 @@ struct CLITests {
             "--font-ligatures",
             "--font-size", "16",
             "--padding", "48",
+            "--corner-radius", "12",
+            "--shadow-radius", "24",
             "--terminal-width", "100",
             "--wrap-columns", "88",
             "--format", "png",
@@ -141,6 +145,8 @@ struct CLITests {
         #expect(options.fontLigatures == true)
         #expect(options.fontSize == 16)
         #expect(options.padding == 48)
+        #expect(options.cornerRadius == 12)
+        #expect(options.shadowRadius == 24)
         #expect(options.terminalColumns == 100)
         #expect(options.wrapColumns == 88)
         #expect(options.profile == .displayP3)
@@ -189,6 +195,8 @@ struct CLITests {
         #expect(defaults.fontLigatures == nil)
         #expect(defaults.fontSize == nil)
         #expect(defaults.padding == nil)
+        #expect(defaults.cornerRadius == nil)
+        #expect(defaults.shadowRadius == nil)
         #expect(defaults.showLineNumbers == nil)
         #expect(defaults.showChrome == nil)
         #expect(defaults.showShadow == nil)
@@ -200,6 +208,8 @@ struct CLITests {
             "--font-ligatures",
             "--font-size", "15.5",
             "--padding", "40",
+            "--corner-radius", "10",
+            "--shadow-radius", "18",
             "--line-numbers",
             "--no-chrome",
             "--no-shadow",
@@ -210,6 +220,8 @@ struct CLITests {
         #expect(config.fontLigatures)
         #expect(config.fontSize == 15.5)
         #expect(config.padding == 40)
+        #expect(config.cornerRadius == 10)
+        #expect(config.shadowRadius == 18)
         #expect(config.showLineNumbers)
         #expect(!config.showChrome)
         #expect(!config.showShadow)
@@ -656,6 +668,26 @@ struct CLITests {
         }
         #expect(throws: CLIError.invalidValue(flag: "--padding", value: "wide")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--padding", "wide"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--corner-radius", value: "49")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--corner-radius", "49",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--corner-radius", value: "round")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--corner-radius", "round",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--shadow-radius", value: "41")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--shadow-radius", "41",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--shadow-radius", value: "deep")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--shadow-radius", "deep",
+            ])
         }
         #expect(throws: CLIError.invalidValue(flag: "--format", value: "svg")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--format", "svg"])
