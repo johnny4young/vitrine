@@ -1,7 +1,7 @@
 import Foundation
 
 /// Lists the local CLI catalogs used to validate themes, languages, export presets, fonts,
-/// backgrounds, formats, and color profiles.
+/// backgrounds, watermark positions, formats, and color profiles.
 ///
 /// `vitrine list` is intentionally separate from `CLIArguments`: it does not render,
 /// read user files, or need AppKit. The executable handles it before the PRO render
@@ -16,6 +16,7 @@ enum CLICatalog {
         case presets
         case fonts
         case backgrounds
+        case watermarkPositions
         case formats
         case profiles
 
@@ -27,6 +28,7 @@ enum CLICatalog {
             case "preset", "presets": self = .presets
             case "font", "fonts": self = .fonts
             case "background", "backgrounds": self = .backgrounds
+            case "watermark-position", "watermark-positions": self = .watermarkPositions
             case "format", "formats": self = .formats
             case "profile", "profiles": self = .profiles
             default: return nil
@@ -58,14 +60,16 @@ enum CLICatalog {
         var presets: [Entry]
         var fonts: [Entry]
         var backgrounds: [Entry]
+        var watermarkPositions: [Entry]
         var formats: [Entry]
         var profiles: [Entry]
     }
 
     static let usage = """
-        vitrine list <all|themes|languages|presets|fonts|backgrounds|formats|profiles> [--json]
+        vitrine list <all|themes|languages|presets|fonts|backgrounds|watermark-positions|formats|profiles> [--json]
 
-        Prints the local ids accepted by render options, including --background.
+        Prints the local ids accepted by render options, including --background and
+        --watermark-position.
         Use `all --json` for one machine-readable object with every catalog.
         """
 
@@ -126,6 +130,7 @@ enum CLICatalog {
             presets: entries(for: .presets),
             fonts: entries(for: .fonts),
             backgrounds: entries(for: .backgrounds),
+            watermarkPositions: entries(for: .watermarkPositions),
             formats: entries(for: .formats),
             profiles: entries(for: .profiles))
     }
@@ -143,6 +148,7 @@ enum CLICatalog {
         (.presets, "presets"),
         (.fonts, "fonts"),
         (.backgrounds, "backgrounds"),
+        (.watermarkPositions, "watermark-positions"),
         (.formats, "formats"),
         (.profiles, "profiles"),
     ]
@@ -162,6 +168,10 @@ enum CLICatalog {
         case .backgrounds:
             GradientPreset.allCases.map {
                 Entry(id: $0.rawValue.lowercased(), name: $0.rawValue)
+            }
+        case .watermarkPositions:
+            CLIOptions.WatermarkPosition.allCases.map {
+                Entry(id: $0.rawValue, name: $0.displayName)
             }
         case .formats:
             ExportFormat.allCases.map { Entry(id: $0.rawValue, name: $0.displayName) }

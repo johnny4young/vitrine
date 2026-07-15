@@ -140,6 +140,9 @@ struct CLIAutomationTests {
         #expect(
             CLICatalog.invocation(for: ["backgrounds"])
                 == .listing(.backgrounds, format: .text))
+        #expect(
+            CLICatalog.invocation(for: ["watermark-position"])
+                == .listing(.watermarkPositions, format: .text))
         #expect(CLICatalog.invocation(for: ["format"]) == .listing(.formats, format: .text))
         #expect(CLICatalog.invocation(for: ["profiles"]) == .listing(.profiles, format: .text))
         #expect(CLICatalog.invocation(for: []) == .help)
@@ -177,6 +180,12 @@ struct CLIAutomationTests {
                 == "aurora\tAurora\nocean\tOcean\nsunset\tSunset\nforest\tForest\nnight\tNight\ncarbon\tCarbon\n"
         )
 
+        let watermarkPositionText = CLICatalog.output(for: .watermarkPositions, format: .text)
+        #expect(
+            watermarkPositionText
+                == "bottom-right\tBottom right\nbottom-left\tBottom left\ntop-right\tTop right\ntop-left\tTop left\n"
+        )
+
         let data = Data(CLICatalog.output(for: .languages, format: .json).utf8)
         let decoded = try #require(
             JSONSerialization.jsonObject(with: data) as? [[String: String]])
@@ -198,6 +207,7 @@ struct CLIAutomationTests {
         #expect(allText.contains("  swift\tSwift\n"))
         #expect(allText.contains("fonts:\n  JetBrains Mono\tJetBrains Mono\n"))
         #expect(allText.contains("backgrounds:\n  aurora\tAurora\n"))
+        #expect(allText.contains("watermark-positions:\n  bottom-right\tBottom right\n"))
         #expect(allText.contains("formats:\n  png\tPNG\n"))
         #expect(allText.contains("profiles:\n  srgb\tsRGB\n"))
 
@@ -208,6 +218,8 @@ struct CLIAutomationTests {
         let presets = try #require(decoded["presets"] as? [[String: String]])
         let fonts = try #require(decoded["fonts"] as? [[String: String]])
         let backgrounds = try #require(decoded["backgrounds"] as? [[String: String]])
+        let watermarkPositions = try #require(
+            decoded["watermarkPositions"] as? [[String: String]])
         let formats = try #require(decoded["formats"] as? [[String: String]])
         let profiles = try #require(decoded["profiles"] as? [[String: String]])
         #expect(themes.contains { $0["id"] == "one-dark" })
@@ -215,6 +227,10 @@ struct CLIAutomationTests {
         #expect(presets.contains { $0["id"] == "opengraph" })
         #expect(fonts.contains { $0["id"] == "Fira Code" && $0["name"] == "Fira Code" })
         #expect(backgrounds.contains { $0["id"] == "aurora" && $0["name"] == "Aurora" })
+        #expect(
+            watermarkPositions.contains {
+                $0["id"] == "top-left" && $0["name"] == "Top left"
+            })
         #expect(formats.contains { $0["id"] == "png" })
         #expect(profiles.contains { $0["id"] == "p3" })
     }
@@ -227,6 +243,8 @@ struct CLIAutomationTests {
                 "--corner-radius", "14",
                 "--shadow-radius", "22", "--format-code", "--highlight-lines", "3, 7-9",
                 "--focus-lines",
+                "--watermark", "@jane · vitrine", "--watermark-color", "#7DD3FC",
+                "--watermark-position", "bottom-left",
                 "--redact-lines", "4-5", "--redact-secrets", "--diff-bands", "--recursive",
                 "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run", "--manifest",
                 "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
@@ -250,6 +268,9 @@ struct CLIAutomationTests {
         #expect(options.cornerRadius == 14)
         #expect(options.shadowRadius == 22)
         #expect(options.formatCode)
+        #expect(options.watermarkText == "@jane · vitrine")
+        #expect(options.watermarkColor == RGBAColor(hex: "#7DD3FC"))
+        #expect(options.watermarkPosition == .bottomLeft)
         #expect(options.highlightedLineRanges == [3...3, 7...9])
         #expect(options.redactedLineRanges == [4...5])
         #expect(options.redactSecrets)

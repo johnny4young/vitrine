@@ -94,6 +94,13 @@ struct CLIOptions: Equatable {
     /// Optional built-in gradient or solid-color canvas override. Nil preserves the
     /// app/preset background; the parser keeps it mutually exclusive with transparency.
     var background: BackgroundStyle?
+    /// Optional text-only watermark composited by the same overlay as the PRO Brand Kit.
+    /// Nil preserves the unwatermarked CLI default.
+    var watermarkText: String?
+    /// Optional fixed-sRGB tint for `watermarkText`; nil uses the overlay's legible white.
+    var watermarkColor: RGBAColor?
+    /// Optional corner for `watermarkText`; nil uses the Brand Kit's bottom-right default.
+    var watermarkPosition: WatermarkPosition?
     /// Refuse to replace existing image or sidecar files. For batch jobs, existing
     /// outputs are skipped so valid new artifacts can still be produced.
     var noOverwrite: Bool = false
@@ -189,6 +196,33 @@ struct CLIOptions: Equatable {
     /// filename or code as markup. Same constraints as the other sidecars.
     var htmlSidecar: Bool = false
 
+    /// Stable, CLI-facing corner names. Free placement stays an editor-only interaction
+    /// because it needs normalized coordinates and visual dragging feedback.
+    enum WatermarkPosition: String, CaseIterable, Equatable, Sendable {
+        case bottomRight = "bottom-right"
+        case bottomLeft = "bottom-left"
+        case topRight = "top-right"
+        case topLeft = "top-left"
+
+        var displayName: String {
+            switch self {
+            case .bottomRight: "Bottom right"
+            case .bottomLeft: "Bottom left"
+            case .topRight: "Top right"
+            case .topLeft: "Top left"
+            }
+        }
+
+        var modelValue: Watermark.Placement {
+            switch self {
+            case .bottomRight: .bottomTrailing
+            case .bottomLeft: .bottomLeading
+            case .topRight: .topTrailing
+            case .topLeft: .topLeading
+            }
+        }
+    }
+
     /// The default export scale when neither a preset nor an explicit `--scale`
     /// supplies one — the app's documented default resolution multiplier.
     static let defaultScale = SettingsDefaults.exportScale
@@ -212,6 +246,13 @@ struct CLIOptions: Equatable {
         if let background { config.background = background }
         config.code = formatCode ? CodeFormatter.tidy(code, language: language) : code
         config.language = language
+        if let watermarkText {
+            config.watermark = Watermark(
+                text: watermarkText,
+                logoImageData: nil,
+                tint: watermarkColor,
+                placement: watermarkPosition?.modelValue ?? .bottomTrailing)
+        }
         config.terminalColumns = terminalColumns
         if let fontName { config.fontName = fontName }
         if let fontLigatures { config.fontLigatures = fontLigatures }
