@@ -164,6 +164,8 @@ enum CLIArguments {
         var background: BackgroundStyle?
         var gradientBackgroundRequested = false
         var solidBackgroundRequested = false
+        var customGradientColors: [RGBAColor]?
+        var customGradientAngle: Double?
         var watermarkText: String?
         var watermarkColor: RGBAColor?
         var watermarkPosition: CLIOptions.WatermarkPosition?
@@ -259,6 +261,10 @@ enum CLIArguments {
             case "--background-color":
                 background = .solid(try resolveBackgroundColor(try value(for: token)))
                 solidBackgroundRequested = true
+            case "--background-gradient":
+                customGradientColors = try resolveCustomGradientColors(try value(for: token))
+            case "--background-angle":
+                customGradientAngle = try resolveBackgroundAngle(try value(for: token))
             case "--watermark":
                 watermarkText = try resolveWatermarkText(try value(for: token))
             case "--watermark-color":
@@ -389,9 +395,25 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --background with --background-color.")
         }
+        if customGradientColors != nil, gradientBackgroundRequested || solidBackgroundRequested {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --background-gradient with --background or --background-color.")
+        }
         if transparent, background != nil {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --transparent with --background or --background-color.")
+        }
+        if transparent, customGradientColors != nil {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --transparent with --background-gradient.")
+        }
+        if customGradientColors == nil, customGradientAngle != nil {
+            throw CLIError.incompatibleOptions(
+                "--background-angle requires --background-gradient.")
+        }
+        if let customGradientColors {
+            background = .customGradient(
+                makeCustomGradient(colors: customGradientColors, angle: customGradientAngle))
         }
         if watermarkText == nil, watermarkColor != nil || watermarkPosition != nil {
             throw CLIError.incompatibleOptions(
@@ -667,6 +689,38 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: "--background-color", value: raw)
         }
         return color
+    }
+
+    /// Parses at least two comma-separated RGB/RGBA colors for a custom gradient.
+    private static func resolveCustomGradientColors(_ raw: String) throws -> [RGBAColor] {
+        let components = raw.split(separator: ",", omittingEmptySubsequences: false).map {
+            String($0).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard components.count >= 2 else {
+            throw CLIError.invalidValue(flag: "--background-gradient", value: raw)
+        }
+        let colors = components.compactMap(RGBAColor.init(hex:))
+        guard colors.count == components.count else {
+            throw CLIError.invalidValue(flag: "--background-gradient", value: raw)
+        }
+        return colors
+    }
+
+    /// Parses the editor's supported custom-gradient angle range.
+    private static func resolveBackgroundAngle(_ raw: String) throws -> Double {
+        guard let angle = Double(raw), angle.isFinite, (0...360).contains(angle) else {
+            throw CLIError.invalidValue(flag: "--background-angle", value: raw)
+        }
+        return angle
+    }
+
+    /// Spreads CLI colors evenly across the gradient axis, matching preset conversion.
+    private static func makeCustomGradient(colors: [RGBAColor], angle: Double?) -> CustomGradient {
+        let lastIndex = Double(colors.count - 1)
+        let stops = colors.enumerated().map { index, color in
+            GradientStop(color: color, location: Double(index) / lastIndex)
+        }
+        return CustomGradient(stops: stops, angle: angle ?? CustomGradient.default.angle)
     }
 
     /// Normalizes the text in the same way as Brand Kit fields and rejects a blank
@@ -986,6 +1040,11 @@ nonisolated enum CLIUsage {
           --background <id>      Built-in gradient. Use `vitrine list backgrounds`.
           --background-color <hex>
                                  Solid RGB/RGBA hex color (for example '#1E293B').
+          --background-gradient <hex,hex,...>
+                                 Custom gradient with two or more RGB/RGBA colors.
+          --background-angle <degrees>
+                                 Custom gradient angle from 0 through 360; requires
+                                 --background-gradient (defaults to 135).
           --watermark <text>     Add a text-only watermark to the rendered image.
           --watermark-color <hex>
                                  Watermark RGB/RGBA tint; requires --watermark.
