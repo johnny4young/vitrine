@@ -360,6 +360,8 @@ vitrine render snippet.py --out card.png --theme dracula --preset opengraph
 vitrine render notes.go   --out clear.png --transparent --scale 3
 vitrine render server.go  --out night.png --background night
 vitrine render query.sql  --out solid.png --background-color '#1E293B'
+vitrine render app.swift --out gradient.png \
+  --background-gradient '#FF453A,#FFD60A,#64D2FF' --background-angle 215
 vitrine render payload.json --out payload.png --format-code --text-sidecar
 vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
   --watermark-color '#7DD3FC' --watermark-position top-left
@@ -406,6 +408,7 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
 `--transparent`, `--background <id>`, `--background-color <hex>`,
+`--background-gradient <hex,hex,...>`, `--background-angle <degrees>`,
 `--frame <id>`, `--frame-appearance <auto|light|dark>`,
 `--watermark <text>`, `--watermark-color <hex>`, `--watermark-position <corner>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
@@ -422,6 +425,10 @@ for extension-based language inference and default metadata without reading that
 `--format-code` uses Vitrine's dependency-free, language-aware indentation tidy before
 rendering; the formatted source is also used by sidecars and secret scanning so every
 artifact describes the same visible code.
+`--background-gradient` builds a custom gradient from two or more comma-separated
+RGB/RGBA colors, spaced evenly across the canvas. `--background-angle` selects a
+direction from 0 through 360 degrees and defaults to 135; custom gradients are mutually
+exclusive with preset, solid, and transparent backgrounds.
 `--watermark <text>` adds a deterministic text badge through the same render-core
 overlay as Brand Kit. `--watermark-color <hex>` changes its tint and
 `--watermark-position <corner>` selects one of the ids printed by

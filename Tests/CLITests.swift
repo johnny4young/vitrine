@@ -276,6 +276,95 @@ struct CLITests {
         #expect(config.sidecarText.contains(SnapshotConfig.redactedLinePlaceholder))
     }
 
+    @Test func customBackgroundGradientBuildsEvenStopsAndAnAngle() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png",
+            "--background-gradient", "#FF453A,#FFD60A,#64D2FFCC",
+            "--background-angle", "215",
+        ])
+
+        let background = try #require(options.background)
+        let gradient: CustomGradient
+        if case .customGradient(let value) = background {
+            gradient = value
+        } else {
+            Issue.record("expected a custom gradient background")
+            return
+        }
+        #expect(gradient.angle == 215)
+        #expect(gradient.stops.map(\.location) == [0, 0.5, 1])
+        #expect(
+            gradient.stops.map(\.color)
+                == ["#FF453A", "#FFD60A", "#64D2FFCC"].compactMap(RGBAColor.init(hex:)))
+        #expect(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).background
+                == background)
+
+        let defaultOptions = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png",
+            "--background-gradient", "#4F46E5,#06B6D4",
+        ])
+        let defaultBackground = try #require(defaultOptions.background)
+        guard case .customGradient(let defaultGradient) = defaultBackground else {
+            Issue.record("expected a custom gradient background")
+            return
+        }
+        #expect(defaultGradient.angle == CustomGradient.default.angle)
+    }
+
+    @Test func customBackgroundGradientRejectsMalformedOrConflictingOptions() {
+        #expect(
+            throws: CLIError.invalidValue(
+                flag: "--background-gradient", value: "#FF453A")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "-o", "o.png",
+                "--background-gradient", "#FF453A",
+            ])
+        }
+        #expect(
+            throws: CLIError.invalidValue(
+                flag: "--background-gradient", value: "#FF453A,blue")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "-o", "o.png",
+                "--background-gradient", "#FF453A,blue",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--background-angle", value: "361")) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "-o", "o.png",
+                "--background-gradient", "#FF453A,#64D2FF", "--background-angle", "361",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--background-angle requires --background-gradient.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "-o", "o.png", "--background-angle", "90",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --background-gradient with --background or --background-color.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "-o", "o.png",
+                "--background", "night", "--background-gradient", "#FF453A,#64D2FF",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --transparent with --background-gradient.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "-o", "o.png",
+                "--transparent", "--background-gradient", "#FF453A,#64D2FF",
+            ])
+        }
+    }
+
     @Test func watermarkOptionsBuildTheRenderCoreWatermark() throws {
         let options = try CLIArguments.parse([
             "render", "snippet.swift", "-o", "o.png",
