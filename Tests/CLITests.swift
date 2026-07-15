@@ -94,10 +94,8 @@ struct CLITests {
         #expect(options.counterPosition == nil)
         #expect(options.counterColor == nil)
         #expect(options.counterSize == nil)
-        #expect(options.arrowStart == nil)
-        #expect(options.arrowEnd == nil)
-        #expect(options.arrowColor == nil)
-        #expect(options.arrowSize == nil)
+        #expect(options.arrow == nil)
+        #expect(options.line == nil)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -665,10 +663,11 @@ struct CLITests {
             "--arrow-color", "#38BDF8", "--arrow-size", "9",
         ])
 
-        #expect(options.arrowStart == CGPoint(x: 0.15, y: 0.8))
-        #expect(options.arrowEnd == CGPoint(x: 0.7, y: 0.25))
-        #expect(options.arrowColor == RGBAColor(hex: "#38BDF8"))
-        #expect(options.arrowSize == 9)
+        let arrow = try #require(options.arrow)
+        #expect(arrow.start == CGPoint(x: 0.15, y: 0.8))
+        #expect(arrow.end == CGPoint(x: 0.7, y: 0.25))
+        #expect(arrow.color == RGBAColor(hex: "#38BDF8"))
+        #expect(arrow.size == 9)
         let annotation = try #require(
             options.makeConfig(code: "print(\"ship\")", language: .swift).annotations.first)
         #expect(annotation.kind == .arrow)
@@ -705,6 +704,57 @@ struct CLITests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--arrow-size", "7",
+            ])
+        }
+    }
+
+    @Test func lineOptionsBuildTheRenderCoreAnnotation() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--line", "0.12,0.72,0.86,0.72",
+            "--line-color", "#A78BFA", "--line-size", "10",
+        ])
+
+        let line = try #require(options.line)
+        #expect(line.start == CGPoint(x: 0.12, y: 0.72))
+        #expect(line.end == CGPoint(x: 0.86, y: 0.72))
+        #expect(line.color == RGBAColor(hex: "#A78BFA"))
+        #expect(line.size == 10)
+        let annotation = try #require(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).annotations.first)
+        #expect(annotation.kind == .line)
+        #expect(annotation.start == CGPoint(x: 0.12, y: 0.72))
+        #expect(annotation.end == CGPoint(x: 0.86, y: 0.72))
+        #expect(annotation.color == RGBAColor(hex: "#A78BFA"))
+        #expect(annotation.thickness == 10)
+    }
+
+    @Test func lineDefaultsToTheEditorStrokeStyle() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--line", "0.1,0.8,0.9,0.8",
+        ])
+        let annotation = try #require(
+            options.makeConfig(code: "x", language: .swift).annotations.first)
+        #expect(annotation.color == Annotation.defaultColor)
+        #expect(annotation.thickness == Annotation.defaultThickness)
+    }
+
+    @Test func lineRejectsMalformedInvisibleOrInertValues() {
+        for raw in [
+            "0.1,0.2,0.9", "0.1,0.2,0.9,0.4,0.5", "0.1,0.2,nan,0.4",
+            "-0.1,0.2,0.9,0.4", "0.3,0.3,0.3,0.3",
+        ] {
+            #expect(throws: CLIError.invalidValue(flag: "--line", value: raw)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--line", raw,
+                ])
+            }
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--line-color and --line-size require --line.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--line-color", "#FFFFFF",
             ])
         }
     }
@@ -1380,6 +1430,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--arrow", "0.1,0.8,0.8,0.2",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--line", "0.1,0.8,0.9,0.8",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -1899,6 +1957,31 @@ struct CLITests {
                 != Data(contentsOf: URL(fileURLWithPath: arrowOutput)))
         #expect(arrowImage.width == plainImage.width)
         #expect(arrowImage.height == plainImage.height)
+    }
+
+    @Test func lineChangesPixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let lineOutput = directory.appendingPathComponent("line.png").path
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", lineOutput, "--scale", "1",
+                "--line", "0.12,0.72,0.86,0.72", "--line-color", "#A78BFA",
+                "--line-size", "10",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let lineImage = try decodePNG(at: lineOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: lineOutput)))
+        #expect(lineImage.width == plainImage.width)
+        #expect(lineImage.height == plainImage.height)
     }
 
     @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {

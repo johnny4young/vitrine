@@ -377,6 +377,8 @@ vitrine render release.swift --out steps.png --counter 1 \
   --counter-x 0.82 --counter-y 0.2 --counter-color '#22C55E' --counter-size 8
 vitrine render release.swift --out guided.png --arrow 0.18,0.8,0.7,0.25 \
   --arrow-color '#38BDF8' --arrow-size 9
+vitrine render release.swift --out underlined.png --line 0.16,0.76,0.84,0.76 \
+  --line-color '#A78BFA' --line-size 10
 vitrine render --image dashboard.png --out showcase.png --background night --padding 40
 vitrine render --image dashboard.png --out browser.png --frame browser \
   --frame-appearance dark --window-title 'app.example.com'
@@ -433,7 +435,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--callout-color <hex>`, `--callout-size <2...28>`,
 `--counter <1...99>`, `--counter-x <0...1>`, `--counter-y <0...1>`,
 `--counter-color <hex>`, `--counter-size <2...28>`,
-`--arrow <x1,y1,x2,y2>`, `--arrow-color <hex>`, `--arrow-size <2...28>`, style controls
+`--arrow <x1,y1,x2,y2>`, `--arrow-color <hex>`, `--arrow-size <2...28>`,
+`--line <x1,y1,x2,y2>`, `--line-color <hex>`, `--line-size <2...28>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
@@ -482,6 +485,9 @@ fill color, and size keep scripted walkthrough steps deterministic and legible.
 head through the editor annotation renderer. Optional color and size use the same
 fixed-sRGB and stroke ranges as the editor; zero-length or out-of-canvas segments are
 rejected rather than silently producing an invisible mark.
+`--line <x1,y1,x2,y2>` draws one straight segment between normalized canvas points.
+It shares the editor's fixed-sRGB color and stroke range, and rejects malformed,
+out-of-canvas, or zero-length segments before rendering.
 `--image <path>` beautifies a local image through the same canvas as the editor. The
 source is decoded locally, copied only into an invocation-scoped temporary store, and
 removed when the command exits; it is never added to Vitrine's persistent image library.
