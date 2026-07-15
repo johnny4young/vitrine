@@ -142,14 +142,15 @@ and `--json` swaps human success text for structured `render`/`batch` summaries;
 two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--theme`, `--language`, `--preset`, `--scale`, `--format`
 (`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), `--font <family>`,
-`--transparent`, style controls (`--font-size`, `--padding`, `--wrap-columns`,
-`--line-numbers`, `--no-chrome`, `--no-shadow`), and the header controls
-(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`) override
-individual choices. For single-file renders, known output extensions (`.png`, `.pdf`,
-`.heic`) infer the export format when `--format` is omitted; if an explicit `--format`
-is present, the extension must match so automation never receives mislabeled bytes.
-For piped input, `--stdin-name <name>` supplies filename context for extension-based
-language inference and default metadata while still reading the source only from standard input.
+`--font-ligatures`, `--no-font-ligatures`, `--transparent`, style controls
+(`--font-size`, `--padding`, `--wrap-columns`, `--line-numbers`, `--no-chrome`,
+`--no-shadow`), and the header controls (`--window-title`, `--filename`, `--title`,
+`--caption`, `--language-badge`) override individual choices. For single-file renders,
+known output extensions (`.png`, `.pdf`, `.heic`) infer the export format when
+`--format` is omitted; if an explicit `--format` is present, the extension must match
+so automation never receives mislabeled bytes. For piped input, `--stdin-name <name>`
+supplies filename context for extension-based language inference and default metadata
+while still reading the source only from standard input.
 `--no-overwrite` / `--no-clobber` is an opt-in artifact safety guard: single renders
 fail before replacing an image or sidecar, while batch jobs skip existing targets and
 can pair that with skipped reports or `--fail-on-skipped`. A preset reframes

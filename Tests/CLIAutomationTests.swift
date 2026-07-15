@@ -211,9 +211,10 @@ struct CLIAutomationTests {
         let options = try CLIArguments.parse(
             [
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
-                "--font", "Hack", "--recursive", "--fail-on-skipped", "--skipped-report",
-                "skipped.json", "--dry-run", "--manifest", "manifest.json", "--include-ext",
-                ".swift,md", "--exclude-ext", "tmp", "--fail-on-empty", "--no-overwrite",
+                "--font", "Hack", "--font-ligatures", "--recursive", "--fail-on-skipped",
+                "--skipped-report", "skipped.json", "--dry-run", "--manifest", "manifest.json",
+                "--include-ext", ".swift,md", "--exclude-ext", "tmp", "--fail-on-empty",
+                "--no-overwrite",
             ])
         #expect(options.command == .batch)
         #expect(options.quiet)
@@ -228,6 +229,7 @@ struct CLIAutomationTests {
         #expect(options.batchIncludeExtensions == Set(["swift", "md"]))
         #expect(options.batchExcludeExtensions == Set(["tmp"]))
         #expect(options.fontName == "Hack")
+        #expect(options.fontLigatures == true)
         #expect(options.failOnEmpty)
         #expect(options.noOverwrite)
         #expect(!options.jsonOutput)
