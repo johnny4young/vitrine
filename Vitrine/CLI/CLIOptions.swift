@@ -109,6 +109,11 @@ struct CLIOptions: Equatable {
     var watermarkColor: RGBAColor?
     /// Optional corner for `watermarkText`; nil uses the Brand Kit's bottom-right default.
     var watermarkPosition: WatermarkPosition?
+    /// Optional frame around `--image` content. Nil preserves the model's plain-image
+    /// default; stable CLI ids map onto the app's existing frame enum.
+    var imageFrame: ImageFrameOption?
+    /// Optional fixed chrome appearance for a framed image. Nil keeps Auto sampling.
+    var frameAppearance: ImageFrameAppearance?
     /// Refuse to replace existing image or sidecar files. For batch jobs, existing
     /// outputs are skipped so valid new artifacts can still be produced.
     var noOverwrite: Bool = false
@@ -231,6 +236,53 @@ struct CLIOptions: Equatable {
         }
     }
 
+    /// Stable automation ids for the image-frame catalog. The model's `macOSWindow`
+    /// raw value is intentionally not exposed as CLI syntax.
+    enum ImageFrameOption: String, CaseIterable, Equatable, Sendable {
+        case none
+        case macOSWindow = "macos-window"
+        case browser
+        case macBook = "macbook"
+        case iPhone = "iphone"
+
+        var displayName: String {
+            switch self {
+            case .none: "None"
+            case .macOSWindow: "macOS window"
+            case .browser: "Browser"
+            case .macBook: "MacBook"
+            case .iPhone: "iPhone"
+            }
+        }
+
+        var modelValue: ImageFrame {
+            switch self {
+            case .none: .none
+            case .macOSWindow: .macOSWindow
+            case .browser: .browser
+            case .macBook: .macBook
+            case .iPhone: .iPhone
+            }
+        }
+
+        var supportsWindowTitle: Bool { self == .macOSWindow || self == .browser }
+    }
+
+    /// Stable automation ids for image-frame chrome appearance.
+    enum ImageFrameAppearance: String, CaseIterable, Equatable, Sendable {
+        case auto, light, dark
+
+        var displayName: String { rawValue.capitalized }
+
+        var modelValue: FrameAppearance {
+            switch self {
+            case .auto: .auto
+            case .light: .light
+            case .dark: .dark
+            }
+        }
+    }
+
     /// The default export scale when neither a preset nor an explicit `--scale`
     /// supplies one — the app's documented default resolution multiplier.
     static let defaultScale = SettingsDefaults.exportScale
@@ -261,6 +313,8 @@ struct CLIOptions: Equatable {
                 tint: watermarkColor,
                 placement: watermarkPosition?.modelValue ?? .bottomTrailing)
         }
+        if let imageFrame { config.imageFrame = imageFrame.modelValue }
+        if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
         config.terminalColumns = terminalColumns
         if let fontName { config.fontName = fontName }
         if let fontLigatures { config.fontLigatures = fontLigatures }

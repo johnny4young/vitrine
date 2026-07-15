@@ -1,7 +1,8 @@
 import Foundation
 
 /// Lists the local CLI catalogs used to validate themes, languages, export presets, fonts,
-/// backgrounds, watermark positions, formats, and color profiles.
+/// backgrounds, image frames, frame appearances, watermark positions, formats, and
+/// color profiles.
 ///
 /// `vitrine list` is intentionally separate from `CLIArguments`: it does not render,
 /// read user files, or need AppKit. The executable handles it before the PRO render
@@ -16,6 +17,8 @@ enum CLICatalog {
         case presets
         case fonts
         case backgrounds
+        case frames
+        case frameAppearances
         case watermarkPositions
         case formats
         case profiles
@@ -28,6 +31,8 @@ enum CLICatalog {
             case "preset", "presets": self = .presets
             case "font", "fonts": self = .fonts
             case "background", "backgrounds": self = .backgrounds
+            case "frame", "frames": self = .frames
+            case "frame-appearance", "frame-appearances": self = .frameAppearances
             case "watermark-position", "watermark-positions": self = .watermarkPositions
             case "format", "formats": self = .formats
             case "profile", "profiles": self = .profiles
@@ -60,16 +65,18 @@ enum CLICatalog {
         var presets: [Entry]
         var fonts: [Entry]
         var backgrounds: [Entry]
+        var frames: [Entry]
+        var frameAppearances: [Entry]
         var watermarkPositions: [Entry]
         var formats: [Entry]
         var profiles: [Entry]
     }
 
     static let usage = """
-        vitrine list <all|themes|languages|presets|fonts|backgrounds|watermark-positions|formats|profiles> [--json]
+        vitrine list <all|themes|languages|presets|fonts|backgrounds|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
 
-        Prints the local ids accepted by render options, including --background and
-        --watermark-position.
+        Prints the local ids accepted by render options, including --background,
+        --frame, --frame-appearance, and --watermark-position.
         Use `all --json` for one machine-readable object with every catalog.
         """
 
@@ -130,6 +137,8 @@ enum CLICatalog {
             presets: entries(for: .presets),
             fonts: entries(for: .fonts),
             backgrounds: entries(for: .backgrounds),
+            frames: entries(for: .frames),
+            frameAppearances: entries(for: .frameAppearances),
             watermarkPositions: entries(for: .watermarkPositions),
             formats: entries(for: .formats),
             profiles: entries(for: .profiles))
@@ -148,6 +157,8 @@ enum CLICatalog {
         (.presets, "presets"),
         (.fonts, "fonts"),
         (.backgrounds, "backgrounds"),
+        (.frames, "frames"),
+        (.frameAppearances, "frame-appearances"),
         (.watermarkPositions, "watermark-positions"),
         (.formats, "formats"),
         (.profiles, "profiles"),
@@ -168,6 +179,14 @@ enum CLICatalog {
         case .backgrounds:
             GradientPreset.allCases.map {
                 Entry(id: $0.rawValue.lowercased(), name: $0.rawValue)
+            }
+        case .frames:
+            CLIOptions.ImageFrameOption.allCases.map {
+                Entry(id: $0.rawValue, name: $0.displayName)
+            }
+        case .frameAppearances:
+            CLIOptions.ImageFrameAppearance.allCases.map {
+                Entry(id: $0.rawValue, name: $0.displayName)
             }
         case .watermarkPositions:
             CLIOptions.WatermarkPosition.allCases.map {

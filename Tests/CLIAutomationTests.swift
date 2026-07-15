@@ -140,6 +140,10 @@ struct CLIAutomationTests {
         #expect(
             CLICatalog.invocation(for: ["backgrounds"])
                 == .listing(.backgrounds, format: .text))
+        #expect(CLICatalog.invocation(for: ["frame"]) == .listing(.frames, format: .text))
+        #expect(
+            CLICatalog.invocation(for: ["frame-appearances", "--json"])
+                == .listing(.frameAppearances, format: .json))
         #expect(
             CLICatalog.invocation(for: ["watermark-position"])
                 == .listing(.watermarkPositions, format: .text))
@@ -186,6 +190,15 @@ struct CLIAutomationTests {
                 == "bottom-right\tBottom right\nbottom-left\tBottom left\ntop-right\tTop right\ntop-left\tTop left\n"
         )
 
+        let frameText = CLICatalog.output(for: .frames, format: .text)
+        #expect(
+            frameText
+                == "none\tNone\nmacos-window\tmacOS window\nbrowser\tBrowser\nmacbook\tMacBook\niphone\tiPhone\n"
+        )
+
+        let appearanceText = CLICatalog.output(for: .frameAppearances, format: .text)
+        #expect(appearanceText == "auto\tAuto\nlight\tLight\ndark\tDark\n")
+
         let data = Data(CLICatalog.output(for: .languages, format: .json).utf8)
         let decoded = try #require(
             JSONSerialization.jsonObject(with: data) as? [[String: String]])
@@ -207,6 +220,8 @@ struct CLIAutomationTests {
         #expect(allText.contains("  swift\tSwift\n"))
         #expect(allText.contains("fonts:\n  JetBrains Mono\tJetBrains Mono\n"))
         #expect(allText.contains("backgrounds:\n  aurora\tAurora\n"))
+        #expect(allText.contains("frames:\n  none\tNone\n"))
+        #expect(allText.contains("frame-appearances:\n  auto\tAuto\n"))
         #expect(allText.contains("watermark-positions:\n  bottom-right\tBottom right\n"))
         #expect(allText.contains("formats:\n  png\tPNG\n"))
         #expect(allText.contains("profiles:\n  srgb\tsRGB\n"))
@@ -218,6 +233,9 @@ struct CLIAutomationTests {
         let presets = try #require(decoded["presets"] as? [[String: String]])
         let fonts = try #require(decoded["fonts"] as? [[String: String]])
         let backgrounds = try #require(decoded["backgrounds"] as? [[String: String]])
+        let frames = try #require(decoded["frames"] as? [[String: String]])
+        let frameAppearances = try #require(
+            decoded["frameAppearances"] as? [[String: String]])
         let watermarkPositions = try #require(
             decoded["watermarkPositions"] as? [[String: String]])
         let formats = try #require(decoded["formats"] as? [[String: String]])
@@ -227,6 +245,8 @@ struct CLIAutomationTests {
         #expect(presets.contains { $0["id"] == "opengraph" })
         #expect(fonts.contains { $0["id"] == "Fira Code" && $0["name"] == "Fira Code" })
         #expect(backgrounds.contains { $0["id"] == "aurora" && $0["name"] == "Aurora" })
+        #expect(frames.contains { $0["id"] == "macos-window" && $0["name"] == "macOS window" })
+        #expect(frameAppearances.contains { $0["id"] == "dark" && $0["name"] == "Dark" })
         #expect(
             watermarkPositions.contains {
                 $0["id"] == "top-left" && $0["name"] == "Top left"

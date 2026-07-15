@@ -80,6 +80,8 @@ struct CLITests {
         #expect(options.watermarkText == nil)
         #expect(options.watermarkColor == nil)
         #expect(options.watermarkPosition == nil)
+        #expect(options.imageFrame == nil)
+        #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
         #expect(options.jsonOutput == false)
     }
@@ -553,6 +555,104 @@ struct CLITests {
         #expect(options.copyToClipboard)
         #expect(options.padding == 24)
         #expect(options.background == .gradient(.night))
+    }
+
+    @Test func imageFrameControlsMapToTheExistingRenderModel() throws {
+        let options = try CLIArguments.parse([
+            "render", "--image", "Screenshot.png", "--out", "card.png",
+            "--frame", "browser", "--frame-appearance", "dark",
+            "--window-title", "https://example.com",
+        ])
+
+        #expect(options.imageFrame == .browser)
+        #expect(options.frameAppearance == .dark)
+        #expect(options.windowTitle == "https://example.com")
+
+        let config = options.makeConfig(code: "", language: .plaintext)
+        #expect(config.imageFrame == .browser)
+        #expect(config.imageFrameAppearance == .dark)
+        #expect(config.windowTitle == "https://example.com")
+
+        let mappings: [(String, ImageFrame)] = [
+            ("none", .none),
+            ("macos-window", .macOSWindow),
+            ("browser", .browser),
+            ("macbook", .macBook),
+            ("iphone", .iPhone),
+        ]
+        for (id, expected) in mappings {
+            let mapped = try CLIArguments.parse([
+                "render", "--image", "Screenshot.png", "--out", "card.png",
+                "--frame", id,
+            ])
+            #expect(mapped.makeConfig(code: "", language: .plaintext).imageFrame == expected)
+        }
+    }
+
+    @Test func imageFrameControlsRejectInvalidOrInertCombinations() throws {
+        #expect(throws: CLIError.invalidValue(flag: "--frame", value: "tablet")) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png",
+                "--frame", "tablet",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--frame-appearance", value: "sepia")) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png",
+                "--frame", "browser", "--frame-appearance", "sepia",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--frame and --frame-appearance require --image.")
+        ) {
+            try CLIArguments.parse([
+                "render", "source.swift", "--out", "card.png", "--frame", "browser",
+            ])
+        }
+        #expect(throws: CLIError.unknownFlag("--frame")) {
+            try CLIArguments.parse([
+                "batch", "Sources", "--out", "Cards", "--frame", "browser",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--frame-appearance requires --frame with a framed image.")
+        ) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png",
+                "--frame-appearance", "light",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--frame-appearance requires --frame with a framed image.")
+        ) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png",
+                "--frame", "none", "--frame-appearance", "dark",
+            ])
+        }
+        let titleError = CLIError.incompatibleOptions(
+            "--window-title with --image requires --frame macos-window or browser.")
+        #expect(throws: titleError) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png",
+                "--window-title", "Photo",
+            ])
+        }
+        #expect(throws: titleError) {
+            try CLIArguments.parse([
+                "render", "--image", "photo.png", "--out", "card.png",
+                "--frame", "iphone", "--window-title", "Photo",
+            ])
+        }
+
+        let macOSWindow = try CLIArguments.parse([
+            "render", "--image", "photo.png", "--out", "card.png",
+            "--frame", "macos-window", "--window-title", "Photo",
+        ])
+        #expect(macOSWindow.windowTitle == "Photo")
     }
 
     @Test func imageInputRejectsAmbiguousSourcesAndUnsupportedCommands() {
@@ -1600,6 +1700,33 @@ struct CLITests {
         #expect(image.width > 180)
         #expect(image.height > 100)
         #expect(FileManager.default.fileExists(atPath: input.path))
+    }
+
+    @Test func localImageInputRendersItsSelectedFrame() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = directory.appendingPathComponent("source.png")
+        try writeFixtureImage(to: input, size: CGSize(width: 180, height: 100))
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let framedOutput = directory.appendingPathComponent("browser.png").path
+
+        try CLIRenderer.run(
+            try CLIArguments.parse([
+                "render", "--image", input.path, "--out", plainOutput,
+                "--padding", "24", "--scale", "1",
+            ]))
+        try CLIRenderer.run(
+            try CLIArguments.parse([
+                "render", "--image", input.path, "--out", framedOutput,
+                "--padding", "24", "--scale", "1", "--frame", "browser",
+                "--frame-appearance", "dark", "--window-title", "example.com",
+            ]))
+
+        let plain = try decodePNG(at: plainOutput)
+        let framed = try decodePNG(at: framedOutput)
+        #expect(framed.width == plain.width)
+        #expect(framed.height > plain.height)
     }
 
     @Test func imageInputReportsUnreadableAndUnsupportedFilesPrecisely() throws {
