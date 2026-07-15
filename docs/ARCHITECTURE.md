@@ -198,9 +198,10 @@ rendered dimensions when available. Same-stem inputs that would collide (`Widget
 and `Widget.ts` → `Widget.png`) are disambiguated only for that group by preserving the
 input extension, so non-colliding legacy output names stay unchanged.
 
-**Catalog discovery.** `vitrine list <themes|languages|presets|fonts|formats|profiles>
+**Catalog discovery.** `vitrine list <themes|languages|presets|fonts|backgrounds|formats|profiles>
 [--json]` prints the same local catalog ids the parser validates for `--theme`,
-`--language`, `--preset`, `--font`, `--format`, and `--profile`;
+`--language`, `--preset`, `--font`, `--format`, and `--profile`, plus every built-in
+gradient background;
 `vitrine list all --json` returns one keyed object with every catalog for setup scripts that want a single
 metadata call. It runs before AppKit initialization and before the PRO render gate
 because it reads only bundled metadata, so scripts can cheaply discover valid options
