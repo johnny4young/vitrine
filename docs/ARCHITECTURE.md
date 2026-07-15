@@ -142,7 +142,8 @@ and `--json` swaps human success text for structured `render`/`batch` summaries;
 two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--theme`, `--language`, `--preset`, `--scale`, `--format`
 (`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), `--font <family>`,
-`--font-ligatures`, `--no-font-ligatures`, `--transparent`, style controls
+`--font-ligatures`, `--no-font-ligatures`, `--transparent`, `--background <id>`,
+`--background-color <hex>`, style controls
 (`--font-size`, `--padding`, `--corner-radius`, `--shadow-radius`, `--wrap-columns`,
 `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
@@ -200,8 +201,7 @@ input extension, so non-colliding legacy output names stay unchanged.
 
 **Catalog discovery.** `vitrine list <themes|languages|presets|fonts|backgrounds|formats|profiles>
 [--json]` prints the same local catalog ids the parser validates for `--theme`,
-`--language`, `--preset`, `--font`, `--format`, and `--profile`, plus every built-in
-gradient background;
+`--language`, `--preset`, `--font`, `--background`, `--format`, and `--profile`;
 `vitrine list all --json` returns one keyed object with every catalog for setup scripts that want a single
 metadata call. It runs before AppKit initialization and before the PRO render gate
 because it reads only bundled metadata, so scripts can cheaply discover valid options
