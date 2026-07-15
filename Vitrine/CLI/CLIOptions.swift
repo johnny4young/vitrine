@@ -60,6 +60,9 @@ struct CLIOptions: Equatable {
     /// Optional code font family override. Resolved through `CodeFont.all` so the CLI
     /// accepts the same bundled/system programming fonts as the editor.
     var fontName: String?
+    /// Optional programming-ligature override for fonts that support them. Nil preserves
+    /// the app/preset default; a value maps to the editor's ligature toggle.
+    var fontLigatures: Bool?
     /// Optional font-size override, in points. Uses the same bounds as the editor's
     /// Style pane.
     var fontSize: Double?
@@ -187,6 +190,7 @@ struct CLIOptions: Equatable {
         config.language = language
         config.terminalColumns = terminalColumns
         if let fontName { config.fontName = fontName }
+        if let fontLigatures { config.fontLigatures = fontLigatures }
         if let fontSize { config.fontSize = fontSize }
         if let padding { config.padding = padding }
         if let wrapColumns { config.wrapColumns = wrapColumns }

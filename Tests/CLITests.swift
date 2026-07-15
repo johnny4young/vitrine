@@ -85,6 +85,7 @@ struct CLITests {
         let appDefault = SnapshotConfig()
         #expect(config.theme.id == appDefault.theme.id)
         #expect(config.fontName == appDefault.fontName)
+        #expect(config.fontLigatures == appDefault.fontLigatures)
         #expect(config.fontSize == appDefault.fontSize)
         #expect(config.padding == appDefault.padding)
         #expect(config.background == appDefault.background)
@@ -112,6 +113,7 @@ struct CLITests {
             "--preset", "opengraph",
             "--scale", "3",
             "--font", "Fira Code",
+            "--font-ligatures",
             "--font-size", "16",
             "--padding", "48",
             "--terminal-width", "100",
@@ -136,6 +138,7 @@ struct CLITests {
         #expect(options.presetID == "opengraph")
         #expect(options.scale == 3)
         #expect(options.fontName == "Fira Code")
+        #expect(options.fontLigatures == true)
         #expect(options.fontSize == 16)
         #expect(options.padding == 48)
         #expect(options.terminalColumns == 100)
@@ -183,6 +186,7 @@ struct CLITests {
 
     @Test func styleOptionsDefaultToNilAndFlowIntoTheConfig() throws {
         let defaults = try CLIArguments.parse(["render", "snippet.swift", "-o", "o.png"])
+        #expect(defaults.fontLigatures == nil)
         #expect(defaults.fontSize == nil)
         #expect(defaults.padding == nil)
         #expect(defaults.showLineNumbers == nil)
@@ -193,6 +197,7 @@ struct CLITests {
             "render", "snippet.swift",
             "-o", "o.png",
             "--font", "Fira Code",
+            "--font-ligatures",
             "--font-size", "15.5",
             "--padding", "40",
             "--line-numbers",
@@ -202,11 +207,18 @@ struct CLITests {
 
         let config = options.makeConfig(code: "print(\"styled\")", language: .swift)
         #expect(config.fontName == "Fira Code")
+        #expect(config.fontLigatures)
         #expect(config.fontSize == 15.5)
         #expect(config.padding == 40)
         #expect(config.showLineNumbers)
         #expect(!config.showChrome)
         #expect(!config.showShadow)
+
+        let ligaturesOff = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--font-ligatures", "--no-font-ligatures",
+        ])
+        #expect(ligaturesOff.fontLigatures == false)
+        #expect(!ligaturesOff.makeConfig(code: "", language: .swift).fontLigatures)
     }
 
     @Test func metadataHeaderOptionsFlowIntoTheRenderedConfig() throws {

@@ -145,6 +145,7 @@ enum CLIArguments {
         var presetID: String?
         var scale: Int?
         var fontName: String?
+        var fontLigatures: Bool?
         var fontSize: Double?
         var padding: Double?
         var terminalColumns: Int?
@@ -205,6 +206,10 @@ enum CLIArguments {
                 scale = try resolveScale(try value(for: token), flag: token)
             case "--font":
                 fontName = try resolveFont(try value(for: token))
+            case "--font-ligatures":
+                fontLigatures = true
+            case "--no-font-ligatures":
+                fontLigatures = false
             case "--font-size":
                 fontSize = try resolveFontSize(try value(for: token), flag: token)
             case "--padding":
@@ -338,8 +343,9 @@ enum CLIArguments {
             windowTitle != nil || metadataFilename != nil
             || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
         let styleOptionsRequested =
-            fontName != nil || fontSize != nil || padding != nil || wrapColumns != nil
-            || showLineNumbers != nil || showChrome != nil || showShadow != nil
+            fontName != nil || fontLigatures != nil || fontSize != nil || padding != nil
+            || wrapColumns != nil || showLineNumbers != nil || showChrome != nil
+            || showShadow != nil
 
         // `--edit` hands the source to the running editor instead of rendering, so it
         // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
@@ -425,6 +431,7 @@ enum CLIArguments {
             presetID: presetID,
             scale: scale,
             fontName: fontName,
+            fontLigatures: fontLigatures,
             fontSize: fontSize,
             padding: padding,
             terminalColumns: terminalColumns,
@@ -676,6 +683,8 @@ nonisolated enum CLIUsage {
           --scale <1|2|3>        Export resolution multiplier. Defaults to the app
                                  default, or the preset's recommended scale.
           --font <family>        Code font family. Use `vitrine list fonts`.
+          --font-ligatures       Enable programming ligatures when the font supports them.
+          --no-font-ligatures    Disable programming ligatures.
           --font-size <n>        Code font size in points (10-20).
           --padding <n>          Canvas padding in points (16-64).
           --terminal-width <n>   Reconstruct terminal output at exactly n columns
