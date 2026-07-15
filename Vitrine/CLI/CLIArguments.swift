@@ -201,6 +201,8 @@ enum CLIArguments {
         var highlighterStart: CGPoint?
         var highlighterEnd: CGPoint?
         var highlighterColor: RGBAColor?
+        var blurBoxStart: CGPoint?
+        var blurBoxEnd: CGPoint?
         var imageFrame: CLIOptions.ImageFrameOption?
         var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
@@ -368,6 +370,10 @@ enum CLIArguments {
                 highlighterEnd = region.end
             case "--highlighter-color":
                 highlighterColor = try resolveHexColor(try value(for: token), flag: token)
+            case "--blur-box":
+                let region = try resolveNormalizedRegion(try value(for: token), flag: token)
+                blurBoxStart = region.start
+                blurBoxEnd = region.end
             case "--frame":
                 imageFrame = try resolveImageFrame(try value(for: token))
             case "--frame-appearance":
@@ -645,6 +651,7 @@ enum CLIArguments {
             || lineStart != nil
             || rectangleStart != nil
             || highlighterStart != nil
+            || blurBoxStart != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -799,6 +806,13 @@ enum CLIArguments {
             } else {
                 nil
             }
+        let blurBox: CLIOptions.SegmentAnnotation? =
+            if let blurBoxStart, let blurBoxEnd {
+                CLIOptions.SegmentAnnotation(
+                    start: blurBoxStart, end: blurBoxEnd, color: nil, size: nil)
+            } else {
+                nil
+            }
 
         return CLIOptions(
             command: mode,
@@ -845,6 +859,7 @@ enum CLIArguments {
             line: line,
             rectangle: rectangle,
             highlighter: highlighter,
+            blurBox: blurBox,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
@@ -1451,6 +1466,8 @@ nonisolated enum CLIUsage {
                                  Highlight the region between normalized opposite corners.
           --highlighter-color <hex>
                                  Highlighter RGB/RGBA fill color; requires --highlighter.
+          --blur-box <x1,y1,x2,y2>
+                                 Visually blur a normalized region; sidecars stay unchanged.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.

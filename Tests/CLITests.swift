@@ -98,6 +98,7 @@ struct CLITests {
         #expect(options.line == nil)
         #expect(options.rectangle == nil)
         #expect(options.highlighter == nil)
+        #expect(options.blurBox == nil)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -860,6 +861,48 @@ struct CLITests {
         }
     }
 
+    @Test func blurBoxBuildsTheRenderCoreAnnotation() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--blur-box", "0.12,0.42,0.88,0.54",
+        ])
+
+        let blurBox = try #require(options.blurBox)
+        #expect(blurBox.start == CGPoint(x: 0.12, y: 0.42))
+        #expect(blurBox.end == CGPoint(x: 0.88, y: 0.54))
+        #expect(blurBox.color == nil)
+        #expect(blurBox.size == nil)
+        let annotation = try #require(
+            options.makeConfig(code: "let token = \"secret\"", language: .swift)
+                .annotations.first)
+        #expect(annotation.kind == .blur)
+        #expect(annotation.start == CGPoint(x: 0.12, y: 0.42))
+        #expect(annotation.end == CGPoint(x: 0.88, y: 0.54))
+    }
+
+    @Test func blurBoxRejectsMalformedOrDegenerateValues() {
+        for raw in [
+            "0.1,0.2,0.9", "0.1,0.2,0.9,0.4,0.5", "0.1,0.2,nan,0.4",
+            "0.1,0.2,1.1,0.4", "0.3,0.3,0.3,0.7", "0.3,0.3,0.7,0.3",
+        ] {
+            #expect(throws: CLIError.invalidValue(flag: "--blur-box", value: raw)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--blur-box", raw,
+                ])
+            }
+        }
+    }
+
+    @Test func blurBoxIsVisualOnlyAndDoesNotSanitizeSidecars() throws {
+        let source = "let token = \"runtime-only-secret\""
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--blur-box", "0.1,0.2,0.9,0.8",
+        ])
+
+        let config = options.makeConfig(code: source, language: .swift)
+        #expect(config.sidecarText == source)
+        #expect(config.sidecarText.contains("runtime-only-secret"))
+    }
+
     @Test func styleOptionsDefaultToNilAndFlowIntoTheConfig() throws {
         let defaults = try CLIArguments.parse(["render", "snippet.swift", "-o", "o.png"])
         #expect(defaults.fontLigatures == nil)
@@ -1555,6 +1598,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--highlighter", "0.1,0.4,0.9,0.52",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--blur-box", "0.1,0.4,0.9,0.52",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -2148,6 +2199,30 @@ struct CLITests {
                 != Data(contentsOf: URL(fileURLWithPath: highlighterOutput)))
         #expect(highlighterImage.width == plainImage.width)
         #expect(highlighterImage.height == plainImage.height)
+    }
+
+    @Test func blurBoxChangesPixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let blurOutput = directory.appendingPathComponent("blur.png").path
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", blurOutput, "--scale", "1",
+                "--blur-box", "0.12,0.36,0.88,0.54",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let blurImage = try decodePNG(at: blurOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: blurOutput)))
+        #expect(blurImage.width == plainImage.width)
+        #expect(blurImage.height == plainImage.height)
     }
 
     @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {
