@@ -96,6 +96,7 @@ struct CLITests {
         #expect(options.counterSize == nil)
         #expect(options.arrow == nil)
         #expect(options.line == nil)
+        #expect(options.rectangle == nil)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -755,6 +756,57 @@ struct CLITests {
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--line-color", "#FFFFFF",
+            ])
+        }
+    }
+
+    @Test func rectangleOptionsBuildTheRenderCoreAnnotation() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--rectangle", "0.12,0.3,0.88,0.78",
+            "--rectangle-color", "#FB7185", "--rectangle-size", "9",
+        ])
+
+        let rectangle = try #require(options.rectangle)
+        #expect(rectangle.start == CGPoint(x: 0.12, y: 0.3))
+        #expect(rectangle.end == CGPoint(x: 0.88, y: 0.78))
+        #expect(rectangle.color == RGBAColor(hex: "#FB7185"))
+        #expect(rectangle.size == 9)
+        let annotation = try #require(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).annotations.first)
+        #expect(annotation.kind == .rectangle)
+        #expect(annotation.start == CGPoint(x: 0.12, y: 0.3))
+        #expect(annotation.end == CGPoint(x: 0.88, y: 0.78))
+        #expect(annotation.color == RGBAColor(hex: "#FB7185"))
+        #expect(annotation.thickness == 9)
+    }
+
+    @Test func rectangleDefaultsToTheEditorStrokeStyle() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--rectangle", "0.1,0.2,0.9,0.8",
+        ])
+        let annotation = try #require(
+            options.makeConfig(code: "x", language: .swift).annotations.first)
+        #expect(annotation.color == Annotation.defaultColor)
+        #expect(annotation.thickness == Annotation.defaultThickness)
+    }
+
+    @Test func rectangleRejectsMalformedDegenerateOrInertValues() {
+        for raw in [
+            "0.1,0.2,0.9", "0.1,0.2,0.9,0.4,0.5", "0.1,0.2,nan,0.4",
+            "0.1,0.2,1.1,0.4", "0.3,0.3,0.3,0.7", "0.3,0.3,0.7,0.3",
+        ] {
+            #expect(throws: CLIError.invalidValue(flag: "--rectangle", value: raw)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--rectangle", raw,
+                ])
+            }
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--rectangle-color and --rectangle-size require --rectangle.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--rectangle-size", "7",
             ])
         }
     }
@@ -1438,6 +1490,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--line", "0.1,0.8,0.9,0.8",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--rectangle", "0.1,0.2,0.9,0.8",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -1982,6 +2042,31 @@ struct CLITests {
                 != Data(contentsOf: URL(fileURLWithPath: lineOutput)))
         #expect(lineImage.width == plainImage.width)
         #expect(lineImage.height == plainImage.height)
+    }
+
+    @Test func rectangleChangesPixelsWithoutChangingCanvasSize() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let rectangleOutput = directory.appendingPathComponent("rectangle.png").path
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", rectangleOutput, "--scale", "1",
+                "--rectangle", "0.12,0.3,0.88,0.78", "--rectangle-color", "#FB7185",
+                "--rectangle-size", "9",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let rectangleImage = try decodePNG(at: rectangleOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: rectangleOutput)))
+        #expect(rectangleImage.width == plainImage.width)
+        #expect(rectangleImage.height == plainImage.height)
     }
 
     @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {
