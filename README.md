@@ -360,6 +360,7 @@ vitrine render snippet.py --out card.png --theme dracula --preset opengraph
 vitrine render notes.go   --out clear.png --transparent --scale 3
 vitrine render server.go  --out night.png --background night
 vitrine render query.sql  --out solid.png --background-color '#1E293B'
+vitrine render payload.json --out payload.png --format-code --text-sidecar
 vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatures \
   --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
@@ -396,7 +397,7 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
 `--transparent`, `--background <id>`, `--background-color <hex>`, style controls
-(`--font-size`, `--padding`, `--wrap-columns`,
+(`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
 `--redact-secrets`, `--focus-lines`, `--no-focus-lines`, `--diff-bands`,
@@ -407,6 +408,9 @@ individual choices. For single-file `render`, a known
 `--format` is omitted; if both are present, they must agree so scripts never write
 mislabeled artifacts. With `--stdin`, `--stdin-name <name>` supplies a filename hint
 for extension-based language inference and default metadata without reading that file.
+`--format-code` uses Vitrine's dependency-free, language-aware indentation tidy before
+rendering; the formatted source is also used by sidecars and secret scanning so every
+artifact describes the same visible code.
 `--no-overwrite` (alias `--no-clobber`) refuses to replace
 existing image or sidecar outputs; in `batch`, existing targets are reported as
 skipped so the remaining new cards can still be produced. `--text-sidecar`,
