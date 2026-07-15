@@ -418,10 +418,10 @@ loading files. Add `--fail-on-empty` when CI should fail if those filters leave 
 renderable inputs, `--fail-on-skipped` when CI should fail if any unreadable or non-text
 file was skipped, and `--skipped-report <json>` to write a parseable skipped-files
 artifact. `--manifest <json>` writes a positive manifest of rendered outputs (or
-planned outputs during `--dry-run`) with relative paths and dimensions when available.
-When a batch contains same-stem files such as `Widget.swift` and `Widget.ts`, only
-that colliding group preserves the input extension (`Widget.swift.png`,
-`Widget.ts.png`) so one artifact never overwrites the other.
+planned outputs during `--dry-run`) with relative image paths, requested sidecar paths,
+and dimensions when available. When a batch contains same-stem files such as
+`Widget.swift` and `Widget.ts`, only that colliding group preserves the input extension
+(`Widget.swift.png`, `Widget.ts.png`) so one artifact never overwrites the other.
 `vitrine list <all|themes|languages|presets|fonts|formats|profiles> [--json]` prints
 the local catalog ids accepted by those flags so scripts can discover them without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.
