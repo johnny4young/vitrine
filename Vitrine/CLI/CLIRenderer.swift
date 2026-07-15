@@ -48,6 +48,12 @@ enum CLIRenderer {
         }
     }
 
+    /// Validated local watermark bytes plus the image decoded once for this invocation.
+    private struct PreparedWatermarkLogo {
+        var data: Data
+        var image: NSImage
+    }
+
     /// One successful (or dry-run planned) batch output in the optional manifest.
     private struct BatchManifestEntry: Encodable, Equatable {
         /// Slash-separated input path relative to the batch input folder.
@@ -108,6 +114,7 @@ enum CLIRenderer {
     ) throws -> String {
         let background = try prepareBackground(options)
         defer { background.removeTemporaryFiles() }
+        let watermarkLogo = try prepareWatermarkLogo(options)
 
         switch options.inputKind {
         case .code:
@@ -115,15 +122,36 @@ enum CLIRenderer {
             // An explicit `--language` overrides the inferred one; otherwise the loader's
             // extension/content inference wins, exactly as the editor does (CS-027/028).
             let language = options.language ?? loaded.language
-            let config = options.makeConfig(
+            var config = options.makeConfig(
                 code: loaded.text, language: language,
-                backgroundImageReference: background.reference)
+                backgroundImageReference: background.reference,
+                watermarkLogoData: watermarkLogo?.data)
+            config.watermark?.logoImage = watermarkLogo?.image
             return try render(
                 config, options: options, backgroundStore: background.store,
                 foregroundStore: .foregroundContainer)
         case .image:
-            return try renderImageInput(options, background: background)
+            return try renderImageInput(
+                options, background: background, watermarkLogo: watermarkLogo)
         }
+    }
+
+    /// Loads and validates a local watermark logo once per invocation. Keeping the
+    /// bytes inline matches Brand Kit's self-contained render model and lets batch
+    /// outputs reuse the same decoded source without touching persistent app storage.
+    private static func prepareWatermarkLogo(_ options: CLIOptions) throws -> PreparedWatermarkLogo?
+    {
+        guard let path = options.watermarkLogoPath else { return nil }
+        let data: Data
+        do {
+            data = try Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe)
+        } catch {
+            throw CLIError.inputUnreadable(path: path)
+        }
+        guard let image = NSImage(data: data) else {
+            throw CLIError.inputNotImage(path: path)
+        }
+        return PreparedWatermarkLogo(data: data, image: image)
     }
 
     /// Imports a requested local background into an invocation-scoped store. The
@@ -167,7 +195,8 @@ enum CLIRenderer {
     /// side-effect free: unlike the editor, the CLI never adds automation inputs to the
     /// user's persistent foreground-image library.
     private static func renderImageInput(
-        _ options: CLIOptions, background: PreparedBackground
+        _ options: CLIOptions, background: PreparedBackground,
+        watermarkLogo: PreparedWatermarkLogo?
     ) throws -> String {
         let sourceURL = URL(fileURLWithPath: options.inputPath)
         let data: Data
@@ -191,7 +220,9 @@ enum CLIRenderer {
         }
 
         var config = options.makeConfig(
-            code: "", language: .swift, backgroundImageReference: background.reference)
+            code: "", language: .swift, backgroundImageReference: background.reference,
+            watermarkLogoData: watermarkLogo?.data)
+        config.watermark?.logoImage = watermarkLogo?.image
         config.foregroundImage = reference
         return try render(
             config, options: options, backgroundStore: background.store, foregroundStore: store)
@@ -349,6 +380,7 @@ enum CLIRenderer {
     ) throws -> String {
         let background = try prepareBackground(options)
         defer { background.removeTemporaryFiles() }
+        let watermarkLogo = try prepareWatermarkLogo(options)
 
         let inputDirectory = URL(fileURLWithPath: options.inputPath)
         let outputDirectory = URL(fileURLWithPath: options.outputPath)
@@ -419,9 +451,11 @@ enum CLIRenderer {
                 continue
             }
 
-            let config = options.makeConfig(
+            var config = options.makeConfig(
                 code: loaded.text, language: language,
-                backgroundImageReference: background.reference)
+                backgroundImageReference: background.reference,
+                watermarkLogoData: watermarkLogo?.data)
+            config.watermark?.logoImage = watermarkLogo?.image
             do {
                 try FileManager.default.createDirectory(
                     at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)

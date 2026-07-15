@@ -82,6 +82,7 @@ struct CLITests {
         #expect(options.backgroundImageBlur == nil)
         #expect(options.backgroundImageDimming == nil)
         #expect(options.watermarkText == nil)
+        #expect(options.watermarkLogoPath == nil)
         #expect(options.watermarkColor == nil)
         #expect(options.watermarkPosition == nil)
         #expect(options.watermarkFreePosition == nil)
@@ -386,6 +387,23 @@ struct CLITests {
         #expect(watermark.placement == .topLeading)
     }
 
+    @Test func logoOnlyWatermarkBuildsTheRenderCoreWatermark() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png",
+            "--watermark-logo", "brand.png", "--watermark-position", "bottom-left",
+        ])
+        let logoData = Data([0x01, 0x02, 0x03])
+
+        #expect(options.watermarkLogoPath == "brand.png")
+        let watermark = try #require(
+            options.makeConfig(
+                code: "print(\"ship\")", language: .swift, watermarkLogoData: logoData
+            ).watermark)
+        #expect(watermark.text.isEmpty)
+        #expect(watermark.logoImageData == logoData)
+        #expect(watermark.placement == .bottomLeading)
+    }
+
     @Test func everyWatermarkCornerMapsToTheExpectedModelPlacement() throws {
         let expected: [(String, Watermark.Placement)] = [
             ("bottom-right", .bottomTrailing),
@@ -457,7 +475,7 @@ struct CLITests {
         }
         #expect(
             throws: CLIError.incompatibleOptions(
-                "--watermark-x and --watermark-y require --watermark.")
+                "--watermark-x and --watermark-y require --watermark or --watermark-logo.")
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--watermark-x", "0.2",
@@ -466,7 +484,7 @@ struct CLITests {
         }
     }
 
-    @Test func watermarkModifiersRequireVisibleText() {
+    @Test func watermarkModifiersRequireCompatibleContent() {
         #expect(throws: CLIError.invalidValue(flag: "--watermark", value: "   ")) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--watermark", "   ",
@@ -474,7 +492,7 @@ struct CLITests {
         }
         #expect(
             throws: CLIError.incompatibleOptions(
-                "--watermark-color and --watermark-position require --watermark.")
+                "--watermark-color requires --watermark text.")
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--watermark-color", "#FFF",
@@ -482,10 +500,19 @@ struct CLITests {
         }
         #expect(
             throws: CLIError.incompatibleOptions(
-                "--watermark-color and --watermark-position require --watermark.")
+                "--watermark-position requires --watermark or --watermark-logo.")
         ) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--watermark-position", "top-right",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--watermark-color requires --watermark text.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark-logo", "brand.png",
+                "--watermark-color", "#FFF",
             ])
         }
     }
@@ -1129,6 +1156,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--background-image", "photo.png",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--watermark-logo", "brand.png",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -1518,6 +1553,60 @@ struct CLITests {
         #expect(markedData != plainData)
         #expect(markedImage.width == plainImage.width)
         #expect(markedImage.height == plainImage.height)
+    }
+
+    @Test func localWatermarkLogoChangesPixelsWithoutChangingItsSource() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let logo = directory.appendingPathComponent("brand.png")
+        try writeFixtureImage(to: logo, size: CGSize(width: 80, height: 40))
+        let originalLogo = try Data(contentsOf: logo)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let markedOutput = directory.appendingPathComponent("logo-marked.png").path
+
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", markedOutput, "--scale", "1",
+                "--watermark-logo", logo.path, "--watermark-position", "top-left",
+            ]))
+
+        let plainImage = try decodePNG(at: plainOutput)
+        let markedImage = try decodePNG(at: markedOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: plainOutput))
+                != Data(contentsOf: URL(fileURLWithPath: markedOutput)))
+        #expect(markedImage.width == plainImage.width)
+        #expect(markedImage.height == plainImage.height)
+        #expect(try Data(contentsOf: logo) == originalLogo)
+    }
+
+    @Test func localWatermarkLogoReportsMissingAndInvalidImages() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let output = directory.appendingPathComponent("out.png").path
+        let missing = directory.appendingPathComponent("missing.png").path
+        let invalid = directory.appendingPathComponent("invalid.png")
+        try Data("not an image".utf8).write(to: invalid)
+
+        let missingOptions = try CLIArguments.parse([
+            "render", input, "--out", output, "--watermark-logo", missing,
+        ])
+        #expect(throws: CLIError.inputUnreadable(path: missing)) {
+            try CLIRenderer.run(missingOptions)
+        }
+        let invalidOptions = try CLIArguments.parse([
+            "render", input, "--out", output, "--watermark-logo", invalid.path,
+        ])
+        #expect(throws: CLIError.inputNotImage(path: invalid.path)) {
+            try CLIRenderer.run(invalidOptions)
+        }
+        #expect(!FileManager.default.fileExists(atPath: output))
     }
 
     @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {

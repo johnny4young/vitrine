@@ -171,6 +171,7 @@ enum CLIArguments {
         var customGradientColors: [RGBAColor]?
         var customGradientAngle: Double?
         var watermarkText: String?
+        var watermarkLogoPath: String?
         var watermarkColor: RGBAColor?
         var watermarkPosition: CLIOptions.WatermarkPosition?
         var watermarkX: Double?
@@ -282,6 +283,8 @@ enum CLIArguments {
                     try value(for: token), flag: token)
             case "--watermark":
                 watermarkText = try resolveWatermarkText(try value(for: token))
+            case "--watermark-logo":
+                watermarkLogoPath = try value(for: token)
             case "--watermark-color":
                 watermarkColor = try resolveWatermarkColor(try value(for: token))
             case "--watermark-position":
@@ -452,13 +455,18 @@ enum CLIArguments {
             background = .customGradient(
                 makeCustomGradient(colors: customGradientColors, angle: customGradientAngle))
         }
-        if watermarkText == nil, watermarkColor != nil || watermarkPosition != nil {
+        let watermarkContentRequested = watermarkText != nil || watermarkLogoPath != nil
+        if watermarkText == nil, watermarkColor != nil {
             throw CLIError.incompatibleOptions(
-                "--watermark-color and --watermark-position require --watermark.")
+                "--watermark-color requires --watermark text.")
         }
-        if watermarkText == nil, watermarkX != nil || watermarkY != nil {
+        if !watermarkContentRequested, watermarkPosition != nil {
             throw CLIError.incompatibleOptions(
-                "--watermark-x and --watermark-y require --watermark.")
+                "--watermark-position requires --watermark or --watermark-logo.")
+        }
+        if !watermarkContentRequested, watermarkX != nil || watermarkY != nil {
+            throw CLIError.incompatibleOptions(
+                "--watermark-x and --watermark-y require --watermark or --watermark-logo.")
         }
         if (watermarkX == nil) != (watermarkY == nil) {
             throw CLIError.incompatibleOptions(
@@ -520,7 +528,7 @@ enum CLIArguments {
             || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
-            || watermarkText != nil
+            || watermarkContentRequested
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -663,6 +671,7 @@ enum CLIArguments {
             backgroundImageBlur: backgroundImageBlur,
             backgroundImageDimming: backgroundImageDimming,
             watermarkText: watermarkText,
+            watermarkLogoPath: watermarkLogoPath,
             watermarkColor: watermarkColor,
             watermarkPosition: watermarkPosition,
             watermarkFreePosition: watermarkFreePosition,
@@ -1152,12 +1161,15 @@ nonisolated enum CLIUsage {
                                  Blur radius for --background-image in points.
           --background-dimming <0...1>
                                  Dark overlay strength for --background-image.
-          --watermark <text>     Add a text-only watermark to the rendered image.
+          --watermark <text>     Add text to the rendered watermark badge.
+          --watermark-logo <path>
+                                 Add a local image to the watermark badge.
           --watermark-color <hex>
-                                 Watermark RGB/RGBA tint; requires --watermark.
+                                 Watermark text tint; requires --watermark.
           --watermark-position <corner|free>
                                  Watermark placement: bottom-right, bottom-left,
-                                 top-right, top-left, or free; requires --watermark.
+                                 top-right, top-left, or free; requires watermark
+                                 text or a logo.
           --watermark-x <0...1>  Normalized horizontal center for free placement.
           --watermark-y <0...1>  Normalized vertical center for free placement; x/y
                                  must be provided together with position free.

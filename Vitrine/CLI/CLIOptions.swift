@@ -113,9 +113,12 @@ struct CLIOptions: Equatable {
     var backgroundImageBlur: Double?
     /// Optional local image-background dark overlay in the normalized 0...1 range.
     var backgroundImageDimming: Double?
-    /// Optional text-only watermark composited by the same overlay as the PRO Brand Kit.
-    /// Nil preserves the unwatermarked CLI default.
+    /// Optional watermark text composited by the same overlay as the PRO Brand Kit.
+    /// Nil preserves a logo-only watermark or the unwatermarked CLI default.
     var watermarkText: String?
+    /// Optional local logo path. The renderer validates it once per invocation, then
+    /// carries the bytes inline through the shared render-core watermark model.
+    var watermarkLogoPath: String?
     /// Optional fixed-sRGB tint for `watermarkText`; nil uses the overlay's legible white.
     var watermarkColor: RGBAColor?
     /// Optional placement for `watermarkText`; nil uses the Brand Kit's bottom-right default.
@@ -318,7 +321,8 @@ struct CLIOptions: Equatable {
     /// `code` and `language` are set from the input file and never altered by a
     /// preset, exactly as in the GUI (a preset is presentation/output only, CS-020).
     func makeConfig(
-        code: String, language: Language, backgroundImageReference: ImageReference? = nil
+        code: String, language: Language, backgroundImageReference: ImageReference? = nil,
+        watermarkLogoData: Data? = nil
     ) -> SnapshotConfig {
         var config = SnapshotConfig().styled(
             presetID: presetID, themeID: themeID, transparent: transparent)
@@ -333,10 +337,10 @@ struct CLIOptions: Equatable {
         }
         config.code = formatCode ? CodeFormatter.tidy(code, language: language) : code
         config.language = language
-        if let watermarkText {
+        if watermarkText != nil || watermarkLogoData != nil {
             var watermark = Watermark(
-                text: watermarkText,
-                logoImageData: nil,
+                text: watermarkText ?? "",
+                logoImageData: watermarkLogoData,
                 tint: watermarkColor,
                 placement: watermarkPosition?.modelValue ?? .bottomTrailing)
             if let watermarkFreePosition {

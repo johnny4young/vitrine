@@ -367,6 +367,8 @@ vitrine render app.swift --out photo.png --background-image landscape.png \
 vitrine render payload.json --out payload.png --format-code --text-sidecar
 vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
   --watermark-color '#7DD3FC' --watermark-position top-left
+vitrine render release.swift --out logo.png --watermark-logo brand.png \
+  --watermark-position bottom-left
 vitrine render release.swift --out centered.png --watermark '@jane · vitrine' \
   --watermark-position free --watermark-x 0.5 --watermark-y 0.18
 vitrine render --image dashboard.png --out showcase.png --background night --padding 40
@@ -418,7 +420,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--background-fit <fill|fit>`, `--background-blur <0...40>`,
 `--background-dimming <0...1>`,
 `--frame <id>`, `--frame-appearance <auto|light|dark>`,
-`--watermark <text>`, `--watermark-color <hex>`, `--watermark-position <corner|free>`,
+`--watermark <text>`, `--watermark-logo <path>`, `--watermark-color <hex>`,
+`--watermark-position <corner|free>`,
 `--watermark-x <0...1>`, `--watermark-y <0...1>`, style controls
 (`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
 `--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
@@ -446,10 +449,13 @@ Use `--background-fit` to choose edge-to-edge cropping or whole-image fitting,
 `--background-blur` for a 0–40 point local blur, and `--background-dimming` for a
 normalized dark overlay. These modifiers require `--background-image`; their bounds
 match the editor and invalid values fail before any output is written.
-`--watermark <text>` adds a deterministic text badge through the same render-core
-overlay as Brand Kit. `--watermark-color <hex>` changes its tint and
+`--watermark <text>` and `--watermark-logo <path>` add text, a local image, or both
+to a deterministic badge through the same render-core overlay as Brand Kit. The logo
+is loaded once per invocation and its source file remains unchanged.
+`--watermark-color <hex>` changes the text tint and
 `--watermark-position <corner|free>` selects one of the ids printed by
-`vitrine list watermark-positions`; all modifiers require visible watermark text.
+`vitrine list watermark-positions`; placement requires watermark text or a logo, while
+color requires visible text.
 The `free` placement additionally requires both normalized coordinates through
 `--watermark-x` and `--watermark-y`, making scripted placement deterministic while the
 four corner placements keep their existing behavior.
