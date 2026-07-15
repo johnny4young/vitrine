@@ -142,6 +142,14 @@ struct CLIOptions: Equatable {
     var counterColor: RGBAColor?
     /// Optional counter size weight in the editor's supported 2...28 range.
     var counterSize: Double?
+    /// Optional normalized tail for a straight arrow annotation.
+    var arrowStart: CGPoint?
+    /// Optional normalized head for `arrowStart`; the parser always supplies both.
+    var arrowEnd: CGPoint?
+    /// Optional arrow stroke color; nil uses the editor's annotation red.
+    var arrowColor: RGBAColor?
+    /// Optional arrow stroke weight in the editor's supported 2...28 range.
+    var arrowSize: Double?
     /// Optional frame around `--image` content. Nil preserves the model's plain-image
     /// default; stable CLI ids map onto the app's existing frame enum.
     var imageFrame: ImageFrameOption?
@@ -383,6 +391,13 @@ struct CLIOptions: Equatable {
                     color: counterColor ?? Annotation.defaultColor,
                     thickness: counterSize ?? Annotation.defaultThickness,
                     number: counterNumber))
+        }
+        if let arrowStart, let arrowEnd {
+            config.annotations.append(
+                Annotation(
+                    kind: .arrow, start: arrowStart, end: arrowEnd,
+                    color: arrowColor ?? Annotation.defaultColor,
+                    thickness: arrowSize ?? Annotation.defaultThickness))
         }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }

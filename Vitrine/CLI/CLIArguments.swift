@@ -186,6 +186,10 @@ enum CLIArguments {
         var counterY: Double?
         var counterColor: RGBAColor?
         var counterSize: Double?
+        var arrowStart: CGPoint?
+        var arrowEnd: CGPoint?
+        var arrowColor: RGBAColor?
+        var arrowSize: Double?
         var imageFrame: CLIOptions.ImageFrameOption?
         var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
@@ -323,6 +327,14 @@ enum CLIArguments {
                 counterColor = try resolveHexColor(try value(for: token), flag: token)
             case "--counter-size":
                 counterSize = try resolveAnnotationSize(try value(for: token), flag: token)
+            case "--arrow":
+                let segment = try resolveArrowSegment(try value(for: token))
+                arrowStart = segment.start
+                arrowEnd = segment.end
+            case "--arrow-color":
+                arrowColor = try resolveHexColor(try value(for: token), flag: token)
+            case "--arrow-size":
+                arrowSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--frame":
                 imageFrame = try resolveImageFrame(try value(for: token))
             case "--frame-appearance":
@@ -530,6 +542,10 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--counter-x and --counter-y must be provided together.")
         }
+        if arrowStart == nil, arrowColor != nil || arrowSize != nil {
+            throw CLIError.incompatibleOptions(
+                "--arrow-color and --arrow-size require --arrow.")
+        }
         if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
             throw CLIError.incompatibleOptions(
                 "--frame and --frame-appearance require --image.")
@@ -581,6 +597,7 @@ enum CLIArguments {
             || watermarkContentRequested
             || calloutText != nil
             || counterNumber != nil
+            || arrowStart != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -747,6 +764,10 @@ enum CLIArguments {
             counterPosition: counterPosition,
             counterColor: counterColor,
             counterSize: counterSize,
+            arrowStart: arrowStart,
+            arrowEnd: arrowEnd,
+            arrowColor: arrowColor,
+            arrowSize: arrowSize,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
@@ -970,6 +991,31 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: "--counter", value: raw)
         }
         return number
+    }
+
+    /// Parses one normalized tail-to-head segment and rejects invisible zero-length arrows.
+    private static func resolveArrowSegment(_ raw: String) throws -> (start: CGPoint, end: CGPoint)
+    {
+        let components = raw.split(separator: ",", omittingEmptySubsequences: false)
+        guard components.count == 4 else {
+            throw CLIError.invalidValue(flag: "--arrow", value: raw)
+        }
+        let values = components.compactMap { component -> Double? in
+            let trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let value = Double(trimmed), value.isFinite, (0...1).contains(value) else {
+                return nil
+            }
+            return value
+        }
+        guard values.count == 4 else {
+            throw CLIError.invalidValue(flag: "--arrow", value: raw)
+        }
+        let start = CGPoint(x: values[0], y: values[1])
+        let end = CGPoint(x: values[2], y: values[3])
+        guard start != end else {
+            throw CLIError.invalidValue(flag: "--arrow", value: raw)
+        }
+        return (start, end)
     }
 
     /// Resolves a stable image-frame id advertised by `vitrine list frames`.
@@ -1300,6 +1346,9 @@ nonisolated enum CLIUsage {
           --counter-color <hex>  Counter RGB/RGBA fill color; requires --counter.
           --counter-size <2...28>
                                  Counter size weight; requires --counter.
+          --arrow <x1,y1,x2,y2> Add an arrow from normalized tail to head coordinates.
+          --arrow-color <hex>   Arrow RGB/RGBA stroke color; requires --arrow.
+          --arrow-size <2...28> Arrow stroke weight; requires --arrow.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.
