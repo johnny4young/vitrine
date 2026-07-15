@@ -165,6 +165,9 @@ enum CLIArguments {
         var showLineNumbers: Bool?
         var showChrome: Bool?
         var showShadow: Bool?
+        var highlightedLineRanges: [ClosedRange<Int>]?
+        var focusHighlightedLines: Bool?
+        var diffDecorations: Bool?
         var recursiveBatch = false
         var failOnSkipped = false
         var failOnEmpty = false
@@ -256,6 +259,16 @@ enum CLIArguments {
                 showShadow = true
             case "--no-shadow":
                 showShadow = false
+            case "--highlight-lines":
+                highlightedLineRanges = try resolveLineRanges(try value(for: token), flag: token)
+            case "--focus-lines":
+                focusHighlightedLines = true
+            case "--no-focus-lines":
+                focusHighlightedLines = false
+            case "--diff-bands":
+                diffDecorations = true
+            case "--no-diff-bands":
+                diffDecorations = false
             case "--recursive":
                 recursiveBatch = true
             case "--fail-on-skipped":
@@ -352,6 +365,8 @@ enum CLIArguments {
             fontName != nil || fontLigatures != nil || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
+            || highlightedLineRanges != nil || focusHighlightedLines != nil
+            || diffDecorations != nil
 
         // `--edit` hands the source to the running editor instead of rendering, so it
         // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
@@ -457,6 +472,9 @@ enum CLIArguments {
             showLineNumbers: showLineNumbers,
             showChrome: showChrome,
             showShadow: showShadow,
+            highlightedLineRanges: highlightedLineRanges,
+            focusHighlightedLines: focusHighlightedLines,
+            diffDecorations: diffDecorations,
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             failOnEmpty: failOnEmpty,
@@ -547,6 +565,54 @@ enum CLIArguments {
     private static func resolveShadowRadius(_ raw: String, flag: String) throws -> Double {
         guard let value = Double(raw), SettingsDefaults.shadowRadiusRange.contains(value) else {
             throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Parses a strict, 1-based line range list (for example `3,7-9,12`). Unlike the
+    /// editor's forgiving text field, the CLI rejects malformed fragments so automation
+    /// cannot silently render the wrong emphasized rows.
+    private static func resolveLineRanges(
+        _ raw: String, flag: String
+    ) throws -> [ClosedRange<Int>] {
+        let fragments = raw.split(
+            omittingEmptySubsequences: false,
+            whereSeparator: { $0 == "," || $0 == "\n" })
+        guard !fragments.isEmpty else { throw CLIError.invalidValue(flag: flag, value: raw) }
+
+        var ranges: [ClosedRange<Int>] = []
+        for fragment in fragments {
+            let trimmed = fragment.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                throw CLIError.invalidValue(flag: flag, value: raw)
+            }
+
+            let bounds = trimmed.split(separator: "-", omittingEmptySubsequences: false)
+            switch bounds.count {
+            case 1:
+                guard let line = positiveLine(bounds[0]) else {
+                    throw CLIError.invalidValue(flag: flag, value: raw)
+                }
+                ranges.append(line...line)
+            case 2:
+                guard let low = positiveLine(bounds[0]), let high = positiveLine(bounds[1]) else {
+                    throw CLIError.invalidValue(flag: flag, value: raw)
+                }
+                ranges.append(min(low, high)...max(low, high))
+            default:
+                throw CLIError.invalidValue(flag: flag, value: raw)
+            }
+        }
+
+        return LineHighlight.normalize(ranges)
+    }
+
+    private static func positiveLine(_ text: Substring) -> Int? {
+        guard
+            let value = Int(text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)),
+            value >= 1
+        else {
+            return nil
         }
         return value
     }
@@ -732,6 +798,13 @@ nonisolated enum CLIUsage {
           --no-line-numbers      Hide the line-number gutter.
           --chrome / --no-chrome Show or hide the rendered window chrome.
           --shadow / --no-shadow Show or hide the rendered drop shadow.
+          --highlight-lines <spec>
+                                 Highlight 1-based lines/ranges (for example
+                                 3,7-9,12).
+          --focus-lines / --no-focus-lines
+                                 Dim or undim non-highlighted rows.
+          --diff-bands / --no-diff-bands
+                                 Show or hide GitHub-style diff line bands.
           --recursive            Batch only: include nested folders and preserve
                                  relative output paths.
           --fail-on-skipped      Batch only: exit non-zero if any file is skipped.

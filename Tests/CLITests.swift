@@ -93,6 +93,10 @@ struct CLITests {
         #expect(config.background == appDefault.background)
         #expect(config.showChrome == appDefault.showChrome)
         #expect(config.showShadow == appDefault.showShadow)
+        #expect(config.showLineNumbers == appDefault.showLineNumbers)
+        #expect(config.highlightedLineRanges == appDefault.highlightedLineRanges)
+        #expect(config.focusHighlightedLines == appDefault.focusHighlightedLines)
+        #expect(config.diffDecorations == appDefault.diffDecorations)
         // Only code and language come from the input.
         #expect(config.code == "let x = 1")
         #expect(config.language == .swift)
@@ -134,6 +138,9 @@ struct CLITests {
             "--line-numbers",
             "--no-chrome",
             "--no-shadow",
+            "--highlight-lines", "2, 4-6",
+            "--focus-lines",
+            "--diff-bands",
         ])
         #expect(options.inputPath == "snippet.py")
         #expect(options.outputPath == "image.png")
@@ -161,6 +168,9 @@ struct CLITests {
         #expect(options.showLineNumbers == true)
         #expect(options.showChrome == false)
         #expect(options.showShadow == false)
+        #expect(options.highlightedLineRanges == [2...2, 4...6])
+        #expect(options.focusHighlightedLines == true)
+        #expect(options.diffDecorations == true)
     }
 
     @Test func terminalWidthDefaultsToNilAndFlowsIntoTheConfig() throws {
@@ -200,6 +210,9 @@ struct CLITests {
         #expect(defaults.showLineNumbers == nil)
         #expect(defaults.showChrome == nil)
         #expect(defaults.showShadow == nil)
+        #expect(defaults.highlightedLineRanges == nil)
+        #expect(defaults.focusHighlightedLines == nil)
+        #expect(defaults.diffDecorations == nil)
 
         let options = try CLIArguments.parse([
             "render", "snippet.swift",
@@ -213,6 +226,9 @@ struct CLITests {
             "--line-numbers",
             "--no-chrome",
             "--no-shadow",
+            "--highlight-lines", "2, 4-6",
+            "--focus-lines",
+            "--diff-bands",
         ])
 
         let config = options.makeConfig(code: "print(\"styled\")", language: .swift)
@@ -225,12 +241,25 @@ struct CLITests {
         #expect(config.showLineNumbers)
         #expect(!config.showChrome)
         #expect(!config.showShadow)
+        #expect(config.highlightedLineRanges == [2...2, 4...6])
+        #expect(config.focusHighlightedLines)
+        #expect(config.diffDecorations)
 
         let ligaturesOff = try CLIArguments.parse([
             "render", "snippet.swift", "-o", "o.png", "--font-ligatures", "--no-font-ligatures",
         ])
         #expect(ligaturesOff.fontLigatures == false)
         #expect(!ligaturesOff.makeConfig(code: "", language: .swift).fontLigatures)
+
+        let lineEmphasisOff = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--focus-lines", "--no-focus-lines",
+            "--diff-bands", "--no-diff-bands",
+        ])
+        let lineEmphasisOffConfig = lineEmphasisOff.makeConfig(code: "", language: .swift)
+        #expect(lineEmphasisOff.focusHighlightedLines == false)
+        #expect(lineEmphasisOff.diffDecorations == false)
+        #expect(!lineEmphasisOffConfig.focusHighlightedLines)
+        #expect(!lineEmphasisOffConfig.diffDecorations)
     }
 
     @Test func metadataHeaderOptionsFlowIntoTheRenderedConfig() throws {
@@ -687,6 +716,21 @@ struct CLITests {
         #expect(throws: CLIError.invalidValue(flag: "--shadow-radius", value: "deep")) {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--shadow-radius", "deep",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--highlight-lines", value: "0")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--highlight-lines", "0",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--highlight-lines", value: "1, nope")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--highlight-lines", "1, nope",
+            ])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--highlight-lines", value: "1-2-3")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--highlight-lines", "1-2-3",
             ])
         }
         #expect(throws: CLIError.invalidValue(flag: "--format", value: "svg")) {
