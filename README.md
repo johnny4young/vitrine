@@ -360,7 +360,7 @@ vitrine render snippet.py --out card.png --theme dracula --preset opengraph
 vitrine render notes.go   --out clear.png --transparent --scale 3
 vitrine render long-line.swift --out wrapped.png --wrap-columns 80
 vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatures \
-  --font-size 12 --padding 24 --no-shadow
+  --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
 vitrine render snippet.swift --out card.png --sidecars all
 cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
@@ -390,8 +390,9 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
 `--transparent`, style controls (`--font-size`, `--padding`, `--wrap-columns`,
-`--line-numbers`, `--no-chrome`, `--no-shadow`), and the header controls
-(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`) override
+`--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
+`--no-shadow`), and the header controls (`--window-title`, `--filename`, `--title`,
+`--caption`, `--language-badge`) override
 individual choices. For single-file `render`, a known
 `--out` extension (`.png`, `.pdf`, or `.heic`) selects the matching format when
 `--format` is omitted; if both are present, they must agree so scripts never write
