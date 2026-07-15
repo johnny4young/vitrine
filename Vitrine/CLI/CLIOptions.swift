@@ -116,6 +116,9 @@ struct CLIOptions: Equatable {
     /// Optional highlighted line ranges, using the same 1-based inclusive model as the
     /// editor's line-highlighting control. Nil preserves the app/preset default.
     var highlightedLineRanges: [ClosedRange<Int>]?
+    /// Optional redacted line ranges, using the same 1-based inclusive model as the
+    /// editor's secret-redaction control. Nil preserves the app/preset default.
+    var redactedLineRanges: [ClosedRange<Int>]?
     /// Optional focus-mode override. Nil preserves the app/preset default.
     var focusHighlightedLines: Bool?
     /// Optional GitHub-style diff-band override. Nil preserves the app/preset default.
@@ -212,6 +215,7 @@ struct CLIOptions: Equatable {
         if let showChrome { config.showChrome = showChrome }
         if let showShadow { config.showShadow = showShadow }
         if let highlightedLineRanges { config.highlightedLineRanges = highlightedLineRanges }
+        if let redactedLineRanges { config.redactedLineRanges = redactedLineRanges }
         if let focusHighlightedLines { config.focusHighlightedLines = focusHighlightedLines }
         if let diffDecorations { config.diffDecorations = diffDecorations }
         config.metadata = SnapshotMetadata(
