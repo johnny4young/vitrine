@@ -81,6 +81,9 @@ struct CLIOptions: Equatable {
     /// "Wrap long lines" control and stays nil by default so bare renders still
     /// size to content.
     var wrapColumns: Int?
+    /// Tidy the loaded source with the same dependency-free formatter as the editor
+    /// before rendering. Off by default so a bare CLI render preserves input verbatim.
+    var formatCode: Bool = false
     /// The output format. Defaults to PNG; PDF is the supported vector format.
     var format: ExportFormat = .png
     /// The ICC color profile for PNG export (CS-024). PDF ignores this.
@@ -207,7 +210,7 @@ struct CLIOptions: Equatable {
         var config = SnapshotConfig().styled(
             presetID: presetID, themeID: themeID, transparent: transparent)
         if let background { config.background = background }
-        config.code = code
+        config.code = formatCode ? CodeFormatter.tidy(code, language: language) : code
         config.language = language
         config.terminalColumns = terminalColumns
         if let fontName { config.fontName = fontName }

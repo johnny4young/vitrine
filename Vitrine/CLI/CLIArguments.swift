@@ -152,6 +152,7 @@ enum CLIArguments {
         var shadowRadius: Double?
         var terminalColumns: Int?
         var wrapColumns: Int?
+        var formatCode = false
         var explicitFormat: ExportFormat?
         var profile: ColorProfile = .fallback
         var transparent = false
@@ -232,6 +233,8 @@ enum CLIArguments {
                 terminalColumns = try resolveColumns(try value(for: token), flag: token)
             case "--wrap-columns", "--wrap":
                 wrapColumns = try resolveWrapColumns(try value(for: token), flag: token)
+            case "--format-code", "--tidy":
+                formatCode = true
             case "--format":
                 explicitFormat = try resolveFormat(try value(for: token))
             case "--profile":
@@ -388,6 +391,7 @@ enum CLIArguments {
             background != nil || transparent || fontName != nil || fontLigatures != nil
             || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
+            || formatCode
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -483,6 +487,7 @@ enum CLIArguments {
             shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,
             wrapColumns: wrapColumns,
+            formatCode: formatCode,
             format: resolvedFormat,
             profile: profile,
             transparent: transparent,
@@ -831,6 +836,8 @@ nonisolated enum CLIUsage {
                                  instead of inferring the width (1-1000). Only
                                  affects --language terminal; set by `vgrab -w`.
           --wrap-columns <n>     Soft-wrap long code lines at n columns (40-200).
+          --format-code          Tidy indentation locally before rendering
+                                 (--tidy is also accepted).
           --format <png|pdf|heic>  Output format. Defaults to png; pdf is the vector
                                  option, heic the compact raster one.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.

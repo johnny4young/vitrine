@@ -75,6 +75,7 @@ struct CLITests {
         #expect(options.profile == .sRGB)
         #expect(options.transparent == false)
         #expect(options.background == nil)
+        #expect(!options.formatCode)
         #expect(options.jsonOutput == false)
     }
 
@@ -128,6 +129,7 @@ struct CLITests {
             "--shadow-radius", "24",
             "--terminal-width", "100",
             "--wrap-columns", "88",
+            "--format-code",
             "--format", "png",
             "--profile", "p3",
             "--transparent",
@@ -160,6 +162,7 @@ struct CLITests {
         #expect(options.shadowRadius == 24)
         #expect(options.terminalColumns == 100)
         #expect(options.wrapColumns == 88)
+        #expect(options.formatCode)
         #expect(options.profile == .displayP3)
         #expect(options.transparent)
         #expect(options.noOverwrite)
@@ -219,6 +222,45 @@ struct CLITests {
         ])
         #expect(wrapped.wrapColumns == 96)
         #expect(wrapped.makeConfig(code: "", language: .swift).wrapColumns == 96)
+    }
+
+    @Test func formatCodeUsesTheEditorsLocalFormatter() throws {
+        let unchanged = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png",
+        ])
+        let source = "struct Card {\nlet title = \"Vitrine\"\n}"
+        #expect(!unchanged.formatCode)
+        #expect(unchanged.makeConfig(code: source, language: .swift).code == source)
+
+        let formatted = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--format-code",
+        ])
+        #expect(formatted.formatCode)
+        #expect(
+            formatted.makeConfig(code: source, language: .swift).code
+                == "struct Card {\n  let title = \"Vitrine\"\n}")
+
+        let alias = try CLIArguments.parse([
+            "render", "snippet.json", "-o", "o.png", "--tidy",
+        ])
+        #expect(alias.formatCode)
+        #expect(
+            alias.makeConfig(code: #"{"name":"Vitrine"}"#, language: .json).code
+                == "{\n  \"name\": \"Vitrine\"\n}")
+    }
+
+    @Test func formatCodeRunsBeforeSecretScanningAndSidecars() throws {
+        let token = "sk-" + String(repeating: "a", count: 24)
+        let source = "struct Secrets {\nlet token = \"\(token)\"\n}"
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png", "--format-code", "--redact-secrets",
+        ])
+
+        let config = options.makeConfig(code: source, language: .swift)
+        #expect(config.redactedLineRanges == [2...2])
+        #expect(config.code.contains("  let token"))
+        #expect(!config.sidecarText.contains(token))
+        #expect(config.sidecarText.contains(SnapshotConfig.redactedLinePlaceholder))
     }
 
     @Test func styleOptionsDefaultToNilAndFlowIntoTheConfig() throws {

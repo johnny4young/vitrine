@@ -225,7 +225,8 @@ struct CLIAutomationTests {
                 "batch", "in-dir", "--out", "out-dir", "--quiet", "--theme", "dracula",
                 "--font", "Hack", "--font-ligatures", "--background", "night",
                 "--corner-radius", "14",
-                "--shadow-radius", "22", "--highlight-lines", "3, 7-9", "--focus-lines",
+                "--shadow-radius", "22", "--format-code", "--highlight-lines", "3, 7-9",
+                "--focus-lines",
                 "--redact-lines", "4-5", "--redact-secrets", "--diff-bands", "--recursive",
                 "--fail-on-skipped", "--skipped-report", "skipped.json", "--dry-run", "--manifest",
                 "manifest.json", "--include-ext", ".swift,md", "--exclude-ext", "tmp",
@@ -248,6 +249,7 @@ struct CLIAutomationTests {
         #expect(options.background == .gradient(.night))
         #expect(options.cornerRadius == 14)
         #expect(options.shadowRadius == 22)
+        #expect(options.formatCode)
         #expect(options.highlightedLineRanges == [3...3, 7...9])
         #expect(options.redactedLineRanges == [4...5])
         #expect(options.redactSecrets)
@@ -370,6 +372,31 @@ struct CLIAutomationTests {
             FileManager.default.fileExists(atPath: output.appendingPathComponent("A.png").path))
         #expect(
             FileManager.default.fileExists(atPath: output.appendingPathComponent("b.png").path))
+    }
+
+    @Test func batchFormattingKeepsRenderedAndCopyableSourceAligned() throws {
+        let input = tempDirectory()
+        let output = tempDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: input)
+            try? FileManager.default.removeItem(at: output)
+        }
+        let source = "struct Card {\nlet title = \"Vitrine\"\n}"
+        try source.write(
+            to: input.appendingPathComponent("Card.swift"), atomically: true, encoding: .utf8)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--format-code", "--text-sidecar",
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Rendered 1 image"))
+        #expect(
+            FileManager.default.fileExists(atPath: output.appendingPathComponent("Card.png").path))
+        #expect(
+            try String(
+                contentsOf: output.appendingPathComponent("Card.txt"), encoding: .utf8)
+                == "struct Card {\n  let title = \"Vitrine\"\n}")
     }
 
     @Test func batchCanRenderNestedFoldersRecursively() throws {
