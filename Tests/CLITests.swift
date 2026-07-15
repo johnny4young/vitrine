@@ -80,6 +80,7 @@ struct CLITests {
         #expect(options.watermarkText == nil)
         #expect(options.watermarkColor == nil)
         #expect(options.watermarkPosition == nil)
+        #expect(options.watermarkFreePosition == nil)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -396,6 +397,68 @@ struct CLITests {
             ])
             #expect(
                 options.makeConfig(code: "x", language: .swift).watermark?.placement == placement)
+        }
+    }
+
+    @Test func freeWatermarkPositionMapsNormalizedCoordinates() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png",
+            "--watermark", "Vitrine", "--watermark-position", "free",
+            "--watermark-x", "0.2", "--watermark-y", "0.75",
+        ])
+
+        #expect(options.watermarkPosition == .free)
+        #expect(options.watermarkFreePosition == CGPoint(x: 0.2, y: 0.75))
+        let watermark = try #require(
+            options.makeConfig(code: "print(\"ship\")", language: .swift).watermark)
+        #expect(watermark.placement == .free)
+        #expect(watermark.freePosition == CGPoint(x: 0.2, y: 0.75))
+    }
+
+    @Test func freeWatermarkPositionRejectsIncompleteOrInertCoordinates() {
+        #expect(throws: CLIError.invalidValue(flag: "--watermark-x", value: "1.1")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark", "Vitrine",
+                "--watermark-position", "free", "--watermark-x", "1.1",
+                "--watermark-y", "0.5",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--watermark-position free requires --watermark-x and --watermark-y.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark", "Vitrine",
+                "--watermark-position", "free",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--watermark-x and --watermark-y must be provided together.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark", "Vitrine",
+                "--watermark-position", "free", "--watermark-x", "0.5",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--watermark-x and --watermark-y require --watermark-position free.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark", "Vitrine",
+                "--watermark-position", "top-left", "--watermark-x", "0.2",
+                "--watermark-y", "0.2",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--watermark-x and --watermark-y require --watermark.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--watermark-x", "0.2",
+                "--watermark-y", "0.2",
+            ])
         }
     }
 

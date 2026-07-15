@@ -187,7 +187,7 @@ struct CLIAutomationTests {
         let watermarkPositionText = CLICatalog.output(for: .watermarkPositions, format: .text)
         #expect(
             watermarkPositionText
-                == "bottom-right\tBottom right\nbottom-left\tBottom left\ntop-right\tTop right\ntop-left\tTop left\n"
+                == "bottom-right\tBottom right\nbottom-left\tBottom left\ntop-right\tTop right\ntop-left\tTop left\nfree\tFree\n"
         )
 
         let frameText = CLICatalog.output(for: .frames, format: .text)
