@@ -33,6 +33,21 @@ enum CLIRenderer {
         var loaded: FileInputLoader.LoadedFile
     }
 
+    /// A local background imported for exactly one CLI invocation. The default store
+    /// preserves normal app rendering when no path was requested; an imported image
+    /// carries its temporary directory so the caller can remove it after every output
+    /// in a render or batch has finished.
+    private struct PreparedBackground {
+        var reference: ImageReference?
+        var store: BackgroundImageStore
+        var temporaryDirectory: URL?
+
+        func removeTemporaryFiles() {
+            guard let temporaryDirectory else { return }
+            try? FileManager.default.removeItem(at: temporaryDirectory)
+        }
+    }
+
     /// One successful (or dry-run planned) batch output in the optional manifest.
     private struct BatchManifestEntry: Encodable, Equatable {
         /// Slash-separated input path relative to the batch input folder.
@@ -91,24 +106,69 @@ enum CLIRenderer {
             try FileInputLoader.load(from: $0)
         }
     ) throws -> String {
+        let background = try prepareBackground(options)
+        defer { background.removeTemporaryFiles() }
+
         switch options.inputKind {
         case .code:
             let loaded = try loadInput(options, fileLoader: fileLoader)
             // An explicit `--language` overrides the inferred one; otherwise the loader's
             // extension/content inference wins, exactly as the editor does (CS-027/028).
             let language = options.language ?? loaded.language
-            let config = options.makeConfig(code: loaded.text, language: language)
-            return try render(config, options: options, foregroundStore: .foregroundContainer)
+            let config = options.makeConfig(
+                code: loaded.text, language: language,
+                backgroundImageReference: background.reference)
+            return try render(
+                config, options: options, backgroundStore: background.store,
+                foregroundStore: .foregroundContainer)
         case .image:
-            return try renderImageInput(options)
+            return try renderImageInput(options, background: background)
         }
+    }
+
+    /// Imports a requested local background into an invocation-scoped store. The
+    /// source is read-only and the copy is removed by the caller after rendering, so
+    /// CLI automation never changes the user's persistent background collection.
+    private static func prepareBackground(_ options: CLIOptions) throws -> PreparedBackground {
+        guard let path = options.backgroundImagePath else {
+            return PreparedBackground(reference: nil, store: .container, temporaryDirectory: nil)
+        }
+        let sourceURL = URL(fileURLWithPath: path)
+        let data: Data
+        do {
+            data = try Data(contentsOf: sourceURL)
+        } catch {
+            throw CLIError.inputUnreadable(path: path)
+        }
+
+        let directory = temporaryImageDirectory()
+        let store = BackgroundImageStore(directory: directory)
+        do {
+            let reference = try store.importImage(
+                data: data, preferredExtension: sourceURL.pathExtension)
+            return PreparedBackground(
+                reference: reference, store: store, temporaryDirectory: directory)
+        } catch BackgroundImageStore.ImportError.notAnImage {
+            try? FileManager.default.removeItem(at: directory)
+            throw CLIError.inputNotImage(path: path)
+        } catch {
+            try? FileManager.default.removeItem(at: directory)
+            throw CLIError.renderFailed
+        }
+    }
+
+    private static func temporaryImageDirectory() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent(
+            "VitrineCLI-\(UUID().uuidString)", isDirectory: true)
     }
 
     /// Imports one local image into an invocation-scoped store, renders it through the
     /// shared canvas, then removes the temporary copy. This keeps `--image` local and
     /// side-effect free: unlike the editor, the CLI never adds automation inputs to the
     /// user's persistent foreground-image library.
-    private static func renderImageInput(_ options: CLIOptions) throws -> String {
+    private static func renderImageInput(
+        _ options: CLIOptions, background: PreparedBackground
+    ) throws -> String {
         let sourceURL = URL(fileURLWithPath: options.inputPath)
         let data: Data
         do {
@@ -116,8 +176,7 @@ enum CLIRenderer {
         } catch {
             throw CLIError.inputUnreadable(path: options.inputPath)
         }
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "VitrineCLI-\(UUID().uuidString)", isDirectory: true)
+        let directory = temporaryImageDirectory()
         let store = BackgroundImageStore(directory: directory)
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -131,15 +190,18 @@ enum CLIRenderer {
             throw CLIError.renderFailed
         }
 
-        var config = options.makeConfig(code: "", language: .swift)
+        var config = options.makeConfig(
+            code: "", language: .swift, backgroundImageReference: background.reference)
         config.foregroundImage = reference
-        return try render(config, options: options, foregroundStore: store)
+        return try render(
+            config, options: options, backgroundStore: background.store, foregroundStore: store)
     }
 
     /// Performs the common copy/write/report path once code or image input has produced
     /// a render-ready config and the store that resolves any foreground image.
     private static func render(
         _ config: SnapshotConfig, options: CLIOptions,
+        backgroundStore: BackgroundImageStore,
         foregroundStore: BackgroundImageStore
     ) throws -> String {
 
@@ -154,12 +216,14 @@ enum CLIRenderer {
         if options.copyToClipboard {
             let copied = ExportManager.copyToPasteboard(
                 config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                profile: options.profile, foregroundImageStore: foregroundStore)
+                profile: options.profile, backgroundImageStore: backgroundStore,
+                foregroundImageStore: foregroundStore)
             guard copied else { throw CLIError.renderFailed }
             Log.export.notice("CLI copied an image to the clipboard")
             if let outputURL = optionalOutputURL {
                 let dimensions = try renderAndWrite(
-                    config, options: options, foregroundStore: foregroundStore, to: outputURL)
+                    config, options: options, backgroundStore: backgroundStore,
+                    foregroundStore: foregroundStore, to: outputURL)
                 if options.jsonOutput {
                     return encodedJSON(
                         RenderSummary(
@@ -191,7 +255,8 @@ enum CLIRenderer {
 
         let outputURL = try requireOutputURL(optionalOutputURL)
         let dimensions = try renderAndWrite(
-            config, options: options, foregroundStore: foregroundStore, to: outputURL)
+            config, options: options, backgroundStore: backgroundStore,
+            foregroundStore: foregroundStore, to: outputURL)
 
         Log.export.notice(
             "CLI rendered an image (\(options.format.rawValue, privacy: .public))")
@@ -282,6 +347,9 @@ enum CLIRenderer {
                 options: [.skipsHiddenFiles])
         }
     ) throws -> String {
+        let background = try prepareBackground(options)
+        defer { background.removeTemporaryFiles() }
+
         let inputDirectory = URL(fileURLWithPath: options.inputPath)
         let outputDirectory = URL(fileURLWithPath: options.outputPath)
         if !options.dryRunBatch {
@@ -351,11 +419,14 @@ enum CLIRenderer {
                 continue
             }
 
-            let config = options.makeConfig(code: loaded.text, language: language)
+            let config = options.makeConfig(
+                code: loaded.text, language: language,
+                backgroundImageReference: background.reference)
             do {
                 try FileManager.default.createDirectory(
                     at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                let dimensions = try renderAndWrite(config, options: options, to: outputURL)
+                let dimensions = try renderAndWrite(
+                    config, options: options, backgroundStore: background.store, to: outputURL)
                 manifest.append(
                     batchManifestEntry(
                         for: file, outputURL: outputURL, inputDirectory: inputDirectory,
@@ -739,6 +810,7 @@ enum CLIRenderer {
     /// `CLIError.writeFailed` — neither ever crashes the process.
     private static func renderAndWrite(
         _ config: SnapshotConfig, options: CLIOptions,
+        backgroundStore: BackgroundImageStore = .container,
         foregroundStore: BackgroundImageStore = .foregroundContainer, to url: URL
     ) throws -> (width: Int, height: Int) {
         var pngImage: CGImage?
@@ -747,13 +819,15 @@ enum CLIRenderer {
             png: {
                 let image = ExportManager.renderCGImage(
                     config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                    profile: options.profile, foregroundImageStore: foregroundStore)
+                    profile: options.profile, backgroundImageStore: backgroundStore,
+                    foregroundImageStore: foregroundStore)
                 pngImage = image
                 return image
             },
             pdf: {
                 ExportManager.pdfData(
                     config, fixedSize: options.fixedSize,
+                    backgroundImageStore: backgroundStore,
                     foregroundImageStore: foregroundStore)
             })
         guard let payload else { throw CLIError.renderFailed }

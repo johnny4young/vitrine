@@ -162,6 +162,7 @@ enum CLIArguments {
         var profile: ColorProfile = .fallback
         var transparent = false
         var background: BackgroundStyle?
+        var backgroundImagePath: String?
         var gradientBackgroundRequested = false
         var solidBackgroundRequested = false
         var customGradientColors: [RGBAColor]?
@@ -267,6 +268,8 @@ enum CLIArguments {
                 customGradientColors = try resolveCustomGradientColors(try value(for: token))
             case "--background-angle":
                 customGradientAngle = try resolveBackgroundAngle(try value(for: token))
+            case "--background-image":
+                backgroundImagePath = try value(for: token)
             case "--watermark":
                 watermarkText = try resolveWatermarkText(try value(for: token))
             case "--watermark-color":
@@ -417,6 +420,12 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--background-angle requires --background-gradient.")
         }
+        if backgroundImagePath != nil,
+            transparent || background != nil || customGradientColors != nil
+        {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --background-image with another background option.")
+        }
         if let customGradientColors {
             background = .customGradient(
                 makeCustomGradient(colors: customGradientColors, angle: customGradientAngle))
@@ -484,7 +493,8 @@ enum CLIArguments {
             windowTitle != nil || metadataFilename != nil
             || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
         let styleOptionsRequested =
-            background != nil || transparent || fontName != nil || fontLigatures != nil
+            background != nil || backgroundImagePath != nil || transparent || fontName != nil
+            || fontLigatures != nil
             || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
@@ -626,6 +636,7 @@ enum CLIArguments {
             profile: profile,
             transparent: transparent,
             background: background,
+            backgroundImagePath: backgroundImagePath,
             watermarkText: watermarkText,
             watermarkColor: watermarkColor,
             watermarkPosition: watermarkPosition,
@@ -1082,6 +1093,8 @@ nonisolated enum CLIUsage {
           --background-angle <degrees>
                                  Custom gradient angle from 0 through 360; requires
                                  --background-gradient (defaults to 135).
+          --background-image <path>
+                                 Local image used as the canvas background.
           --watermark <text>     Add a text-only watermark to the rendered image.
           --watermark-color <hex>
                                  Watermark RGB/RGBA tint; requires --watermark.

@@ -143,7 +143,7 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--theme`, `--language`, `--preset`, `--scale`, `--format`
 (`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), `--font <family>`,
 `--font-ligatures`, `--no-font-ligatures`, `--transparent`, `--background <id>`,
-`--background-color <hex>`, style controls
+`--background-color <hex>`, `--background-image <path>`, style controls
 (`--font-size`, `--padding`, `--corner-radius`, `--shadow-radius`, `--wrap-columns`,
 `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
@@ -159,6 +159,12 @@ explicit `--format` is present, the extension must match so automation never rec
 mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
 extension-based language inference and default metadata while still reading the source
 only from standard input.
+Local CLI background images are imported once into an invocation-scoped
+`BackgroundImageStore`; `CLIRenderer` threads that isolated store independently from
+the foreground-image store through `ExportManager`, then removes it after a single
+render or the complete batch. Automation inputs therefore never enter Application
+Support, while every output still uses the shared `SnapshotCanvas` image-background
+path.
 `--no-overwrite` / `--no-clobber` is an opt-in artifact safety guard: single renders
 fail before replacing an image or sidecar, while batch jobs skip existing targets and
 can pair that with skipped reports or `--fail-on-skipped`. A preset reframes

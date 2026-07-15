@@ -77,6 +77,7 @@ struct CLITests {
         #expect(options.profile == .sRGB)
         #expect(options.transparent == false)
         #expect(options.background == nil)
+        #expect(options.backgroundImagePath == nil)
         #expect(options.watermarkText == nil)
         #expect(options.watermarkColor == nil)
         #expect(options.watermarkPosition == nil)
@@ -1117,6 +1118,14 @@ struct CLITests {
                 "render", "snippet.swift", "--edit", "--font-size", "15",
             ])
         }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--background-image", "photo.png",
+            ])
+        }
     }
 
     @Test func invalidValuesAreRejected() {
@@ -1341,6 +1350,19 @@ struct CLITests {
         #expect(solid.makeConfig(code: "X", language: .swift).background == .solid(expected))
     }
 
+    @Test func localBackgroundImageBuildsAnImageBackgroundAfterImport() throws {
+        let options = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--preset", "twitter",
+            "--background-image", "/tmp/background.png",
+        ])
+        #expect(options.backgroundImagePath == "/tmp/background.png")
+
+        let reference = ImageReference(fileName: "imported.png")
+        let config = options.makeConfig(
+            code: "X", language: .swift, backgroundImageReference: reference)
+        #expect(config.background == .image(ImageBackground(reference: reference)))
+    }
+
     @Test func backgroundModesRejectAmbiguousCombinations() {
         #expect(
             throws: CLIError.incompatibleOptions(
@@ -1359,6 +1381,24 @@ struct CLITests {
                 "render", "in.swift", "-o", "o.png", "--transparent", "--background",
                 "ocean",
             ])
+        }
+
+        for conflictingOption in [
+            ["--background", "night"],
+            ["--background-color", "#000"],
+            ["--background-gradient", "#000,#FFF"],
+            ["--transparent"],
+        ] {
+            #expect(
+                throws: CLIError.incompatibleOptions(
+                    "Cannot combine --background-image with another background option.")
+            ) {
+                try CLIArguments.parse(
+                    [
+                        "render", "in.swift", "-o", "o.png", "--background-image",
+                        "photo.png",
+                    ] + conflictingOption)
+            }
         }
     }
 
@@ -1417,6 +1457,62 @@ struct CLITests {
         #expect(markedData != plainData)
         #expect(markedImage.width == plainImage.width)
         #expect(markedImage.height == plainImage.height)
+    }
+
+    @Test func localBackgroundImageRendersWithoutChangingItsSource() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let background = directory.appendingPathComponent("background.png")
+        try writeFixtureImage(to: background, size: CGSize(width: 320, height: 180))
+        let originalBackground = try Data(contentsOf: background)
+        let defaultOutput = directory.appendingPathComponent("default.png").path
+        let imageOutput = directory.appendingPathComponent("image-background.png").path
+
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", defaultOutput, "--scale", "1"]))
+        try CLIRenderer.run(
+            CLIArguments.parse([
+                "render", input, "--out", imageOutput, "--scale", "1",
+                "--background-image", background.path,
+            ]))
+
+        let defaultImage = try decodePNG(at: defaultOutput)
+        let imageBackground = try decodePNG(at: imageOutput)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: defaultOutput))
+                != Data(contentsOf: URL(fileURLWithPath: imageOutput)))
+        #expect(imageBackground.width == defaultImage.width)
+        #expect(imageBackground.height == defaultImage.height)
+        #expect(try Data(contentsOf: background) == originalBackground)
+    }
+
+    @Test func localBackgroundImageReportsUnreadableAndUnsupportedFilesPrecisely() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let output = directory.appendingPathComponent("out.png").path
+        let missing = directory.appendingPathComponent("missing.png").path
+        let missingOptions = try CLIArguments.parse([
+            "render", "input.swift", "--out", output, "--background-image", missing,
+        ])
+        #expect(throws: CLIError.inputUnreadable(path: missing)) {
+            try CLIRenderer.run(missingOptions) { _ in
+                FileInputLoader.LoadedFile(text: "let x = 1", language: .swift, filename: "")
+            }
+        }
+
+        let invalid = directory.appendingPathComponent("not-image.png")
+        try Data("not an image".utf8).write(to: invalid)
+        let invalidOptions = try CLIArguments.parse([
+            "render", "input.swift", "--out", output, "--background-image", invalid.path,
+        ])
+        #expect(throws: CLIError.inputNotImage(path: invalid.path)) {
+            try CLIRenderer.run(invalidOptions) { _ in
+                FileInputLoader.LoadedFile(text: "let x = 1", language: .swift, filename: "")
+            }
+        }
     }
 
     @Test func renderJsonSummaryReportsOutputDimensionsAndSidecars() throws {
