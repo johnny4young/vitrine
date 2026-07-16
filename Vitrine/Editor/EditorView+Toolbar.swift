@@ -75,6 +75,7 @@ extension EditorView {
             iconButton(
                 .shareImage, "share-button", help: "Share the rendered image",
                 systemImage: "square.and.arrow.up", action: share)
+            pinSnapshotButton
             multiSizeExportButton
             savePresetButton
             makeDefaultButton
@@ -320,6 +321,24 @@ extension EditorView {
         } else {
             button
         }
+    }
+
+    /// Pin the current render in a floating always-on-top reference window
+    /// (feature #33), so an error/design stays visible while you work against it.
+    var pinSnapshotButton: some View {
+        GlassIconButton(systemImage: "pin") {
+            guard
+                let image = ExportManager.renderNSImage(
+                    settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+                    fixedSize: settings.effectiveFixedSize,
+                    profile: settings.export.colorProfile)
+            else { return }
+            PinnedSnapshotController.shared.pin(image)
+        }
+        .help("Pin the snapshot in a floating window that stays on top")
+        .disabled(!settings.config.hasRenderableContent)
+        .accessibilityLabel("Pin snapshot")
+        .accessibilityIdentifier("pin-snapshot-button")
     }
 
     // MARK: - Export/share actions

@@ -4939,6 +4939,39 @@
         }
       }
     },
+    "Pin snapshot" : {
+      "comment" : "Accessibility label: pin the render in a floating always-on-top window.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fijar captura"
+          }
+        }
+      }
+    },
+    "Pin the snapshot in a floating window that stays on top" : {
+      "comment" : "Help for the pin-snapshot toolbar button (feature #33).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fija la captura en una ventana flotante que se mantiene encima"
+          }
+        }
+      }
+    },
+    "Pinned snapshot" : {
+      "comment" : "Title of the floating pinned-snapshot window.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura fijada"
+          }
+        }
+      }
+    },
     "Measure" : {
       "comment" : "Annotation tool: dimension callout with the span's length in pixels.",
       "localizations" : {

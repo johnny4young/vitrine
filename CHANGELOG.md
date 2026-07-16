@@ -17,6 +17,9 @@ can never drift.
 - **Measure tool.** A dimension callout for design handoffs: drag between two points
   and the mark draws a technical-style measurement — shaft, perpendicular end caps, and
   the span's length in pixels on a pill at the midpoint.
+- **Pinned snapshot.** Pin the current render in a floating window that stays on top of
+  every app (and follows you across Spaces), so the error or design you're working
+  against stays visible while you code. One pin at a time; close it like any window.
 - **Copy text from image.** A beautified screenshot can be turned back into copyable
   text: one click runs on-device OCR (Vision, nothing leaves the Mac) and puts the
   recognized text on the clipboard — the reverse of the copyable-text sidecar.
