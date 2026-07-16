@@ -4939,6 +4939,95 @@
         }
       }
     },
+    "%lld slides" : {
+      "comment" : "Live slide count in the carousel export sheet.",
+      "localizations" : {
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld diapositiva"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld diapositivas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Carousel exported" : {
+      "comment" : "HUD confirmation after the carousel slides were written.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carrusel exportado"
+          }
+        }
+      }
+    },
+    "Choose a folder for the carousel slides." : {
+      "comment" : "Open-panel message for the carousel export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una carpeta para las diapositivas del carrusel."
+          }
+        }
+      }
+    },
+    "Export carousel" : {
+      "comment" : "Carousel export sheet title and toolbar accessibility label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar carrusel"
+          }
+        }
+      }
+    },
+    "Lines per slide: %lld" : {
+      "comment" : "Stepper label in the carousel export sheet.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas por diapositiva: %lld"
+          }
+        }
+      }
+    },
+    "Split the snippet into numbered 4:5 slides for a carousel post." : {
+      "comment" : "Carousel export sheet subtitle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide el fragmento en diapositivas 4:5 numeradas para un carrusel."
+          }
+        }
+      }
+    },
+    "Split the snippet into numbered carousel slides (4:5)" : {
+      "comment" : "Help for the carousel export toolbar button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide el fragmento en diapositivas de carrusel numeradas (4:5)"
+          }
+        }
+      }
+    },
     "Pin snapshot" : {
       "comment" : "Accessibility label: pin the render in a floating always-on-top window.",
       "localizations" : {

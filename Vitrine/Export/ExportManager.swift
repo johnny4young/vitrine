@@ -552,6 +552,62 @@ enum ExportManager {
         }
     }
 
+    /// The carousel slide frame: 1080×1350 (4:5), the portrait card LinkedIn and
+    /// Instagram carousels share (feature #15).
+    static let carouselSlideSize = CGSize(width: 1080, height: 1350)
+
+    /// The minimum font size a carousel slide renders at. The editor's default (~13 pt)
+    /// leaves a tiny card adrift in a 1080×1350 frame — illegible at feed size — so
+    /// slides bump up to this floor; a user style already at or above it is respected.
+    static let carouselMinimumFontSize: Double = 22
+
+    /// Renders one slide per page into `directory` as `carousel-01.png` … — the
+    /// carousel export (feature #15). Each slide is `baseConfig` with only its `code`
+    /// replaced by that page's lines, rendered at the fixed 4:5 slide frame through
+    /// the standard pipeline; content marks that belong to the whole document
+    /// (annotations, highlighted/redacted lines) are cleared so a page never carries a
+    /// mark positioned against different lines. Pipelined like `exportPresetSizes`:
+    /// render on the main actor, PNG-encode + write off it, results drain in
+    /// completion order with count-based progress. Two-digit numbering keeps the
+    /// files sorted everywhere; only counts are logged (CS-048).
+    @discardableResult
+    static func exportCarousel(
+        _ baseConfig: SnapshotConfig, pages: [String], to directory: URL,
+        profile: ColorProfile = .sRGB,
+        onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
+    ) async -> (written: Int, failed: Int) {
+        var written = 0
+        var failed = 0
+        let total = pages.count
+        var completed = 0
+        await withTaskGroup(of: Bool.self) { group in
+            for (index, page) in pages.enumerated() {
+                var config = baseConfig
+                config.clearContentMarks()
+                config.code = page
+                config.fontSize = max(config.fontSize, carouselMinimumFontSize)
+                let raster = renderCGImage(
+                    config, scale: 1, fixedSize: carouselSlideSize, profile: profile)
+                let url = directory.appendingPathComponent(
+                    String(format: "carousel-%02d.png", index + 1), isDirectory: false)
+                group.addTask {
+                    await writePreset(
+                        raster: raster, pdf: nil, format: .png, to: url, sidecarText: "")
+                }
+                await Task.yield()
+            }
+            for await ok in group {
+                if ok { written += 1 } else { failed += 1 }
+                completed += 1
+                onProgress?(completed, total)
+            }
+        }
+        Log.export.notice(
+            "Carousel export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
+        )
+        return (written, failed)
+    }
+
     /// The outcome of a save-to-file attempt, so callers can tell apart a written
     /// file, a user cancel, and a genuine failure for feedback (CS-038).
     enum SaveOutcome: Equatable {

@@ -14,6 +14,11 @@ can never drift.
 
 ### Added
 
+- **Carousel export (PRO).** Split a long snippet into numbered 4:5 slides
+  (`carousel-01.png` …) for a LinkedIn/Instagram carousel: pick the lines per slide, the
+  split balances so the last slide never trails with a line or two, and every slide
+  renders through the standard pipeline with your style and brand mark (the font floors
+  at 22 pt so slides stay legible at feed size).
 - **Measure tool.** A dimension callout for design handoffs: drag between two points
   and the mark draws a technical-style measurement — shaft, perpendicular end caps, and
   the span's length in pixels on a pill at the midpoint.
