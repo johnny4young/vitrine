@@ -7774,6 +7774,50 @@
         }
       }
     },
+    "Pin Capture" : {
+      "comment" : "Recents action that keeps a capture at the top of the gallery.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fijar captura"
+          }
+        }
+      }
+    },
+    "Pinned" : {
+      "comment" : "Badge and accessibility status for a pinned recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fijada"
+          }
+        }
+      }
+    },
+    "Re-render, pin, or remove this recent capture" : {
+      "comment" : "Help text for the Recents capture actions menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a renderizar, fija o elimina esta captura reciente"
+          }
+        }
+      }
+    },
+    "Unpin Capture" : {
+      "comment" : "Recents action that returns a pinned capture to chronological ordering.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dejar de fijar captura"
+          }
+        }
+      }
+    },
     "Surprise Me" : {
       "comment" : "Action that applies the next curated built-in style.",
       "localizations" : {

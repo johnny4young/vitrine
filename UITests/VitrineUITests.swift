@@ -563,6 +563,56 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsCanUnpinAndRepinACapture() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        XCTAssertEqual(cards.count, 3)
+        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count,
+            1)
+
+        let actions = app.descendants(matching: .any).matching(
+            identifier: "recents-preset-picker")
+        actions.element(boundBy: 0).click()
+        let unpin = app.menuItems["Unpin Capture"]
+        XCTAssertTrue(unpin.waitForExistence(timeout: 3))
+        unpin.click()
+
+        let unpinDeadline = Date().addingTimeInterval(3)
+        while app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count
+            != 0,
+            Date() < unpinDeadline
+        {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count,
+            0)
+        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Rust"))
+
+        actions.element(boundBy: 2).click()
+        let pin = app.menuItems["Pin Capture"]
+        XCTAssertTrue(pin.waitForExistence(timeout: 3))
+        pin.click()
+
+        let pinDeadline = Date().addingTimeInterval(3)
+        while app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count
+            != 1,
+            Date() < pinDeadline
+        {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count,
+            1)
+        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
+    }
+
+    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general

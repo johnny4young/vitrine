@@ -254,6 +254,40 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testPinnedRecentsTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let window = element("recents-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        XCTAssertTrue(element("recents-pinned-badge", in: app).waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 0.8)
+        save(
+            window.screenshot(), as: "37-recents-pinned",
+            note: "Pinned capture leading the local Recents gallery")
+
+        let actions = app.descendants(matching: .any).matching(
+            identifier: "recents-preset-picker"
+        ).element(boundBy: 0)
+        XCTAssertTrue(actions.waitForExistence(timeout: 3))
+        XCTAssertTrue(actions.isHittable)
+        actions.click()
+        if app.menuItems["Unpin Capture"].waitForExistence(timeout: 3),
+            let visibleMenu = app.menus.allElementsBoundByIndex.first(where: {
+                !$0.frame.isEmpty
+            })
+        {
+            Thread.sleep(forTimeInterval: 0.3)
+            save(
+                visibleMenu.screenshot(), as: "38-recents-pinned-actions",
+                note: "Pinned capture actions with a reversible Unpin command")
+            app.typeKey(.escape, modifierFlags: [])
+        } else {
+            miss("38-recents-pinned-actions", reason: "pinned actions menu did not open")
+        }
+    }
+
+    @MainActor
     func testHelpTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--show-help"])
         defer { app.terminate() }
