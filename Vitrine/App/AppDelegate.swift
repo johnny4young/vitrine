@@ -135,6 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
     /// none of these run on a normal user launch. `--demo` preloads sample code;
     /// `--demo-html-format` preloads compact markup for the Format Code smoke test;
+    /// `--demo-sql-format` does the same for a compact query;
     /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
     /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
     /// `--show-help` / `--show-welcome` force those windows open past their gates;
@@ -187,6 +188,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             demo.code =
                 #"<!doctype html><main class="card"><h1>Vitrine</h1><p>Local by design.</p><img src="preview.png"></main>"#
             demo.language = .html
+            AppSettings.shared.config = demo
+        }
+        if arguments.contains("--demo-sql-format") {
+            var demo = AppSettings.shared.config
+            demo.code =
+                "SELECT u.id,u.email,COUNT(o.id) AS orders FROM users u LEFT JOIN orders o ON o.user_id=u.id WHERE u.active=TRUE GROUP BY u.id,u.email ORDER BY orders DESC;"
+            demo.language = .sql
             AppSettings.shared.config = demo
         }
         if arguments.contains("--demo-recent") {
