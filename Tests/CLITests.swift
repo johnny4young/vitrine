@@ -73,6 +73,7 @@ struct CLITests {
         #expect(options.language == nil)
         #expect(options.presetID == nil)
         #expect(options.stylePresetID == nil)
+        #expect(options.canvasSize == nil)
         #expect(options.scale == nil)
         #expect(options.format == .png)
         #expect(options.profile == .sRGB)
@@ -148,6 +149,7 @@ struct CLITests {
             "--language", "python",
             "--preset", "opengraph",
             "--style-preset", "builtin.midnight",
+            "--canvas-size", "800x600",
             "--scale", "3",
             "--font", "Fira Code",
             "--font-ligatures",
@@ -185,6 +187,7 @@ struct CLITests {
         #expect(options.language == .python)
         #expect(options.presetID == "opengraph")
         #expect(options.stylePresetID == "builtin.midnight")
+        #expect(options.canvasSize == CGSize(width: 800, height: 600))
         #expect(options.scale == 3)
         #expect(options.fontName == "Fira Code")
         #expect(options.fontLigatures == true)
@@ -1534,6 +1537,14 @@ struct CLITests {
                 "Cannot combine --edit with render-only style options.")
         ) {
             try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--canvas-size", "800x600",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
                 "render", "snippet.swift", "--edit", "--style-preset", "builtin.aurora",
             ])
         }
@@ -1633,6 +1644,13 @@ struct CLITests {
             try CLIArguments.parse([
                 "render", "in.swift", "-o", "o.png", "--style-preset", "personal",
             ])
+        }
+        for value in ["800", "800x", "x600", "800x600x2", "63x600", "800x2049", "800.5x600"] {
+            #expect(throws: CLIError.invalidValue(flag: "--canvas-size", value: value)) {
+                try CLIArguments.parse([
+                    "render", "in.swift", "-o", "o.png", "--canvas-size", value,
+                ])
+            }
         }
         #expect(throws: CLIError.invalidValue(flag: "--font", value: "Comic Sans")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--font", "Comic Sans"])
@@ -1790,6 +1808,17 @@ struct CLITests {
         // An explicit --scale wins over the preset's recommended scale.
         #expect(options.effectiveScale == 2)
         #expect(options.fixedSize == CGSize(width: 1200, height: 630))
+    }
+
+    @Test func customCanvasSizeOverridesPresetDimensionsButNotItsScale() throws {
+        let options = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--preset", "opengraph",
+            "--canvas-size", "800X450",
+        ])
+
+        #expect(options.canvasSize == CGSize(width: 800, height: 450))
+        #expect(options.fixedSize == CGSize(width: 800, height: 450))
+        #expect(options.effectiveScale == 1)
     }
 
     @Test func effectiveScaleClampsAnOutOfRangeValueDefensively() throws {
@@ -2768,6 +2797,31 @@ struct CLITests {
         // Doubling the scale doubles the pixel dimensions of the same content.
         #expect(image2.width == image1.width * 2)
         #expect(image2.height == image1.height * 2)
+    }
+
+    @Test func customCanvasSizeProducesExactScaledPixelDimensions() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let out1 = directory.appendingPathComponent("custom-1x.png").path
+        let out2 = directory.appendingPathComponent("custom-2x.png").path
+
+        try CLIRenderer.run(
+            try CLIArguments.parse([
+                "render", input, "--out", out1, "--canvas-size", "640x360", "--scale", "1",
+            ]))
+        try CLIRenderer.run(
+            try CLIArguments.parse([
+                "render", input, "--out", out2, "--canvas-size", "640x360", "--scale", "2",
+            ]))
+
+        let image1 = try decodePNG(at: out1)
+        let image2 = try decodePNG(at: out2)
+        #expect(image1.width == 640)
+        #expect(image1.height == 360)
+        #expect(image2.width == 1_280)
+        #expect(image2.height == 720)
     }
 
     // MARK: - Rendering: transparent background keeps real alpha

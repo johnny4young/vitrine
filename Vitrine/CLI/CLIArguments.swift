@@ -149,6 +149,7 @@ enum CLIArguments {
         var languageID: String?
         var presetID: String?
         var stylePresetID: String?
+        var canvasSize: CGSize?
         var scale: Int?
         var fontName: String?
         var fontLigatures: Bool?
@@ -264,6 +265,8 @@ enum CLIArguments {
                 presetID = try resolvePreset(try value(for: token))
             case "--style-preset":
                 stylePresetID = try resolveStylePreset(try value(for: token))
+            case "--canvas-size":
+                canvasSize = try resolveCanvasSize(try value(for: token), flag: token)
             case "--scale":
                 scale = try resolveScale(try value(for: token), flag: token)
             case "--font":
@@ -642,8 +645,8 @@ enum CLIArguments {
             windowTitle != nil || metadataFilename != nil
             || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
         let styleOptionsRequested =
-            stylePresetID != nil || background != nil || backgroundImagePath != nil || transparent
-            || fontName != nil
+            stylePresetID != nil || canvasSize != nil || background != nil
+            || backgroundImagePath != nil || transparent || fontName != nil
             || fontLigatures != nil
             || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
@@ -829,6 +832,7 @@ enum CLIArguments {
             language: languageID.flatMap(Language.init(rawValue:)),
             presetID: presetID,
             stylePresetID: stylePresetID,
+            canvasSize: canvasSize,
             scale: scale,
             fontName: fontName,
             fontLigatures: fontLigatures,
@@ -933,6 +937,22 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: "--style-preset", value: raw)
         }
         return raw
+    }
+
+    /// Parses an exact logical WIDTHxHEIGHT canvas within the renderer's bounded
+    /// automation range. `--scale` multiplies these values into final pixels.
+    private static func resolveCanvasSize(_ raw: String, flag: String) throws -> CGSize {
+        let components = raw.split(
+            omittingEmptySubsequences: false, whereSeparator: { $0 == "x" || $0 == "X" })
+        guard components.count == 2,
+            let width = Int(components[0].trimmingCharacters(in: .whitespaces)),
+            let height = Int(components[1].trimmingCharacters(in: .whitespaces)),
+            CLIOptions.canvasDimensionRange.contains(width),
+            CLIOptions.canvasDimensionRange.contains(height)
+        else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return CGSize(width: width, height: height)
     }
 
     /// Validates a code font family against the same catalog exposed in the editor.
@@ -1405,6 +1425,8 @@ nonisolated enum CLIUsage {
                                  docs, transparent-slide, opengraph).
           --style-preset <id>    Built-in presentation preset. Use
                                  `vitrine list style-presets`.
+          --canvas-size <WxH>    Exact logical canvas size (64-2048 per axis).
+                                 Final pixels are multiplied by --scale.
           --scale <1|2|3>        Export resolution multiplier. Defaults to the app
                                  default, or the preset's recommended scale.
           --font <family>        Code font family. Use `vitrine list fonts`.
