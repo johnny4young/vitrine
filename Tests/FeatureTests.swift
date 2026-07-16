@@ -114,6 +114,31 @@ struct CaptureTests {
             RecentsSortOrder.language.sorted(captures).map(\.id)
                 == [oldestPinned.id, newestPinned.id, newerGo.id, olderPython.id])
     }
+
+    /// Captures added in the same instant carry equal dates; ties must fall back to
+    /// the input's own (MRU) order, never a UUID comparison — a random-UUID tie-break
+    /// ordered equal-date captures differently from run to run, the flake that hit CI
+    /// (testRecentsCanSortOldestFirstWithoutDisplacingPins).
+    @Test func equalDatesPreserveInsertionOrderNotUUIDOrder() {
+        let sharedDate = Date(timeIntervalSinceReferenceDate: 100)
+        // Deliberately give the LATER-inserted capture the LEXICALLY SMALLER UUID, so
+        // a regression back to UUID ordering flips the result and fails this test.
+        let first = Capture(
+            id: UUID(uuidString: "FFFFFFFF-0000-0000-0000-000000000000")!,
+            code: "first", languageID: Language.go.rawValue,
+            themeID: Theme.github.id, date: sharedDate)
+        let second = Capture(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!,
+            code: "second", languageID: Language.rust.rawValue,
+            themeID: Theme.dracula.id, date: sharedDate)
+        let mruOrder = [second, first]  // the store keeps newest additions first
+
+        for order in [RecentsSortOrder.newestFirst, .oldestFirst] {
+            #expect(
+                order.sorted(mruOrder).map(\.id) == [second.id, first.id],
+                "equal dates must keep the input's MRU order under \(order)")
+        }
+    }
 }
 
 @MainActor

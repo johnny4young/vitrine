@@ -96,28 +96,39 @@ enum RecentsSortOrder: String, CaseIterable, Identifiable {
 
     var id: Self { self }
 
+    /// Ties on the sort key fall back to the input's own order (the store's MRU
+    /// order), not a UUID comparison: two captures added in the same instant carry
+    /// equal `date`s, and a random-UUID tie-break would order them differently from
+    /// run to run — the flake that hit CI. Position is just as deterministic for a
+    /// given list and preserves what the user actually did last.
     func sorted(_ captures: [Capture]) -> [Capture] {
-        captures.sorted { lhs, rhs in
-            if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
+        captures.enumerated()
+            .sorted { lhs, rhs in
+                if lhs.element.isPinned != rhs.element.isPinned { return lhs.element.isPinned }
 
-            switch self {
-            case .newestFirst:
-                return orderedByDate(lhs, rhs, newestFirst: true)
-            case .oldestFirst:
-                return orderedByDate(lhs, rhs, newestFirst: false)
-            case .language:
-                let comparison = lhs.language.displayName.localizedStandardCompare(
-                    rhs.language.displayName)
-                if comparison != .orderedSame { return comparison == .orderedAscending }
-                return orderedByDate(lhs, rhs, newestFirst: true)
+                switch self {
+                case .newestFirst:
+                    return orderedByDate(lhs, rhs, newestFirst: true)
+                case .oldestFirst:
+                    return orderedByDate(lhs, rhs, newestFirst: false)
+                case .language:
+                    let comparison = lhs.element.language.displayName.localizedStandardCompare(
+                        rhs.element.language.displayName)
+                    if comparison != .orderedSame { return comparison == .orderedAscending }
+                    return orderedByDate(lhs, rhs, newestFirst: true)
+                }
             }
-        }
+            .map(\.element)
     }
 
-    private func orderedByDate(_ lhs: Capture, _ rhs: Capture, newestFirst: Bool) -> Bool {
-        if lhs.date != rhs.date {
-            return newestFirst ? lhs.date > rhs.date : lhs.date < rhs.date
+    private func orderedByDate(
+        _ lhs: (offset: Int, element: Capture), _ rhs: (offset: Int, element: Capture),
+        newestFirst: Bool
+    ) -> Bool {
+        if lhs.element.date != rhs.element.date {
+            return newestFirst
+                ? lhs.element.date > rhs.element.date : lhs.element.date < rhs.element.date
         }
-        return lhs.id.uuidString < rhs.id.uuidString
+        return lhs.offset < rhs.offset
     }
 }

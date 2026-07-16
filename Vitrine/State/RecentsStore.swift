@@ -177,14 +177,21 @@ final class RecentsStore {
         }
     }
 
-    /// Pinned captures lead the list; each group remains newest-first. UUID is a
-    /// deterministic final tie-breaker for imported captures sharing a timestamp.
+    /// Pinned captures lead the list; each group remains newest-first. Ties on the
+    /// date fall back to the array's own order (MRU — `add` inserts at the front),
+    /// not a UUID comparison: captures added in the same instant carry equal dates,
+    /// and a random-UUID tie-break would order them differently from run to run.
+    /// Position is just as deterministic for a given list and preserves recency.
     private static func ordered(_ captures: [Capture]) -> [Capture] {
-        captures.sorted { lhs, rhs in
-            if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
-            if lhs.date != rhs.date { return lhs.date > rhs.date }
-            return lhs.id.uuidString < rhs.id.uuidString
-        }
+        captures.enumerated()
+            .sorted { lhs, rhs in
+                if lhs.element.isPinned != rhs.element.isPinned { return lhs.element.isPinned }
+                if lhs.element.date != rhs.element.date {
+                    return lhs.element.date > rhs.element.date
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
     }
 }
 
