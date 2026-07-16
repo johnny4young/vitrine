@@ -139,6 +139,38 @@ struct CaptureTests {
                 "equal dates must keep the input's MRU order under \(order)")
         }
     }
+
+    /// The exact CI scenario: the demo seed `add`s three captures whose `Date()`s can
+    /// land on one coarse clock tick on a hosted runner, then pins the first. With
+    /// equal dates the store must still list the LATER-added capture first within the
+    /// unpinned group (`add` appends, so insertion recency — not a random UUID — breaks
+    /// the tie). This is the unit-level reproduction of the flaky
+    /// testRecentsCanSortOldestFirstWithoutDisplacingPins CI failure.
+    @Test func equalDateAddsKeepLaterAdditionsFirstInTheStore() {
+        let defaults = UserDefaults(suiteName: "VitrineRecentsTie-\(UUID().uuidString)")!
+        let store = RecentsStore(defaults: defaults)
+        let sharedDate = Date(timeIntervalSinceReferenceDate: 500)
+        let go = Capture(
+            code: "go", languageID: Language.go.rawValue, themeID: Theme.github.id,
+            date: sharedDate)
+        let python = Capture(
+            code: "python", languageID: Language.python.rawValue, themeID: Theme.oneDark.id,
+            date: sharedDate)
+        let rust = Capture(
+            code: "rust", languageID: Language.rust.rawValue, themeID: Theme.dracula.id,
+            date: sharedDate)
+        store.add(go)
+        store.add(python)
+        store.add(rust)
+        store.updatePinned(id: go.id, isPinned: true)
+
+        // Pinned Go leads; Rust was added last so it outranks Python on the tie.
+        #expect(store.captures.map(\.id) == [go.id, rust.id, python.id])
+        // The gallery's default sort preserves the store's order.
+        #expect(
+            RecentsSortOrder.newestFirst.sorted(store.captures).map(\.id)
+                == [go.id, rust.id, python.id])
+    }
 }
 
 @MainActor
