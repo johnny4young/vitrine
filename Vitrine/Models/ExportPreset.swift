@@ -446,6 +446,19 @@ extension StylePreset {
     /// "Duplicate" instead of editing or deleting any of them (CS-030).
     static let builtIns: [StylePreset] = [.aurora, .midnight, .sunset, .minimal]
 
+    /// Returns the next curated built-in style for a one-click visual refresh.
+    /// Exact built-in styles advance through the catalog and wrap; a custom style
+    /// starts at Sunset so the first result is visibly distinct from Vitrine's
+    /// default aurora presentation. The sequence is deterministic, making the
+    /// action predictable, repeatable, and straightforward to test.
+    static func surprise(after config: SnapshotConfig) -> StylePreset {
+        let current = StyleSnapshot(capturing: config)
+        guard let index = builtIns.firstIndex(where: { $0.style == current }) else {
+            return .sunset
+        }
+        return builtIns[(index + 1) % builtIns.count]
+    }
+
     /// The set of ids that identify a built-in, used to recompute `isBuiltIn` on
     /// load so origin is never read from (or spoofed by) a file.
     static let builtInIDs: Set<String> = Set(builtIns.map(\.id))

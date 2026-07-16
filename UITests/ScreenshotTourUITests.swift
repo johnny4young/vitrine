@@ -214,6 +214,46 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testEditorSurpriseStyleTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        let window = element("editor-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        let stageMatches = app.descendants(matching: .any).matching(
+            identifier: "editor-preview-stage")
+        XCTAssertTrue(stageMatches.firstMatch.waitForExistence(timeout: 5))
+        let stage = try XCTUnwrap(
+            stageMatches.allElementsBoundByIndex.max {
+                $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height
+            })
+        app.activate()
+        window.click()
+        Thread.sleep(forTimeInterval: 0.8)
+        save(
+            stage.screenshot(), as: "35-editor-before-surprise",
+            note: "Editor before applying a curated style")
+        XCTAssertTrue(waitForHittableElement("editor-style-preset-picker", in: app, timeout: 5))
+        element("editor-style-preset-picker", in: app).click()
+        let surprise = app.menuItems["Surprise Me"]
+        XCTAssertTrue(surprise.waitForExistence(timeout: 3))
+        surprise.click()
+        let dracula = app.buttons["Dracula"].firstMatch
+        XCTAssertTrue(dracula.waitForExistence(timeout: 3))
+        let deadline = Date().addingTimeInterval(3)
+        while !dracula.isSelected, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(dracula.isSelected)
+        app.activate()
+        window.click()
+        Thread.sleep(forTimeInterval: 1.2)
+        save(
+            stage.screenshot(), as: "36-editor-surprise-style-applied",
+            note: "Editor after applying the curated Sunset style without changing code")
+    }
+
+    @MainActor
     func testHelpTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--show-help"])
         defer { app.terminate() }

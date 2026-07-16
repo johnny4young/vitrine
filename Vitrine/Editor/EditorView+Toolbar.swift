@@ -237,6 +237,14 @@ extension EditorView {
     /// addressing one stable element for style presets in the editor.
     var savePresetButton: some View {
         Menu {
+            Button {
+                settings.applySurpriseStyle()
+            } label: {
+                Label("Surprise Me", systemImage: "dice")
+            }
+            .accessibilityHint("Apply the next curated style without changing your code")
+            .accessibilityIdentifier("editor-surprise-style-button")
+            Divider()
             Section("Built-in") {
                 ForEach(StylePreset.builtIns) { preset in
                     Button(action: { settings.applyStylePreset(preset) }) {

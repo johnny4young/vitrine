@@ -337,6 +337,33 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testSurpriseStyleAppliesACuratedLookWithoutChangingCode() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        let originalCode = editor.value as? String
+        assertHittable(
+            "editor-style-preset-picker", in: app, "Style preset picker is not reachable")
+        element("editor-style-preset-picker", in: app).click()
+        let surprise = app.menuItems["Surprise Me"]
+        XCTAssertTrue(surprise.waitForExistence(timeout: 3))
+        surprise.click()
+
+        let dracula = app.buttons["Dracula"].firstMatch
+        XCTAssertTrue(dracula.waitForExistence(timeout: 3))
+        let deadline = Date().addingTimeInterval(3)
+        while !dracula.isSelected, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(dracula.isSelected, "Surprise Me should apply the Sunset style")
+        XCTAssertEqual(editor.value as? String, originalCode)
+    }
+
+    @MainActor
     func testStylePaneShowsDestinationPresetPicker() {
         continueAfterFailure = false
         let app = launch(arguments: ["--open-settings"])
