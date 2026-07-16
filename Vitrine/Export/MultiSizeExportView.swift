@@ -113,6 +113,10 @@ struct MultiSizeExportView: View {
         .padding(24)
         .frame(width: 420)
         .background(VitrineTokens.Surface.window)
+        // `.contain` keeps the children's identifiers reachable under the root id —
+        // an id on a bare VStack propagates down and clobbers them (see
+        // CarouselExportView; root-caused in the UI-test workflow notes).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("multi-size-export-sheet")
     }
 

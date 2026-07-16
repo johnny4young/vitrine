@@ -83,6 +83,11 @@ struct CarouselExportView: View {
         .padding(24)
         .frame(width: 400)
         .background(VitrineTokens.Surface.window)
+        // A plain VStack is not an AX element, so an identifier put directly on it
+        // propagates down and CLOBBERS every child's identifier (the stepper, the
+        // count, the buttons would all report the root's id). `.contain` makes the
+        // root a real container element so the children keep their own ids.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("carousel-export-sheet")
     }
 
