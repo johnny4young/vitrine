@@ -16,7 +16,7 @@ struct EditorInspectorView: View {
     /// Whether the stage draws the safe-area guide (feature #20). Same key/store as
     /// `EditorView.showsSafeAreaGuides`, so the toggle here and the stage overlay stay
     /// in sync through the shared defaults without any plumbing.
-    @AppStorage("editorShowsSafeAreaGuides", store: AppDefaults.current)
+    @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
     private var showsSafeAreaGuides = false
     var themes: CustomThemeStore
 

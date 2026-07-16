@@ -8,6 +8,11 @@ import Foundation
 /// Pure math so it is unit-testable; the stage draws it as a dashed overlay that never
 /// reaches the export (`SnapshotCanvas` knows nothing about it).
 enum SafeAreaGuide {
+    /// The defaults key behind the guide toggle. One constant shared by the two
+    /// `@AppStorage` declarations (inspector toggle, stage overlay) so a typo in
+    /// either can no longer silently disconnect them.
+    static let storageKey = "editorShowsSafeAreaGuides"
+
     /// The fraction of the shorter canvas side treated as at-risk margin. 5% is the
     /// conservative envelope of the common feed crops (X, LinkedIn, OpenGraph
     /// previews round or overlay within ~4–5% of the edge).

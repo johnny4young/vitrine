@@ -119,13 +119,14 @@ struct RichExportTests {
 
     @Test func copyToPasteboardRichTextRoutesThroughTheRichPath() {
         // The public `ExportManager.copyToPasteboard(richText:)` flag is what the
-        // editor/menu/quick-capture callers pass; with it on, the general
-        // pasteboard ends up with both image and styled text.
+        // editor/menu/quick-capture callers pass; with it on, the pasteboard
+        // ends up with both image and styled text.
+        let pasteboard = Self.scratchPasteboard()
         let config = Self.sampleConfig()
         #expect(
-            ExportManager.copyToPasteboard(config, scale: 1, richText: true))
+            ExportManager.copyToPasteboard(
+                config, scale: 1, richText: true, pasteboard: pasteboard))
 
-        let pasteboard = NSPasteboard.general
         #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
         #expect(pasteboard.data(forType: RichPasteboard.rtfType) != nil)
     }
@@ -133,10 +134,10 @@ struct RichExportTests {
     @Test func copyToPasteboardDefaultIsImageOnly() {
         // Regression guard: the default (no `richText:`) copy is image-only, so the
         // one-shortcut behavior is unchanged.
+        let pasteboard = Self.scratchPasteboard()
         let config = Self.sampleConfig()
-        #expect(ExportManager.copyToPasteboard(config, scale: 1))
+        #expect(ExportManager.copyToPasteboard(config, scale: 1, pasteboard: pasteboard))
 
-        let pasteboard = NSPasteboard.general
         #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
         #expect(pasteboard.data(forType: RichPasteboard.rtfType) == nil)
         #expect(pasteboard.data(forType: RichPasteboard.htmlType) == nil)
@@ -217,11 +218,13 @@ struct RichExportTests {
 
     @Test func copyToPasteboardPlainTextRoutesThroughTheRichPath() {
         // The public `ExportManager.copyToPasteboard(plainText:)` flag the callers pass:
-        // with it on, the general pasteboard ends up with both image and plain text.
+        // with it on, the pasteboard ends up with both image and plain text.
+        let pasteboard = Self.scratchPasteboard()
         let config = Self.sampleConfig()
-        #expect(ExportManager.copyToPasteboard(config, scale: 1, plainText: true))
+        #expect(
+            ExportManager.copyToPasteboard(
+                config, scale: 1, plainText: true, pasteboard: pasteboard))
 
-        let pasteboard = NSPasteboard.general
         #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
         #expect(pasteboard.string(forType: .string) == config.sidecarText)
     }

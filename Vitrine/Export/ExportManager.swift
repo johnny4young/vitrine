@@ -346,7 +346,8 @@ enum ExportManager {
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false,
         backgroundImageStore: BackgroundImageStore = .container,
-        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
+        pasteboard: NSPasteboard = .general
     ) -> Bool {
         // Either opt-in (rich styled text, or the plain-text rider) needs the
         // multi-representation item, so route both through RichPasteboard; the plain
@@ -356,7 +357,7 @@ enum ExportManager {
                 config, scale: scale, fixedSize: fixedSize, profile: profile,
                 includeRichText: richText, includePlainText: plainText,
                 backgroundImageStore: backgroundImageStore,
-                foregroundImageStore: foregroundImageStore)
+                foregroundImageStore: foregroundImageStore, to: pasteboard)
         }
         guard
             let cgImage = renderCGImage(
@@ -367,19 +368,21 @@ enum ExportManager {
             Log.export.error("Copy to pasteboard failed: render returned nil")
             return false
         }
-        return copyPNGToPasteboard(cgImage)
+        return copyPNGToPasteboard(cgImage, to: pasteboard)
     }
 
-    /// Writes a PNG of an already-rendered `cgImage` to the general pasteboard —
-    /// the shared primitive behind the config-based copy above and editors that
-    /// hold a rendered asset (the web snapshot editor). Returns success.
+    /// Writes a PNG of an already-rendered `cgImage` to the pasteboard (the general
+    /// one in production; tests pass a scratch pasteboard so parallel suites can't
+    /// clobber each other on the real clipboard) — the shared primitive behind the
+    /// config-based copy above and editors that hold a rendered asset. Returns success.
     @discardableResult
-    static func copyPNGToPasteboard(_ cgImage: CGImage) -> Bool {
+    static func copyPNGToPasteboard(
+        _ cgImage: CGImage, to pasteboard: NSPasteboard = .general
+    ) -> Bool {
         guard let png = pngData(from: cgImage) else {
             Log.export.error("Copy to pasteboard failed: PNG encode returned nil")
             return false
         }
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         let copied = pasteboard.setData(png, forType: .png)
         Log.export.info("Copied image to pasteboard (success \(copied, privacy: .public))")

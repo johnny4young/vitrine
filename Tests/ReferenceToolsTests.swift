@@ -6,7 +6,7 @@ import Testing
 
 /// Features #12/#33 — the reference-and-measurement band: the dimension-callout
 /// ruler annotation and the floating pinned-snapshot window.
-@Suite("Reference tools (measure + pin)")
+@Suite("Reference tools (measure + pin)", .serialized)
 @MainActor
 struct ReferenceToolsTests {
     // MARK: - Measure (#12)
@@ -98,6 +98,28 @@ struct ReferenceToolsTests {
         let content = panel.contentRect(forFrameRect: panel.frame).size
         #expect(content.width <= 440)
         #expect(abs(content.width / content.height - 2) < 0.05, "aspect is preserved")
+    }
+
+    /// Re-pinning a DIFFERENT image must update the panel's content and size — the
+    /// reuse test above pins the same image twice, which cannot catch a stale panel.
+    @Test func rePinningADifferentImageUpdatesThePanel() throws {
+        let controller = PinnedSnapshotController.shared
+        defer { controller.unpin() }
+
+        let wide = NSImage(size: NSSize(width: 800, height: 200), flipped: false) { _ in true }
+        controller.pin(wide)
+        let panel = try #require(
+            NSApp.windows.compactMap { $0 as? NSPanel }
+                .first { $0.accessibilityIdentifier() == "pinned-snapshot-window" })
+        let wideSize = panel.contentRect(forFrameRect: panel.frame).size
+        #expect(abs(wideSize.width / wideSize.height - 4) < 0.05)
+
+        let tall = NSImage(size: NSSize(width: 200, height: 800), flipped: false) { _ in true }
+        controller.pin(tall)
+        let tallSize = panel.contentRect(forFrameRect: panel.frame).size
+        #expect(
+            abs(tallSize.height / tallSize.width - 4) < 0.05,
+            "re-pinning must adopt the new image's aspect, not keep the old frame")
     }
 
     // MARK: - Render helper

@@ -94,7 +94,7 @@ struct EditorView: View {
     /// the margin platforms may crop or cover, plus the live line/column budget.
     /// Editor-only chrome — the export never includes it. Persisted app-wide (it is
     /// a working preference, not a per-document style).
-    @AppStorage("editorShowsSafeAreaGuides", store: AppDefaults.current)
+    @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
     var showsSafeAreaGuides = false
 
     /// Undo/redo history for annotation edits (CS-086): each entry is a full snapshot

@@ -85,3 +85,16 @@ struct PublishBandTests {
         }
     }
 }
+
+// MARK: - Share-sheet compose targets (deep-review test gap)
+
+extension PublishBandTests {
+    /// The picker only offers compose targets when the shared items carry an image;
+    /// anything else falls through to the system services untouched.
+    @Test func composeTargetsRequireAnImageItem() {
+        let image = NSImage(size: NSSize(width: 10, height: 10))
+        #expect(ShareManager.shareableImage(in: [image]) === image)
+        #expect(ShareManager.shareableImage(in: []) == nil)
+        #expect(ShareManager.shareableImage(in: ["not an image"]) == nil)
+    }
+}

@@ -39,3 +39,12 @@ struct SafeAreaGuideTests {
         #expect(columns == 0)
     }
 }
+
+extension SafeAreaGuideTests {
+    /// The inspector toggle and the stage overlay observe the same defaults key via
+    /// one shared constant; this pins the constant's value so a rename can't silently
+    /// disconnect persisted toggles (deep-review test gap).
+    @Test func guideToggleStorageKeyIsStable() {
+        #expect(SafeAreaGuide.storageKey == "editorShowsSafeAreaGuides")
+    }
+}

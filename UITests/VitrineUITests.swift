@@ -55,6 +55,46 @@ final class VitrineUITests: XCTestCase {
         add(attachment)
     }
 
+    @MainActor
+    func testCarouselSheetStepperUpdatesTheSlideCount() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        // The carousel entry is PRO-gated; the debug unlock provider (Debug builds
+        // only) opens the real export sheet instead of the paywall.
+        let app = launch(
+            arguments: ["--demo", "--open-editor"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        assertHittable(
+            "export-carousel-button", in: app,
+            "The carousel export entry must be reachable from the editor toolbar")
+        element("export-carousel-button", in: app).click()
+        assertExists(element("carousel-export-sheet", in: app), in: app, timeout: 3)
+
+        // The 12-line demo snippet fits one slide at the default cap (12); one
+        // decrement (→11) must split it in two, so the live count is recomputing —
+        // the label text is localized, so assert change, not wording.
+        let count = element("carousel-slide-count", in: app)
+        assertExists(count, in: app, timeout: 3)
+        let initial = count.label
+        let decrement = element("carousel-export-sheet", in: app)
+            .descendants(matching: .decrementArrow).firstMatch
+        assertExists(decrement, in: app, timeout: 3)
+        decrement.click()
+
+        let deadline = Date().addingTimeInterval(3)
+        while count.label == initial, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertNotEqual(
+            count.label, initial,
+            "Stepping lines-per-slide down must recompute the live slide count")
+
+        element("carousel-cancel", in: app).click()
+    }
+
     // MARK: - Multi-window editing and restoration (CS-053)
 
     @MainActor
@@ -759,6 +799,13 @@ final class VitrineUITests: XCTestCase {
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
         XCTAssertEqual(cards.count, 3)
+        // Poll for the settled initial order like the post-sort check below does: on a
+        // slow runner the adaptive grid's cards can exist a beat before their labels
+        // reflect the settled layout, and an immediate assert races that pass.
+        let initialDeadline = Date().addingTimeInterval(3)
+        while !cards.element(boundBy: 1).label.contains("Rust"), Date() < initialDeadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
         XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
         XCTAssertTrue(cards.element(boundBy: 1).label.contains("Rust"))
 
