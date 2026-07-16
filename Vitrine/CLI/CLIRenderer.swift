@@ -852,9 +852,11 @@ enum CLIRenderer {
         _ options: CLIOptions,
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile
     ) throws -> FileInputLoader.LoadedFile {
-        if let range = options.gitDiffRange {
+        if let source = options.gitDiffSource {
             do {
-                return try GitDiffInputLoader.load(range: range, paths: options.gitDiffPaths)
+                return try GitDiffInputLoader.load(
+                    source: source, paths: options.gitDiffPaths,
+                    contextLines: options.gitDiffContextLines)
             } catch GitDiffInputLoader.LoadError.emptyDiff {
                 throw CLIError.gitDiffEmpty
             } catch GitDiffInputLoader.LoadError.tooLarge {

@@ -7,6 +7,22 @@ import Foundation
 /// drained incrementally so the child process cannot deadlock, and Git is stopped as
 /// soon as output exceeds the shared 5 MB source cap.
 enum GitDiffInputLoader {
+    /// The bounded local change set Git should produce. Keeping this typed prevents
+    /// `--cached` from ever travelling through the user-controlled revision slot.
+    enum Source: Equatable, Sendable {
+        case revision(String)
+        case staged
+
+        var arguments: [String] {
+            switch self {
+            case .revision(let range): [range]
+            case .staged: ["--cached"]
+            }
+        }
+    }
+
+    static let defaultContextLines = 3
+    static let contextLinesRange = 0...100
     static let environmentOverrides = [
         "GIT_LITERAL_PATHSPECS": "1",
         "GIT_NO_LAZY_FETCH": "1",
@@ -39,17 +55,18 @@ enum GitDiffInputLoader {
     /// Builds and executes a local `git diff`, returning the shared source-loader
     /// model so syntax detection, metadata, rendering, and sidecars stay unchanged.
     static func load(
-        range: String, paths: [String],
+        source: Source, paths: [String], contextLines: Int = defaultContextLines,
         currentDirectoryURL: URL = URL(
             fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true),
         executor: Executor = execute
     ) throws -> FileInputLoader.LoadedFile {
+        precondition(contextLinesRange.contains(contextLines))
         let invocation = Invocation(
             executableURL: URL(fileURLWithPath: "/usr/bin/git"),
             arguments: [
-                "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--no-color", range,
-                "--src-prefix=a/", "--dst-prefix=b/", "--unified=3", "--",
-            ] + paths,
+                "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--no-color",
+                "--src-prefix=a/", "--dst-prefix=b/", "--unified=\(contextLines)",
+            ] + source.arguments + ["--"] + paths,
             currentDirectoryURL: currentDirectoryURL)
 
         let result: ExecutionResult

@@ -13,11 +13,24 @@ struct GitDiffInputLoaderTests {
         ])
 
         #expect(options.inputPath.isEmpty)
-        #expect(options.gitDiffRange == "main...HEAD")
+        #expect(options.gitDiffSource == .revision("main...HEAD"))
         #expect(options.gitDiffPaths == ["Sources/App.swift", "Tests"])
+        #expect(options.gitDiffContextLines == 3)
         #expect(options.diffDecorations == true)
         let config = options.makeConfig(code: "diff --git a/x b/x", language: .diff)
         #expect(config.metadata.filename == "changes.diff")
+    }
+
+    @Test func parserSupportsStagedChangesAndCustomContext() throws {
+        let options = try CLIArguments.parse([
+            "multi-size", "--git-staged", "--git-path", "Sources", "--git-context", "8",
+            "--out", "review-cards",
+        ])
+
+        #expect(options.gitDiffSource == .staged)
+        #expect(options.gitDiffPaths == ["Sources"])
+        #expect(options.gitDiffContextLines == 8)
+        #expect(options.diffDecorations == true)
     }
 
     @Test func explicitNoDiffBandsWinsAndSinglePathNamesMetadata() throws {
@@ -42,21 +55,47 @@ struct GitDiffInputLoaderTests {
                 "render", "--git-diff", "HEAD\n--stat", "--out", "review.png",
             ])
         }
-        #expect(throws: CLIError.incompatibleOptions("--git-path requires --git-diff.")) {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--git-path requires --git-diff or --git-staged.")
+        ) {
             try CLIArguments.parse([
                 "render", "--git-path", "Sources", "--out", "review.png",
             ])
         }
         #expect(
             throws: CLIError.incompatibleOptions(
-                "Cannot combine --git-diff with input file \"input.swift\".")
+                "--git-context requires --git-diff or --git-staged.")
+        ) {
+            try CLIArguments.parse([
+                "render", "--git-context", "5", "--out", "review.png",
+            ])
+        }
+        for value in ["-1", "101", "wide"] {
+            #expect(throws: CLIError.invalidValue(flag: "--git-context", value: value)) {
+                try CLIArguments.parse([
+                    "render", "--git-staged", "--git-context", value, "--out", "review.png",
+                ])
+            }
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --git-staged with --git-diff.")
+        ) {
+            try CLIArguments.parse([
+                "render", "--git-diff", "HEAD", "--git-staged", "--out", "review.png",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine a Git diff source with input file \"input.swift\".")
         ) {
             try CLIArguments.parse([
                 "render", "input.swift", "--git-diff", "HEAD", "--out", "review.png",
             ])
         }
         #expect(
-            throws: CLIError.incompatibleOptions("Cannot combine --git-diff with --stdin.")
+            throws: CLIError.incompatibleOptions("Cannot combine a Git diff source with --stdin.")
         ) {
             try CLIArguments.parse([
                 "render", "--stdin", "--git-diff", "HEAD", "--out", "review.png",
@@ -67,13 +106,19 @@ struct GitDiffInputLoaderTests {
                 "batch", "Sources", "--git-diff", "HEAD", "--out", "review",
             ])
         }
+        #expect(throws: CLIError.unknownFlag("--git-staged")) {
+            try CLIArguments.parse([
+                "batch", "Sources", "--git-staged", "--out", "review",
+            ])
+        }
     }
 
     @Test func invocationNeverUsesAShellAndSeparatesPathspecs() throws {
         let directory = URL(fileURLWithPath: "/tmp/example-repository", isDirectory: true)
         var captured: GitDiffInputLoader.Invocation?
         let loaded = try GitDiffInputLoader.load(
-            range: "HEAD~1..HEAD", paths: ["Sources", "--option-like-name"],
+            source: .revision("HEAD~1..HEAD"), paths: ["Sources", "--option-like-name"],
+            contextLines: 7,
             currentDirectoryURL: directory,
             executor: { invocation in
                 captured = invocation
@@ -87,7 +132,7 @@ struct GitDiffInputLoaderTests {
         #expect(
             captured?.arguments == [
                 "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--no-color",
-                "HEAD~1..HEAD", "--src-prefix=a/", "--dst-prefix=b/", "--unified=3", "--",
+                "--src-prefix=a/", "--dst-prefix=b/", "--unified=7", "HEAD~1..HEAD", "--",
                 "Sources", "--option-like-name",
             ])
         #expect(loaded.language == .diff)
@@ -103,20 +148,34 @@ struct GitDiffInputLoaderTests {
                 == ["GIT_DIFF_OPTS", "GIT_EXTERNAL_DIFF"])
     }
 
+    @Test func stagedInvocationUsesAFixedCachedFlag() throws {
+        var captured: GitDiffInputLoader.Invocation?
+        _ = try GitDiffInputLoader.load(source: .staged, paths: []) { invocation in
+            captured = invocation
+            return GitDiffInputLoader.ExecutionResult(
+                terminationStatus: 0,
+                standardOutput: Data("diff --git a/a b/a\n-old\n+new\n".utf8))
+        }
+
+        #expect(captured?.arguments.contains("--cached") == true)
+        #expect(captured?.arguments.contains("--unified=3") == true)
+        #expect(captured?.arguments.suffix(2) == ["--cached", "--"])
+    }
+
     @Test func loaderMapsGitEmptyAndOversizedResultsPrecisely() {
         #expect(throws: GitDiffInputLoader.LoadError.gitFailed) {
-            try GitDiffInputLoader.load(range: "missing", paths: []) { _ in
+            try GitDiffInputLoader.load(source: .revision("missing"), paths: []) { _ in
                 GitDiffInputLoader.ExecutionResult(
                     terminationStatus: 128, standardOutput: Data())
             }
         }
         #expect(throws: GitDiffInputLoader.LoadError.emptyDiff) {
-            try GitDiffInputLoader.load(range: "HEAD", paths: []) { _ in
+            try GitDiffInputLoader.load(source: .revision("HEAD"), paths: []) { _ in
                 GitDiffInputLoader.ExecutionResult(terminationStatus: 0, standardOutput: Data())
             }
         }
         #expect(throws: GitDiffInputLoader.LoadError.tooLarge) {
-            try GitDiffInputLoader.load(range: "HEAD", paths: []) { _ in
+            try GitDiffInputLoader.load(source: .revision("HEAD"), paths: []) { _ in
                 GitDiffInputLoader.ExecutionResult(
                     terminationStatus: 0,
                     standardOutput: Data(count: FileInputLoader.maximumByteCount + 1))
