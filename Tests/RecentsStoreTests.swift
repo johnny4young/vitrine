@@ -214,6 +214,33 @@ struct RecentsStoreTests {
         #expect(cache.count == 0)
     }
 
+    @Test func clearUnpinnedPreservesFavoritesAndTheirThumbnails() {
+        let defaults = freshDefaults()
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let pinned = capture("favorite", isPinned: true)
+        let firstDisposable = capture("temporary one")
+        let secondDisposable = capture("temporary two")
+        store.add(pinned)
+        store.add(firstDisposable)
+        store.add(secondDisposable)
+
+        #expect(store.clearUnpinned() == 2)
+        #expect(store.captures.map(\.id) == [pinned.id])
+        #expect(cache.url(for: pinned.id) != nil)
+        #expect(cache.url(for: firstDisposable.id) == nil)
+        #expect(cache.url(for: secondDisposable.id) == nil)
+        #expect(store.clearUnpinned() == 0)
+
+        let reloaded = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        #expect(reloaded.captures.map(\.id) == [pinned.id])
+    }
+
     @Test func removeDeletesOnlyTheRequestedCaptureAndThumbnail() {
         let (cache, cleanup) = tempCache()
         defer { cleanup() }

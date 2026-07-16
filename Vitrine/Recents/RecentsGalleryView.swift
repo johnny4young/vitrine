@@ -27,6 +27,10 @@ struct RecentsGalleryView: View {
     /// matching every other destructive action in the app (see `EditorView`).
     @State private var isConfirmingClear = false
 
+    /// Drives the safer bulk cleanup that removes disposable history while
+    /// preserving captures the user explicitly pinned.
+    @State private var isConfirmingClearUnpinned = false
+
     /// Local, ephemeral gallery filtering. Search never changes or persists the
     /// underlying history; closing the window naturally resets it.
     @State private var searchQuery = ""
@@ -127,12 +131,27 @@ struct RecentsGalleryView: View {
                 .accessibilityIdentifier("recents-pinned-filter")
             }
             ToolbarItem(placement: .automatic) {
-                Button(role: .destructive) {
-                    isConfirmingClear = true
+                Menu {
+                    Button(role: .destructive) {
+                        isConfirmingClearUnpinned = true
+                    } label: {
+                        Label("Clear Unpinned", systemImage: "trash.slash")
+                    }
+                    .disabled(!recents.captures.contains(where: { !$0.isPinned }))
+                    .accessibilityIdentifier("recents-clear-unpinned-button")
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        isConfirmingClear = true
+                    } label: {
+                        Label("Clear All", systemImage: "trash")
+                    }
+                    .accessibilityIdentifier("recents-clear-all-button")
                 } label: {
-                    Label("Clear Recents", systemImage: "trash")
+                    Label("Manage Recents", systemImage: "ellipsis.circle")
                 }
-                .help("Remove every recent capture and its cached preview")
+                .help("Clear recent captures while optionally keeping pinned favorites")
                 .accessibilityIdentifier("recents-clear-button")
             }
         }
@@ -150,6 +169,19 @@ struct RecentsGalleryView: View {
             Text("This removes every recent capture and its cached preview. This can't be undone.")
         }
         .accessibilityIdentifier("recents-clear-confirmation")
+        .confirmationDialog(
+            "Clear Unpinned?",
+            isPresented: $isConfirmingClearUnpinned,
+            titleVisibility: .visible
+        ) {
+            Button("Clear Unpinned", role: .destructive) { recents.clearUnpinned() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "This removes every unpinned capture and its cached preview. Pinned captures stay in Recents. This can't be undone."
+            )
+        }
+        .accessibilityIdentifier("recents-clear-unpinned-confirmation")
         .confirmationDialog(
             "Delete Capture?",
             isPresented: Binding(

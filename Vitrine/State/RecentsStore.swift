@@ -108,6 +108,23 @@ final class RecentsStore {
         thumbnails.clear()
     }
 
+    /// Removes every unpinned capture while preserving favorites and their cached
+    /// previews. Returns the number removed so callers can distinguish a no-op
+    /// without comparing store snapshots.
+    @discardableResult
+    func clearUnpinned() -> Int {
+        let originalCount = captures.count
+        captures.removeAll { !$0.isPinned }
+        let removedCount = originalCount - captures.count
+        guard removedCount > 0 else { return 0 }
+
+        let keep = Set(captures.map(\.id))
+        decodedThumbnails = decodedThumbnails.filter { keep.contains($0.key) }
+        persist()
+        thumbnails.prune(keeping: keep)
+        return removedCount
+    }
+
     /// Removes one recent capture and its cached thumbnail. Returns `false` for an
     /// unknown id so repeated or stale UI actions are harmless and do not rewrite
     /// the persisted list unnecessarily.
