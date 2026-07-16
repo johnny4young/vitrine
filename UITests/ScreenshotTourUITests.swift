@@ -416,6 +416,41 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarSurpriseStyleTour() throws {
+        let app = launch(arguments: ["--skip-onboarding"])
+        defer { app.terminate() }
+
+        let statusItem = app.statusItems.firstMatch
+        guard statusItem.waitForExistence(timeout: 8), statusItem.isHittable else {
+            miss("52-menubar-surprise-style", reason: "status item not exposed or not hittable")
+            return
+        }
+        statusItem.click()
+
+        let panel = element("menubar-panel", in: app)
+        guard panel.waitForExistence(timeout: 3) else {
+            miss("52-menubar-surprise-style", reason: "status panel did not open")
+            return
+        }
+        let surprise = element("menu-surprise-style-button", in: app)
+        guard surprise.waitForExistence(timeout: 3), surprise.isHittable else {
+            miss("52-menubar-surprise-style", reason: "curated style action was not hittable")
+            return
+        }
+        surprise.click()
+        let dracula = app.buttons["Dracula"].firstMatch
+        let deadline = Date().addingTimeInterval(3)
+        while !dracula.isSelected, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(dracula.isSelected)
+        Thread.sleep(forTimeInterval: 0.5)
+        save(
+            panel.screenshot(), as: "52-menubar-surprise-style",
+            note: "Menu-bar curated style action with the applied theme selected")
+    }
+
+    @MainActor
     func testWebSnapshotTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--open-web-snapshot"])
         defer { app.terminate() }

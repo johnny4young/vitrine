@@ -656,6 +656,37 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarSurpriseStyleUpdatesThemeWithoutClosingThePanel() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--skip-onboarding"])
+        defer { app.terminate() }
+
+        let statusItem = app.statusItems.firstMatch
+        try XCTSkipUnless(
+            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
+            "The status item is not reachable on this display arrangement")
+        statusItem.click()
+
+        let panel = element("menubar-panel", in: app)
+        XCTAssertTrue(panel.waitForExistence(timeout: 3))
+        assertHittable(
+            "menu-surprise-style-button", in: app,
+            "The curated style action should be reachable from the menu-bar panel")
+        let dracula = app.buttons["Dracula"].firstMatch
+        XCTAssertTrue(dracula.waitForExistence(timeout: 3))
+        XCTAssertFalse(dracula.isSelected)
+
+        element("menu-surprise-style-button", in: app).click()
+        let deadline = Date().addingTimeInterval(3)
+        while !dracula.isSelected, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+
+        XCTAssertTrue(dracula.isSelected)
+        XCTAssertTrue(panel.exists, "Applying a curated style should keep the panel open")
+    }
+
+    @MainActor
     func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() throws {
         continueAfterFailure = false
         // A fresh defaults suite is a first run, so the quick-start appears on
