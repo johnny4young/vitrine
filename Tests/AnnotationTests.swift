@@ -192,6 +192,38 @@ struct AnnotationTests {
         #expect(restored.first?.end == CGPoint(x: 0.6, y: 0.5))
     }
 
+    /// Blur (redaction) and spotlight composite as separate layers with a documented
+    /// z-order (blur under the scrim). They must coexist: a blur box inside a
+    /// spotlight's visible hole must still visibly redact — if a refactor ever drew
+    /// blur above/instead of the scrim (or skipped it), these inequalities break.
+    @Test func spotlightAndBlurComposeTogether() throws {
+        var base = SnapshotConfig()
+        base.code = "let secret = \"AKIA1234SECRET\"\nlet ok = 1\nlet fin = 2"
+
+        let spotlightOnly: SnapshotConfig = {
+            var config = base
+            config.annotations = [
+                Annotation(
+                    kind: .spotlight, start: CGPoint(x: 0.05, y: 0.2), end: CGPoint(x: 0.95, y: 0.6)
+                )
+            ]
+            return config
+        }()
+        let both: SnapshotConfig = {
+            var config = spotlightOnly
+            // The blur box sits INSIDE the spotlight's bright hole.
+            config.annotations.append(
+                Annotation(
+                    kind: .blur, start: CGPoint(x: 0.1, y: 0.25), end: CGPoint(x: 0.6, y: 0.4)))
+            return config
+        }()
+
+        #expect(
+            try png(spotlightOnly) != png(both),
+            "a blur box inside the spotlight hole must still visibly redact")
+        #expect(try png(base) != png(both))
+    }
+
     // MARK: - Curved arrow (feature #11)
 
     @Test func curvedArrowChangesTheRenderedPixelsAndDiffersFromStraight() throws {

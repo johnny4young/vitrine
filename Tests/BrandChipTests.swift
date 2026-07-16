@@ -112,3 +112,29 @@ struct BrandChipTests {
         return try #require(ExportManager.pngData(from: cg))
     }
 }
+
+// MARK: - reload() cache invalidation (deep-review test gap)
+
+extension BrandChipTests {
+    /// `reload()` mirrors an external change into memory; the QR cache must rebuild
+    /// from the NEW link, not serve the stale bitmap. The link is written straight to
+    /// the backing defaults (bypassing the observed setter) so only reload() can pick
+    /// it up — the scenario a settings reset/import produces.
+    @Test func reloadRebuildsTheQRCacheFromTheStoredLink() throws {
+        let defaults = isolatedDefaults()
+        let store = BrandKitStore(defaults: defaults)
+        store.isEnabled = true
+        store.brandKit = BrandKit(handle: "@jane", linkURL: "https://example.com/old")
+        #expect(store.resolvedWatermark(isPro: true)?.qrIdentity == "https://example.com/old")
+
+        // Simulate an external writer: persist a different link behind the store's back.
+        var external = store.brandKit
+        external.linkURL = "https://example.com/new"
+        defaults.set(try JSONEncoder().encode(external), forKey: BrandKitStore.storageKey)
+
+        store.reload()
+        let mark = try #require(store.resolvedWatermark(isPro: true))
+        #expect(mark.qrIdentity == "https://example.com/new")
+        #expect(mark.qrImage != nil)
+    }
+}

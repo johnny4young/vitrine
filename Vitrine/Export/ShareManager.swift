@@ -43,11 +43,18 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
         _ sharingServicePicker: NSSharingServicePicker, sharingServicesForItems items: [Any],
         proposedSharingServices proposedServices: [NSSharingService]
     ) -> [NSSharingService] {
-        guard let image = items.first as? NSImage else { return proposedServices }
+        guard let image = Self.shareableImage(in: items) else { return proposedServices }
         let composeServices = SocialComposer.Network.allCases.compactMap { network in
             makeComposeService(for: network, image: image)
         }
         return composeServices + proposedServices
+    }
+
+    /// The image the compose targets act on, or `nil` when the shared items carry
+    /// none — in which case the picker shows only the system services. Split out so
+    /// the decision is unit-testable without a live picker.
+    static func shareableImage(in items: [Any]) -> NSImage? {
+        items.first as? NSImage
     }
 
     /// One compose target as a custom `NSSharingService`: pasteboard-stage the PNG,
