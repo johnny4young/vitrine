@@ -7773,6 +7773,28 @@
           }
         }
       }
+    },
+    "Surprise Me" : {
+      "comment" : "Action that applies the next curated built-in style.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorpréndeme"
+          }
+        }
+      }
+    },
+    "Apply the next curated style without changing your code" : {
+      "comment" : "Accessibility hint for the Surprise Me style action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplica el siguiente estilo de la colección sin cambiar tu código"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"
