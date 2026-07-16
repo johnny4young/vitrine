@@ -261,7 +261,9 @@ struct RecentsGalleryView: View {
     /// style or default output preset. The destination owns both the presentation
     /// guidance and exact geometry, matching the menu-bar one-off preset flow.
     private func render(_ capture: Capture, as preset: ExportPreset) {
-        var config = capture.applying(to: settings.config)
+        // `exportConfig`, not `config`: every export surface renders through it so
+        // the PRO Brand Kit watermark is applied at the export seam (CS-092).
+        var config = capture.applying(to: settings.exportConfig)
         preset.apply(to: &config)
         let copied = ExportManager.copyToPasteboard(
             config,

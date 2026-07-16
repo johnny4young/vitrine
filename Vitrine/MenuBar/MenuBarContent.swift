@@ -336,7 +336,9 @@ struct MenuBarContent: View {
     /// copies the image — the row's hover action, so a past capture is one
     /// click from the clipboard again.
     private func copyAgain(_ capture: Capture) {
-        let config = capture.applying(to: settings.config)
+        // `exportConfig`, not `config`: every export surface renders through it so
+        // the PRO Brand Kit watermark is applied at the export seam (CS-092).
+        let config = capture.applying(to: settings.exportConfig)
         ExportManager.copyToPasteboard(
             config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
