@@ -17,6 +17,9 @@ import Foundation
 ///   - ``formatMarkup(_:)`` expands compact HTML/XML into a readable hierarchy when
 ///     doing so cannot change text semantics; malformed, mixed-content, and raw-text
 ///     documents fall back to the existing line-based tag re-indenter.
+///   - ``formatSQL(_:)`` tokenizes statements before laying out clauses, so quoted
+///     values, identifiers, comments, and vendor parameter forms stay byte-for-byte
+///     intact while minified queries become readable.
 ///   - ``dedent(_:)`` removes the uniform left margin a snippet picks up when copied
 ///     from deep inside a file. Used for whitespace/keyword-significant languages
 ///     (Python, YAML, Ruby, …) whose block structure is *not* in brackets, so
@@ -48,6 +51,7 @@ enum CodeFormatter {
             case .json: formatJSON(code) ?? dedent(code)
             case .markup:
                 formatMarkup(code) ?? reindent(code, tags: true, indent: language.indentUnit)
+            case .sql: formatSQL(code) ?? dedent(code)
             case .reindentBraces: reindent(code, tags: false, indent: language.indentUnit)
             case .reindentTags: reindent(code, tags: true, indent: language.indentUnit)
             case .dedentOnly: dedent(code)
@@ -601,6 +605,7 @@ extension Language {
     enum FormatStrategy {
         case json
         case markup
+        case sql
         case reindentBraces
         case reindentTags
         case dedentOnly
@@ -611,11 +616,12 @@ extension Language {
         switch self {
         case .json: .json
         case .html: .markup
+        case .sql: .sql
         case .javascript, .typescript: .reindentTags
         case .swift, .go, .rust, .java, .kotlin, .c, .cpp, .csharp, .objectivec,
             .scala, .dart, .css, .scss, .php, .r, .perl, .graphql:
             .reindentBraces
-        case .python, .yaml, .ruby, .haskell, .lua, .elixir, .bash, .sql, .toml,
+        case .python, .yaml, .ruby, .haskell, .lua, .elixir, .bash, .toml,
             .dockerfile:
             .dedentOnly
         case .diff, .markdown, .terminal, .plaintext: .leaveAlone

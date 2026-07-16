@@ -328,6 +328,28 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testSQLPrettyPrintTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-sql-format", "--open-editor"])
+        defer { app.terminate() }
+
+        let window = element("editor-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        XCTAssertTrue(waitForHittableElement("format-button", in: app, timeout: 5))
+        element("format-button", in: app).click()
+
+        let editor = element("code-editor-text-view", in: app)
+        let deadline = Date().addingTimeInterval(3)
+        while !(editor.value as? String ?? "").contains("\nLEFT JOIN orders"), Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertTrue((editor.value as? String ?? "").contains("\nLEFT JOIN orders"))
+        Thread.sleep(forTimeInterval: 0.8)
+        save(
+            window.screenshot(), as: "60-editor-sql-pretty-print",
+            note: "Format Code expanded compact SQL into select, join, and predicate lines")
+    }
+
+    @MainActor
     func testPinnedRecentsTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
         defer { app.terminate() }
