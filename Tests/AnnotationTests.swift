@@ -156,6 +156,50 @@ struct AnnotationTests {
         #expect(try png(plain) != png(texted), "a text callout must change the exported image")
     }
 
+    // MARK: - Curved arrow (feature #11)
+
+    @Test func curvedArrowChangesTheRenderedPixelsAndDiffersFromStraight() throws {
+        var plain = SnapshotConfig()
+        plain.code = "let x = 1"
+        var straight = plain
+        straight.annotations = [
+            Annotation(kind: .arrow, start: CGPoint(x: 0.15, y: 0.5), end: CGPoint(x: 0.85, y: 0.5))
+        ]
+        var curved = plain
+        curved.annotations = [
+            Annotation(
+                kind: .curvedArrow, start: CGPoint(x: 0.15, y: 0.5), end: CGPoint(x: 0.85, y: 0.5))
+        ]
+        #expect(try png(plain) != png(curved), "a curved arrow must change the exported image")
+        #expect(
+            try png(straight) != png(curved),
+            "a curved arrow must render differently from a straight one over the same span")
+    }
+
+    /// The curved arrow is drag-placed (two free points), maps tool→kind, and exposes
+    /// both the color swatch and the size slider like the straight arrow.
+    @Test func curvedArrowToolContract() {
+        #expect(!Annotation.Kind.curvedArrow.isPointPlaced)
+        #expect(AnnotationTool.curvedArrow.kind == .curvedArrow)
+        #expect(AnnotationTool.curvedArrow.usesThickness)
+        #expect(AnnotationTool.curvedArrow.usesColor)
+    }
+
+    /// A curved arrow survives the persistence round-trip.
+    @Test func curvedArrowRoundTripsThroughPersistence() {
+        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        var config = SnapshotConfig()
+        config.annotations = [
+            Annotation(
+                kind: .curvedArrow, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.8, y: 0.7),
+                thickness: 6)
+        ]
+        SettingsCodec.persistStyle(config, to: defaults)
+        let restored = SettingsCodec.readConfig(from: defaults).annotations
+        #expect(restored.first?.kind == .curvedArrow)
+        #expect(restored.first?.end == CGPoint(x: 0.8, y: 0.7))
+    }
+
     // MARK: - Sticker layer (feature #13)
 
     @Test func stickerChangesTheRenderedPixels() throws {
