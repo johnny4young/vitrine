@@ -225,10 +225,18 @@ struct Watermark: Equatable {
     /// bottom-right region, so switching to Free starts where the default corner sat.
     var freePosition: CGPoint = CGPoint(x: 0.84, y: 0.9)
 
+    /// The pregenerated QR chip for the kit's link, or `nil` for no chip (feature
+    /// #28). Carried as a finished bitmap so the render path never runs Core Image.
+    var qrImage: NSImage?
+
+    /// A cheap, stable identity for the QR (the encoded link) used by `==`, mirroring
+    /// `logoIdentity` so a SwiftUI diff never byte-compares the bitmap.
+    var qrIdentity: String?
+
     /// Where a watermark is anchored: one of the four corners, or `.free` (placed
     /// anywhere by dragging it in the preview).
     enum Placement: String, CaseIterable, Codable, Sendable {
-        case bottomTrailing, bottomLeading, topTrailing, topLeading, free
+        case bottomTrailing, bottomLeading, topTrailing, topLeading, free, footerBar
 
         /// A human-readable name for the picker.
         var label: String {
@@ -238,6 +246,7 @@ struct Watermark: Equatable {
             case .topTrailing: String(localized: "Top right")
             case .topLeading: String(localized: "Top left")
             case .free: String(localized: "Free")
+            case .footerBar: String(localized: "Footer bar")
             }
         }
 
@@ -249,8 +258,8 @@ struct Watermark: Equatable {
         CGPoint(x: min(max(point.x, 0), 1), y: min(max(point.y, 0), 1))
     }
 
-    /// Whether the mark has anything to draw — at least a logo or a non-empty line.
-    var hasContent: Bool { logoImageData != nil || !text.isEmpty }
+    /// Whether the mark has anything to draw — a logo, a non-empty line, or a QR chip.
+    var hasContent: Bool { logoImageData != nil || !text.isEmpty || qrImage != nil }
 
     /// Equality compares the logo by its cheap content identity rather than its bytes, so a
     /// SwiftUI diff of `SnapshotConfig` stays O(1) on every render (audit P1-Perf-4). When
@@ -264,6 +273,7 @@ struct Watermark: Equatable {
         // this keeps a SwiftUI diff of `SnapshotConfig` from triggering needless
         // rerenders when the position is carried but unused.
         if lhs.placement == .free, lhs.freePosition != rhs.freePosition { return false }
+        guard lhs.qrIdentity == rhs.qrIdentity else { return false }
         if lhs.logoIdentity != nil || rhs.logoIdentity != nil {
             return lhs.logoIdentity == rhs.logoIdentity
         }

@@ -15,6 +15,7 @@ extension Watermark.Placement {
         case .topTrailing: .topTrailing
         case .topLeading: .topLeading
         case .free: .center
+        case .footerBar: .bottom
         }
     }
 }

@@ -14,6 +14,12 @@ can never drift.
 
 ### Added
 
+- **QR link chip (PRO).** Give the Brand Kit a link (profile, repo, article) and the
+  mark gains a scannable QR chip — generated fully on-device, integer-scaled so the
+  modules stay crisp at any export scale.
+- **Signature footer bar (PRO).** A new watermark placement: a full-width attribution
+  strip along the bottom edge — logo and handle on the left, the QR chip on the
+  right — instead of a floating corner badge.
 - **Spotlight.** A new annotation tool dims everything except the regions you draw —
   the "look here" effect for walkthroughs. Multiple spotlights punch multiple holes in
   one scrim; arrows and callouts stay at full brightness above it.

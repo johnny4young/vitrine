@@ -4917,6 +4917,39 @@
         }
       }
     },
+    "Adds a scannable QR chip to the mark. Generated on-device." : {
+      "comment" : "Caption for the Brand Kit link-URL field (QR chip, feature #28).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade un chip QR escaneable a la marca. Generado en el dispositivo."
+          }
+        }
+      }
+    },
+    "Footer bar" : {
+      "comment" : "Watermark placement: full-width signature bar along the bottom edge.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra inferior"
+          }
+        }
+      }
+    },
+    "Link" : {
+      "comment" : "Brand Kit row label: the URL the QR chip encodes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlace"
+          }
+        }
+      }
+    },
     "Guides" : {
       "comment" : "Inspector row label for the safe-area guide toggle.",
       "localizations" : {
