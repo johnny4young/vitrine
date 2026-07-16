@@ -164,16 +164,16 @@ struct CLIOptions: Equatable {
     var counterColor: RGBAColor?
     /// Optional counter size weight in the editor's supported 2...28 range.
     var counterSize: Double?
-    /// Optional straight arrow described by normalized tail/head points and editor styling.
-    var arrow: SegmentAnnotation?
-    /// Optional straight line described by normalized endpoints and editor styling.
-    var line: SegmentAnnotation?
-    /// Optional outlined rectangle described by normalized opposite corners.
-    var rectangle: SegmentAnnotation?
-    /// Optional translucent highlighter described by normalized opposite corners.
-    var highlighter: SegmentAnnotation?
-    /// Optional visual blur box described by normalized opposite corners.
-    var blurBox: SegmentAnnotation?
+    /// Straight arrows described by normalized tail/head points and shared editor styling.
+    var arrows: [SegmentAnnotation] = []
+    /// Straight lines described by normalized endpoints and shared editor styling.
+    var lines: [SegmentAnnotation] = []
+    /// Outlined rectangles described by normalized opposite corners.
+    var rectangles: [SegmentAnnotation] = []
+    /// Translucent highlighters described by normalized opposite corners.
+    var highlighters: [SegmentAnnotation] = []
+    /// Visual blur boxes described by normalized opposite corners.
+    var blurBoxes: [SegmentAnnotation] = []
     /// Optional frame around `--image` content. Nil preserves the model's plain-image
     /// default; stable CLI ids map onto the app's existing frame enum.
     var imageFrame: ImageFrameOption?
@@ -423,11 +423,12 @@ struct CLIOptions: Equatable {
                     thickness: counterSize ?? Annotation.defaultThickness,
                     number: counterNumber))
         }
-        if let arrow { config.annotations.append(arrow.modelValue(kind: .arrow)) }
-        if let line { config.annotations.append(line.modelValue(kind: .line)) }
-        if let rectangle { config.annotations.append(rectangle.modelValue(kind: .rectangle)) }
-        if let highlighter { config.annotations.append(highlighter.modelValue(kind: .highlighter)) }
-        if let blurBox { config.annotations.append(blurBox.modelValue(kind: .blur)) }
+        config.annotations.append(contentsOf: arrows.map { $0.modelValue(kind: .arrow) })
+        config.annotations.append(contentsOf: lines.map { $0.modelValue(kind: .line) })
+        config.annotations.append(contentsOf: rectangles.map { $0.modelValue(kind: .rectangle) })
+        config.annotations.append(
+            contentsOf: highlighters.map { $0.modelValue(kind: .highlighter) })
+        config.annotations.append(contentsOf: blurBoxes.map { $0.modelValue(kind: .blur) })
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
         config.terminalColumns = terminalColumns
