@@ -1078,24 +1078,7 @@ enum CLIRenderer {
     /// output image name are user-controlled strings.
     /// Internal (not private) so the exact format is unit-testable.
     static func markdownSidecarContents(for config: SnapshotConfig, imageName: String) -> String {
-        let body = config.sidecarText
-        let fenceLanguage = config.language == .terminal ? "text" : config.language.rawValue
-        var longestBacktickRun = 0
-        var currentRun = 0
-        for character in body {
-            currentRun = character == "`" ? currentRun + 1 : 0
-            longestBacktickRun = max(longestBacktickRun, currentRun)
-        }
-        let fence = String(repeating: "`", count: max(3, longestBacktickRun + 1))
-        let alt = markdownAltText(config.metadata.filename ?? "Code rendered with Vitrine")
-        let destination = markdownImageDestination(imageName)
-        let trailingNewline = body.hasSuffix("\n") ? "" : "\n"
-        return """
-            ![\(alt)](\(destination))
-
-            \(fence)\(fenceLanguage)
-            \(body)\(trailingNewline)\(fence)
-            """ + "\n"
+        MarkdownExport.document(for: config, imageSource: imageName)
     }
 
     /// Builds a small, self-contained HTML sidecar with every user-controlled string
@@ -1124,43 +1107,6 @@ enum CLIRenderer {
             </body>
             </html>
             """ + "\n"
-    }
-
-    /// Escapes Markdown image alt text so a source filename containing `]`, `[`,
-    /// backslashes, or newlines cannot break the generated image syntax.
-    private static func markdownAltText(_ text: String) -> String {
-        var escaped = ""
-        escaped.reserveCapacity(text.count)
-        for character in text {
-            switch character {
-            case "\\":
-                escaped += "\\\\"
-            case "[", "]":
-                escaped += "\\\(character)"
-            case "\n", "\r":
-                escaped += " "
-            default:
-                escaped.append(character)
-            }
-        }
-        return escaped
-    }
-
-    /// Keeps plain filenames readable, but switches to an angle-bracket link
-    /// destination when the output name carries Markdown-significant characters
-    /// such as spaces, parentheses, or `>`.
-    private static func markdownImageDestination(_ imageName: String) -> String {
-        let plainSafeCharacters = CharacterSet.alphanumerics.union(
-            CharacterSet(charactersIn: "-._~/"))
-        if imageName.unicodeScalars.allSatisfy({ plainSafeCharacters.contains($0) }) {
-            return imageName
-        }
-        let escaped = imageName.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "<", with: "\\<")
-            .replacingOccurrences(of: ">", with: "\\>")
-            .replacingOccurrences(of: "\n", with: "%0A")
-            .replacingOccurrences(of: "\r", with: "%0D")
-        return "<\(escaped)>"
     }
 
     /// Escapes text-node content for HTML sidecars.
