@@ -240,10 +240,10 @@ extension EditorView {
     /// it is the same batch-export family.
     var carouselExportButton: some View {
         GlassIconButton(systemImage: "rectangle.stack") {
-            carouselSheet = entitlements.isUnlocked(.multiSizeExport) ? .export : .paywall
+            carouselSheet = entitlements.isUnlocked(.carouselExport) ? .export : .paywall
         }
         .overlay(alignment: .topTrailing) {
-            if !entitlements.isUnlocked(.multiSizeExport) { ProBadge().accessibilityHidden(true) }
+            if !entitlements.isUnlocked(.carouselExport) { ProBadge().accessibilityHidden(true) }
         }
         .help("Split the snippet into numbered carousel slides (4:5)")
         .disabled(
@@ -258,7 +258,7 @@ extension EditorView {
                     baseConfig: settings.exportConfig,
                     profile: settings.export.colorProfile)
             case .paywall:
-                PaywallSheet(feature: .multiSizeExport)
+                PaywallSheet(feature: .carouselExport)
             }
         }
     }

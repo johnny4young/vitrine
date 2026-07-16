@@ -232,9 +232,21 @@ private struct AnnotationHandle: View {
     private var endPoint: CGPoint { annotation.endPoint(in: canvasSize) }
     private var rect: CGRect { annotation.rect(in: canvasSize) }
 
-    private var isLineLike: Bool { annotation.kind == .arrow || annotation.kind == .line }
+    /// Marks whose geometry is a stroke between two free points: their grab area and
+    /// selection outline follow the span, not a rect. The curved arrow's arc and the
+    /// measure's shaft both live along (near) the start→end line, so line hit-testing
+    /// serves them; leaving a kind out of both groups drops it into the point-placed
+    /// fallback — a small box at `start` — which broke select/move for the newer kinds
+    /// (deep-review finding).
+    private var isLineLike: Bool {
+        annotation.kind == .arrow || annotation.kind == .line
+            || annotation.kind == .curvedArrow || annotation.kind == .measure
+    }
+    /// Marks whose geometry is the spanned rectangle. A spotlight is a region exactly
+    /// like blur, so it selects and resizes by its rect.
     private var isBoxLike: Bool {
-        annotation.kind == .rectangle || annotation.kind == .highlighter || annotation.kind == .blur
+        annotation.kind == .rectangle || annotation.kind == .highlighter
+            || annotation.kind == .blur || annotation.kind == .spotlight
     }
 
     var body: some View {

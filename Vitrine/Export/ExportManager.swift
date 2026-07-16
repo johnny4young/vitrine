@@ -288,15 +288,40 @@ enum ExportManager {
     static func encodedPayload(
         _ format: ExportFormat, png: () -> CGImage?, pdf: () -> Data?
     ) -> (data: Data, type: UTType, ext: String)? {
+        if case .pdf = format { return pdf().map { ($0, .pdf, "pdf") } }
+        // Raster formats encode the exact rendered, color-managed CGImage the PNG path
+        // produces — they differ only in container/codec, so no call site needs
+        // another render closure.
+        guard let cgImage = png(),
+            let data = rasterData(from: cgImage, format: format),
+            let metadata = rasterMetadata(for: format)
+        else { return nil }
+        return (data, metadata.type, metadata.ext)
+    }
+
+    /// The single raster format→bytes mapping (deep-review finding): every save/batch
+    /// path used to carry its own PNG/HEIC/AVIF switch, three copies that had to stay
+    /// in sync by hand. `nonisolated` — a pure function of a `Sendable` `CGImage` —
+    /// so the main-actor payload ladder and the off-main batch writer share it.
+    nonisolated static func rasterData(from cgImage: CGImage, format: ExportFormat) -> Data? {
         switch format {
-        case .png: png().flatMap(pngData(from:)).map { ($0, .png, "png") }
-        case .pdf: pdf().map { ($0, .pdf, "pdf") }
-        // HEIC and AVIF encode the exact rendered, color-managed CGImage the PNG path
-        // produces — raster formats differ only in container/codec, so no call site
-        // needs another render closure.
-        case .heic: png().flatMap(heicData(from:)).map { ($0, .heic, "heic") }
-        case .avif:
-            png().flatMap(avifData(from:)).map { ($0, avifContentType, "avif") }
+        case .png: pngData(from: cgImage)
+        case .heic: heicData(from: cgImage)
+        case .avif: avifData(from: cgImage)
+        case .pdf: nil
+        }
+    }
+
+    /// The content type + extension a raster format encodes to; `nil` for PDF (a
+    /// vector document, not a raster encode).
+    nonisolated static func rasterMetadata(
+        for format: ExportFormat
+    ) -> (type: UTType, ext: String)? {
+        switch format {
+        case .png: (.png, "png")
+        case .heic: (.heic, "heic")
+        case .avif: (avifContentType, "avif")
+        case .pdf: nil
         }
     }
 
@@ -396,18 +421,14 @@ enum ExportManager {
     static func saveToFile(
         cgImage: CGImage, format: ExportFormat, suggestedName: String
     ) -> SaveOutcome {
-        let payload: (data: Data, type: UTType, ext: String)? =
-            switch format {
-            case .png: pngData(from: cgImage).map { ($0, .png, "png") }
-            case .heic: heicData(from: cgImage).map { ($0, .heic, "heic") }
-            case .avif: avifData(from: cgImage).map { ($0, avifContentType, "avif") }
-            case .pdf: nil
-            }
-        guard let payload else {
+        guard let data = rasterData(from: cgImage, format: format),
+            let metadata = rasterMetadata(for: format)
+        else {
             Log.export.error("Save to file failed: raster encode returned nil or PDF via cgImage")
             return .failed
         }
-        return saveToFile(payload: payload, suggestedName: suggestedName)
+        return saveToFile(
+            payload: (data, metadata.type, metadata.ext), suggestedName: suggestedName)
     }
 
     /// Presents the save panel for an already-encoded payload and writes it — the
@@ -525,11 +546,8 @@ enum ExportManager {
         to url: URL, sidecarText: String
     ) async -> Bool {
         let data: Data? =
-            switch format {
-            case .png: cgImage.flatMap(pngData(from:))
-            case .heic: cgImage.flatMap(heicData(from:))
-            case .avif: cgImage.flatMap(avifData(from:))
-            case .pdf: pdfData
+            if case .pdf = format { pdfData } else {
+                cgImage.flatMap { rasterData(from: $0, format: format) }
             }
         guard let data else {
             Log.export.error("Multi-size export: render/encode returned nil for a preset")
