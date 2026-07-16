@@ -4,7 +4,7 @@ import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Renders a `SnapshotConfig` to PNG/PDF/HEIC and exports it to the clipboard or a
+/// Renders a `SnapshotConfig` to PNG/PDF/HEIC/AVIF and exports it to the clipboard or a
 /// file (CS-007/010). Raster encoding goes through ImageIO directly from the
 /// rendered `CGImage`; PDF uses `ImageRenderer.render` into a `CGContext` — no legacy
 /// `NSBitmapImageRep`/TIFF round-trip.
@@ -169,13 +169,31 @@ enum ExportManager {
     /// the near-lossless quality keeps text crisp; the codec is still lossy, so
     /// PNG remains the byte-exact default.
     nonisolated static func heicData(from cgImage: CGImage) -> Data? {
+        lossyImageData(
+            from: cgImage, typeIdentifier: UTType.heic.identifier, quality: 0.95)
+    }
+
+    /// AVIF-encodes a `CGImage` through ImageIO. AVIF keeps the same color-managed
+    /// pixels and alpha channel as PNG while producing compact web-ready artifacts.
+    /// `UTType` does not currently expose an `avif` static convenience, so the
+    /// system-declared public identifier is resolved explicitly.
+    nonisolated static func avifData(from cgImage: CGImage) -> Data? {
+        lossyImageData(from: cgImage, typeIdentifier: "public.avif", quality: 0.95)
+    }
+
+    /// Shared ImageIO path for alpha-capable lossy raster formats. Keeping destination
+    /// creation, quality, image addition, and finalization in one place prevents HEIC
+    /// and AVIF behavior from drifting as export surfaces evolve.
+    nonisolated private static func lossyImageData(
+        from cgImage: CGImage, typeIdentifier: String, quality: Double
+    ) -> Data? {
         let data = NSMutableData()
         guard
             let destination = CGImageDestinationCreateWithData(
-                data, UTType.heic.identifier as CFString, 1, nil
+                data, typeIdentifier as CFString, 1, nil
             )
         else { return nil }
-        let options = [kCGImageDestinationLossyCompressionQuality: 0.95] as CFDictionary
+        let options = [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary
         CGImageDestinationAddImage(destination, cgImage, options)
         guard CGImageDestinationFinalize(destination) else { return nil }
         return data as Data
@@ -245,7 +263,7 @@ enum ExportManager {
         return data as Data
     }
 
-    /// The single PNG/PDF/HEIC format ladder shared by every save/encode path
+    /// The single PNG/PDF/HEIC/AVIF format ladder shared by every save/encode path
     /// (CS-007/041). Given a render strategy for each branch — a `png` producer of a
     /// `CGImage` and a `pdf` producer of finished `Data` — it picks the branch for
     /// `format`, encodes PNG through the shared color-managed ImageIO path, and pairs
@@ -259,11 +277,20 @@ enum ExportManager {
         switch format {
         case .png: png().flatMap(pngData(from:)).map { ($0, .png, "png") }
         case .pdf: pdf().map { ($0, .pdf, "pdf") }
-        // HEIC encodes the exact rendered, color-managed CGImage the PNG path
-        // produces — the two raster formats differ only in container/codec, so no
-        // call site needs a third closure.
+        // HEIC and AVIF encode the exact rendered, color-managed CGImage the PNG path
+        // produces — raster formats differ only in container/codec, so no call site
+        // needs another render closure.
         case .heic: png().flatMap(heicData(from:)).map { ($0, .heic, "heic") }
+        case .avif:
+            png().flatMap(avifData(from:)).map { ($0, avifContentType, "avif") }
         }
+    }
+
+    /// The public AVIF type is system-declared on supported macOS releases, but the
+    /// Swift overlay has no `UTType.avif` convenience. Resolve it by identifier for
+    /// save panels, with an imported image type as a defensive fallback.
+    nonisolated static var avifContentType: UTType {
+        UTType("public.avif") ?? UTType(importedAs: "public.avif", conformingTo: .image)
     }
 
     /// Renders and writes the image to the general pasteboard. Returns success.
@@ -320,7 +347,7 @@ enum ExportManager {
         return copied
     }
 
-    /// Presents an `NSSavePanel` and writes the image as PNG, PDF, or HEIC.
+    /// Presents an `NSSavePanel` and writes the image as PNG, PDF, HEIC, or AVIF.
     ///
     /// `profile` applies to raster export only (CS-024); PDF is a color-managed
     /// vector document and is unaffected by the raster color-profile choice.
@@ -346,7 +373,7 @@ enum ExportManager {
             payload: payload, suggestedName: SuggestedFilename.basename(for: config))
     }
 
-    /// Saves an **already-rendered** raster `cgImage` as PNG or HEIC (P5): the
+    /// Saves an **already-rendered** raster `cgImage` as PNG, HEIC, or AVIF (P5): the
     /// quick-capture path renders the styled image once and reuses it for both the
     /// clipboard copy and this file save instead of re-rendering the identical config.
     /// PDF is a vector document and must render its own page, so it is not accepted here
@@ -359,6 +386,7 @@ enum ExportManager {
             switch format {
             case .png: pngData(from: cgImage).map { ($0, .png, "png") }
             case .heic: heicData(from: cgImage).map { ($0, .heic, "heic") }
+            case .avif: avifData(from: cgImage).map { ($0, avifContentType, "avif") }
             case .pdf: nil
             }
         guard let payload else {
@@ -438,7 +466,7 @@ enum ExportManager {
                 let raster: CGImage?
                 let pdf: Data?
                 switch format {
-                case .png, .heic:
+                case .png, .heic, .avif:
                     raster = renderCGImage(
                         config, scale: CGFloat(preset.scale), fixedSize: size, profile: profile)
                     pdf = nil
@@ -486,6 +514,7 @@ enum ExportManager {
             switch format {
             case .png: cgImage.flatMap(pngData(from:))
             case .heic: cgImage.flatMap(heicData(from:))
+            case .avif: cgImage.flatMap(avifData(from:))
             case .pdf: pdfData
             }
         guard let data else {

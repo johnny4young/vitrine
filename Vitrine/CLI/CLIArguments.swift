@@ -1346,7 +1346,7 @@ enum CLIArguments {
         return extensionFormat
     }
 
-    /// Parses the output format (`png`/`pdf`/`heic`).
+    /// Parses the output format (`png`/`pdf`/`heic`/`avif`).
     private static func resolveFormat(_ raw: String) throws -> ExportFormat {
         guard let format = ExportFormat(rawValue: raw.lowercased()) else {
             throw CLIError.invalidValue(flag: "--format", value: raw)
@@ -1478,8 +1478,9 @@ nonisolated enum CLIUsage {
           --wrap-columns <n>     Soft-wrap long code lines at n columns (40-200).
           --format-code          Tidy indentation locally before rendering
                                  (--tidy is also accepted).
-          --format <png|pdf|heic>  Output format. Defaults to png; pdf is the vector
-                                 option, heic the compact raster one.
+          --format <png|pdf|heic|avif>
+                                 Output format. Defaults to png; pdf is the vector
+                                 option; heic and avif are compact raster options.
           --profile <srgb|p3>    PNG color profile. Defaults to srgb.
           --transparent          Render a real transparent background.
           --background <id>      Built-in gradient. Use `vitrine list backgrounds`.

@@ -429,7 +429,7 @@ Defaults match the app (One Dark, JetBrains Mono, aurora background); `--quiet`
 suppresses the success summary for scripts while leaving errors visible, and `--json`
 prints `render`/`batch` success summaries as structured JSON (mutually exclusive with
 `--quiet`). `--theme`,
-`--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
+`--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`/`avif`), `--profile`
 (`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
 `--transparent`, `--background <id>`, `--background-color <hex>`,
 `--background-gradient <hex,hex,...>`, `--background-angle <degrees>`,
@@ -456,7 +456,7 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--no-diff-bands`), and the header controls
 (`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`) override
 individual choices. For single-file `render`, a known
-`--out` extension (`.png`, `.pdf`, or `.heic`) selects the matching format when
+`--out` extension (`.png`, `.pdf`, `.heic`, or `.avif`) selects the matching format when
 `--format` is omitted; if both are present, they must agree so scripts never write
 mislabeled artifacts. With `--stdin`, `--stdin-name <name>` supplies a filename hint
 for extension-based language inference and default metadata without reading that file.

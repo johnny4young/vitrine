@@ -1141,6 +1141,10 @@ struct CLITests {
         #expect(png.format == .png)
         let pdf = try CLIArguments.parse(["render", "a.swift", "-o", "a.pdf", "--format", "Pdf"])
         #expect(pdf.format == .pdf)
+        let avif = try CLIArguments.parse([
+            "render", "a.swift", "-o", "a.avif", "--format", "AVIF",
+        ])
+        #expect(avif.format == .avif)
     }
 
     @Test func renderInfersFormatFromKnownOutputExtensions() throws {
@@ -1149,6 +1153,9 @@ struct CLITests {
 
         let heic = try CLIArguments.parse(["render", "a.swift", "-o", "a.HEIC"])
         #expect(heic.format == .heic)
+
+        let avif = try CLIArguments.parse(["render", "a.swift", "-o", "a.AVIF"])
+        #expect(avif.format == .avif)
 
         let unknown = try CLIArguments.parse(["render", "a.swift", "-o", "a.export"])
         #expect(unknown.format == .png)

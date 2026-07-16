@@ -141,7 +141,7 @@ app's default scale. `--quiet` suppresses the success summary without hiding err
 and `--json` swaps human success text for structured `render`/`batch` summaries; the
 two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--theme`, `--language`, `--preset`, `--scale`, `--format`
-(`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), `--font <family>`,
+(`png`/`pdf`/`heic`/`avif`), `--profile` (`srgb`/`p3`), `--font <family>`,
 `--font-ligatures`, `--no-font-ligatures`, `--transparent`, `--background <id>`,
 `--background-color <hex>`, `--background-image <path>`, `--background-fit <fill|fit>`,
 `--background-blur <0...40>`, `--background-dimming <0...1>`, style controls
@@ -155,7 +155,7 @@ loud instead of silently dropping malformed fragments; `--redact-secrets` reuses
 same deterministic `SecretScanner` as the editor and merges detected rows with any
 manual `--redact-lines` ranges. Redacted rows are replaced with `[redacted]` before
 copyable sidecars are written. For single-file renders, known output extensions
-(`.png`, `.pdf`, `.heic`) infer the export format when `--format` is omitted; if an
+(`.png`, `.pdf`, `.heic`, `.avif`) infer the export format when `--format` is omitted; if an
 explicit `--format` is present, the extension must match so automation never receives
 mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
 extension-based language inference and default metadata while still reading the source

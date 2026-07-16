@@ -64,7 +64,7 @@ enum CLIRenderer {
         var sidecars: [String]
         /// The language id actually used for this input.
         var language: String
-        /// The requested output format (`png`, `pdf`, or `heic`).
+        /// The requested output format (`png`, `pdf`, `heic`, or `avif`).
         var format: String
         /// `rendered` for real output, `planned` for `--dry-run`.
         var status: String
@@ -976,8 +976,8 @@ enum CLIRenderer {
         if options.htmlSidecar { try writeHTMLSidecar(for: config, options: options, beside: url) }
 
         switch options.format {
-        case .png, .heic:
-            // Both raster formats encode the CGImage rendered above, so `pngImage`
+        case .png, .heic, .avif:
+            // Every raster format encodes the CGImage rendered above, so `pngImage`
             // is non-nil whenever a payload was produced.
             return (pngImage?.width ?? 0, pngImage?.height ?? 0)
         case .pdf:

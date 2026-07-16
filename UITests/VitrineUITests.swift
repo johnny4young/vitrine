@@ -620,6 +620,22 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("launch-at-login-toggle", in: app), in: app)
     }
 
+    @MainActor
+    func testOutputFormatPickerOffersAVIF() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-settings"])
+        defer { app.terminate() }
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-output", in: app).click()
+        assertExists(element("settings-output-pane", in: app), in: app, timeout: 3)
+        let avif = element("output-format-avif", in: app)
+        assertExists(avif, in: app)
+        XCTAssertTrue(avif.isHittable, "AVIF is present but not reachable in the format picker")
+        avif.click()
+        XCTAssertTrue(avif.isSelected, "Selecting AVIF did not update the output format")
+    }
+
     // MARK: - Localization smoke (CS-047)
 
     @MainActor

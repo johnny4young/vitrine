@@ -4,7 +4,7 @@ import Foundation
 /// Exported image format (CS-010 · Output).
 ///
 /// The format menu lists only outputs the exporter can write **faithfully** from
-/// the full code canvas: raster `png`/`heic` and a true vector `pdf`. SVG is
+/// the full code canvas: raster `png`/`heic`/`avif` and a true vector `pdf`. SVG is
 /// deliberately absent (CS-023): SwiftUI / `ImageRenderer` / AppKit expose no
 /// faithful full-canvas SVG path, and Vitrine does not ship a fake `.svg` that is
 /// merely a raster PNG wrapped in an `<image>` tag. PDF is therefore the supported
@@ -15,6 +15,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     case png
     case pdf
     case heic
+    case avif
 
     var id: String { rawValue }
 
@@ -23,6 +24,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
         case .png: "PNG"
         case .pdf: "PDF"
         case .heic: "HEIC"
+        case .avif: "AVIF"
         }
     }
 
@@ -34,11 +36,11 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     /// Whether this format is a scalable vector format (true for `pdf`).
     ///
     /// Drives the "vector" label/help shown next to the format picker so the menu
-    /// states honestly which output is resolution-independent (CS-023). Raster PNG
-    /// and HEIC are `false`; PDF is `true`.
+    /// states honestly which output is resolution-independent (CS-023). Raster PNG,
+    /// HEIC, and AVIF are `false`; PDF is `true`.
     var isVector: Bool {
         switch self {
-        case .png, .heic: false
+        case .png, .heic, .avif: false
         case .pdf: true
         }
     }
@@ -50,6 +52,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
         case .png: "Raster image at the chosen resolution. Best for posting and chat."
         case .pdf: "Scalable vector document. Best for docs, slides, and print."
         case .heic: "Compressed raster image, much smaller than PNG. Best for docs sites."
+        case .avif: "Modern compressed raster image with alpha. Best for web publishing."
         }
     }
 
