@@ -306,6 +306,28 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testHTMLPrettyPrintTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-html-format", "--open-editor"])
+        defer { app.terminate() }
+
+        let window = element("editor-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        XCTAssertTrue(waitForHittableElement("format-button", in: app, timeout: 5))
+        element("format-button", in: app).click()
+
+        let editor = element("code-editor-text-view", in: app)
+        let deadline = Date().addingTimeInterval(3)
+        while !(editor.value as? String ?? "").contains("\n  <h1>"), Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertTrue((editor.value as? String ?? "").contains("\n  <h1>"))
+        Thread.sleep(forTimeInterval: 0.8)
+        save(
+            window.screenshot(), as: "59-editor-html-pretty-print",
+            note: "Format Code expanded compact HTML into a readable element hierarchy")
+    }
+
+    @MainActor
     func testPinnedRecentsTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
         defer { app.terminate() }
