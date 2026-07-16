@@ -12,6 +12,11 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-07-16
+
+From snapshot to post: split a long snippet into carousel slides, share to
+X / LinkedIn / Bluesky in one paste, and annotate with a much bigger toolkit.
+
 ### Added
 
 - **Carousel export (PRO).** Split a long snippet into numbered 4:5 slides
