@@ -672,6 +672,35 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsCanSortOldestFirstWithoutDisplacingPins() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        XCTAssertEqual(cards.count, 3)
+        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
+        XCTAssertTrue(cards.element(boundBy: 1).label.contains("Rust"))
+
+        let sort = element("recents-sort-picker", in: app)
+        XCTAssertTrue(sort.waitForExistence(timeout: 8))
+        XCTAssertTrue(sort.isHittable)
+        sort.click()
+        let oldestFirst = app.menuItems["Oldest First"]
+        XCTAssertTrue(oldestFirst.waitForExistence(timeout: 3))
+        oldestFirst.click()
+
+        let deadline = Date().addingTimeInterval(3)
+        while !cards.element(boundBy: 1).label.contains("Python"), Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
+        XCTAssertTrue(cards.element(boundBy: 1).label.contains("Python"))
+        XCTAssertTrue(cards.element(boundBy: 2).label.contains("Rust"))
+        XCTAssertTrue(element("recents-pinned-badge", in: app).exists)
+    }
+
+    @MainActor
     func testRecentsCanCopyOriginalSource() {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general

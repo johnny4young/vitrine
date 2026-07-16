@@ -363,6 +363,41 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsSortTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let window = element("recents-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        let sort = element("recents-sort-picker", in: app)
+        XCTAssertTrue(sort.waitForExistence(timeout: 5))
+        XCTAssertTrue(sort.isHittable)
+        sort.click()
+
+        let oldestFirst = app.menuItems["Oldest First"]
+        XCTAssertTrue(oldestFirst.waitForExistence(timeout: 3))
+        if let visibleMenu = app.menus.allElementsBoundByIndex.first(where: { !$0.frame.isEmpty }) {
+            Thread.sleep(forTimeInterval: 0.3)
+            save(
+                visibleMenu.screenshot(), as: "57-recents-sort-options",
+                note: "Local Recents ordering choices with newest first selected")
+        }
+        oldestFirst.click()
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        let deadline = Date().addingTimeInterval(3)
+        while !cards.element(boundBy: 1).label.contains("Python"), Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
+        XCTAssertTrue(cards.element(boundBy: 1).label.contains("Python"))
+        Thread.sleep(forTimeInterval: 0.5)
+        save(
+            window.screenshot(), as: "58-recents-oldest-first",
+            note: "Recents sorted oldest-first within pinned and unpinned groups")
+    }
+
+    @MainActor
     func testHelpTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--show-help"])
         defer { app.terminate() }
