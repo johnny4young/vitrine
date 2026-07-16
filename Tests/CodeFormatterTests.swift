@@ -198,4 +198,43 @@ struct CodeFormatterTests {
         let input = " context line\n-removed\n+added"
         #expect(CodeFormatter.tidy(input, language: .diff) == input)
     }
+
+    // MARK: - smart trim (feature #18)
+
+    /// Blank lines pasted above and below a snippet read as accidental padding on top of
+    /// the canvas's own, so trim drops them.
+    @Test func trimDropsLeadingAndTrailingBlankLines() {
+        let input = "\n  \nlet x = 1\nprint(x)\n\n\t\n"
+        #expect(CodeFormatter.trimmed(input, language: .swift) == "let x = 1\nprint(x)")
+    }
+
+    /// Trailing spaces/tabs on each line are invisible in the render but shift a
+    /// line-width-based layout, so trim strips them for code languages.
+    @Test func trimStripsPerLineTrailingWhitespace() {
+        let input = "let x = 1   \nprint(x)\t"
+        #expect(CodeFormatter.trimmed(input, language: .swift) == "let x = 1\nprint(x)")
+    }
+
+    /// Two trailing spaces are a hard line break in Markdown, so line interiors stay
+    /// byte-for-byte intact for leave-alone formats — only surrounding blanks drop.
+    @Test func trimPreservesMarkdownHardBreaksButDropsSurroundingBlanks() {
+        let input = "\nline one  \nline two\n\n"
+        #expect(
+            CodeFormatter.trimmed(input, language: .markdown) == "line one  \nline two")
+    }
+
+    /// The whole pipeline: tidy now trims, so a paste with stray padding lands even.
+    @Test func tidyTrimsBlankPaddingAroundReindentedCode() {
+        let input = "\nstruct A {\nlet x = 1   \n}\n\n"
+        #expect(CodeFormatter.tidy(input, language: .swift) == "struct A {\n  let x = 1\n}")
+    }
+
+    /// Trim (and tidy-with-trim) stays idempotent, and an all-blank snippet collapses
+    /// to empty rather than trapping.
+    @Test func trimIsIdempotentAndHandlesDegenerateInput() {
+        let once = CodeFormatter.trimmed("\n\na = 1\n\n", language: .python)
+        #expect(CodeFormatter.trimmed(once, language: .python) == once)
+        #expect(CodeFormatter.trimmed("\n \t\n", language: .swift) == "")
+        #expect(CodeFormatter.trimmed("", language: .swift) == "")
+    }
 }

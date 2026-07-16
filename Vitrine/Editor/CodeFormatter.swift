@@ -34,16 +34,49 @@ enum CodeFormatter {
     /// Tidies `code` for display by routing on the language's ``Language/formatStrategy``:
     /// brace/tag languages are structurally re-indented, JSON gets its exact re-indent,
     /// whitespace-significant languages are dedented, and formats where leading
-    /// whitespace is data (diff, Markdown, plain text) are left untouched. The output is
-    /// always valid and idempotent; a tidy input comes back unchanged.
+    /// whitespace is data (diff, Markdown, plain text) are left untouched. Every route
+    /// then passes through ``trimmed(_:language:)`` so a snippet pasted with stray blank
+    /// lines or trailing spaces lands even and centered without a separate action
+    /// (the Xnapper-style "smart trim"). The output is always valid and idempotent; a
+    /// tidy input comes back unchanged.
     nonisolated static func tidy(_ code: String, language: Language) -> String {
-        switch language.formatStrategy {
-        case .json: formatJSON(code) ?? dedent(code)
-        case .reindentBraces: reindent(code, tags: false, indent: language.indentUnit)
-        case .reindentTags: reindent(code, tags: true, indent: language.indentUnit)
-        case .dedentOnly: dedent(code)
-        case .leaveAlone: code
+        let routed =
+            switch language.formatStrategy {
+            case .json: formatJSON(code) ?? dedent(code)
+            case .reindentBraces: reindent(code, tags: false, indent: language.indentUnit)
+            case .reindentTags: reindent(code, tags: true, indent: language.indentUnit)
+            case .dedentOnly: dedent(code)
+            case .leaveAlone: code
+            }
+        return trimmed(routed, language: language)
+    }
+
+    /// Evens out the whitespace around a snippet so the rendered card is balanced:
+    /// leading and trailing blank lines are dropped (they read as accidental padding on
+    /// top of the canvas's own), and each line's trailing spaces/tabs are stripped.
+    ///
+    /// Language-aware where trailing whitespace is *data*: for ``FormatStrategy/leaveAlone``
+    /// formats (Markdown, where two trailing spaces are a hard line break; diff; plain
+    /// text) only the surrounding blank lines are dropped and line interiors are left
+    /// byte-for-byte intact. Idempotent, and never touches indentation or tokens.
+    nonisolated static func trimmed(_ code: String, language: Language) -> String {
+        func isBlank(_ line: String) -> Bool { line.allSatisfy { $0 == " " || $0 == "\t" } }
+        var lines = code.components(separatedBy: "\n")
+        // Pattern-match rather than `!=`: the synthesized Equatable is main-actor-
+        // isolated under the module's default isolation, and this helper is nonisolated.
+        if case .leaveAlone = language.formatStrategy {
+        } else {
+            lines = lines.map { line in
+                var stripped = line
+                while let last = stripped.last, last == " " || last == "\t" {
+                    stripped.removeLast()
+                }
+                return stripped
+            }
         }
+        while let first = lines.first, isBlank(first) { lines.removeFirst() }
+        while let last = lines.last, isBlank(last) { lines.removeLast() }
+        return lines.joined(separator: "\n")
     }
 
     /// Removes the longest run of leading whitespace shared by every non-blank line
