@@ -16,6 +16,7 @@ extension AnnotationTool {
         case .highlighter: "Highlighter"
         case .blur: "Blur"
         case .counter: "Counter"
+        case .sticker: "Sticker"
         }
     }
 
@@ -33,6 +34,7 @@ extension AnnotationTool {
         case .highlighter: "6"
         case .blur: "7"
         case .counter: "8"
+        case .sticker: "9"
         }
     }
 }

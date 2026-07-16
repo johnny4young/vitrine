@@ -4906,6 +4906,28 @@
         }
       }
     },
+    "Sticker" : {
+      "comment" : "Annotation tool: emoji sticker (also its toolbar tooltip).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sticker"
+          }
+        }
+      }
+    },
+    "Sticker picker" : {
+      "comment" : "Accessibility label for the sticker-glyph swatch in the annotation toolbar.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selector de stickers"
+          }
+        }
+      }
+    },
     "Strings" : {
       "comment" : "Custom theme editor color label: strings.",
       "extractionState" : "stale",

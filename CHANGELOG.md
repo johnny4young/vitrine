@@ -14,6 +14,13 @@ can never drift.
 
 ### Added
 
+- **Emoji stickers.** A new annotation tool (⌘9) places reaction stickers — 👀 🔥 ✅ 🚀 and
+  friends — from a curated picker; the size slider scales them, and they export exactly as
+  previewed like every other mark.
+- **Smart trim.** Format Code (⌥⌘F) and format-on-paste now also even out the whitespace
+  around a snippet: stray blank lines above/below and per-line trailing spaces are dropped,
+  so a paste lands balanced on the canvas. Markdown hard breaks (two trailing spaces) are
+  preserved.
 - **asciinema import.** Drop or open an asciinema recording (`.cast`, v2/v3) and Vitrine
   replays its output events into the terminal renderer — a recorded session becomes a styled
   terminal image with no conversion step.

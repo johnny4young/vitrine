@@ -254,6 +254,34 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testStickerToolTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        let window = element("editor-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        XCTAssertTrue(waitForHittableElement("annotation-tool-sticker", in: app, timeout: 5))
+        element("annotation-tool-sticker", in: app).click()
+        let swatch = element("annotation-sticker-swatch", in: app)
+        XCTAssertTrue(swatch.waitForExistence(timeout: 3))
+        Thread.sleep(forTimeInterval: 0.4)
+        save(
+            window.screenshot(), as: "56-editor-sticker-tool-active",
+            note: "Sticker tool active: glyph swatch + size slider, no color swatch")
+
+        if swatch.isHittable {
+            swatch.click()
+            Thread.sleep(forTimeInterval: 0.5)
+            save(
+                window.screenshot(), as: "57-editor-sticker-picker-open",
+                note: "Curated sticker picker popover (👀 🔥 ✅ …)")
+            app.typeKey(.escape, modifierFlags: [])
+        } else {
+            miss("57-editor-sticker-picker-open", reason: "sticker swatch was not hittable")
+        }
+    }
+
+    @MainActor
     func testPinnedRecentsTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
         defer { app.terminate() }

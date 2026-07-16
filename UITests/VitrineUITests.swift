@@ -241,7 +241,7 @@ final class VitrineUITests: XCTestCase {
 
         // The annotation tool palette lives in the title bar (CS-085); every tool is
         // present and addressable.
-        for tool in ["select", "arrow", "rectangle", "highlighter", "counter"] {
+        for tool in ["select", "arrow", "rectangle", "highlighter", "counter", "sticker"] {
             XCTAssertTrue(
                 element("annotation-tool-\(tool)", in: app).waitForExistence(timeout: 3),
                 "Annotation toolbar is missing the \(tool) tool")
@@ -253,6 +253,16 @@ final class VitrineUITests: XCTestCase {
         element("annotation-tool-arrow", in: app).click()
         assertExists(element("annotation-color-swatch", in: app), in: app, timeout: 3)
         assertExists(element("annotation-thickness-slider", in: app), in: app)
+
+        // The sticker tool swaps the color swatch (an emoji has its own colors) for the
+        // sticker-glyph swatch, and keeps the size slider (feature #13).
+        assertHittable("annotation-tool-sticker", in: app, "Sticker tool is not reachable")
+        element("annotation-tool-sticker", in: app).click()
+        assertExists(element("annotation-sticker-swatch", in: app), in: app, timeout: 3)
+        assertExists(element("annotation-thickness-slider", in: app), in: app)
+        XCTAssertFalse(
+            element("annotation-color-swatch", in: app).exists,
+            "The sticker tool must hide the color swatch — an emoji has its own colors")
 
         element("annotation-tool-select", in: app).click()
     }

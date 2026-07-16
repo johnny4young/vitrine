@@ -170,6 +170,7 @@ extension EditorView {
                     editingAnnotationID: $editingAnnotationID,
                     canvasSize: cardSize, activeTool: activeTool,
                     drawColor: newDrawColor, drawThickness: newDrawThickness,
+                    stickerGlyph: newStickerGlyph,
                     onBeginEdit: recordAnnotationUndo)
                 // Free-placement: drag the brand mark anywhere on the canvas. The
                 // handle shares the canvas coordinate space (a sibling at cardSize),

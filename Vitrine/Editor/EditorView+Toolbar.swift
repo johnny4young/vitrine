@@ -52,6 +52,7 @@ extension EditorView {
                 activeTool: $activeTool,
                 color: annotationStyleColor,
                 thickness: annotationStyleThickness,
+                stickerGlyph: $newStickerGlyph,
                 showsColor: annotationStyleUsesColor,
                 showsThickness: annotationStyleUsesThickness,
                 canUndo: !annotationUndo.isEmpty,
