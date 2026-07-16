@@ -4962,6 +4962,28 @@
         }
       }
     },
+    "Carousel export" : {
+      "comment" : "Paywall headline for the carousel export feature (#15).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportación de carrusel"
+          }
+        }
+      }
+    },
+    "Split a long snippet into numbered slides for a carousel post." : {
+      "comment" : "Paywall blurb for the carousel export feature (#15).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide un fragmento largo en diapositivas numeradas para un carrusel."
+          }
+        }
+      }
+    },
     "Carousel exported" : {
       "comment" : "HUD confirmation after the carousel slides were written.",
       "localizations" : {
