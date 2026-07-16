@@ -122,6 +122,7 @@ do {
         summary =
             options.openInEditor
             ? try CLIRenderer.openInEditor(options) : try CLIRenderer.run(options)
+    case .multiSize: summary = try CLIRenderer.runMultiSize(options)
     case .batch: summary = try CLIRenderer.runBatch(options)
     }
     if !options.quiet { print(summary) }

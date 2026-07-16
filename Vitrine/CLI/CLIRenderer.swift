@@ -86,6 +86,25 @@ enum CLIRenderer {
         var sidecars: [String]
     }
 
+    /// One artifact in the machine-readable `multi-size` result.
+    private struct MultiSizeOutputSummary: Encodable, Equatable {
+        var preset: String
+        var output: String
+        var width: Int
+        var height: Int
+        var sidecars: [String]
+    }
+
+    /// Machine-readable success summary for one-source destination-preset fanout.
+    private struct MultiSizeSummary: Encodable, Equatable {
+        var command = "multi-size"
+        var status = "rendered"
+        var outputDirectory: String
+        var format: String
+        var rendered: Int
+        var outputs: [MultiSizeOutputSummary]
+    }
+
     /// Machine-readable success summary for a `batch` invocation.
     private struct BatchSummary: Encodable, Equatable {
         var command = "batch"
@@ -134,6 +153,90 @@ enum CLIRenderer {
             return try renderImageInput(
                 options, background: background, watermarkLogo: watermarkLogo)
         }
+    }
+
+    /// Renders one code/stdin source through each selected destination preset and
+    /// writes the resulting files into one output directory. This is the CLI form of
+    /// the app's CS-093 multi-size export: the source is loaded once, every preset
+    /// uses the shared `CLIOptions.makeConfig` precedence and `renderAndWrite` encoder,
+    /// and filenames match the app's stable `vitrine-<preset id>.<ext>` convention.
+    @discardableResult
+    static func runMultiSize(
+        _ options: CLIOptions,
+        fileLoader: (URL) throws -> FileInputLoader.LoadedFile = {
+            try FileInputLoader.load(from: $0)
+        }
+    ) throws -> String {
+        let background = try prepareBackground(options)
+        defer { background.removeTemporaryFiles() }
+        let watermarkLogo = try prepareWatermarkLogo(options)
+        let loaded = try loadInput(options, fileLoader: fileLoader)
+        let language = options.language ?? loaded.language
+
+        let requestedIDs =
+            options.multiSizePresetIDs.isEmpty
+            ? ExportPreset.all.map(\.id) : options.multiSizePresetIDs
+        let presets = requestedIDs.compactMap { ExportPreset.preset(withID: $0) }
+        guard presets.count == requestedIDs.count else {
+            let invalid = requestedIDs.first { ExportPreset.preset(withID: $0) == nil } ?? ""
+            throw CLIError.invalidValue(flag: "--presets", value: invalid)
+        }
+
+        let outputDirectory = URL(fileURLWithPath: options.outputPath, isDirectory: true)
+        let outputURLs = presets.map {
+            outputDirectory.appendingPathComponent(
+                "vitrine-\($0.id).\(options.format.fileExtension)", isDirectory: false)
+        }
+
+        // Preflight every target before creating the directory or rendering anything,
+        // so --no-overwrite cannot leave a partially updated preset set.
+        for outputURL in outputURLs {
+            try guardNoOverwriteTargetsAvailable(beside: outputURL, options: options)
+        }
+        do {
+            try FileManager.default.createDirectory(
+                at: outputDirectory, withIntermediateDirectories: true)
+        } catch {
+            throw CLIError.writeFailed(path: options.outputPath)
+        }
+
+        var outputs: [MultiSizeOutputSummary] = []
+        for (preset, outputURL) in zip(presets, outputURLs) {
+            var presetOptions = options
+            presetOptions.presetID = preset.id
+            presetOptions.multiSizePresetIDs = []
+            // The parser rejects these overrides. Clear them defensively as well so a
+            // hand-built CLIOptions value cannot defeat destination-preset geometry.
+            presetOptions.canvasSize = nil
+            presetOptions.scale = nil
+
+            var config = presetOptions.makeConfig(
+                code: loaded.text, language: language,
+                backgroundImageReference: background.reference,
+                watermarkLogoData: watermarkLogo?.data)
+            config.watermark?.logoImage = watermarkLogo?.image
+            let dimensions = try renderAndWrite(
+                config, options: presetOptions, backgroundStore: background.store,
+                to: outputURL)
+            outputs.append(
+                MultiSizeOutputSummary(
+                    preset: preset.id, output: outputURL.path,
+                    width: dimensions.width, height: dimensions.height,
+                    sidecars: sidecarURLs(presetOptions, beside: outputURL).map(\.path)))
+        }
+
+        Log.export.notice(
+            "CLI multi-size rendered \(outputs.count, privacy: .public) preset images")
+        if options.jsonOutput {
+            return encodedJSON(
+                MultiSizeSummary(
+                    outputDirectory: outputDirectory.path,
+                    format: options.format.rawValue,
+                    rendered: outputs.count,
+                    outputs: outputs))
+        }
+        return
+            "Rendered \(outputs.count) preset image\(outputs.count == 1 ? "" : "s") to \(outputDirectory.path)"
     }
 
     /// Loads and validates a local watermark logo once per invocation. Keeping the
