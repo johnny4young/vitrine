@@ -11,6 +11,7 @@ struct AnnotationMarkView: View {
     var body: some View {
         switch annotation.kind {
         case .arrow: ArrowMark(annotation: annotation, size: size)
+        case .curvedArrow: CurvedArrowMark(annotation: annotation, size: size)
         case .line: LineMark(annotation: annotation, size: size)
         case .rectangle: RectangleMark(annotation: annotation, size: size)
         case .text: TextMark(annotation: annotation, size: size)
@@ -60,6 +61,68 @@ struct ArrowMark: View {
             style: StrokeStyle(lineWidth: annotation.thickness, lineCap: .round, lineJoin: .round)
         )
         .shadow(color: .black.opacity(0.22), radius: 1.5, x: 0, y: 0.5)
+    }
+}
+
+/// A curved arrow (feature #11): a quadratic arc from tail to head — the hand-drawn
+/// "swooping" callout CleanShot ships — with the same chevron head as the straight
+/// arrow, kept tangent to the curve's end so the head follows the swoop.
+struct CurvedArrowMark: View {
+    let annotation: Annotation
+    let size: CGSize
+
+    var body: some View {
+        CurvedArrowShape(
+            from: annotation.startPoint(in: size), to: annotation.endPoint(in: size),
+            weight: annotation.thickness
+        )
+        .stroke(
+            annotation.color.color,
+            style: StrokeStyle(lineWidth: annotation.thickness, lineCap: .round, lineJoin: .round)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 1.5, x: 0, y: 0.5)
+    }
+}
+
+/// The arc + chevron head of a curved arrow, in canvas points.
+struct CurvedArrowShape: Shape {
+    let from: CGPoint
+    let to: CGPoint
+    var weight: CGFloat = 5
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let dx = to.x - from.x
+        let dy = to.y - from.y
+        let length = max(hypot(dx, dy), 0.001)
+
+        // Control point: the midpoint pushed perpendicular by a quarter of the span,
+        // so the bow scales with the drag and short arrows stay gently curved. The
+        // fixed left-hand side gives every curved arrow the same swoop direction;
+        // dragging the other way flips which side bows.
+        let mid = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2)
+        let normal = CGPoint(x: -dy / length, y: dx / length)
+        let bow = length * 0.25
+        let control = CGPoint(x: mid.x + normal.x * bow, y: mid.y + normal.y * bow)
+
+        path.move(to: from)
+        path.addQuadCurve(to: to, control: control)
+
+        // Chevron head tangent to the curve at its end (the control→to direction is
+        // the quadratic's exact end tangent), sized like the straight arrow's head.
+        let tangentAngle = atan2(to.y - control.y, to.x - control.x)
+        let head = min(max(length * 0.22, weight * 2.4), max(length * 0.6, 14))
+        let spread = CGFloat.pi / 7
+        let left = CGPoint(
+            x: to.x - head * cos(tangentAngle - spread),
+            y: to.y - head * sin(tangentAngle - spread))
+        let right = CGPoint(
+            x: to.x - head * cos(tangentAngle + spread),
+            y: to.y - head * sin(tangentAngle + spread))
+        path.move(to: left)
+        path.addLine(to: to)
+        path.addLine(to: right)
+        return path
     }
 }
 

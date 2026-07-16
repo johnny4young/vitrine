@@ -241,7 +241,9 @@ final class VitrineUITests: XCTestCase {
 
         // The annotation tool palette lives in the title bar (CS-085); every tool is
         // present and addressable.
-        for tool in ["select", "arrow", "rectangle", "highlighter", "counter", "sticker"] {
+        for tool in [
+            "select", "arrow", "curvedArrow", "rectangle", "highlighter", "counter", "sticker",
+        ] {
             XCTAssertTrue(
                 element("annotation-tool-\(tool)", in: app).waitForExistence(timeout: 3),
                 "Annotation toolbar is missing the \(tool) tool")

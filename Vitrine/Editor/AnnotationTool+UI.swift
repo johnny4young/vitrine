@@ -10,6 +10,7 @@ extension AnnotationTool {
         switch self {
         case .select: "Select"
         case .arrow: "Arrow"
+        case .curvedArrow: "Curved Arrow"
         case .line: "Line"
         case .rectangle: "Rectangle"
         case .text: "Text"
@@ -35,6 +36,8 @@ extension AnnotationTool {
         case .blur: "7"
         case .counter: "8"
         case .sticker: "9"
+        // "0" rather than renumbering: 1–9 stay exactly what users learned.
+        case .curvedArrow: "0"
         }
     }
 }

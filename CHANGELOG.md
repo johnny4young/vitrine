@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- **Curved arrows.** A second arrow style (⌘0): a quadratic swoop with the chevron head
+  kept tangent to the curve — the hand-drawn callout look — sharing the straight arrow's
+  color and weight controls.
 - **Emoji stickers.** A new annotation tool (⌘9) places reaction stickers — 👀 🔥 ✅ 🚀 and
   friends — from a curated picker; the size slider scales them, and they export exactly as
   previewed like every other mark.

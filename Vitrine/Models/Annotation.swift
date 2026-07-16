@@ -15,6 +15,7 @@ struct Annotation: Identifiable, Equatable, Codable {
     /// future kind be added without breaking older stores.
     enum Kind: String, Codable, CaseIterable, Identifiable {
         case arrow
+        case curvedArrow
         case line
         case rectangle
         case text
@@ -156,6 +157,7 @@ extension Annotation {
 enum AnnotationTool: String, CaseIterable, Identifiable {
     case select
     case arrow
+    case curvedArrow
     case line
     case rectangle
     case text
@@ -171,6 +173,7 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         switch self {
         case .select: return nil
         case .arrow: return .arrow
+        case .curvedArrow: return .curvedArrow
         case .line: return .line
         case .rectangle: return .rectangle
         case .text: return .text
@@ -185,6 +188,7 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         switch self {
         case .select: return "cursorarrow"
         case .arrow: return "arrow.up.left"
+        case .curvedArrow: return "arrow.up.right.circle"
         case .line: return "line.diagonal"
         case .rectangle: return "rectangle"
         case .text: return "textformat"
