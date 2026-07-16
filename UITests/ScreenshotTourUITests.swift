@@ -288,6 +288,30 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testPinnedRecentsFilterTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let window = element("recents-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        let pinnedFilter = element("recents-pinned-filter", in: app)
+        XCTAssertTrue(pinnedFilter.waitForExistence(timeout: 5))
+        XCTAssertTrue(pinnedFilter.isHittable)
+        pinnedFilter.click()
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        let deadline = Date().addingTimeInterval(3)
+        while cards.count != 1, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(cards.count, 1)
+        Thread.sleep(forTimeInterval: 0.6)
+        save(
+            window.screenshot(), as: "53-recents-pinned-filter",
+            note: "Recents gallery filtered to the locally pinned captures")
+    }
+
+    @MainActor
     func testHelpTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--show-help"])
         defer { app.terminate() }
