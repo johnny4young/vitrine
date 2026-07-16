@@ -70,6 +70,18 @@ struct CaptureTests {
         #expect(applied.highlightedLineRanges.isEmpty)
         #expect(applied.annotations.isEmpty)
     }
+
+    @Test func searchMatchesCodeLanguageAndThemeAcrossTerms() {
+        let capture = Capture(
+            code: "fn main() { println!(\"hello\"); }",
+            languageID: Language.rust.rawValue,
+            themeID: Theme.dracula.id)
+
+        #expect(capture.matchesSearch(""))
+        #expect(capture.matchesSearch("PRINTLN"))
+        #expect(capture.matchesSearch("rust dracula"))
+        #expect(!capture.matchesSearch("rust github"))
+    }
 }
 
 @MainActor

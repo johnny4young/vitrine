@@ -97,6 +97,19 @@ final class RecentsStore {
         thumbnails.clear()
     }
 
+    /// Removes one recent capture and its cached thumbnail. Returns `false` for an
+    /// unknown id so repeated or stale UI actions are harmless and do not rewrite
+    /// the persisted list unnecessarily.
+    @discardableResult
+    func remove(id: Capture.ID) -> Bool {
+        guard captures.contains(where: { $0.id == id }) else { return false }
+        captures.removeAll { $0.id == id }
+        decodedThumbnails[id] = nil
+        persist()
+        thumbnails.remove(id)
+        return true
+    }
+
     /// The cached preview thumbnail for a capture, or `nil` when none is cached yet
     /// (e.g. a capture restored from an older build that predates CS-029). Callers
     /// fall back to a placeholder so the gallery still lists the entry.

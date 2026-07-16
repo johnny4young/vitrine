@@ -39,6 +39,17 @@ struct Capture: Codable, Identifiable, Equatable {
         return config
     }
 
+    /// Whether this capture matches every whitespace-separated search term across
+    /// its source, language, and theme. Recents is deliberately tiny and capped, so
+    /// keeping the index value-derived avoids another persisted search structure.
+    func matchesSearch(_ query: String) -> Bool {
+        let terms = query.split(whereSeparator: \.isWhitespace)
+        guard !terms.isEmpty else { return true }
+        let searchableText = [code, language.displayName, theme.displayName]
+            .joined(separator: "\n")
+        return terms.allSatisfy { searchableText.localizedStandardContains(String($0)) }
+    }
+
     /// A short, single-line label for the Recents submenu.
     var menuTitle: String {
         let firstLine = code.split(whereSeparator: \.isNewline).first.map(String.init) ?? code

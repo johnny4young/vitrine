@@ -1117,6 +1117,17 @@
         }
       }
     },
+    "Capture actions" : {
+      "comment" : "Accessibility label for the action menu on a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones de captura"
+          }
+        }
+      }
+    },
     "Capture a webpage?" : {
       "comment" : "URL capture first-use disclosure title (CS-043).",
       "extractionState" : "stale",
@@ -1913,6 +1924,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Eliminar"
+          }
+        }
+      }
+    },
+    "Delete Capture" : {
+      "comment" : "Destructive action that removes one capture from Recents.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar captura"
+          }
+        }
+      }
+    },
+    "Delete Capture?" : {
+      "comment" : "Confirmation dialog title for deleting one recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar captura?"
           }
         }
       }
@@ -4218,6 +4251,17 @@
         }
       }
     },
+    "Re-render or remove this recent capture" : {
+      "comment" : "Help text for the actions menu on a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a renderizar o elimina esta captura reciente"
+          }
+        }
+      }
+    },
     "Re-render this capture with a destination preset" : {
       "comment" : "Help text for the destination preset action on a recent capture.",
       "localizations" : {
@@ -4598,6 +4642,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Configura tu atajo"
+          }
+        }
+      }
+    },
+    "Search Recents" : {
+      "comment" : "Placeholder and accessibility label for filtering the Recents gallery.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar en recientes"
           }
         }
       }
@@ -5029,6 +5084,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Este editor ya tiene código. ¿Quieres reemplazarlo con el contenido soltado o agregarlo al final?"
+          }
+        }
+      }
+    },
+    "This removes the capture and its cached preview. This can't be undone." : {
+      "comment" : "Individual recent-capture deletion confirmation message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina la captura y su vista previa en caché. No se puede deshacer."
           }
         }
       }
