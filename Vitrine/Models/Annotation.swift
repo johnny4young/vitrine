@@ -24,6 +24,7 @@ struct Annotation: Identifiable, Equatable, Codable {
         case counter
         case sticker
         case spotlight
+        case measure
         var id: String { rawValue }
 
         /// Whether dragging defines two free points (a shaft/box) versus a single
@@ -167,6 +168,7 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
     case counter
     case sticker
     case spotlight
+    case measure
 
     var id: String { rawValue }
 
@@ -184,6 +186,7 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         case .counter: return .counter
         case .sticker: return .sticker
         case .spotlight: return .spotlight
+        case .measure: return .measure
         }
     }
 
@@ -200,6 +203,7 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         case .counter: return "1.circle.fill"
         case .sticker: return "face.smiling"
         case .spotlight: return "rectangle.center.inset.filled"
+        case .measure: return "ruler"
         }
     }
 

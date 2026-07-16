@@ -4939,6 +4939,17 @@
         }
       }
     },
+    "Measure" : {
+      "comment" : "Annotation tool: dimension callout with the span's length in pixels.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medir"
+          }
+        }
+      }
+    },
     "No text found in the image" : {
       "comment" : "HUD message when on-device OCR recognized nothing legible.",
       "localizations" : {
