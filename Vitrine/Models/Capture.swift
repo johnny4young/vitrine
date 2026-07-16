@@ -26,6 +26,19 @@ struct Capture: Codable, Identifiable, Equatable {
     var language: Language { Language(rawValue: languageID) ?? .plaintext }
     var theme: Theme { Theme.theme(withID: themeID) }
 
+    /// Places the content remembered by this recent capture over a current style.
+    /// Content-bound marks belong to the document they were created for, so replacing
+    /// the source must discard them rather than drawing stale highlights or annotations
+    /// over unrelated code.
+    func applying(to base: SnapshotConfig) -> SnapshotConfig {
+        var config = base
+        config.clearContentMarks()
+        config.code = code
+        config.language = language
+        config.theme = theme
+        return config
+    }
+
     /// A short, single-line label for the Recents submenu.
     var menuTitle: String {
         let firstLine = code.split(whereSeparator: \.isNewline).first.map(String.init) ?? code

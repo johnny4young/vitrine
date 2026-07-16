@@ -142,10 +142,7 @@ enum RecentsThumbnail {
     /// PNG bytes for `capture`'s preview, or `nil` if the render fails.
     @MainActor
     static func pngData(for capture: Capture) -> Data? {
-        var config = SnapshotConfig()
-        config.code = capture.code
-        config.language = capture.language
-        config.theme = capture.theme
+        let config = capture.applying(to: SnapshotConfig())
         // Thumbnails are recognition aids, not exports: render at 1× into the fixed
         // frame so the cached file stays small and uniform.
         guard let cgImage = ExportManager.renderCGImage(config, scale: 1, fixedSize: size) else {

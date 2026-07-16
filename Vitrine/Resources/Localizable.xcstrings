@@ -4207,6 +4207,28 @@
         }
       }
     },
+    "Re-render As…" : {
+      "comment" : "Accessibility label for choosing a one-off destination preset on a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a renderizar como…"
+          }
+        }
+      }
+    },
+    "Re-render this capture with a destination preset" : {
+      "comment" : "Help text for the destination preset action on a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a renderizar esta captura con un preajuste de destino"
+          }
+        }
+      }
+    },
     "Render as Text" : {
       "comment" : "Recovery action label: render the detected URL as plain text (CS-038).",
       "extractionState" : "stale",
