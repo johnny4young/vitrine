@@ -116,9 +116,9 @@ struct CaptureTests {
     }
 
     /// Captures added in the same instant carry equal dates; ties must fall back to
-    /// the input's own (MRU) order, never a UUID comparison — a random-UUID tie-break
-    /// ordered equal-date captures differently from run to run, the flake that hit CI
-    /// (testRecentsCanSortOldestFirstWithoutDisplacingPins).
+    /// the input's position following the sort's direction, never a UUID comparison —
+    /// a random-UUID tie-break ordered equal-date captures differently from run to
+    /// run, the flake that hit CI (testRecentsCanSortOldestFirstWithoutDisplacingPins).
     @Test func equalDatesPreserveInsertionOrderNotUUIDOrder() {
         let sharedDate = Date(timeIntervalSinceReferenceDate: 100)
         // Deliberately give the LATER-inserted capture the LEXICALLY SMALLER UUID, so
@@ -133,11 +133,38 @@ struct CaptureTests {
             themeID: Theme.dracula.id, date: sharedDate)
         let mruOrder = [second, first]  // the store keeps newest additions first
 
-        for order in [RecentsSortOrder.newestFirst, .oldestFirst] {
-            #expect(
-                order.sorted(mruOrder).map(\.id) == [second.id, first.id],
-                "equal dates must keep the input's MRU order under \(order)")
-        }
+        #expect(
+            RecentsSortOrder.newestFirst.sorted(mruOrder).map(\.id) == [second.id, first.id],
+            "equal dates must keep the store's MRU order under newest-first")
+        #expect(
+            RecentsSortOrder.oldestFirst.sorted(mruOrder).map(\.id) == [first.id, second.id],
+            "equal dates under oldest-first must put the first-added capture first")
+    }
+
+    /// The exact CI scenario that flaked twice: `--demo-recents` seeds Go/Python/Rust
+    /// (Go pinned) fast enough that the runner's quantized clock stamps equal dates;
+    /// "Oldest First" must still show Go (pin), Python, Rust — the insertion order.
+    @Test func oldestFirstWithEqualDatesFollowsInsertionOrder() {
+        let defaults = UserDefaults(suiteName: "VitrineRecentsTie-\(UUID().uuidString)")!
+        let store = RecentsStore(defaults: defaults)
+        let sharedDate = Date(timeIntervalSinceReferenceDate: 700)
+        let go = Capture(
+            code: "go", languageID: Language.go.rawValue, themeID: Theme.github.id,
+            date: sharedDate)
+        let python = Capture(
+            code: "python", languageID: Language.python.rawValue, themeID: Theme.oneDark.id,
+            date: sharedDate)
+        let rust = Capture(
+            code: "rust", languageID: Language.rust.rawValue, themeID: Theme.dracula.id,
+            date: sharedDate)
+        store.add(go)
+        store.add(python)
+        store.add(rust)
+        store.updatePinned(id: go.id, isPinned: true)
+
+        #expect(
+            RecentsSortOrder.oldestFirst.sorted(store.captures).map(\.id)
+                == [go.id, python.id, rust.id])
     }
 
     /// The exact CI scenario: the demo seed `add`s three captures whose `Date()`s can
