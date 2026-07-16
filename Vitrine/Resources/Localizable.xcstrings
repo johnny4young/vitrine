@@ -4928,6 +4928,28 @@
         }
       }
     },
+    "Suggest a title: " : {
+      "comment" : "Help prefix for the title-suggestion wand; the suggestion follows verbatim.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sugerir un título: "
+          }
+        }
+      }
+    },
+    "Suggest a title" : {
+      "comment" : "Accessibility label for the title-suggestion wand (feature #39).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sugerir un título"
+          }
+        }
+      }
+    },
     "Footer bar" : {
       "comment" : "Watermark placement: full-width signature bar along the bottom edge.",
       "localizations" : {

@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- **Suggested titles.** A wand next to the header-title field fills it from what the
+  code declares — the filename chip, else the first declared identifier — shown only
+  while it would change something.
 - **QR link chip (PRO).** Give the Brand Kit a link (profile, repo, article) and the
   mark gains a scannable QR chip — generated fully on-device, integer-scaled so the
   modules stay crisp at any export scale.

@@ -373,11 +373,33 @@ struct EditorInspectorView: View {
                 }
                 if settings.config.showChrome {
                     InspectorRow(label: Text("Title")) {
-                        TokenTextField(
-                            prompt: Text(verbatim: "ContentView.swift"),
-                            text: $settings.config.windowTitle
-                        )
-                        .accessibilityIdentifier("window-title-field")
+                        HStack(spacing: 6) {
+                            TokenTextField(
+                                prompt: Text(verbatim: "ContentView.swift"),
+                                text: $settings.config.windowTitle
+                            )
+                            .accessibilityIdentifier("window-title-field")
+                            // Smart title (feature #39): fill the header from what the
+                            // code declares — the filename chip, else the first declared
+                            // identifier. Shown only while it would actually change
+                            // something, so it never sits around as dead chrome.
+                            if let suggestion = SuggestedFilename.suggestedTitle(
+                                for: settings.config),
+                                suggestion != settings.config.windowTitle
+                            {
+                                Button {
+                                    settings.config.windowTitle = suggestion
+                                } label: {
+                                    Image(systemName: "wand.and.stars")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(VitrineTokens.Accent.system)
+                                }
+                                .buttonStyle(.plain)
+                                .help(Text("Suggest a title: ") + Text(verbatim: suggestion))
+                                .accessibilityLabel("Suggest a title")
+                                .accessibilityIdentifier("window-title-suggest-button")
+                            }
+                        }
                     }
                 }
             }

@@ -59,4 +59,22 @@ enum SuggestedFilename {
         while result.hasPrefix(".") { result.removeFirst() }
         return String(result.prefix(64))
     }
+
+    /// A human-readable header-title suggestion for `config` (feature #39), or `nil`
+    /// when nothing meaningful can be inferred — the seam behind the inspector's
+    /// "suggest title" affordance.
+    ///
+    /// Unlike `basename`, this is display text: the filename chip keeps its extension
+    /// (`ContentView.swift` *is* a good title) and an inferred identifier carries no
+    /// `vitrine-` prefix. Terminal output and plain images yield `nil` rather than a
+    /// generic label the user would just delete.
+    static func suggestedTitle(for config: SnapshotConfig) -> String? {
+        if let filename = config.metadata.filename {
+            let stem = (filename as NSString).lastPathComponent
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !stem.isEmpty { return String(stem.prefix(64)) }
+        }
+        guard config.language != .terminal else { return nil }
+        return firstDeclaredIdentifier(in: config.code)
+    }
 }
