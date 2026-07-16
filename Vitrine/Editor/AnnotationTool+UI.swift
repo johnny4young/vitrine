@@ -19,6 +19,7 @@ extension AnnotationTool {
         case .counter: "Counter"
         case .sticker: "Sticker"
         case .spotlight: "Spotlight"
+        case .measure: "Measure"
         }
     }
 
@@ -41,7 +42,7 @@ extension AnnotationTool {
         case .sticker: "9"
         // "0" rather than renumbering: 1–9 stay exactly what users learned.
         case .curvedArrow: "0"
-        case .spotlight: nil
+        case .spotlight, .measure: nil
         }
     }
 }

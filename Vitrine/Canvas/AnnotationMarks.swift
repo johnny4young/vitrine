@@ -18,6 +18,7 @@ struct AnnotationMarkView: View {
         case .highlighter: HighlighterMark(annotation: annotation, size: size)
         case .counter: CounterMark(annotation: annotation, size: size)
         case .sticker: StickerMark(annotation: annotation, size: size)
+        case .measure: MeasureMark(annotation: annotation, size: size)
         // Blur and spotlight are compositing effects the canvas layers separately
         // (a masked blurred copy; an even-odd dim scrim), so they draw no mark here.
         case .blur, .spotlight: EmptyView()
@@ -233,6 +234,68 @@ struct TextMark: View {
     }
 
     private var fontSize: CGFloat { max(12, annotation.thickness * 4) }
+}
+
+/// A dimension callout (feature #12): a technical-drawing measurement — the shaft
+/// with perpendicular end caps, and the span's length in canvas points on a small
+/// pill at the midpoint. For a fixed-size destination the canvas points *are* the
+/// export's logical pixels, so the label reads as a true pixel dimension.
+struct MeasureMark: View {
+    let annotation: Annotation
+    let size: CGSize
+
+    var body: some View {
+        let from = annotation.startPoint(in: size)
+        let to = annotation.endPoint(in: size)
+        let length = hypot(to.x - from.x, to.y - from.y)
+        let mid = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2)
+        let weight = max(1.5, annotation.thickness * 0.5)
+
+        ZStack {
+            MeasureShape(from: from, to: to)
+                .stroke(
+                    annotation.color.color,
+                    style: StrokeStyle(lineWidth: weight, lineCap: .round)
+                )
+                .shadow(color: .black.opacity(0.22), radius: 1.5, x: 0, y: 0.5)
+            if length >= 8 {
+                Text(verbatim: "\(Int(length.rounded())) px")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2.5)
+                    .background(Capsule().fill(annotation.color.color))
+                    .position(mid)
+            }
+        }
+    }
+}
+
+/// The measure's shaft plus perpendicular end caps, in canvas points.
+struct MeasureShape: Shape {
+    let from: CGPoint
+    let to: CGPoint
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: from)
+        path.addLine(to: to)
+
+        let dx = to.x - from.x
+        let dy = to.y - from.y
+        let length = max(hypot(dx, dy), 0.001)
+        // Perpendicular unit vector; caps scale gently with the span, bounded so a
+        // short measure still reads as a measure and a long one isn't all cap.
+        let normal = CGPoint(x: -dy / length, y: dx / length)
+        let half = min(max(length * 0.06, 5), 11)
+        for anchor in [from, to] {
+            path.move(
+                to: CGPoint(x: anchor.x + normal.x * half, y: anchor.y + normal.y * half))
+            path.addLine(
+                to: CGPoint(x: anchor.x - normal.x * half, y: anchor.y - normal.y * half))
+        }
+        return path
+    }
 }
 
 /// A numbered badge — a filled circle in the mark color with a white number, for
