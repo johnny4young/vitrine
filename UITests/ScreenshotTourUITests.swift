@@ -312,6 +312,34 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentSourceCopyActionTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recent", "--open-recents"])
+        defer { app.terminate() }
+
+        let window = element("recents-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        app.activate()
+        let actions = element("recents-preset-picker", in: app)
+        XCTAssertTrue(actions.waitForExistence(timeout: 3))
+        XCTAssertTrue(actions.isHittable)
+        actions.click()
+
+        if app.menuItems["Copy Source"].waitForExistence(timeout: 3),
+            let visibleMenu = app.menus.allElementsBoundByIndex.first(where: {
+                !$0.frame.isEmpty
+            })
+        {
+            Thread.sleep(forTimeInterval: 0.3)
+            save(
+                visibleMenu.screenshot(), as: "54-recents-copy-source-action",
+                note: "Recent capture actions exposing the original-source copy command")
+            app.typeKey(.escape, modifierFlags: [])
+        } else {
+            miss("54-recents-copy-source-action", reason: "source-copy action menu did not open")
+        }
+    }
+
+    @MainActor
     func testHelpTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--show-help"])
         defer { app.terminate() }
@@ -472,6 +500,34 @@ final class ScreenshotTourUITests: XCTestCase {
         save(
             panel.screenshot(), as: "52-menubar-surprise-style",
             note: "Menu-bar curated style action with the applied theme selected")
+    }
+
+    @MainActor
+    func testMenuBarRecentSourceActionsTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
+        defer { app.terminate() }
+        app.activate()
+
+        let statusItem = app.statusItems.firstMatch
+        guard statusItem.waitForExistence(timeout: 8), statusItem.isHittable else {
+            miss("55-menubar-recent-copy-actions", reason: "status item is not reachable")
+            return
+        }
+        statusItem.click()
+
+        let panel = element("menubar-panel", in: app)
+        guard panel.waitForExistence(timeout: 3) else {
+            miss("55-menubar-recent-copy-actions", reason: "status panel did not open")
+            return
+        }
+        guard element("menu-recent-copy-source", in: app).waitForExistence(timeout: 3) else {
+            miss("55-menubar-recent-copy-actions", reason: "source-copy action is missing")
+            return
+        }
+        Thread.sleep(forTimeInterval: 0.5)
+        save(
+            panel.screenshot(), as: "55-menubar-recent-copy-actions",
+            note: "Menu-bar Recents rows with visible image and original-source copy actions")
     }
 
     @MainActor

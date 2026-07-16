@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -5,6 +6,23 @@ import SwiftUI
 import Testing
 
 @testable import Vitrine
+
+@MainActor
+@Suite("Source text clipboard", .serialized)
+struct SourceTextClipboardTests {
+    @Test("Copying source replaces other representations and preserves exact text")
+    func copySource() throws {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("VitrineSourceCopyTests-\(UUID().uuidString)"))
+        pasteboard.clearContents()
+        #expect(pasteboard.setData(Data([0x89, 0x50, 0x4E, 0x47]), forType: .png))
+        let source = "let greeting = \"¡Hola!\"\nprint(greeting)"
+
+        #expect(ExportManager.copySourceToPasteboard(source, to: pasteboard))
+        #expect(pasteboard.string(forType: .string) == source)
+        #expect(pasteboard.data(forType: .png) == nil)
+    }
+}
 
 /// SVG export and the deterministic vector fallback (CS-023).
 ///

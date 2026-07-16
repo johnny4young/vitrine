@@ -190,7 +190,8 @@ struct MenuBarContent: View {
                             reopen(capture)
                             dismiss()
                         },
-                        copy: { copyAgain(capture) })
+                        copyImage: { copyAgain(capture) },
+                        copySource: { copySource(capture) })
                 }
             }
         }
@@ -341,6 +342,11 @@ struct MenuBarContent: View {
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
     }
+
+    private func copySource(_ capture: Capture) {
+        ExportFeedback.presentSourceCopy(
+            ExportManager.copySourceToPasteboard(capture.code))
+    }
 }
 
 // MARK: - Panel pieces
@@ -376,12 +382,13 @@ private struct KbdChip: View {
 }
 
 /// One recent capture as a thumbnail row (`.rrow`): a stylized mini card on
-/// the brand gradient, the capture's first line and metadata, and a copy
-/// button revealed on hover. Clicking the row reopens the capture.
+/// the brand gradient, the capture's first line and metadata, and compact image/source
+/// copy actions. Clicking the row reopens the capture.
 private struct RecentCaptureRow: View {
     let capture: Capture
     let reopen: () -> Void
-    let copy: () -> Void
+    let copyImage: () -> Void
+    let copySource: () -> Void
 
     @State private var isHovered = false
 
@@ -389,33 +396,47 @@ private struct RecentCaptureRow: View {
         ZStack(alignment: .trailing) {
             Button(action: reopen) {
                 rowContent
-                    .padding(.trailing, isHovered ? 34 : 0)
+                    .padding(.trailing, 64)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(verbatim: "\(capture.menuTitle), \(metadataLine)"))
 
-            if isHovered {
-                Button(action: copy) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(VitrineTokens.Text.secondary)
-                        .frame(width: 26, height: 26)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(
-                                    VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
-                        )
-                        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .help("Copy image")
-                .accessibilityLabel("Copy image")
-                .padding(.trailing, 6)
+            HStack(spacing: 4) {
+                copyButton(
+                    title: "Copy Image", systemImage: "doc.on.doc",
+                    identifier: "menu-recent-copy-image", action: copyImage)
+                copyButton(
+                    title: "Copy Source", systemImage: "doc.text",
+                    identifier: "menu-recent-copy-source", action: copySource)
             }
+            .padding(.trailing, 6)
         }
         .onHover { isHovered = $0 }
         .animation(.easeInOut(duration: 0.12), value: isHovered)
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("menu-recent-row")
+    }
+
+    private func copyButton(
+        title: LocalizedStringKey, systemImage: String, identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .frame(width: 26, height: 26)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(
+                            VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .accessibilityLabel(title)
+        .accessibilityIdentifier(identifier)
     }
 
     private var rowContent: some View {

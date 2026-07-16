@@ -642,6 +642,37 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsCanCopyOriginalSource() {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setString("sentinel", forType: .string))
+
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recent", "--open-recents"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        assertHittable(
+            "recents-preset-picker", in: app,
+            "A recent capture should expose its source-copy action")
+        element("recents-preset-picker", in: app).click()
+        let copySource = app.menuItems["Copy Source"]
+        XCTAssertTrue(copySource.waitForExistence(timeout: 3))
+        copySource.click()
+
+        let deadline = Date().addingTimeInterval(3)
+        while pasteboard.string(forType: .string) == "sentinel", Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        let copied = pasteboard.string(forType: .string)
+        XCTAssertTrue(copied?.contains("struct DestinationCard: View") == true)
+        XCTAssertTrue(copied?.contains("Text(title)") == true)
+        XCTAssertNil(pasteboard.data(forType: .png))
+    }
+
+    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general
@@ -682,6 +713,53 @@ final class VitrineUITests: XCTestCase {
         let rendered = try XCTUnwrap(representation, "Preset capture did not copy a PNG")
         XCTAssertEqual(rendered.pixelsWide, 1200)
         XCTAssertEqual(rendered.pixelsHigh, 630)
+    }
+
+    @MainActor
+    func testMenuBarRecentCanCopyOriginalSource() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setString("sentinel", forType: .string))
+
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        let statusItem = app.statusItems.firstMatch
+        try XCTSkipUnless(
+            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
+            "The status item is not reachable on this display arrangement")
+        statusItem.click()
+
+        let panel = element("menubar-panel", in: app)
+        try XCTSkipUnless(
+            panel.waitForExistence(timeout: 3),
+            "The menu-bar panel is not reachable on this display arrangement")
+        let row = app.descendants(matching: .any).matching(identifier: "menu-recent-row")
+            .firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+        let sourceActions = app.descendants(matching: .any).matching(
+            identifier: "menu-recent-copy-source")
+        let actionDeadline = Date().addingTimeInterval(3)
+        var copySource: XCUIElement?
+        repeat {
+            copySource = sourceActions.allElementsBoundByIndex.first(where: \.isHittable)
+            if copySource != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < actionDeadline
+        try XCTUnwrap(copySource, "The menu-bar source-copy action is not reachable").click()
+
+        let deadline = Date().addingTimeInterval(3)
+        while pasteboard.string(forType: .string) == "sentinel", Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(
+            pasteboard.string(forType: .string),
+            "func greet(name string) string { return \"Hello, \" + name }")
+        XCTAssertNil(pasteboard.data(forType: .png))
     }
 
     @MainActor

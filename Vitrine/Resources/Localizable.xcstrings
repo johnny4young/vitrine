@@ -1560,6 +1560,17 @@
         }
       }
     },
+    "Copy Source" : {
+      "comment" : "Action that copies the original source text from a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar código fuente"
+          }
+        }
+      }
+    },
     "Copy image" : {
       "comment" : "Editor toolbar: the gradient CTA (design/handoff).",
       "localizations" : {
@@ -1707,6 +1718,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No se pudo copiar la imagen"
+          }
+        }
+      }
+    },
+    "Couldn't copy the source" : {
+      "comment" : "Failure feedback after copying the original source text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar el código fuente"
           }
         }
       }
@@ -2947,6 +2969,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Imagen copiada al portapapeles"
+          }
+        }
+      }
+    },
+    "Source copied to clipboard" : {
+      "comment" : "Success feedback after copying the original source text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código fuente copiado al portapapeles"
           }
         }
       }
@@ -7796,13 +7829,13 @@
         }
       }
     },
-    "Re-render, pin, or remove this recent capture" : {
+    "Copy, re-render, pin, or remove this recent capture" : {
       "comment" : "Help text for the Recents capture actions menu.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vuelve a renderizar, fija o elimina esta captura reciente"
+            "value" : "Copia, vuelve a renderizar, fija o elimina esta captura reciente"
           }
         }
       }
