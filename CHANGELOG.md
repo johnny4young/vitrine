@@ -19,6 +19,9 @@ can never drift.
   split balances so the last slide never trails with a line or two, and every slide
   renders through the standard pipeline with your style and brand mark (the font floors
   at 22 pt so slides stay legible at feed size).
+- **Post to X / LinkedIn / Bluesky.** The share sheet gains compose targets: the image
+  is staged on the clipboard and the network's compose page opens with a paste hint —
+  one paste from posting, with nothing sent anywhere by Vitrine.
 - **Measure tool.** A dimension callout for design handoffs: drag between two points
   and the mark draws a technical-style measurement — shaft, perpendicular end caps, and
   the span's length in pixels on a pill at the midpoint.

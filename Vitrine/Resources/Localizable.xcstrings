@@ -4995,6 +4995,17 @@
         }
       }
     },
+    "Image copied — paste it into your post" : {
+      "comment" : "HUD hint after a Post-to compose target staged the image on the clipboard.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen copiada: pégala en tu publicación"
+          }
+        }
+      }
+    },
     "Lines per slide: %lld" : {
       "comment" : "Stepper label in the carousel export sheet.",
       "localizations" : {
@@ -5002,6 +5013,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Líneas por diapositiva: %lld"
+          }
+        }
+      }
+    },
+    "Post on Bluesky" : {
+      "comment" : "Share-sheet compose target (feature #25).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicar en Bluesky"
+          }
+        }
+      }
+    },
+    "Post on LinkedIn" : {
+      "comment" : "Share-sheet compose target (feature #25).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicar en LinkedIn"
+          }
+        }
+      }
+    },
+    "Post on X" : {
+      "comment" : "Share-sheet compose target (feature #25).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicar en X"
           }
         }
       }
