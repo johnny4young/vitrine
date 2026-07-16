@@ -846,12 +846,23 @@ enum CLIRenderer {
             Data("vitrine: skipped \(file.lastPathComponent): \(reason)\n".utf8))
     }
 
-    /// Reads the input file through the injected loader, translating its
-    /// `FileInputLoader.LoadError` into the matching `CLIError`.
+    /// Loads a generated Git diff, stdin, or an input file and translates every
+    /// low-level failure into the matching stable `CLIError`.
     private static func loadInput(
         _ options: CLIOptions,
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile
     ) throws -> FileInputLoader.LoadedFile {
+        if let range = options.gitDiffRange {
+            do {
+                return try GitDiffInputLoader.load(range: range, paths: options.gitDiffPaths)
+            } catch GitDiffInputLoader.LoadError.emptyDiff {
+                throw CLIError.gitDiffEmpty
+            } catch GitDiffInputLoader.LoadError.tooLarge {
+                throw CLIError.gitDiffTooLarge
+            } catch {
+                throw CLIError.gitDiffFailed
+            }
+        }
         // `--stdin`: read the piped source (the shell integration feeds captured
         // terminal output here). A user-supplied stdin name is only a hint: it is
         // never read from disk, but it lets extension-based inference match file input.

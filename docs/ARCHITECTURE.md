@@ -160,6 +160,17 @@ explicit `--format` is present, the extension must match so automation never rec
 mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
 extension-based language inference and default metadata while still reading the source
 only from standard input.
+`--git-diff <revision-range>` is a bounded local source for `render` and `multi-size`.
+`GitDiffInputLoader` executes `/usr/bin/git` directly with a fixed argument vector,
+disables pagers, external diff drivers, textconv, and color, and puts repeatable
+`--git-path` values after Git's `--` separator. Standard output is drained while Git
+runs, avoiding pipe backpressure and terminating the process on the first byte above
+the shared 5 MB source cap. Explicit source/destination prefixes and context prevent
+global Git presentation settings from changing captures. Empty output fails before
+rendering. Literal pathspecs prevent scope expansion, terminal prompts are disabled,
+and `GIT_NO_LAZY_FETCH=1` prevents partial clones from reaching a promisor remote. The
+loaded source is tagged `.diff`, and diff bands default on unless the caller explicitly
+disables them.
 Local CLI background images are imported once into an invocation-scoped
 `BackgroundImageStore`; `CLIRenderer` threads that isolated store independently from
 the foreground-image store through `ExportManager`, then removes it after a single

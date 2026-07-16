@@ -1891,7 +1891,8 @@ struct CLITests {
             .helpRequested, .unknownCommand("x"), .unknownFlag("-x"),
             .missingValue(flag: "--out"), .missingRequired("input file"),
             .invalidValue(flag: "--theme", value: "x"), .inputUnreadable(path: "/x"),
-            .inputNotText(path: "/x"), .renderFailed, .outputExists(path: "/x"),
+            .inputNotText(path: "/x"), .gitDiffFailed, .gitDiffEmpty, .gitDiffTooLarge,
+            .renderFailed, .outputExists(path: "/x"),
             .writeFailed(path: "/x"), .batchSkipped(rendered: 1, skipped: 1),
         ]
         for error in errors {

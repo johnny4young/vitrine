@@ -422,6 +422,7 @@ vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift
 vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --exclude-ext tmp \
   --sidecars all --fail-on-empty --fail-on-skipped --skipped-report docs/cards/skipped.json \
   --manifest docs/cards/manifest.json
+vitrine render --git-diff main...HEAD --git-path Vitrine --out review.png
 vitrine render --help
 ```
 
@@ -460,6 +461,15 @@ individual choices. For single-file `render`, a known
 `--format` is omitted; if both are present, they must agree so scripts never write
 mislabeled artifacts. With `--stdin`, `--stdin-name <name>` supplies a filename hint
 for extension-based language inference and default metadata without reading that file.
+`--git-diff <revision-range>` loads a diff from the current local repository for
+`render` or `multi-size`; repeatable `--git-path <path>` values narrow it to selected
+paths. Vitrine invokes `/usr/bin/git` directly without a shell, disables pagers,
+external diff drivers, textconv, and color, places pathspecs after `--`, and rejects
+empty output or stops Git when output exceeds 5 MB. Stable prefixes and context keep
+captures independent of global Git presentation settings. Paths are literal, prompts
+are disabled, and partial clones never fetch missing objects, keeping the operation
+offline. Diff syntax and GitHub-style bands are selected automatically unless
+`--language` or `--no-diff-bands` overrides them.
 `--format-code` uses Vitrine's dependency-free, language-aware indentation tidy before
 rendering; the formatted source is also used by sidecars and secret scanning so every
 artifact describes the same visible code.

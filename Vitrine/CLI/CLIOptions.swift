@@ -252,6 +252,13 @@ struct CLIOptions: Equatable {
     /// Excluded files are filtered out before loading, so they are not counted as skipped.
     var batchExcludeExtensions: Set<String> = []
 
+    /// Optional local revision or revision range passed to the fixed, shell-free
+    /// Git diff loader. Nil preserves file/stdin input behavior.
+    var gitDiffRange: String?
+    /// Optional repeatable pathspecs for `gitDiffRange`. The loader places every
+    /// value after Git's `--` separator so option-like filenames remain data.
+    var gitDiffPaths: [String] = []
+
     /// Read the source from standard input instead of a file (e.g.
     /// `some-command | vitrine render --stdin`), so the language is inferred from the
     /// content — ANSI-colored terminal output is detected by its escape codes.
@@ -458,8 +465,16 @@ struct CLIOptions: Equatable {
         }
         if let focusHighlightedLines { config.focusHighlightedLines = focusHighlightedLines }
         if let diffDecorations { config.diffDecorations = diffDecorations }
+        let inferredMetadataFilename: String? =
+            if gitDiffRange != nil {
+                GitDiffInputLoader.defaultFilename(paths: gitDiffPaths)
+            } else if readStdin {
+                stdinFilename
+            } else {
+                nil
+            }
         config.metadata = SnapshotMetadata(
-            filename: metadataFilename ?? (readStdin ? stdinFilename : nil),
+            filename: metadataFilename ?? inferredMetadataFilename,
             title: metadataTitle,
             caption: metadataCaption,
             showLanguageBadge: showLanguageBadge)
