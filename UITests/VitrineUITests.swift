@@ -243,6 +243,7 @@ final class VitrineUITests: XCTestCase {
         // present and addressable.
         for tool in [
             "select", "arrow", "curvedArrow", "rectangle", "highlighter", "counter", "sticker",
+            "spotlight",
         ] {
             XCTAssertTrue(
                 element("annotation-tool-\(tool)", in: app).waitForExistence(timeout: 3),

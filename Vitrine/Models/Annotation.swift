@@ -23,6 +23,7 @@ struct Annotation: Identifiable, Equatable, Codable {
         case blur
         case counter
         case sticker
+        case spotlight
         var id: String { rawValue }
 
         /// Whether dragging defines two free points (a shaft/box) versus a single
@@ -165,6 +166,7 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
     case blur
     case counter
     case sticker
+    case spotlight
 
     var id: String { rawValue }
 
@@ -181,6 +183,7 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         case .blur: return .blur
         case .counter: return .counter
         case .sticker: return .sticker
+        case .spotlight: return .spotlight
         }
     }
 
@@ -196,6 +199,7 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         case .blur: return "drop.fill"
         case .counter: return "1.circle.fill"
         case .sticker: return "face.smiling"
+        case .spotlight: return "rectangle.center.inset.filled"
         }
     }
 
@@ -203,14 +207,16 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
     /// and blur do not).
     var usesThickness: Bool {
         switch self {
-        case .select, .highlighter, .blur: return false
+        case .select, .highlighter, .blur, .spotlight: return false
         default: return true
         }
     }
 
     /// Whether this tool exposes the color swatch. Blur is a fill of the underlying
     /// pixels and a sticker is an emoji with its own colors, so neither has one.
-    var usesColor: Bool { self != .select && self != .blur && self != .sticker }
+    var usesColor: Bool {
+        self != .select && self != .blur && self != .sticker && self != .spotlight
+    }
 
     /// The curated sticker set the sticker tool places — the dev-social reaction
     /// vocabulary. A fixed set keeps the picker one click and the render deterministic

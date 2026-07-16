@@ -119,6 +119,9 @@ struct SnapshotCanvas: View {
                     .blur(radius: Self.blurRadius)
                     .mask { blurMask }
             }
+            if hasSpotlightAnnotations {
+                spotlightDim
+            }
         }
         .overlay { annotationMarks }
 
@@ -166,6 +169,35 @@ struct SnapshotCanvas: View {
             }
             .fill(Color.black)
         }
+    }
+
+    /// Whether any annotation is a spotlight region (drives the dim overlay).
+    private var hasSpotlightAnnotations: Bool {
+        config.annotations.contains { $0.kind == .spotlight }
+    }
+
+    /// The scrim a spotlight leaves over everything else (feature #7).
+    private static let spotlightDimOpacity: Double = 0.55
+
+    /// Darkens the whole canvas except the spotlight regions (feature #7): one
+    /// even-odd-filled path — the full canvas rect minus every spotlight's rounded
+    /// rect — so multiple spotlights punch multiple holes in a single scrim rather
+    /// than stacking scrims. Sits above the content and any blur, below the marks,
+    /// so arrows and callouts stay at full brightness.
+    private var spotlightDim: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            Path { path in
+                path.addRect(CGRect(origin: .zero, size: size))
+                for annotation in config.annotations where annotation.kind == .spotlight {
+                    path.addRoundedRect(
+                        in: annotation.rect(in: size),
+                        cornerSize: CGSize(width: 10, height: 10))
+                }
+            }
+            .fill(Color.black.opacity(Self.spotlightDimOpacity), style: FillStyle(eoFill: true))
+        }
+        .allowsHitTesting(false)
     }
 
     /// The arrow and text marks, drawn last so they sit above the code and any blur.

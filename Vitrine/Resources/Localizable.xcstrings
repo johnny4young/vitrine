@@ -4917,6 +4917,17 @@
         }
       }
     },
+    "Spotlight" : {
+      "comment" : "Annotation tool: dim everything except the drawn region.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foco"
+          }
+        }
+      }
+    },
     "Sticker" : {
       "comment" : "Annotation tool: emoji sticker (also its toolbar tooltip).",
       "localizations" : {

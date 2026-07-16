@@ -18,14 +18,17 @@ extension AnnotationTool {
         case .blur: "Blur"
         case .counter: "Counter"
         case .sticker: "Sticker"
+        case .spotlight: "Spotlight"
         }
     }
 
-    /// The shortcut digit that selects this tool, used with ⌘ (⌘1…⌘8 in toolbar order).
+    /// The shortcut digit that selects this tool, used with ⌘ (⌘1…⌘9, then ⌘0).
     /// A Command-modified shortcut is the reliable, non-hijacking choice on macOS: a
     /// modifier-less key would either not fire or steal the code editor's typing, so the
-    /// tools take the digit row under ⌘ instead.
-    var keyEquivalent: KeyEquivalent {
+    /// tools take the digit row under ⌘. `nil` once the digit row is exhausted — a tool
+    /// added past ten stays click-selected rather than borrowing a letter that could
+    /// shadow an editing shortcut.
+    var keyEquivalent: KeyEquivalent? {
         switch self {
         case .select: "1"
         case .arrow: "2"
@@ -38,6 +41,7 @@ extension AnnotationTool {
         case .sticker: "9"
         // "0" rather than renumbering: 1–9 stay exactly what users learned.
         case .curvedArrow: "0"
+        case .spotlight: nil
         }
     }
 }
