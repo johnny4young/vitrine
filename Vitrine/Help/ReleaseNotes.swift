@@ -42,6 +42,20 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.21.0",
+            headline: "From snapshot to post",
+            highlights: [
+                "Carousel export (PRO): split a long snippet into numbered 4:5 slides "
+                    + "for a LinkedIn or Instagram carousel — balanced pages, your style "
+                    + "and brand mark on every slide.",
+                "Post to X, LinkedIn, or Bluesky straight from the share sheet: the "
+                    + "image is staged on the clipboard and the compose page opens — one "
+                    + "paste from posting, nothing sent by Vitrine.",
+                "A bigger annotation toolkit: spotlight dimming, a pixel-measure ruler, "
+                    + "curved arrows, and emoji stickers — plus a pinned floating "
+                    + "snapshot, on-device OCR, HEIC export, and asciinema import.",
+            ]),
+        ReleaseNote(
             version: "0.20.0",
             headline: "Beautify any image, not just code",
             highlights: [

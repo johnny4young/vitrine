@@ -24,8 +24,8 @@ options:
 # Project-wide build settings.
 settings:
   base:
-    MARKETING_VERSION: "0.20.0"
-    CURRENT_PROJECT_VERSION: "21"
+    MARKETING_VERSION: "0.21.0"
+    CURRENT_PROJECT_VERSION: "22"
     # Latest Swift language mode + Swift 6.2 "approachable concurrency": the whole
     # module defaults to @MainActor isolation (the recommended model for an app),
     # which removes the need for scattered @MainActor / nonisolated(unsafe).
