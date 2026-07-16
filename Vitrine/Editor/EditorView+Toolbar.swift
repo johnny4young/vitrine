@@ -77,6 +77,7 @@ extension EditorView {
                 systemImage: "square.and.arrow.up", action: share)
             pinSnapshotButton
             multiSizeExportButton
+            carouselExportButton
             savePresetButton
             makeDefaultButton
 
@@ -228,6 +229,34 @@ extension EditorView {
                 MultiSizeExportView(
                     baseConfig: settings.exportConfig, format: settings.export.format,
                     profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar)
+            case .paywall:
+                PaywallSheet(feature: .multiSizeExport)
+            }
+        }
+    }
+
+    /// The carousel export entry (feature #15): split a long snippet into numbered
+    /// 4:5 slides for a LinkedIn/Instagram carousel. Same PRO gate as multi-size —
+    /// it is the same batch-export family.
+    var carouselExportButton: some View {
+        GlassIconButton(systemImage: "rectangle.stack") {
+            carouselSheet = entitlements.isUnlocked(.multiSizeExport) ? .export : .paywall
+        }
+        .overlay(alignment: .topTrailing) {
+            if !entitlements.isUnlocked(.multiSizeExport) { ProBadge().accessibilityHidden(true) }
+        }
+        .help("Split the snippet into numbered carousel slides (4:5)")
+        .disabled(
+            !settings.config.hasRenderableContent || settings.config.usesImageContent
+        )
+        .accessibilityLabel(Text("Export carousel"))
+        .accessibilityIdentifier("export-carousel-button")
+        .sheet(item: $carouselSheet) { sheet in
+            switch sheet {
+            case .export:
+                CarouselExportView(
+                    baseConfig: settings.exportConfig,
+                    profile: settings.export.colorProfile)
             case .paywall:
                 PaywallSheet(feature: .multiSizeExport)
             }

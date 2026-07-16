@@ -123,6 +123,10 @@ struct EditorView: View {
         var id: String { rawValue }
     }
 
+    /// The carousel export sheet, or the paywall when PRO is locked (feature #15).
+    /// Same single-`.sheet(item:)` discipline as `multiSizeSheet`.
+    @State var carouselSheet: MultiSizeSheet?
+
     /// A loaded drop awaiting the user's replace-vs-append choice, kept so the
     /// confirmation dialog can apply exactly what was dropped.
     struct PendingDrop {
