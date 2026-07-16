@@ -96,11 +96,11 @@ struct CLITests {
         #expect(options.counterPosition == nil)
         #expect(options.counterColor == nil)
         #expect(options.counterSize == nil)
-        #expect(options.arrow == nil)
-        #expect(options.line == nil)
-        #expect(options.rectangle == nil)
-        #expect(options.highlighter == nil)
-        #expect(options.blurBox == nil)
+        #expect(options.arrows.isEmpty)
+        #expect(options.lines.isEmpty)
+        #expect(options.rectangles.isEmpty)
+        #expect(options.highlighters.isEmpty)
+        #expect(options.blurBoxes.isEmpty)
         #expect(options.imageFrame == nil)
         #expect(options.frameAppearance == nil)
         #expect(!options.formatCode)
@@ -672,7 +672,7 @@ struct CLITests {
             "--arrow-color", "#38BDF8", "--arrow-size", "9",
         ])
 
-        let arrow = try #require(options.arrow)
+        let arrow = try #require(options.arrows.first)
         #expect(arrow.start == CGPoint(x: 0.15, y: 0.8))
         #expect(arrow.end == CGPoint(x: 0.7, y: 0.25))
         #expect(arrow.color == RGBAColor(hex: "#38BDF8"))
@@ -723,7 +723,7 @@ struct CLITests {
             "--line-color", "#A78BFA", "--line-size", "10",
         ])
 
-        let line = try #require(options.line)
+        let line = try #require(options.lines.first)
         #expect(line.start == CGPoint(x: 0.12, y: 0.72))
         #expect(line.end == CGPoint(x: 0.86, y: 0.72))
         #expect(line.color == RGBAColor(hex: "#A78BFA"))
@@ -774,7 +774,7 @@ struct CLITests {
             "--rectangle-color", "#FB7185", "--rectangle-size", "9",
         ])
 
-        let rectangle = try #require(options.rectangle)
+        let rectangle = try #require(options.rectangles.first)
         #expect(rectangle.start == CGPoint(x: 0.12, y: 0.3))
         #expect(rectangle.end == CGPoint(x: 0.88, y: 0.78))
         #expect(rectangle.color == RGBAColor(hex: "#FB7185"))
@@ -825,7 +825,7 @@ struct CLITests {
             "--highlighter-color", "#FFD60A",
         ])
 
-        let highlighter = try #require(options.highlighter)
+        let highlighter = try #require(options.highlighters.first)
         #expect(highlighter.start == CGPoint(x: 0.12, y: 0.42))
         #expect(highlighter.end == CGPoint(x: 0.88, y: 0.54))
         #expect(highlighter.color == RGBAColor(hex: "#FFD60A"))
@@ -872,7 +872,7 @@ struct CLITests {
             "render", "snippet.swift", "-o", "o.png", "--blur-box", "0.12,0.42,0.88,0.54",
         ])
 
-        let blurBox = try #require(options.blurBox)
+        let blurBox = try #require(options.blurBoxes.first)
         #expect(blurBox.start == CGPoint(x: 0.12, y: 0.42))
         #expect(blurBox.end == CGPoint(x: 0.88, y: 0.54))
         #expect(blurBox.color == nil)
@@ -907,6 +907,35 @@ struct CLITests {
         let config = options.makeConfig(code: source, language: .swift)
         #expect(config.sidecarText == source)
         #expect(config.sidecarText.contains("runtime-only-secret"))
+    }
+
+    @Test func geometricAnnotationFlagsAreRepeatableAndKeepSharedPerKindStyle() throws {
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "-o", "o.png",
+            "--arrow", "0.1,0.8,0.35,0.55", "--arrow", "0.9,0.8,0.65,0.55",
+            "--arrow-color", "#38BDF8", "--arrow-size", "8",
+            "--line", "0.1,0.2,0.9,0.2", "--line", "0.1,0.3,0.9,0.3",
+            "--rectangle", "0.1,0.1,0.4,0.4", "--rectangle", "0.6,0.1,0.9,0.4",
+            "--highlighter", "0.1,0.45,0.9,0.52",
+            "--highlighter", "0.1,0.58,0.9,0.65", "--highlighter-color", "#FFD60A",
+            "--blur-box", "0.1,0.7,0.4,0.8", "--blur-box", "0.6,0.7,0.9,0.8",
+        ])
+
+        #expect(options.arrows.count == 2)
+        #expect(options.lines.count == 2)
+        #expect(options.rectangles.count == 2)
+        #expect(options.highlighters.count == 2)
+        #expect(options.blurBoxes.count == 2)
+        #expect(options.arrows.allSatisfy { $0.color == RGBAColor(hex: "#38BDF8") })
+        #expect(options.arrows.allSatisfy { $0.size == 8 })
+        #expect(options.highlighters.allSatisfy { $0.color == RGBAColor(hex: "#FFD60A") })
+
+        let annotations = options.makeConfig(code: "print(\"ship\")", language: .swift).annotations
+        #expect(
+            annotations.map(\.kind) == [
+                .arrow, .arrow, .line, .line, .rectangle, .rectangle,
+                .highlighter, .highlighter, .blur, .blur,
+            ])
     }
 
     @Test func styleOptionsDefaultToNilAndFlowIntoTheConfig() throws {

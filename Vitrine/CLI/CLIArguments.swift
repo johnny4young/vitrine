@@ -188,23 +188,18 @@ enum CLIArguments {
         var counterY: Double?
         var counterColor: RGBAColor?
         var counterSize: Double?
-        var arrowStart: CGPoint?
-        var arrowEnd: CGPoint?
+        var arrowSegments: [(start: CGPoint, end: CGPoint)] = []
         var arrowColor: RGBAColor?
         var arrowSize: Double?
-        var lineStart: CGPoint?
-        var lineEnd: CGPoint?
+        var lineSegments: [(start: CGPoint, end: CGPoint)] = []
         var lineColor: RGBAColor?
         var lineSize: Double?
-        var rectangleStart: CGPoint?
-        var rectangleEnd: CGPoint?
+        var rectangleRegions: [(start: CGPoint, end: CGPoint)] = []
         var rectangleColor: RGBAColor?
         var rectangleSize: Double?
-        var highlighterStart: CGPoint?
-        var highlighterEnd: CGPoint?
+        var highlighterRegions: [(start: CGPoint, end: CGPoint)] = []
         var highlighterColor: RGBAColor?
-        var blurBoxStart: CGPoint?
-        var blurBoxEnd: CGPoint?
+        var blurBoxRegions: [(start: CGPoint, end: CGPoint)] = []
         var imageFrame: CLIOptions.ImageFrameOption?
         var frameAppearance: CLIOptions.ImageFrameAppearance?
         var noOverwrite = false
@@ -347,39 +342,34 @@ enum CLIArguments {
             case "--counter-size":
                 counterSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--arrow":
-                let segment = try resolveNormalizedSegment(try value(for: token), flag: token)
-                arrowStart = segment.start
-                arrowEnd = segment.end
+                arrowSegments.append(
+                    try resolveNormalizedSegment(try value(for: token), flag: token))
             case "--arrow-color":
                 arrowColor = try resolveHexColor(try value(for: token), flag: token)
             case "--arrow-size":
                 arrowSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--line":
-                let segment = try resolveNormalizedSegment(try value(for: token), flag: token)
-                lineStart = segment.start
-                lineEnd = segment.end
+                lineSegments.append(
+                    try resolveNormalizedSegment(try value(for: token), flag: token))
             case "--line-color":
                 lineColor = try resolveHexColor(try value(for: token), flag: token)
             case "--line-size":
                 lineSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--rectangle":
-                let segment = try resolveNormalizedRegion(try value(for: token), flag: token)
-                rectangleStart = segment.start
-                rectangleEnd = segment.end
+                rectangleRegions.append(
+                    try resolveNormalizedRegion(try value(for: token), flag: token))
             case "--rectangle-color":
                 rectangleColor = try resolveHexColor(try value(for: token), flag: token)
             case "--rectangle-size":
                 rectangleSize = try resolveAnnotationSize(try value(for: token), flag: token)
             case "--highlighter":
-                let region = try resolveNormalizedRegion(try value(for: token), flag: token)
-                highlighterStart = region.start
-                highlighterEnd = region.end
+                highlighterRegions.append(
+                    try resolveNormalizedRegion(try value(for: token), flag: token))
             case "--highlighter-color":
                 highlighterColor = try resolveHexColor(try value(for: token), flag: token)
             case "--blur-box":
-                let region = try resolveNormalizedRegion(try value(for: token), flag: token)
-                blurBoxStart = region.start
-                blurBoxEnd = region.end
+                blurBoxRegions.append(
+                    try resolveNormalizedRegion(try value(for: token), flag: token))
             case "--frame":
                 imageFrame = try resolveImageFrame(try value(for: token))
             case "--frame-appearance":
@@ -587,19 +577,19 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--counter-x and --counter-y must be provided together.")
         }
-        if arrowStart == nil, arrowColor != nil || arrowSize != nil {
+        if arrowSegments.isEmpty, arrowColor != nil || arrowSize != nil {
             throw CLIError.incompatibleOptions(
                 "--arrow-color and --arrow-size require --arrow.")
         }
-        if lineStart == nil, lineColor != nil || lineSize != nil {
+        if lineSegments.isEmpty, lineColor != nil || lineSize != nil {
             throw CLIError.incompatibleOptions(
                 "--line-color and --line-size require --line.")
         }
-        if rectangleStart == nil, rectangleColor != nil || rectangleSize != nil {
+        if rectangleRegions.isEmpty, rectangleColor != nil || rectangleSize != nil {
             throw CLIError.incompatibleOptions(
                 "--rectangle-color and --rectangle-size require --rectangle.")
         }
-        if highlighterStart == nil, highlighterColor != nil {
+        if highlighterRegions.isEmpty, highlighterColor != nil {
             throw CLIError.incompatibleOptions("--highlighter-color requires --highlighter.")
         }
         if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
@@ -654,11 +644,11 @@ enum CLIArguments {
             || watermarkContentRequested
             || calloutText != nil
             || counterNumber != nil
-            || arrowStart != nil
-            || lineStart != nil
-            || rectangleStart != nil
-            || highlighterStart != nil
-            || blurBoxStart != nil
+            || !arrowSegments.isEmpty
+            || !lineSegments.isEmpty
+            || !rectangleRegions.isEmpty
+            || !highlighterRegions.isEmpty
+            || !blurBoxRegions.isEmpty
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -783,43 +773,26 @@ enum CLIArguments {
             } else {
                 nil
             }
-        let arrow: CLIOptions.SegmentAnnotation? =
-            if let arrowStart, let arrowEnd {
-                CLIOptions.SegmentAnnotation(
-                    start: arrowStart, end: arrowEnd, color: arrowColor, size: arrowSize)
-            } else {
-                nil
-            }
-        let line: CLIOptions.SegmentAnnotation? =
-            if let lineStart, let lineEnd {
-                CLIOptions.SegmentAnnotation(
-                    start: lineStart, end: lineEnd, color: lineColor, size: lineSize)
-            } else {
-                nil
-            }
-        let rectangle: CLIOptions.SegmentAnnotation? =
-            if let rectangleStart, let rectangleEnd {
-                CLIOptions.SegmentAnnotation(
-                    start: rectangleStart, end: rectangleEnd, color: rectangleColor,
-                    size: rectangleSize)
-            } else {
-                nil
-            }
-        let highlighter: CLIOptions.SegmentAnnotation? =
-            if let highlighterStart, let highlighterEnd {
-                CLIOptions.SegmentAnnotation(
-                    start: highlighterStart, end: highlighterEnd, color: highlighterColor,
-                    size: nil)
-            } else {
-                nil
-            }
-        let blurBox: CLIOptions.SegmentAnnotation? =
-            if let blurBoxStart, let blurBoxEnd {
-                CLIOptions.SegmentAnnotation(
-                    start: blurBoxStart, end: blurBoxEnd, color: nil, size: nil)
-            } else {
-                nil
-            }
+        let arrows = arrowSegments.map {
+            CLIOptions.SegmentAnnotation(
+                start: $0.start, end: $0.end, color: arrowColor, size: arrowSize)
+        }
+        let lines = lineSegments.map {
+            CLIOptions.SegmentAnnotation(
+                start: $0.start, end: $0.end, color: lineColor, size: lineSize)
+        }
+        let rectangles = rectangleRegions.map {
+            CLIOptions.SegmentAnnotation(
+                start: $0.start, end: $0.end, color: rectangleColor, size: rectangleSize)
+        }
+        let highlighters = highlighterRegions.map {
+            CLIOptions.SegmentAnnotation(
+                start: $0.start, end: $0.end, color: highlighterColor, size: nil)
+        }
+        let blurBoxes = blurBoxRegions.map {
+            CLIOptions.SegmentAnnotation(
+                start: $0.start, end: $0.end, color: nil, size: nil)
+        }
 
         return CLIOptions(
             command: mode,
@@ -864,11 +837,11 @@ enum CLIArguments {
             counterPosition: counterPosition,
             counterColor: counterColor,
             counterSize: counterSize,
-            arrow: arrow,
-            line: line,
-            rectangle: rectangle,
-            highlighter: highlighter,
-            blurBox: blurBox,
+            arrows: arrows,
+            lines: lines,
+            rectangles: rectangles,
+            highlighters: highlighters,
+            blurBoxes: blurBoxes,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,
@@ -1488,24 +1461,24 @@ nonisolated enum CLIUsage {
           --counter-color <hex>  Counter RGB/RGBA fill color; requires --counter.
           --counter-size <2...28>
                                  Counter size weight; requires --counter.
-          --arrow <x1,y1,x2,y2> Add an arrow from normalized tail to head coordinates.
-          --arrow-color <hex>   Arrow RGB/RGBA stroke color; requires --arrow.
-          --arrow-size <2...28> Arrow stroke weight; requires --arrow.
-          --line <x1,y1,x2,y2>  Add a line between normalized canvas coordinates.
-          --line-color <hex>    Line RGB/RGBA stroke color; requires --line.
-          --line-size <2...28>  Line stroke weight; requires --line.
+          --arrow <x1,y1,x2,y2> Add a repeatable arrow from normalized tail to head.
+          --arrow-color <hex>   RGB/RGBA stroke color for every arrow; requires --arrow.
+          --arrow-size <2...28> Stroke weight for every arrow; requires --arrow.
+          --line <x1,y1,x2,y2>  Add a repeatable line between normalized coordinates.
+          --line-color <hex>    RGB/RGBA stroke color for every line; requires --line.
+          --line-size <2...28>  Stroke weight for every line; requires --line.
           --rectangle <x1,y1,x2,y2>
-                                 Outline the box between normalized opposite corners.
+                                 Outline a repeatable normalized box.
           --rectangle-color <hex>
-                                 Rectangle RGB/RGBA stroke color; requires --rectangle.
+                                 Stroke color for every rectangle; requires --rectangle.
           --rectangle-size <2...28>
-                                 Rectangle stroke weight; requires --rectangle.
+                                 Stroke weight for every rectangle; requires --rectangle.
           --highlighter <x1,y1,x2,y2>
-                                 Highlight the region between normalized opposite corners.
+                                 Highlight a repeatable normalized region.
           --highlighter-color <hex>
-                                 Highlighter RGB/RGBA fill color; requires --highlighter.
+                                 Fill color for every highlighter; requires --highlighter.
           --blur-box <x1,y1,x2,y2>
-                                 Visually blur a normalized region; sidecars stay unchanged.
+                                 Visually blur a repeatable region; sidecars stay unchanged.
           --no-overwrite         Refuse to replace existing image/sidecar outputs
                                  (--no-clobber is also accepted).
           --window-title <text>  Title shown in the rendered window chrome.

@@ -384,6 +384,8 @@ vitrine render release.swift --out boxed.png --rectangle 0.12,0.28,0.88,0.8 \
 vitrine render release.swift --out highlighted.png --highlighter 0.12,0.42,0.88,0.54 \
   --highlighter-color '#FFD60A'
 vitrine render release.swift --out obscured.png --blur-box 0.12,0.42,0.88,0.54
+vitrine render release.swift --out review-map.png \
+  --arrow 0.15,0.82,0.4,0.58 --arrow 0.85,0.82,0.6,0.58 --arrow-color '#38BDF8'
 vitrine render --image dashboard.png --out showcase.png --background night --padding 40
 vitrine render --image dashboard.png --out browser.png --frame browser \
   --frame-appearance dark --window-title 'app.example.com'
@@ -489,21 +491,22 @@ visible callout text.
 `--counter <1...99>` adds one numbered badge through the same annotation layer. It
 defaults to the canvas center and editor annotation style; optional paired coordinates,
 fill color, and size keep scripted walkthrough steps deterministic and legible.
-`--arrow <x1,y1,x2,y2>` draws one straight arrow from a normalized canvas tail to its
-head through the editor annotation renderer. Optional color and size use the same
-fixed-sRGB and stroke ranges as the editor; zero-length or out-of-canvas segments are
-rejected rather than silently producing an invisible mark.
-`--line <x1,y1,x2,y2>` draws one straight segment between normalized canvas points.
-It shares the editor's fixed-sRGB color and stroke range, and rejects malformed,
-out-of-canvas, or zero-length segments before rendering.
-`--rectangle <x1,y1,x2,y2>` outlines the region between two normalized opposite
-corners. Color and size match the editor toolbar; collapsed width or height is rejected
-so every successful command produces a visible box.
-`--highlighter <x1,y1,x2,y2>` draws the editor's translucent marker fill between two
-normalized opposite corners. Its optional color uses fixed-sRGB input, while collapsed
-width or height is rejected before rendering.
-`--blur-box <x1,y1,x2,y2>` visually obscures a normalized region using the editor's
-blur compositor. It does **not** sanitize the source or copyable sidecars; use
+`--arrow <x1,y1,x2,y2>` draws a straight arrow from a normalized canvas tail to its
+head through the editor annotation renderer. Repeat the flag to compose several arrows;
+optional color and size apply to every arrow and use the same fixed-sRGB and stroke
+ranges as the editor. Zero-length or out-of-canvas segments are rejected rather than
+silently producing an invisible mark.
+`--line <x1,y1,x2,y2>` draws a straight segment between normalized canvas points and
+is repeatable. Its shared color and size use the editor's fixed-sRGB and stroke ranges;
+malformed, out-of-canvas, or zero-length segments fail before rendering.
+`--rectangle <x1,y1,x2,y2>` is repeatable and outlines each region between normalized
+opposite corners. Shared color and size match the editor toolbar; collapsed width or
+height is rejected so every successful command produces visible boxes.
+`--highlighter <x1,y1,x2,y2>` is repeatable and draws the editor's translucent marker
+fill across each normalized region. Its optional shared color uses fixed-sRGB input,
+while collapsed width or height is rejected before rendering.
+`--blur-box <x1,y1,x2,y2>` is repeatable and visually obscures normalized regions using
+the editor's blur compositor. It does **not** sanitize the source or copyable sidecars; use
 `--redact-lines` or `--redact-secrets` when sensitive text must be removed. Collapsed
 width or height is rejected before rendering.
 `--image <path>` beautifies a local image through the same canvas as the editor. The
