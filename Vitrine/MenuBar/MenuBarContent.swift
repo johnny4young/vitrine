@@ -200,7 +200,21 @@ struct MenuBarContent: View {
 
     private var themeSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            TokenGroupLabel(title: Text("Theme"))
+            HStack(alignment: .firstTextBaseline) {
+                TokenGroupLabel(title: Text("Theme"))
+                Spacer(minLength: VitrineTokens.Spacing.xs)
+                Button {
+                    settings.applySurpriseStyle()
+                } label: {
+                    Label("Surprise Me", systemImage: "dice")
+                        .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
+                        .foregroundStyle(VitrineTokens.Accent.system)
+                }
+                .buttonStyle(.plain)
+                .help("Apply the next curated style without changing your code")
+                .accessibilityHint("Apply the next curated style without changing your code")
+                .accessibilityIdentifier("menu-surprise-style-button")
+            }
             ChipScroll(topPadding: 2, bottomPadding: 4) {
                 ForEach(ThemeChipColors.orderedBuiltIns) { theme in
                     themeChip(for: theme)
