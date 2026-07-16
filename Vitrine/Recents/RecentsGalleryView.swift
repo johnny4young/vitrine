@@ -102,6 +102,7 @@ struct RecentsGalleryView: View {
                             pin: {
                                 recents.updatePinned(id: capture.id, isPinned: !capture.isPinned)
                             },
+                            copySource: { copySource(capture) },
                             renderAs: { preset in render(capture, as: preset) },
                             delete: { pendingDeletion = capture })
                     }
@@ -213,6 +214,11 @@ struct RecentsGalleryView: View {
         ExportFeedback.presentCopy(copied)
     }
 
+    private func copySource(_ capture: Capture) {
+        ExportFeedback.presentSourceCopy(
+            ExportManager.copySourceToPasteboard(capture.code))
+    }
+
     private func open() {
         onOpen()
     }
@@ -228,6 +234,7 @@ private struct RecentsCard: View {
     let thumbnail: NSImage?
     let action: () -> Void
     let pin: () -> Void
+    let copySource: () -> Void
     let renderAs: (ExportPreset) -> Void
     let delete: () -> Void
 
@@ -322,6 +329,11 @@ private struct RecentsCard: View {
                 .accessibilityIdentifier("recents-pin-capture")
             }
             Divider()
+            Button(action: copySource) {
+                Label("Copy Source", systemImage: "doc.on.clipboard")
+            }
+            .accessibilityIdentifier("recents-copy-source")
+            Divider()
             ForEach(ExportPreset.all) { preset in
                 Button {
                     renderAs(preset)
@@ -344,7 +356,7 @@ private struct RecentsCard: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .help("Re-render, pin, or remove this recent capture")
+        .help("Copy, re-render, pin, or remove this recent capture")
         .accessibilityLabel("Capture actions")
         .accessibilityIdentifier("recents-preset-picker")
     }

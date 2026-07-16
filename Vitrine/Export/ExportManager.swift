@@ -17,6 +17,20 @@ import UniformTypeIdentifiers
 /// normalization preserves the alpha channel (no matte), so a transparent
 /// background exports with real transparency.
 enum ExportManager {
+    /// Replaces the pasteboard contents with the exact plain-text source.
+    ///
+    /// Accepting a pasteboard keeps the primitive deterministic in tests and avoids
+    /// touching the developer's clipboard outside the user-initiated default path.
+    @discardableResult
+    static func copySourceToPasteboard(
+        _ source: String, to pasteboard: NSPasteboard = .general
+    ) -> Bool {
+        pasteboard.clearContents()
+        let copied = pasteboard.setString(source, forType: .string)
+        Log.export.info("Copied source to pasteboard (success \(copied, privacy: .public))")
+        return copied
+    }
+
     /// Renders the canvas for `config` to a `CGImage` at the given scale (1/2/3),
     /// normalized into `profile`'s color space (sRGB by default, CS-024).
     ///
