@@ -86,6 +86,13 @@ struct EditorView: View {
     /// the curated set; the toolbar's sticker picker changes it.
     @State var newStickerGlyph: String = AnnotationTool.stickerChoices[0]
 
+    /// Whether the stage draws the safe-area guide over the preview (feature #20):
+    /// the margin platforms may crop or cover, plus the live line/column budget.
+    /// Editor-only chrome — the export never includes it. Persisted app-wide (it is
+    /// a working preference, not a per-document style).
+    @AppStorage("editorShowsSafeAreaGuides", store: AppDefaults.current)
+    var showsSafeAreaGuides = false
+
     /// Undo/redo history for annotation edits (CS-086): each entry is a full snapshot
     /// of `config.annotations` captured just before a draw/move/resize/delete. Bounded
     /// so a long session never grows without limit.

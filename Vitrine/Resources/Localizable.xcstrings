@@ -4917,6 +4917,50 @@
         }
       }
     },
+    "Guides" : {
+      "comment" : "Inspector row label for the safe-area guide toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guías"
+          }
+        }
+      }
+    },
+    "Lines by widest column" : {
+      "comment" : "Accessibility label for the live line × column budget chip.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas por columna más ancha"
+          }
+        }
+      }
+    },
+    "Safe-area guides" : {
+      "comment" : "Toggle: show the platform crop-margin guide over the preview.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guías de área segura"
+          }
+        }
+      }
+    },
+    "Show the margin platforms may crop or cover, plus the live line and column count" : {
+      "comment" : "Help text for the safe-area guides toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muestra el margen que las plataformas pueden recortar o cubrir, más el conteo de líneas y columnas"
+          }
+        }
+      }
+    },
     "Spotlight" : {
       "comment" : "Annotation tool: dim everything except the drawn region.",
       "localizations" : {

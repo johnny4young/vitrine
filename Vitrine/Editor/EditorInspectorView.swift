@@ -12,6 +12,12 @@ import SwiftUI
 /// controls in the app rather than two that can drift.
 struct EditorInspectorView: View {
     @Bindable var settings: AppSettings
+
+    /// Whether the stage draws the safe-area guide (feature #20). Same key/store as
+    /// `EditorView.showsSafeAreaGuides`, so the toggle here and the stage overlay stay
+    /// in sync through the shared defaults without any plumbing.
+    @AppStorage("editorShowsSafeAreaGuides", store: AppDefaults.current)
+    private var showsSafeAreaGuides = false
     var themes: CustomThemeStore
 
     /// Disclosure state for the advanced sections. All start collapsed so the
@@ -444,6 +450,16 @@ struct EditorInspectorView: View {
             .help(settings.export.format.summary)
             .accessibilityLabel("Format")
             .accessibilityIdentifier("inspector-format-picker")
+        }
+        InspectorRow(label: Text("Guides")) {
+            Toggle("Safe-area guides", isOn: $showsSafeAreaGuides)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .help(
+                    "Show the margin platforms may crop or cover, plus the live line and column count"
+                )
+                .accessibilityLabel("Safe-area guides")
+                .accessibilityIdentifier("inspector-safe-area-toggle")
         }
     }
 

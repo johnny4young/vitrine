@@ -282,6 +282,30 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testSafeAreaGuidesTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        let window = element("editor-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        // Open the Output disclosure, pick a fixed-size destination, flip the guides on.
+        XCTAssertTrue(waitForHittableElement("inspector-disclosure-output", in: app, timeout: 5))
+        element("inspector-disclosure-output", in: app).click()
+        let toggle = element("inspector-safe-area-toggle", in: app)
+        XCTAssertTrue(toggle.waitForExistence(timeout: 3))
+        if toggle.isHittable {
+            toggle.click()
+            Thread.sleep(forTimeInterval: 0.6)
+            save(
+                window.screenshot(), as: "58-editor-safe-area-guides",
+                note: "Safe-area guide toggle on: budget chip over the preview")
+            toggle.click()  // leave the isolated defaults as found
+        } else {
+            miss("58-editor-safe-area-guides", reason: "safe-area toggle was not hittable")
+        }
+    }
+
+    @MainActor
     func testPinnedRecentsTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
         defer { app.terminate() }
