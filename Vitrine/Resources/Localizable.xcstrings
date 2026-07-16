@@ -7916,6 +7916,72 @@
           }
         }
       }
+    },
+    "Manage Recents" : {
+      "comment" : "Toolbar menu for destructive Recents cleanup actions.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Administrar recientes"
+          }
+        }
+      }
+    },
+    "Clear All" : {
+      "comment" : "Recents cleanup action that removes pinned and unpinned captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar todo"
+          }
+        }
+      }
+    },
+    "Clear Unpinned" : {
+      "comment" : "Recents cleanup action that preserves pinned favorites.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar no fijadas"
+          }
+        }
+      }
+    },
+    "Clear Unpinned?" : {
+      "comment" : "Confirmation title for removing only unpinned recent captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Borrar las capturas no fijadas?"
+          }
+        }
+      }
+    },
+    "Clear recent captures while optionally keeping pinned favorites" : {
+      "comment" : "Help text for the Recents cleanup menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borra capturas recientes y conserva opcionalmente las favoritas fijadas"
+          }
+        }
+      }
+    },
+    "This removes every unpinned capture and its cached preview. Pinned captures stay in Recents. This can't be undone." : {
+      "comment" : "Confirmation message for clearing only unpinned recent captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina cada captura no fijada y su vista previa en caché. Las capturas fijadas permanecen en Recientes. No se puede deshacer."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

@@ -340,6 +340,29 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testClearUnpinnedRecentsTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let window = element("recents-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        let manage = element("recents-clear-button", in: app)
+        XCTAssertTrue(manage.waitForExistence(timeout: 5))
+        XCTAssertTrue(manage.isHittable)
+        manage.click()
+
+        let clearUnpinned = app.menuItems["Clear Unpinned"]
+        XCTAssertTrue(clearUnpinned.waitForExistence(timeout: 3))
+        clearUnpinned.click()
+        let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
+        Thread.sleep(forTimeInterval: 0.4)
+        save(
+            window.screenshot(), as: "56-recents-clear-unpinned-confirmation",
+            note: "Safe Recents cleanup confirmation that explicitly preserves pinned captures")
+    }
+
+    @MainActor
     func testHelpTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--show-help"])
         defer { app.terminate() }

@@ -642,6 +642,36 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsCanClearUnpinnedCaptures() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        XCTAssertEqual(cards.count, 3)
+        let manage = element("recents-clear-button", in: app)
+        XCTAssertTrue(manage.waitForExistence(timeout: 8))
+        XCTAssertTrue(manage.isHittable)
+        manage.click()
+
+        let clearUnpinned = app.menuItems["Clear Unpinned"]
+        XCTAssertTrue(clearUnpinned.waitForExistence(timeout: 3))
+        clearUnpinned.click()
+
+        let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
+        confirmation.click()
+
+        let deadline = Date().addingTimeInterval(3)
+        while cards.count != 1, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(cards.count, 1)
+        XCTAssertTrue(cards.firstMatch.label.contains("Go"))
+        XCTAssertTrue(element("recents-pinned-badge", in: app).exists)
+    }
+
+    @MainActor
     func testRecentsCanCopyOriginalSource() {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general
