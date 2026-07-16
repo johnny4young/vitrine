@@ -1,6 +1,6 @@
 import Foundation
 
-/// Lists the local CLI catalogs used to validate themes, languages, export presets, fonts,
+/// Lists the local CLI catalogs used to validate themes, languages, export/style presets, fonts,
 /// backgrounds, image-background fits, image frames, frame appearances, watermark
 /// positions, formats, and color profiles.
 ///
@@ -15,6 +15,7 @@ enum CLICatalog {
         case themes
         case languages
         case presets
+        case stylePresets
         case fonts
         case backgrounds
         case backgroundFits
@@ -30,6 +31,7 @@ enum CLICatalog {
             case "theme", "themes": self = .themes
             case "language", "languages": self = .languages
             case "preset", "presets": self = .presets
+            case "style-preset", "style-presets": self = .stylePresets
             case "font", "fonts": self = .fonts
             case "background", "backgrounds": self = .backgrounds
             case "background-fit", "background-fits": self = .backgroundFits
@@ -65,6 +67,7 @@ enum CLICatalog {
         var themes: [Entry]
         var languages: [Entry]
         var presets: [Entry]
+        var stylePresets: [Entry]
         var fonts: [Entry]
         var backgrounds: [Entry]
         var backgroundFits: [Entry]
@@ -76,7 +79,7 @@ enum CLICatalog {
     }
 
     static let usage = """
-        vitrine list <all|themes|languages|presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
+        vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
 
         Prints the local ids accepted by render options, including --background,
         --frame, --frame-appearance, and --watermark-position.
@@ -138,6 +141,7 @@ enum CLICatalog {
             themes: entries(for: .themes),
             languages: entries(for: .languages),
             presets: entries(for: .presets),
+            stylePresets: entries(for: .stylePresets),
             fonts: entries(for: .fonts),
             backgrounds: entries(for: .backgrounds),
             backgroundFits: entries(for: .backgroundFits),
@@ -159,6 +163,7 @@ enum CLICatalog {
         (.themes, "themes"),
         (.languages, "languages"),
         (.presets, "presets"),
+        (.stylePresets, "style-presets"),
         (.fonts, "fonts"),
         (.backgrounds, "backgrounds"),
         (.backgroundFits, "background-fits"),
@@ -179,6 +184,8 @@ enum CLICatalog {
             Language.allCases.map { Entry(id: $0.rawValue, name: $0.displayName) }
         case .presets:
             ExportPreset.all.map { Entry(id: $0.id, name: $0.displayName) }
+        case .stylePresets:
+            StylePreset.builtIns.map { Entry(id: $0.id, name: $0.name) }
         case .fonts:
             CodeFont.all.map { Entry(id: $0, name: $0) }
         case .backgrounds:
