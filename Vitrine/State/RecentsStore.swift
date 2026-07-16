@@ -4,8 +4,8 @@ import OSLog
 import Observation
 
 /// Persists the last `limit` captures (CS-013) and their preview thumbnails
-/// (CS-029): newest first, capped, and de-duplicated by code. `UserDefaults` is
-/// injectable so it can be unit-tested.
+/// (CS-029): pinned first, newest-first within each group, capped, and de-duplicated
+/// by code. `UserDefaults` is injectable so it can be unit-tested.
 ///
 /// ## Visual recents (CS-029)
 ///
@@ -59,7 +59,18 @@ final class RecentsStore {
         if let data = defaults.data(forKey: key),
             let decoded = try? JSONDecoder().decode([Capture].self, from: data)
         {
-            captures = decoded
+            // Same eviction invariant as `add`: cap at `limit` by dropping the oldest
+            // UNPINNED entries, but keep at least one unpinned entry — a fully-pinned
+            // list legitimately persists one capture over `limit` (`add` protects the
+            // newcomer), and a blunt prefix() dropped that newest capture on relaunch.
+            // Pins are never evicted; a hand-inflated blob degrades to pins + 1.
+            var restored = Self.ordered(decoded)
+            while restored.count > Self.limit {
+                let unpinned = restored.indices.filter { !restored[$0].isPinned }
+                guard unpinned.count > 1, let oldest = unpinned.last else { break }
+                restored.remove(at: oldest)
+            }
+            captures = restored
         } else {
             captures = []
         }
@@ -69,14 +80,31 @@ final class RecentsStore {
         thumbnails.prune(keeping: Set(captures.map(\.id)))
     }
 
-    /// Inserts `capture` at the front, removing any existing entry with identical
-    /// code, caps the list at `limit`, renders its thumbnail into the cache, and
-    /// prunes thumbnails for any capture that fell off the list (CS-013/CS-029).
+    /// Inserts `capture`, removing any existing entry with identical code, orders
+    /// pins first, caps the list at `limit`, renders its thumbnail into the cache,
+    /// and prunes thumbnails for any capture that fell off the list (CS-013/CS-029).
     func add(_ capture: Capture) {
+        var capture = capture
+        if captures.first(where: { $0.code == capture.code })?.isPinned == true {
+            capture.isPinned = true
+        }
         captures.removeAll { $0.code == capture.code }
+        // Insert at the FRONT: the array's own order is then always newest-added
+        // first, which is what `ordered` falls back to when dates tie — an appended
+        // newcomer with a tied date would lose the tie to older entries.
         captures.insert(capture, at: 0)
-        if captures.count > Self.limit {
-            captures = Array(captures.prefix(Self.limit))
+        captures = Self.ordered(captures)
+        while captures.count > Self.limit {
+            // Evict the oldest UNPINNED capture (never the one just added). A pin is a
+            // promise — "Pinned captures stay in Recents" — so when every other slot is
+            // pinned there is no candidate and the list legitimately runs one over
+            // `limit` instead of silently sacrificing a favorite (deep-review finding).
+            guard
+                let evictionIndex = captures.indices.reversed().first(where: {
+                    captures[$0].id != capture.id && !captures[$0].isPinned
+                })
+            else { break }
+            captures.remove(at: evictionIndex)
         }
         persist()
         // The thumbnail is rendered synchronously so the gallery shows it the moment a
@@ -95,6 +123,48 @@ final class RecentsStore {
         decodedThumbnails.removeAll()
         persist()
         thumbnails.clear()
+    }
+
+    /// Removes every unpinned capture while preserving favorites and their cached
+    /// previews. Returns the number removed so callers can distinguish a no-op
+    /// without comparing store snapshots.
+    @discardableResult
+    func clearUnpinned() -> Int {
+        let originalCount = captures.count
+        captures.removeAll { !$0.isPinned }
+        let removedCount = originalCount - captures.count
+        guard removedCount > 0 else { return 0 }
+
+        let keep = Set(captures.map(\.id))
+        decodedThumbnails = decodedThumbnails.filter { keep.contains($0.key) }
+        persist()
+        thumbnails.prune(keeping: keep)
+        return removedCount
+    }
+
+    /// Removes one recent capture and its cached thumbnail. Returns `false` for an
+    /// unknown id so repeated or stale UI actions are harmless and do not rewrite
+    /// the persisted list unnecessarily.
+    @discardableResult
+    func remove(id: Capture.ID) -> Bool {
+        guard captures.contains(where: { $0.id == id }) else { return false }
+        captures.removeAll { $0.id == id }
+        decodedThumbnails[id] = nil
+        persist()
+        thumbnails.remove(id)
+        return true
+    }
+
+    /// Pins or unpins one capture, reordering the persisted history immediately.
+    /// Unknown ids are harmless so stale menus cannot mutate another capture.
+    @discardableResult
+    func updatePinned(id: Capture.ID, isPinned: Bool) -> Bool {
+        guard let index = captures.firstIndex(where: { $0.id == id }) else { return false }
+        guard captures[index].isPinned != isPinned else { return true }
+        captures[index].isPinned = isPinned
+        captures = Self.ordered(captures)
+        persist()
+        return true
     }
 
     /// The cached preview thumbnail for a capture, or `nil` when none is cached yet
@@ -123,6 +193,26 @@ final class RecentsStore {
             defaults.set(data, forKey: key)
         }
     }
+
+    /// Pinned captures lead the list; each group remains newest-first. Ties on the
+    /// date fall back to the array's own order — a STABLE sort — not a UUID
+    /// comparison: captures added in the same instant carry equal dates (a coarse
+    /// clock tick on the CI runner grouped the demo seed's three), and a random-UUID
+    /// tie-break ordered them differently from run to run. `add` inserts at the
+    /// front, so the array is always newest-added first and stability preserves
+    /// insertion recency; stability also makes this idempotent, which matters because
+    /// `add`/`updatePinned` re-run it over an already-ordered array.
+    private static func ordered(_ captures: [Capture]) -> [Capture] {
+        captures.enumerated()
+            .sorted { lhs, rhs in
+                if lhs.element.isPinned != rhs.element.isPinned { return lhs.element.isPinned }
+                if lhs.element.date != rhs.element.date {
+                    return lhs.element.date > rhs.element.date
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
+    }
 }
 
 // MARK: - Thumbnail rendering (CS-029)
@@ -142,10 +232,7 @@ enum RecentsThumbnail {
     /// PNG bytes for `capture`'s preview, or `nil` if the render fails.
     @MainActor
     static func pngData(for capture: Capture) -> Data? {
-        var config = SnapshotConfig()
-        config.code = capture.code
-        config.language = capture.language
-        config.theme = capture.theme
+        let config = capture.applying(to: SnapshotConfig())
         // Thumbnails are recognition aids, not exports: render at 1× into the fixed
         // frame so the cached file stays small and uniform.
         guard let cgImage = ExportManager.renderCGImage(config, scale: 1, fixedSize: size) else {
@@ -329,7 +416,10 @@ struct RecentsThumbnailCache {
     /// single directory scan, so the hot `add` path reconciles in one pass (audit Perf-4).
     /// Caps are applied before the orphan drop, matching the prior store-then-prune order.
     private func reconcile(keeping keep: Set<UUID>) {
-        let survivors = evictToCaps(cachedFiles())
+        // The count cap floors at the live capture set: with every slot pinned the
+        // store legitimately runs past `limit`, and a fixed cap would evict a live
+        // (pinned) capture's thumbnail by age (deep-review finding).
+        let survivors = evictToCaps(cachedFiles(), countCap: max(maxEntries, keep.count))
         for file in survivors where !keep.contains(file.id) {
             try? FileManager.default.removeItem(at: file.url)
         }
@@ -339,15 +429,16 @@ struct RecentsThumbnailCache {
     /// byte caps, and returns the survivors. Shared by `enforceCaps` and `reconcile` so
     /// the eviction policy lives in one place.
     @discardableResult
-    private func evictToCaps(_ files: [CachedFile]) -> [CachedFile] {
+    private func evictToCaps(_ files: [CachedFile], countCap: Int? = nil) -> [CachedFile] {
         var files = files  // newest first
+        let cap = countCap ?? maxEntries
 
-        // Count cap: drop everything past the newest `maxEntries`.
-        if files.count > maxEntries {
-            for file in files[maxEntries...] {
+        // Count cap: drop everything past the newest `cap`.
+        if files.count > cap {
+            for file in files[cap...] {
                 try? FileManager.default.removeItem(at: file.url)
             }
-            files = Array(files.prefix(maxEntries))
+            files = Array(files.prefix(cap))
         }
 
         // Byte cap: while over budget, evict the oldest (last) entry.

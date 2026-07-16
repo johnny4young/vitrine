@@ -16,6 +16,14 @@ enum ExportFeedback {
                 : Notifier.failure(String(localized: "Couldn't copy the image")))
     }
 
+    /// Presents the source-copy outcome without describing plain text as an image.
+    static func presentSourceCopy(_ copied: Bool) {
+        CaptureHUDController.shared.present(
+            copied
+                ? Notifier.confirmation(String(localized: "Source copied to clipboard"))
+                : Notifier.failure(String(localized: "Couldn't copy the source")))
+    }
+
     /// Presents the save outcome. A cancelled panel is deliberately silent — the
     /// user changed their mind; there is nothing to confirm or apologize for.
     static func presentSave(_ outcome: ExportManager.SaveOutcome) {

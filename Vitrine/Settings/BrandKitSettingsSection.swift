@@ -47,6 +47,13 @@ struct BrandKitSettingsSection: View {
                 TokenTextField(prompt: Text(verbatim: "vitrine"), text: project)
                     .accessibilityIdentifier("brand-kit-project-field")
             }
+            TokenRow(
+                label: Text("Link"),
+                caption: Text("Adds a scannable QR chip to the mark. Generated on-device.")
+            ) {
+                TokenTextField(prompt: Text(verbatim: "https://example.com/you"), text: linkURL)
+                    .accessibilityIdentifier("brand-kit-link-field")
+            }
             TokenRow(label: Text("Accent"), caption: Text("Tints the mark's text")) {
                 HStack(spacing: 8) {
                     // A way back to the legible default — the model's `nil` accent
@@ -158,6 +165,10 @@ struct BrandKitSettingsSection: View {
     // value, so the store persists and the preview refreshes (CS-092).
     private var handle: Binding<String> {
         Binding(get: { brandKit.brandKit.handle }, set: { brandKit.brandKit.handle = $0 })
+    }
+
+    private var linkURL: Binding<String> {
+        Binding(get: { brandKit.brandKit.linkURL }, set: { brandKit.brandKit.linkURL = $0 })
     }
 
     private var project: Binding<String> {

@@ -12,6 +12,12 @@ import SwiftUI
 /// controls in the app rather than two that can drift.
 struct EditorInspectorView: View {
     @Bindable var settings: AppSettings
+
+    /// Whether the stage draws the safe-area guide (feature #20). Same key/store as
+    /// `EditorView.showsSafeAreaGuides`, so the toggle here and the stage overlay stay
+    /// in sync through the shared defaults without any plumbing.
+    @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
+    private var showsSafeAreaGuides = false
     var themes: CustomThemeStore
 
     /// Disclosure state for the advanced sections. All start collapsed so the
@@ -367,11 +373,33 @@ struct EditorInspectorView: View {
                 }
                 if settings.config.showChrome {
                     InspectorRow(label: Text("Title")) {
-                        TokenTextField(
-                            prompt: Text(verbatim: "ContentView.swift"),
-                            text: $settings.config.windowTitle
-                        )
-                        .accessibilityIdentifier("window-title-field")
+                        HStack(spacing: 6) {
+                            TokenTextField(
+                                prompt: Text(verbatim: "ContentView.swift"),
+                                text: $settings.config.windowTitle
+                            )
+                            .accessibilityIdentifier("window-title-field")
+                            // Smart title (feature #39): fill the header from what the
+                            // code declares — the filename chip, else the first declared
+                            // identifier. Shown only while it would actually change
+                            // something, so it never sits around as dead chrome.
+                            if let suggestion = SuggestedFilename.suggestedTitle(
+                                for: settings.config),
+                                suggestion != settings.config.windowTitle
+                            {
+                                Button {
+                                    settings.config.windowTitle = suggestion
+                                } label: {
+                                    Image(systemName: "wand.and.stars")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(VitrineTokens.Accent.system)
+                                }
+                                .buttonStyle(.plain)
+                                .help(Text("Suggest a title: ") + Text(verbatim: suggestion))
+                                .accessibilityLabel("Suggest a title")
+                                .accessibilityIdentifier("window-title-suggest-button")
+                            }
+                        }
                     }
                 }
             }
@@ -436,11 +464,24 @@ struct EditorInspectorView: View {
         InspectorRow(label: Text("Format")) {
             TokenSegmentedPicker(
                 options: ExportFormat.allCases.map { ($0, Text(verbatim: $0.displayName)) },
-                selection: $settings.export.format
+                selection: $settings.export.format,
+                optionIdentifiers: ExportFormat.allCases.map {
+                    "inspector-format-\($0.rawValue)"
+                }
             )
             .help(settings.export.format.summary)
             .accessibilityLabel("Format")
             .accessibilityIdentifier("inspector-format-picker")
+        }
+        InspectorRow(label: Text("Guides")) {
+            Toggle("Safe-area guides", isOn: $showsSafeAreaGuides)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .help(
+                    "Show the margin platforms may crop or cover, plus the live line and column count"
+                )
+                .accessibilityLabel("Safe-area guides")
+                .accessibilityIdentifier("inspector-safe-area-toggle")
         }
     }
 

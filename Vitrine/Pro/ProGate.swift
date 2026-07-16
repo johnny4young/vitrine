@@ -109,6 +109,10 @@ struct PaywallSheet: View {
             // Unlocked (a purchase or activation landed) → close the paywall.
             if entitlements.isPro { dismiss() }
         }
+        // `.contain` keeps the children's identifiers reachable under the root id —
+        // an id on a bare VStack propagates down and clobbers them (see
+        // CarouselExportView; root-caused in the UI-test workflow notes).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("pro-paywall-sheet")
     }
 

@@ -6,6 +6,15 @@ import UniformTypeIdentifiers
 /// settings, store it in Recents, and put the result back on the clipboard — no
 /// UI (CS-009). The clipboard source is injectable so the logic is unit-testable.
 enum QuickCapture {
+    /// A fully resolved export request. Keeping the presentation config and output
+    /// geometry together prevents quick actions from applying a preset's colors and
+    /// padding while accidentally rendering at the user's unrelated default size.
+    struct RenderPlan {
+        var config: SnapshotConfig
+        let scale: CGFloat
+        let fixedSize: CGSize?
+    }
+
     /// What happened during a quick capture, for user feedback (CS-016).
     enum Outcome: Equatable {
         case copied  // rendered and copied to the clipboard
@@ -37,9 +46,13 @@ enum QuickCapture {
     static func run(
         settings: AppSettings,
         recents: RecentsStore = .shared,
+        destinationPreset: ExportPreset? = nil,
         clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) }
     ) -> Outcome {
-        capture(settings: settings, recents: recents, clipboard: clipboard).outcome
+        capture(
+            settings: settings, recents: recents, destinationPreset: destinationPreset,
+            clipboard: clipboard
+        ).outcome
     }
 
     /// Runs a quick capture and reports the full `Result` (outcome + copied/saved
@@ -48,6 +61,7 @@ enum QuickCapture {
     static func capture(
         settings: AppSettings,
         recents: RecentsStore = .shared,
+        destinationPreset: ExportPreset? = nil,
         clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) }
     ) -> Result {
         guard let text = clipboard(),
@@ -81,6 +95,9 @@ enum QuickCapture {
         config.clearContentMarks()
         config.code = interpreted.code
         config.language = interpreted.language
+        var plan = renderPlan(
+            for: config, settings: settings, destinationPreset: destinationPreset)
+        config = plan.config
 
         // Several fenced blocks are ambiguous to render inline: load the combined
         // source into the editor and defer the choice to the user, recording
@@ -111,7 +128,8 @@ enum QuickCapture {
         // Honor the active destination preset's framing (size/scale) so quick
         // capture produces the same image the editor would (CS-020). Render once and
         // reuse the raster for both the copy and the save (P5).
-        let (didCopy, didSave) = copyAndSave(config, settings: settings)
+        plan.config = config
+        let (didCopy, didSave) = copyAndSave(plan, settings: settings)
 
         recents.add(
             Capture(
@@ -135,19 +153,17 @@ enum QuickCapture {
     /// through the `config`-based save rather than the shared raster.
     @MainActor
     private static func copyAndSave(
-        _ config: SnapshotConfig, settings: AppSettings
+        _ plan: RenderPlan, settings: AppSettings
     ) -> (didCopy: Bool, didSave: Bool) {
-        let scale = CGFloat(settings.effectiveExportScale)
-        let fixedSize = settings.effectiveFixedSize
         let profile = settings.export.colorProfile
         let cgImage = ExportManager.renderCGImage(
-            config, scale: scale, fixedSize: fixedSize, profile: profile)
+            plan.config, scale: plan.scale, fixedSize: plan.fixedSize, profile: profile)
 
         var didCopy = false
         if settings.export.autoCopy, let cgImage {
             if settings.export.richClipboard || settings.export.textSidecar {
                 didCopy = RichPasteboard.copy(
-                    cgImage: cgImage, config: config,
+                    cgImage: cgImage, config: plan.config,
                     includeRichText: settings.export.richClipboard,
                     includePlainText: settings.export.textSidecar)
             } else {
@@ -160,16 +176,33 @@ enum QuickCapture {
             if settings.export.format == .pdf {
                 didSave =
                     ExportManager.saveToFile(
-                        config, scale: scale, format: .pdf, fixedSize: fixedSize, profile: profile)
+                        plan.config, scale: plan.scale, format: .pdf,
+                        fixedSize: plan.fixedSize, profile: profile)
                     == .saved
             } else if let cgImage {
                 didSave =
                     ExportManager.saveToFile(
                         cgImage: cgImage, format: settings.export.format,
-                        suggestedName: SuggestedFilename.basename(for: config)) == .saved
+                        suggestedName: SuggestedFilename.basename(for: plan.config)) == .saved
             }
         }
         return (didCopy, didSave)
+    }
+
+    /// Resolves a one-off destination preset without changing the user's saved default.
+    /// The preset owns both presentation guidance and output geometry; without one, the
+    /// regular quick-capture settings remain authoritative.
+    static func renderPlan(
+        for config: SnapshotConfig,
+        settings: AppSettings,
+        destinationPreset: ExportPreset?
+    ) -> RenderPlan {
+        var resolved = config
+        destinationPreset?.apply(to: &resolved)
+        return RenderPlan(
+            config: resolved,
+            scale: CGFloat(destinationPreset?.scale ?? settings.effectiveExportScale),
+            fixedSize: destinationPreset?.sizing.fixedSize ?? settings.effectiveFixedSize)
     }
 
     /// Imports an image from the clipboard into the foreground store, or `nil` when the
@@ -257,7 +290,9 @@ enum QuickCapture {
             isPro: Entitlements.shared.isPro)
 
         // Render once and reuse the raster for both the copy and the save (P5).
-        let (didCopy, didSave) = copyAndSave(config, settings: settings)
+        var plan = renderPlan(for: config, settings: settings, destinationPreset: nil)
+        plan.config = config
+        let (didCopy, didSave) = copyAndSave(plan, settings: settings)
 
         recents.add(
             Capture(
@@ -276,7 +311,10 @@ enum QuickCapture {
     /// tasteful feedback — an in-app HUD for routine success, with inline recovery
     /// actions for dead ends (CS-016, CS-038). The menu and the global hotkey both
     /// call this so behavior is consistent across entry points.
-    static func perform(settings: AppSettings = .shared) {
+    static func perform(
+        settings: AppSettings = .shared,
+        destinationPreset: ExportPreset? = nil
+    ) {
         // A copied image becomes a beautified capture (the "beautify any image" feature):
         // open the editor with it framed on the saved background, where the user picks a
         // frame and exports. Checked before the text path, since a screenshot carries image
@@ -285,12 +323,14 @@ enum QuickCapture {
             var config = settings.config
             config.clearContentMarks()
             config.foregroundImage = reference
-            EditorWindowController.shared.loadIntoPrimary(config)
+            let plan = renderPlan(
+                for: config, settings: settings, destinationPreset: destinationPreset)
+            EditorWindowController.shared.loadIntoPrimary(plan.config)
             Log.capture.info("Quick capture: clipboard image → editor")
             return
         }
 
-        let result = capture(settings: settings)
+        let result = capture(settings: settings, destinationPreset: destinationPreset)
         switch result.outcome {
         case .deferredToEditor:
             // `capture` has already written the combined multi-block source into

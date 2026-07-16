@@ -7,8 +7,10 @@ import SwiftUI
 /// export with a real alpha channel and never composite the canvas over an
 /// opaque matte. `Color.clear` produces fully transparent pixels — `(0, 0, 0, 0)`
 /// — which the exporter carries through to the PNG's alpha channel unchanged. The
-/// solid, gradient, and image cases are explicitly opaque, so an opaque
-/// background never leaks partial transparency into the export.
+/// solid and gradient cases are explicitly opaque. Image fit/blur can create
+/// translucent edge pixels in the SwiftUI layer; `ExportManager` composites an
+/// image-backed finished render over black so those pixels never leak into an
+/// exported PNG, HEIC, AVIF, clipboard image, or PDF.
 ///
 /// A missing or unreadable background image degrades gracefully to the signature
 /// gradient default rather than rendering nothing (CS-051), so a relocated file
@@ -47,7 +49,8 @@ struct BackgroundView: View {
                 .resizable()
                 .aspectRatio(contentMode: image.fit.contentMode)
                 // Blur first, then clip so a blurred edge never bleeds past the
-                // canvas; the frame is filled by the parent's sizing.
+                // canvas. The exporter applies the final opaque matte after the
+                // whole canvas renders, preserving foreground compositing.
                 .blur(radius: image.blur)
                 .clipped()
                 // A dark overlay improves code legibility over a busy photo

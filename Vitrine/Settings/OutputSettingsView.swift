@@ -48,7 +48,10 @@ struct OutputSettingsView: View {
                         options: ExportFormat.allCases.map {
                             ($0, Text(verbatim: $0.displayName))
                         },
-                        selection: $settings.export.format
+                        selection: $settings.export.format,
+                        optionIdentifiers: ExportFormat.allCases.map {
+                            "output-format-\($0.rawValue)"
+                        }
                     )
                     .accessibilityLabel("Format")
                     .accessibilityIdentifier("output-format-picker")

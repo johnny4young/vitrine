@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// ## Why multiple representations
 ///
 /// Different destinations want different formats. A browser address bar or a
-/// Markdown file wants a `data:` URI; a rich-text editor (Pages, Mail, a Google
+/// Markdown file wants a self-contained image embed; a rich-text editor (Pages, Mail, a Google
 /// Doc) can paste highlighted *text*; an image well wants a PNG. macOS lets a
 /// single pasteboard item advertise several representations so the destination
 /// picks the best one — Vitrine populates them in one copy so a paste "just
@@ -21,7 +21,8 @@ import UniformTypeIdentifiers
 ///   still writes PNG and only *adds* text representations when the user opts in
 ///   (`AppSettings.export.richClipboard` for styled RTF/HTML, `AppSettings.export.textSidecar`
 ///   for plain text). The explicit "Copy as data URI" and "Copy highlighted code"
-///   commands are separate, clearly labeled actions.
+///   commands are separate, clearly labeled actions. "Copy as Markdown" combines a
+///   bounded PNG data URI with the redaction-safe source shown in the image.
 /// - Nothing leaves the Mac: every representation is produced locally from the
 ///   already-rendered image and the locally highlighted code.
 /// - Large outputs are bounded. A `data:` URI and an RTF/HTML blob both grow with
@@ -76,13 +77,54 @@ enum RichPasteboard {
         // encoded string only to discard it. The boundary is identical to measuring the
         // built URI, since every byte is ASCII.
         let prefix = "data:image/png;base64,"
-        let uriByteCount = prefix.utf8.count + ((data.count + 2) / 3) * 4
+        let uriByteCount = dataURIByteCount(forPNGByteCount: data.count)
         guard uriByteCount <= maxBytes else {
             Log.export.error(
                 "Data URI omitted: exceeds cap (\(uriByteCount, privacy: .public) bytes)")
             return nil
         }
         return prefix + data.base64EncodedString()
+    }
+
+    /// Builds a self-contained Markdown document containing the PNG as a data URI
+    /// followed by the copyable, language-tagged source shown in the snapshot.
+    /// Returns `nil` before base64 allocation when the complete document would exceed
+    /// `maxBytes`.
+    static func markdownDocument(
+        forPNG data: Data,
+        config: SnapshotConfig,
+        maxBytes: Int = maxRepresentationBytes
+    ) -> String? {
+        guard maxBytes >= 0, config.sidecarText.utf8.count <= maxBytes else {
+            Log.export.error("Markdown copy omitted: source exceeds cap")
+            return nil
+        }
+
+        // Use a data-URI placeholder so MarkdownExport applies the same angle-bracket
+        // destination escaping as the final URI. Replacing its bytes with the exact
+        // base64 size predicts the final document without first allocating the blob.
+        let placeholder = "data:image/png;base64,"
+        let template = MarkdownExport.document(for: config, imageSource: placeholder)
+        let projectedByteCount =
+            template.utf8.count - placeholder.utf8.count
+            + dataURIByteCount(forPNGByteCount: data.count)
+        guard projectedByteCount <= maxBytes else {
+            Log.export.error(
+                "Markdown copy omitted: exceeds cap (\(projectedByteCount, privacy: .public) bytes)"
+            )
+            return nil
+        }
+        guard let uri = dataURI(forPNG: data, maxBytes: maxBytes) else { return nil }
+        let document = MarkdownExport.document(for: config, imageSource: uri)
+        guard document.utf8.count <= maxBytes else {
+            assertionFailure("Projected Markdown byte count did not match the generated document")
+            return nil
+        }
+        return document
+    }
+
+    private static func dataURIByteCount(forPNGByteCount byteCount: Int) -> Int {
+        "data:image/png;base64,".utf8.count + ((byteCount + 2) / 3) * 4
     }
 
     // MARK: - Rich text serialization
@@ -182,11 +224,15 @@ enum RichPasteboard {
         fixedSize: CGSize?,
         profile: ColorProfile,
         includeRichText: Bool,
-        includePlainText: Bool = false
+        includePlainText: Bool = false,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> Payload? {
         guard
             let cgImage = ExportManager.renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile)
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                backgroundImageStore: backgroundImageStore,
+                foregroundImageStore: foregroundImageStore)
         else {
             Log.export.error("Rich payload build failed: render returned nil")
             return nil
@@ -288,12 +334,16 @@ enum RichPasteboard {
         profile: ColorProfile,
         includeRichText: Bool,
         includePlainText: Bool = false,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
         guard
             let payload = makePayload(
                 for: config, scale: scale, fixedSize: fixedSize, profile: profile,
-                includeRichText: includeRichText, includePlainText: includePlainText)
+                includeRichText: includeRichText, includePlainText: includePlainText,
+                backgroundImageStore: backgroundImageStore,
+                foregroundImageStore: foregroundImageStore)
         else { return false }
         return write(payload, to: pasteboard)
     }
@@ -346,6 +396,34 @@ enum RichPasteboard {
         pasteboard.clearContents()
         let wrote = pasteboard.setString(uri, forType: .string)
         Log.export.info("Copied PNG data URI to pasteboard (success \(wrote, privacy: .public))")
+        return wrote
+    }
+
+    /// Copies a complete Markdown snippet containing the rendered PNG and the
+    /// redaction-safe source. The pasteboard is changed only after render, encoding,
+    /// and the complete-document size check all succeed.
+    @MainActor
+    @discardableResult
+    static func copyMarkdown(
+        for config: SnapshotConfig,
+        scale: CGFloat,
+        fixedSize: CGSize?,
+        profile: ColorProfile,
+        to pasteboard: NSPasteboard = .general
+    ) -> Bool {
+        guard
+            let cgImage = ExportManager.renderCGImage(
+                config, scale: scale, fixedSize: fixedSize, profile: profile),
+            let png = ExportManager.pngData(from: cgImage),
+            let markdown = markdownDocument(forPNG: png, config: config)
+        else {
+            Log.export.error("Copy Markdown failed: render, encode, or cap")
+            return false
+        }
+        pasteboard.clearContents()
+        let wrote = pasteboard.setString(markdown, forType: .string)
+        Log.export.info(
+            "Copied Markdown snapshot to pasteboard (success \(wrote, privacy: .public))")
         return wrote
     }
 

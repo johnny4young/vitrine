@@ -27,6 +27,28 @@ struct RecentsGalleryView: View {
     /// matching every other destructive action in the app (see `EditorView`).
     @State private var isConfirmingClear = false
 
+    /// Drives the safer bulk cleanup that removes disposable history while
+    /// preserving captures the user explicitly pinned.
+    @State private var isConfirmingClearUnpinned = false
+
+    /// Local, ephemeral gallery filtering. Search never changes or persists the
+    /// underlying history; closing the window naturally resets it.
+    @State private var searchQuery = ""
+
+    /// Narrows the gallery to the captures the user explicitly kept. This is
+    /// ephemeral view state: pinning is persisted, but a future gallery launch
+    /// should start by showing the complete history rather than appearing empty.
+    @State private var showsPinnedOnly = false
+
+    /// Local presentation preference. Sorting a gallery never rewrites capture
+    /// history; every fresh window starts with the store's newest-first default.
+    @State private var sortOrder = RecentsSortOrder.newestFirst
+
+    /// The capture awaiting individual deletion confirmation. Keeping the model,
+    /// rather than only a Boolean, guarantees the confirmation removes the exact
+    /// card whose menu initiated it even if the grid updates meanwhile.
+    @State private var pendingDeletion: Capture?
+
     /// Invoked when the empty state asks to open the editor. Injectable for previews/tests;
     /// defaults to opening the editor window.
     var onOpen: () -> Void = { EditorWindowController.shared.show() }
@@ -62,26 +84,100 @@ struct RecentsGalleryView: View {
 
     private var gallery: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: Brand.Spacing.md) {
-                ForEach(recents.captures) { capture in
-                    RecentsCard(
-                        capture: capture,
-                        thumbnail: recents.thumbnail(for: capture)
-                    ) {
-                        open(capture)
+            if filteredCaptures.isEmpty {
+                if showsPinnedOnly
+                    && searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                {
+                    ContentUnavailableView(
+                        "No pinned captures",
+                        systemImage: "pin",
+                        description: Text("Pin important captures to keep them easy to find.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 320)
+                    .accessibilityIdentifier("recents-no-pinned-results")
+                } else {
+                    ContentUnavailableView.search(text: searchQuery)
+                        .frame(maxWidth: .infinity, minHeight: 320)
+                        .accessibilityIdentifier("recents-no-search-results")
+                }
+            } else {
+                LazyVGrid(columns: columns, spacing: Brand.Spacing.md) {
+                    ForEach(filteredCaptures) { capture in
+                        RecentsCard(
+                            capture: capture,
+                            thumbnail: recents.thumbnail(for: capture),
+                            action: { open(capture) },
+                            pin: {
+                                recents.updatePinned(id: capture.id, isPinned: !capture.isPinned)
+                            },
+                            copySource: { copySource(capture) },
+                            renderAs: { preset in render(capture, as: preset) },
+                            delete: { pendingDeletion = capture })
                     }
                 }
+                .padding(Brand.Spacing.lg)
             }
-            .padding(Brand.Spacing.lg)
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                Button(role: .destructive) {
-                    isConfirmingClear = true
-                } label: {
-                    Label("Clear Recents", systemImage: "trash")
+                TextField("Search Recents", text: $searchQuery)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 220)
+                    .accessibilityIdentifier("recents-search-field")
+            }
+            ToolbarItem(placement: .automatic) {
+                Toggle(isOn: $showsPinnedOnly) {
+                    Label("Pinned only", systemImage: "pin")
                 }
-                .help("Remove every recent capture and its cached preview")
+                .toggleStyle(.button)
+                .help("Show only pinned recent captures")
+                .accessibilityHint("Show only pinned recent captures")
+                .accessibilityIdentifier("recents-pinned-filter")
+            }
+            ToolbarItem(placement: .automatic) {
+                Menu {
+                    ForEach(RecentsSortOrder.allCases) { order in
+                        Button {
+                            sortOrder = order
+                        } label: {
+                            HStack {
+                                Text(order.title)
+                                if sortOrder == order {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                        .accessibilityIdentifier("recents-sort-\(order.rawValue)")
+                    }
+                } label: {
+                    Label(sortOrder.title, systemImage: "arrow.up.arrow.down")
+                }
+                .help("Sort captures while keeping pinned favorites first")
+                .accessibilityHint("Pinned captures remain first in every sort order")
+                .accessibilityIdentifier("recents-sort-picker")
+            }
+            ToolbarItem(placement: .automatic) {
+                Menu {
+                    Button(role: .destructive) {
+                        isConfirmingClearUnpinned = true
+                    } label: {
+                        Label("Clear Unpinned", systemImage: "trash.slash")
+                    }
+                    .disabled(!recents.captures.contains(where: { !$0.isPinned }))
+                    .accessibilityIdentifier("recents-clear-unpinned-button")
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        isConfirmingClear = true
+                    } label: {
+                        Label("Clear All", systemImage: "trash")
+                    }
+                    .accessibilityIdentifier("recents-clear-all-button")
+                } label: {
+                    Label("Manage Recents", systemImage: "ellipsis.circle")
+                }
+                .help("Clear recent captures while optionally keeping pinned favorites")
                 .accessibilityIdentifier("recents-clear-button")
             }
         }
@@ -99,6 +195,44 @@ struct RecentsGalleryView: View {
             Text("This removes every recent capture and its cached preview. This can't be undone.")
         }
         .accessibilityIdentifier("recents-clear-confirmation")
+        .confirmationDialog(
+            "Clear Unpinned?",
+            isPresented: $isConfirmingClearUnpinned,
+            titleVisibility: .visible
+        ) {
+            Button("Clear Unpinned", role: .destructive) { recents.clearUnpinned() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "This removes every unpinned capture and its cached preview. Pinned captures stay in Recents. This can't be undone."
+            )
+        }
+        .accessibilityIdentifier("recents-clear-unpinned-confirmation")
+        .confirmationDialog(
+            "Delete Capture?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Capture", role: .destructive) {
+                if let id = pendingDeletion?.id { recents.remove(id: id) }
+                pendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeletion = nil }
+        } message: {
+            Text("This removes the capture and its cached preview. This can't be undone.")
+        }
+        .accessibilityIdentifier("recents-delete-confirmation")
+    }
+
+    /// A prefiltered value keeps `ForEach` stable and makes the search contract easy
+    /// to read: every visible card retains its persisted capture id.
+    private var filteredCaptures: [Capture] {
+        sortOrder.sorted(
+            recents.captures.filter {
+                (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery)
+            })
     }
 
     private var emptyState: some View {
@@ -120,15 +254,44 @@ struct RecentsGalleryView: View {
     /// *and* left the editor on its previous content; this matches the menu's semantics so
     /// the two recents surfaces behave identically.
     private func open(_ capture: Capture) {
-        var document = settings.config
-        document.code = capture.code
-        document.language = capture.language
-        document.theme = capture.theme
-        onOpenCapture(document)
+        onOpenCapture(capture.applying(to: settings.config))
+    }
+
+    /// Re-renders a past capture for one destination without changing the app's saved
+    /// style or default output preset. The destination owns both the presentation
+    /// guidance and exact geometry, matching the menu-bar one-off preset flow.
+    private func render(_ capture: Capture, as preset: ExportPreset) {
+        // `exportConfig`, not `config`: every export surface renders through it so
+        // the PRO Brand Kit watermark is applied at the export seam (CS-092).
+        var config = capture.applying(to: settings.exportConfig)
+        preset.apply(to: &config)
+        let copied = ExportManager.copyToPasteboard(
+            config,
+            scale: CGFloat(preset.scale),
+            fixedSize: preset.sizing.fixedSize,
+            profile: settings.export.colorProfile,
+            richText: settings.export.richClipboard,
+            plainText: settings.export.textSidecar)
+        ExportFeedback.presentCopy(copied)
+    }
+
+    private func copySource(_ capture: Capture) {
+        ExportFeedback.presentSourceCopy(
+            ExportManager.copySourceToPasteboard(capture.code))
     }
 
     private func open() {
         onOpen()
+    }
+}
+
+extension RecentsSortOrder {
+    fileprivate var title: LocalizedStringKey {
+        switch self {
+        case .newestFirst: "Newest First"
+        case .oldestFirst: "Oldest First"
+        case .language: "Language A–Z"
+        }
     }
 }
 
@@ -141,25 +304,40 @@ private struct RecentsCard: View {
     let capture: Capture
     let thumbnail: NSImage?
     let action: () -> Void
+    let pin: () -> Void
+    let copySource: () -> Void
+    let renderAs: (ExportPreset) -> Void
+    let delete: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: Brand.Spacing.xs) {
-                preview
-                metadata
+        ZStack(alignment: .topTrailing) {
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: Brand.Spacing.xs) {
+                    preview
+                    metadata
+                }
+                .padding(Brand.Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Brand.Surface.raised, in: shape)
+                .overlay(
+                    shape.strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
+                )
+                .brandShadow(Brand.Shadow.card)
             }
-            .padding(Brand.Spacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Brand.Surface.raised, in: shape)
-            .overlay(
-                shape.strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
-            )
-            .brandShadow(Brand.Shadow.card)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("recents-card")
+            .accessibilityLabel(accessibilityLabel)
+            .help("Open this capture in the editor")
+
+            presetMenu
+                .padding(Brand.Spacing.sm + Brand.Spacing.xs)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("recents-card")
-        .accessibilityLabel(accessibilityLabel)
-        .help("Open this capture in the editor")
+        .overlay(alignment: .topLeading) {
+            if capture.isPinned {
+                pinBadge
+                    .padding(Brand.Spacing.sm + Brand.Spacing.xs)
+            }
+        }
     }
 
     private var shape: RoundedRectangle {
@@ -208,11 +386,69 @@ private struct RecentsCard: View {
         }
     }
 
+    private var presetMenu: some View {
+        Menu {
+            if capture.isPinned {
+                Button(action: pin) {
+                    Label("Unpin Capture", systemImage: "pin.slash")
+                }
+                .accessibilityIdentifier("recents-unpin-capture")
+            } else {
+                Button(action: pin) {
+                    Label("Pin Capture", systemImage: "pin")
+                }
+                .accessibilityIdentifier("recents-pin-capture")
+            }
+            Divider()
+            Button(action: copySource) {
+                Label("Copy Source", systemImage: "doc.on.clipboard")
+            }
+            .accessibilityIdentifier("recents-copy-source")
+            Divider()
+            ForEach(ExportPreset.all) { preset in
+                Button {
+                    renderAs(preset)
+                } label: {
+                    Text(verbatim: preset.displayName)
+                }
+                .accessibilityIdentifier("recents-preset-\(preset.id)")
+            }
+            Divider()
+            Button("Delete Capture", role: .destructive, action: delete)
+                .accessibilityIdentifier("recents-delete-capture")
+        } label: {
+            Image(systemName: "rectangle.3.group")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Brand.Palette.textPrimary.color)
+                .frame(width: 30, height: 30)
+                .background(.regularMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(Brand.Palette.border.color))
+                .contentShape(Circle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .help("Copy, re-render, pin, or remove this recent capture")
+        .accessibilityLabel("Capture actions")
+        .accessibilityIdentifier("recents-preset-picker")
+    }
+
+    private var pinBadge: some View {
+        Label("Pinned", systemImage: "pin.fill")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Brand.Palette.textPrimary.color)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 7)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Brand.Palette.border.color))
+            .accessibilityIdentifier("recents-pinned-badge")
+    }
+
     /// One concise VoiceOver announcement combining the metadata the card shows
     /// visually, so the card reads usefully without the user inspecting each label.
     private var accessibilityLabel: String {
         let when = Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date())
-        return "\(capture.language.displayName), \(capture.theme.displayName), \(when)"
+        let details = "\(capture.language.displayName), \(capture.theme.displayName), \(when)"
+        return capture.isPinned ? "\(String(localized: "Pinned")), \(details)" : details
     }
 
     private static let dateFormatter: RelativeDateTimeFormatter = {

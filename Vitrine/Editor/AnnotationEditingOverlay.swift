@@ -24,6 +24,8 @@ struct AnnotationEditingOverlay: View {
     let activeTool: AnnotationTool
     let drawColor: Color
     let drawThickness: Double
+    /// The emoji the sticker tool places (feature #13); unused by every other tool.
+    var stickerGlyph: String = AnnotationTool.stickerChoices[0]
     /// Called once at the start of each discrete edit (draw, move, resize, delete) so
     /// the editor can snapshot the annotations for undo (CS-086).
     let onBeginEdit: () -> Void
@@ -38,6 +40,7 @@ struct AnnotationEditingOverlay: View {
                         kind: kind, color: drawColor, thickness: drawThickness,
                         canvasSize: canvasSize,
                         nextCounterNumber: nextCounterNumber,
+                        stickerGlyph: stickerGlyph,
                         onBeginDraw: onBeginEdit,
                         onCommit: { annotation in
                             settings.config.annotations.append(annotation)
@@ -145,6 +148,7 @@ private struct DrawingLayer: View {
     let thickness: Double
     let canvasSize: CGSize
     let nextCounterNumber: Int
+    var stickerGlyph: String = ""
     let onBeginDraw: () -> Void
     let onCommit: (Annotation) -> Void
 
@@ -196,7 +200,8 @@ private struct DrawingLayer: View {
     private func makeAnnotation(from start: CGPoint, to end: CGPoint) -> Annotation {
         Annotation.make(
             kind: kind, from: normalize(start), to: normalize(end), color: RGBAColor(color),
-            thickness: thickness, number: kind == .counter ? nextCounterNumber : 0)
+            thickness: thickness, number: kind == .counter ? nextCounterNumber : 0,
+            text: kind == .sticker ? stickerGlyph : "")
     }
 
     private func normalize(_ point: CGPoint) -> CGPoint {
@@ -227,9 +232,21 @@ private struct AnnotationHandle: View {
     private var endPoint: CGPoint { annotation.endPoint(in: canvasSize) }
     private var rect: CGRect { annotation.rect(in: canvasSize) }
 
-    private var isLineLike: Bool { annotation.kind == .arrow || annotation.kind == .line }
+    /// Marks whose geometry is a stroke between two free points: their grab area and
+    /// selection outline follow the span, not a rect. The curved arrow's arc and the
+    /// measure's shaft both live along (near) the start→end line, so line hit-testing
+    /// serves them; leaving a kind out of both groups drops it into the point-placed
+    /// fallback — a small box at `start` — which broke select/move for the newer kinds
+    /// (deep-review finding).
+    private var isLineLike: Bool {
+        annotation.kind == .arrow || annotation.kind == .line
+            || annotation.kind == .curvedArrow || annotation.kind == .measure
+    }
+    /// Marks whose geometry is the spanned rectangle. A spotlight is a region exactly
+    /// like blur, so it selects and resizes by its rect.
     private var isBoxLike: Bool {
-        annotation.kind == .rectangle || annotation.kind == .highlighter || annotation.kind == .blur
+        annotation.kind == .rectangle || annotation.kind == .highlighter
+            || annotation.kind == .blur || annotation.kind == .spotlight
     }
 
     var body: some View {

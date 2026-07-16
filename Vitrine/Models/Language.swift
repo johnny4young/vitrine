@@ -86,7 +86,7 @@ enum Language: String, CaseIterable, Identifiable {
 
     /// The canonical filename extension for this language, lowercased and without
     /// the leading dot (e.g. Swift → `swift`, Python → `py`), or `nil` for
-    /// `plaintext` and `diff`, which have no single source-file extension.
+    /// `plaintext`, which has no single source-file extension.
     ///
     /// This is the *forward* mapping (one language → one extension). The
     /// *reverse* mapping (extension → language) lives in `LanguageDetector`,
@@ -125,7 +125,7 @@ enum Language: String, CaseIterable, Identifiable {
         case .sql: "sql"
         case .graphql: "graphql"
         case .dockerfile: "dockerfile"
-        case .diff: nil
+        case .diff: "diff"
         case .markdown: "md"
         case .terminal: nil
         case .plaintext: nil

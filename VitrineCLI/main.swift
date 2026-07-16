@@ -22,9 +22,33 @@ import Foundation
 /// `main.swift` top-level code runs on the main actor under the module's
 /// MainActor-default isolation, so the `@MainActor` renderer is called directly.
 
-// `shell-init` only prints the shell integration text — no rendering, so it needs
-// neither AppKit nor the PRO gate. Handle it before anything else and exit.
+/// Writes a line to standard error without buffering surprises.
+func printError(_ message: String) {
+    FileHandle.standardError.write(Data((message + "\n").utf8))
+}
+
+// `--version` and `shell-init` are pure metadata/text commands — no rendering, so
+// they need neither AppKit nor the PRO gate. Handle them before anything else and exit.
 let rawArguments = Array(CommandLine.arguments.dropFirst())
+if let versionInvocation = CLIVersion.invocation(for: rawArguments) {
+    switch versionInvocation {
+    case .help:
+        print(CLIVersion.usage)
+        exit(0)
+    case .version(let format):
+        print(CLIVersion.output(format: format), terminator: "")
+        exit(0)
+    case .unknownFlag(let flag):
+        printError("error: unknown version option \"\(flag)\".\n\n" + CLIVersion.usage)
+        exit(2)
+    case .extraArguments(let extras):
+        printError(
+            "error: unexpected argument(s) \"\(extras.joined(separator: " "))\" after version.\n\n"
+                + CLIVersion.usage)
+        exit(2)
+    }
+}
+
 if rawArguments.first == "shell-init" {
     switch ShellInit.invocation(for: Array(rawArguments.dropFirst())) {
     case .help:
@@ -49,6 +73,30 @@ if rawArguments.first == "shell-init" {
     }
 }
 
+// Catalog listing is also pure metadata: it prints the local ids accepted by the
+// renderer options, so it should not initialize AppKit or require the PRO render gate.
+if rawArguments.first == "list" {
+    switch CLICatalog.invocation(for: Array(rawArguments.dropFirst())) {
+    case .help:
+        print(CLICatalog.usage)
+        exit(0)
+    case .listing(let catalog, let format):
+        print(CLICatalog.output(for: catalog, format: format), terminator: "")
+        exit(0)
+    case .unknownCatalog(let name):
+        printError("error: unknown catalog \"\(name)\".\n\n" + CLICatalog.usage)
+        exit(2)
+    case .unknownFlag(let flag):
+        printError("error: unknown list option \"\(flag)\".\n\n" + CLICatalog.usage)
+        exit(2)
+    case .extraArguments(let extras):
+        printError(
+            "error: unexpected argument(s) \"\(extras.joined(separator: " "))\" after list.\n\n"
+                + CLICatalog.usage)
+        exit(2)
+    }
+}
+
 // Bring up the shared application as a background accessory: this initializes AppKit
 // enough for `ImageRenderer`/Highlightr without showing a Dock icon or menu bar.
 let application = NSApplication.shared
@@ -58,11 +106,6 @@ application.setActivationPolicy(.accessory)
 // default font (JetBrains Mono) and every other bundled family render exactly as in
 // the GUI. The `Fonts` directory is copied into the build output beside the binary.
 CLIFontRegistration.registerBundledFonts(in: CLIEnvironment.bundledFontsDirectory)
-
-/// Writes a line to standard error without buffering surprises.
-func printError(_ message: String) {
-    FileHandle.standardError.write(Data((message + "\n").utf8))
-}
 
 do {
     let options = try CLIArguments.parse(Array(CommandLine.arguments.dropFirst()))
@@ -79,9 +122,10 @@ do {
         summary =
             options.openInEditor
             ? try CLIRenderer.openInEditor(options) : try CLIRenderer.run(options)
+    case .multiSize: summary = try CLIRenderer.runMultiSize(options)
     case .batch: summary = try CLIRenderer.runBatch(options)
     }
-    print(summary)
+    if !options.quiet { print(summary) }
     exit(0)
 } catch let error as CLIError {
     // `--help` is not a failure: print usage to stdout and exit cleanly.

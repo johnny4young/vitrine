@@ -41,18 +41,28 @@ extension EditorView {
     }
 
     /// Whether the color swatch applies to the current context (the selected mark, or
-    /// the active draw tool). Blur has no color.
+    /// the active draw tool). The selected-mark case derives from the same
+    /// `AnnotationTool` policy as the draw-tool case, so a kind excluded there (blur,
+    /// sticker, spotlight) never shows an inert swatch when selected — the ad hoc
+    /// `!= .blur` check had drifted from the tool policy (deep-review finding).
     var annotationStyleUsesColor: Bool {
-        if let selected = selectedAnnotation { return selected.kind != .blur }
+        if let selected = selectedAnnotation { return tool(for: selected.kind)?.usesColor ?? true }
         return activeTool.usesColor
     }
 
-    /// Whether the size slider applies (the highlighter fill and blur have no stroke).
+    /// Whether the size slider applies to the current context, from the same shared
+    /// tool policy as `annotationStyleUsesColor`.
     var annotationStyleUsesThickness: Bool {
         if let selected = selectedAnnotation {
-            return selected.kind != .blur && selected.kind != .highlighter
+            return tool(for: selected.kind)?.usesThickness ?? true
         }
         return activeTool.usesThickness
+    }
+
+    /// The draw tool for a mark's kind — the single owner of the color/thickness
+    /// policy, so selection and drawing can never disagree about a kind's controls.
+    private func tool(for kind: Annotation.Kind) -> AnnotationTool? {
+        AnnotationTool.allCases.first { $0.kind == kind }
     }
 
     // MARK: - Annotation undo/redo (CS-086)

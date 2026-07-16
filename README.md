@@ -187,6 +187,8 @@ and passwords and blurs those lines for you — image *and* copyable text.
 
 Retina **PNG** and **PDF** to the clipboard, a file, or the Share Sheet — sRGB by
 default (Display P3 on demand), with real alpha for transparent backgrounds.
+The editor's alternate copy menu can also produce highlighted RTF/HTML, a PNG data URI,
+or a self-contained Markdown block with the rendered image and redaction-safe source.
 Destination presets cover **OpenGraph** (1200×630), an **Instagram Story**, and a
 **GitHub banner**. [PRO](#vitrine-pro) adds **multi-size one-pass export** and the bundled
 **`vitrine` CLI** that renders the same pixels from your terminal.
@@ -210,7 +212,7 @@ Shortcuts and App Intents.
 | **Style** | 13 themes + custom, 160+ languages, fonts, gradient & image backgrounds, focus mode, diff coloring |
 | **Annotate** | Arrows, lines, boxes, text, highlighter, blur, numbered counters — on the live preview, with undo/redo |
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
-| **Export** | Retina PNG/PDF, clipboard · file · Share Sheet, OpenGraph · Story · GitHub-banner presets |
+| **Export** | Retina PNG/PDF, Markdown/data-URI/rich-text copy, file · Share Sheet, OpenGraph · Story · GitHub-banner presets |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
 | **PRO** | Brand Kit watermark · multi-size one-pass export · automation (`vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
 
@@ -228,6 +230,7 @@ Shortcuts and App Intents.
 - 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
+- 📝 **Developer-grade copy formats** — copy highlighted RTF/HTML, a standalone PNG data URI, or one self-contained Markdown block containing the image plus copyable fenced source. Redacted lines stay redacted in every text representation.
 - 🪧 **Social cards** — compose a 1200×630 card from your code (template, theme, background) to copy, save, or share, with **Instagram Story** and **GitHub banner** export presets.
 - 🌐 **Web snapshots** — render pasted **HTML** to an image, or capture a **webpage** (direct-download build) — entirely locally in WebKit, with a first-use privacy disclosure. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
 - ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
@@ -358,12 +361,221 @@ make cli   # builds `vitrine` into DerivedData, next to its Fonts/ and Highlight
 vitrine render input.swift --out image.png
 vitrine render snippet.py --out card.png --theme dracula --preset opengraph
 vitrine render notes.go   --out clear.png --transparent --scale 3
+vitrine render server.go  --out night.png --background night
+vitrine render query.sql  --out solid.png --background-color '#1E293B'
+vitrine render app.swift --out gradient.png \
+  --background-gradient '#FF453A,#FFD60A,#64D2FF' --background-angle 215
+vitrine render app.swift --out photo.png --background-image landscape.png \
+  --background-fit fill --background-blur 8 --background-dimming 0.35
+vitrine render payload.json --out payload.png --format-code --text-sidecar
+vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
+  --watermark-color '#7DD3FC' --watermark-position top-left
+vitrine render release.swift --out logo.png --watermark-logo brand.png \
+  --watermark-position bottom-left
+vitrine render release.swift --out centered.png --watermark '@jane · vitrine' \
+  --watermark-position free --watermark-x 0.5 --watermark-y 0.18
+vitrine render release.swift --out reviewed.png --callout 'Review this branch' \
+  --callout-x 0.68 --callout-y 0.2 --callout-color '#FDE047' --callout-size 6
+vitrine render release.swift --out steps.png --counter 1 \
+  --counter-x 0.82 --counter-y 0.2 --counter-color '#22C55E' --counter-size 8
+vitrine render release.swift --out guided.png --arrow 0.18,0.8,0.7,0.25 \
+  --arrow-color '#38BDF8' --arrow-size 9
+vitrine render release.swift --out underlined.png --line 0.16,0.76,0.84,0.76 \
+  --line-color '#A78BFA' --line-size 10
+vitrine render release.swift --out boxed.png --rectangle 0.12,0.28,0.88,0.8 \
+  --rectangle-color '#FB7185' --rectangle-size 9
+vitrine render release.swift --out highlighted.png --highlighter 0.12,0.42,0.88,0.54 \
+  --highlighter-color '#FFD60A'
+vitrine render release.swift --out obscured.png --blur-box 0.12,0.42,0.88,0.54
+vitrine render release.swift --out review-map.png \
+  --arrow 0.15,0.82,0.4,0.58 --arrow 0.85,0.82,0.6,0.58 --arrow-color '#38BDF8'
+vitrine render --image dashboard.png --out showcase.png --background night --padding 40
+vitrine render --image dashboard.png --out browser.png --frame browser \
+  --frame-appearance dark --window-title 'app.example.com'
+vitrine render --image dashboard.png --out device.png --frame macbook
+vitrine render long-line.swift --out wrapped.png --wrap-columns 80
+vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatures \
+  --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
+vitrine render diff.patch --out review.png --language diff --highlight-lines 3,7-9 \
+  --focus-lines --diff-bands
+vitrine render secrets.swift --out share.png --redact-secrets --sidecars all
+vitrine render changelog.md --out release.png --title "Release notes" --language-badge
+vitrine render snippet.swift --out card.png --sidecars all
+cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
+vitrine render input.swift --out image.png --quiet --no-overwrite
+vitrine render input.swift --out image.png --json --no-overwrite
+vitrine render input.swift --out image.pdf
+vitrine multi-size input.swift --out social-cards --presets twitter,linkedin,opengraph
+vitrine multi-size input.swift --out all-sizes --presets all --sidecars all
+vitrine list themes
+vitrine list languages --json
+vitrine list all --json
+vitrine list fonts
+vitrine list backgrounds
+vitrine list background-fits
+vitrine list frames
+vitrine list frame-appearances
+vitrine list watermark-positions
+vitrine list formats
+vitrine list profiles --json
+vitrine --version
+vitrine version --json
+vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift,md \
+  --fail-on-empty
+vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --exclude-ext tmp \
+  --sidecars all --fail-on-empty --fail-on-skipped --skipped-report docs/cards/skipped.json \
+  --manifest docs/cards/manifest.json
+vitrine render --git-diff main...HEAD --git-path Vitrine --out review.png
+vitrine render --git-staged --git-context 6 --out staged-review.png
 vitrine render --help
 ```
 
-Defaults match the app (One Dark, JetBrains Mono, aurora background); `--theme`,
-`--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`), `--profile`
-(`srgb`/`p3`), and `--transparent` override individual choices.
+Defaults match the app (One Dark, JetBrains Mono, aurora background); `--quiet`
+suppresses the success summary for scripts while leaving errors visible, and `--json`
+prints `render`/`batch` success summaries as structured JSON (mutually exclusive with
+`--quiet`). `--theme`,
+`--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`/`avif`), `--profile`
+(`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
+`--transparent`, `--background <id>`, `--background-color <hex>`,
+`--background-gradient <hex,hex,...>`, `--background-angle <degrees>`,
+`--background-image <path>`,
+`--background-fit <fill|fit>`, `--background-blur <0...40>`,
+`--background-dimming <0...1>`,
+`--frame <id>`, `--frame-appearance <auto|light|dark>`,
+`--watermark <text>`, `--watermark-logo <path>`, `--watermark-color <hex>`,
+`--watermark-position <corner|free>`,
+`--watermark-x <0...1>`, `--watermark-y <0...1>`,
+`--callout <text>`, `--callout-x <0...1>`, `--callout-y <0...1>`,
+`--callout-color <hex>`, `--callout-size <2...28>`,
+`--counter <1...99>`, `--counter-x <0...1>`, `--counter-y <0...1>`,
+`--counter-color <hex>`, `--counter-size <2...28>`,
+`--arrow <x1,y1,x2,y2>`, `--arrow-color <hex>`, `--arrow-size <2...28>`,
+`--line <x1,y1,x2,y2>`, `--line-color <hex>`, `--line-size <2...28>`,
+`--rectangle <x1,y1,x2,y2>`, `--rectangle-color <hex>`,
+`--rectangle-size <2...28>`, `--highlighter <x1,y1,x2,y2>`,
+`--highlighter-color <hex>`, `--blur-box <x1,y1,x2,y2>`, style controls
+(`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
+`--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
+`--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
+`--redact-secrets`, `--focus-lines`, `--no-focus-lines`, `--diff-bands`,
+`--no-diff-bands`), and the header controls
+(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`) override
+individual choices. For single-file `render`, a known
+`--out` extension (`.png`, `.pdf`, `.heic`, or `.avif`) selects the matching format when
+`--format` is omitted; if both are present, they must agree so scripts never write
+mislabeled artifacts. With `--stdin`, `--stdin-name <name>` supplies a filename hint
+for extension-based language inference and default metadata without reading that file.
+`--git-diff <revision-range>` loads a revision diff from the current local repository;
+`--git-staged` selects only changes already in the index. Both work with `render` and
+`multi-size`; repeatable `--git-path <path>` values narrow them to selected paths, while
+`--git-context <0...100>` controls unchanged lines around each hunk. Vitrine invokes
+`/usr/bin/git` directly without a shell, disables pagers,
+external diff drivers, textconv, and color, places pathspecs after `--`, and rejects
+empty output or stops Git when output exceeds 5 MB. Stable prefixes and context keep
+captures independent of global Git presentation settings. Paths are literal, prompts
+are disabled, and partial clones never fetch missing objects, keeping the operation
+offline. Diff syntax and GitHub-style bands are selected automatically unless
+`--language` or `--no-diff-bands` overrides them.
+`--format-code` uses Vitrine's dependency-free, language-aware indentation tidy before
+rendering; the formatted source is also used by sidecars and secret scanning so every
+artifact describes the same visible code.
+`--background-gradient` builds a custom gradient from two or more comma-separated
+RGB/RGBA colors, spaced evenly across the canvas. `--background-angle` selects a
+direction from 0 through 360 degrees and defaults to 135; custom gradients are mutually
+exclusive with preset, solid, and transparent backgrounds.
+`--background-image <path>` uses a local image for the canvas in both `render` and
+`batch`. Vitrine imports it once per invocation into an isolated temporary store,
+reuses it for every batch output, and removes the copy when the command exits; the
+source image and the app's persistent background library remain unchanged.
+Use `--background-fit` to choose edge-to-edge cropping or whole-image fitting,
+`--background-blur` for a 0–40 point local blur, and `--background-dimming` for a
+normalized dark overlay. These modifiers require `--background-image`; their bounds
+match the editor and invalid values fail before any output is written.
+`--watermark <text>` and `--watermark-logo <path>` add text, a local image, or both
+to a deterministic badge through the same render-core overlay as Brand Kit. The logo
+is loaded once per invocation and its source file remains unchanged.
+`--watermark-color <hex>` changes the text tint and
+`--watermark-position <corner|free>` selects one of the ids printed by
+`vitrine list watermark-positions`; placement requires watermark text or a logo, while
+color requires visible text.
+The `free` placement additionally requires both normalized coordinates through
+`--watermark-x` and `--watermark-y`, making scripted placement deterministic while the
+four corner placements keep their existing behavior.
+`--callout <text>` adds one deterministic text pill through the same normalized
+annotation layer as the editor. It defaults to the canvas center and the editor's red
+annotation style; optional x/y coordinates move its anchor, while color and size tune
+its appearance. Coordinates must be supplied together, and every modifier requires
+visible callout text.
+`--counter <1...99>` adds one numbered badge through the same annotation layer. It
+defaults to the canvas center and editor annotation style; optional paired coordinates,
+fill color, and size keep scripted walkthrough steps deterministic and legible.
+`--arrow <x1,y1,x2,y2>` draws a straight arrow from a normalized canvas tail to its
+head through the editor annotation renderer. Repeat the flag to compose several arrows;
+optional color and size apply to every arrow and use the same fixed-sRGB and stroke
+ranges as the editor. Zero-length or out-of-canvas segments are rejected rather than
+silently producing an invisible mark.
+`--line <x1,y1,x2,y2>` draws a straight segment between normalized canvas points and
+is repeatable. Its shared color and size use the editor's fixed-sRGB and stroke ranges;
+malformed, out-of-canvas, or zero-length segments fail before rendering.
+`--rectangle <x1,y1,x2,y2>` is repeatable and outlines each region between normalized
+opposite corners. Shared color and size match the editor toolbar; collapsed width or
+height is rejected so every successful command produces visible boxes.
+`--highlighter <x1,y1,x2,y2>` is repeatable and draws the editor's translucent marker
+fill across each normalized region. Its optional shared color uses fixed-sRGB input,
+while collapsed width or height is rejected before rendering.
+`--blur-box <x1,y1,x2,y2>` is repeatable and visually obscures normalized regions using
+the editor's blur compositor. It does **not** sanitize the source or copyable sidecars; use
+`--redact-lines` or `--redact-secrets` when sensitive text must be removed. Collapsed
+width or height is rejected before rendering.
+`--image <path>` beautifies a local image through the same canvas as the editor. The
+source is decoded locally, copied only into an invocation-scoped temporary store, and
+removed when the command exits; it is never added to Vitrine's persistent image library.
+Use `--frame <id>` to wrap it in one of the frames printed by `vitrine list frames`;
+`--frame-appearance <auto|light|dark>` controls the chrome and requires a frame other
+than `none`. `--window-title` is available with the `macos-window` and `browser` frames.
+Code-only controls and source sidecars are rejected for image input instead of silently
+doing nothing, while canvas, background, export, shadow, frame, and watermark controls
+remain available.
+`--no-overwrite` (alias `--no-clobber`) refuses to replace
+existing image or sidecar outputs; in `batch`, existing targets are reported as
+skipped so the remaining new cards can still be produced. `--text-sidecar`,
+`--markdown-sidecar`, `--html-sidecar`, or `--sidecars all` write copyable source
+beside the image for accessible docs, README, or web embeds; rows selected with
+`--redact-lines` or detected by `--redact-secrets` are replaced with `[redacted]` in
+every sidecar so hidden secrets do not leak through copyable text. `vitrine batch --recursive`
+walks nested folders and mirrors their relative paths under the output folder; `--dry-run`
+scans and decodes the matching
+inputs without writing images or sidecars. `--include-ext <list>` and
+`--exclude-ext <list>` let docs pipelines pre-filter known source extensions before
+loading files. Add `--fail-on-empty` when CI should fail if those filters leave no
+renderable inputs, `--fail-on-skipped` when CI should fail if any unreadable or non-text
+file was skipped, and `--skipped-report <json>` to write a parseable skipped-files
+artifact. `--manifest <json>` writes a positive manifest of rendered outputs (or
+planned outputs during `--dry-run`) with relative image paths, requested sidecar paths,
+and dimensions when available. When a batch contains same-stem files such as
+`Widget.swift` and `Widget.ts`, only that colliding group preserves the input extension
+(`Widget.swift.png`, `Widget.ts.png`) so one artifact never overwrites the other.
+`--style-preset <id>` applies one of the app's immutable built-in visual presets after
+destination sizing and before explicit style flags. Run `vitrine list style-presets`
+to discover deterministic ids; user presets are intentionally excluded so CI does not
+depend on machine-local settings.
+`--canvas-size <width>x<height>` pins an exact logical canvas between 64 and 2048 points
+per axis, overriding a destination preset's dimensions while retaining its style and
+recommended scale. The explicit `--scale` multiplier determines final pixel dimensions.
+`vitrine multi-size <input> --out <folder>` loads one code or stdin source once and
+fans it out through destination presets using stable `vitrine-<preset-id>.<format>`
+filenames. It exports every preset by default; `--presets <id,id,...>` narrows the set
+using ids from `vitrine list presets`, while `--presets all` is the explicit full-catalog
+form. Each destination pins its own dimensions and scale, so multi-size rejects the
+singular `--preset`, `--canvas-size`, and `--scale` controls. Style, metadata, annotation,
+watermark, format, profile, sidecar, and no-overwrite options still apply to every output;
+`--no-overwrite` preflights the complete set before rendering so an existing artifact
+cannot leave a partially updated export.
+`vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
+the local render catalogs so scripts can discover valid choices without scraping docs;
+`vitrine list all --json` returns one object containing every catalog.
+`vitrine --version` / `vitrine version --json` reports the installed CLI version before
+AppKit initialization or the PRO render gate, which makes CI install checks cheap.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)

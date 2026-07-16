@@ -7,14 +7,15 @@ import UniformTypeIdentifiers
 
 /// Rich export targets and multi-representation clipboard (CS-054).
 ///
-/// These tests pin the four guarantees the ticket is about:
+/// These tests pin the five guarantees the ticket is about:
 ///  1. Copy puts image data on the pasteboard and, when enabled, an additional
 ///     rich representation — without breaking the existing PNG round-trip.
 ///  2. "Copy as data URI" yields a valid `data:image/png;base64,…` string that
 ///     decodes back to a real PNG.
-///  3. "Copy highlighted code as RTF/HTML" preserves syntax colors and the
+///  3. "Copy as Markdown" embeds that image plus redaction-safe copyable source.
+///  4. "Copy highlighted code as RTF/HTML" preserves syntax colors and the
 ///     selected font.
-///  4. Large outputs are bounded.
+///  5. Large outputs are bounded.
 ///
 /// They exercise the real `RichPasteboard`/`ExportManager` pipeline and use a
 /// private, named `NSPasteboard` so they never clobber the developer's clipboard
@@ -118,13 +119,14 @@ struct RichExportTests {
 
     @Test func copyToPasteboardRichTextRoutesThroughTheRichPath() {
         // The public `ExportManager.copyToPasteboard(richText:)` flag is what the
-        // editor/menu/quick-capture callers pass; with it on, the general
-        // pasteboard ends up with both image and styled text.
+        // editor/menu/quick-capture callers pass; with it on, the pasteboard
+        // ends up with both image and styled text.
+        let pasteboard = Self.scratchPasteboard()
         let config = Self.sampleConfig()
         #expect(
-            ExportManager.copyToPasteboard(config, scale: 1, richText: true))
+            ExportManager.copyToPasteboard(
+                config, scale: 1, richText: true, pasteboard: pasteboard))
 
-        let pasteboard = NSPasteboard.general
         #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
         #expect(pasteboard.data(forType: RichPasteboard.rtfType) != nil)
     }
@@ -132,10 +134,10 @@ struct RichExportTests {
     @Test func copyToPasteboardDefaultIsImageOnly() {
         // Regression guard: the default (no `richText:`) copy is image-only, so the
         // one-shortcut behavior is unchanged.
+        let pasteboard = Self.scratchPasteboard()
         let config = Self.sampleConfig()
-        #expect(ExportManager.copyToPasteboard(config, scale: 1))
+        #expect(ExportManager.copyToPasteboard(config, scale: 1, pasteboard: pasteboard))
 
-        let pasteboard = NSPasteboard.general
         #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
         #expect(pasteboard.data(forType: RichPasteboard.rtfType) == nil)
         #expect(pasteboard.data(forType: RichPasteboard.htmlType) == nil)
@@ -216,11 +218,13 @@ struct RichExportTests {
 
     @Test func copyToPasteboardPlainTextRoutesThroughTheRichPath() {
         // The public `ExportManager.copyToPasteboard(plainText:)` flag the callers pass:
-        // with it on, the general pasteboard ends up with both image and plain text.
+        // with it on, the pasteboard ends up with both image and plain text.
+        let pasteboard = Self.scratchPasteboard()
         let config = Self.sampleConfig()
-        #expect(ExportManager.copyToPasteboard(config, scale: 1, plainText: true))
+        #expect(
+            ExportManager.copyToPasteboard(
+                config, scale: 1, plainText: true, pasteboard: pasteboard))
 
-        let pasteboard = NSPasteboard.general
         #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
         #expect(pasteboard.string(forType: .string) == config.sidecarText)
     }
@@ -278,7 +282,77 @@ struct RichExportTests {
         #expect(RichPasteboard.dataURI(forPNG: oversized) == nil)
     }
 
-    // MARK: - 3. RTF / HTML attribute checks
+    // MARK: - 3. Self-contained Markdown
+
+    @Test func markdownEmbedsDecodablePNGAndCopyableSource() throws {
+        let config = Self.sampleConfig()
+        let cgImage = try #require(ExportManager.renderCGImage(config, scale: 1))
+        let png = try #require(ExportManager.pngData(from: cgImage))
+        let markdown = try #require(RichPasteboard.markdownDocument(forPNG: png, config: config))
+
+        #expect(markdown.hasPrefix("![Code rendered with Vitrine](<data:image/png;base64,"))
+        #expect(markdown.contains("```swift\n\(config.code)\n```\n"))
+
+        let uriStart = try #require(markdown.range(of: "data:image/png;base64,")?.lowerBound)
+        let uriEnd = try #require(markdown[uriStart...].firstIndex(of: ">"))
+        let uri = String(markdown[uriStart..<uriEnd])
+        let base64 = String(uri.dropFirst("data:image/png;base64,".count))
+        #expect(Data(base64Encoded: base64) == png)
+    }
+
+    @Test func markdownFenceOutgrowsBackticksInSource() throws {
+        let config = Self.sampleConfig { $0.code = "let fence = \"```\"\n" }
+        let markdown = try #require(
+            RichPasteboard.markdownDocument(forPNG: Data([1, 2, 3]), config: config))
+
+        #expect(markdown.contains("````swift\n"))
+        #expect(markdown.hasSuffix("````\n"))
+    }
+
+    @Test func markdownUsesRedactionSafeVisibleSource() throws {
+        let secret = "markdown-secret"
+        let config = Self.sampleConfig {
+            $0.code = "let visible = 1\nlet hidden = \"\(secret)\""
+            $0.redactedLineRanges = [2...2]
+        }
+        let markdown = try #require(
+            RichPasteboard.markdownDocument(forPNG: Data([1, 2, 3]), config: config))
+
+        #expect(markdown.contains(SnapshotConfig.redactedLinePlaceholder))
+        #expect(!markdown.contains(secret))
+    }
+
+    @Test func markdownEnforcesTheCompleteDocumentByteCap() throws {
+        let config = Self.sampleConfig()
+        let png = Data([1, 2, 3])
+        let markdown = try #require(
+            RichPasteboard.markdownDocument(forPNG: png, config: config))
+        let exactSize = markdown.utf8.count
+
+        #expect(
+            RichPasteboard.markdownDocument(forPNG: png, config: config, maxBytes: exactSize)
+                == markdown)
+        #expect(
+            RichPasteboard.markdownDocument(
+                forPNG: png, config: config, maxBytes: exactSize - 1) == nil)
+    }
+
+    @Test func copyMarkdownPlacesOnlyTheDocumentStringOnPasteboard() throws {
+        let pasteboard = Self.scratchPasteboard()
+        #expect(
+            RichPasteboard.copyMarkdown(
+                for: Self.sampleConfig(), scale: 1, fixedSize: nil, profile: .sRGB,
+                to: pasteboard))
+
+        let markdown = try #require(pasteboard.string(forType: .string))
+        #expect(markdown.contains("data:image/png;base64,"))
+        #expect(markdown.contains("```swift"))
+        #expect(pasteboard.data(forType: RichPasteboard.pngType) == nil)
+        #expect(pasteboard.data(forType: RichPasteboard.rtfType) == nil)
+        #expect(pasteboard.data(forType: RichPasteboard.htmlType) == nil)
+    }
+
+    // MARK: - 4. RTF / HTML attribute checks
 
     @Test func rtfRoundTripPreservesTheSelectedFontFamily() throws {
         // The selected font must survive into the styled text: re-read the RTF and
@@ -366,7 +440,7 @@ struct RichExportTests {
         #expect(plain.contains(SnapshotConfig.redactedLinePlaceholder))
     }
 
-    // MARK: - 4. Bounding large outputs
+    // MARK: - 5. Bounding large outputs
 
     @Test func styledTextIsOmittedWhenItExceedsTheCap() {
         // A representation larger than the cap must be dropped, not truncated or

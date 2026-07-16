@@ -13,7 +13,15 @@ struct WatermarkOverlay: ViewModifier {
 
     func body(content: Content) -> some View {
         if let watermark, watermark.hasContent {
-            if watermark.placement == .free {
+            if watermark.placement == .footerBar {
+                // Signature footer (feature #27): a full-width attribution bar pinned
+                // to the bottom edge — logo + handle line left, QR chip right — instead
+                // of a floating corner chip.
+                content.overlay(alignment: .bottom) {
+                    WatermarkFooterBar(watermark: watermark)
+                        .allowsHitTesting(false)
+                }
+            } else if watermark.placement == .free {
                 // Free placement: center the mark on the normalized point. A
                 // GeometryReader maps it to the canvas; `.fixedSize` keeps the badge at
                 // its natural size so `.position` does not stretch it. The mark is
@@ -75,6 +83,9 @@ struct WatermarkBadge: View {
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(watermark.tint?.color ?? .white)
             }
+            if let qr = watermark.qrImage {
+                QRChip(image: qr, side: Self.qrSide)
+            }
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 7)
@@ -91,4 +102,66 @@ struct WatermarkBadge: View {
 
     /// The drawn height of the logo; the text sits beside it at a matched weight.
     private static let logoHeight: CGFloat = 20
+    /// The QR chip's drawn side in the corner badge — small but scannable at 2×.
+    private static let qrSide: CGFloat = 34
+}
+
+/// The QR chip (feature #28): the pregenerated code on a white quiet-zone tile —
+/// scanners need the light margin — drawn with **no interpolation smoothing** so the
+/// integer-scaled modules stay hard-edged and scannable at any export scale.
+struct QRChip: View {
+    let image: NSImage
+    let side: CGFloat
+
+    var body: some View {
+        Image(nsImage: image)
+            .resizable()
+            .interpolation(.none)
+            .frame(width: side, height: side)
+            .padding(4)
+            .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Color.white))
+            .accessibilityHidden(true)
+    }
+}
+
+/// The signature footer bar (feature #27): a full-width, edge-to-edge attribution
+/// strip — logo and handle line on the left, the QR chip on the right — on the same
+/// deterministic scrim treatment as the corner badge (solid colors, no materials).
+struct WatermarkFooterBar: View {
+    let watermark: Watermark
+    private let logoImage: NSImage?
+
+    init(watermark: Watermark) {
+        self.watermark = watermark
+        self.logoImage = watermark.logoImage ?? watermark.logoImageData.flatMap(NSImage.init(data:))
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if let logo = logoImage {
+                Image(nsImage: logo)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(height: 18)
+                    .accessibilityHidden(true)
+            }
+            if !watermark.text.isEmpty {
+                Text(verbatim: watermark.text)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(watermark.tint?.color ?? .white)
+            }
+            Spacer(minLength: 0)
+            if let qr = watermark.qrImage {
+                QRChip(image: qr, side: 30)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.black.opacity(0.38))
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+        }
+    }
 }

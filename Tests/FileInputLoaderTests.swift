@@ -164,9 +164,13 @@ struct FileInputLoaderInferLanguageTests {
     @Test(arguments: [
         ("main.swift", Language.swift),
         ("app.tsx", .typescript),
+        ("My Component.tsx", .typescript),
+        ("~/Snippets/My View.swift", .swift),
         ("script.mjs", .javascript),
         ("style.scss", .scss),
         ("config.yml", .yaml),
+        ("changes.diff", .diff),
+        ("changes.patch", .diff),
         ("Dockerfile", .dockerfile),
     ])
     func extensionMapsToLanguage(filename: String, expected: Language) {

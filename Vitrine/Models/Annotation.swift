@@ -15,17 +15,21 @@ struct Annotation: Identifiable, Equatable, Codable {
     /// future kind be added without breaking older stores.
     enum Kind: String, Codable, CaseIterable, Identifiable {
         case arrow
+        case curvedArrow
         case line
         case rectangle
         case text
         case highlighter
         case blur
         case counter
+        case sticker
+        case spotlight
+        case measure
         var id: String { rawValue }
 
         /// Whether dragging defines two free points (a shaft/box) versus a single
-        /// anchor that is clicked into place (text and counters).
-        var isPointPlaced: Bool { self == .text || self == .counter }
+        /// anchor that is clicked into place (text, counters, and stickers).
+        var isPointPlaced: Bool { self == .text || self == .counter || self == .sticker }
     }
 
     var id: UUID
@@ -36,7 +40,7 @@ struct Annotation: Identifiable, Equatable, Codable {
     /// Normalized `0...1` second point — the arrow/line head or the box's opposite
     /// corner. Unused by `.text` and `.counter`.
     var end: CGPoint
-    /// The callout text. Only `.text` uses it.
+    /// The callout text: the label for `.text`, the emoji glyph for `.sticker`.
     var text: String
     /// The mark's color (stroke / fill / badge). Blur boxes ignore it.
     var color: RGBAColor
@@ -136,10 +140,10 @@ extension Annotation {
     /// "Note" they then have to clear. An empty callout that is never filled is removed.
     static func make(
         kind: Kind, from start: CGPoint, to end: CGPoint, color: RGBAColor, thickness: Double,
-        number: Int = 0
+        number: Int = 0, text: String = ""
     ) -> Annotation {
         Annotation(
-            kind: kind, start: start, end: end,
+            kind: kind, start: start, end: end, text: text,
             color: color, thickness: thickness, number: number)
     }
 
@@ -155,12 +159,16 @@ extension Annotation {
 enum AnnotationTool: String, CaseIterable, Identifiable {
     case select
     case arrow
+    case curvedArrow
     case line
     case rectangle
     case text
     case highlighter
     case blur
     case counter
+    case sticker
+    case spotlight
+    case measure
 
     var id: String { rawValue }
 
@@ -169,12 +177,16 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         switch self {
         case .select: return nil
         case .arrow: return .arrow
+        case .curvedArrow: return .curvedArrow
         case .line: return .line
         case .rectangle: return .rectangle
         case .text: return .text
         case .highlighter: return .highlighter
         case .blur: return .blur
         case .counter: return .counter
+        case .sticker: return .sticker
+        case .spotlight: return .spotlight
+        case .measure: return .measure
         }
     }
 
@@ -182,12 +194,16 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
         switch self {
         case .select: return "cursorarrow"
         case .arrow: return "arrow.up.left"
+        case .curvedArrow: return "arrow.up.right.circle"
         case .line: return "line.diagonal"
         case .rectangle: return "rectangle"
         case .text: return "textformat"
         case .highlighter: return "highlighter"
         case .blur: return "drop.fill"
         case .counter: return "1.circle.fill"
+        case .sticker: return "face.smiling"
+        case .spotlight: return "rectangle.center.inset.filled"
+        case .measure: return "ruler"
         }
     }
 
@@ -195,12 +211,19 @@ enum AnnotationTool: String, CaseIterable, Identifiable {
     /// and blur do not).
     var usesThickness: Bool {
         switch self {
-        case .select, .highlighter, .blur: return false
+        case .select, .highlighter, .blur, .spotlight: return false
         default: return true
         }
     }
 
-    /// Whether this tool exposes the color swatch (blur is a fill of the underlying
-    /// pixels, so it has no color).
-    var usesColor: Bool { self != .select && self != .blur }
+    /// Whether this tool exposes the color swatch. Blur is a fill of the underlying
+    /// pixels and a sticker is an emoji with its own colors, so neither has one.
+    var usesColor: Bool {
+        self != .select && self != .blur && self != .sticker && self != .spotlight
+    }
+
+    /// The curated sticker set the sticker tool places — the dev-social reaction
+    /// vocabulary. A fixed set keeps the picker one click and the render deterministic
+    /// (every glyph ships with the OS emoji font).
+    static let stickerChoices: [String] = ["👀", "🔥", "✅", "⚠️", "💡", "🚀", "❌", "💯", "🎉", "🤯"]
 }

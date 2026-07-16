@@ -82,6 +82,21 @@ struct EditorView: View {
     @State var newDrawColor: Color = Annotation.defaultColor.color
     @State var newDrawThickness: Double = Annotation.defaultThickness
 
+    /// The emoji the sticker tool places next (feature #13). Defaults to the first of
+    /// the curated set; the toolbar's sticker picker changes it.
+    @State var newStickerGlyph: String = AnnotationTool.stickerChoices[0]
+
+    /// True while Vision is recognizing the beautified image's text (feature #34),
+    /// so the Copy-text button can't be double-fired mid-recognition.
+    @State var isExtractingText = false
+
+    /// Whether the stage draws the safe-area guide over the preview (feature #20):
+    /// the margin platforms may crop or cover, plus the live line/column budget.
+    /// Editor-only chrome — the export never includes it. Persisted app-wide (it is
+    /// a working preference, not a per-document style).
+    @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
+    var showsSafeAreaGuides = false
+
     /// Undo/redo history for annotation edits (CS-086): each entry is a full snapshot
     /// of `config.annotations` captured just before a draw/move/resize/delete. Bounded
     /// so a long session never grows without limit.
@@ -107,6 +122,10 @@ struct EditorView: View {
         case export, paywall
         var id: String { rawValue }
     }
+
+    /// The carousel export sheet, or the paywall when PRO is locked (feature #15).
+    /// Same single-`.sheet(item:)` discipline as `multiSizeSheet`.
+    @State var carouselSheet: MultiSizeSheet?
 
     /// A loaded drop awaiting the user's replace-vs-append choice, kept so the
     /// confirmation dialog can apply exactly what was dropped.

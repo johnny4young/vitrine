@@ -17,6 +17,7 @@ output and unlocks *new* surfaces.
 | Gating UI | `Vitrine/Pro/ProGate.swift` — `View.proGated(_:action:)`, `ProBadge`, `PaywallSheet` |
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `Vitrine/Models/SnapshotConfig.swift` (`Watermark`), `Vitrine/Canvas/WatermarkBadge.swift` |
 | Feature: multi-size export | `Vitrine/Export/ExportManager.swift` (`exportPresetSizes`), `Vitrine/Export/MultiSizeExportView.swift` |
+| Feature: carousel export | `Vitrine/Export/ExportManager.swift` (`exportCarousel`), `Vitrine/Export/CarouselExportView.swift`, `Vitrine/Export/CarouselPaginator.swift` |
 | Feature: automation gating | `VitrineCLI/main.swift`, `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
 | Tests | `Tests/EntitlementsTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLIAutomationTests.swift` |
 
@@ -32,7 +33,7 @@ The provider is chosen per build in `defaultProvider()`:
 #else                               → StoreKitProvider       (App Store: non-consumable IAP)
 ```
 
-`ProFeature` (`brandKit`, `multiSizeExport`, `automation`) carries its own paywall copy.
+`ProFeature` (`brandKit`, `multiSizeExport`, `carouselExport`, `automation`, `advancedFrames`) carries its own paywall copy.
 `isUnlocked(_:)` follows `isPro` as a single v1 tier — the per-feature signature keeps call
 sites honest and leaves room for finer gating later.
 
@@ -93,7 +94,11 @@ In-process surfaces gate on `Entitlements.shared.isUnlocked(.automation)`:
 (→ `.failed`, injectable for tests). The CLI is out-of-process: `main.swift` gates at the
 boundary via `CLIEntitlement.isProUnlocked()` (which verifies the signed token and honors the
 Debug bypass) before dispatching `render`/`batch`, so `CLIRenderer.run`/`runBatch` stay ungated
-and fully testable. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder.
+and fully testable. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
+`--recursive` opts into nested folders while preserving their relative output paths, and
+`--fail-on-skipped` turns any skipped file into a non-zero automation exit after the
+readable files are rendered. `--skipped-report <json>` can be paired with either mode
+to save a local skipped-files artifact for CI upload.
 
 ## Build flags & local unlock
 
