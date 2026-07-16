@@ -37,8 +37,14 @@ struct RecentsStoreTests {
         Data(repeating: 0xAB, count: max(1, count))
     }
 
-    private func capture(_ code: String) -> Capture {
-        Capture(code: code, languageID: "swift", themeID: "one-dark")
+    private func capture(
+        _ code: String,
+        date: Date = Date(),
+        isPinned: Bool = false
+    ) -> Capture {
+        Capture(
+            code: code, languageID: "swift", themeID: "one-dark", date: date,
+            isPinned: isPinned)
     }
 
     // MARK: - List behavior (CS-013)
@@ -75,6 +81,90 @@ struct RecentsStoreTests {
             defaults: defaults, thumbnails: cache,
             renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
         #expect(reloaded.captures.first?.code == "hello")
+    }
+
+    @Test func legacyCapturesDecodeAsUnpinned() throws {
+        struct LegacyCapture: Encodable {
+            let id: UUID
+            let code: String
+            let languageID: String
+            let themeID: String
+            let date: Date
+        }
+
+        let legacy = LegacyCapture(
+            id: UUID(), code: "legacy", languageID: "swift", themeID: "one-dark",
+            date: Date(timeIntervalSinceReferenceDate: 42))
+        let data = try JSONEncoder().encode(legacy)
+        let decoded = try JSONDecoder().decode(Capture.self, from: data)
+
+        #expect(decoded.code == "legacy")
+        #expect(!decoded.isPinned)
+    }
+
+    @Test func pinningReordersAndPersists() {
+        let defaults = freshDefaults()
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let older = capture("older", date: Date(timeIntervalSinceReferenceDate: 1))
+        let newer = capture("newer", date: Date(timeIntervalSinceReferenceDate: 2))
+        store.add(older)
+        store.add(newer)
+
+        #expect(store.updatePinned(id: older.id, isPinned: true))
+        #expect(store.captures.map(\.id) == [older.id, newer.id])
+
+        let reloaded = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        #expect(reloaded.captures.map(\.id) == [older.id, newer.id])
+        #expect(reloaded.captures.first?.isPinned == true)
+    }
+
+    @Test func recapturingIdenticalCodePreservesItsPin() {
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: freshDefaults(), thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let original = capture("same", isPinned: true)
+        store.add(original)
+
+        let refreshed = capture("same")
+        store.add(refreshed)
+
+        #expect(store.captures.count == 1)
+        #expect(store.captures.first?.id == refreshed.id)
+        #expect(store.captures.first?.isPinned == true)
+    }
+
+    @Test func newCaptureEvictsOldestUnpinnedBeforeAPin() {
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: freshDefaults(), thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let pinned = capture(
+            "pinned", date: Date(timeIntervalSinceReferenceDate: 0), isPinned: true)
+        store.add(pinned)
+        for index in 1..<RecentsStore.limit {
+            store.add(
+                capture(
+                    "regular \(index)",
+                    date: Date(timeIntervalSinceReferenceDate: TimeInterval(index))))
+        }
+
+        let latest = capture(
+            "latest", date: Date(timeIntervalSinceReferenceDate: 100))
+        store.add(latest)
+
+        #expect(store.captures.count == RecentsStore.limit)
+        #expect(store.captures.contains(where: { $0.id == pinned.id }))
+        #expect(store.captures.contains(where: { $0.id == latest.id }))
+        #expect(!store.captures.contains(where: { $0.code == "regular 1" }))
     }
 
     // MARK: - Cache lock-step with the list (CS-029)
@@ -122,6 +212,51 @@ struct RecentsStoreTests {
         store.clear()
         #expect(store.captures.isEmpty)
         #expect(cache.count == 0)
+    }
+
+    @Test func clearUnpinnedPreservesFavoritesAndTheirThumbnails() {
+        let defaults = freshDefaults()
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let pinned = capture("favorite", isPinned: true)
+        let firstDisposable = capture("temporary one")
+        let secondDisposable = capture("temporary two")
+        store.add(pinned)
+        store.add(firstDisposable)
+        store.add(secondDisposable)
+
+        #expect(store.clearUnpinned() == 2)
+        #expect(store.captures.map(\.id) == [pinned.id])
+        #expect(cache.url(for: pinned.id) != nil)
+        #expect(cache.url(for: firstDisposable.id) == nil)
+        #expect(cache.url(for: secondDisposable.id) == nil)
+        #expect(store.clearUnpinned() == 0)
+
+        let reloaded = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        #expect(reloaded.captures.map(\.id) == [pinned.id])
+    }
+
+    @Test func removeDeletesOnlyTheRequestedCaptureAndThumbnail() {
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: freshDefaults(), thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let kept = capture("keep")
+        let removed = capture("remove")
+        store.add(kept)
+        store.add(removed)
+
+        #expect(store.remove(id: removed.id))
+        #expect(store.captures.map(\.id) == [kept.id])
+        #expect(cache.url(for: removed.id) == nil)
+        #expect(cache.url(for: kept.id) != nil)
+        #expect(!store.remove(id: removed.id))
     }
 
     @Test func restorePrunesOrphanThumbnails() {
@@ -334,5 +469,48 @@ struct RecentsStoreTests {
         #expect(store.captures.first?.code == "no preview")
         #expect(store.thumbnail(for: only) == nil)
         #expect(cache.count == 0)
+    }
+
+    /// A pin is a promise: when EVERY slot is pinned, a new capture must never evict
+    /// a favorite — the list runs one over `limit` instead, the next unpinned capture
+    /// is the one that rotates out, and a relaunch preserves the overflow (deep-review
+    /// finding: the old eviction fell back to sacrificing the oldest pin).
+    @Test func fullyPinnedListNeverSacrificesAPin() {
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let defaults = freshDefaults()
+        let store = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+
+        // Fill every slot and pin them all.
+        let pinned = (0..<RecentsStore.limit).map { capture("pinned \($0)") }
+        for entry in pinned { store.add(entry) }
+        for entry in pinned { store.updatePinned(id: entry.id, isPinned: true) }
+
+        // A new capture keeps ALL pins; the list runs one over the cap.
+        let newcomer = capture("newcomer")
+        store.add(newcomer)
+        #expect(store.captures.count == RecentsStore.limit + 1)
+        #expect(store.captures.filter(\.isPinned).count == RecentsStore.limit)
+        #expect(store.captures.contains { $0.id == newcomer.id })
+        // The live thumbnails survive too — the cache cap floors at the live set.
+        #expect(cache.count == RecentsStore.limit + 1)
+
+        // The NEXT capture rotates out the previous unpinned one, not a pin.
+        let second = capture("second newcomer")
+        store.add(second)
+        #expect(store.captures.count == RecentsStore.limit + 1)
+        #expect(store.captures.filter(\.isPinned).count == RecentsStore.limit)
+        #expect(!store.captures.contains { $0.id == newcomer.id })
+        #expect(store.captures.contains { $0.id == second.id })
+
+        // A relaunch preserves the pinned overflow instead of truncating the newest.
+        let reloaded = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        #expect(reloaded.captures.count == RecentsStore.limit + 1)
+        #expect(reloaded.captures.contains { $0.id == second.id })
+        #expect(reloaded.captures.filter(\.isPinned).count == RecentsStore.limit)
     }
 }

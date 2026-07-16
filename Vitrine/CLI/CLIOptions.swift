@@ -19,18 +19,51 @@ import Foundation
 /// model exactly as the GUI does, keeping the produced image identical.
 @MainActor
 struct CLIOptions: Equatable {
-    /// Whether this is a single-file `render` or a folder `batch` (CS-094). For
-    /// `batch`, `inputPath`/`outputPath` are directories rather than files; every
-    /// style flag still applies per rendered file.
+    /// Whether this is a single-file `render`, one-source `multi-size`, or folder
+    /// `batch` invocation (CS-094). Output paths are directories for the latter two.
     var command: Command = .render
 
-    /// The CLI subcommand. `render` writes one image; `batch` renders every text file
-    /// in a folder into an output folder (CS-094).
-    enum Command: String, Equatable, Sendable { case render, batch }
+    /// The CLI subcommand. `render` writes one image, `multi-size` fans one source out
+    /// through destination presets, and `batch` renders every text file in a folder.
+    enum Command: String, Equatable, Sendable {
+        case render
+        case multiSize = "multi-size"
+        case batch
+    }
 
-    /// The source file to read the code from (a folder for `batch`). The language is
-    /// inferred from its extension (falling back to content detection), matching the
-    /// editor's drag-and-drop loader (CS-027/028).
+    /// Whether `inputPath` names source text or a local image to beautify. Image input
+    /// is render-only and is copied into an invocation-scoped temporary store, never
+    /// the app's persistent foreground-image library.
+    enum InputKind: String, Equatable, Sendable { case code, image }
+
+    /// Shared normalized geometry and optional editor styling for a two-point mark.
+    struct SegmentAnnotation: Equatable {
+        var start: CGPoint
+        var end: CGPoint
+        var color: RGBAColor?
+        var size: Double?
+
+        func modelValue(kind: Annotation.Kind) -> Annotation {
+            Annotation(
+                kind: kind, start: start, end: end,
+                color: color ?? Annotation.defaultColor,
+                thickness: size ?? Annotation.defaultThickness)
+        }
+    }
+
+    /// Suppresses the success summary on stdout. Errors and explicit skipped-file
+    /// diagnostics still go to stderr so automation logs stay actionable.
+    var quiet: Bool = false
+    /// Prints the success summary as JSON for scripts that need structured stdout.
+    /// Errors remain human-readable stderr, matching the rest of the CLI contract.
+    var jsonOutput: Bool = false
+
+    /// The kind of file carried by `inputPath`. Defaults to code so existing render
+    /// and batch invocations keep their original behavior.
+    var inputKind: InputKind = .code
+
+    /// The source file to read (a folder for `batch`). Code language is inferred from
+    /// its extension/content; image input is decoded locally and never persisted.
     var inputPath: String
     /// Where the rendered image is written (an output folder for `batch`).
     var outputPath: String
@@ -46,14 +79,47 @@ struct CLIOptions: Equatable {
     /// A preset reframes presentation/output exactly as it does in the GUI and never
     /// touches the source (CS-020).
     var presetID: String?
+    /// Canonically ordered destination preset ids selected by `multi-size`. Empty for
+    /// other commands; the parser expands an omitted `--presets` to the full catalog.
+    var multiSizePresetIDs: [String] = []
+    /// An immutable built-in style preset id (e.g. `builtin.midnight`), or `nil`
+    /// to preserve the app/destination-preset presentation. The CLI deliberately
+    /// excludes user presets so automation never depends on machine-local defaults.
+    var stylePresetID: String?
+    /// Optional exact logical canvas size. It overrides destination-preset sizing,
+    /// while the destination preset may still seed presentation and export scale.
+    var canvasSize: CGSize?
     /// The export resolution multiplier (1/2/3). When a preset is chosen and no
     /// explicit scale is given, the preset's recommended scale is used, mirroring the
     /// GUI's "preset seeds the scale, an explicit value overrides it" rule (CS-020).
     var scale: Int?
+    /// Optional code font family override. Resolved through `CodeFont.all` so the CLI
+    /// accepts the same bundled/system programming fonts as the editor.
+    var fontName: String?
+    /// Optional programming-ligature override for fonts that support them. Nil preserves
+    /// the app/preset default; a value maps to the editor's ligature toggle.
+    var fontLigatures: Bool?
+    /// Optional font-size override, in points. Uses the same bounds as the editor's
+    /// Style pane.
+    var fontSize: Double?
+    /// Optional canvas-padding override, in points. Uses the same bounds as the editor's
+    /// Style pane.
+    var padding: Double?
+    /// Optional code-card corner radius, in points. Nil preserves the app/preset default.
+    var cornerRadius: Double?
+    /// Optional drop-shadow blur radius, in points. Nil preserves the app/preset default.
+    var shadowRadius: Double?
     /// An explicit terminal reconstruction width (columns), or `nil` to infer it from
     /// the captured output. Only meaningful for `--language terminal`; set by `vgrab -w`
     /// so a known-width capture wraps exactly as it did in the live terminal (CS-070).
     var terminalColumns: Int?
+    /// Optional soft-wrap column count for long code lines. Mirrors the editor's
+    /// "Wrap long lines" control and stays nil by default so bare renders still
+    /// size to content.
+    var wrapColumns: Int?
+    /// Tidy the loaded source with the same dependency-free formatter as the editor
+    /// before rendering. Off by default so a bare CLI render preserves input verbatim.
+    var formatCode: Bool = false
     /// The output format. Defaults to PNG; PDF is the supported vector format.
     var format: ExportFormat = .png
     /// The ICC color profile for PNG export (CS-024). PDF ignores this.
@@ -61,6 +127,140 @@ struct CLIOptions: Equatable {
     /// Render with a real transparent background (no gradient/solid), preserving the
     /// alpha channel on export (CS-024). Overrides any preset background.
     var transparent: Bool = false
+    /// Optional built-in gradient or solid-color canvas override. Nil preserves the
+    /// app/preset background; the parser keeps it mutually exclusive with transparency.
+    var background: BackgroundStyle?
+    /// Optional local image used as the canvas background. The path is imported into
+    /// an invocation-scoped temporary store before rendering, so automation inputs
+    /// never enter the app's persistent background library.
+    var backgroundImagePath: String?
+    /// Optional fill/fit behavior for a local image background. Nil uses the app's
+    /// edge-to-edge fill default.
+    var backgroundImageFit: BackgroundFit?
+    /// Optional local image-background blur in the app model's 0...40 point range.
+    var backgroundImageBlur: Double?
+    /// Optional local image-background dark overlay in the normalized 0...1 range.
+    var backgroundImageDimming: Double?
+    /// Optional watermark text composited by the same overlay as the PRO Brand Kit.
+    /// Nil preserves a logo-only watermark or the unwatermarked CLI default.
+    var watermarkText: String?
+    /// Optional local logo path. The renderer validates it once per invocation, then
+    /// carries the bytes inline through the shared render-core watermark model.
+    var watermarkLogoPath: String?
+    /// Optional fixed-sRGB tint for `watermarkText`; nil uses the overlay's legible white.
+    var watermarkColor: RGBAColor?
+    /// Optional placement for `watermarkText`; nil uses the Brand Kit's bottom-right default.
+    var watermarkPosition: WatermarkPosition?
+    /// Optional normalized center for a freely placed watermark. Present only when
+    /// `watermarkPosition` is `.free`; the parser requires both coordinates together.
+    var watermarkFreePosition: CGPoint?
+    /// Optional text callout composited through the shared annotation layer.
+    var calloutText: String?
+    /// Optional normalized anchor for `calloutText`; nil uses the canvas center.
+    var calloutPosition: CGPoint?
+    /// Optional callout text color; nil uses the editor's annotation red.
+    var calloutColor: RGBAColor?
+    /// Optional annotation size weight in the editor's supported 2...28 range.
+    var calloutSize: Double?
+    /// Optional numbered badge composited through the shared annotation layer.
+    var counterNumber: Int?
+    /// Optional normalized center for `counterNumber`; nil uses the canvas center.
+    var counterPosition: CGPoint?
+    /// Optional counter fill color; nil uses the editor's annotation red.
+    var counterColor: RGBAColor?
+    /// Optional counter size weight in the editor's supported 2...28 range.
+    var counterSize: Double?
+    /// Straight arrows described by normalized tail/head points and shared editor styling.
+    var arrows: [SegmentAnnotation] = []
+    /// Straight lines described by normalized endpoints and shared editor styling.
+    var lines: [SegmentAnnotation] = []
+    /// Outlined rectangles described by normalized opposite corners.
+    var rectangles: [SegmentAnnotation] = []
+    /// Translucent highlighters described by normalized opposite corners.
+    var highlighters: [SegmentAnnotation] = []
+    /// Visual blur boxes described by normalized opposite corners.
+    var blurBoxes: [SegmentAnnotation] = []
+    /// Optional frame around `--image` content. Nil preserves the model's plain-image
+    /// default; stable CLI ids map onto the app's existing frame enum.
+    var imageFrame: ImageFrameOption?
+    /// Optional fixed chrome appearance for a framed image. Nil keeps Auto sampling.
+    var frameAppearance: ImageFrameAppearance?
+    /// Refuse to replace existing image or sidecar files. For batch jobs, existing
+    /// outputs are skipped so valid new artifacts can still be produced.
+    var noOverwrite: Bool = false
+
+    /// Optional title shown in the rendered window chrome. Separate from the metadata
+    /// header, matching the editor's Window Title control.
+    var windowTitle: String?
+    /// Optional filename chip shown in the metadata header.
+    var metadataFilename: String?
+    /// Optional filename hint for piped stdin input. It is never read from disk; it
+    /// only gives extension-based language inference (and default metadata) the same
+    /// filename context a real input file would have.
+    var stdinFilename: String?
+    /// Optional title shown in the metadata header.
+    var metadataTitle: String?
+    /// Optional caption shown below the metadata title.
+    var metadataCaption: String?
+    /// Whether to show the language badge in the metadata header.
+    var showLanguageBadge: Bool = false
+    /// Optional line-number override. Nil preserves the app/preset default.
+    var showLineNumbers: Bool?
+    /// Optional window-chrome override. Nil preserves the app/preset default.
+    var showChrome: Bool?
+    /// Optional drop-shadow override. Nil preserves the app/preset default.
+    var showShadow: Bool?
+    /// Optional highlighted line ranges, using the same 1-based inclusive model as the
+    /// editor's line-highlighting control. Nil preserves the app/preset default.
+    var highlightedLineRanges: [ClosedRange<Int>]?
+    /// Optional redacted line ranges, using the same 1-based inclusive model as the
+    /// editor's secret-redaction control. Nil preserves the app/preset default.
+    var redactedLineRanges: [ClosedRange<Int>]?
+    /// Automatically scan the rendered visible text for likely secrets and redact the
+    /// matching rows before the image or copyable sidecars are written.
+    var redactSecrets: Bool = false
+    /// Optional focus-mode override. Nil preserves the app/preset default.
+    var focusHighlightedLines: Bool?
+    /// Optional GitHub-style diff-band override. Nil preserves the app/preset default.
+    var diffDecorations: Bool?
+    /// For `batch`, walk nested input folders and preserve their relative paths under
+    /// the output folder. Off by default so existing batch jobs keep their top-level
+    /// behavior unless they opt in.
+    var recursiveBatch: Bool = false
+    /// For `batch`, return a failing CLI exit if any file was skipped after rendering
+    /// the readable files. Useful for CI/docs pipelines that must not silently ignore
+    /// invalid input.
+    var failOnSkipped: Bool = false
+    /// For `batch`, return a failing CLI exit when discovery produces no renderable
+    /// files. Useful for CI/docs pipelines with extension filters that must not pass
+    /// after doing no work.
+    var failOnEmpty: Bool = false
+    /// For `batch`, optionally write a JSON report describing skipped input files.
+    /// The report is local to the requested path and is written before strict skipped
+    /// failures are thrown, so CI can upload it as an artifact.
+    var skippedReportPath: String?
+    /// For `batch`, optionally write a JSON manifest of rendered outputs (or planned
+    /// outputs during `--dry-run`) so CI/docs jobs can publish an exact artifact index.
+    var batchManifestPath: String?
+    /// For `batch`, scan and load matching files without rendering or writing images.
+    /// Useful for CI preflight checks before a docs job spends time producing cards.
+    var dryRunBatch: Bool = false
+    /// For `batch`, only consider files whose extension is in this normalized lowercase
+    /// set. Empty means every regular file is considered before text decoding.
+    var batchIncludeExtensions: Set<String> = []
+    /// For `batch`, ignore files whose extension is in this normalized lowercase set.
+    /// Excluded files are filtered out before loading, so they are not counted as skipped.
+    var batchExcludeExtensions: Set<String> = []
+
+    /// Optional typed local Git change source passed to the fixed, shell-free loader.
+    /// Nil preserves file/stdin input behavior.
+    var gitDiffSource: GitDiffInputLoader.Source?
+    /// Optional repeatable pathspecs for `gitDiffSource`. The loader places every
+    /// value after Git's `--` separator so option-like filenames remain data.
+    var gitDiffPaths: [String] = []
+    /// Number of unchanged lines surrounding each hunk. Bounded to keep review images
+    /// useful and to avoid accidental giant diffs before the shared byte cap applies.
+    var gitDiffContextLines: Int = GitDiffInputLoader.defaultContextLines
 
     /// Read the source from standard input instead of a file (e.g.
     /// `some-command | vitrine render --stdin`), so the language is inferred from the
@@ -84,10 +284,99 @@ struct CLIOptions: Equatable {
     /// to paste into a README or blog post so viewers can copy the code the image
     /// shows. Same constraints as `textSidecar` (needs `--out`; not with `--edit`).
     var markdownSidecar: Bool = false
+    /// Also write a self-contained HTML `.html` sidecar next to the rendered image:
+    /// the escaped image embed followed by the escaped source in a language-tagged
+    /// `<pre><code>` block, ready to paste into web docs without trusting the source
+    /// filename or code as markup. Same constraints as the other sidecars.
+    var htmlSidecar: Bool = false
+
+    /// Stable CLI-facing watermark placements. Free placement uses normalized coordinates
+    /// supplied by `--watermark-x` and `--watermark-y`.
+    enum WatermarkPosition: String, CaseIterable, Equatable, Sendable {
+        case bottomRight = "bottom-right"
+        case bottomLeft = "bottom-left"
+        case topRight = "top-right"
+        case topLeft = "top-left"
+        case free
+
+        var displayName: String {
+            switch self {
+            case .bottomRight: "Bottom right"
+            case .bottomLeft: "Bottom left"
+            case .topRight: "Top right"
+            case .topLeft: "Top left"
+            case .free: "Free"
+            }
+        }
+
+        var modelValue: Watermark.Placement {
+            switch self {
+            case .bottomRight: .bottomTrailing
+            case .bottomLeft: .bottomLeading
+            case .topRight: .topTrailing
+            case .topLeft: .topLeading
+            case .free: .free
+            }
+        }
+    }
+
+    /// Stable automation ids for the image-frame catalog. The model's `macOSWindow`
+    /// raw value is intentionally not exposed as CLI syntax.
+    enum ImageFrameOption: String, CaseIterable, Equatable, Sendable {
+        case none
+        case macOSWindow = "macos-window"
+        case browser
+        case macBook = "macbook"
+        case iPhone = "iphone"
+
+        var displayName: String {
+            switch self {
+            case .none: "None"
+            case .macOSWindow: "macOS window"
+            case .browser: "Browser"
+            case .macBook: "MacBook"
+            case .iPhone: "iPhone"
+            }
+        }
+
+        var modelValue: ImageFrame {
+            switch self {
+            case .none: .none
+            case .macOSWindow: .macOSWindow
+            case .browser: .browser
+            case .macBook: .macBook
+            case .iPhone: .iPhone
+            }
+        }
+
+        var supportsWindowTitle: Bool { self == .macOSWindow || self == .browser }
+    }
+
+    /// Stable automation ids for image-frame chrome appearance.
+    enum ImageFrameAppearance: String, CaseIterable, Equatable, Sendable {
+        case auto, light, dark
+
+        var displayName: String { rawValue.capitalized }
+
+        var modelValue: FrameAppearance {
+            switch self {
+            case .auto: .auto
+            case .light: .light
+            case .dark: .dark
+            }
+        }
+    }
 
     /// The default export scale when neither a preset nor an explicit `--scale`
     /// supplies one — the app's documented default resolution multiplier.
     static let defaultScale = SettingsDefaults.exportScale
+
+    /// Keeps CLI counter labels legible inside the fixed circular badge.
+    static let counterNumberRange = 1...99
+
+    /// Bounds each custom logical canvas dimension to keep a 3× render below
+    /// 6,144 pixels per axis while covering every built-in destination preset.
+    static let canvasDimensionRange = 64...2_048
 
     /// Builds the `SnapshotConfig` to render from these options plus the loaded
     /// source `code`, applying the same precedence the GUI uses so the produced
@@ -96,22 +385,112 @@ struct CLIOptions: Equatable {
     /// Order of application, lowest precedence first:
     ///   1. App defaults (`SnapshotConfig()`).
     ///   2. The destination preset's presentation guidance (padding/background).
-    ///   3. The theme override.
-    ///   4. The transparent-background override (wins over a preset's background).
+    ///   3. The built-in style preset.
+    ///   4. The theme override.
+    ///   5. The transparent-background override (wins over preset backgrounds).
+    ///   6. CLI presentation overrides.
     ///
     /// `code` and `language` are set from the input file and never altered by a
     /// preset, exactly as in the GUI (a preset is presentation/output only, CS-020).
-    func makeConfig(code: String, language: Language) -> SnapshotConfig {
+    func makeConfig(
+        code: String, language: Language, backgroundImageReference: ImageReference? = nil,
+        watermarkLogoData: Data? = nil
+    ) -> SnapshotConfig {
         var config = SnapshotConfig().styled(
-            presetID: presetID, themeID: themeID, transparent: transparent)
-        config.code = code
+            presetID: presetID, themeID: nil, transparent: false)
+        resolvedStylePreset?.style.apply(to: &config)
+        config = config.styled(presetID: nil, themeID: themeID, transparent: transparent)
+        if let background { config.background = background }
+        if let backgroundImageReference {
+            config.background = .image(
+                ImageBackground(
+                    reference: backgroundImageReference,
+                    fit: backgroundImageFit ?? .fill,
+                    blur: backgroundImageBlur ?? 0,
+                    dimming: backgroundImageDimming ?? 0))
+        }
+        config.code = formatCode ? CodeFormatter.tidy(code, language: language) : code
         config.language = language
+        if watermarkText != nil || watermarkLogoData != nil {
+            var watermark = Watermark(
+                text: watermarkText ?? "",
+                logoImageData: watermarkLogoData,
+                tint: watermarkColor,
+                placement: watermarkPosition?.modelValue ?? .bottomTrailing)
+            if let watermarkFreePosition {
+                watermark.freePosition = watermarkFreePosition
+            }
+            config.watermark = watermark
+        }
+        if let calloutText {
+            let position = calloutPosition ?? CGPoint(x: 0.5, y: 0.5)
+            config.annotations.append(
+                Annotation(
+                    kind: .text, start: position, end: position, text: calloutText,
+                    color: calloutColor ?? Annotation.defaultColor,
+                    thickness: calloutSize ?? Annotation.defaultThickness))
+        }
+        if let counterNumber {
+            let position = counterPosition ?? CGPoint(x: 0.5, y: 0.5)
+            config.annotations.append(
+                Annotation(
+                    kind: .counter, start: position, end: position,
+                    color: counterColor ?? Annotation.defaultColor,
+                    thickness: counterSize ?? Annotation.defaultThickness,
+                    number: counterNumber))
+        }
+        config.annotations.append(contentsOf: arrows.map { $0.modelValue(kind: .arrow) })
+        config.annotations.append(contentsOf: lines.map { $0.modelValue(kind: .line) })
+        config.annotations.append(contentsOf: rectangles.map { $0.modelValue(kind: .rectangle) })
+        config.annotations.append(
+            contentsOf: highlighters.map { $0.modelValue(kind: .highlighter) })
+        config.annotations.append(contentsOf: blurBoxes.map { $0.modelValue(kind: .blur) })
+        if let imageFrame { config.imageFrame = imageFrame.modelValue }
+        if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
         config.terminalColumns = terminalColumns
+        if let fontName { config.fontName = fontName }
+        if let fontLigatures { config.fontLigatures = fontLigatures }
+        if let fontSize { config.fontSize = fontSize }
+        if let padding { config.padding = padding }
+        if let cornerRadius { config.cornerRadius = cornerRadius }
+        if let shadowRadius { config.shadowRadius = shadowRadius }
+        if let wrapColumns { config.wrapColumns = wrapColumns }
+        if let windowTitle { config.windowTitle = windowTitle }
+        if let showLineNumbers { config.showLineNumbers = showLineNumbers }
+        if let showChrome { config.showChrome = showChrome }
+        if let showShadow { config.showShadow = showShadow }
+        if let highlightedLineRanges { config.highlightedLineRanges = highlightedLineRanges }
+        if let redactedLineRanges { config.redactedLineRanges = redactedLineRanges }
+        if redactSecrets {
+            let secretRanges = SecretScanner.secretLines(in: config.sidecarText).map { $0...$0 }
+            config.redactedLineRanges = LineHighlight.normalize(
+                config.redactedLineRanges + secretRanges)
+        }
+        if let focusHighlightedLines { config.focusHighlightedLines = focusHighlightedLines }
+        if let diffDecorations { config.diffDecorations = diffDecorations }
+        let inferredMetadataFilename: String? =
+            if gitDiffSource != nil {
+                GitDiffInputLoader.defaultFilename(paths: gitDiffPaths)
+            } else if readStdin {
+                stdinFilename
+            } else {
+                nil
+            }
+        config.metadata = SnapshotMetadata(
+            filename: metadataFilename ?? inferredMetadataFilename,
+            title: metadataTitle,
+            caption: metadataCaption,
+            showLanguageBadge: showLanguageBadge)
         return config
     }
 
     /// The resolved destination preset, or `nil` when none was requested.
     var resolvedPreset: ExportPreset? { ExportPreset.preset(withID: presetID) }
+
+    /// The deterministic built-in style preset requested by automation.
+    var resolvedStylePreset: StylePreset? {
+        StylePreset.builtIns.first { $0.id == stylePresetID }
+    }
 
     /// The effective export scale, applying the GUI's precedence: an explicit
     /// `--scale` wins; otherwise a chosen preset's recommended scale is used; with
@@ -122,7 +501,7 @@ struct CLIOptions: Equatable {
         return CGFloat(SettingsDefaults.clampExportScale(raw))
     }
 
-    /// The exact logical canvas size to render, when the active preset pins one
-    /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content (CS-020).
-    var fixedSize: CGSize? { resolvedPreset?.sizing.fixedSize }
+    /// The exact logical canvas size to render. An explicit CLI size wins over a
+    /// destination preset; `nil` lets the canvas hug its content (CS-020).
+    var fixedSize: CGSize? { canvasSize ?? resolvedPreset?.sizing.fixedSize }
 }

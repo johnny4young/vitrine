@@ -8,6 +8,9 @@ struct AnnotationToolbar: View {
     @Binding var activeTool: AnnotationTool
     @Binding var color: Color
     @Binding var thickness: Double
+    /// The emoji the sticker tool will place next (feature #13); the sticker swatch
+    /// edits it. Defaulted so existing call sites without the sticker option compile.
+    var stickerGlyph: Binding<String>?
     /// Whether the current context (active tool, or the selected mark) exposes color
     /// / thickness — so the options only appear when they do something.
     let showsColor: Bool
@@ -50,6 +53,9 @@ struct AnnotationToolbar: View {
             .overlay(
                 Capsule().strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline))
 
+            if activeTool == .sticker, let stickerGlyph {
+                StickerSwatchButton(glyph: stickerGlyph)
+            }
             if showsColor {
                 ColorSwatchButton(color: $color)
             }
@@ -77,7 +83,7 @@ struct AnnotationToolbar: View {
     }
 
     private func toolButton(_ tool: AnnotationTool) -> some View {
-        Button {
+        let button = Button {
             activeTool = tool
         } label: {
             Image(systemName: tool.systemImage)
@@ -94,12 +100,21 @@ struct AnnotationToolbar: View {
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
-        // ⌘-digit selects the tool (⌘1…⌘8). A Command-modified shortcut fires reliably on
-        // macOS and never hijacks the code editor's typing (a modifier-less key would).
-        .keyboardShortcut(tool.keyEquivalent, modifiers: .command)
-        .help(Text(tool.label) + Text(verbatim: " (⌘\(tool.keyEquivalent.character))"))
         .accessibilityLabel(tool.label)
         .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
+
+        // ⌘-digit selects the tool (⌘1…⌘9, ⌘0). A Command-modified shortcut fires
+        // reliably on macOS and never hijacks the code editor's typing (a modifier-less
+        // key would). Tools past the digit row have no shortcut and a plain tooltip.
+        return Group {
+            if let key = tool.keyEquivalent {
+                button
+                    .keyboardShortcut(key, modifiers: .command)
+                    .help(Text(tool.label) + Text(verbatim: " (⌘\(key.character))"))
+            } else {
+                button.help(tool.label)
+            }
+        }
     }
 
     private func historyButton(
@@ -122,6 +137,53 @@ struct AnnotationToolbar: View {
         .help(help)
         .accessibilityLabel(help)
         .accessibilityIdentifier(identifier)
+    }
+}
+
+/// The current sticker glyph, opening the curated sticker palette as a popover
+/// (feature #13) — the sticker-tool analogue of `ColorSwatchButton`.
+private struct StickerSwatchButton: View {
+    @Binding var glyph: String
+    @State private var showsPalette = false
+
+    var body: some View {
+        Button {
+            showsPalette.toggle()
+        } label: {
+            Text(verbatim: glyph)
+                .font(.system(size: 15))
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.plain)
+        .help("Sticker")
+        .accessibilityLabel("Sticker picker")
+        .accessibilityIdentifier("annotation-sticker-swatch")
+        .popover(isPresented: $showsPalette, arrowEdge: .bottom) {
+            // Two columns of five keeps the popover compact and every choice one click.
+            let columns = [GridItem(.fixed(30)), GridItem(.fixed(30))]
+            LazyVGrid(columns: columns, spacing: 6) {
+                ForEach(AnnotationTool.stickerChoices, id: \.self) { choice in
+                    Button {
+                        glyph = choice
+                        showsPalette = false
+                    } label: {
+                        Text(verbatim: choice)
+                            .font(.system(size: 17))
+                            .frame(width: 28, height: 28)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(
+                                        choice == glyph
+                                            ? VitrineTokens.Accent.system.opacity(0.25)
+                                            : Color.clear)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(verbatim: choice))
+                }
+            }
+            .padding(10)
+        }
     }
 }
 

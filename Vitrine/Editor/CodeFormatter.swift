@@ -14,6 +14,12 @@ import Foundation
 ///     correct indentation *is* nesting depth.
 ///   - ``formatJSON(_:)`` structurally re-indents a JSON value, **preserving key
 ///     order** (which `JSONSerialization` would lose).
+///   - ``formatMarkup(_:)`` expands compact HTML/XML into a readable hierarchy when
+///     doing so cannot change text semantics; malformed, mixed-content, and raw-text
+///     documents fall back to the existing line-based tag re-indenter.
+///   - ``formatSQL(_:)`` tokenizes statements before laying out clauses, so quoted
+///     values, identifiers, comments, and vendor parameter forms stay byte-for-byte
+///     intact while minified queries become readable.
 ///   - ``dedent(_:)`` removes the uniform left margin a snippet picks up when copied
 ///     from deep inside a file. Used for whitespace/keyword-significant languages
 ///     (Python, YAML, Ruby, …) whose block structure is *not* in brackets, so
@@ -34,16 +40,52 @@ enum CodeFormatter {
     /// Tidies `code` for display by routing on the language's ``Language/formatStrategy``:
     /// brace/tag languages are structurally re-indented, JSON gets its exact re-indent,
     /// whitespace-significant languages are dedented, and formats where leading
-    /// whitespace is data (diff, Markdown, plain text) are left untouched. The output is
-    /// always valid and idempotent; a tidy input comes back unchanged.
+    /// whitespace is data (diff, Markdown, plain text) are left untouched. Every route
+    /// then passes through ``trimmed(_:language:)`` so a snippet pasted with stray blank
+    /// lines or trailing spaces lands even and centered without a separate action
+    /// (the Xnapper-style "smart trim"). The output is always valid and idempotent; a
+    /// tidy input comes back unchanged.
     nonisolated static func tidy(_ code: String, language: Language) -> String {
-        switch language.formatStrategy {
-        case .json: formatJSON(code) ?? dedent(code)
-        case .reindentBraces: reindent(code, tags: false, indent: language.indentUnit)
-        case .reindentTags: reindent(code, tags: true, indent: language.indentUnit)
-        case .dedentOnly: dedent(code)
-        case .leaveAlone: code
+        let routed =
+            switch language.formatStrategy {
+            case .json: formatJSON(code) ?? dedent(code)
+            case .markup:
+                formatMarkup(code) ?? reindent(code, tags: true, indent: language.indentUnit)
+            case .sql: formatSQL(code) ?? dedent(code)
+            case .reindentBraces: reindent(code, tags: false, indent: language.indentUnit)
+            case .reindentTags: reindent(code, tags: true, indent: language.indentUnit)
+            case .dedentOnly: dedent(code)
+            case .leaveAlone: code
+            }
+        return trimmed(routed, language: language)
+    }
+
+    /// Evens out the whitespace around a snippet so the rendered card is balanced:
+    /// leading and trailing blank lines are dropped (they read as accidental padding on
+    /// top of the canvas's own), and each line's trailing spaces/tabs are stripped.
+    ///
+    /// Language-aware where trailing whitespace is *data*: for ``FormatStrategy/leaveAlone``
+    /// formats (Markdown, where two trailing spaces are a hard line break; diff; plain
+    /// text) only the surrounding blank lines are dropped and line interiors are left
+    /// byte-for-byte intact. Idempotent, and never touches indentation or tokens.
+    nonisolated static func trimmed(_ code: String, language: Language) -> String {
+        func isBlank(_ line: String) -> Bool { line.allSatisfy { $0 == " " || $0 == "\t" } }
+        var lines = code.components(separatedBy: "\n")
+        // Pattern-match rather than `!=`: the synthesized Equatable is main-actor-
+        // isolated under the module's default isolation, and this helper is nonisolated.
+        if case .leaveAlone = language.formatStrategy {
+        } else {
+            lines = lines.map { line in
+                var stripped = line
+                while let last = stripped.last, last == " " || last == "\t" {
+                    stripped.removeLast()
+                }
+                return stripped
+            }
         }
+        while let first = lines.first, isBlank(first) { lines.removeFirst() }
+        while let last = lines.last, isBlank(last) { lines.removeLast() }
+        return lines.joined(separator: "\n")
     }
 
     /// Removes the longest run of leading whitespace shared by every non-blank line
@@ -164,6 +206,177 @@ enum CodeFormatter {
             i += 1
         }
         return out
+    }
+
+    /// Expands compact HTML/XML into a two-space-indented element hierarchy without
+    /// using a DOM parser (which can reorder attributes or normalize entities). The
+    /// tokenizer is quote-aware, validates balanced element names, keeps leaf text
+    /// inline, and preserves comments, declarations, and processing instructions.
+    ///
+    /// Returns `nil` for malformed markup and for constructs where inserted whitespace
+    /// could change meaning: mixed text + child elements, multi-line text nodes, and
+    /// raw-text containers (`script`, `style`, `pre`, `textarea`). The caller then uses
+    /// the existing line-only tag re-indenter, so Format Code never corrupts content.
+    nonisolated static func formatMarkup(_ code: String) -> String? {
+        enum Token {
+            case opening(name: String, raw: String)
+            case closing(name: String, raw: String)
+            case standalone(raw: String)
+            case text(String)
+        }
+
+        let input = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard input.first == "<" else { return nil }
+        let characters = Array(input)
+        let voidElements: Set<String> = [
+            "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta",
+            "param", "source", "track", "wbr",
+        ]
+        let rawTextElements: Set<String> = ["pre", "script", "style", "textarea"]
+
+        func starts(with needle: String, at index: Int) -> Bool {
+            let expected = Array(needle)
+            guard index + expected.count <= characters.count else { return false }
+            return characters[index..<(index + expected.count)].elementsEqual(expected)
+        }
+
+        func scanTagEnd(from start: Int, declaration: Bool = false) -> Int? {
+            var quote: Character?
+            var internalSubsetDepth = 0
+            var index = start + 1
+            while index < characters.count {
+                let character = characters[index]
+                if let activeQuote = quote {
+                    if character == activeQuote { quote = nil }
+                } else {
+                    switch character {
+                    case "\"", "'": quote = character
+                    case "[" where declaration: internalSubsetDepth += 1
+                    case "]" where declaration:
+                        internalSubsetDepth = max(0, internalSubsetDepth - 1)
+                    case ">" where internalSubsetDepth == 0: return index
+                    default: break
+                    }
+                }
+                index += 1
+            }
+            return nil
+        }
+
+        func elementName(in raw: String, closing: Bool) -> String? {
+            let offset = closing ? 2 : 1
+            guard raw.count > offset else { return nil }
+            let body = raw.dropFirst(offset)
+            let name = body.prefix {
+                $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" || $0 == ":"
+            }
+            guard !name.isEmpty, name.first?.isLetter == true || name.first == "_" else {
+                return nil
+            }
+            return name.lowercased()
+        }
+
+        var tokens: [Token] = []
+        var cursor = 0
+        while cursor < characters.count {
+            guard characters[cursor] == "<" else {
+                let start = cursor
+                while cursor < characters.count, characters[cursor] != "<" { cursor += 1 }
+                tokens.append(.text(String(characters[start..<cursor])))
+                continue
+            }
+
+            if starts(with: "<!--", at: cursor) {
+                var end = cursor + 4
+                while end + 2 < characters.count, !starts(with: "-->", at: end) { end += 1 }
+                guard end + 2 < characters.count else { return nil }
+                tokens.append(.standalone(raw: String(characters[cursor..<(end + 3)])))
+                cursor = end + 3
+                continue
+            }
+            if starts(with: "<![CDATA[", at: cursor) {
+                var end = cursor + 9
+                while end + 2 < characters.count, !starts(with: "]]>", at: end) { end += 1 }
+                guard end + 2 < characters.count else { return nil }
+                // CDATA is text, not a structural declaration. Treat it as a text
+                // token so a leaf can stay byte-for-byte inline and a multi-line or
+                // mixed-content use takes the same conservative nil fallback as text.
+                tokens.append(.text(String(characters[cursor..<(end + 3)])))
+                cursor = end + 3
+                continue
+            }
+            if starts(with: "<?", at: cursor) {
+                var end = cursor + 2
+                while end + 1 < characters.count, !starts(with: "?>", at: end) { end += 1 }
+                guard end + 1 < characters.count else { return nil }
+                tokens.append(.standalone(raw: String(characters[cursor..<(end + 2)])))
+                cursor = end + 2
+                continue
+            }
+
+            let declaration = starts(with: "<!", at: cursor)
+            guard let end = scanTagEnd(from: cursor, declaration: declaration) else { return nil }
+            let raw = String(characters[cursor...end])
+            cursor = end + 1
+            if declaration {
+                tokens.append(.standalone(raw: raw))
+                continue
+            }
+
+            let closing = raw.hasPrefix("</")
+            guard let name = elementName(in: raw, closing: closing) else { return nil }
+            if closing {
+                tokens.append(.closing(name: name, raw: raw))
+            } else if raw.dropLast().trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("/")
+                || voidElements.contains(name)
+            {
+                tokens.append(.standalone(raw: raw))
+            } else {
+                guard !rawTextElements.contains(name) else { return nil }
+                tokens.append(.opening(name: name, raw: raw))
+            }
+        }
+
+        var validationStack: [String] = []
+        for token in tokens {
+            switch token {
+            case .opening(let name, _): validationStack.append(name)
+            case .closing(let name, _):
+                guard validationStack.popLast() == name else { return nil }
+            case .standalone, .text: break
+            }
+        }
+        guard validationStack.isEmpty else { return nil }
+
+        var lines: [String] = []
+        var depth = 0
+        var index = 0
+        while index < tokens.count {
+            switch tokens[index] {
+            case .opening(let name, let raw):
+                if index + 2 < tokens.count,
+                    case .text(let text) = tokens[index + 1],
+                    !text.contains(where: \Character.isNewline),
+                    case .closing(let closingName, let closingRaw) = tokens[index + 2],
+                    name == closingName
+                {
+                    lines.append(String(repeating: "  ", count: depth) + raw + text + closingRaw)
+                    index += 3
+                    continue
+                }
+                lines.append(String(repeating: "  ", count: depth) + raw)
+                depth += 1
+            case .closing(_, let raw):
+                depth = max(0, depth - 1)
+                lines.append(String(repeating: "  ", count: depth) + raw)
+            case .standalone(let raw):
+                lines.append(String(repeating: "  ", count: depth) + raw)
+            case .text(let text):
+                guard text.allSatisfy(\Character.isWhitespace) else { return nil }
+            }
+            index += 1
+        }
+        return lines.joined(separator: "\n")
     }
 
     /// Re-indents `code` by recomputing each line's leading whitespace from its nesting
@@ -391,6 +604,8 @@ extension Language {
     /// formats where leading whitespace is data are left untouched.
     enum FormatStrategy {
         case json
+        case markup
+        case sql
         case reindentBraces
         case reindentTags
         case dedentOnly
@@ -400,11 +615,13 @@ extension Language {
     nonisolated var formatStrategy: FormatStrategy {
         switch self {
         case .json: .json
-        case .javascript, .typescript, .html: .reindentTags
+        case .html: .markup
+        case .sql: .sql
+        case .javascript, .typescript: .reindentTags
         case .swift, .go, .rust, .java, .kotlin, .c, .cpp, .csharp, .objectivec,
             .scala, .dart, .css, .scss, .php, .r, .perl, .graphql:
             .reindentBraces
-        case .python, .yaml, .ruby, .haskell, .lua, .elixir, .bash, .sql, .toml,
+        case .python, .yaml, .ruby, .haskell, .lua, .elixir, .bash, .toml,
             .dockerfile:
             .dedentOnly
         case .diff, .markdown, .terminal, .plaintext: .leaveAlone

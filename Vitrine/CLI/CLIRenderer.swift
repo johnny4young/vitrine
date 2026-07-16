@@ -18,6 +18,105 @@ import OSLog
 /// or Accessibility — code rendering is fully local.
 @MainActor
 enum CLIRenderer {
+    /// One skipped input in the optional batch JSON report.
+    private struct SkippedReportEntry: Encodable, Equatable {
+        /// Slash-separated input path relative to the batch input folder.
+        var path: String
+        /// Stable user-facing reason matching the stderr line.
+        var reason: String
+    }
+
+    /// One successfully loaded batch input, kept between discovery and render/write
+    /// so output collision planning considers only files that can produce artifacts.
+    private struct BatchLoadedInput {
+        var file: URL
+        var loaded: FileInputLoader.LoadedFile
+    }
+
+    /// A local background imported for exactly one CLI invocation. The default store
+    /// preserves normal app rendering when no path was requested; an imported image
+    /// carries its temporary directory so the caller can remove it after every output
+    /// in a render or batch has finished.
+    private struct PreparedBackground {
+        var reference: ImageReference?
+        var store: BackgroundImageStore
+        var temporaryDirectory: URL?
+
+        func removeTemporaryFiles() {
+            guard let temporaryDirectory else { return }
+            try? FileManager.default.removeItem(at: temporaryDirectory)
+        }
+    }
+
+    /// Validated local watermark bytes plus the image decoded once for this invocation.
+    private struct PreparedWatermarkLogo {
+        var data: Data
+        var image: NSImage
+    }
+
+    /// One successful (or dry-run planned) batch output in the optional manifest.
+    private struct BatchManifestEntry: Encodable, Equatable {
+        /// Slash-separated input path relative to the batch input folder.
+        var input: String
+        /// Slash-separated output path relative to the batch output folder.
+        var output: String
+        /// Slash-separated sidecar paths relative to the batch output folder.
+        var sidecars: [String]
+        /// The language id actually used for this input.
+        var language: String
+        /// The requested output format (`png`, `pdf`, `heic`, or `avif`).
+        var format: String
+        /// `rendered` for real output, `planned` for `--dry-run`.
+        var status: String
+        /// Rendered width in pixels/points. Omitted for dry-run entries.
+        var width: Int?
+        /// Rendered height in pixels/points. Omitted for dry-run entries.
+        var height: Int?
+    }
+
+    /// Machine-readable success summary for a `render` invocation.
+    private struct RenderSummary: Encodable, Equatable {
+        var command = "render"
+        var status: String
+        var output: String?
+        var format: String?
+        var width: Int?
+        var height: Int?
+        var copied: Bool
+        var sidecars: [String]
+    }
+
+    /// One artifact in the machine-readable `multi-size` result.
+    private struct MultiSizeOutputSummary: Encodable, Equatable {
+        var preset: String
+        var output: String
+        var width: Int
+        var height: Int
+        var sidecars: [String]
+    }
+
+    /// Machine-readable success summary for one-source destination-preset fanout.
+    private struct MultiSizeSummary: Encodable, Equatable {
+        var command = "multi-size"
+        var status = "rendered"
+        var outputDirectory: String
+        var format: String
+        var rendered: Int
+        var outputs: [MultiSizeOutputSummary]
+    }
+
+    /// Machine-readable success summary for a `batch` invocation.
+    private struct BatchSummary: Encodable, Equatable {
+        var command = "batch"
+        var status: String
+        var outputDirectory: String
+        var rendered: Int
+        var skipped: Int
+        var dryRun: Bool
+        var manifest: String?
+        var skippedReport: String?
+    }
+
     /// Runs the full pipeline for `options` and returns a human-readable success
     /// line (the path written and the pixel dimensions), or throws a `CLIError`.
     ///
@@ -32,36 +131,280 @@ enum CLIRenderer {
             try FileInputLoader.load(from: $0)
         }
     ) throws -> String {
-        let loaded = try loadInput(options, fileLoader: fileLoader)
+        let background = try prepareBackground(options)
+        defer { background.removeTemporaryFiles() }
+        let watermarkLogo = try prepareWatermarkLogo(options)
 
-        // An explicit `--language` overrides the inferred one; otherwise the loader's
-        // extension/content inference wins, exactly as the editor does (CS-027/028).
+        switch options.inputKind {
+        case .code:
+            let loaded = try loadInput(options, fileLoader: fileLoader)
+            // An explicit `--language` overrides the inferred one; otherwise the loader's
+            // extension/content inference wins, exactly as the editor does (CS-027/028).
+            let language = options.language ?? loaded.language
+            var config = options.makeConfig(
+                code: loaded.text, language: language,
+                backgroundImageReference: background.reference,
+                watermarkLogoData: watermarkLogo?.data)
+            config.watermark?.logoImage = watermarkLogo?.image
+            return try render(
+                config, options: options, backgroundStore: background.store,
+                foregroundStore: .foregroundContainer)
+        case .image:
+            return try renderImageInput(
+                options, background: background, watermarkLogo: watermarkLogo)
+        }
+    }
+
+    /// Renders one code/stdin source through each selected destination preset and
+    /// writes the resulting files into one output directory. This is the CLI form of
+    /// the app's CS-093 multi-size export: the source is loaded once, every preset
+    /// uses the shared `CLIOptions.makeConfig` precedence and `renderAndWrite` encoder,
+    /// and filenames match the app's stable `vitrine-<preset id>.<ext>` convention.
+    @discardableResult
+    static func runMultiSize(
+        _ options: CLIOptions,
+        fileLoader: (URL) throws -> FileInputLoader.LoadedFile = {
+            try FileInputLoader.load(from: $0)
+        }
+    ) throws -> String {
+        let background = try prepareBackground(options)
+        defer { background.removeTemporaryFiles() }
+        let watermarkLogo = try prepareWatermarkLogo(options)
+        let loaded = try loadInput(options, fileLoader: fileLoader)
         let language = options.language ?? loaded.language
-        let config = options.makeConfig(code: loaded.text, language: language)
+
+        let requestedIDs =
+            options.multiSizePresetIDs.isEmpty
+            ? ExportPreset.all.map(\.id) : options.multiSizePresetIDs
+        let presets = requestedIDs.compactMap { ExportPreset.preset(withID: $0) }
+        guard presets.count == requestedIDs.count else {
+            let invalid = requestedIDs.first { ExportPreset.preset(withID: $0) == nil } ?? ""
+            throw CLIError.invalidValue(flag: "--presets", value: invalid)
+        }
+
+        let outputDirectory = URL(fileURLWithPath: options.outputPath, isDirectory: true)
+        let outputURLs = presets.map {
+            outputDirectory.appendingPathComponent(
+                "vitrine-\($0.id).\(options.format.fileExtension)", isDirectory: false)
+        }
+
+        // Preflight every target before creating the directory or rendering anything,
+        // so --no-overwrite cannot leave a partially updated preset set.
+        for outputURL in outputURLs {
+            try guardNoOverwriteTargetsAvailable(beside: outputURL, options: options)
+        }
+        do {
+            try FileManager.default.createDirectory(
+                at: outputDirectory, withIntermediateDirectories: true)
+        } catch {
+            throw CLIError.writeFailed(path: options.outputPath)
+        }
+
+        var outputs: [MultiSizeOutputSummary] = []
+        for (preset, outputURL) in zip(presets, outputURLs) {
+            var presetOptions = options
+            presetOptions.presetID = preset.id
+            presetOptions.multiSizePresetIDs = []
+            // The parser rejects these overrides. Clear them defensively as well so a
+            // hand-built CLIOptions value cannot defeat destination-preset geometry.
+            presetOptions.canvasSize = nil
+            presetOptions.scale = nil
+
+            var config = presetOptions.makeConfig(
+                code: loaded.text, language: language,
+                backgroundImageReference: background.reference,
+                watermarkLogoData: watermarkLogo?.data)
+            config.watermark?.logoImage = watermarkLogo?.image
+            let dimensions = try renderAndWrite(
+                config, options: presetOptions, backgroundStore: background.store,
+                to: outputURL)
+            outputs.append(
+                MultiSizeOutputSummary(
+                    preset: preset.id, output: outputURL.path,
+                    width: dimensions.width, height: dimensions.height,
+                    sidecars: sidecarURLs(presetOptions, beside: outputURL).map(\.path)))
+        }
+
+        Log.export.notice(
+            "CLI multi-size rendered \(outputs.count, privacy: .public) preset images")
+        if options.jsonOutput {
+            return encodedJSON(
+                MultiSizeSummary(
+                    outputDirectory: outputDirectory.path,
+                    format: options.format.rawValue,
+                    rendered: outputs.count,
+                    outputs: outputs))
+        }
+        return
+            "Rendered \(outputs.count) preset image\(outputs.count == 1 ? "" : "s") to \(outputDirectory.path)"
+    }
+
+    /// Loads and validates a local watermark logo once per invocation. Keeping the
+    /// bytes inline matches Brand Kit's self-contained render model and lets batch
+    /// outputs reuse the same decoded source without touching persistent app storage.
+    private static func prepareWatermarkLogo(_ options: CLIOptions) throws -> PreparedWatermarkLogo?
+    {
+        guard let path = options.watermarkLogoPath else { return nil }
+        let data: Data
+        do {
+            data = try Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe)
+        } catch {
+            throw CLIError.inputUnreadable(path: path)
+        }
+        guard let image = NSImage(data: data) else {
+            throw CLIError.inputNotImage(path: path)
+        }
+        return PreparedWatermarkLogo(data: data, image: image)
+    }
+
+    /// Imports a requested local background into an invocation-scoped store. The
+    /// source is read-only and the copy is removed by the caller after rendering, so
+    /// CLI automation never changes the user's persistent background collection.
+    private static func prepareBackground(_ options: CLIOptions) throws -> PreparedBackground {
+        guard let path = options.backgroundImagePath else {
+            return PreparedBackground(reference: nil, store: .container, temporaryDirectory: nil)
+        }
+        let sourceURL = URL(fileURLWithPath: path)
+        let data: Data
+        do {
+            data = try Data(contentsOf: sourceURL)
+        } catch {
+            throw CLIError.inputUnreadable(path: path)
+        }
+
+        let directory = temporaryImageDirectory()
+        let store = BackgroundImageStore(directory: directory)
+        do {
+            let reference = try store.importImage(
+                data: data, preferredExtension: sourceURL.pathExtension)
+            return PreparedBackground(
+                reference: reference, store: store, temporaryDirectory: directory)
+        } catch BackgroundImageStore.ImportError.notAnImage {
+            try? FileManager.default.removeItem(at: directory)
+            throw CLIError.inputNotImage(path: path)
+        } catch {
+            try? FileManager.default.removeItem(at: directory)
+            throw CLIError.renderFailed
+        }
+    }
+
+    private static func temporaryImageDirectory() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent(
+            "VitrineCLI-\(UUID().uuidString)", isDirectory: true)
+    }
+
+    /// Imports one local image into an invocation-scoped store, renders it through the
+    /// shared canvas, then removes the temporary copy. This keeps `--image` local and
+    /// side-effect free: unlike the editor, the CLI never adds automation inputs to the
+    /// user's persistent foreground-image library.
+    private static func renderImageInput(
+        _ options: CLIOptions, background: PreparedBackground,
+        watermarkLogo: PreparedWatermarkLogo?
+    ) throws -> String {
+        let sourceURL = URL(fileURLWithPath: options.inputPath)
+        let data: Data
+        do {
+            data = try Data(contentsOf: sourceURL)
+        } catch {
+            throw CLIError.inputUnreadable(path: options.inputPath)
+        }
+        let directory = temporaryImageDirectory()
+        let store = BackgroundImageStore(directory: directory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let reference: ImageReference
+        do {
+            reference = try store.importImage(
+                data: data, preferredExtension: sourceURL.pathExtension)
+        } catch BackgroundImageStore.ImportError.notAnImage {
+            throw CLIError.inputNotImage(path: options.inputPath)
+        } catch {
+            throw CLIError.renderFailed
+        }
+
+        var config = options.makeConfig(
+            code: "", language: .swift, backgroundImageReference: background.reference,
+            watermarkLogoData: watermarkLogo?.data)
+        config.watermark?.logoImage = watermarkLogo?.image
+        config.foregroundImage = reference
+        return try render(
+            config, options: options, backgroundStore: background.store, foregroundStore: store)
+    }
+
+    /// Performs the common copy/write/report path once code or image input has produced
+    /// a render-ready config and the store that resolves any foreground image.
+    private static func render(
+        _ config: SnapshotConfig, options: CLIOptions,
+        backgroundStore: BackgroundImageStore,
+        foregroundStore: BackgroundImageStore
+    ) throws -> String {
+
+        let optionalOutputURL =
+            options.outputPath.isEmpty ? nil : URL(fileURLWithPath: options.outputPath)
+        if let optionalOutputURL {
+            try guardNoOverwriteTargetsAvailable(beside: optionalOutputURL, options: options)
+        }
 
         // `--copy`: put the rendered image on the clipboard (the share-now flow). A
         // `--out` given alongside still writes the file too.
         if options.copyToClipboard {
             let copied = ExportManager.copyToPasteboard(
                 config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                profile: options.profile)
+                profile: options.profile, backgroundImageStore: backgroundStore,
+                foregroundImageStore: foregroundStore)
             guard copied else { throw CLIError.renderFailed }
             Log.export.notice("CLI copied an image to the clipboard")
-            if !options.outputPath.isEmpty {
-                let outputURL = URL(fileURLWithPath: options.outputPath)
-                let dimensions = try renderAndWrite(config, options: options, to: outputURL)
+            if let outputURL = optionalOutputURL {
+                let dimensions = try renderAndWrite(
+                    config, options: options, backgroundStore: backgroundStore,
+                    foregroundStore: foregroundStore, to: outputURL)
+                if options.jsonOutput {
+                    return encodedJSON(
+                        RenderSummary(
+                            status: "copied_and_rendered",
+                            output: outputURL.path,
+                            format: options.format.rawValue,
+                            width: dimensions.width,
+                            height: dimensions.height,
+                            copied: true,
+                            sidecars: sidecarURLs(options, beside: outputURL).map(\.path)))
+                }
                 return
                     "Copied the image to the clipboard and wrote \(outputURL.path) "
                     + "(\(dimensions.width)×\(dimensions.height))\(sidecarNote(options, beside: outputURL))"
             }
+            if options.jsonOutput {
+                return encodedJSON(
+                    RenderSummary(
+                        status: "copied",
+                        output: nil,
+                        format: options.format.rawValue,
+                        width: nil,
+                        height: nil,
+                        copied: true,
+                        sidecars: []))
+            }
             return "Copied the image to the clipboard"
         }
 
-        let outputURL = URL(fileURLWithPath: options.outputPath)
-        let dimensions = try renderAndWrite(config, options: options, to: outputURL)
+        let outputURL = try requireOutputURL(optionalOutputURL)
+        let dimensions = try renderAndWrite(
+            config, options: options, backgroundStore: backgroundStore,
+            foregroundStore: foregroundStore, to: outputURL)
 
         Log.export.notice(
             "CLI rendered an image (\(options.format.rawValue, privacy: .public))")
+        if options.jsonOutput {
+            return encodedJSON(
+                RenderSummary(
+                    status: "rendered",
+                    output: outputURL.path,
+                    format: options.format.rawValue,
+                    width: dimensions.width,
+                    height: dimensions.height,
+                    copied: false,
+                    sidecars: sidecarURLs(options, beside: outputURL).map(\.path)))
+        }
         return
             "Rendered \(outputURL.path) "
             + "(\(dimensions.width)×\(dimensions.height))\(sidecarNote(options, beside: outputURL))"
@@ -91,6 +434,17 @@ enum CLIRenderer {
         let url = EditorHandoff.stage(content: loaded.text, language: language)
         guard open(url) else { throw CLIError.editorOpenFailed }
         Log.export.notice("CLI handed the source to the editor (--edit)")
+        if options.jsonOutput {
+            return encodedJSON(
+                RenderSummary(
+                    status: "opened_editor",
+                    output: nil,
+                    format: nil,
+                    width: nil,
+                    height: nil,
+                    copied: false,
+                    sidecars: []))
+        }
         return "Opened the captured output in Vitrine's editor."
     }
 
@@ -99,9 +453,21 @@ enum CLIRenderer {
     ///
     /// Non-text/unreadable files are skipped (not fatal), so a mixed folder still
     /// produces images for the code in it; the summary reports how many were skipped.
-    /// Each file goes through the same render-and-write path as `vitrine render`, so a
-    /// batched image is pixel-identical to rendering that file alone with the same
-    /// options. `directoryLister` is injected so the file-discovery half is
+    /// `--recursive` walks nested folders and preserves their relative paths under the
+    /// output directory. `--include-ext` / `--exclude-ext` filter regular files by
+    /// extension before loading, which keeps known non-code assets out of skipped counts.
+    /// `--dry-run` still scans and decodes inputs but skips image/sidecar writes, so a
+    /// docs job can preflight a batch cheaply.
+    /// `--manifest` writes the successful/planned output list as a JSON artifact with
+    /// relative input/output paths and rendered dimensions when available.
+    /// `--fail-on-empty` turns an empty discovery/preflight into a failing CLI exit.
+    /// `--fail-on-skipped` preserves successful renders but converts any skipped file
+    /// into a failing CLI exit for strict CI/docs pipelines.
+    /// `--skipped-report` writes a local JSON report before any strict failure is
+    /// thrown. Each file goes through the same render-and-write path as `vitrine
+    /// render`, so a batched image is pixel-identical to rendering that file alone
+    /// with the same options. `directoryLister` is injected so the top-level
+    /// file-discovery half is
     /// unit-testable without a real directory tree.
     @discardableResult
     static func runBatch(
@@ -115,64 +481,361 @@ enum CLIRenderer {
                 options: [.skipsHiddenFiles])
         }
     ) throws -> String {
+        let background = try prepareBackground(options)
+        defer { background.removeTemporaryFiles() }
+        let watermarkLogo = try prepareWatermarkLogo(options)
+
         let inputDirectory = URL(fileURLWithPath: options.inputPath)
         let outputDirectory = URL(fileURLWithPath: options.outputPath)
-        do {
-            try FileManager.default.createDirectory(
-                at: outputDirectory, withIntermediateDirectories: true)
-        } catch {
-            throw CLIError.writeFailed(path: options.outputPath)
-        }
-
-        let entries: [URL]
-        do {
-            entries = try directoryLister(inputDirectory)
-        } catch {
-            throw CLIError.inputUnreadable(path: options.inputPath)
-        }
-        // Sort for a deterministic batch regardless of filesystem enumeration order,
-        // and drop subdirectories so only files are rendered.
-        let files =
-            entries
-            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-
-        let ext = options.format.rawValue
-        var rendered = 0
-        var skipped = 0
-        for file in files {
-            let loaded: FileInputLoader.LoadedFile
+        if !options.dryRunBatch {
             do {
-                loaded = try fileLoader(file)
+                try FileManager.default.createDirectory(
+                    at: outputDirectory, withIntermediateDirectories: true)
+            } catch {
+                throw CLIError.writeFailed(path: options.outputPath)
+            }
+        }
+
+        let files = try batchInputFiles(
+            in: inputDirectory,
+            recursive: options.recursiveBatch,
+            includeExtensions: options.batchIncludeExtensions,
+            excludeExtensions: options.batchExcludeExtensions,
+            directoryLister: directoryLister)
+
+        var loadedInputs: [BatchLoadedInput] = []
+        var skipped = 0
+        var skippedReport: [SkippedReportEntry] = []
+        for file in files {
+            do {
+                loadedInputs.append(BatchLoadedInput(file: file, loaded: try fileLoader(file)))
             } catch {
                 // A binary/unreadable file is skipped, never a fatal batch error —
                 // but the automation user gets the filename and reason on stderr, so
                 // "skipped 3" in the summary is diagnosable without re-running.
                 skipped += 1
-                reportSkipped(file, reason: "not readable text")
-                continue
-            }
-            let language = options.language ?? loaded.language
-            let config = options.makeConfig(code: loaded.text, language: language)
-            let outputURL =
-                outputDirectory
-                .appendingPathComponent(file.deletingPathExtension().lastPathComponent)
-                .appendingPathExtension(ext)
-            do {
-                _ = try renderAndWrite(config, options: options, to: outputURL)
-                rendered += 1
-            } catch {
-                skipped += 1
-                reportSkipped(file, reason: "render or write failed")
+                let reason = "not readable text"
+                skippedReport.append(
+                    skippedReportEntry(for: file, under: inputDirectory, reason: reason))
+                reportSkipped(file, reason: reason)
             }
         }
 
+        let ext = options.format.rawValue
+        let outputURLs = batchOutputURLs(
+            for: loadedInputs.map(\.file), inputDirectory: inputDirectory,
+            outputDirectory: outputDirectory, recursive: options.recursiveBatch, fileExtension: ext)
+        var rendered = 0
+        var manifest: [BatchManifestEntry] = []
+        for input in loadedInputs {
+            let file = input.file
+            let loaded = input.loaded
+            let language = options.language ?? loaded.language
+            let outputURL =
+                outputURLs[batchOutputKey(for: file)]
+                ?? batchOutputURL(
+                    for: file, inputDirectory: inputDirectory, outputDirectory: outputDirectory,
+                    recursive: options.recursiveBatch, fileExtension: ext)
+            if existingNoOverwriteTarget(beside: outputURL, options: options) != nil {
+                skipped += 1
+                let reason = "output already exists"
+                skippedReport.append(
+                    skippedReportEntry(for: file, under: inputDirectory, reason: reason))
+                reportSkipped(file, reason: reason)
+                continue
+            }
+            if options.dryRunBatch {
+                rendered += 1
+                manifest.append(
+                    batchManifestEntry(
+                        for: file, outputURL: outputURL, inputDirectory: inputDirectory,
+                        outputDirectory: outputDirectory, language: language, format: ext,
+                        status: "planned", dimensions: nil, options: options))
+                continue
+            }
+
+            var config = options.makeConfig(
+                code: loaded.text, language: language,
+                backgroundImageReference: background.reference,
+                watermarkLogoData: watermarkLogo?.data)
+            config.watermark?.logoImage = watermarkLogo?.image
+            do {
+                try FileManager.default.createDirectory(
+                    at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                let dimensions = try renderAndWrite(
+                    config, options: options, backgroundStore: background.store, to: outputURL)
+                manifest.append(
+                    batchManifestEntry(
+                        for: file, outputURL: outputURL, inputDirectory: inputDirectory,
+                        outputDirectory: outputDirectory, language: language, format: ext,
+                        status: "rendered", dimensions: dimensions, options: options))
+                rendered += 1
+            } catch {
+                skipped += 1
+                let reason = "render or write failed"
+                skippedReport.append(
+                    skippedReportEntry(for: file, under: inputDirectory, reason: reason))
+                reportSkipped(file, reason: reason)
+            }
+        }
+
+        let action = options.dryRunBatch ? "Dry run: would render" : "Rendered"
+        let logAction = options.dryRunBatch ? "dry-run would render" : "rendered"
         Log.export.notice(
-            "CLI batch rendered \(rendered, privacy: .public), skipped \(skipped, privacy: .public)"
+            "CLI batch \(logAction, privacy: .public) \(rendered, privacy: .public), skipped \(skipped, privacy: .public)"
         )
         let summary =
-            "Rendered \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
+            "\(action) \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
+        try writeSkippedReport(skippedReport, path: options.skippedReportPath)
+        try writeBatchManifest(manifest, path: options.batchManifestPath)
+        if rendered == 0, options.failOnEmpty {
+            throw CLIError.batchEmpty(skipped: skipped)
+        }
+        if skipped > 0, options.failOnSkipped {
+            throw CLIError.batchSkipped(rendered: rendered, skipped: skipped)
+        }
+        if options.jsonOutput {
+            return encodedJSON(
+                BatchSummary(
+                    status: options.dryRunBatch ? "planned" : "rendered",
+                    outputDirectory: outputDirectory.path,
+                    rendered: rendered,
+                    skipped: skipped,
+                    dryRun: options.dryRunBatch,
+                    manifest: nonEmptyPath(options.batchManifestPath),
+                    skippedReport: nonEmptyPath(options.skippedReportPath)))
+        }
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
+    }
+
+    /// Lists regular files for batch rendering. Non-recursive mode keeps the legacy
+    /// top-level behavior; recursive mode uses FileManager's enumerator so nested
+    /// folders can be mirrored under the output directory.
+    private static func batchInputFiles(
+        in inputDirectory: URL,
+        recursive: Bool,
+        includeExtensions: Set<String>,
+        excludeExtensions: Set<String>,
+        directoryLister: (URL) throws -> [URL]
+    ) throws -> [URL] {
+        let entries: [URL]
+        do {
+            if recursive {
+                guard
+                    let enumerator = FileManager.default.enumerator(
+                        at: inputDirectory,
+                        includingPropertiesForKeys: [.isRegularFileKey],
+                        options: [.skipsHiddenFiles])
+                else { throw CLIError.inputUnreadable(path: inputDirectory.path) }
+                entries = enumerator.compactMap { $0 as? URL }
+            } else {
+                entries = try directoryLister(inputDirectory)
+            }
+        } catch let error as CLIError {
+            throw error
+        } catch {
+            throw CLIError.inputUnreadable(path: inputDirectory.path)
+        }
+
+        return
+            entries
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
+            .filter {
+                isIncludedByBatchExtensionFilters(
+                    $0, includeExtensions: includeExtensions, excludeExtensions: excludeExtensions)
+            }
+            .sorted {
+                batchRelativePath(for: $0, under: inputDirectory)
+                    < batchRelativePath(for: $1, under: inputDirectory)
+            }
+    }
+
+    /// Applies normalized extension include/exclude sets to a candidate batch file.
+    /// Files without an extension are included by default, but an include list narrows
+    /// the batch to only named extensions.
+    private static func isIncludedByBatchExtensionFilters(
+        _ file: URL,
+        includeExtensions: Set<String>,
+        excludeExtensions: Set<String>
+    ) -> Bool {
+        let ext = file.pathExtension.lowercased()
+        guard includeExtensions.isEmpty || includeExtensions.contains(ext) else { return false }
+        return !excludeExtensions.contains(ext)
+    }
+
+    /// Builds the output image URLs for a batch. The historical mapping drops the
+    /// input extension (`Widget.swift` → `Widget.png`), but that collides when a
+    /// folder contains several files with the same stem. Keep legacy names for
+    /// non-colliding files and preserve the input extension only for colliding groups.
+    private static func batchOutputURLs(
+        for files: [URL],
+        inputDirectory: URL,
+        outputDirectory: URL,
+        recursive: Bool,
+        fileExtension ext: String
+    ) -> [String: URL] {
+        let baseRelativePaths = files.map { file in
+            (
+                file: file,
+                relativePath: batchOutputRelativePath(
+                    for: file, inputDirectory: inputDirectory, recursive: recursive,
+                    preservingInputExtension: false, fileExtension: ext)
+            )
+        }
+        let collisions = Dictionary(grouping: baseRelativePaths) { $0.relativePath }
+
+        var outputs: [String: URL] = [:]
+        for entry in baseRelativePaths {
+            let shouldPreserveInputExtension = (collisions[entry.relativePath]?.count ?? 0) > 1
+            let relativePath = batchOutputRelativePath(
+                for: entry.file, inputDirectory: inputDirectory, recursive: recursive,
+                preservingInputExtension: shouldPreserveInputExtension, fileExtension: ext)
+            outputs[batchOutputKey(for: entry.file)] = outputDirectory.appendingPathComponent(
+                relativePath)
+        }
+        return outputs
+    }
+
+    /// Builds the output image URL for one batched input using the legacy mapping.
+    /// Callers that know the full file set should prefer `batchOutputURLs(...)` so
+    /// same-stem inputs do not overwrite each other.
+    private static func batchOutputURL(
+        for file: URL,
+        inputDirectory: URL,
+        outputDirectory: URL,
+        recursive: Bool,
+        fileExtension ext: String
+    ) -> URL {
+        outputDirectory.appendingPathComponent(
+            batchOutputRelativePath(
+                for: file, inputDirectory: inputDirectory, recursive: recursive,
+                preservingInputExtension: false, fileExtension: ext))
+    }
+
+    /// Builds the slash-separated relative output path for one batch input. Recursive
+    /// batches preserve relative folders; top-level batches keep flat output names.
+    private static func batchOutputRelativePath(
+        for file: URL,
+        inputDirectory: URL,
+        recursive: Bool,
+        preservingInputExtension: Bool,
+        fileExtension ext: String
+    ) -> String {
+        let sourcePath =
+            recursive
+            ? batchRelativePath(for: file, under: inputDirectory)
+            : file.lastPathComponent
+        let outputStem =
+            preservingInputExtension
+            ? sourcePath
+            : (sourcePath as NSString).deletingPathExtension
+        return (outputStem as NSString).appendingPathExtension(ext) ?? outputStem + "." + ext
+    }
+
+    private static func batchOutputKey(for file: URL) -> String {
+        file.standardizedFileURL.path
+    }
+
+    /// Returns a slash-separated relative path when `file` sits below `root`,
+    /// falling back to the filename if the URLs are not parent/child.
+    private static func batchRelativePath(for file: URL, under root: URL) -> String {
+        let rootPath = root.standardizedFileURL.path
+        let filePath = file.standardizedFileURL.path
+        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        guard filePath.hasPrefix(prefix) else { return file.lastPathComponent }
+        return String(filePath.dropFirst(prefix.count))
+    }
+
+    /// Builds the manifest entry for one skipped file using the same relative-path
+    /// logic as recursive output mirroring, so the report is stable across machines.
+    private static func skippedReportEntry(
+        for file: URL,
+        under inputDirectory: URL,
+        reason: String
+    ) -> SkippedReportEntry {
+        SkippedReportEntry(
+            path: batchRelativePath(for: file, under: inputDirectory),
+            reason: reason)
+    }
+
+    /// Builds the manifest entry for one successfully loaded batch file using stable,
+    /// slash-separated paths so CI artifacts are independent of the build machine.
+    private static func batchManifestEntry(
+        for file: URL,
+        outputURL: URL,
+        inputDirectory: URL,
+        outputDirectory: URL,
+        language: Language,
+        format: String,
+        status: String,
+        dimensions: (width: Int, height: Int)?,
+        options: CLIOptions
+    ) -> BatchManifestEntry {
+        BatchManifestEntry(
+            input: batchRelativePath(for: file, under: inputDirectory),
+            output: batchRelativePath(for: outputURL, under: outputDirectory),
+            sidecars: sidecarURLs(options, beside: outputURL).map {
+                batchRelativePath(for: $0, under: outputDirectory)
+            },
+            language: language.rawValue,
+            format: format,
+            status: status,
+            width: dimensions?.width,
+            height: dimensions?.height)
+    }
+
+    /// Writes the optional skipped-files report. An empty requested report is still a
+    /// useful CI artifact (`[]`) because it proves the batch scanned without omissions.
+    private static func writeSkippedReport(
+        _ skippedReport: [SkippedReportEntry],
+        path: String?
+    ) throws {
+        guard let path, !path.isEmpty else { return }
+        let url = URL(fileURLWithPath: path)
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data: Data
+            if skippedReport.isEmpty {
+                data = Data("[]\n".utf8)
+            } else {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                var encoded = try encoder.encode(skippedReport)
+                encoded.append(0x0A)
+                data = encoded
+            }
+            try data.write(to: url, options: .atomic)
+        } catch {
+            throw CLIError.writeFailed(path: path)
+        }
+    }
+
+    /// Writes the optional positive batch manifest. A requested empty manifest is useful
+    /// for CI because it proves discovery completed even when no inputs matched.
+    private static func writeBatchManifest(
+        _ manifest: [BatchManifestEntry],
+        path: String?
+    ) throws {
+        guard let path, !path.isEmpty else { return }
+        let url = URL(fileURLWithPath: path)
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data: Data
+            if manifest.isEmpty {
+                data = Data("[]\n".utf8)
+            } else {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                var encoded = try encoder.encode(manifest)
+                encoded.append(0x0A)
+                data = encoded
+            }
+            try data.write(to: url, options: .atomic)
+        } catch {
+            throw CLIError.writeFailed(path: path)
+        }
     }
 
     /// Names a skipped batch file (and why) on stderr. The user chose the input
@@ -183,19 +846,32 @@ enum CLIRenderer {
             Data("vitrine: skipped \(file.lastPathComponent): \(reason)\n".utf8))
     }
 
-    /// Reads the input file through the injected loader, translating its
-    /// `FileInputLoader.LoadError` into the matching `CLIError`.
+    /// Loads a generated Git diff, stdin, or an input file and translates every
+    /// low-level failure into the matching stable `CLIError`.
     private static func loadInput(
         _ options: CLIOptions,
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile
     ) throws -> FileInputLoader.LoadedFile {
+        if let source = options.gitDiffSource {
+            do {
+                return try GitDiffInputLoader.load(
+                    source: source, paths: options.gitDiffPaths,
+                    contextLines: options.gitDiffContextLines)
+            } catch GitDiffInputLoader.LoadError.emptyDiff {
+                throw CLIError.gitDiffEmpty
+            } catch GitDiffInputLoader.LoadError.tooLarge {
+                throw CLIError.gitDiffTooLarge
+            } catch {
+                throw CLIError.gitDiffFailed
+            }
+        }
         // `--stdin`: read the piped source (the shell integration feeds captured
-        // terminal output here) and infer the language from the content — no filename,
-        // so ANSI escapes route it to the terminal renderer.
+        // terminal output here). A user-supplied stdin name is only a hint: it is
+        // never read from disk, but it lets extension-based inference match file input.
         if options.readStdin {
             let data = FileHandle.standardInput.readDataToEndOfFile()
             do {
-                return try FileInputLoader.decode(data: data, filename: "")
+                return try FileInputLoader.decode(data: data, filename: options.stdinFilename ?? "")
             } catch FileInputLoader.LoadError.binaryFile {
                 throw CLIError.inputNotText(path: "<stdin>")
             } catch {
@@ -214,6 +890,64 @@ enum CLIRenderer {
         }
     }
 
+    private static func requireOutputURL(_ outputURL: URL?) throws -> URL {
+        guard let outputURL else { throw CLIError.missingRequired("--out output path") }
+        return outputURL
+    }
+
+    private static func encodedJSON<T: Encodable>(_ value: T) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        let data = (try? encoder.encode(value)) ?? Data("{}".utf8)
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    private static func nonEmptyPath(_ path: String?) -> String? {
+        guard let path, !path.isEmpty else { return nil }
+        return path
+    }
+
+    /// Returns every file a render would write beside its primary image output.
+    private static func outputTargets(beside imageURL: URL, options: CLIOptions) -> [URL] {
+        [imageURL] + sidecarURLs(options, beside: imageURL)
+    }
+
+    /// Returns sidecar files a render would write next to its primary image.
+    private static func sidecarURLs(_ options: CLIOptions, beside imageURL: URL) -> [URL] {
+        let base = imageURL.deletingPathExtension()
+        var targets: [URL] = []
+        if options.textSidecar {
+            targets.append(base.appendingPathExtension("txt"))
+        }
+        if options.markdownSidecar {
+            targets.append(base.appendingPathExtension("md"))
+        }
+        if options.htmlSidecar {
+            targets.append(base.appendingPathExtension("html"))
+        }
+        return targets
+    }
+
+    /// Finds the first existing output target when `--no-overwrite` is active.
+    private static func existingNoOverwriteTarget(beside imageURL: URL, options: CLIOptions) -> URL?
+    {
+        guard options.noOverwrite else { return nil }
+        return outputTargets(beside: imageURL, options: options).first {
+            FileManager.default.fileExists(atPath: $0.path)
+        }
+    }
+
+    /// Enforces `--no-overwrite` before rendering/copying so a run fails without
+    /// partially replacing images, sidecars, or the clipboard.
+    private static func guardNoOverwriteTargetsAvailable(
+        beside imageURL: URL,
+        options: CLIOptions
+    ) throws {
+        if let existing = existingNoOverwriteTarget(beside: imageURL, options: options) {
+            throw CLIError.outputExists(path: existing.path)
+        }
+    }
+
     /// Renders `config` and writes it to `url` as PNG or PDF, returning the pixel
     /// dimensions of the written image (for PDF, the logical point size).
     ///
@@ -225,7 +959,9 @@ enum CLIRenderer {
     /// failure maps to `CLIError.renderFailed`; a write failure to
     /// `CLIError.writeFailed` — neither ever crashes the process.
     private static func renderAndWrite(
-        _ config: SnapshotConfig, options: CLIOptions, to url: URL
+        _ config: SnapshotConfig, options: CLIOptions,
+        backgroundStore: BackgroundImageStore = .container,
+        foregroundStore: BackgroundImageStore = .foregroundContainer, to url: URL
     ) throws -> (width: Int, height: Int) {
         var pngImage: CGImage?
         let payload = ExportManager.encodedPayload(
@@ -233,21 +969,28 @@ enum CLIRenderer {
             png: {
                 let image = ExportManager.renderCGImage(
                     config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                    profile: options.profile)
+                    profile: options.profile, backgroundImageStore: backgroundStore,
+                    foregroundImageStore: foregroundStore)
                 pngImage = image
                 return image
             },
-            pdf: { ExportManager.pdfData(config, fixedSize: options.fixedSize) })
+            pdf: {
+                ExportManager.pdfData(
+                    config, fixedSize: options.fixedSize,
+                    backgroundImageStore: backgroundStore,
+                    foregroundImageStore: foregroundStore)
+            })
         guard let payload else { throw CLIError.renderFailed }
         try write(payload.data, to: url, options: options)
         if options.textSidecar { try writeTextSidecar(for: config, options: options, beside: url) }
         if options.markdownSidecar {
             try writeMarkdownSidecar(for: config, options: options, beside: url)
         }
+        if options.htmlSidecar { try writeHTMLSidecar(for: config, options: options, beside: url) }
 
         switch options.format {
-        case .png, .heic:
-            // Both raster formats encode the CGImage rendered above, so `pngImage`
+        case .png, .heic, .avif:
+            // Every raster format encodes the CGImage rendered above, so `pngImage`
             // is non-nil whenever a payload was produced.
             return (pngImage?.width ?? 0, pngImage?.height ?? 0)
         case .pdf:
@@ -262,15 +1005,7 @@ enum CLIRenderer {
     /// The "` + card.txt`" tail appended to a success line when sidecars were
     /// written, naming each sidecar file; empty when none was requested.
     private static func sidecarNote(_ options: CLIOptions, beside imageURL: URL) -> String {
-        let base = imageURL.deletingPathExtension()
-        var names: [String] = []
-        if options.textSidecar {
-            names.append(base.appendingPathExtension("txt").lastPathComponent)
-        }
-        if options.markdownSidecar {
-            names.append(base.appendingPathExtension("md").lastPathComponent)
-        }
-        return names.map { " + \($0)" }.joined()
+        sidecarURLs(options, beside: imageURL).map { " + \($0.lastPathComponent)" }.joined()
     }
 
     /// Writes the plain-text sidecar next to the rendered image at `imageURL`,
@@ -315,6 +1050,26 @@ enum CLIRenderer {
         }
     }
 
+    /// Writes the HTML sidecar next to the rendered image at `imageURL`
+    /// (`card.png` → `card.html`): the image embed followed by the source in an
+    /// escaped, language-tagged `<pre><code>` block. Terminal output is reduced to its
+    /// visible text first, exactly like the plain-text and Markdown sidecars.
+    private static func writeHTMLSidecar(
+        for config: SnapshotConfig, options: CLIOptions, beside imageURL: URL
+    ) throws {
+        let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("html")
+        let contents = htmlSidecarContents(for: config, imageName: imageURL.lastPathComponent)
+        do {
+            try Data(contents.utf8).write(to: sidecarURL)
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "CLI html-sidecar write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            throw CLIError.writeFailed(path: sidecarURL.path)
+        }
+    }
+
     /// Builds the Markdown sidecar body: `![alt](image)` + a fenced code block.
     /// The fence is one backtick longer than the longest backtick run in the body,
     /// so code containing ``` can never break out of the block; the info string is
@@ -323,39 +1078,49 @@ enum CLIRenderer {
     /// output image name are user-controlled strings.
     /// Internal (not private) so the exact format is unit-testable.
     static func markdownSidecarContents(for config: SnapshotConfig, imageName: String) -> String {
-        let body = config.sidecarText
-        let fenceLanguage = config.language == .terminal ? "text" : config.language.rawValue
-        var longestBacktickRun = 0
-        var currentRun = 0
-        for character in body {
-            currentRun = character == "`" ? currentRun + 1 : 0
-            longestBacktickRun = max(longestBacktickRun, currentRun)
-        }
-        let fence = String(repeating: "`", count: max(3, longestBacktickRun + 1))
-        let alt = markdownAltText(config.metadata.filename ?? "Code rendered with Vitrine")
-        let destination = markdownImageDestination(imageName)
-        let trailingNewline = body.hasSuffix("\n") ? "" : "\n"
-        return """
-            ![\(alt)](\(destination))
+        MarkdownExport.document(for: config, imageSource: imageName)
+    }
 
-            \(fence)\(fenceLanguage)
-            \(body)\(trailingNewline)\(fence)
+    /// Builds a small, self-contained HTML sidecar with every user-controlled string
+    /// escaped for its context. This makes the sidecar safe to paste into docs even
+    /// when the source filename, output name, or code contains HTML markup.
+    /// Internal (not private) so the exact escaping contract is unit-testable.
+    static func htmlSidecarContents(for config: SnapshotConfig, imageName: String) -> String {
+        let body = htmlText(config.sidecarText)
+        let title = htmlText(config.metadata.title ?? config.metadata.filename ?? "Vitrine render")
+        let alt = htmlAttribute(config.metadata.filename ?? "Code rendered with Vitrine")
+        let imageSource = htmlAttribute(imageName)
+        let language = config.language == .terminal ? "text" : config.language.rawValue
+        let codeClass = htmlAttribute("language-\(language)")
+        return """
+            <!doctype html>
+            <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <title>\(title)</title>
+            </head>
+            <body>
+              <figure>
+                <img src="\(imageSource)" alt="\(alt)">
+                <pre><code class="\(codeClass)">\(body)</code></pre>
+              </figure>
+            </body>
+            </html>
             """ + "\n"
     }
 
-    /// Escapes Markdown image alt text so a source filename containing `]`, `[`,
-    /// backslashes, or newlines cannot break the generated image syntax.
-    private static func markdownAltText(_ text: String) -> String {
+    /// Escapes text-node content for HTML sidecars.
+    private static func htmlText(_ text: String) -> String {
         var escaped = ""
         escaped.reserveCapacity(text.count)
         for character in text {
             switch character {
-            case "\\":
-                escaped += "\\\\"
-            case "[", "]":
-                escaped += "\\\(character)"
-            case "\n", "\r":
-                escaped += " "
+            case "&":
+                escaped += "&amp;"
+            case "<":
+                escaped += "&lt;"
+            case ">":
+                escaped += "&gt;"
             default:
                 escaped.append(character)
             }
@@ -363,21 +1128,30 @@ enum CLIRenderer {
         return escaped
     }
 
-    /// Keeps plain filenames readable, but switches to an angle-bracket link
-    /// destination when the output name carries Markdown-significant characters
-    /// such as spaces, parentheses, or `>`.
-    private static func markdownImageDestination(_ imageName: String) -> String {
-        let plainSafeCharacters = CharacterSet.alphanumerics.union(
-            CharacterSet(charactersIn: "-._~/"))
-        if imageName.unicodeScalars.allSatisfy({ plainSafeCharacters.contains($0) }) {
-            return imageName
+    /// Escapes attribute values for HTML sidecars, also flattening line breaks so a
+    /// user-controlled filename cannot create surprising multi-line attributes.
+    private static func htmlAttribute(_ text: String) -> String {
+        var escaped = ""
+        escaped.reserveCapacity(text.count)
+        for character in text {
+            switch character {
+            case "&":
+                escaped += "&amp;"
+            case "\"":
+                escaped += "&quot;"
+            case "'":
+                escaped += "&#39;"
+            case "<":
+                escaped += "&lt;"
+            case ">":
+                escaped += "&gt;"
+            case "\n", "\r":
+                escaped += " "
+            default:
+                escaped.append(character)
+            }
         }
-        let escaped = imageName.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "<", with: "\\<")
-            .replacingOccurrences(of: ">", with: "\\>")
-            .replacingOccurrences(of: "\n", with: "%0A")
-            .replacingOccurrences(of: "\r", with: "%0D")
-        return "<\(escaped)>"
+        return escaped
     }
 
     /// Writes `data` to `url`, mapping any I/O failure to `CLIError.writeFailed`.

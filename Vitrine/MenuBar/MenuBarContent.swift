@@ -22,6 +22,7 @@ struct MenuBarContent: View {
         VStack(alignment: .leading, spacing: 13) {
             header
             captureCTA
+            presetCaptureMenu
             lastCaptureStatus
             recentsSection
             themeSection
@@ -33,6 +34,44 @@ struct MenuBarContent: View {
         // brand asset in this repo, so force the AppKit system token.
         .tint(VitrineTokens.Accent.system)
         .accessibilityContainerIdentifier("menubar-panel")
+    }
+
+    /// A one-off destination choice for the clipboard. This does not replace the
+    /// user's default output preset; it only frames this render, so experimenting
+    /// from the menu bar cannot silently change future captures.
+    private var presetCaptureMenu: some View {
+        Menu {
+            ForEach(ExportPreset.all) { preset in
+                Button {
+                    QuickCapture.perform(settings: settings, destinationPreset: preset)
+                    dismiss()
+                } label: {
+                    Text(verbatim: preset.displayName)
+                }
+                .accessibilityIdentifier("menu-capture-preset-\(preset.id)")
+            }
+        } label: {
+            HStack(spacing: VitrineTokens.Spacing.xs) {
+                Image(systemName: "rectangle.3.group")
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+                Text("Render Clipboard As…")
+                    .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(VitrineTokens.Text.secondary)
+            .padding(.vertical, 5)
+            .padding(.horizontal, 6)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .accessibilityHint("Choose a destination size without changing the default preset")
+        .accessibilityIdentifier("menu-capture-preset-picker")
     }
 
     // MARK: - Header
@@ -151,7 +190,8 @@ struct MenuBarContent: View {
                             reopen(capture)
                             dismiss()
                         },
-                        copy: { copyAgain(capture) })
+                        copyImage: { copyAgain(capture) },
+                        copySource: { copySource(capture) })
                 }
             }
         }
@@ -161,7 +201,21 @@ struct MenuBarContent: View {
 
     private var themeSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            TokenGroupLabel(title: Text("Theme"))
+            HStack(alignment: .firstTextBaseline) {
+                TokenGroupLabel(title: Text("Theme"))
+                Spacer(minLength: VitrineTokens.Spacing.xs)
+                Button {
+                    settings.applySurpriseStyle()
+                } label: {
+                    Label("Surprise Me", systemImage: "dice")
+                        .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
+                        .foregroundStyle(VitrineTokens.Accent.system)
+                }
+                .buttonStyle(.plain)
+                .help("Apply the next curated style without changing your code")
+                .accessibilityHint("Apply the next curated style without changing your code")
+                .accessibilityIdentifier("menu-surprise-style-button")
+            }
             ChipScroll(topPadding: 2, bottomPadding: 4) {
                 ForEach(ThemeChipColors.orderedBuiltIns) { theme in
                     themeChip(for: theme)
@@ -275,25 +329,25 @@ struct MenuBarContent: View {
     /// even if the editor is already open (CS-053: a plain `show()` no longer clobbers
     /// an open window's per-window document).
     private func reopen(_ capture: Capture) {
-        var document = settings.config
-        document.code = capture.code
-        document.language = capture.language
-        document.theme = capture.theme
-        EditorWindowController.shared.loadIntoPrimary(document)
+        EditorWindowController.shared.loadIntoPrimary(capture.applying(to: settings.config))
     }
 
     /// Re-renders a recent capture with the user's current output settings and
     /// copies the image — the row's hover action, so a past capture is one
     /// click from the clipboard again.
     private func copyAgain(_ capture: Capture) {
-        var config = settings.config
-        config.code = capture.code
-        config.language = capture.language
-        config.theme = capture.theme
+        // `exportConfig`, not `config`: every export surface renders through it so
+        // the PRO Brand Kit watermark is applied at the export seam (CS-092).
+        let config = capture.applying(to: settings.exportConfig)
         ExportManager.copyToPasteboard(
             config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
+    }
+
+    private func copySource(_ capture: Capture) {
+        ExportFeedback.presentSourceCopy(
+            ExportManager.copySourceToPasteboard(capture.code))
     }
 }
 
@@ -330,12 +384,13 @@ private struct KbdChip: View {
 }
 
 /// One recent capture as a thumbnail row (`.rrow`): a stylized mini card on
-/// the brand gradient, the capture's first line and metadata, and a copy
-/// button revealed on hover. Clicking the row reopens the capture.
+/// the brand gradient, the capture's first line and metadata, and compact image/source
+/// copy actions. Clicking the row reopens the capture.
 private struct RecentCaptureRow: View {
     let capture: Capture
     let reopen: () -> Void
-    let copy: () -> Void
+    let copyImage: () -> Void
+    let copySource: () -> Void
 
     @State private var isHovered = false
 
@@ -343,33 +398,47 @@ private struct RecentCaptureRow: View {
         ZStack(alignment: .trailing) {
             Button(action: reopen) {
                 rowContent
-                    .padding(.trailing, isHovered ? 34 : 0)
+                    .padding(.trailing, 64)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(verbatim: "\(capture.menuTitle), \(metadataLine)"))
 
-            if isHovered {
-                Button(action: copy) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(VitrineTokens.Text.secondary)
-                        .frame(width: 26, height: 26)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(
-                                    VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
-                        )
-                        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .help("Copy image")
-                .accessibilityLabel("Copy image")
-                .padding(.trailing, 6)
+            HStack(spacing: 4) {
+                copyButton(
+                    title: "Copy Image", systemImage: "doc.on.doc",
+                    identifier: "menu-recent-copy-image", action: copyImage)
+                copyButton(
+                    title: "Copy Source", systemImage: "doc.text",
+                    identifier: "menu-recent-copy-source", action: copySource)
             }
+            .padding(.trailing, 6)
         }
         .onHover { isHovered = $0 }
         .animation(.easeInOut(duration: 0.12), value: isHovered)
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("menu-recent-row")
+    }
+
+    private func copyButton(
+        title: LocalizedStringKey, systemImage: String, identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .frame(width: 26, height: 26)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(
+                            VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .accessibilityLabel(title)
+        .accessibilityIdentifier(identifier)
     }
 
     private var rowContent: some View {

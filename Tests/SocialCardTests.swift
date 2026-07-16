@@ -608,10 +608,12 @@ struct SocialCardRenderedContentTests {
 @Suite("Social card clipboard flow (CS-041)")
 struct SocialCardClipboardTests {
     @Test func copyPlacesAPNGOnThePasteboard() throws {
-        // The clipboard flow writes a PNG representation a paste can consume.
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        let copied = SocialCardRenderer.copyToPasteboard(SocialCardFixtures.defaultCard, scale: 1)
+        // The clipboard flow writes a PNG representation a paste can consume. A
+        // scratch pasteboard: parallel suites must never race on the real clipboard.
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("VitrineSocialCopy-\(UUID().uuidString)"))
+        let copied = SocialCardRenderer.copyToPasteboard(
+            SocialCardFixtures.defaultCard, scale: 1, pasteboard: pasteboard)
         #expect(copied)
         let data = try #require(pasteboard.data(forType: .png))
         #expect(data.prefix(8) == Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))

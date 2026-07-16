@@ -95,7 +95,8 @@ enum SocialCardRenderer {
         _ model: SocialCardModel,
         size: CGSize = SocialCardModel.defaultSize,
         scale: CGFloat = 2,
-        profile: ColorProfile = .sRGB
+        profile: ColorProfile = .sRGB,
+        pasteboard: NSPasteboard = .general
     ) -> Bool {
         guard let cgImage = renderCGImage(model, size: size, scale: scale, profile: profile),
             let png = ExportManager.pngData(from: cgImage)
@@ -103,14 +104,13 @@ enum SocialCardRenderer {
             Log.export.error("Social card copy failed: render or PNG encode returned nil")
             return false
         }
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         let copied = pasteboard.setData(png, forType: .png)
         Log.export.info("Copied social card to pasteboard (success \(copied, privacy: .public))")
         return copied
     }
 
-    /// Presents an `NSSavePanel` and writes the card as PNG, PDF, or HEIC, returning the
+    /// Presents an `NSSavePanel` and writes the card as PNG, PDF, HEIC, or AVIF, returning the
     /// outcome so a caller can give precise feedback (CS-038): `.saved` on a write,
     /// `.cancelled` on dismiss, `.failed` on a render/encode/write error.
     ///

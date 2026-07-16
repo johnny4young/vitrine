@@ -14,6 +14,49 @@ can never drift.
 
 ### Added
 
+- **Carousel export (PRO).** Split a long snippet into numbered 4:5 slides
+  (`carousel-01.png` …) for a LinkedIn/Instagram carousel: pick the lines per slide, the
+  split balances so the last slide never trails with a line or two, and every slide
+  renders through the standard pipeline with your style and brand mark (the font floors
+  at 22 pt so slides stay legible at feed size).
+- **Post to X / LinkedIn / Bluesky.** The share sheet gains compose targets: the image
+  is staged on the clipboard and the network's compose page opens with a paste hint —
+  one paste from posting, with nothing sent anywhere by Vitrine.
+- **Measure tool.** A dimension callout for design handoffs: drag between two points
+  and the mark draws a technical-style measurement — shaft, perpendicular end caps, and
+  the span's length in pixels on a pill at the midpoint.
+- **Pinned snapshot.** Pin the current render in a floating window that stays on top of
+  every app (and follows you across Spaces), so the error or design you're working
+  against stays visible while you code. One pin at a time; close it like any window.
+- **Copy text from image.** A beautified screenshot can be turned back into copyable
+  text: one click runs on-device OCR (Vision, nothing leaves the Mac) and puts the
+  recognized text on the clipboard — the reverse of the copyable-text sidecar.
+- **Suggested titles.** A wand next to the header-title field fills it from what the
+  code declares — the filename chip, else the first declared identifier — shown only
+  while it would change something.
+- **QR link chip (PRO).** Give the Brand Kit a link (profile, repo, article) and the
+  mark gains a scannable QR chip — generated fully on-device, integer-scaled so the
+  modules stay crisp at any export scale.
+- **Signature footer bar (PRO).** A new watermark placement: a full-width attribution
+  strip along the bottom edge — logo and handle on the left, the QR chip on the
+  right — instead of a floating corner badge.
+- **Spotlight.** A new annotation tool dims everything except the regions you draw —
+  the "look here" effect for walkthroughs. Multiple spotlights punch multiple holes in
+  one scrim; arrows and callouts stay at full brightness above it.
+- **Safe-area guides.** An editor-only overlay (Inspector ▸ Output ▸ Guides) draws the
+  margin platforms may crop or cover over a fixed-size destination, plus a live
+  "lines × widest column" chip — so you know the snippet fits before you post. Never
+  part of the export.
+- **Curved arrows.** A second arrow style (⌘0): a quadratic swoop with the chevron head
+  kept tangent to the curve — the hand-drawn callout look — sharing the straight arrow's
+  color and weight controls.
+- **Emoji stickers.** A new annotation tool (⌘9) places reaction stickers — 👀 🔥 ✅ 🚀 and
+  friends — from a curated picker; the size slider scales them, and they export exactly as
+  previewed like every other mark.
+- **Smart trim.** Format Code (⌥⌘F) and format-on-paste now also even out the whitespace
+  around a snippet: stray blank lines above/below and per-line trailing spaces are dropped,
+  so a paste lands balanced on the canvas. Markdown hard breaks (two trailing spaces) are
+  preserved.
 - **asciinema import.** Drop or open an asciinema recording (`.cast`, v2/v3) and Vitrine
   replays its output events into the terminal renderer — a recorded session becomes a styled
   terminal image with no conversion step.

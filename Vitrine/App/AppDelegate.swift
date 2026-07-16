@@ -134,6 +134,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
     /// none of these run on a normal user launch. `--demo` preloads sample code;
+    /// `--demo-html-format` preloads compact markup for the Format Code smoke test;
+    /// `--demo-sql-format` does the same for a compact query;
+    /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
     /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
     /// `--show-help` / `--show-welcome` force those windows open past their gates;
     /// `--seen-old-version` seeds an older last-seen version and then presents What's
@@ -179,6 +182,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
                 """
+        }
+        if arguments.contains("--demo-html-format") {
+            var demo = AppSettings.shared.config
+            demo.code =
+                #"<!doctype html><main class="card"><h1>Vitrine</h1><p>Local by design.</p><img src="preview.png"></main>"#
+            demo.language = .html
+            AppSettings.shared.config = demo
+        }
+        if arguments.contains("--demo-sql-format") {
+            var demo = AppSettings.shared.config
+            demo.code =
+                "SELECT u.id,u.email,COUNT(o.id) AS orders FROM users u LEFT JOIN orders o ON o.user_id=u.id WHERE u.active=TRUE GROUP BY u.id,u.email ORDER BY orders DESC;"
+            demo.language = .sql
+            AppSettings.shared.config = demo
+        }
+        if arguments.contains("--demo-recent") {
+            RecentsStore.shared.add(
+                Capture(
+                    code: """
+                        struct DestinationCard: View {
+                            let title: String
+
+                            var body: some View {
+                                Text(title)
+                                    .font(.title.bold())
+                            }
+                        }
+                        """,
+                    languageID: Language.swift.rawValue,
+                    themeID: Theme.dracula.id))
+        }
+        if arguments.contains("--demo-recents") {
+            let captures = [
+                Capture(
+                    code: "func greet(name string) string { return \"Hello, \" + name }",
+                    languageID: Language.go.rawValue,
+                    themeID: Theme.github.id),
+                Capture(
+                    code:
+                        "def fibonacci(n):\n    return n if n < 2 else fibonacci(n - 1) + fibonacci(n - 2)",
+                    languageID: Language.python.rawValue,
+                    themeID: Theme.oneDark.id),
+                Capture(
+                    code: "fn main() { println!(\"Hello from Rust\"); }",
+                    languageID: Language.rust.rawValue,
+                    themeID: Theme.dracula.id),
+            ]
+            for capture in captures { RecentsStore.shared.add(capture) }
+            RecentsStore.shared.updatePinned(id: captures[0].id, isPinned: true)
         }
         // A richer demo that exercises the window title, diff bands, and line numbers
         // at once — for screenshots / visual QA of the editor's newer styling.

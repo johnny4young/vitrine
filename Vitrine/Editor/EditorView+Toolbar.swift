@@ -52,6 +52,7 @@ extension EditorView {
                 activeTool: $activeTool,
                 color: annotationStyleColor,
                 thickness: annotationStyleThickness,
+                stickerGlyph: $newStickerGlyph,
                 showsColor: annotationStyleUsesColor,
                 showsThickness: annotationStyleUsesThickness,
                 canUndo: !annotationUndo.isEmpty,
@@ -74,7 +75,9 @@ extension EditorView {
             iconButton(
                 .shareImage, "share-button", help: "Share the rendered image",
                 systemImage: "square.and.arrow.up", action: share)
+            pinSnapshotButton
             multiSizeExportButton
+            carouselExportButton
             savePresetButton
             makeDefaultButton
 
@@ -150,8 +153,9 @@ extension EditorView {
     }
 
     /// The explicit alternative copy targets behind the rich-text icon
-    /// (CS-054): "Copy Highlighted Code" (syntax colors and font as RTF/HTML)
-    /// and "Copy as Data URI" (`data:image/png;base64,…`). A menu so the
+    /// (CS-054): "Copy Highlighted Code" (syntax colors and font as RTF/HTML),
+    /// "Copy as Markdown" (self-contained image plus source), and "Copy as Data
+    /// URI" (`data:image/png;base64,…`). A menu so the
     /// one-click CTA stays the primary action while the developer-grade
     /// formats stay clearly labeled, one click away.
     var copyOptionsMenu: some View {
@@ -165,6 +169,15 @@ extension EditorView {
                         systemImage: VitrineCommand.copyHighlightedCode.systemImageName)
                 }
                 .accessibilityIdentifier("copy-highlighted-code-button")
+
+                Button {
+                    copyMarkdown()
+                } label: {
+                    Label(
+                        VitrineCommand.copyMarkdown.title,
+                        systemImage: VitrineCommand.copyMarkdown.systemImageName)
+                }
+                .accessibilityIdentifier("copy-markdown-button")
             }
 
             Button {
@@ -189,7 +202,7 @@ extension EditorView {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Copy the highlighted code as rich text, or the image as a data URI")
+        .help("Copy the code or image in alternate formats")
         .accessibilityLabel("More copy options")
         .accessibilityIdentifier("copy-options-menu")
         .disabled(!settings.config.hasRenderableContent)
@@ -222,11 +235,47 @@ extension EditorView {
         }
     }
 
+    /// The carousel export entry (feature #15): split a long snippet into numbered
+    /// 4:5 slides for a LinkedIn/Instagram carousel. Same PRO gate as multi-size —
+    /// it is the same batch-export family.
+    var carouselExportButton: some View {
+        GlassIconButton(systemImage: "rectangle.stack") {
+            carouselSheet = entitlements.isUnlocked(.carouselExport) ? .export : .paywall
+        }
+        .overlay(alignment: .topTrailing) {
+            if !entitlements.isUnlocked(.carouselExport) { ProBadge().accessibilityHidden(true) }
+        }
+        .help("Split the snippet into numbered carousel slides (4:5)")
+        .disabled(
+            !settings.config.hasRenderableContent || settings.config.usesImageContent
+        )
+        .accessibilityLabel(Text("Export carousel"))
+        .accessibilityIdentifier("export-carousel-button")
+        .sheet(item: $carouselSheet) { sheet in
+            switch sheet {
+            case .export:
+                CarouselExportView(
+                    baseConfig: settings.exportConfig,
+                    profile: settings.export.colorProfile)
+            case .paywall:
+                PaywallSheet(feature: .carouselExport)
+            }
+        }
+    }
+
     /// The star: applies a saved style preset or saves the current style as a
     /// new one. Carries the legacy picker identifier so the UI tests keep
     /// addressing one stable element for style presets in the editor.
     var savePresetButton: some View {
         Menu {
+            Button {
+                settings.applySurpriseStyle()
+            } label: {
+                Label("Surprise Me", systemImage: "dice")
+            }
+            .accessibilityHint("Apply the next curated style without changing your code")
+            .accessibilityIdentifier("editor-surprise-style-button")
+            Divider()
             Section("Built-in") {
                 ForEach(StylePreset.builtIns) { preset in
                     Button(action: { settings.applyStylePreset(preset) }) {
@@ -303,6 +352,24 @@ extension EditorView {
         }
     }
 
+    /// Pin the current render in a floating always-on-top reference window
+    /// (feature #33), so an error/design stays visible while you work against it.
+    var pinSnapshotButton: some View {
+        GlassIconButton(systemImage: "pin") {
+            guard
+                let image = ExportManager.renderNSImage(
+                    settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+                    fixedSize: settings.effectiveFixedSize,
+                    profile: settings.export.colorProfile)
+            else { return }
+            PinnedSnapshotController.shared.pin(image)
+        }
+        .help("Pin the snapshot in a floating window that stays on top")
+        .disabled(!settings.config.hasRenderableContent)
+        .accessibilityLabel("Pin snapshot")
+        .accessibilityIdentifier("pin-snapshot-button")
+    }
+
     // MARK: - Export/share actions
 
     func share() {
@@ -319,6 +386,14 @@ extension EditorView {
     /// URI string (CS-054), honoring the active preset's framing.
     func copyDataURI() {
         RichPasteboard.copyDataURI(
+            for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
+    }
+
+    /// Copies a self-contained Markdown image embed followed by the visible,
+    /// redaction-safe source in a language-tagged code fence.
+    func copyMarkdown() {
+        RichPasteboard.copyMarkdown(
             for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
     }

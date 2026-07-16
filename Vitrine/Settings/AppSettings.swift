@@ -334,6 +334,15 @@ final class AppSettings {
         Log.settings.info("Applied a style preset")
     }
 
+    /// Applies the next curated built-in look without altering document content.
+    /// Returning the chosen preset keeps feedback and automation deterministic.
+    @discardableResult
+    func applySurpriseStyle() -> StylePreset {
+        let preset = StylePreset.surprise(after: config)
+        applyStylePreset(preset)
+        return preset
+    }
+
     /// The export scale a render should use (CS-020).
     ///
     /// Selecting a preset *seeds* `exportScale` with the preset's recommended

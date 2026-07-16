@@ -156,6 +156,166 @@ struct AnnotationTests {
         #expect(try png(plain) != png(texted), "a text callout must change the exported image")
     }
 
+    // MARK: - Spotlight (feature #7)
+
+    @Test func spotlightDimsTheRenderedPixels() throws {
+        var plain = SnapshotConfig()
+        plain.code = "let a = 1\nlet b = 2\nlet c = 3"
+        var spotted = plain
+        spotted.annotations = [
+            Annotation(
+                kind: .spotlight, start: CGPoint(x: 0.1, y: 0.3), end: CGPoint(x: 0.9, y: 0.5))
+        ]
+        #expect(try png(plain) != png(spotted), "a spotlight must dim the exported image")
+    }
+
+    /// The spotlight is drag-placed, maps tool→kind, and exposes neither color (the
+    /// scrim is fixed) nor thickness.
+    @Test func spotlightToolContract() {
+        #expect(!Annotation.Kind.spotlight.isPointPlaced)
+        #expect(AnnotationTool.spotlight.kind == .spotlight)
+        #expect(!AnnotationTool.spotlight.usesThickness)
+        #expect(!AnnotationTool.spotlight.usesColor)
+    }
+
+    /// A spotlight survives the persistence round-trip.
+    @Test func spotlightRoundTripsThroughPersistence() {
+        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        var config = SnapshotConfig()
+        config.annotations = [
+            Annotation(
+                kind: .spotlight, start: CGPoint(x: 0.1, y: 0.2), end: CGPoint(x: 0.6, y: 0.5))
+        ]
+        SettingsCodec.persistStyle(config, to: defaults)
+        let restored = SettingsCodec.readConfig(from: defaults).annotations
+        #expect(restored.first?.kind == .spotlight)
+        #expect(restored.first?.end == CGPoint(x: 0.6, y: 0.5))
+    }
+
+    /// Blur (redaction) and spotlight composite as separate layers with a documented
+    /// z-order (blur under the scrim). They must coexist: a blur box inside a
+    /// spotlight's visible hole must still visibly redact — if a refactor ever drew
+    /// blur above/instead of the scrim (or skipped it), these inequalities break.
+    @Test func spotlightAndBlurComposeTogether() throws {
+        var base = SnapshotConfig()
+        base.code = "let secret = \"AKIA1234SECRET\"\nlet ok = 1\nlet fin = 2"
+
+        let spotlightOnly: SnapshotConfig = {
+            var config = base
+            config.annotations = [
+                Annotation(
+                    kind: .spotlight, start: CGPoint(x: 0.05, y: 0.2), end: CGPoint(x: 0.95, y: 0.6)
+                )
+            ]
+            return config
+        }()
+        let both: SnapshotConfig = {
+            var config = spotlightOnly
+            // The blur box sits INSIDE the spotlight's bright hole.
+            config.annotations.append(
+                Annotation(
+                    kind: .blur, start: CGPoint(x: 0.1, y: 0.25), end: CGPoint(x: 0.6, y: 0.4)))
+            return config
+        }()
+
+        #expect(
+            try png(spotlightOnly) != png(both),
+            "a blur box inside the spotlight hole must still visibly redact")
+        #expect(try png(base) != png(both))
+    }
+
+    // MARK: - Curved arrow (feature #11)
+
+    @Test func curvedArrowChangesTheRenderedPixelsAndDiffersFromStraight() throws {
+        var plain = SnapshotConfig()
+        plain.code = "let x = 1"
+        var straight = plain
+        straight.annotations = [
+            Annotation(kind: .arrow, start: CGPoint(x: 0.15, y: 0.5), end: CGPoint(x: 0.85, y: 0.5))
+        ]
+        var curved = plain
+        curved.annotations = [
+            Annotation(
+                kind: .curvedArrow, start: CGPoint(x: 0.15, y: 0.5), end: CGPoint(x: 0.85, y: 0.5))
+        ]
+        #expect(try png(plain) != png(curved), "a curved arrow must change the exported image")
+        #expect(
+            try png(straight) != png(curved),
+            "a curved arrow must render differently from a straight one over the same span")
+    }
+
+    /// The curved arrow is drag-placed (two free points), maps tool→kind, and exposes
+    /// both the color swatch and the size slider like the straight arrow.
+    @Test func curvedArrowToolContract() {
+        #expect(!Annotation.Kind.curvedArrow.isPointPlaced)
+        #expect(AnnotationTool.curvedArrow.kind == .curvedArrow)
+        #expect(AnnotationTool.curvedArrow.usesThickness)
+        #expect(AnnotationTool.curvedArrow.usesColor)
+    }
+
+    /// A curved arrow survives the persistence round-trip.
+    @Test func curvedArrowRoundTripsThroughPersistence() {
+        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        var config = SnapshotConfig()
+        config.annotations = [
+            Annotation(
+                kind: .curvedArrow, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.8, y: 0.7),
+                thickness: 6)
+        ]
+        SettingsCodec.persistStyle(config, to: defaults)
+        let restored = SettingsCodec.readConfig(from: defaults).annotations
+        #expect(restored.first?.kind == .curvedArrow)
+        #expect(restored.first?.end == CGPoint(x: 0.8, y: 0.7))
+    }
+
+    // MARK: - Sticker layer (feature #13)
+
+    @Test func stickerChangesTheRenderedPixels() throws {
+        var plain = SnapshotConfig()
+        plain.code = "let x = 1"
+        var stickered = plain
+        stickered.annotations = [
+            Annotation(
+                kind: .sticker, start: CGPoint(x: 0.5, y: 0.5), end: CGPoint(x: 0.5, y: 0.5),
+                text: "🔥", thickness: 12)
+        ]
+        #expect(try png(plain) != png(stickered), "a sticker must change the exported image")
+    }
+
+    /// A sticker is click-placed (like text/counter), the tool maps to its kind, it
+    /// exposes the size slider but not the color swatch (an emoji has its own colors),
+    /// and the glyph rides in `text` through `make`.
+    @Test func stickerToolContractAndPlacement() {
+        #expect(Annotation.Kind.sticker.isPointPlaced)
+        #expect(AnnotationTool.sticker.kind == .sticker)
+        #expect(AnnotationTool.sticker.usesThickness)
+        #expect(!AnnotationTool.sticker.usesColor)
+        #expect(!AnnotationTool.stickerChoices.isEmpty)
+
+        let placed = Annotation.make(
+            kind: .sticker, from: CGPoint(x: 0.4, y: 0.6), to: CGPoint(x: 0.4, y: 0.6),
+            color: Annotation.defaultColor, thickness: 10, text: "👀")
+        #expect(placed.text == "👀")
+        #expect(placed.kind == .sticker)
+    }
+
+    /// A sticker survives the persistence round-trip (kind + glyph + anchor).
+    @Test func stickerRoundTripsThroughPersistence() {
+        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        var config = SnapshotConfig()
+        config.annotations = [
+            Annotation(
+                kind: .sticker, start: CGPoint(x: 0.25, y: 0.75), end: CGPoint(x: 0.25, y: 0.75),
+                text: "🚀", thickness: 14)
+        ]
+        SettingsCodec.persistStyle(config, to: defaults)
+        let restored = SettingsCodec.readConfig(from: defaults).annotations
+        #expect(restored.count == 1)
+        #expect(restored.first?.kind == .sticker)
+        #expect(restored.first?.text == "🚀")
+        #expect(restored.first?.start == CGPoint(x: 0.25, y: 0.75))
+    }
+
     @Test func redactingALineChangesTheRenderedPixels() throws {
         // Both render row-by-row (line numbers on), so the only difference is the
         // redacted row mask — isolating redaction from the row-layout switch.

@@ -137,11 +137,103 @@ the app's export for the same options — a unit test asserts exactly that.
 
 **Defaults** match the app: a bare `vitrine render input.swift --out image.png` uses
 `SnapshotConfig()`'s defaults (One Dark, JetBrains Mono, aurora background) at the
-app's default scale. `--theme`, `--language`, `--preset`, `--scale`, `--format`
-(`png`/`pdf`/`heic`), `--profile` (`srgb`/`p3`), and `--transparent` override individual
-choices; a preset reframes presentation/output (size, padding, background) and never
-touches the source, exactly as in the GUI (CS-020). Unknown ids and out-of-range
-values are rejected up front with a clear message so an automation pipeline fails loud.
+app's default scale. `--quiet` suppresses the success summary without hiding errors,
+and `--json` swaps human success text for structured `render`/`batch` summaries; the
+two flags are mutually exclusive so scripts cannot request JSON and suppress it.
+`--theme`, `--language`, `--preset`, `--scale`, `--format`
+(`png`/`pdf`/`heic`/`avif`), `--profile` (`srgb`/`p3`), `--font <family>`,
+`--font-ligatures`, `--no-font-ligatures`, `--transparent`, `--background <id>`,
+`--background-color <hex>`, `--background-image <path>`, `--background-fit <fill|fit>`,
+`--background-blur <0...40>`, `--background-dimming <0...1>`, style controls
+(`--font-size`, `--padding`, `--corner-radius`, `--shadow-radius`, `--wrap-columns`,
+`--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
+`--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
+`--diff-bands`, `--no-diff-bands`), and the header controls (`--window-title`,
+`--filename`, `--title`, `--caption`, `--language-badge`) override individual choices.
+Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation fails
+loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
+same deterministic `SecretScanner` as the editor and merges detected rows with any
+manual `--redact-lines` ranges. Redacted rows are replaced with `[redacted]` before
+copyable sidecars are written. For single-file renders, known output extensions
+(`.png`, `.pdf`, `.heic`, `.avif`) infer the export format when `--format` is omitted; if an
+explicit `--format` is present, the extension must match so automation never receives
+mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
+extension-based language inference and default metadata while still reading the source
+only from standard input.
+`--git-diff <revision-range>` is a bounded local source for `render` and `multi-size`.
+`GitDiffInputLoader` executes `/usr/bin/git` directly with a fixed argument vector,
+disables pagers, external diff drivers, textconv, and color, and puts repeatable
+`--git-path` values after Git's `--` separator. Standard output is drained while Git
+runs, avoiding pipe backpressure and terminating the process on the first byte above
+the shared 5 MB source cap. Explicit source/destination prefixes and context prevent
+global Git presentation settings from changing captures. Empty output fails before
+rendering. Literal pathspecs prevent scope expansion, terminal prompts are disabled,
+and `GIT_NO_LAZY_FETCH=1` prevents partial clones from reaching a promisor remote. The
+loaded source is tagged `.diff`, and diff bands default on unless the caller explicitly
+disables them.
+Local CLI background images are imported once into an invocation-scoped
+`BackgroundImageStore`; `CLIRenderer` threads that isolated store independently from
+the foreground-image store through `ExportManager`, then removes it after a single
+render or the complete batch. Automation inputs therefore never enter Application
+Support, while every output still uses the shared `SnapshotCanvas` image-background
+path.
+Fit, blur, and dimming map directly to `ImageBackground`; their parser ranges are the
+model's own bounds, and they are rejected without `--background-image` so inert style
+options cannot silently pass in automation.
+`--no-overwrite` / `--no-clobber` is an opt-in artifact safety guard: single renders
+fail before replacing an image or sidecar, while batch jobs skip existing targets and
+can pair that with skipped reports or `--fail-on-skipped`. A preset reframes
+presentation/output (size, padding, background) and never touches the source, exactly
+as in the GUI (CS-020). Unknown ids and out-of-range values are rejected up front with
+a clear message so an automation pipeline fails loud.
+
+**Copyable sidecars.** `--text-sidecar`, `--markdown-sidecar`, `--html-sidecar`, and
+the bundle shortcut `--sidecars <text|markdown|html|all>` write accessible source next
+to the rendered image when `--out` is present. Terminal captures use the resolved
+visible text (ANSI escapes and OSC links stripped) so the sidecar matches the pixels.
+Markdown and HTML sidecars escape user-controlled filenames, image names, and source in
+their respective syntax contexts before producing README or web embed blocks. If
+`--redact-lines` or `--redact-secrets` is present, every sidecar is built from
+`SnapshotConfig.sidecarText`, so the neutral placeholder is the only copyable
+representation of those rows.
+
+**Batch recursion.** `vitrine batch <folder> --out <folder>` remains top-level by
+default for backward compatibility. `--recursive` opts into a full nested walk and
+mirrors each input file's relative path under the output folder, so
+`docs/examples/A.swift` becomes `out/docs/examples/A.png` (plus sidecars, when
+requested) instead of colliding with another `A.swift` elsewhere in the tree.
+`--dry-run` runs the discovery and text-decoding pass without creating the output folder
+or writing images/sidecars, so CI can preflight a batch before spending render time.
+`--include-ext <list>` narrows a batch to known source extensions, while
+`--exclude-ext <list>` removes generated or temporary extensions before loading, so
+filtered files are neither rendered nor reported as skipped. `--fail-on-empty` turns an
+empty discovery/preflight into a failing exit, while `--fail-on-skipped` keeps successful
+renders but returns a failing exit when any unreadable or non-text file was skipped,
+which lets CI/docs jobs catch accidental inputs without losing the valid output
+artifacts. `--skipped-report <json>` writes a local JSON array of skipped
+`{path, reason}` entries before that strict exit, using paths relative to the input
+folder so the artifact stays machine-independent; dry runs only write this artifact when
+it is explicitly requested. `--manifest <json>` is the positive companion artifact: it
+writes the successfully rendered outputs (or `planned` outputs during `--dry-run`) with
+relative input/output paths, requested sidecar paths, language ids, formats, and
+rendered dimensions when available. Same-stem inputs that would collide (`Widget.swift`
+and `Widget.ts` → `Widget.png`) are disambiguated only for that group by preserving the
+input extension, so non-colliding legacy output names stay unchanged.
+
+**Catalog discovery.** `vitrine list <themes|languages|presets|fonts|backgrounds|formats|profiles>
+[--json]` prints the same local catalog ids the parser validates for `--theme`,
+`--language`, `--preset`, `--font`, `--background`, `--format`, and `--profile`;
+`vitrine list all --json` returns one keyed object with every catalog for setup scripts that want a single
+metadata call. It runs before AppKit initialization and before the PRO render gate
+because it reads only bundled metadata, so scripts can cheaply discover valid options
+without touching user files or rendering images.
+
+**Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
+prints the installed CLI version before AppKit initialization and before the PRO render
+gate. The helper prefers runtime bundle metadata, falls back to the enclosing app
+bundle when the CLI is launched from `Vitrine.app/Contents/MacOS`, and finally uses
+project-version constants guarded by tests against `project.yml` for development tool
+builds.
 
 **Local only.** Rendering needs no network, screen recording, or Accessibility — it is
 the same fully local pipeline the app uses. The tool is not a sandboxed `.app`, so it
@@ -348,6 +440,7 @@ Vitrine/
 │   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…" (CS-048)
 ├── CLI/                       # `vitrine render` core, shared with VitrineCLI (CS-033)
 │   ├── CLIArguments.swift     # dependency-free arg parser + CLIError/CLIUsage
+│   ├── CLICatalog.swift       # local theme/language/preset discovery for automation
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
 │   ├── CLIRenderer.swift      # load input → ExportManager (unchanged) → write file
 │   └── CLIFontRegistration.swift # register bundled fonts with Core Text at launch

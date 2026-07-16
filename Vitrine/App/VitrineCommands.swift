@@ -50,6 +50,7 @@ enum VitrineCommand: String, CaseIterable {
     // Editor copy-submenu options (CS-054 rich export): reached from the editor's
     // copy-options menu; no global key equivalent.
     case copyDataURI
+    case copyMarkdown
     case copyHighlightedCode
 
     /// The menu-item title. Trailing ellipsis marks a command that opens further
@@ -80,6 +81,7 @@ enum VitrineCommand: String, CaseIterable {
         case .makeDefault: String(localized: "Make This Window the Default")
         case .formatCode: String(localized: "Format Code")
         case .copyDataURI: String(localized: "Copy as Data URI")
+        case .copyMarkdown: String(localized: "Copy as Markdown")
         case .copyHighlightedCode: String(localized: "Copy Highlighted Code")
         }
     }
@@ -105,6 +107,7 @@ enum VitrineCommand: String, CaseIterable {
         case .makeDefault: "star"
         case .formatCode: "text.alignleft"
         case .copyDataURI: "curlybraces"
+        case .copyMarkdown: "text.badge.plus"
         case .copyHighlightedCode: "chevron.left.forwardslash.chevron.right"
         }
     }
@@ -125,8 +128,8 @@ enum VitrineCommand: String, CaseIterable {
         case .shareImage: nil  // Share opens a picker; no reserved shortcut
         case .formatCode: "f"  // ⌥⌘F — tidy the code (⌘F stays free for find)
         // Submenu/window/explicit-action commands with no reserved shortcut.
-        case .copyDataURI, .copyHighlightedCode, .whatsNew, .makeDefault, .checkForUpdates,
-            .newSocialCard, .newWebSnapshot:
+        case .copyDataURI, .copyMarkdown, .copyHighlightedCode, .whatsNew, .makeDefault,
+            .checkForUpdates, .newSocialCard, .newWebSnapshot:
             nil
         }
     }
@@ -141,8 +144,8 @@ enum VitrineCommand: String, CaseIterable {
         case .copyImage: [.command, .shift]
         case .formatCode: [.command, .option]
         case .openEditor, .newEditorWindow, .settings, .help, .saveImage: [.command]
-        case .about, .shareImage, .makeDefault, .copyDataURI, .copyHighlightedCode, .whatsNew,
-            .checkForUpdates, .newSocialCard, .newWebSnapshot:
+        case .about, .shareImage, .makeDefault, .copyDataURI, .copyMarkdown,
+            .copyHighlightedCode, .whatsNew, .checkForUpdates, .newSocialCard, .newWebSnapshot:
             []
         }
     }
@@ -173,6 +176,7 @@ enum VitrineCommand: String, CaseIterable {
         case .makeDefault: String(localized: "Make this window's style the default")
         case .formatCode: String(localized: "Format the code")
         case .copyDataURI: String(localized: "Copy image as a base64 data URI")
+        case .copyMarkdown: String(localized: "Copy image and source as Markdown")
         case .copyHighlightedCode: String(localized: "Copy syntax-highlighted code")
         }
     }

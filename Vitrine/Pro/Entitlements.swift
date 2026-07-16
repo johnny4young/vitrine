@@ -140,6 +140,10 @@ enum ProFeature: String, CaseIterable, Sendable {
     case brandKit
     /// One capture exported to many platform sizes in a single pass (CS-093).
     case multiSizeExport
+    /// A long snippet split into numbered 4:5 slides for a carousel post (feature #15).
+    /// Unlocks with the same tier as everything else; a distinct case so the paywall
+    /// describes the feature the user actually tapped.
+    case carouselExport
     /// The `vitrine` CLI, Shortcuts, and folder batch rendering (CS-094).
     case automation
     /// The richer frames for beautified images — browser windows (and future device
@@ -151,6 +155,7 @@ enum ProFeature: String, CaseIterable, Sendable {
         switch self {
         case .brandKit: String(localized: "Brand Kit")
         case .multiSizeExport: String(localized: "Multi-size export")
+        case .carouselExport: String(localized: "Carousel export")
         case .automation: String(localized: "Automation")
         case .advancedFrames: String(localized: "Image frames")
         }
@@ -163,6 +168,8 @@ enum ProFeature: String, CaseIterable, Sendable {
             String(localized: "Add your logo, handle, and accent color to every snapshot.")
         case .multiSizeExport:
             String(localized: "Export one capture to every platform size in a single pass.")
+        case .carouselExport:
+            String(localized: "Split a long snippet into numbered slides for a carousel post.")
         case .automation:
             String(
                 localized: "Unlock the vitrine command line, Shortcuts, and folder batch rendering."

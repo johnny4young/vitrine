@@ -34,4 +34,52 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
     ) {
         Self.active = nil
     }
+
+    /// Adds the Post-to compose targets (feature #25) ahead of the system services.
+    /// Each one stages the image on the clipboard and opens the network's web compose
+    /// page with a paste hint — the web intents can't attach an image, so this is the
+    /// closest honest flow: one paste away from posting, nothing sent by Vitrine.
+    func sharingServicePicker(
+        _ sharingServicePicker: NSSharingServicePicker, sharingServicesForItems items: [Any],
+        proposedSharingServices proposedServices: [NSSharingService]
+    ) -> [NSSharingService] {
+        guard let image = Self.shareableImage(in: items) else { return proposedServices }
+        let composeServices = SocialComposer.Network.allCases.compactMap { network in
+            makeComposeService(for: network, image: image)
+        }
+        return composeServices + proposedServices
+    }
+
+    /// The image the compose targets act on, or `nil` when the shared items carry
+    /// none — in which case the picker shows only the system services. Split out so
+    /// the decision is unit-testable without a live picker.
+    static func shareableImage(in items: [Any]) -> NSImage? {
+        items.first as? NSImage
+    }
+
+    /// One compose target as a custom `NSSharingService`: pasteboard-stage the PNG,
+    /// open the compose URL, confirm via the HUD.
+    private func makeComposeService(
+        for network: SocialComposer.Network, image: NSImage
+    ) -> NSSharingService? {
+        guard let url = SocialComposer.composeURL(for: network, text: "") else { return nil }
+        return NSSharingService(
+            title: network.title, image: NSImage(named: NSImage.shareTemplateName) ?? NSImage(),
+            alternateImage: nil
+        ) {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            // Only open the compose page when the image actually reached the
+            // pasteboard — with nothing to paste, opening the browser and claiming
+            // success would just mislead (PR review).
+            guard pasteboard.writeObjects([image]) else {
+                ExportFeedback.presentCopy(false)
+                return
+            }
+            NSWorkspace.shared.open(url)
+            CaptureHUDController.shared.present(
+                Notifier.confirmation(
+                    String(localized: "Image copied — paste it into your post")))
+        }
+    }
 }

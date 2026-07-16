@@ -4,7 +4,7 @@ import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Renders a `SnapshotConfig` to PNG/PDF/HEIC and exports it to the clipboard or a
+/// Renders a `SnapshotConfig` to PNG/PDF/HEIC/AVIF and exports it to the clipboard or a
 /// file (CS-007/010). Raster encoding goes through ImageIO directly from the
 /// rendered `CGImage`; PDF uses `ImageRenderer.render` into a `CGContext` — no legacy
 /// `NSBitmapImageRep`/TIFF round-trip.
@@ -17,6 +17,20 @@ import UniformTypeIdentifiers
 /// normalization preserves the alpha channel (no matte), so a transparent
 /// background exports with real transparency.
 enum ExportManager {
+    /// Replaces the pasteboard contents with the exact plain-text source.
+    ///
+    /// Accepting a pasteboard keeps the primitive deterministic in tests and avoids
+    /// touching the developer's clipboard outside the user-initiated default path.
+    @discardableResult
+    static func copySourceToPasteboard(
+        _ source: String, to pasteboard: NSPasteboard = .general
+    ) -> Bool {
+        pasteboard.clearContents()
+        let copied = pasteboard.setString(source, forType: .string)
+        Log.export.info("Copied source to pasteboard (success \(copied, privacy: .public))")
+        return copied
+    }
+
     /// Renders the canvas for `config` to a `CGImage` at the given scale (1/2/3),
     /// normalized into `profile`'s color space (sRGB by default, CS-024).
     ///
@@ -27,14 +41,19 @@ enum ExportManager {
     /// length and scale), never the code itself.
     static func renderCGImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
-        profile: ColorProfile = .sRGB
+        profile: ColorProfile = .sRGB,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> CGImage? {
         let signposter = RenderSignpost.signposter
         let state = signposter.beginInterval(
             RenderSignpost.renderName, "scale=\(Int(scale)) length=\(config.code.count)")
         defer { signposter.endInterval(RenderSignpost.renderName, state) }
 
-        let renderer = ImageRenderer(content: SnapshotCanvas(config: config, fixedSize: fixedSize))
+        let renderer = ImageRenderer(
+            content: SnapshotCanvas(config: config, fixedSize: fixedSize)
+                .environment(\.backgroundImageStore, backgroundImageStore)
+                .environment(\.foregroundImageStore, foregroundImageStore))
         renderer.scale = scale
         // Pin the layout size for fixed-size presets so the rendered pixel size
         // is exactly `fixedSize × scale` (e.g. OpenGraph 1200×630 at 1×, CS-020).
@@ -44,7 +63,11 @@ enum ExportManager {
                 "Render produced no image (scale \(Int(scale), privacy: .public))")
             return nil
         }
-        return normalized(cgImage, to: profile)
+        let normalizedImage = normalized(cgImage, to: profile)
+        if case .image = config.background {
+            return compositedOverBlack(normalizedImage)
+        }
+        return normalizedImage
     }
 
     /// Converts a rendered `CGImage` into `profile`'s color space, redrawing it
@@ -93,14 +116,46 @@ enum ExportManager {
         return context.makeImage() ?? cgImage
     }
 
+    /// Makes an image-backed snapshot fully opaque after the complete SwiftUI
+    /// hierarchy has rendered. Applying a matte inside `BackgroundView` can make
+    /// `ImageRenderer` composite that layer above selectable text in fit mode;
+    /// flattening the finished bitmap preserves the foreground while filling fit
+    /// letterboxes and translucent blur edges deterministically.
+    private static func compositedOverBlack(_ cgImage: CGImage) -> CGImage {
+        guard
+            let colorSpace = cgImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB),
+            let context = CGContext(
+                data: nil,
+                width: cgImage.width,
+                height: cgImage.height,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else {
+            Log.render.error("Opaque image-background context creation failed")
+            return cgImage
+        }
+        let bounds = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
+        context.setFillColor(CGColor(gray: 0, alpha: 1))
+        context.fill(bounds)
+        context.draw(cgImage, in: bounds)
+        return context.makeImage() ?? cgImage
+    }
+
     /// Renders the canvas to an `NSImage` (used by the share sheet, CS-008).
     static func renderNSImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
-        profile: ColorProfile = .sRGB
+        profile: ColorProfile = .sRGB,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> NSImage? {
         guard
             let cgImage = renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile)
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                backgroundImageStore: backgroundImageStore,
+                foregroundImageStore: foregroundImageStore)
         else {
             return nil
         }
@@ -128,13 +183,31 @@ enum ExportManager {
     /// the near-lossless quality keeps text crisp; the codec is still lossy, so
     /// PNG remains the byte-exact default.
     nonisolated static func heicData(from cgImage: CGImage) -> Data? {
+        lossyImageData(
+            from: cgImage, typeIdentifier: UTType.heic.identifier, quality: 0.95)
+    }
+
+    /// AVIF-encodes a `CGImage` through ImageIO. AVIF keeps the same color-managed
+    /// pixels and alpha channel as PNG while producing compact web-ready artifacts.
+    /// `UTType` does not currently expose an `avif` static convenience, so the
+    /// system-declared public identifier is resolved explicitly.
+    nonisolated static func avifData(from cgImage: CGImage) -> Data? {
+        lossyImageData(from: cgImage, typeIdentifier: "public.avif", quality: 0.95)
+    }
+
+    /// Shared ImageIO path for alpha-capable lossy raster formats. Keeping destination
+    /// creation, quality, image addition, and finalization in one place prevents HEIC
+    /// and AVIF behavior from drifting as export surfaces evolve.
+    nonisolated private static func lossyImageData(
+        from cgImage: CGImage, typeIdentifier: String, quality: Double
+    ) -> Data? {
         let data = NSMutableData()
         guard
             let destination = CGImageDestinationCreateWithData(
-                data, UTType.heic.identifier as CFString, 1, nil
+                data, typeIdentifier as CFString, 1, nil
             )
         else { return nil }
-        let options = [kCGImageDestinationLossyCompressionQuality: 0.95] as CFDictionary
+        let options = [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary
         CGImageDestinationAddImage(destination, cgImage, options)
         guard CGImageDestinationFinalize(destination) else { return nil }
         return data as Data
@@ -144,15 +217,27 @@ enum ExportManager {
     /// page to `fixedSize` for size presets. A thin wrapper over the shared
     /// `pdfData(_:proposedSize:)` rasterizer so the snapshot and social-card PDF paths
     /// share one `CGContext` page dance instead of copying it.
-    static func pdfData(_ config: SnapshotConfig, fixedSize: CGSize? = nil) -> Data? {
-        pdfData(SnapshotCanvas(config: config, fixedSize: fixedSize), proposedSize: fixedSize)
+    static func pdfData(
+        _ config: SnapshotConfig, fixedSize: CGSize? = nil,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+    ) -> Data? {
+        let opaqueMatte: CGColor? =
+            if case .image = config.background { CGColor(gray: 0, alpha: 1) } else { nil }
+        return pdfData(
+            SnapshotCanvas(config: config, fixedSize: fixedSize)
+                .environment(\.backgroundImageStore, backgroundImageStore)
+                .environment(\.foregroundImageStore, foregroundImageStore),
+            proposedSize: fixedSize, opaqueMatte: opaqueMatte)
     }
 
     /// Renders any SwiftUI `content` to single-page PDF data, pinning the page to
     /// `proposedSize` when given. The single-page `CGDataConsumer`/`CGContext` dance
     /// lives here once and is shared by both the snapshot and social-card PDF exports
     /// (CS-007/041). Returns nil if the page context cannot be created.
-    static func pdfData<Content: View>(_ content: Content, proposedSize: CGSize?) -> Data? {
+    static func pdfData<Content: View>(
+        _ content: Content, proposedSize: CGSize?, opaqueMatte: CGColor? = nil
+    ) -> Data? {
         let renderer = ImageRenderer(content: content)
         if let proposedSize { renderer.proposedSize = ProposedViewSize(proposedSize) }
         let data = NSMutableData()
@@ -163,6 +248,10 @@ enum ExportManager {
                 let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
             else { return }
             context.beginPDFPage(nil)
+            if let opaqueMatte {
+                context.setFillColor(opaqueMatte)
+                context.fill(mediaBox)
+            }
             renderInContext(context)
             context.endPDFPage()
             context.closePDF()
@@ -188,7 +277,7 @@ enum ExportManager {
         return data as Data
     }
 
-    /// The single PNG/PDF/HEIC format ladder shared by every save/encode path
+    /// The single PNG/PDF/HEIC/AVIF format ladder shared by every save/encode path
     /// (CS-007/041). Given a render strategy for each branch — a `png` producer of a
     /// `CGImage` and a `pdf` producer of finished `Data` — it picks the branch for
     /// `format`, encodes PNG through the shared color-managed ImageIO path, and pairs
@@ -199,14 +288,48 @@ enum ExportManager {
     static func encodedPayload(
         _ format: ExportFormat, png: () -> CGImage?, pdf: () -> Data?
     ) -> (data: Data, type: UTType, ext: String)? {
+        if case .pdf = format { return pdf().map { ($0, .pdf, "pdf") } }
+        // Raster formats encode the exact rendered, color-managed CGImage the PNG path
+        // produces — they differ only in container/codec, so no call site needs
+        // another render closure.
+        guard let cgImage = png(),
+            let data = rasterData(from: cgImage, format: format),
+            let metadata = rasterMetadata(for: format)
+        else { return nil }
+        return (data, metadata.type, metadata.ext)
+    }
+
+    /// The single raster format→bytes mapping (deep-review finding): every save/batch
+    /// path used to carry its own PNG/HEIC/AVIF switch, three copies that had to stay
+    /// in sync by hand. `nonisolated` — a pure function of a `Sendable` `CGImage` —
+    /// so the main-actor payload ladder and the off-main batch writer share it.
+    nonisolated static func rasterData(from cgImage: CGImage, format: ExportFormat) -> Data? {
         switch format {
-        case .png: png().flatMap(pngData(from:)).map { ($0, .png, "png") }
-        case .pdf: pdf().map { ($0, .pdf, "pdf") }
-        // HEIC encodes the exact rendered, color-managed CGImage the PNG path
-        // produces — the two raster formats differ only in container/codec, so no
-        // call site needs a third closure.
-        case .heic: png().flatMap(heicData(from:)).map { ($0, .heic, "heic") }
+        case .png: pngData(from: cgImage)
+        case .heic: heicData(from: cgImage)
+        case .avif: avifData(from: cgImage)
+        case .pdf: nil
         }
+    }
+
+    /// The content type + extension a raster format encodes to; `nil` for PDF (a
+    /// vector document, not a raster encode).
+    nonisolated static func rasterMetadata(
+        for format: ExportFormat
+    ) -> (type: UTType, ext: String)? {
+        switch format {
+        case .png: (.png, "png")
+        case .heic: (.heic, "heic")
+        case .avif: (avifContentType, "avif")
+        case .pdf: nil
+        }
+    }
+
+    /// The public AVIF type is system-declared on supported macOS releases, but the
+    /// Swift overlay has no `UTType.avif` convenience. Resolve it by identifier for
+    /// save panels, with an imported image type as a defensive fallback.
+    nonisolated static var avifContentType: UTType {
+        UTType("public.avif") ?? UTType(importedAs: "public.avif", conformingTo: .image)
     }
 
     /// Renders and writes the image to the general pasteboard. Returns success.
@@ -221,7 +344,10 @@ enum ExportManager {
     @discardableResult
     static func copyToPasteboard(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
-        profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false
+        profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
+        pasteboard: NSPasteboard = .general
     ) -> Bool {
         // Either opt-in (rich styled text, or the plain-text rider) needs the
         // multi-representation item, so route both through RichPasteboard; the plain
@@ -229,35 +355,41 @@ enum ExportManager {
         if richText || plainText {
             return RichPasteboard.copy(
                 config, scale: scale, fixedSize: fixedSize, profile: profile,
-                includeRichText: richText, includePlainText: plainText)
+                includeRichText: richText, includePlainText: plainText,
+                backgroundImageStore: backgroundImageStore,
+                foregroundImageStore: foregroundImageStore, to: pasteboard)
         }
         guard
             let cgImage = renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile)
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                backgroundImageStore: backgroundImageStore,
+                foregroundImageStore: foregroundImageStore)
         else {
             Log.export.error("Copy to pasteboard failed: render returned nil")
             return false
         }
-        return copyPNGToPasteboard(cgImage)
+        return copyPNGToPasteboard(cgImage, to: pasteboard)
     }
 
-    /// Writes a PNG of an already-rendered `cgImage` to the general pasteboard —
-    /// the shared primitive behind the config-based copy above and editors that
-    /// hold a rendered asset (the web snapshot editor). Returns success.
+    /// Writes a PNG of an already-rendered `cgImage` to the pasteboard (the general
+    /// one in production; tests pass a scratch pasteboard so parallel suites can't
+    /// clobber each other on the real clipboard) — the shared primitive behind the
+    /// config-based copy above and editors that hold a rendered asset. Returns success.
     @discardableResult
-    static func copyPNGToPasteboard(_ cgImage: CGImage) -> Bool {
+    static func copyPNGToPasteboard(
+        _ cgImage: CGImage, to pasteboard: NSPasteboard = .general
+    ) -> Bool {
         guard let png = pngData(from: cgImage) else {
             Log.export.error("Copy to pasteboard failed: PNG encode returned nil")
             return false
         }
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         let copied = pasteboard.setData(png, forType: .png)
         Log.export.info("Copied image to pasteboard (success \(copied, privacy: .public))")
         return copied
     }
 
-    /// Presents an `NSSavePanel` and writes the image as PNG, PDF, or HEIC.
+    /// Presents an `NSSavePanel` and writes the image as PNG, PDF, HEIC, or AVIF.
     ///
     /// `profile` applies to raster export only (CS-024); PDF is a color-managed
     /// vector document and is unaffected by the raster color-profile choice.
@@ -283,7 +415,7 @@ enum ExportManager {
             payload: payload, suggestedName: SuggestedFilename.basename(for: config))
     }
 
-    /// Saves an **already-rendered** raster `cgImage` as PNG or HEIC (P5): the
+    /// Saves an **already-rendered** raster `cgImage` as PNG, HEIC, or AVIF (P5): the
     /// quick-capture path renders the styled image once and reuses it for both the
     /// clipboard copy and this file save instead of re-rendering the identical config.
     /// PDF is a vector document and must render its own page, so it is not accepted here
@@ -292,17 +424,14 @@ enum ExportManager {
     static func saveToFile(
         cgImage: CGImage, format: ExportFormat, suggestedName: String
     ) -> SaveOutcome {
-        let payload: (data: Data, type: UTType, ext: String)? =
-            switch format {
-            case .png: pngData(from: cgImage).map { ($0, .png, "png") }
-            case .heic: heicData(from: cgImage).map { ($0, .heic, "heic") }
-            case .pdf: nil
-            }
-        guard let payload else {
+        guard let data = rasterData(from: cgImage, format: format),
+            let metadata = rasterMetadata(for: format)
+        else {
             Log.export.error("Save to file failed: raster encode returned nil or PDF via cgImage")
             return .failed
         }
-        return saveToFile(payload: payload, suggestedName: suggestedName)
+        return saveToFile(
+            payload: (data, metadata.type, metadata.ext), suggestedName: suggestedName)
     }
 
     /// Presents the save panel for an already-encoded payload and writes it — the
@@ -375,7 +504,7 @@ enum ExportManager {
                 let raster: CGImage?
                 let pdf: Data?
                 switch format {
-                case .png, .heic:
+                case .png, .heic, .avif:
                     raster = renderCGImage(
                         config, scale: CGFloat(preset.scale), fixedSize: size, profile: profile)
                     pdf = nil
@@ -420,10 +549,8 @@ enum ExportManager {
         to url: URL, sidecarText: String
     ) async -> Bool {
         let data: Data? =
-            switch format {
-            case .png: cgImage.flatMap(pngData(from:))
-            case .heic: cgImage.flatMap(heicData(from:))
-            case .pdf: pdfData
+            if case .pdf = format { pdfData } else {
+                cgImage.flatMap { rasterData(from: $0, format: format) }
             }
         guard let data else {
             Log.export.error("Multi-size export: render/encode returned nil for a preset")
@@ -444,6 +571,62 @@ enum ExportManager {
             )
             return false
         }
+    }
+
+    /// The carousel slide frame: 1080×1350 (4:5), the portrait card LinkedIn and
+    /// Instagram carousels share (feature #15).
+    static let carouselSlideSize = CGSize(width: 1080, height: 1350)
+
+    /// The minimum font size a carousel slide renders at. The editor's default (~13 pt)
+    /// leaves a tiny card adrift in a 1080×1350 frame — illegible at feed size — so
+    /// slides bump up to this floor; a user style already at or above it is respected.
+    static let carouselMinimumFontSize: Double = 22
+
+    /// Renders one slide per page into `directory` as `carousel-01.png` … — the
+    /// carousel export (feature #15). Each slide is `baseConfig` with only its `code`
+    /// replaced by that page's lines, rendered at the fixed 4:5 slide frame through
+    /// the standard pipeline; content marks that belong to the whole document
+    /// (annotations, highlighted/redacted lines) are cleared so a page never carries a
+    /// mark positioned against different lines. Pipelined like `exportPresetSizes`:
+    /// render on the main actor, PNG-encode + write off it, results drain in
+    /// completion order with count-based progress. Two-digit numbering keeps the
+    /// files sorted everywhere; only counts are logged (CS-048).
+    @discardableResult
+    static func exportCarousel(
+        _ baseConfig: SnapshotConfig, pages: [String], to directory: URL,
+        profile: ColorProfile = .sRGB,
+        onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
+    ) async -> (written: Int, failed: Int) {
+        var written = 0
+        var failed = 0
+        let total = pages.count
+        var completed = 0
+        await withTaskGroup(of: Bool.self) { group in
+            for (index, page) in pages.enumerated() {
+                var config = baseConfig
+                config.clearContentMarks()
+                config.code = page
+                config.fontSize = max(config.fontSize, carouselMinimumFontSize)
+                let raster = renderCGImage(
+                    config, scale: 1, fixedSize: carouselSlideSize, profile: profile)
+                let url = directory.appendingPathComponent(
+                    String(format: "carousel-%02d.png", index + 1), isDirectory: false)
+                group.addTask {
+                    await writePreset(
+                        raster: raster, pdf: nil, format: .png, to: url, sidecarText: "")
+                }
+                await Task.yield()
+            }
+            for await ok in group {
+                if ok { written += 1 } else { failed += 1 }
+                completed += 1
+                onProgress?(completed, total)
+            }
+        }
+        Log.export.notice(
+            "Carousel export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
+        )
+        return (written, failed)
     }
 
     /// The outcome of a save-to-file attempt, so callers can tell apart a written

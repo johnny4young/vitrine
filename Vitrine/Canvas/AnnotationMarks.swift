@@ -11,14 +11,42 @@ struct AnnotationMarkView: View {
     var body: some View {
         switch annotation.kind {
         case .arrow: ArrowMark(annotation: annotation, size: size)
+        case .curvedArrow: CurvedArrowMark(annotation: annotation, size: size)
         case .line: LineMark(annotation: annotation, size: size)
         case .rectangle: RectangleMark(annotation: annotation, size: size)
         case .text: TextMark(annotation: annotation, size: size)
         case .highlighter: HighlighterMark(annotation: annotation, size: size)
         case .counter: CounterMark(annotation: annotation, size: size)
-        case .blur: EmptyView()
+        case .sticker: StickerMark(annotation: annotation, size: size)
+        case .measure: MeasureMark(annotation: annotation, size: size)
+        // Blur and spotlight are compositing effects the canvas layers separately
+        // (a masked blurred copy; an even-odd dim scrim), so they draw no mark here.
+        case .blur, .spotlight: EmptyView()
         }
     }
+}
+
+/// An emoji sticker — a single large glyph placed as a reaction (👀 🔥 ✅), with a
+/// soft drop shadow so it reads as a layer above the card rather than part of it.
+/// The glyph rides in `annotation.text`; `thickness` drives its point size. An empty
+/// glyph renders nothing (the sticker tool always places one, so this is defensive).
+struct StickerMark: View {
+    let annotation: Annotation
+    let size: CGSize
+
+    var body: some View {
+        if !annotation.text.isEmpty {
+            Text(verbatim: annotation.text)
+                .font(.system(size: fontSize))
+                .shadow(color: .black.opacity(0.25), radius: 2, x: 0, y: 1)
+                .position(annotation.startPoint(in: size))
+        }
+    }
+
+    /// The emoji's point size, driven by the toolbar's size slider: the 2…28
+    /// thickness range maps to ~22…100 pt so the smallest sticker stays legible
+    /// and the largest is a deliberate statement, not an accident.
+    private var fontSize: CGFloat { max(22, annotation.thickness * 3.6) }
 }
 
 /// An arrow: a straight shaft from tail to head with a chevron arrowhead.
@@ -36,6 +64,68 @@ struct ArrowMark: View {
             style: StrokeStyle(lineWidth: annotation.thickness, lineCap: .round, lineJoin: .round)
         )
         .shadow(color: .black.opacity(0.22), radius: 1.5, x: 0, y: 0.5)
+    }
+}
+
+/// A curved arrow (feature #11): a quadratic arc from tail to head — the hand-drawn
+/// "swooping" callout CleanShot ships — with the same chevron head as the straight
+/// arrow, kept tangent to the curve's end so the head follows the swoop.
+struct CurvedArrowMark: View {
+    let annotation: Annotation
+    let size: CGSize
+
+    var body: some View {
+        CurvedArrowShape(
+            from: annotation.startPoint(in: size), to: annotation.endPoint(in: size),
+            weight: annotation.thickness
+        )
+        .stroke(
+            annotation.color.color,
+            style: StrokeStyle(lineWidth: annotation.thickness, lineCap: .round, lineJoin: .round)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 1.5, x: 0, y: 0.5)
+    }
+}
+
+/// The arc + chevron head of a curved arrow, in canvas points.
+struct CurvedArrowShape: Shape {
+    let from: CGPoint
+    let to: CGPoint
+    var weight: CGFloat = 5
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let dx = to.x - from.x
+        let dy = to.y - from.y
+        let length = max(hypot(dx, dy), 0.001)
+
+        // Control point: the midpoint pushed perpendicular by a quarter of the span,
+        // so the bow scales with the drag and short arrows stay gently curved. The
+        // fixed left-hand side gives every curved arrow the same swoop direction;
+        // dragging the other way flips which side bows.
+        let mid = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2)
+        let normal = CGPoint(x: -dy / length, y: dx / length)
+        let bow = length * 0.25
+        let control = CGPoint(x: mid.x + normal.x * bow, y: mid.y + normal.y * bow)
+
+        path.move(to: from)
+        path.addQuadCurve(to: to, control: control)
+
+        // Chevron head tangent to the curve at its end (the control→to direction is
+        // the quadratic's exact end tangent), sized like the straight arrow's head.
+        let tangentAngle = atan2(to.y - control.y, to.x - control.x)
+        let head = min(max(length * 0.22, weight * 2.4), max(length * 0.6, 14))
+        let spread = CGFloat.pi / 7
+        let left = CGPoint(
+            x: to.x - head * cos(tangentAngle - spread),
+            y: to.y - head * sin(tangentAngle - spread))
+        let right = CGPoint(
+            x: to.x - head * cos(tangentAngle + spread),
+            y: to.y - head * sin(tangentAngle + spread))
+        path.move(to: left)
+        path.addLine(to: to)
+        path.addLine(to: right)
+        return path
     }
 }
 
@@ -144,6 +234,68 @@ struct TextMark: View {
     }
 
     private var fontSize: CGFloat { max(12, annotation.thickness * 4) }
+}
+
+/// A dimension callout (feature #12): a technical-drawing measurement — the shaft
+/// with perpendicular end caps, and the span's length in canvas points on a small
+/// pill at the midpoint. For a fixed-size destination the canvas points *are* the
+/// export's logical pixels, so the label reads as a true pixel dimension.
+struct MeasureMark: View {
+    let annotation: Annotation
+    let size: CGSize
+
+    var body: some View {
+        let from = annotation.startPoint(in: size)
+        let to = annotation.endPoint(in: size)
+        let length = hypot(to.x - from.x, to.y - from.y)
+        let mid = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2)
+        let weight = max(1.5, annotation.thickness * 0.5)
+
+        ZStack {
+            MeasureShape(from: from, to: to)
+                .stroke(
+                    annotation.color.color,
+                    style: StrokeStyle(lineWidth: weight, lineCap: .round)
+                )
+                .shadow(color: .black.opacity(0.22), radius: 1.5, x: 0, y: 0.5)
+            if length >= 8 {
+                Text(verbatim: "\(Int(length.rounded())) px")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2.5)
+                    .background(Capsule().fill(annotation.color.color))
+                    .position(mid)
+            }
+        }
+    }
+}
+
+/// The measure's shaft plus perpendicular end caps, in canvas points.
+struct MeasureShape: Shape {
+    let from: CGPoint
+    let to: CGPoint
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: from)
+        path.addLine(to: to)
+
+        let dx = to.x - from.x
+        let dy = to.y - from.y
+        let length = max(hypot(dx, dy), 0.001)
+        // Perpendicular unit vector; caps scale gently with the span, bounded so a
+        // short measure still reads as a measure and a long one isn't all cap.
+        let normal = CGPoint(x: -dy / length, y: dx / length)
+        let half = min(max(length * 0.06, 5), 11)
+        for anchor in [from, to] {
+            path.move(
+                to: CGPoint(x: anchor.x + normal.x * half, y: anchor.y + normal.y * half))
+            path.addLine(
+                to: CGPoint(x: anchor.x - normal.x * half, y: anchor.y - normal.y * half))
+        }
+        return path
+    }
 }
 
 /// A numbered badge — a filled circle in the mark color with a white number, for

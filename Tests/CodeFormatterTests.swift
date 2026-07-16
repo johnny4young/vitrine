@@ -88,11 +88,167 @@ struct CodeFormatterTests {
         #expect(CodeFormatter.formatJSON("42") == nil)  // bare fragment, not an object/array
     }
 
+    // MARK: - formatMarkup
+
+    /// Compact HTML expands into a readable element hierarchy while leaf text stays
+    /// inline, avoiding whitespace changes inside user-visible copy.
+    @Test func formatMarkupExpandsNestedHTMLAndKeepsLeafTextInline() {
+        let input =
+            #"<!doctype html><main class="card"><h1>Vitrine</h1><p>Ship polished code.</p><img src="preview.png"></main>"#
+        let expected = """
+            <!doctype html>
+            <main class="card">
+              <h1>Vitrine</h1>
+              <p>Ship polished code.</p>
+              <img src="preview.png">
+            </main>
+            """
+        #expect(CodeFormatter.formatMarkup(input) == expected)
+    }
+
+    /// XML declarations, namespaces, quoted `>` characters, comments, and self-closing
+    /// elements are tokenized without normalizing their original bytes.
+    @Test func formatMarkupHandlesXMLSyntaxAndQuotedTagDelimiters() {
+        let input =
+            #"<?xml version="1.0"?><feed xmlns:x="urn:test"><!--keep--><x:item value="a > b"/></feed>"#
+        let expected = """
+            <?xml version="1.0"?>
+            <feed xmlns:x="urn:test">
+              <!--keep-->
+              <x:item value="a > b"/>
+            </feed>
+            """
+        #expect(CodeFormatter.formatMarkup(input) == expected)
+    }
+
+    /// CDATA carries text semantics, so it stays inline with its leaf instead of gaining
+    /// formatting whitespace around the section.
+    @Test func formatMarkupPreservesInlineCDATAAsText() {
+        #expect(
+            CodeFormatter.formatMarkup("<root><![CDATA[a < b]]></root>")
+                == "<root><![CDATA[a < b]]></root>")
+    }
+
+    /// Reformatting the result is a no-op, so repeated Format Code commands never drift.
+    @Test func formatMarkupIsIdempotent() throws {
+        let formatted = try #require(CodeFormatter.formatMarkup("<a><b>value</b></a>"))
+        #expect(CodeFormatter.formatMarkup(formatted) == formatted)
+    }
+
+    /// Mixed content and raw-text containers are whitespace-sensitive; malformed trees
+    /// are unsafe. All return nil so the caller can take its non-destructive fallback.
+    @Test func formatMarkupRejectsSemanticallyUnsafeOrMalformedInput() {
+        #expect(CodeFormatter.formatMarkup("<p>Hello <em>world</em>!</p>") == nil)
+        #expect(CodeFormatter.formatMarkup("<pre>  keep\n spacing</pre>") == nil)
+        #expect(CodeFormatter.formatMarkup("<div><span></div>") == nil)
+        #expect(CodeFormatter.formatMarkup("not markup") == nil)
+    }
+
+    // MARK: - formatSQL
+
+    /// A compact query gets a vertical select list and clause hierarchy while preserving
+    /// the user's keyword casing and quoted value bytes.
+    @Test func formatSQLExpandsSelectListsJoinsAndPredicates() {
+        let input =
+            "SELECT u.id,u.email,COUNT(o.id) AS order_count FROM users u LEFT JOIN orders o ON o.user_id=u.id WHERE u.active=TRUE AND u.email<>'from@example.com' GROUP BY u.id,u.email ORDER BY order_count DESC;"
+        let expected = """
+            SELECT
+              u.id,
+              u.email,
+              COUNT(o.id) AS order_count
+            FROM users u
+            LEFT JOIN orders o
+              ON o.user_id = u.id
+            WHERE u.active = TRUE
+              AND u.email <> 'from@example.com'
+            GROUP BY u.id, u.email
+            ORDER BY order_count DESC;
+            """
+        #expect(CodeFormatter.formatSQL(input) == expected)
+    }
+
+    /// Vendor quoting and parameter syntaxes are opaque lexer tokens: formatting can
+    /// add layout around them but never split or normalize their contents.
+    @Test func formatSQLPreservesQuotedValuesIdentifiersCommentsAndParameters() {
+        let input =
+            "UPDATE [accounts] SET display_name='O''Reilly',note=$tag$from,where$tag$ /* keep */ WHERE id=:id AND tenant_id=$1;"
+        let expected = """
+            UPDATE [accounts]
+            SET
+              display_name = 'O''Reilly',
+              note = $tag$from,where$tag$ /* keep */
+            WHERE id = :id
+              AND tenant_id = $1;
+            """
+        #expect(CodeFormatter.formatSQL(input) == expected)
+    }
+
+    /// Numeric exponents, prefixed strings, vendor operators, system variables, casts,
+    /// and positional/named parameters stay atomic instead of being split by spacing.
+    @Test func formatSQLKeepsDialectTokensAtomic() {
+        let input =
+            #"SELECT 1e-3,N'O''Reilly',data@>'{"a":1}',payload??'key',@@ROWCOUNT FROM metrics WHERE id=@id AND version::int>=?;"#
+        let expected = """
+            SELECT
+              1e-3,
+              N'O''Reilly',
+              data @> '{"a":1}',
+              payload ?? 'key',
+              @@ROWCOUNT
+            FROM metrics
+            WHERE id = @id
+              AND version :: int >= ?;
+            """
+        #expect(CodeFormatter.formatSQL(input) == expected)
+    }
+
+    /// Formatting output is stable across repeated Format Code commands.
+    @Test func formatSQLIsIdempotent() throws {
+        let formatted = try #require(CodeFormatter.formatSQL("SELECT id,name FROM users;"))
+        #expect(CodeFormatter.formatSQL(formatted) == formatted)
+    }
+
+    /// Uncertain input is rejected rather than partially reshaped.
+    @Test func formatSQLRejectsNonStatementsAndUnbalancedSyntax() {
+        #expect(CodeFormatter.formatSQL("plain prose") == nil)
+        #expect(CodeFormatter.formatSQL("SELECT 'unterminated") == nil)
+        #expect(CodeFormatter.formatSQL("SELECT (id FROM users") == nil)
+        #expect(CodeFormatter.formatSQL("SELECT id FROM users /* open") == nil)
+    }
+
     // MARK: - tidy
 
     /// `tidy` routes JSON through the JSON re-indenter…
     @Test func tidyFormatsJSONForTheJSONLanguage() {
         #expect(CodeFormatter.tidy(#"{"a":1}"#, language: .json) == "{\n  \"a\": 1\n}")
+    }
+
+    /// HTML routes through the structural markup formatter, making minified one-line
+    /// pastes readable before they render.
+    @Test func tidyPrettyPrintsCompactHTML() {
+        let input = "<main><h1>Vitrine</h1><p>Local by design.</p></main>"
+        let expected = """
+            <main>
+              <h1>Vitrine</h1>
+              <p>Local by design.</p>
+            </main>
+            """
+        #expect(CodeFormatter.tidy(input, language: .html) == expected)
+    }
+
+    /// SQL routes through its tokenizer-backed formatter instead of the previous dedent-
+    /// only path.
+    @Test func tidyPrettyPrintsCompactSQL() {
+        let expected = """
+            SELECT
+              id,
+              name
+            FROM users
+            WHERE active = TRUE;
+            """
+        #expect(
+            CodeFormatter.tidy("SELECT id,name FROM users WHERE active=TRUE;", language: .sql)
+                == expected)
     }
 
     /// A brace language (Swift) is structurally re-indented — fixing a body that dedent
@@ -197,5 +353,44 @@ struct CodeFormatterTests {
     @Test func tidyLeavesDiffUntouched() {
         let input = " context line\n-removed\n+added"
         #expect(CodeFormatter.tidy(input, language: .diff) == input)
+    }
+
+    // MARK: - smart trim (feature #18)
+
+    /// Blank lines pasted above and below a snippet read as accidental padding on top of
+    /// the canvas's own, so trim drops them.
+    @Test func trimDropsLeadingAndTrailingBlankLines() {
+        let input = "\n  \nlet x = 1\nprint(x)\n\n\t\n"
+        #expect(CodeFormatter.trimmed(input, language: .swift) == "let x = 1\nprint(x)")
+    }
+
+    /// Trailing spaces/tabs on each line are invisible in the render but shift a
+    /// line-width-based layout, so trim strips them for code languages.
+    @Test func trimStripsPerLineTrailingWhitespace() {
+        let input = "let x = 1   \nprint(x)\t"
+        #expect(CodeFormatter.trimmed(input, language: .swift) == "let x = 1\nprint(x)")
+    }
+
+    /// Two trailing spaces are a hard line break in Markdown, so line interiors stay
+    /// byte-for-byte intact for leave-alone formats — only surrounding blanks drop.
+    @Test func trimPreservesMarkdownHardBreaksButDropsSurroundingBlanks() {
+        let input = "\nline one  \nline two\n\n"
+        #expect(
+            CodeFormatter.trimmed(input, language: .markdown) == "line one  \nline two")
+    }
+
+    /// The whole pipeline: tidy now trims, so a paste with stray padding lands even.
+    @Test func tidyTrimsBlankPaddingAroundReindentedCode() {
+        let input = "\nstruct A {\nlet x = 1   \n}\n\n"
+        #expect(CodeFormatter.tidy(input, language: .swift) == "struct A {\n  let x = 1\n}")
+    }
+
+    /// Trim (and tidy-with-trim) stays idempotent, and an all-blank snippet collapses
+    /// to empty rather than trapping.
+    @Test func trimIsIdempotentAndHandlesDegenerateInput() {
+        let once = CodeFormatter.trimmed("\n\na = 1\n\n", language: .python)
+        #expect(CodeFormatter.trimmed(once, language: .python) == once)
+        #expect(CodeFormatter.trimmed("\n \t\n", language: .swift) == "")
+        #expect(CodeFormatter.trimmed("", language: .swift) == "")
     }
 }

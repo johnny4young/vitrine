@@ -1117,6 +1117,17 @@
         }
       }
     },
+    "Capture actions" : {
+      "comment" : "Accessibility label for the action menu on a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones de captura"
+          }
+        }
+      }
+    },
     "Capture a webpage?" : {
       "comment" : "URL capture first-use disclosure title (CS-043).",
       "extractionState" : "stale",
@@ -1218,6 +1229,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Elige un tema de sintaxis incorporado o personalizado."
+          }
+        }
+      }
+    },
+    "Choose a destination size without changing the default preset" : {
+      "comment" : "VoiceOver hint for the menu-bar destination preset picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un tamaño de destino sin cambiar el ajuste preestablecido predeterminado"
           }
         }
       }
@@ -1473,6 +1495,17 @@
         }
       }
     },
+    "Copy as Markdown" : {
+      "comment" : "Editor copy-options command: copy a self-contained image and its source as Markdown.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar como Markdown"
+          }
+        }
+      }
+    },
     "Copy code" : {
       "comment" : "Onboarding step 1 title.",
       "extractionState" : "stale",
@@ -1527,6 +1560,17 @@
         }
       }
     },
+    "Copy Source" : {
+      "comment" : "Action that copies the original source text from a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar código fuente"
+          }
+        }
+      }
+    },
     "Copy image" : {
       "comment" : "Editor toolbar: the gradient CTA (design/handoff).",
       "localizations" : {
@@ -1556,6 +1600,17 @@
         }
       }
     },
+    "Copy image and source as Markdown" : {
+      "comment" : "VoiceOver label for the Copy as Markdown command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar imagen y código fuente como Markdown"
+          }
+        }
+      }
+    },
     "Copy image to clipboard" : {
       "comment" : "VoiceOver label for the Copy Image command.",
       "extractionState" : "stale",
@@ -1576,6 +1631,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar código con resaltado de sintaxis"
+          }
+        }
+      }
+    },
+    "Copy the code or image in alternate formats" : {
+      "comment" : "Editor toolbar: copy-options menu help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el código o la imagen en formatos alternativos"
           }
         }
       }
@@ -1656,6 +1722,17 @@
         }
       }
     },
+    "Couldn't copy the source" : {
+      "comment" : "Failure feedback after copying the original source text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar el código fuente"
+          }
+        }
+      }
+    },
     "Couldn't Install the Command" : {
       "comment" : "Settings General: CLI install failure alert title (CS-033).",
       "extractionState" : "stale",
@@ -1694,6 +1771,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Crea un tema de sintaxis personalizado con una vista previa en vivo."
+          }
+        }
+      }
+    },
+    "Curved Arrow" : {
+      "comment" : "Annotation tool: curved (swooping) arrow.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flecha curva"
           }
         }
       }
@@ -1869,6 +1957,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Eliminar"
+          }
+        }
+      }
+    },
+    "Delete Capture" : {
+      "comment" : "Destructive action that removes one capture from Recents.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar captura"
+          }
+        }
+      }
+    },
+    "Delete Capture?" : {
+      "comment" : "Confirmation dialog title for deleting one recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar captura?"
           }
         }
       }
@@ -2870,6 +2980,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Imagen copiada al portapapeles"
+          }
+        }
+      }
+    },
+    "Source copied to clipboard" : {
+      "comment" : "Success feedback after copying the original source text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código fuente copiado al portapapeles"
           }
         }
       }
@@ -4163,6 +4284,39 @@
         }
       }
     },
+    "Re-render As…" : {
+      "comment" : "Accessibility label for choosing a one-off destination preset on a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a renderizar como…"
+          }
+        }
+      }
+    },
+    "Re-render or remove this recent capture" : {
+      "comment" : "Help text for the actions menu on a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a renderizar o elimina esta captura reciente"
+          }
+        }
+      }
+    },
+    "Re-render this capture with a destination preset" : {
+      "comment" : "Help text for the destination preset action on a recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a renderizar esta captura con un preajuste de destino"
+          }
+        }
+      }
+    },
     "Render as Text" : {
       "comment" : "Recovery action label: render the detected URL as plain text (CS-038).",
       "extractionState" : "stale",
@@ -4171,6 +4325,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Generar como texto"
+          }
+        }
+      }
+    },
+    "Render Clipboard As…" : {
+      "comment" : "Menu-bar action that renders clipboard code with a one-off destination preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderizar portapapeles como…"
           }
         }
       }
@@ -4525,6 +4690,17 @@
         }
       }
     },
+    "Search Recents" : {
+      "comment" : "Placeholder and accessibility label for filtering the Recents gallery.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar en recientes"
+          }
+        }
+      }
+    },
     "Settings" : {
       "comment" : "VoiceOver label for the Settings command.",
       "localizations" : {
@@ -4741,6 +4917,381 @@
         }
       }
     },
+    "Adds a scannable QR chip to the mark. Generated on-device." : {
+      "comment" : "Caption for the Brand Kit link-URL field (QR chip, feature #28).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade un chip QR escaneable a la marca. Generado en el dispositivo."
+          }
+        }
+      }
+    },
+    "Copy text from image" : {
+      "comment" : "Button: OCR the beautified image back into copyable text (feature #34).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar texto de la imagen"
+          }
+        }
+      }
+    },
+    "%lld slides" : {
+      "comment" : "Live slide count in the carousel export sheet.",
+      "localizations" : {
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld diapositiva"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld diapositivas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Carousel export" : {
+      "comment" : "Paywall headline for the carousel export feature (#15).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportación de carrusel"
+          }
+        }
+      }
+    },
+    "Split a long snippet into numbered slides for a carousel post." : {
+      "comment" : "Paywall blurb for the carousel export feature (#15).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide un fragmento largo en diapositivas numeradas para un carrusel."
+          }
+        }
+      }
+    },
+    "Carousel exported" : {
+      "comment" : "HUD confirmation after the carousel slides were written.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carrusel exportado"
+          }
+        }
+      }
+    },
+    "Choose a folder for the carousel slides." : {
+      "comment" : "Open-panel message for the carousel export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una carpeta para las diapositivas del carrusel."
+          }
+        }
+      }
+    },
+    "Export carousel" : {
+      "comment" : "Carousel export sheet title and toolbar accessibility label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar carrusel"
+          }
+        }
+      }
+    },
+    "Image copied — paste it into your post" : {
+      "comment" : "HUD hint after a Post-to compose target staged the image on the clipboard.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen copiada: pégala en tu publicación"
+          }
+        }
+      }
+    },
+    "Lines per slide: %lld" : {
+      "comment" : "Stepper label in the carousel export sheet.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas por diapositiva: %lld"
+          }
+        }
+      }
+    },
+    "Post on Bluesky" : {
+      "comment" : "Share-sheet compose target (feature #25).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicar en Bluesky"
+          }
+        }
+      }
+    },
+    "Post on LinkedIn" : {
+      "comment" : "Share-sheet compose target (feature #25).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicar en LinkedIn"
+          }
+        }
+      }
+    },
+    "Post on X" : {
+      "comment" : "Share-sheet compose target (feature #25).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicar en X"
+          }
+        }
+      }
+    },
+    "Split the snippet into numbered 4:5 slides for a carousel post." : {
+      "comment" : "Carousel export sheet subtitle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide el fragmento en diapositivas 4:5 numeradas para un carrusel."
+          }
+        }
+      }
+    },
+    "Split the snippet into numbered carousel slides (4:5)" : {
+      "comment" : "Help for the carousel export toolbar button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide el fragmento en diapositivas de carrusel numeradas (4:5)"
+          }
+        }
+      }
+    },
+    "Pin snapshot" : {
+      "comment" : "Accessibility label: pin the render in a floating always-on-top window.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fijar captura"
+          }
+        }
+      }
+    },
+    "Pin the snapshot in a floating window that stays on top" : {
+      "comment" : "Help for the pin-snapshot toolbar button (feature #33).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fija la captura en una ventana flotante que se mantiene encima"
+          }
+        }
+      }
+    },
+    "Pinned snapshot" : {
+      "comment" : "Title of the floating pinned-snapshot window.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura fijada"
+          }
+        }
+      }
+    },
+    "Measure" : {
+      "comment" : "Annotation tool: dimension callout with the span's length in pixels.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medir"
+          }
+        }
+      }
+    },
+    "No text found in the image" : {
+      "comment" : "HUD message when on-device OCR recognized nothing legible.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontró texto en la imagen"
+          }
+        }
+      }
+    },
+    "Recognize the image's text on-device and copy it" : {
+      "comment" : "Help for the copy-text-from-image button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconoce el texto de la imagen en el dispositivo y lo copia"
+          }
+        }
+      }
+    },
+    "Suggest a title: " : {
+      "comment" : "Help prefix for the title-suggestion wand; the suggestion follows verbatim.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sugerir un título: "
+          }
+        }
+      }
+    },
+    "Suggest a title" : {
+      "comment" : "Accessibility label for the title-suggestion wand (feature #39).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sugerir un título"
+          }
+        }
+      }
+    },
+    "Text copied from image" : {
+      "comment" : "HUD confirmation after on-device OCR copied the image's text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto copiado de la imagen"
+          }
+        }
+      }
+    },
+    "Footer bar" : {
+      "comment" : "Watermark placement: full-width signature bar along the bottom edge.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra inferior"
+          }
+        }
+      }
+    },
+    "Link" : {
+      "comment" : "Brand Kit row label: the URL the QR chip encodes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlace"
+          }
+        }
+      }
+    },
+    "Guides" : {
+      "comment" : "Inspector row label for the safe-area guide toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guías"
+          }
+        }
+      }
+    },
+    "Lines by widest column" : {
+      "comment" : "Accessibility label for the live line × column budget chip.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas por columna más ancha"
+          }
+        }
+      }
+    },
+    "Safe-area guides" : {
+      "comment" : "Toggle: show the platform crop-margin guide over the preview.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guías de área segura"
+          }
+        }
+      }
+    },
+    "Show the margin platforms may crop or cover, plus the live line and column count" : {
+      "comment" : "Help text for the safe-area guides toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muestra el margen que las plataformas pueden recortar o cubrir, más el conteo de líneas y columnas"
+          }
+        }
+      }
+    },
+    "Spotlight" : {
+      "comment" : "Annotation tool: dim everything except the drawn region.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foco"
+          }
+        }
+      }
+    },
+    "Sticker" : {
+      "comment" : "Annotation tool: emoji sticker (also its toolbar tooltip).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sticker"
+          }
+        }
+      }
+    },
+    "Sticker picker" : {
+      "comment" : "Accessibility label for the sticker-glyph swatch in the annotation toolbar.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selector de stickers"
+          }
+        }
+      }
+    },
     "Strings" : {
       "comment" : "Custom theme editor color label: strings.",
       "extractionState" : "stale",
@@ -4952,6 +5503,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Este editor ya tiene código. ¿Quieres reemplazarlo con el contenido soltado o agregarlo al final?"
+          }
+        }
+      }
+    },
+    "This removes the capture and its cached preview. This can't be undone." : {
+      "comment" : "Individual recent-capture deletion confirmation message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina la captura y su vista previa en caché. No se puede deshacer."
           }
         }
       }
@@ -7627,6 +8189,237 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No se pudo cargar esa imagen"
+          }
+        }
+      }
+    },
+    "Pin Capture" : {
+      "comment" : "Recents action that keeps a capture at the top of the gallery.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fijar captura"
+          }
+        }
+      }
+    },
+    "Pinned" : {
+      "comment" : "Badge and accessibility status for a pinned recent capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fijada"
+          }
+        }
+      }
+    },
+    "Copy, re-render, pin, or remove this recent capture" : {
+      "comment" : "Help text for the Recents capture actions menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia, vuelve a renderizar, fija o elimina esta captura reciente"
+          }
+        }
+      }
+    },
+    "Unpin Capture" : {
+      "comment" : "Recents action that returns a pinned capture to chronological ordering.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dejar de fijar captura"
+          }
+        }
+      }
+    },
+    "Surprise Me" : {
+      "comment" : "Action that applies the next curated built-in style.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorpréndeme"
+          }
+        }
+      }
+    },
+    "Apply the next curated style without changing your code" : {
+      "comment" : "Accessibility hint for the Surprise Me style action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplica el siguiente estilo de la colección sin cambiar tu código"
+          }
+        }
+      }
+    },
+    "Pinned only" : {
+      "comment" : "Toolbar toggle that limits Recents to pinned captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo fijadas"
+          }
+        }
+      }
+    },
+    "Show only pinned recent captures" : {
+      "comment" : "Help and accessibility hint for the pinned-only Recents filter.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar solo capturas recientes fijadas"
+          }
+        }
+      }
+    },
+    "No pinned captures" : {
+      "comment" : "Empty state title when the pinned-only Recents filter has no matches.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay capturas fijadas"
+          }
+        }
+      }
+    },
+    "Pin important captures to keep them easy to find." : {
+      "comment" : "Empty state guidance for the pinned-only Recents filter.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fija capturas importantes para encontrarlas fácilmente."
+          }
+        }
+      }
+    },
+    "Manage Recents" : {
+      "comment" : "Toolbar menu for destructive Recents cleanup actions.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Administrar recientes"
+          }
+        }
+      }
+    },
+    "Clear All" : {
+      "comment" : "Recents cleanup action that removes pinned and unpinned captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar todo"
+          }
+        }
+      }
+    },
+    "Clear Unpinned" : {
+      "comment" : "Recents cleanup action that preserves pinned favorites.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar no fijadas"
+          }
+        }
+      }
+    },
+    "Clear Unpinned?" : {
+      "comment" : "Confirmation title for removing only unpinned recent captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Borrar las capturas no fijadas?"
+          }
+        }
+      }
+    },
+    "Clear recent captures while optionally keeping pinned favorites" : {
+      "comment" : "Help text for the Recents cleanup menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borra capturas recientes y conserva opcionalmente las favoritas fijadas"
+          }
+        }
+      }
+    },
+    "This removes every unpinned capture and its cached preview. Pinned captures stay in Recents. This can't be undone." : {
+      "comment" : "Confirmation message for clearing only unpinned recent captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina cada captura no fijada y su vista previa en caché. Las capturas fijadas permanecen en Recientes. No se puede deshacer."
+          }
+        }
+      }
+    },
+    "Newest First" : {
+      "comment" : "Recents gallery sort order showing the latest captures first.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más recientes primero"
+          }
+        }
+      }
+    },
+    "Oldest First" : {
+      "comment" : "Recents gallery sort order showing the earliest captures first.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más antiguas primero"
+          }
+        }
+      }
+    },
+    "Language A–Z" : {
+      "comment" : "Recents gallery sort order grouping captures alphabetically by language.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lenguaje A–Z"
+          }
+        }
+      }
+    },
+    "Sort captures while keeping pinned favorites first" : {
+      "comment" : "Help text for the Recents gallery sort menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordena las capturas manteniendo primero las favoritas fijadas"
+          }
+        }
+      }
+    },
+    "Pinned captures remain first in every sort order" : {
+      "comment" : "Accessibility hint for the Recents gallery sort menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas fijadas permanecen primero en cualquier orden"
           }
         }
       }
