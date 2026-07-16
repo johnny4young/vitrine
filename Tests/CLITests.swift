@@ -10,8 +10,7 @@ import UniformTypeIdentifiers
 
 /// CS-033 — `vitrine render` command-line renderer.
 ///
-/// These tests cover the two halves of the CLI separately so neither needs a live
-/// process:
+/// These tests cover the CLI layers separately so neither needs a live process:
 ///
 /// - **Parsing** (`CLIArguments` → `CLIOptions`) is verified directly: defaults match
 ///   the app, every flag maps to the right field, and malformed input throws a
@@ -72,6 +71,7 @@ struct CLITests {
         #expect(options.themeID == nil)
         #expect(options.language == nil)
         #expect(options.presetID == nil)
+        #expect(options.multiSizePresetIDs.isEmpty)
         #expect(options.stylePresetID == nil)
         #expect(options.canvasSize == nil)
         #expect(options.scale == nil)
@@ -137,6 +137,79 @@ struct CLITests {
         let options = try CLIArguments.parse(["render", "input.swift", "--out", "out.png"])
         #expect(options.effectiveScale == CGFloat(SettingsDefaults.exportScale))
         #expect(options.fixedSize == nil)
+    }
+
+    @Test func multiSizeDefaultsToEveryPresetInCanonicalOrder() throws {
+        let options = try CLIArguments.parse([
+            "multi-size", "input.swift", "--out", "cards",
+        ])
+
+        #expect(options.command == .multiSize)
+        #expect(options.inputPath == "input.swift")
+        #expect(options.outputPath == "cards")
+        #expect(options.presetID == nil)
+        #expect(options.multiSizePresetIDs == ExportPreset.all.map(\.id))
+        #expect(options.format == .png)
+    }
+
+    @Test func multiSizePresetSelectionIsValidatedDedupedAndCanonicallyOrdered() throws {
+        let options = try CLIArguments.parse([
+            "multi-size", "input.swift", "--out", "cards",
+            "--presets", "opengraph,twitter,opengraph",
+        ])
+        #expect(options.multiSizePresetIDs == ["twitter", "opengraph"])
+
+        let all = try CLIArguments.parse([
+            "multi-size", "input.swift", "--out", "cards", "--presets", "all",
+        ])
+        #expect(all.multiSizePresetIDs == ExportPreset.all.map(\.id))
+
+        for raw in ["", "twitter,", "all,twitter", "twitter,unknown"] {
+            #expect(throws: CLIError.invalidValue(flag: "--presets", value: raw)) {
+                try CLIArguments.parse([
+                    "multi-size", "input.swift", "--out", "cards", "--presets", raw,
+                ])
+            }
+        }
+    }
+
+    @Test func multiSizeRejectsAmbiguousGeometryAndNonFanoutControls() {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine multi-size with --preset; use --presets.")
+        ) {
+            try CLIArguments.parse([
+                "multi-size", "input.swift", "--out", "cards", "--preset", "twitter",
+            ])
+        }
+        for arguments in [
+            ["--canvas-size", "800x600"], ["--scale", "2"],
+        ] {
+            #expect(
+                throws: CLIError.incompatibleOptions(
+                    "Cannot combine multi-size with --canvas-size or --scale; destination presets pin their dimensions."
+                )
+            ) {
+                try CLIArguments.parse(
+                    ["multi-size", "input.swift", "--out", "cards"] + arguments)
+            }
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine render with --presets.")
+        ) {
+            try CLIArguments.parse([
+                "render", "input.swift", "--out", "card.png", "--presets", "twitter",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine multi-size with --copy or --edit.")
+        ) {
+            try CLIArguments.parse([
+                "multi-size", "input.swift", "--out", "cards", "--copy",
+            ])
+        }
     }
 
     // MARK: - Argument parsing: every option maps to its field
@@ -2851,6 +2924,56 @@ struct CLITests {
         #expect(image1.height == 360)
         #expect(image2.width == 1_280)
         #expect(image2.height == 720)
+    }
+
+    @Test func multiSizeWritesSelectedPresetDimensionsAndSidecars() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let output = directory.appendingPathComponent("cards", isDirectory: true)
+        let options = try CLIArguments.parse([
+            "multi-size", input, "--out", output.path,
+            "--presets", "twitter,opengraph,instagram-story", "--text-sidecar",
+        ])
+
+        let summary = try CLIRenderer.runMultiSize(options)
+        #expect(summary == "Rendered 3 preset images to \(output.path)")
+        let expected: [(String, Int, Int)] = [
+            ("twitter", 1_600, 900), ("opengraph", 1_200, 630),
+            ("instagram-story", 1_080, 1_920),
+        ]
+        for (preset, width, height) in expected {
+            let imageURL = output.appendingPathComponent("vitrine-\(preset).png")
+            let image = try decodePNG(at: imageURL.path)
+            #expect(image.width == width)
+            #expect(image.height == height)
+            let sidecar = imageURL.deletingPathExtension().appendingPathExtension("txt")
+            #expect(try String(contentsOf: sidecar, encoding: .utf8) == CLITests.sampleCode)
+        }
+    }
+
+    @Test func multiSizeNoOverwritePreflightsEveryTargetBeforeRendering() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let output = directory.appendingPathComponent("cards", isDirectory: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        let existing = output.appendingPathComponent("vitrine-opengraph.png")
+        try Data("existing".utf8).write(to: existing)
+        let options = try CLIArguments.parse([
+            "multi-size", input, "--out", output.path,
+            "--presets", "twitter,opengraph", "--no-overwrite",
+        ])
+
+        #expect(throws: CLIError.outputExists(path: existing.path)) {
+            try CLIRenderer.runMultiSize(options)
+        }
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: output.appendingPathComponent("vitrine-twitter.png").path))
+        #expect(try Data(contentsOf: existing) == Data("existing".utf8))
     }
 
     // MARK: - Rendering: transparent background keeps real alpha

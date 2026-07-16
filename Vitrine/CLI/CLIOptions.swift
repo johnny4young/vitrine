@@ -19,14 +19,17 @@ import Foundation
 /// model exactly as the GUI does, keeping the produced image identical.
 @MainActor
 struct CLIOptions: Equatable {
-    /// Whether this is a single-file `render` or a folder `batch` (CS-094). For
-    /// `batch`, `inputPath`/`outputPath` are directories rather than files; every
-    /// style flag still applies per rendered file.
+    /// Whether this is a single-file `render`, one-source `multi-size`, or folder
+    /// `batch` invocation (CS-094). Output paths are directories for the latter two.
     var command: Command = .render
 
-    /// The CLI subcommand. `render` writes one image; `batch` renders every text file
-    /// in a folder into an output folder (CS-094).
-    enum Command: String, Equatable, Sendable { case render, batch }
+    /// The CLI subcommand. `render` writes one image, `multi-size` fans one source out
+    /// through destination presets, and `batch` renders every text file in a folder.
+    enum Command: String, Equatable, Sendable {
+        case render
+        case multiSize = "multi-size"
+        case batch
+    }
 
     /// Whether `inputPath` names source text or a local image to beautify. Image input
     /// is render-only and is copied into an invocation-scoped temporary store, never
@@ -76,6 +79,9 @@ struct CLIOptions: Equatable {
     /// A preset reframes presentation/output exactly as it does in the GUI and never
     /// touches the source (CS-020).
     var presetID: String?
+    /// Canonically ordered destination preset ids selected by `multi-size`. Empty for
+    /// other commands; the parser expands an omitted `--presets` to the full catalog.
+    var multiSizePresetIDs: [String] = []
     /// An immutable built-in style preset id (e.g. `builtin.midnight`), or `nil`
     /// to preserve the app/destination-preset presentation. The CLI deliberately
     /// excludes user presets so automation never depends on machine-local defaults.

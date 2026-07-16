@@ -402,6 +402,8 @@ cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card
 vitrine render input.swift --out image.png --quiet --no-overwrite
 vitrine render input.swift --out image.png --json --no-overwrite
 vitrine render input.swift --out image.pdf
+vitrine multi-size input.swift --out social-cards --presets twitter,linkedin,opengraph
+vitrine multi-size input.swift --out all-sizes --presets all --sidecars all
 vitrine list themes
 vitrine list languages --json
 vitrine list all --json
@@ -544,6 +546,15 @@ depend on machine-local settings.
 `--canvas-size <width>x<height>` pins an exact logical canvas between 64 and 2048 points
 per axis, overriding a destination preset's dimensions while retaining its style and
 recommended scale. The explicit `--scale` multiplier determines final pixel dimensions.
+`vitrine multi-size <input> --out <folder>` loads one code or stdin source once and
+fans it out through destination presets using stable `vitrine-<preset-id>.<format>`
+filenames. It exports every preset by default; `--presets <id,id,...>` narrows the set
+using ids from `vitrine list presets`, while `--presets all` is the explicit full-catalog
+form. Each destination pins its own dimensions and scale, so multi-size rejects the
+singular `--preset`, `--canvas-size`, and `--scale` controls. Style, metadata, annotation,
+watermark, format, profile, sidecar, and no-overwrite options still apply to every output;
+`--no-overwrite` preflights the complete set before rendering so an existing artifact
+cannot leave a partially updated export.
 `vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
 the local render catalogs so scripts can discover valid choices without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.

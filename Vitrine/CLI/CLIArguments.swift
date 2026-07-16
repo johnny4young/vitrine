@@ -55,7 +55,7 @@ nonisolated enum CLIError: Error, Equatable {
         case .helpRequested:
             CLIUsage.text
         case .unknownCommand(let command):
-            "Unknown command \"\(command)\". The commands are \"render\", \"batch\", \"list\", \"shell-init\", and \"version\"."
+            "Unknown command \"\(command)\". The commands are \"render\", \"multi-size\", \"batch\", \"list\", \"shell-init\", and \"version\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
         case .missingValue(let flag):
@@ -106,8 +106,8 @@ nonisolated enum CLIError: Error, Equatable {
 /// Parses `vitrine` command-line arguments into a `CLIOptions` (CS-033).
 ///
 /// The grammar is deliberately tiny and dependency-free (no third-party arg parser):
-/// a `render` or `batch` subcommand, one positional input path/folder, a command-specific
-/// `--out` requirement, and a small set of boolean / `--flag value` options. Pure
+/// a `render`, `multi-size`, or `batch` subcommand, one positional input path/folder,
+/// a command-specific `--out` requirement, and boolean / `--flag value` options. Pure
 /// metadata commands such as `list` and `shell-init` are handled before this parser so
 /// they can run without AppKit or the PRO render gate. Keeping the parser hand-rolled
 /// means the CLI adds no new package to the app and remains straightforward to unit-test.
@@ -135,6 +135,7 @@ enum CLIArguments {
         let mode: CLIOptions.Command
         switch command {
         case "render": mode = .render
+        case "multi-size": mode = .multiSize
         case "batch": mode = .batch
         default: throw CLIError.unknownCommand(command)
         }
@@ -148,6 +149,7 @@ enum CLIArguments {
         var themeID: String?
         var languageID: String?
         var presetID: String?
+        var multiSizePresetIDs: Set<String> = []
         var stylePresetID: String?
         var canvasSize: CGSize?
         var scale: Int?
@@ -258,6 +260,9 @@ enum CLIArguments {
                 languageID = try resolveLanguage(try value(for: token))
             case "--preset":
                 presetID = try resolvePreset(try value(for: token))
+            case "--presets":
+                multiSizePresetIDs.formUnion(
+                    try resolvePresetList(try value(for: token), flag: token))
             case "--style-preset":
                 stylePresetID = try resolveStylePreset(try value(for: token))
             case "--canvas-size":
@@ -487,6 +492,29 @@ enum CLIArguments {
         if stdinFilename != nil, !readStdin {
             throw CLIError.incompatibleOptions("--stdin-name requires --stdin.")
         }
+        if mode != .multiSize, !multiSizePresetIDs.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --presets.")
+        }
+        if mode == .multiSize {
+            if presetID != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine multi-size with --preset; use --presets.")
+            }
+            if canvasSize != nil || scale != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine multi-size with --canvas-size or --scale; destination presets pin their dimensions."
+                )
+            }
+            if imageInputPath != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine multi-size with --image; use a code or stdin source.")
+            }
+            if copyToClipboard || openInEditor {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine multi-size with --copy or --edit.")
+            }
+        }
         if quiet, jsonOutput {
             throw CLIError.incompatibleOptions("Cannot combine --quiet with --json.")
         }
@@ -607,29 +635,37 @@ enum CLIArguments {
         if imageInputPath != nil, readStdin {
             throw CLIError.incompatibleOptions("Cannot combine --image with --stdin.")
         }
-        if mode == .render, recursiveBatch {
-            throw CLIError.incompatibleOptions("Cannot combine render with --recursive.")
+        if mode != .batch, recursiveBatch {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --recursive.")
         }
-        if mode == .render, failOnSkipped {
-            throw CLIError.incompatibleOptions("Cannot combine render with --fail-on-skipped.")
+        if mode != .batch, failOnSkipped {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --fail-on-skipped.")
         }
-        if mode == .render, failOnEmpty {
-            throw CLIError.incompatibleOptions("Cannot combine render with --fail-on-empty.")
+        if mode != .batch, failOnEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --fail-on-empty.")
         }
-        if mode == .render, skippedReportPath != nil {
-            throw CLIError.incompatibleOptions("Cannot combine render with --skipped-report.")
+        if mode != .batch, skippedReportPath != nil {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --skipped-report.")
         }
-        if mode == .render, batchManifestPath != nil {
-            throw CLIError.incompatibleOptions("Cannot combine render with --manifest.")
+        if mode != .batch, batchManifestPath != nil {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --manifest.")
         }
-        if mode == .render, dryRunBatch {
-            throw CLIError.incompatibleOptions("Cannot combine render with --dry-run.")
+        if mode != .batch, dryRunBatch {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --dry-run.")
         }
-        if mode == .render, !batchIncludeExtensions.isEmpty {
-            throw CLIError.incompatibleOptions("Cannot combine render with --include-ext.")
+        if mode != .batch, !batchIncludeExtensions.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --include-ext.")
         }
-        if mode == .render, !batchExcludeExtensions.isEmpty {
-            throw CLIError.incompatibleOptions("Cannot combine render with --exclude-ext.")
+        if mode != .batch, !batchExcludeExtensions.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine \(mode.rawValue) with --exclude-ext.")
         }
         let metadataHeaderRequested =
             windowTitle != nil || metadataFilename != nil
@@ -748,7 +784,7 @@ enum CLIArguments {
         } else {
             guard let outputPath else {
                 throw CLIError.missingRequired(
-                    mode == .batch ? "--out output folder" : "--out output path")
+                    mode == .render ? "--out output path" : "--out output folder")
             }
             resolvedOutput = outputPath
         }
@@ -793,6 +829,12 @@ enum CLIArguments {
             CLIOptions.SegmentAnnotation(
                 start: $0.start, end: $0.end, color: nil, size: nil)
         }
+        let resolvedMultiSizePresetIDs =
+            mode == .multiSize
+            ? ExportPreset.all.filter {
+                multiSizePresetIDs.isEmpty || multiSizePresetIDs.contains($0.id)
+            }.map(\.id)
+            : []
 
         return CLIOptions(
             command: mode,
@@ -804,6 +846,7 @@ enum CLIArguments {
             themeID: themeID,
             language: languageID.flatMap(Language.init(rawValue:)),
             presetID: presetID,
+            multiSizePresetIDs: resolvedMultiSizePresetIDs,
             stylePresetID: stylePresetID,
             canvasSize: canvasSize,
             scale: scale,
@@ -901,6 +944,24 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: "--preset", value: raw)
         }
         return raw
+    }
+
+    /// Parses a comma-separated destination preset selection for `multi-size`.
+    /// `all` is accepted as the complete catalog; every other id is validated now so
+    /// a typo fails before the output directory or any artifact is created.
+    private static func resolvePresetList(_ raw: String, flag: String) throws -> Set<String> {
+        let ids =
+            raw.split(separator: ",", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !ids.isEmpty, !ids.contains(where: \.isEmpty) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        if ids == ["all"] { return Set(ExportPreset.all.map(\.id)) }
+        guard !ids.contains("all"), ids.allSatisfy({ ExportPreset.preset(withID: $0) != nil })
+        else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return Set(ids)
     }
 
     /// Validates an immutable built-in style preset. User presets are intentionally
@@ -1369,6 +1430,7 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --copy [options]
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render (<input-file> | --stdin) --edit [options]
+          vitrine multi-size (<input-file> | --stdin) --out <output-folder> [--presets <ids>] [options]
           vitrine batch <input-folder> --out <output-folder> [options]
           vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
           vitrine --version [--json]
@@ -1376,10 +1438,10 @@ nonisolated enum CLIUsage {
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
 
         OPTIONS:
-          -o, --out <path>       Output image path (required unless --copy / --edit).
+          -o, --out <path>       Output image path, or folder for multi-size/batch.
           -q, --quiet            Suppress success output; errors still print.
-          --json                 Print render/batch success output or metadata as JSON
-                                 (render/batch: not with --quiet).
+          --json                 Print render/multi-size/batch success output as JSON
+                                 (not with --quiet).
           --copy                 Copy the rendered image to the clipboard.
           -e, --edit             Open the source in Vitrine's editor instead of
                                  rendering (no image is written; not with --copy/--out).
@@ -1394,8 +1456,9 @@ nonisolated enum CLIUsage {
           --theme <id>           Syntax theme id (e.g. one-dark, dracula, nord).
           --language <id>        Language id (e.g. swift, python, terminal). Inferred
                                  when omitted.
-          --preset <id>          Destination preset (twitter, linkedin, keynote,
-                                 docs, transparent-slide, opengraph).
+          --preset <id>          Destination preset. Use `vitrine list presets`.
+          --presets <ids>        Multi-size only: comma-separated destination ids,
+                                 or all (the default). Use `vitrine list presets`.
           --style-preset <id>    Built-in presentation preset. Use
                                  `vitrine list style-presets`.
           --canvas-size <WxH>    Exact logical canvas size (64-2048 per axis).
