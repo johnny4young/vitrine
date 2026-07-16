@@ -78,7 +78,10 @@ final class RecentsStore {
             capture.isPinned = true
         }
         captures.removeAll { $0.code == capture.code }
-        captures.append(capture)
+        // Insert at the FRONT: the array's own order is then always newest-added
+        // first, which is what `ordered` falls back to when dates tie — an appended
+        // newcomer with a tied date would lose the tie to older entries.
+        captures.insert(capture, at: 0)
         captures = Self.ordered(captures)
         while captures.count > Self.limit {
             let evictionIndex =
@@ -178,10 +181,13 @@ final class RecentsStore {
     }
 
     /// Pinned captures lead the list; each group remains newest-first. Ties on the
-    /// date fall back to the array's own order (MRU — `add` inserts at the front),
-    /// not a UUID comparison: captures added in the same instant carry equal dates,
-    /// and a random-UUID tie-break would order them differently from run to run.
-    /// Position is just as deterministic for a given list and preserves recency.
+    /// date fall back to the array's own order — a STABLE sort — not a UUID
+    /// comparison: captures added in the same instant carry equal dates (a coarse
+    /// clock tick on the CI runner grouped the demo seed's three), and a random-UUID
+    /// tie-break ordered them differently from run to run. `add` inserts at the
+    /// front, so the array is always newest-added first and stability preserves
+    /// insertion recency; stability also makes this idempotent, which matters because
+    /// `add`/`updatePinned` re-run it over an already-ordered array.
     private static func ordered(_ captures: [Capture]) -> [Capture] {
         captures.enumerated()
             .sorted { lhs, rhs in
