@@ -66,10 +66,9 @@ struct RecentsGalleryView: View {
                 ForEach(recents.captures) { capture in
                     RecentsCard(
                         capture: capture,
-                        thumbnail: recents.thumbnail(for: capture)
-                    ) {
-                        open(capture)
-                    }
+                        thumbnail: recents.thumbnail(for: capture),
+                        action: { open(capture) },
+                        renderAs: { preset in render(capture, as: preset) })
                 }
             }
             .padding(Brand.Spacing.lg)
@@ -120,11 +119,23 @@ struct RecentsGalleryView: View {
     /// *and* left the editor on its previous content; this matches the menu's semantics so
     /// the two recents surfaces behave identically.
     private func open(_ capture: Capture) {
-        var document = settings.config
-        document.code = capture.code
-        document.language = capture.language
-        document.theme = capture.theme
-        onOpenCapture(document)
+        onOpenCapture(capture.applying(to: settings.config))
+    }
+
+    /// Re-renders a past capture for one destination without changing the app's saved
+    /// style or default output preset. The destination owns both the presentation
+    /// guidance and exact geometry, matching the menu-bar one-off preset flow.
+    private func render(_ capture: Capture, as preset: ExportPreset) {
+        var config = capture.applying(to: settings.config)
+        preset.apply(to: &config)
+        let copied = ExportManager.copyToPasteboard(
+            config,
+            scale: CGFloat(preset.scale),
+            fixedSize: preset.sizing.fixedSize,
+            profile: settings.export.colorProfile,
+            richText: settings.export.richClipboard,
+            plainText: settings.export.textSidecar)
+        ExportFeedback.presentCopy(copied)
     }
 
     private func open() {
@@ -141,25 +152,31 @@ private struct RecentsCard: View {
     let capture: Capture
     let thumbnail: NSImage?
     let action: () -> Void
+    let renderAs: (ExportPreset) -> Void
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: Brand.Spacing.xs) {
-                preview
-                metadata
+        ZStack(alignment: .topTrailing) {
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: Brand.Spacing.xs) {
+                    preview
+                    metadata
+                }
+                .padding(Brand.Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Brand.Surface.raised, in: shape)
+                .overlay(
+                    shape.strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
+                )
+                .brandShadow(Brand.Shadow.card)
             }
-            .padding(Brand.Spacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Brand.Surface.raised, in: shape)
-            .overlay(
-                shape.strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
-            )
-            .brandShadow(Brand.Shadow.card)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("recents-card")
+            .accessibilityLabel(accessibilityLabel)
+            .help("Open this capture in the editor")
+
+            presetMenu
+                .padding(Brand.Spacing.sm + Brand.Spacing.xs)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("recents-card")
-        .accessibilityLabel(accessibilityLabel)
-        .help("Open this capture in the editor")
     }
 
     private var shape: RoundedRectangle {
@@ -206,6 +223,32 @@ private struct RecentsCard: View {
                 .lineLimit(1)
                 .layoutPriority(1)
         }
+    }
+
+    private var presetMenu: some View {
+        Menu {
+            ForEach(ExportPreset.all) { preset in
+                Button {
+                    renderAs(preset)
+                } label: {
+                    Text(verbatim: preset.displayName)
+                }
+                .accessibilityIdentifier("recents-preset-\(preset.id)")
+            }
+        } label: {
+            Image(systemName: "rectangle.3.group")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Brand.Palette.textPrimary.color)
+                .frame(width: 30, height: 30)
+                .background(.regularMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(Brand.Palette.border.color))
+                .contentShape(Circle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .help("Re-render this capture with a destination preset")
+        .accessibilityLabel("Re-render As…")
+        .accessibilityIdentifier("recents-preset-picker")
     }
 
     /// One concise VoiceOver announcement combining the metadata the card shows

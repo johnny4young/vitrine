@@ -50,6 +50,26 @@ struct CaptureTests {
         let decoded = try JSONDecoder().decode(Capture.self, from: data)
         #expect(decoded == capture)
     }
+
+    @Test func applyingReplacesContentAndClearsContentBoundMarks() {
+        var base = SnapshotConfig()
+        base.padding = 72
+        base.code = "old"
+        base.language = .python
+        base.theme = .oneLight
+        base.highlightedLineRanges = [1...2]
+        base.annotations = [Annotation(kind: .rectangle, start: .zero, end: CGPoint(x: 1, y: 1))]
+        let capture = Capture(code: "let value = 42", languageID: "swift", themeID: "dracula")
+
+        let applied = capture.applying(to: base)
+
+        #expect(applied.code == capture.code)
+        #expect(applied.language == .swift)
+        #expect(applied.theme == .dracula)
+        #expect(applied.padding == 72)
+        #expect(applied.highlightedLineRanges.isEmpty)
+        #expect(applied.annotations.isEmpty)
+    }
 }
 
 @MainActor

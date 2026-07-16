@@ -314,21 +314,14 @@ struct MenuBarContent: View {
     /// even if the editor is already open (CS-053: a plain `show()` no longer clobbers
     /// an open window's per-window document).
     private func reopen(_ capture: Capture) {
-        var document = settings.config
-        document.code = capture.code
-        document.language = capture.language
-        document.theme = capture.theme
-        EditorWindowController.shared.loadIntoPrimary(document)
+        EditorWindowController.shared.loadIntoPrimary(capture.applying(to: settings.config))
     }
 
     /// Re-renders a recent capture with the user's current output settings and
     /// copies the image — the row's hover action, so a past capture is one
     /// click from the clipboard again.
     private func copyAgain(_ capture: Capture) {
-        var config = settings.config
-        config.code = capture.code
-        config.language = capture.language
-        config.theme = capture.theme
+        let config = capture.applying(to: settings.config)
         ExportManager.copyToPasteboard(
             config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,

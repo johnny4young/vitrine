@@ -139,6 +139,42 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsPresetRerenderTour() throws {
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recent", "--open-recents"])
+        defer { app.terminate() }
+
+        let window = element("recents-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        let picker = element("recents-preset-picker", in: app)
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 0.5)
+        save(
+            window.screenshot(), as: "31-recents-gallery-populated",
+            note: "Recents gallery with one locally rendered capture and preset action")
+
+        if picker.isHittable {
+            picker.click()
+            let openGraph = app.menuItems["OpenGraph 1200×630"]
+            if openGraph.waitForExistence(timeout: 3),
+                let visibleMenu = app.menus.allElementsBoundByIndex.first(where: {
+                    !$0.frame.isEmpty
+                })
+            {
+                Thread.sleep(forTimeInterval: 0.3)
+                save(
+                    visibleMenu.screenshot(), as: "32-recents-destination-presets",
+                    note: "One-off destination preset picker for a recent capture")
+                app.typeKey(.escape, modifierFlags: [])
+            } else {
+                miss("32-recents-destination-presets", reason: "preset menu did not open")
+            }
+        } else {
+            miss("32-recents-destination-presets", reason: "preset picker was not hittable")
+        }
+    }
+
+    @MainActor
     func testHelpTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--show-help"])
         defer { app.terminate() }

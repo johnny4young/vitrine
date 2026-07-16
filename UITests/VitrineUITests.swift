@@ -470,6 +470,43 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsRendersWithDestinationPreset() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recent", "--open-recents"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        assertExists(element("recents-card", in: app), in: app, timeout: 8)
+        assertHittable(
+            "recents-preset-picker", in: app,
+            "A recent capture should expose its destination preset picker")
+        element("recents-preset-picker", in: app).click()
+
+        let openGraph = app.menuItems["OpenGraph 1200×630"]
+        XCTAssertTrue(openGraph.waitForExistence(timeout: 3))
+        openGraph.click()
+
+        let deadline = Date().addingTimeInterval(6)
+        var representation: NSBitmapImageRep?
+        repeat {
+            if let data = pasteboard.data(forType: .png) {
+                representation = NSBitmapImageRep(data: data)
+            }
+            if representation != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < deadline
+
+        let rendered = try XCTUnwrap(representation, "Recent preset did not copy a PNG")
+        XCTAssertEqual(rendered.pixelsWide, 1200)
+        XCTAssertEqual(rendered.pixelsHigh, 630)
+    }
+
+    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general
