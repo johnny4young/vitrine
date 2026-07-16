@@ -62,7 +62,13 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
         ) {
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
-            pasteboard.writeObjects([image])
+            // Only open the compose page when the image actually reached the
+            // pasteboard — with nothing to paste, opening the browser and claiming
+            // success would just mislead (PR review).
+            guard pasteboard.writeObjects([image]) else {
+                ExportFeedback.presentCopy(false)
+                return
+            }
             NSWorkspace.shared.open(url)
             CaptureHUDController.shared.present(
                 Notifier.confirmation(
