@@ -28,6 +28,12 @@ nonisolated enum CLIError: Error, Equatable {
     case inputUnreadable(path: String)
     /// The input file decoded but is not text (likely a binary file).
     case inputNotText(path: String)
+    /// The requested local Git diff could not be generated without exposing raw Git output.
+    case gitDiffFailed
+    /// Git completed successfully but the selected revision/pathspecs produced no diff.
+    case gitDiffEmpty
+    /// The generated diff exceeded the shared bounded source-input limit.
+    case gitDiffTooLarge
     /// `--image` input decoded as bytes but is not an image supported by AppKit.
     case inputNotImage(path: String)
     /// Rendering produced no image (an internal renderer failure).
@@ -70,6 +76,12 @@ nonisolated enum CLIError: Error, Equatable {
             "Could not read the input file at \"\(path)\"."
         case .inputNotText(let path):
             "The input file at \"\(path)\" is not text."
+        case .gitDiffFailed:
+            "Could not generate the local Git diff. Check the revision and repository."
+        case .gitDiffEmpty:
+            "The selected Git revision and paths produced an empty diff."
+        case .gitDiffTooLarge:
+            "The generated Git diff is too large to render (maximum 5 MB)."
         case .inputNotImage(let path):
             "The input file at \"\(path)\" is not a supported image."
         case .renderFailed:
@@ -228,6 +240,8 @@ enum CLIArguments {
         var batchIncludeExtensions: Set<String> = []
         var batchExcludeExtensions: Set<String> = []
         var readStdin = false
+        var gitDiffRange: String?
+        var gitDiffPaths: [String] = []
         var copyToClipboard = false
         var openInEditor = false
         var textSidecar = false
@@ -439,6 +453,14 @@ enum CLIArguments {
                     try resolveExtensionList(try value(for: token), flag: token))
             case "--stdin":
                 readStdin = true
+            case "--git-diff":
+                guard gitDiffRange == nil else {
+                    throw CLIError.incompatibleOptions(
+                        "--git-diff may be provided only once.")
+                }
+                gitDiffRange = try resolveGitDiffRange(try value(for: token), flag: token)
+            case "--git-path":
+                gitDiffPaths.append(try resolveGitPath(try value(for: token), flag: token))
             case "--copy":
                 copyToClipboard = true
             case "--edit", "-e":
@@ -465,15 +487,20 @@ enum CLIArguments {
             }
         }
 
-        // `--stdin`, image-input controls, stdin filename hints, `--copy`, and `--edit`
-        // are render-only (a batch needs real folders).
+        // Alternate source controls, image-input controls, `--copy`, and `--edit` are
+        // render/multi-size-only (a batch needs a real input folder).
         if mode == .batch,
-            readStdin || imageInputPath != nil || stdinFilename != nil || copyToClipboard
+            readStdin || gitDiffRange != nil || !gitDiffPaths.isEmpty || imageInputPath != nil
+                || stdinFilename != nil || copyToClipboard
                 || openInEditor || imageFrame != nil || frameAppearance != nil
         {
             let flag: String
             if readStdin {
                 flag = "--stdin"
+            } else if gitDiffRange != nil {
+                flag = "--git-diff"
+            } else if !gitDiffPaths.isEmpty {
+                flag = "--git-path"
             } else if imageInputPath != nil {
                 flag = "--image"
             } else if stdinFilename != nil {
@@ -491,6 +518,9 @@ enum CLIArguments {
         }
         if stdinFilename != nil, !readStdin {
             throw CLIError.incompatibleOptions("--stdin-name requires --stdin.")
+        }
+        if !gitDiffPaths.isEmpty, gitDiffRange == nil {
+            throw CLIError.incompatibleOptions("--git-path requires --git-diff.")
         }
         if mode != .multiSize, !multiSizePresetIDs.isEmpty {
             throw CLIError.incompatibleOptions(
@@ -635,6 +665,19 @@ enum CLIArguments {
         if imageInputPath != nil, readStdin {
             throw CLIError.incompatibleOptions("Cannot combine --image with --stdin.")
         }
+        if gitDiffRange != nil, let inputPath {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --git-diff with input file \"\(inputPath)\".")
+        }
+        if gitDiffRange != nil, readStdin {
+            throw CLIError.incompatibleOptions("Cannot combine --git-diff with --stdin.")
+        }
+        if gitDiffRange != nil, imageInputPath != nil {
+            throw CLIError.incompatibleOptions("Cannot combine --git-diff with --image.")
+        }
+        if gitDiffRange != nil, diffDecorations == nil {
+            diffDecorations = true
+        }
         if mode != .batch, recursiveBatch {
             throw CLIError.incompatibleOptions(
                 "Cannot combine \(mode.rawValue) with --recursive.")
@@ -764,13 +807,12 @@ enum CLIArguments {
             throw CLIError.incompatibleOptions(
                 "--html-sidecar needs an --out path to write beside.")
         }
-        // Input is a code file, local image, or stdin; output is required unless copying the
-        // image to the clipboard or handing it to the editor (`--edit`), neither of
-        // which writes a file.
+        // Input is a code file, local image, stdin, or a generated local Git diff;
+        // output is required unless copying or handing the source to the editor.
         let resolvedInput: String
         if let imageInputPath {
             resolvedInput = imageInputPath
-        } else if readStdin {
+        } else if readStdin || gitDiffRange != nil {
             resolvedInput = ""
         } else {
             guard let inputPath else {
@@ -910,6 +952,8 @@ enum CLIArguments {
             dryRunBatch: dryRunBatch,
             batchIncludeExtensions: batchIncludeExtensions,
             batchExcludeExtensions: batchExcludeExtensions,
+            gitDiffRange: gitDiffRange,
+            gitDiffPaths: gitDiffPaths,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
@@ -920,6 +964,29 @@ enum CLIArguments {
     }
 
     // MARK: - Value resolution (each rejects an unknown id with a clear error)
+
+    /// Accepts one Git revision or range while rejecting values Git could interpret
+    /// as command options. The value remains one `Process` argument; no shell parses it.
+    private static func resolveGitDiffRange(_ raw: String, flag: String) throws -> String {
+        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, !value.hasPrefix("-"), !containsControlCharacter(raw) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    /// Validates a repeatable Git pathspec. A leading dash is intentionally valid:
+    /// the executor places pathspecs after `--`, where Git cannot treat them as flags.
+    private static func resolveGitPath(_ raw: String, flag: String) throws -> String {
+        guard !raw.isEmpty, !containsControlCharacter(raw) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return raw
+    }
+
+    private static func containsControlCharacter(_ value: String) -> Bool {
+        value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
+    }
 
     /// Validates a theme id against the built-in catalog so a typo fails up front
     /// rather than silently falling back to One Dark at render time.
@@ -1429,8 +1496,9 @@ nonisolated enum CLIUsage {
           vitrine render --image <input-image> --out <image> [options]
           vitrine render --stdin --copy [options]
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
-          vitrine render (<input-file> | --stdin) --edit [options]
-          vitrine multi-size (<input-file> | --stdin) --out <output-folder> [--presets <ids>] [options]
+          vitrine render --git-diff <revision-range> [--git-path <path>]... --out <image> [options]
+          vitrine render (<input-file> | --stdin | --git-diff <revision-range>) --edit [options]
+          vitrine multi-size (<input-file> | --stdin | --git-diff <revision-range>) --out <output-folder> [--presets <ids>] [options]
           vitrine batch <input-folder> --out <output-folder> [options]
           vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
           vitrine --version [--json]
@@ -1446,6 +1514,9 @@ nonisolated enum CLIUsage {
           -e, --edit             Open the source in Vitrine's editor instead of
                                  rendering (no image is written; not with --copy/--out).
           --stdin                Read the source from standard input (e.g. a pipe).
+          --git-diff <range>     Render a local Git revision/range (e.g. HEAD or
+                                 main...HEAD) without invoking a shell.
+          --git-path <path>      Limit --git-diff to a path. Repeat for multiple paths.
           --image <path>         Beautify a local image instead of rendering code.
           --frame <id>           Frame for --image: none, macos-window, browser,
                                  macbook, or iphone. Use `vitrine list frames`.

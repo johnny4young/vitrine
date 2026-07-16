@@ -169,6 +169,8 @@ struct FileInputLoaderInferLanguageTests {
         ("script.mjs", .javascript),
         ("style.scss", .scss),
         ("config.yml", .yaml),
+        ("changes.diff", .diff),
+        ("changes.patch", .diff),
         ("Dockerfile", .dockerfile),
     ])
     func extensionMapsToLanguage(filename: String, expected: Language) {
