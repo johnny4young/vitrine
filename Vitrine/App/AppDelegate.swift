@@ -134,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
     /// none of these run on a normal user launch. `--demo` preloads sample code;
+    /// `--demo-html-format` preloads compact markup for the Format Code smoke test;
     /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
     /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
     /// `--show-help` / `--show-welcome` force those windows open past their gates;
@@ -180,6 +181,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
                 """
+        }
+        if arguments.contains("--demo-html-format") {
+            var demo = AppSettings.shared.config
+            demo.code =
+                #"<!doctype html><main class="card"><h1>Vitrine</h1><p>Local by design.</p><img src="preview.png"></main>"#
+            demo.language = .html
+            AppSettings.shared.config = demo
         }
         if arguments.contains("--demo-recent") {
             RecentsStore.shared.add(

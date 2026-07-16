@@ -182,6 +182,37 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testEditorPrettyPrintsCompactHTML() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo-html-format", "--open-editor"])
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        let compact =
+            #"<!doctype html><main class="card"><h1>Vitrine</h1><p>Local by design.</p><img src="preview.png"></main>"#
+        XCTAssertEqual(editor.value as? String, compact)
+
+        assertHittable("format-button", in: app, "Format Code action is not reachable")
+        element("format-button", in: app).click()
+
+        let expected = """
+            <!doctype html>
+            <main class="card">
+              <h1>Vitrine</h1>
+              <p>Local by design.</p>
+              <img src="preview.png">
+            </main>
+            """
+        let deadline = Date().addingTimeInterval(3)
+        while editor.value as? String != expected, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertEqual(editor.value as? String, expected)
+    }
+
+    @MainActor
     func testEditorShowsToolbarInspectorAndPreviewStage() {
         continueAfterFailure = false
         let app = launch(arguments: ["--demo", "--open-editor"])
