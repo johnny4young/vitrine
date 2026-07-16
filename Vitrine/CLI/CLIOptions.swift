@@ -80,6 +80,9 @@ struct CLIOptions: Equatable {
     /// to preserve the app/destination-preset presentation. The CLI deliberately
     /// excludes user presets so automation never depends on machine-local defaults.
     var stylePresetID: String?
+    /// Optional exact logical canvas size. It overrides destination-preset sizing,
+    /// while the destination preset may still seed presentation and export scale.
+    var canvasSize: CGSize?
     /// The export resolution multiplier (1/2/3). When a preset is chosen and no
     /// explicit scale is given, the preset's recommended scale is used, mirroring the
     /// GUI's "preset seeds the scale, an explicit value overrides it" rule (CS-020).
@@ -355,6 +358,10 @@ struct CLIOptions: Equatable {
     /// Keeps CLI counter labels legible inside the fixed circular badge.
     static let counterNumberRange = 1...99
 
+    /// Bounds each custom logical canvas dimension to keep a 3× render below
+    /// 6,144 pixels per axis while covering every built-in destination preset.
+    static let canvasDimensionRange = 64...2_048
+
     /// Builds the `SnapshotConfig` to render from these options plus the loaded
     /// source `code`, applying the same precedence the GUI uses so the produced
     /// image matches the app.
@@ -469,7 +476,7 @@ struct CLIOptions: Equatable {
         return CGFloat(SettingsDefaults.clampExportScale(raw))
     }
 
-    /// The exact logical canvas size to render, when the active preset pins one
-    /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content (CS-020).
-    var fixedSize: CGSize? { resolvedPreset?.sizing.fixedSize }
+    /// The exact logical canvas size to render. An explicit CLI size wins over a
+    /// destination preset; `nil` lets the canvas hug its content (CS-020).
+    var fixedSize: CGSize? { canvasSize ?? resolvedPreset?.sizing.fixedSize }
 }

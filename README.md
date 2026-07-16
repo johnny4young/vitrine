@@ -538,6 +538,9 @@ and dimensions when available. When a batch contains same-stem files such as
 destination sizing and before explicit style flags. Run `vitrine list style-presets`
 to discover deterministic ids; user presets are intentionally excluded so CI does not
 depend on machine-local settings.
+`--canvas-size <width>x<height>` pins an exact logical canvas between 64 and 2048 points
+per axis, overriding a destination preset's dimensions while retaining its style and
+recommended scale. The explicit `--scale` multiplier determines final pixel dimensions.
 `vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
 the local render catalogs so scripts can discover valid choices without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.
