@@ -423,6 +423,7 @@ vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --excl
   --sidecars all --fail-on-empty --fail-on-skipped --skipped-report docs/cards/skipped.json \
   --manifest docs/cards/manifest.json
 vitrine render --git-diff main...HEAD --git-path Vitrine --out review.png
+vitrine render --git-staged --git-context 6 --out staged-review.png
 vitrine render --help
 ```
 
@@ -461,9 +462,11 @@ individual choices. For single-file `render`, a known
 `--format` is omitted; if both are present, they must agree so scripts never write
 mislabeled artifacts. With `--stdin`, `--stdin-name <name>` supplies a filename hint
 for extension-based language inference and default metadata without reading that file.
-`--git-diff <revision-range>` loads a diff from the current local repository for
-`render` or `multi-size`; repeatable `--git-path <path>` values narrow it to selected
-paths. Vitrine invokes `/usr/bin/git` directly without a shell, disables pagers,
+`--git-diff <revision-range>` loads a revision diff from the current local repository;
+`--git-staged` selects only changes already in the index. Both work with `render` and
+`multi-size`; repeatable `--git-path <path>` values narrow them to selected paths, while
+`--git-context <0...100>` controls unchanged lines around each hunk. Vitrine invokes
+`/usr/bin/git` directly without a shell, disables pagers,
 external diff drivers, textconv, and color, places pathspecs after `--`, and rejects
 empty output or stops Git when output exceeds 5 MB. Stable prefixes and context keep
 captures independent of global Git presentation settings. Paths are literal, prompts

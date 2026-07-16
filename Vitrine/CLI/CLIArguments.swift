@@ -240,8 +240,9 @@ enum CLIArguments {
         var batchIncludeExtensions: Set<String> = []
         var batchExcludeExtensions: Set<String> = []
         var readStdin = false
-        var gitDiffRange: String?
+        var gitDiffSource: GitDiffInputLoader.Source?
         var gitDiffPaths: [String] = []
+        var gitDiffContextLines: Int?
         var copyToClipboard = false
         var openInEditor = false
         var textSidecar = false
@@ -454,13 +455,33 @@ enum CLIArguments {
             case "--stdin":
                 readStdin = true
             case "--git-diff":
-                guard gitDiffRange == nil else {
-                    throw CLIError.incompatibleOptions(
-                        "--git-diff may be provided only once.")
+                if let gitDiffSource {
+                    let message =
+                        if case .staged = gitDiffSource {
+                            "Cannot combine --git-diff with --git-staged."
+                        } else {
+                            "--git-diff may be provided only once."
+                        }
+                    throw CLIError.incompatibleOptions(message)
                 }
-                gitDiffRange = try resolveGitDiffRange(try value(for: token), flag: token)
+                gitDiffSource = .revision(
+                    try resolveGitDiffRange(try value(for: token), flag: token))
+            case "--git-staged":
+                if let gitDiffSource {
+                    let message =
+                        if case .revision = gitDiffSource {
+                            "Cannot combine --git-staged with --git-diff."
+                        } else {
+                            "--git-staged may be provided only once."
+                        }
+                    throw CLIError.incompatibleOptions(message)
+                }
+                gitDiffSource = .staged
             case "--git-path":
                 gitDiffPaths.append(try resolveGitPath(try value(for: token), flag: token))
+            case "--git-context":
+                gitDiffContextLines = try resolveGitContextLines(
+                    try value(for: token), flag: token)
             case "--copy":
                 copyToClipboard = true
             case "--edit", "-e":
@@ -490,17 +511,20 @@ enum CLIArguments {
         // Alternate source controls, image-input controls, `--copy`, and `--edit` are
         // render/multi-size-only (a batch needs a real input folder).
         if mode == .batch,
-            readStdin || gitDiffRange != nil || !gitDiffPaths.isEmpty || imageInputPath != nil
+            readStdin || gitDiffSource != nil || !gitDiffPaths.isEmpty
+                || gitDiffContextLines != nil || imageInputPath != nil
                 || stdinFilename != nil || copyToClipboard
                 || openInEditor || imageFrame != nil || frameAppearance != nil
         {
             let flag: String
             if readStdin {
                 flag = "--stdin"
-            } else if gitDiffRange != nil {
-                flag = "--git-diff"
+            } else if let gitDiffSource {
+                flag = if case .staged = gitDiffSource { "--git-staged" } else { "--git-diff" }
             } else if !gitDiffPaths.isEmpty {
                 flag = "--git-path"
+            } else if gitDiffContextLines != nil {
+                flag = "--git-context"
             } else if imageInputPath != nil {
                 flag = "--image"
             } else if stdinFilename != nil {
@@ -519,8 +543,12 @@ enum CLIArguments {
         if stdinFilename != nil, !readStdin {
             throw CLIError.incompatibleOptions("--stdin-name requires --stdin.")
         }
-        if !gitDiffPaths.isEmpty, gitDiffRange == nil {
-            throw CLIError.incompatibleOptions("--git-path requires --git-diff.")
+        if !gitDiffPaths.isEmpty, gitDiffSource == nil {
+            throw CLIError.incompatibleOptions("--git-path requires --git-diff or --git-staged.")
+        }
+        if gitDiffContextLines != nil, gitDiffSource == nil {
+            throw CLIError.incompatibleOptions(
+                "--git-context requires --git-diff or --git-staged.")
         }
         if mode != .multiSize, !multiSizePresetIDs.isEmpty {
             throw CLIError.incompatibleOptions(
@@ -665,17 +693,17 @@ enum CLIArguments {
         if imageInputPath != nil, readStdin {
             throw CLIError.incompatibleOptions("Cannot combine --image with --stdin.")
         }
-        if gitDiffRange != nil, let inputPath {
+        if gitDiffSource != nil, let inputPath {
             throw CLIError.incompatibleOptions(
-                "Cannot combine --git-diff with input file \"\(inputPath)\".")
+                "Cannot combine a Git diff source with input file \"\(inputPath)\".")
         }
-        if gitDiffRange != nil, readStdin {
-            throw CLIError.incompatibleOptions("Cannot combine --git-diff with --stdin.")
+        if gitDiffSource != nil, readStdin {
+            throw CLIError.incompatibleOptions("Cannot combine a Git diff source with --stdin.")
         }
-        if gitDiffRange != nil, imageInputPath != nil {
-            throw CLIError.incompatibleOptions("Cannot combine --git-diff with --image.")
+        if gitDiffSource != nil, imageInputPath != nil {
+            throw CLIError.incompatibleOptions("Cannot combine a Git diff source with --image.")
         }
-        if gitDiffRange != nil, diffDecorations == nil {
+        if gitDiffSource != nil, diffDecorations == nil {
             diffDecorations = true
         }
         if mode != .batch, recursiveBatch {
@@ -812,7 +840,7 @@ enum CLIArguments {
         let resolvedInput: String
         if let imageInputPath {
             resolvedInput = imageInputPath
-        } else if readStdin || gitDiffRange != nil {
+        } else if readStdin || gitDiffSource != nil {
             resolvedInput = ""
         } else {
             guard let inputPath else {
@@ -952,8 +980,9 @@ enum CLIArguments {
             dryRunBatch: dryRunBatch,
             batchIncludeExtensions: batchIncludeExtensions,
             batchExcludeExtensions: batchExcludeExtensions,
-            gitDiffRange: gitDiffRange,
+            gitDiffSource: gitDiffSource,
             gitDiffPaths: gitDiffPaths,
+            gitDiffContextLines: gitDiffContextLines ?? GitDiffInputLoader.defaultContextLines,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
             openInEditor: openInEditor,
@@ -982,6 +1011,13 @@ enum CLIArguments {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return raw
+    }
+
+    private static func resolveGitContextLines(_ raw: String, flag: String) throws -> Int {
+        guard let value = Int(raw), GitDiffInputLoader.contextLinesRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
     }
 
     private static func containsControlCharacter(_ value: String) -> Bool {
@@ -1497,8 +1533,9 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --copy [options]
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render --git-diff <revision-range> [--git-path <path>]... --out <image> [options]
-          vitrine render (<input-file> | --stdin | --git-diff <revision-range>) --edit [options]
-          vitrine multi-size (<input-file> | --stdin | --git-diff <revision-range>) --out <output-folder> [--presets <ids>] [options]
+          vitrine render --git-staged [--git-path <path>]... --out <image> [options]
+          vitrine render (<input-file> | --stdin | --git-diff <range> | --git-staged) --edit [options]
+          vitrine multi-size (<input-file> | --stdin | --git-diff <range> | --git-staged) --out <output-folder> [--presets <ids>] [options]
           vitrine batch <input-folder> --out <output-folder> [options]
           vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
           vitrine --version [--json]
@@ -1516,7 +1553,10 @@ nonisolated enum CLIUsage {
           --stdin                Read the source from standard input (e.g. a pipe).
           --git-diff <range>     Render a local Git revision/range (e.g. HEAD or
                                  main...HEAD) without invoking a shell.
-          --git-path <path>      Limit --git-diff to a path. Repeat for multiple paths.
+          --git-staged           Render only changes staged in the local Git index.
+          --git-path <path>      Limit a Git diff source to a path. Repeat for multiple paths.
+          --git-context <0...100>
+                                 Unchanged lines around each Git hunk (defaults to 3).
           --image <path>         Beautify a local image instead of rendering code.
           --frame <id>           Frame for --image: none, macos-window, browser,
                                  macbook, or iphone. Use `vitrine list frames`.
