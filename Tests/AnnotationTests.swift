@@ -156,6 +156,54 @@ struct AnnotationTests {
         #expect(try png(plain) != png(texted), "a text callout must change the exported image")
     }
 
+    // MARK: - Sticker layer (feature #13)
+
+    @Test func stickerChangesTheRenderedPixels() throws {
+        var plain = SnapshotConfig()
+        plain.code = "let x = 1"
+        var stickered = plain
+        stickered.annotations = [
+            Annotation(
+                kind: .sticker, start: CGPoint(x: 0.5, y: 0.5), end: CGPoint(x: 0.5, y: 0.5),
+                text: "🔥", thickness: 12)
+        ]
+        #expect(try png(plain) != png(stickered), "a sticker must change the exported image")
+    }
+
+    /// A sticker is click-placed (like text/counter), the tool maps to its kind, it
+    /// exposes the size slider but not the color swatch (an emoji has its own colors),
+    /// and the glyph rides in `text` through `make`.
+    @Test func stickerToolContractAndPlacement() {
+        #expect(Annotation.Kind.sticker.isPointPlaced)
+        #expect(AnnotationTool.sticker.kind == .sticker)
+        #expect(AnnotationTool.sticker.usesThickness)
+        #expect(!AnnotationTool.sticker.usesColor)
+        #expect(!AnnotationTool.stickerChoices.isEmpty)
+
+        let placed = Annotation.make(
+            kind: .sticker, from: CGPoint(x: 0.4, y: 0.6), to: CGPoint(x: 0.4, y: 0.6),
+            color: Annotation.defaultColor, thickness: 10, text: "👀")
+        #expect(placed.text == "👀")
+        #expect(placed.kind == .sticker)
+    }
+
+    /// A sticker survives the persistence round-trip (kind + glyph + anchor).
+    @Test func stickerRoundTripsThroughPersistence() {
+        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        var config = SnapshotConfig()
+        config.annotations = [
+            Annotation(
+                kind: .sticker, start: CGPoint(x: 0.25, y: 0.75), end: CGPoint(x: 0.25, y: 0.75),
+                text: "🚀", thickness: 14)
+        ]
+        SettingsCodec.persistStyle(config, to: defaults)
+        let restored = SettingsCodec.readConfig(from: defaults).annotations
+        #expect(restored.count == 1)
+        #expect(restored.first?.kind == .sticker)
+        #expect(restored.first?.text == "🚀")
+        #expect(restored.first?.start == CGPoint(x: 0.25, y: 0.75))
+    }
+
     @Test func redactingALineChangesTheRenderedPixels() throws {
         // Both render row-by-row (line numbers on), so the only difference is the
         // redacted row mask — isolating redaction from the row-layout switch.

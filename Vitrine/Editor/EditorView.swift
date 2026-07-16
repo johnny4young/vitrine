@@ -82,6 +82,10 @@ struct EditorView: View {
     @State var newDrawColor: Color = Annotation.defaultColor.color
     @State var newDrawThickness: Double = Annotation.defaultThickness
 
+    /// The emoji the sticker tool places next (feature #13). Defaults to the first of
+    /// the curated set; the toolbar's sticker picker changes it.
+    @State var newStickerGlyph: String = AnnotationTool.stickerChoices[0]
+
     /// Undo/redo history for annotation edits (CS-086): each entry is a full snapshot
     /// of `config.annotations` captured just before a draw/move/resize/delete. Bounded
     /// so a long session never grows without limit.

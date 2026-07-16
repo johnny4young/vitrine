@@ -16,9 +16,33 @@ struct AnnotationMarkView: View {
         case .text: TextMark(annotation: annotation, size: size)
         case .highlighter: HighlighterMark(annotation: annotation, size: size)
         case .counter: CounterMark(annotation: annotation, size: size)
+        case .sticker: StickerMark(annotation: annotation, size: size)
         case .blur: EmptyView()
         }
     }
+}
+
+/// An emoji sticker — a single large glyph placed as a reaction (👀 🔥 ✅), with a
+/// soft drop shadow so it reads as a layer above the card rather than part of it.
+/// The glyph rides in `annotation.text`; `thickness` drives its point size. An empty
+/// glyph renders nothing (the sticker tool always places one, so this is defensive).
+struct StickerMark: View {
+    let annotation: Annotation
+    let size: CGSize
+
+    var body: some View {
+        if !annotation.text.isEmpty {
+            Text(verbatim: annotation.text)
+                .font(.system(size: fontSize))
+                .shadow(color: .black.opacity(0.25), radius: 2, x: 0, y: 1)
+                .position(annotation.startPoint(in: size))
+        }
+    }
+
+    /// The emoji's point size, driven by the toolbar's size slider: the 2…28
+    /// thickness range maps to ~22…100 pt so the smallest sticker stays legible
+    /// and the largest is a deliberate statement, not an accident.
+    private var fontSize: CGFloat { max(22, annotation.thickness * 3.6) }
 }
 
 /// An arrow: a straight shaft from tail to head with a chevron arrowhead.

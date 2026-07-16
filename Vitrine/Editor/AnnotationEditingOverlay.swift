@@ -24,6 +24,8 @@ struct AnnotationEditingOverlay: View {
     let activeTool: AnnotationTool
     let drawColor: Color
     let drawThickness: Double
+    /// The emoji the sticker tool places (feature #13); unused by every other tool.
+    var stickerGlyph: String = AnnotationTool.stickerChoices[0]
     /// Called once at the start of each discrete edit (draw, move, resize, delete) so
     /// the editor can snapshot the annotations for undo (CS-086).
     let onBeginEdit: () -> Void
@@ -38,6 +40,7 @@ struct AnnotationEditingOverlay: View {
                         kind: kind, color: drawColor, thickness: drawThickness,
                         canvasSize: canvasSize,
                         nextCounterNumber: nextCounterNumber,
+                        stickerGlyph: stickerGlyph,
                         onBeginDraw: onBeginEdit,
                         onCommit: { annotation in
                             settings.config.annotations.append(annotation)
@@ -145,6 +148,7 @@ private struct DrawingLayer: View {
     let thickness: Double
     let canvasSize: CGSize
     let nextCounterNumber: Int
+    var stickerGlyph: String = ""
     let onBeginDraw: () -> Void
     let onCommit: (Annotation) -> Void
 
@@ -196,7 +200,8 @@ private struct DrawingLayer: View {
     private func makeAnnotation(from start: CGPoint, to end: CGPoint) -> Annotation {
         Annotation.make(
             kind: kind, from: normalize(start), to: normalize(end), color: RGBAColor(color),
-            thickness: thickness, number: kind == .counter ? nextCounterNumber : 0)
+            thickness: thickness, number: kind == .counter ? nextCounterNumber : 0,
+            text: kind == .sticker ? stickerGlyph : "")
     }
 
     private func normalize(_ point: CGPoint) -> CGPoint {
