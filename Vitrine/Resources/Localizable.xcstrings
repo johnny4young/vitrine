@@ -7982,6 +7982,61 @@
           }
         }
       }
+    },
+    "Newest First" : {
+      "comment" : "Recents gallery sort order showing the latest captures first.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más recientes primero"
+          }
+        }
+      }
+    },
+    "Oldest First" : {
+      "comment" : "Recents gallery sort order showing the earliest captures first.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más antiguas primero"
+          }
+        }
+      }
+    },
+    "Language A–Z" : {
+      "comment" : "Recents gallery sort order grouping captures alphabetically by language.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lenguaje A–Z"
+          }
+        }
+      }
+    },
+    "Sort captures while keeping pinned favorites first" : {
+      "comment" : "Help text for the Recents gallery sort menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordena las capturas manteniendo primero las favoritas fijadas"
+          }
+        }
+      }
+    },
+    "Pinned captures remain first in every sort order" : {
+      "comment" : "Accessibility hint for the Recents gallery sort menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas fijadas permanecen primero en cualquier orden"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

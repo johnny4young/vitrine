@@ -82,6 +82,38 @@ struct CaptureTests {
         #expect(capture.matchesSearch("rust dracula"))
         #expect(!capture.matchesSearch("rust github"))
     }
+
+    @Test func gallerySortsWithinPinnedAndUnpinnedGroups() {
+        let oldestPinned = Capture(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            code: "pinned rust", languageID: Language.rust.rawValue,
+            themeID: Theme.dracula.id, date: Date(timeIntervalSinceReferenceDate: 1),
+            isPinned: true)
+        let olderPython = Capture(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+            code: "python", languageID: Language.python.rawValue,
+            themeID: Theme.oneDark.id, date: Date(timeIntervalSinceReferenceDate: 2))
+        let newerGo = Capture(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+            code: "go", languageID: Language.go.rawValue,
+            themeID: Theme.github.id, date: Date(timeIntervalSinceReferenceDate: 3))
+        let newestPinned = Capture(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
+            code: "pinned swift", languageID: Language.swift.rawValue,
+            themeID: Theme.oneLight.id, date: Date(timeIntervalSinceReferenceDate: 4),
+            isPinned: true)
+        let captures = [olderPython, newestPinned, newerGo, oldestPinned]
+
+        #expect(
+            RecentsSortOrder.newestFirst.sorted(captures).map(\.id)
+                == [newestPinned.id, oldestPinned.id, newerGo.id, olderPython.id])
+        #expect(
+            RecentsSortOrder.oldestFirst.sorted(captures).map(\.id)
+                == [oldestPinned.id, newestPinned.id, olderPython.id, newerGo.id])
+        #expect(
+            RecentsSortOrder.language.sorted(captures).map(\.id)
+                == [oldestPinned.id, newestPinned.id, newerGo.id, olderPython.id])
+    }
 }
 
 @MainActor

@@ -86,3 +86,38 @@ struct Capture: Codable, Identifiable, Equatable {
         return trimmed.count <= 40 ? trimmed : String(trimmed.prefix(39)) + "…"
     }
 }
+
+/// Ephemeral ordering choices for the visual Recents gallery. Sorting never
+/// rewrites the persisted store, and pinned favorites always lead every mode.
+enum RecentsSortOrder: String, CaseIterable, Identifiable {
+    case newestFirst
+    case oldestFirst
+    case language
+
+    var id: Self { self }
+
+    func sorted(_ captures: [Capture]) -> [Capture] {
+        captures.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
+
+            switch self {
+            case .newestFirst:
+                return orderedByDate(lhs, rhs, newestFirst: true)
+            case .oldestFirst:
+                return orderedByDate(lhs, rhs, newestFirst: false)
+            case .language:
+                let comparison = lhs.language.displayName.localizedStandardCompare(
+                    rhs.language.displayName)
+                if comparison != .orderedSame { return comparison == .orderedAscending }
+                return orderedByDate(lhs, rhs, newestFirst: true)
+            }
+        }
+    }
+
+    private func orderedByDate(_ lhs: Capture, _ rhs: Capture, newestFirst: Bool) -> Bool {
+        if lhs.date != rhs.date {
+            return newestFirst ? lhs.date > rhs.date : lhs.date < rhs.date
+        }
+        return lhs.id.uuidString < rhs.id.uuidString
+    }
+}

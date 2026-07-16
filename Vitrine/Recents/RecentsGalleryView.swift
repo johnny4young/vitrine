@@ -40,6 +40,10 @@ struct RecentsGalleryView: View {
     /// should start by showing the complete history rather than appearing empty.
     @State private var showsPinnedOnly = false
 
+    /// Local presentation preference. Sorting a gallery never rewrites capture
+    /// history; every fresh window starts with the store's newest-first default.
+    @State private var sortOrder = RecentsSortOrder.newestFirst
+
     /// The capture awaiting individual deletion confirmation. Keeping the model,
     /// rather than only a Boolean, guarantees the confirmation removes the exact
     /// card whose menu initiated it even if the grid updates meanwhile.
@@ -132,6 +136,28 @@ struct RecentsGalleryView: View {
             }
             ToolbarItem(placement: .automatic) {
                 Menu {
+                    ForEach(RecentsSortOrder.allCases) { order in
+                        Button {
+                            sortOrder = order
+                        } label: {
+                            HStack {
+                                Text(order.title)
+                                if sortOrder == order {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                        .accessibilityIdentifier("recents-sort-\(order.rawValue)")
+                    }
+                } label: {
+                    Label(sortOrder.title, systemImage: "arrow.up.arrow.down")
+                }
+                .help("Sort captures while keeping pinned favorites first")
+                .accessibilityHint("Pinned captures remain first in every sort order")
+                .accessibilityIdentifier("recents-sort-picker")
+            }
+            ToolbarItem(placement: .automatic) {
+                Menu {
                     Button(role: .destructive) {
                         isConfirmingClearUnpinned = true
                     } label: {
@@ -203,9 +229,10 @@ struct RecentsGalleryView: View {
     /// A prefiltered value keeps `ForEach` stable and makes the search contract easy
     /// to read: every visible card retains its persisted capture id.
     private var filteredCaptures: [Capture] {
-        recents.captures.filter {
-            (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery)
-        }
+        sortOrder.sorted(
+            recents.captures.filter {
+                (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery)
+            })
     }
 
     private var emptyState: some View {
@@ -253,6 +280,16 @@ struct RecentsGalleryView: View {
 
     private func open() {
         onOpen()
+    }
+}
+
+extension RecentsSortOrder {
+    fileprivate var title: LocalizedStringKey {
+        switch self {
+        case .newestFirst: "Newest First"
+        case .oldestFirst: "Oldest First"
+        case .language: "Language A–Z"
+        }
     }
 }
 
