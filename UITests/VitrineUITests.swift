@@ -470,6 +470,49 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarRendersClipboardWithDestinationPreset() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setString("let answer = 42", forType: .string))
+
+        let app = launch(arguments: ["--skip-onboarding"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        let statusItem = app.statusItems.firstMatch
+        try XCTSkipUnless(
+            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
+            "The status item is not reachable on this display arrangement")
+        statusItem.click()
+
+        assertHittable(
+            "menu-capture-preset-picker", in: app,
+            "The destination preset picker should be reachable from the menu-bar panel")
+        element("menu-capture-preset-picker", in: app).click()
+
+        let openGraph = app.menuItems["OpenGraph 1200×630"]
+        XCTAssertTrue(openGraph.waitForExistence(timeout: 3))
+        openGraph.click()
+
+        let deadline = Date().addingTimeInterval(6)
+        var representation: NSBitmapImageRep?
+        repeat {
+            if let data = pasteboard.data(forType: .png) {
+                representation = NSBitmapImageRep(data: data)
+            }
+            if representation != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < deadline
+
+        let rendered = try XCTUnwrap(representation, "Preset capture did not copy a PNG")
+        XCTAssertEqual(rendered.pixelsWide, 1200)
+        XCTAssertEqual(rendered.pixelsHigh, 630)
+    }
+
+    @MainActor
     func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() throws {
         continueAfterFailure = false
         // A fresh defaults suite is a first run, so the quick-start appears on

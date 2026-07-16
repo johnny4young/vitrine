@@ -413,6 +413,35 @@ struct LanguageDetectorInterpretTests {
 @MainActor
 @Suite("QuickCapture · CS-027", .serialized)
 struct QuickCaptureFenceTests {
+    @Test func destinationPresetResolvesPresentationAndGeometryWithoutChangingDefaults() {
+        let settings = AppSettings(defaults: cs027Defaults())
+        let original = settings.config
+
+        let plan = QuickCapture.renderPlan(
+            for: original, settings: settings, destinationPreset: .openGraph)
+
+        #expect(plan.fixedSize == CGSize(width: 1200, height: 630))
+        #expect(plan.scale == 1)
+        #expect(plan.config.padding == ExportPreset.openGraph.padding)
+        #expect(plan.config.background == ExportPreset.openGraph.background)
+        #expect(settings.config.padding == original.padding)
+        #expect(settings.config.background == original.background)
+        #expect(settings.selectedPresetID == nil)
+    }
+
+    @Test func destinationPresetIsAppliedWhenSeveralBlocksDeferToEditor() {
+        let settings = AppSettings(defaults: cs027Defaults())
+        let outcome = QuickCapture.run(
+            settings: settings,
+            recents: RecentsStore(defaults: cs027Defaults()),
+            destinationPreset: .twitter,
+            clipboard: { "```swift\nlet a = 1\n```\n\n```swift\nlet b = 2\n```" })
+
+        #expect(outcome == .deferredToEditor(blocks: 2))
+        #expect(settings.config.padding == ExportPreset.twitter.padding)
+        #expect(settings.config.background == ExportPreset.twitter.background)
+    }
+
     @Test func singleFenceIsStrippedBeforeStoring() {
         let recents = RecentsStore(defaults: cs027Defaults())
         let outcome = QuickCapture.run(

@@ -1222,6 +1222,17 @@
         }
       }
     },
+    "Choose a destination size without changing the default preset" : {
+      "comment" : "VoiceOver hint for the menu-bar destination preset picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un tamaño de destino sin cambiar el ajuste preestablecido predeterminado"
+          }
+        }
+      }
+    },
     "Choose a folder on your PATH for the vitrine command — for example /opt/homebrew/bin." : {
       "comment" : "Open-panel message for the CLI install (CS-033).",
       "extractionState" : "stale",
@@ -4204,6 +4215,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Generar como texto"
+          }
+        }
+      }
+    },
+    "Render Clipboard As…" : {
+      "comment" : "Menu-bar action that renders clipboard code with a one-off destination preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderizar portapapeles como…"
           }
         }
       }
