@@ -76,6 +76,10 @@ struct CLIOptions: Equatable {
     /// A preset reframes presentation/output exactly as it does in the GUI and never
     /// touches the source (CS-020).
     var presetID: String?
+    /// An immutable built-in style preset id (e.g. `builtin.midnight`), or `nil`
+    /// to preserve the app/destination-preset presentation. The CLI deliberately
+    /// excludes user presets so automation never depends on machine-local defaults.
+    var stylePresetID: String?
     /// The export resolution multiplier (1/2/3). When a preset is chosen and no
     /// explicit scale is given, the preset's recommended scale is used, mirroring the
     /// GUI's "preset seeds the scale, an explicit value overrides it" rule (CS-020).
@@ -358,9 +362,10 @@ struct CLIOptions: Equatable {
     /// Order of application, lowest precedence first:
     ///   1. App defaults (`SnapshotConfig()`).
     ///   2. The destination preset's presentation guidance (padding/background).
-    ///   3. The theme override.
-    ///   4. The transparent-background override (wins over a preset's background).
-    ///   5. CLI presentation overrides.
+    ///   3. The built-in style preset.
+    ///   4. The theme override.
+    ///   5. The transparent-background override (wins over preset backgrounds).
+    ///   6. CLI presentation overrides.
     ///
     /// `code` and `language` are set from the input file and never altered by a
     /// preset, exactly as in the GUI (a preset is presentation/output only, CS-020).
@@ -369,7 +374,9 @@ struct CLIOptions: Equatable {
         watermarkLogoData: Data? = nil
     ) -> SnapshotConfig {
         var config = SnapshotConfig().styled(
-            presetID: presetID, themeID: themeID, transparent: transparent)
+            presetID: presetID, themeID: nil, transparent: false)
+        resolvedStylePreset?.style.apply(to: &config)
+        config = config.styled(presetID: nil, themeID: themeID, transparent: transparent)
         if let background { config.background = background }
         if let backgroundImageReference {
             config.background = .image(
@@ -447,6 +454,11 @@ struct CLIOptions: Equatable {
 
     /// The resolved destination preset, or `nil` when none was requested.
     var resolvedPreset: ExportPreset? { ExportPreset.preset(withID: presetID) }
+
+    /// The deterministic built-in style preset requested by automation.
+    var resolvedStylePreset: StylePreset? {
+        StylePreset.builtIns.first { $0.id == stylePresetID }
+    }
 
     /// The effective export scale, applying the GUI's precedence: an explicit
     /// `--scale` wins; otherwise a chosen preset's recommended scale is used; with

@@ -148,6 +148,7 @@ enum CLIArguments {
         var themeID: String?
         var languageID: String?
         var presetID: String?
+        var stylePresetID: String?
         var scale: Int?
         var fontName: String?
         var fontLigatures: Bool?
@@ -261,6 +262,8 @@ enum CLIArguments {
                 languageID = try resolveLanguage(try value(for: token))
             case "--preset":
                 presetID = try resolvePreset(try value(for: token))
+            case "--style-preset":
+                stylePresetID = try resolveStylePreset(try value(for: token))
             case "--scale":
                 scale = try resolveScale(try value(for: token), flag: token)
             case "--font":
@@ -639,7 +642,8 @@ enum CLIArguments {
             windowTitle != nil || metadataFilename != nil
             || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
         let styleOptionsRequested =
-            background != nil || backgroundImagePath != nil || transparent || fontName != nil
+            stylePresetID != nil || background != nil || backgroundImagePath != nil || transparent
+            || fontName != nil
             || fontLigatures != nil
             || fontSize != nil || padding != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
@@ -824,6 +828,7 @@ enum CLIArguments {
             themeID: themeID,
             language: languageID.flatMap(Language.init(rawValue:)),
             presetID: presetID,
+            stylePresetID: stylePresetID,
             scale: scale,
             fontName: fontName,
             fontLigatures: fontLigatures,
@@ -917,6 +922,15 @@ enum CLIArguments {
     private static func resolvePreset(_ raw: String) throws -> String {
         guard ExportPreset.preset(withID: raw) != nil else {
             throw CLIError.invalidValue(flag: "--preset", value: raw)
+        }
+        return raw
+    }
+
+    /// Validates an immutable built-in style preset. User presets are intentionally
+    /// excluded so scripts render identically on every machine.
+    private static func resolveStylePreset(_ raw: String) throws -> String {
+        guard StylePreset.builtInIDs.contains(raw) else {
+            throw CLIError.invalidValue(flag: "--style-preset", value: raw)
         }
         return raw
     }
@@ -1363,7 +1377,7 @@ nonisolated enum CLIUsage {
           vitrine render --stdin --out <image> [--stdin-name <name>] [options]
           vitrine render (<input-file> | --stdin) --edit [options]
           vitrine batch <input-folder> --out <output-folder> [options]
-          vitrine list <all|themes|languages|presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
+          vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
           vitrine --version [--json]
           vitrine version [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
@@ -1389,6 +1403,8 @@ nonisolated enum CLIUsage {
                                  when omitted.
           --preset <id>          Destination preset (twitter, linkedin, keynote,
                                  docs, transparent-slide, opengraph).
+          --style-preset <id>    Built-in presentation preset. Use
+                                 `vitrine list style-presets`.
           --scale <1|2|3>        Export resolution multiplier. Defaults to the app
                                  default, or the preset's recommended scale.
           --font <family>        Code font family. Use `vitrine list fonts`.

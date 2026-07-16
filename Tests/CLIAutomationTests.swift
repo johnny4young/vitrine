@@ -137,6 +137,9 @@ struct CLIAutomationTests {
             CLICatalog.invocation(for: ["--json", "language"])
                 == .listing(.languages, format: .json))
         #expect(CLICatalog.invocation(for: ["preset"]) == .listing(.presets, format: .text))
+        #expect(
+            CLICatalog.invocation(for: ["style-preset"])
+                == .listing(.stylePresets, format: .text))
         #expect(CLICatalog.invocation(for: ["font"]) == .listing(.fonts, format: .text))
         #expect(
             CLICatalog.invocation(for: ["backgrounds"])
@@ -171,6 +174,12 @@ struct CLIAutomationTests {
         let presetText = CLICatalog.output(for: .presets, format: .text)
         #expect(presetText.contains("opengraph\tOpenGraph 1200×630\n"))
         #expect(presetText.contains("transparent-slide\tTransparent Slide\n"))
+
+        let stylePresetText = CLICatalog.output(for: .stylePresets, format: .text)
+        #expect(
+            stylePresetText
+                == "builtin.aurora\tAurora\nbuiltin.midnight\tMidnight\nbuiltin.sunset\tSunset\nbuiltin.minimal\tMinimal Light\n"
+        )
 
         let formatText = CLICatalog.output(for: .formats, format: .text)
         #expect(formatText == "png\tPNG\npdf\tPDF\nheic\tHEIC\n")
@@ -225,6 +234,7 @@ struct CLIAutomationTests {
         #expect(allText.contains("  one-dark\tOne Dark\n"))
         #expect(allText.contains("languages:\n"))
         #expect(allText.contains("  swift\tSwift\n"))
+        #expect(allText.contains("style-presets:\n  builtin.aurora\tAurora\n"))
         #expect(allText.contains("fonts:\n  JetBrains Mono\tJetBrains Mono\n"))
         #expect(allText.contains("backgrounds:\n  aurora\tAurora\n"))
         #expect(allText.contains("background-fits:\n  fill\tFill\n"))
@@ -239,6 +249,7 @@ struct CLIAutomationTests {
         let themes = try #require(decoded["themes"] as? [[String: String]])
         let languages = try #require(decoded["languages"] as? [[String: String]])
         let presets = try #require(decoded["presets"] as? [[String: String]])
+        let stylePresets = try #require(decoded["stylePresets"] as? [[String: String]])
         let fonts = try #require(decoded["fonts"] as? [[String: String]])
         let backgrounds = try #require(decoded["backgrounds"] as? [[String: String]])
         let backgroundFits = try #require(decoded["backgroundFits"] as? [[String: String]])
@@ -252,6 +263,10 @@ struct CLIAutomationTests {
         #expect(themes.contains { $0["id"] == "one-dark" })
         #expect(languages.contains { $0["id"] == "swift" })
         #expect(presets.contains { $0["id"] == "opengraph" })
+        #expect(
+            stylePresets.contains {
+                $0["id"] == "builtin.minimal" && $0["name"] == "Minimal Light"
+            })
         #expect(fonts.contains { $0["id"] == "Fira Code" && $0["name"] == "Fira Code" })
         #expect(backgrounds.contains { $0["id"] == "aurora" && $0["name"] == "Aurora" })
         #expect(backgroundFits.contains { $0["id"] == "fit" && $0["name"] == "Fit" })

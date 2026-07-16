@@ -72,6 +72,7 @@ struct CLITests {
         #expect(options.themeID == nil)
         #expect(options.language == nil)
         #expect(options.presetID == nil)
+        #expect(options.stylePresetID == nil)
         #expect(options.scale == nil)
         #expect(options.format == .png)
         #expect(options.profile == .sRGB)
@@ -146,6 +147,7 @@ struct CLITests {
             "--theme", "dracula",
             "--language", "python",
             "--preset", "opengraph",
+            "--style-preset", "builtin.midnight",
             "--scale", "3",
             "--font", "Fira Code",
             "--font-ligatures",
@@ -182,6 +184,7 @@ struct CLITests {
         #expect(options.themeID == "dracula")
         #expect(options.language == .python)
         #expect(options.presetID == "opengraph")
+        #expect(options.stylePresetID == "builtin.midnight")
         #expect(options.scale == 3)
         #expect(options.fontName == "Fira Code")
         #expect(options.fontLigatures == true)
@@ -1531,6 +1534,14 @@ struct CLITests {
                 "Cannot combine --edit with render-only style options.")
         ) {
             try CLIArguments.parse([
+                "render", "snippet.swift", "--edit", "--style-preset", "builtin.aurora",
+            ])
+        }
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse([
                 "render", "snippet.swift", "--edit", "--font-size", "15",
             ])
         }
@@ -1617,6 +1628,11 @@ struct CLITests {
         }
         #expect(throws: CLIError.invalidValue(flag: "--preset", value: "billboard")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--preset", "billboard"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--style-preset", value: "personal")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--style-preset", "personal",
+            ])
         }
         #expect(throws: CLIError.invalidValue(flag: "--font", value: "Comic Sans")) {
             try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--font", "Comic Sans"])
@@ -1801,6 +1817,36 @@ struct CLITests {
         #expect(config.background == .transparent)
         // …and never touches the source.
         #expect(config.code == "X")
+    }
+
+    @Test func builtInStylePresetAppliesPresentationWithoutChangingDestinationSizing() throws {
+        let options = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--preset", "opengraph",
+            "--style-preset", "builtin.minimal",
+        ])
+        let config = options.makeConfig(code: "let value = 42", language: .swift)
+
+        #expect(options.stylePresetID == "builtin.minimal")
+        #expect(options.resolvedStylePreset?.name == "Minimal Light")
+        #expect(options.fixedSize == CGSize(width: 1200, height: 630))
+        #expect(config.theme.id == Theme.github.id)
+        #expect(config.padding == 32)
+        #expect(!config.showShadow)
+        #expect(config.background == .solid(RGBAColor(.white)))
+        #expect(config.code == "let value = 42")
+    }
+
+    @Test func explicitStyleFlagsOverrideBuiltInStylePreset() throws {
+        let options = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--style-preset", "builtin.minimal",
+            "--theme", "dracula", "--background", "night", "--shadow", "--padding", "48",
+        ])
+        let config = options.makeConfig(code: "X", language: .swift)
+
+        #expect(config.theme.id == Theme.dracula.id)
+        #expect(config.background == .gradient(.night))
+        #expect(config.showShadow)
+        #expect(config.padding == 48)
     }
 
     @Test func transparentFlagOverridesPresetBackground() throws {

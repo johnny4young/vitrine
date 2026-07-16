@@ -534,7 +534,11 @@ planned outputs during `--dry-run`) with relative image paths, requested sidecar
 and dimensions when available. When a batch contains same-stem files such as
 `Widget.swift` and `Widget.ts`, only that colliding group preserves the input extension
 (`Widget.swift.png`, `Widget.ts.png`) so one artifact never overwrites the other.
-`vitrine list <all|themes|languages|presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
+`--style-preset <id>` applies one of the app's immutable built-in visual presets after
+destination sizing and before explicit style flags. Run `vitrine list style-presets`
+to discover deterministic ids; user presets are intentionally excluded so CI does not
+depend on machine-local settings.
+`vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
 the local render catalogs so scripts can discover valid choices without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before
