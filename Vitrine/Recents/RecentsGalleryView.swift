@@ -82,6 +82,9 @@ struct RecentsGalleryView: View {
                             capture: capture,
                             thumbnail: recents.thumbnail(for: capture),
                             action: { open(capture) },
+                            pin: {
+                                recents.updatePinned(id: capture.id, isPinned: !capture.isPinned)
+                            },
                             renderAs: { preset in render(capture, as: preset) },
                             delete: { pendingDeletion = capture })
                     }
@@ -196,6 +199,7 @@ private struct RecentsCard: View {
     let capture: Capture
     let thumbnail: NSImage?
     let action: () -> Void
+    let pin: () -> Void
     let renderAs: (ExportPreset) -> Void
     let delete: () -> Void
 
@@ -221,6 +225,12 @@ private struct RecentsCard: View {
 
             presetMenu
                 .padding(Brand.Spacing.sm + Brand.Spacing.xs)
+        }
+        .overlay(alignment: .topLeading) {
+            if capture.isPinned {
+                pinBadge
+                    .padding(Brand.Spacing.sm + Brand.Spacing.xs)
+            }
         }
     }
 
@@ -272,6 +282,18 @@ private struct RecentsCard: View {
 
     private var presetMenu: some View {
         Menu {
+            if capture.isPinned {
+                Button(action: pin) {
+                    Label("Unpin Capture", systemImage: "pin.slash")
+                }
+                .accessibilityIdentifier("recents-unpin-capture")
+            } else {
+                Button(action: pin) {
+                    Label("Pin Capture", systemImage: "pin")
+                }
+                .accessibilityIdentifier("recents-pin-capture")
+            }
+            Divider()
             ForEach(ExportPreset.all) { preset in
                 Button {
                     renderAs(preset)
@@ -294,16 +316,28 @@ private struct RecentsCard: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .help("Re-render or remove this recent capture")
+        .help("Re-render, pin, or remove this recent capture")
         .accessibilityLabel("Capture actions")
         .accessibilityIdentifier("recents-preset-picker")
+    }
+
+    private var pinBadge: some View {
+        Label("Pinned", systemImage: "pin.fill")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Brand.Palette.textPrimary.color)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 7)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Brand.Palette.border.color))
+            .accessibilityIdentifier("recents-pinned-badge")
     }
 
     /// One concise VoiceOver announcement combining the metadata the card shows
     /// visually, so the card reads usefully without the user inspecting each label.
     private var accessibilityLabel: String {
         let when = Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date())
-        return "\(capture.language.displayName), \(capture.theme.displayName), \(when)"
+        let details = "\(capture.language.displayName), \(capture.theme.displayName), \(when)"
+        return capture.isPinned ? "\(String(localized: "Pinned")), \(details)" : details
     }
 
     private static let dateFormatter: RelativeDateTimeFormatter = {

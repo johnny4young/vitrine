@@ -8,19 +8,48 @@ struct Capture: Codable, Identifiable, Equatable {
     var languageID: String
     var themeID: String
     var date: Date
+    var isPinned: Bool
 
     init(
         id: UUID = UUID(),
         code: String,
         languageID: String,
         themeID: String,
-        date: Date = Date()
+        date: Date = Date(),
+        isPinned: Bool = false
     ) {
         self.id = id
         self.code = code
         self.languageID = languageID
         self.themeID = themeID
         self.date = date
+        self.isPinned = isPinned
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, code, languageID, themeID, date, isPinned
+    }
+
+    /// Older Vitrine builds persisted captures before pinning existed. Default a
+    /// missing flag to `false` so upgrading never discards the user's history.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        code = try container.decode(String.self, forKey: .code)
+        languageID = try container.decode(String.self, forKey: .languageID)
+        themeID = try container.decode(String.self, forKey: .themeID)
+        date = try container.decode(Date.self, forKey: .date)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(code, forKey: .code)
+        try container.encode(languageID, forKey: .languageID)
+        try container.encode(themeID, forKey: .themeID)
+        try container.encode(date, forKey: .date)
+        try container.encode(isPinned, forKey: .isPinned)
     }
 
     var language: Language { Language(rawValue: languageID) ?? .plaintext }

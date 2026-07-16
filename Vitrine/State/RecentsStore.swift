@@ -4,8 +4,8 @@ import OSLog
 import Observation
 
 /// Persists the last `limit` captures (CS-013) and their preview thumbnails
-/// (CS-029): newest first, capped, and de-duplicated by code. `UserDefaults` is
-/// injectable so it can be unit-tested.
+/// (CS-029): pinned first, newest-first within each group, capped, and de-duplicated
+/// by code. `UserDefaults` is injectable so it can be unit-tested.
 ///
 /// ## Visual recents (CS-029)
 ///
@@ -59,7 +59,7 @@ final class RecentsStore {
         if let data = defaults.data(forKey: key),
             let decoded = try? JSONDecoder().decode([Capture].self, from: data)
         {
-            captures = decoded
+            captures = Array(Self.ordered(decoded).prefix(Self.limit))
         } else {
             captures = []
         }
@@ -69,14 +69,25 @@ final class RecentsStore {
         thumbnails.prune(keeping: Set(captures.map(\.id)))
     }
 
-    /// Inserts `capture` at the front, removing any existing entry with identical
-    /// code, caps the list at `limit`, renders its thumbnail into the cache, and
-    /// prunes thumbnails for any capture that fell off the list (CS-013/CS-029).
+    /// Inserts `capture`, removing any existing entry with identical code, orders
+    /// pins first, caps the list at `limit`, renders its thumbnail into the cache,
+    /// and prunes thumbnails for any capture that fell off the list (CS-013/CS-029).
     func add(_ capture: Capture) {
+        var capture = capture
+        if captures.first(where: { $0.code == capture.code })?.isPinned == true {
+            capture.isPinned = true
+        }
         captures.removeAll { $0.code == capture.code }
-        captures.insert(capture, at: 0)
-        if captures.count > Self.limit {
-            captures = Array(captures.prefix(Self.limit))
+        captures.append(capture)
+        captures = Self.ordered(captures)
+        while captures.count > Self.limit {
+            let evictionIndex =
+                captures.indices.reversed().first(where: {
+                    captures[$0].id != capture.id && !captures[$0].isPinned
+                })
+                ?? captures.indices.reversed().first(where: { captures[$0].id != capture.id })
+                ?? captures.index(before: captures.endIndex)
+            captures.remove(at: evictionIndex)
         }
         persist()
         // The thumbnail is rendered synchronously so the gallery shows it the moment a
@@ -110,6 +121,18 @@ final class RecentsStore {
         return true
     }
 
+    /// Pins or unpins one capture, reordering the persisted history immediately.
+    /// Unknown ids are harmless so stale menus cannot mutate another capture.
+    @discardableResult
+    func updatePinned(id: Capture.ID, isPinned: Bool) -> Bool {
+        guard let index = captures.firstIndex(where: { $0.id == id }) else { return false }
+        guard captures[index].isPinned != isPinned else { return true }
+        captures[index].isPinned = isPinned
+        captures = Self.ordered(captures)
+        persist()
+        return true
+    }
+
     /// The cached preview thumbnail for a capture, or `nil` when none is cached yet
     /// (e.g. a capture restored from an older build that predates CS-029). Callers
     /// fall back to a placeholder so the gallery still lists the entry.
@@ -134,6 +157,16 @@ final class RecentsStore {
     private func persist() {
         if let data = try? JSONEncoder().encode(captures) {
             defaults.set(data, forKey: key)
+        }
+    }
+
+    /// Pinned captures lead the list; each group remains newest-first. UUID is a
+    /// deterministic final tie-breaker for imported captures sharing a timestamp.
+    private static func ordered(_ captures: [Capture]) -> [Capture] {
+        captures.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
+            if lhs.date != rhs.date { return lhs.date > rhs.date }
+            return lhs.id.uuidString < rhs.id.uuidString
         }
     }
 }

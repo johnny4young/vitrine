@@ -214,6 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     themeID: Theme.dracula.id),
             ]
             for capture in captures { RecentsStore.shared.add(capture) }
+            RecentsStore.shared.updatePinned(id: captures[0].id, isPinned: true)
         }
         // A richer demo that exercises the window title, diff bands, and line numbers
         // at once — for screenshots / visual QA of the editor's newer styling.

@@ -37,8 +37,14 @@ struct RecentsStoreTests {
         Data(repeating: 0xAB, count: max(1, count))
     }
 
-    private func capture(_ code: String) -> Capture {
-        Capture(code: code, languageID: "swift", themeID: "one-dark")
+    private func capture(
+        _ code: String,
+        date: Date = Date(),
+        isPinned: Bool = false
+    ) -> Capture {
+        Capture(
+            code: code, languageID: "swift", themeID: "one-dark", date: date,
+            isPinned: isPinned)
     }
 
     // MARK: - List behavior (CS-013)
@@ -75,6 +81,90 @@ struct RecentsStoreTests {
             defaults: defaults, thumbnails: cache,
             renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
         #expect(reloaded.captures.first?.code == "hello")
+    }
+
+    @Test func legacyCapturesDecodeAsUnpinned() throws {
+        struct LegacyCapture: Encodable {
+            let id: UUID
+            let code: String
+            let languageID: String
+            let themeID: String
+            let date: Date
+        }
+
+        let legacy = LegacyCapture(
+            id: UUID(), code: "legacy", languageID: "swift", themeID: "one-dark",
+            date: Date(timeIntervalSinceReferenceDate: 42))
+        let data = try JSONEncoder().encode(legacy)
+        let decoded = try JSONDecoder().decode(Capture.self, from: data)
+
+        #expect(decoded.code == "legacy")
+        #expect(!decoded.isPinned)
+    }
+
+    @Test func pinningReordersAndPersists() {
+        let defaults = freshDefaults()
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let older = capture("older", date: Date(timeIntervalSinceReferenceDate: 1))
+        let newer = capture("newer", date: Date(timeIntervalSinceReferenceDate: 2))
+        store.add(older)
+        store.add(newer)
+
+        #expect(store.updatePinned(id: older.id, isPinned: true))
+        #expect(store.captures.map(\.id) == [older.id, newer.id])
+
+        let reloaded = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        #expect(reloaded.captures.map(\.id) == [older.id, newer.id])
+        #expect(reloaded.captures.first?.isPinned == true)
+    }
+
+    @Test func recapturingIdenticalCodePreservesItsPin() {
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: freshDefaults(), thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let original = capture("same", isPinned: true)
+        store.add(original)
+
+        let refreshed = capture("same")
+        store.add(refreshed)
+
+        #expect(store.captures.count == 1)
+        #expect(store.captures.first?.id == refreshed.id)
+        #expect(store.captures.first?.isPinned == true)
+    }
+
+    @Test func newCaptureEvictsOldestUnpinnedBeforeAPin() {
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: freshDefaults(), thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let pinned = capture(
+            "pinned", date: Date(timeIntervalSinceReferenceDate: 0), isPinned: true)
+        store.add(pinned)
+        for index in 1..<RecentsStore.limit {
+            store.add(
+                capture(
+                    "regular \(index)",
+                    date: Date(timeIntervalSinceReferenceDate: TimeInterval(index))))
+        }
+
+        let latest = capture(
+            "latest", date: Date(timeIntervalSinceReferenceDate: 100))
+        store.add(latest)
+
+        #expect(store.captures.count == RecentsStore.limit)
+        #expect(store.captures.contains(where: { $0.id == pinned.id }))
+        #expect(store.captures.contains(where: { $0.id == latest.id }))
+        #expect(!store.captures.contains(where: { $0.code == "regular 1" }))
     }
 
     // MARK: - Cache lock-step with the list (CS-029)
