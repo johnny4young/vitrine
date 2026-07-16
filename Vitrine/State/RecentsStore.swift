@@ -59,7 +59,18 @@ final class RecentsStore {
         if let data = defaults.data(forKey: key),
             let decoded = try? JSONDecoder().decode([Capture].self, from: data)
         {
-            captures = Array(Self.ordered(decoded).prefix(Self.limit))
+            // Same eviction invariant as `add`: cap at `limit` by dropping the oldest
+            // UNPINNED entries, but keep at least one unpinned entry — a fully-pinned
+            // list legitimately persists one capture over `limit` (`add` protects the
+            // newcomer), and a blunt prefix() dropped that newest capture on relaunch.
+            // Pins are never evicted; a hand-inflated blob degrades to pins + 1.
+            var restored = Self.ordered(decoded)
+            while restored.count > Self.limit {
+                let unpinned = restored.indices.filter { !restored[$0].isPinned }
+                guard unpinned.count > 1, let oldest = unpinned.last else { break }
+                restored.remove(at: oldest)
+            }
+            captures = restored
         } else {
             captures = []
         }
@@ -84,12 +95,15 @@ final class RecentsStore {
         captures.insert(capture, at: 0)
         captures = Self.ordered(captures)
         while captures.count > Self.limit {
-            let evictionIndex =
-                captures.indices.reversed().first(where: {
+            // Evict the oldest UNPINNED capture (never the one just added). A pin is a
+            // promise — "Pinned captures stay in Recents" — so when every other slot is
+            // pinned there is no candidate and the list legitimately runs one over
+            // `limit` instead of silently sacrificing a favorite (deep-review finding).
+            guard
+                let evictionIndex = captures.indices.reversed().first(where: {
                     captures[$0].id != capture.id && !captures[$0].isPinned
                 })
-                ?? captures.indices.reversed().first(where: { captures[$0].id != capture.id })
-                ?? captures.index(before: captures.endIndex)
+            else { break }
             captures.remove(at: evictionIndex)
         }
         persist()
@@ -402,7 +416,10 @@ struct RecentsThumbnailCache {
     /// single directory scan, so the hot `add` path reconciles in one pass (audit Perf-4).
     /// Caps are applied before the orphan drop, matching the prior store-then-prune order.
     private func reconcile(keeping keep: Set<UUID>) {
-        let survivors = evictToCaps(cachedFiles())
+        // The count cap floors at the live capture set: with every slot pinned the
+        // store legitimately runs past `limit`, and a fixed cap would evict a live
+        // (pinned) capture's thumbnail by age (deep-review finding).
+        let survivors = evictToCaps(cachedFiles(), countCap: max(maxEntries, keep.count))
         for file in survivors where !keep.contains(file.id) {
             try? FileManager.default.removeItem(at: file.url)
         }
@@ -412,15 +429,16 @@ struct RecentsThumbnailCache {
     /// byte caps, and returns the survivors. Shared by `enforceCaps` and `reconcile` so
     /// the eviction policy lives in one place.
     @discardableResult
-    private func evictToCaps(_ files: [CachedFile]) -> [CachedFile] {
+    private func evictToCaps(_ files: [CachedFile], countCap: Int? = nil) -> [CachedFile] {
         var files = files  // newest first
+        let cap = countCap ?? maxEntries
 
-        // Count cap: drop everything past the newest `maxEntries`.
-        if files.count > maxEntries {
-            for file in files[maxEntries...] {
+        // Count cap: drop everything past the newest `cap`.
+        if files.count > cap {
+            for file in files[cap...] {
                 try? FileManager.default.removeItem(at: file.url)
             }
-            files = Array(files.prefix(maxEntries))
+            files = Array(files.prefix(cap))
         }
 
         // Byte cap: while over budget, evict the oldest (last) entry.

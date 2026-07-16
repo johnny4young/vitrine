@@ -470,4 +470,47 @@ struct RecentsStoreTests {
         #expect(store.thumbnail(for: only) == nil)
         #expect(cache.count == 0)
     }
+
+    /// A pin is a promise: when EVERY slot is pinned, a new capture must never evict
+    /// a favorite — the list runs one over `limit` instead, the next unpinned capture
+    /// is the one that rotates out, and a relaunch preserves the overflow (deep-review
+    /// finding: the old eviction fell back to sacrificing the oldest pin).
+    @Test func fullyPinnedListNeverSacrificesAPin() {
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let defaults = freshDefaults()
+        let store = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+
+        // Fill every slot and pin them all.
+        let pinned = (0..<RecentsStore.limit).map { capture("pinned \($0)") }
+        for entry in pinned { store.add(entry) }
+        for entry in pinned { store.updatePinned(id: entry.id, isPinned: true) }
+
+        // A new capture keeps ALL pins; the list runs one over the cap.
+        let newcomer = capture("newcomer")
+        store.add(newcomer)
+        #expect(store.captures.count == RecentsStore.limit + 1)
+        #expect(store.captures.filter(\.isPinned).count == RecentsStore.limit)
+        #expect(store.captures.contains { $0.id == newcomer.id })
+        // The live thumbnails survive too — the cache cap floors at the live set.
+        #expect(cache.count == RecentsStore.limit + 1)
+
+        // The NEXT capture rotates out the previous unpinned one, not a pin.
+        let second = capture("second newcomer")
+        store.add(second)
+        #expect(store.captures.count == RecentsStore.limit + 1)
+        #expect(store.captures.filter(\.isPinned).count == RecentsStore.limit)
+        #expect(!store.captures.contains { $0.id == newcomer.id })
+        #expect(store.captures.contains { $0.id == second.id })
+
+        // A relaunch preserves the pinned overflow instead of truncating the newest.
+        let reloaded = RecentsStore(
+            defaults: defaults, thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        #expect(reloaded.captures.count == RecentsStore.limit + 1)
+        #expect(reloaded.captures.contains { $0.id == second.id })
+        #expect(reloaded.captures.filter(\.isPinned).count == RecentsStore.limit)
+    }
 }
