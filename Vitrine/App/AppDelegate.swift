@@ -134,8 +134,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
     /// none of these run on a normal user launch. `--demo` preloads sample code;
-    /// `--demo-recent` seeds one local capture; `--open-editor` / `--open-settings` /
-    /// `--open-recents` open a window;
+    /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
+    /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
     /// `--show-help` / `--show-welcome` force those windows open past their gates;
     /// `--seen-old-version` seeds an older last-seen version and then presents What's
     /// New through its real version gate; `--skip-onboarding` just marks the
@@ -196,6 +196,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         """,
                     languageID: Language.swift.rawValue,
                     themeID: Theme.dracula.id))
+        }
+        if arguments.contains("--demo-recents") {
+            let captures = [
+                Capture(
+                    code: "func greet(name string) string { return \"Hello, \" + name }",
+                    languageID: Language.go.rawValue,
+                    themeID: Theme.github.id),
+                Capture(
+                    code:
+                        "def fibonacci(n):\n    return n if n < 2 else fibonacci(n - 1) + fibonacci(n - 2)",
+                    languageID: Language.python.rawValue,
+                    themeID: Theme.oneDark.id),
+                Capture(
+                    code: "fn main() { println!(\"Hello from Rust\"); }",
+                    languageID: Language.rust.rawValue,
+                    themeID: Theme.dracula.id),
+            ]
+            for capture in captures { RecentsStore.shared.add(capture) }
         }
         // A richer demo that exercises the window title, diff bands, and line numbers
         // at once — for screenshots / visual QA of the editor's newer styling.

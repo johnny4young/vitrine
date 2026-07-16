@@ -124,6 +124,24 @@ struct RecentsStoreTests {
         #expect(cache.count == 0)
     }
 
+    @Test func removeDeletesOnlyTheRequestedCaptureAndThumbnail() {
+        let (cache, cleanup) = tempCache()
+        defer { cleanup() }
+        let store = RecentsStore(
+            defaults: freshDefaults(), thumbnails: cache,
+            renderThumbnail: { [self] _ in fakeThumbnail(bytes: 64) })
+        let kept = capture("keep")
+        let removed = capture("remove")
+        store.add(kept)
+        store.add(removed)
+
+        #expect(store.remove(id: removed.id))
+        #expect(store.captures.map(\.id) == [kept.id])
+        #expect(cache.url(for: removed.id) == nil)
+        #expect(cache.url(for: kept.id) != nil)
+        #expect(!store.remove(id: removed.id))
+    }
+
     @Test func restorePrunesOrphanThumbnails() {
         // A relaunch restores the capture list from defaults but the cache lives on
         // disk independently; a thumbnail whose capture is no longer recent must be

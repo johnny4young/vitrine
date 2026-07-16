@@ -507,6 +507,35 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsSearchesAndDeletesOneCapture() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(identifier: "recents-card").count, 3)
+        let search = element("recents-search-field", in: app)
+        XCTAssertTrue(search.waitForExistence(timeout: 8))
+        search.click()
+        search.typeText("Rust")
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(identifier: "recents-card").count, 1)
+
+        assertHittable(
+            "recents-preset-picker", in: app,
+            "The filtered recent should keep its actions menu")
+        element("recents-preset-picker", in: app).click()
+        let delete = app.menuItems["Delete Capture"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 3))
+        delete.click()
+        let confirmation = app.sheets.firstMatch.buttons["Delete Capture"].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
+        confirmation.click()
+
+        XCTAssertTrue(element("recents-no-search-results", in: app).waitForExistence(timeout: 3))
+    }
+
+    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general

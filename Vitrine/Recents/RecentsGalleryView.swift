@@ -27,6 +27,15 @@ struct RecentsGalleryView: View {
     /// matching every other destructive action in the app (see `EditorView`).
     @State private var isConfirmingClear = false
 
+    /// Local, ephemeral gallery filtering. Search never changes or persists the
+    /// underlying history; closing the window naturally resets it.
+    @State private var searchQuery = ""
+
+    /// The capture awaiting individual deletion confirmation. Keeping the model,
+    /// rather than only a Boolean, guarantees the confirmation removes the exact
+    /// card whose menu initiated it even if the grid updates meanwhile.
+    @State private var pendingDeletion: Capture?
+
     /// Invoked when the empty state asks to open the editor. Injectable for previews/tests;
     /// defaults to opening the editor window.
     var onOpen: () -> Void = { EditorWindowController.shared.show() }
@@ -62,18 +71,31 @@ struct RecentsGalleryView: View {
 
     private var gallery: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: Brand.Spacing.md) {
-                ForEach(recents.captures) { capture in
-                    RecentsCard(
-                        capture: capture,
-                        thumbnail: recents.thumbnail(for: capture),
-                        action: { open(capture) },
-                        renderAs: { preset in render(capture, as: preset) })
+            if filteredCaptures.isEmpty {
+                ContentUnavailableView.search(text: searchQuery)
+                    .frame(maxWidth: .infinity, minHeight: 320)
+                    .accessibilityIdentifier("recents-no-search-results")
+            } else {
+                LazyVGrid(columns: columns, spacing: Brand.Spacing.md) {
+                    ForEach(filteredCaptures) { capture in
+                        RecentsCard(
+                            capture: capture,
+                            thumbnail: recents.thumbnail(for: capture),
+                            action: { open(capture) },
+                            renderAs: { preset in render(capture, as: preset) },
+                            delete: { pendingDeletion = capture })
+                    }
                 }
+                .padding(Brand.Spacing.lg)
             }
-            .padding(Brand.Spacing.lg)
         }
         .toolbar {
+            ToolbarItem(placement: .automatic) {
+                TextField("Search Recents", text: $searchQuery)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 220)
+                    .accessibilityIdentifier("recents-search-field")
+            }
             ToolbarItem(placement: .automatic) {
                 Button(role: .destructive) {
                     isConfirmingClear = true
@@ -98,6 +120,28 @@ struct RecentsGalleryView: View {
             Text("This removes every recent capture and its cached preview. This can't be undone.")
         }
         .accessibilityIdentifier("recents-clear-confirmation")
+        .confirmationDialog(
+            "Delete Capture?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Capture", role: .destructive) {
+                if let id = pendingDeletion?.id { recents.remove(id: id) }
+                pendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeletion = nil }
+        } message: {
+            Text("This removes the capture and its cached preview. This can't be undone.")
+        }
+        .accessibilityIdentifier("recents-delete-confirmation")
+    }
+
+    /// A prefiltered value keeps `ForEach` stable and makes the search contract easy
+    /// to read: every visible card retains its persisted capture id.
+    private var filteredCaptures: [Capture] {
+        recents.captures.filter { $0.matchesSearch(searchQuery) }
     }
 
     private var emptyState: some View {
@@ -153,6 +197,7 @@ private struct RecentsCard: View {
     let thumbnail: NSImage?
     let action: () -> Void
     let renderAs: (ExportPreset) -> Void
+    let delete: () -> Void
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -235,6 +280,9 @@ private struct RecentsCard: View {
                 }
                 .accessibilityIdentifier("recents-preset-\(preset.id)")
             }
+            Divider()
+            Button("Delete Capture", role: .destructive, action: delete)
+                .accessibilityIdentifier("recents-delete-capture")
         } label: {
             Image(systemName: "rectangle.3.group")
                 .font(.system(size: 13, weight: .semibold))
@@ -246,8 +294,8 @@ private struct RecentsCard: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .help("Re-render this capture with a destination preset")
-        .accessibilityLabel("Re-render As…")
+        .help("Re-render or remove this recent capture")
+        .accessibilityLabel("Capture actions")
         .accessibilityIdentifier("recents-preset-picker")
     }
 

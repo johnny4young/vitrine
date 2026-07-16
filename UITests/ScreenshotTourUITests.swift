@@ -175,6 +175,45 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsSearchAndActionsTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let window = element("recents-window", in: app)
+        XCTAssertTrue(window.waitForExistence(timeout: 8))
+        let search = element("recents-search-field", in: app)
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("Rust")
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(identifier: "recents-card").count, 1)
+        Thread.sleep(forTimeInterval: 0.4)
+        save(
+            window.screenshot(), as: "33-recents-search-filtered",
+            note: "Recents filtered locally by source, language, or theme")
+
+        if waitForHittableElement("recents-preset-picker", in: app, timeout: 3) {
+            let actions = element("recents-preset-picker", in: app)
+            actions.click()
+            if app.menuItems["Delete Capture"].waitForExistence(timeout: 3),
+                let visibleMenu = app.menus.allElementsBoundByIndex.first(where: {
+                    !$0.frame.isEmpty
+                })
+            {
+                Thread.sleep(forTimeInterval: 0.3)
+                save(
+                    visibleMenu.screenshot(), as: "34-recents-capture-actions",
+                    note: "Destination presets and individual deletion for a recent capture")
+                app.typeKey(.escape, modifierFlags: [])
+            } else {
+                miss("34-recents-capture-actions", reason: "capture actions menu did not open")
+            }
+        } else {
+            miss("34-recents-capture-actions", reason: "capture actions menu was not hittable")
+        }
+    }
+
+    @MainActor
     func testHelpTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--show-help"])
         defer { app.terminate() }
