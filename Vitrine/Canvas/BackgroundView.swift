@@ -10,7 +10,7 @@ import SwiftUI
 /// solid and gradient cases are explicitly opaque. Image fit/blur can create
 /// translucent edge pixels in the SwiftUI layer; `ExportManager` composites an
 /// image-backed finished render over black so those pixels never leak into an
-/// exported PNG, HEIC, clipboard image, or PDF.
+/// exported PNG, HEIC, AVIF, clipboard image, or PDF.
 ///
 /// A missing or unreadable background image degrades gracefully to the signature
 /// gradient default rather than rendering nothing (CS-051), so a relocated file

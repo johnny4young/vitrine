@@ -110,7 +110,7 @@ enum SocialCardRenderer {
         return copied
     }
 
-    /// Presents an `NSSavePanel` and writes the card as PNG, PDF, or HEIC, returning the
+    /// Presents an `NSSavePanel` and writes the card as PNG, PDF, HEIC, or AVIF, returning the
     /// outcome so a caller can give precise feedback (CS-038): `.saved` on a write,
     /// `.cancelled` on dismiss, `.failed` on a render/encode/write error.
     ///

@@ -39,12 +39,13 @@ struct VectorExportTests {
 
     // MARK: - Format menu accuracy (CS-023 acceptance: "menu shows supported vector outputs")
 
-    @Test("PNG, PDF, and HEIC are offered; PDF is the only vector option")
+    @Test("PNG, PDF, HEIC, and AVIF are offered; PDF is the only vector option")
     func formatCasesAndVectorFlag() {
-        #expect(ExportFormat.allCases == [.png, .pdf, .heic])
+        #expect(ExportFormat.allCases == [.png, .pdf, .heic, .avif])
         #expect(ExportFormat.png.isVector == false)
         #expect(ExportFormat.pdf.isVector == true)
         #expect(ExportFormat.heic.isVector == false)
+        #expect(ExportFormat.avif.isVector == false)
         // Exactly one supported vector format is advertised, and it is PDF.
         let vectors = ExportFormat.allCases.filter(\.isVector)
         #expect(vectors == [.pdf])
@@ -59,6 +60,7 @@ struct VectorExportTests {
         #expect(ExportFormat.png.displayName == "PNG")
         #expect(ExportFormat.pdf.displayName == "PDF")
         #expect(ExportFormat.heic.displayName == "HEIC")
+        #expect(ExportFormat.avif.displayName == "AVIF")
         // The vector summary names the scalable nature so the menu reads honestly.
         #expect(ExportFormat.pdf.summary.lowercased().contains("vector"))
     }
@@ -76,6 +78,7 @@ struct VectorExportTests {
         #expect(ExportFormat.png.rawValue == "png")
         #expect(ExportFormat.pdf.rawValue == "pdf")
         #expect(ExportFormat.heic.rawValue == "heic")
+        #expect(ExportFormat.avif.rawValue == "avif")
     }
 
     @Test("Unknown or missing format falls back to PNG")
@@ -103,6 +106,29 @@ struct VectorExportTests {
         let reference = try #require(ExportManager.renderCGImage(Self.sampleConfig(), scale: 1))
         #expect(decoded.width == reference.width)
         #expect(decoded.height == reference.height)
+    }
+
+    @Test("AVIF export encodes a decodable alpha-capable AVIF container")
+    func avifEncodesTheRenderedImage() throws {
+        let payload = try #require(
+            ExportManager.encodedPayload(
+                .avif,
+                png: {
+                    ExportManager.renderCGImage(
+                        Self.sampleConfig { $0.background = .transparent }, scale: 1)
+                },
+                pdf: { nil }))
+        #expect(payload.ext == "avif")
+        #expect(payload.type.identifier == "public.avif")
+        #expect(!payload.data.isEmpty)
+        let source = try #require(CGImageSourceCreateWithData(payload.data as CFData, nil))
+        let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let reference = try #require(
+            ExportManager.renderCGImage(
+                Self.sampleConfig { $0.background = .transparent }, scale: 1))
+        #expect(decoded.width == reference.width)
+        #expect(decoded.height == reference.height)
+        #expect(decoded.alphaInfo != .none)
     }
 
     // MARK: - Suggested filename

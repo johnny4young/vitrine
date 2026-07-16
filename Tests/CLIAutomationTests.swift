@@ -182,7 +182,7 @@ struct CLIAutomationTests {
         )
 
         let formatText = CLICatalog.output(for: .formats, format: .text)
-        #expect(formatText == "png\tPNG\npdf\tPDF\nheic\tHEIC\n")
+        #expect(formatText == "png\tPNG\npdf\tPDF\nheic\tHEIC\navif\tAVIF\n")
 
         let profileText = CLICatalog.output(for: .profiles, format: .text)
         #expect(profileText == "srgb\tsRGB\np3\tDisplay P3 (advanced)\n")

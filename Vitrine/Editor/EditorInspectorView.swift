@@ -436,7 +436,10 @@ struct EditorInspectorView: View {
         InspectorRow(label: Text("Format")) {
             TokenSegmentedPicker(
                 options: ExportFormat.allCases.map { ($0, Text(verbatim: $0.displayName)) },
-                selection: $settings.export.format
+                selection: $settings.export.format,
+                optionIdentifiers: ExportFormat.allCases.map {
+                    "inspector-format-\($0.rawValue)"
+                }
             )
             .help(settings.export.format.summary)
             .accessibilityLabel("Format")
