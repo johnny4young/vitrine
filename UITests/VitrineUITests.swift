@@ -613,6 +613,35 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsCanFilterToPinnedCaptures() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        XCTAssertEqual(cards.count, 3)
+        let pinnedFilter = element("recents-pinned-filter", in: app)
+        XCTAssertTrue(pinnedFilter.waitForExistence(timeout: 8))
+        XCTAssertTrue(pinnedFilter.isHittable)
+
+        pinnedFilter.click()
+        let filteredDeadline = Date().addingTimeInterval(3)
+        while cards.count != 1, Date() < filteredDeadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(cards.count, 1)
+        XCTAssertTrue(cards.firstMatch.label.contains("Go"))
+        XCTAssertTrue(element("recents-pinned-badge", in: app).exists)
+
+        pinnedFilter.click()
+        let restoredDeadline = Date().addingTimeInterval(3)
+        while cards.count != 3, Date() < restoredDeadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(cards.count, 3)
+    }
+
+    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general

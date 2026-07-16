@@ -7839,6 +7839,50 @@
           }
         }
       }
+    },
+    "Pinned only" : {
+      "comment" : "Toolbar toggle that limits Recents to pinned captures.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo fijadas"
+          }
+        }
+      }
+    },
+    "Show only pinned recent captures" : {
+      "comment" : "Help and accessibility hint for the pinned-only Recents filter.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar solo capturas recientes fijadas"
+          }
+        }
+      }
+    },
+    "No pinned captures" : {
+      "comment" : "Empty state title when the pinned-only Recents filter has no matches.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay capturas fijadas"
+          }
+        }
+      }
+    },
+    "Pin important captures to keep them easy to find." : {
+      "comment" : "Empty state guidance for the pinned-only Recents filter.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fija capturas importantes para encontrarlas fácilmente."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

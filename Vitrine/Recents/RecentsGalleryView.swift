@@ -31,6 +31,11 @@ struct RecentsGalleryView: View {
     /// underlying history; closing the window naturally resets it.
     @State private var searchQuery = ""
 
+    /// Narrows the gallery to the captures the user explicitly kept. This is
+    /// ephemeral view state: pinning is persisted, but a future gallery launch
+    /// should start by showing the complete history rather than appearing empty.
+    @State private var showsPinnedOnly = false
+
     /// The capture awaiting individual deletion confirmation. Keeping the model,
     /// rather than only a Boolean, guarantees the confirmation removes the exact
     /// card whose menu initiated it even if the grid updates meanwhile.
@@ -72,9 +77,21 @@ struct RecentsGalleryView: View {
     private var gallery: some View {
         ScrollView {
             if filteredCaptures.isEmpty {
-                ContentUnavailableView.search(text: searchQuery)
+                if showsPinnedOnly
+                    && searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                {
+                    ContentUnavailableView(
+                        "No pinned captures",
+                        systemImage: "pin",
+                        description: Text("Pin important captures to keep them easy to find.")
+                    )
                     .frame(maxWidth: .infinity, minHeight: 320)
-                    .accessibilityIdentifier("recents-no-search-results")
+                    .accessibilityIdentifier("recents-no-pinned-results")
+                } else {
+                    ContentUnavailableView.search(text: searchQuery)
+                        .frame(maxWidth: .infinity, minHeight: 320)
+                        .accessibilityIdentifier("recents-no-search-results")
+                }
             } else {
                 LazyVGrid(columns: columns, spacing: Brand.Spacing.md) {
                     ForEach(filteredCaptures) { capture in
@@ -98,6 +115,15 @@ struct RecentsGalleryView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 220)
                     .accessibilityIdentifier("recents-search-field")
+            }
+            ToolbarItem(placement: .automatic) {
+                Toggle(isOn: $showsPinnedOnly) {
+                    Label("Pinned only", systemImage: "pin")
+                }
+                .toggleStyle(.button)
+                .help("Show only pinned recent captures")
+                .accessibilityHint("Show only pinned recent captures")
+                .accessibilityIdentifier("recents-pinned-filter")
             }
             ToolbarItem(placement: .automatic) {
                 Button(role: .destructive) {
@@ -144,7 +170,9 @@ struct RecentsGalleryView: View {
     /// A prefiltered value keeps `ForEach` stable and makes the search contract easy
     /// to read: every visible card retains its persisted capture id.
     private var filteredCaptures: [Capture] {
-        recents.captures.filter { $0.matchesSearch(searchQuery) }
+        recents.captures.filter {
+            (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery)
+        }
     }
 
     private var emptyState: some View {
