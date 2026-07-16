@@ -156,6 +156,42 @@ struct AnnotationTests {
         #expect(try png(plain) != png(texted), "a text callout must change the exported image")
     }
 
+    // MARK: - Spotlight (feature #7)
+
+    @Test func spotlightDimsTheRenderedPixels() throws {
+        var plain = SnapshotConfig()
+        plain.code = "let a = 1\nlet b = 2\nlet c = 3"
+        var spotted = plain
+        spotted.annotations = [
+            Annotation(
+                kind: .spotlight, start: CGPoint(x: 0.1, y: 0.3), end: CGPoint(x: 0.9, y: 0.5))
+        ]
+        #expect(try png(plain) != png(spotted), "a spotlight must dim the exported image")
+    }
+
+    /// The spotlight is drag-placed, maps tool→kind, and exposes neither color (the
+    /// scrim is fixed) nor thickness.
+    @Test func spotlightToolContract() {
+        #expect(!Annotation.Kind.spotlight.isPointPlaced)
+        #expect(AnnotationTool.spotlight.kind == .spotlight)
+        #expect(!AnnotationTool.spotlight.usesThickness)
+        #expect(!AnnotationTool.spotlight.usesColor)
+    }
+
+    /// A spotlight survives the persistence round-trip.
+    @Test func spotlightRoundTripsThroughPersistence() {
+        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        var config = SnapshotConfig()
+        config.annotations = [
+            Annotation(
+                kind: .spotlight, start: CGPoint(x: 0.1, y: 0.2), end: CGPoint(x: 0.6, y: 0.5))
+        ]
+        SettingsCodec.persistStyle(config, to: defaults)
+        let restored = SettingsCodec.readConfig(from: defaults).annotations
+        #expect(restored.first?.kind == .spotlight)
+        #expect(restored.first?.end == CGPoint(x: 0.6, y: 0.5))
+    }
+
     // MARK: - Curved arrow (feature #11)
 
     @Test func curvedArrowChangesTheRenderedPixelsAndDiffersFromStraight() throws {

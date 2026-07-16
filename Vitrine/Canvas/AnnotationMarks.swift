@@ -18,7 +18,9 @@ struct AnnotationMarkView: View {
         case .highlighter: HighlighterMark(annotation: annotation, size: size)
         case .counter: CounterMark(annotation: annotation, size: size)
         case .sticker: StickerMark(annotation: annotation, size: size)
-        case .blur: EmptyView()
+        // Blur and spotlight are compositing effects the canvas layers separately
+        // (a masked blurred copy; an even-odd dim scrim), so they draw no mark here.
+        case .blur, .spotlight: EmptyView()
         }
     }
 }

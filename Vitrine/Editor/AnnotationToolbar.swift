@@ -83,7 +83,7 @@ struct AnnotationToolbar: View {
     }
 
     private func toolButton(_ tool: AnnotationTool) -> some View {
-        Button {
+        let button = Button {
             activeTool = tool
         } label: {
             Image(systemName: tool.systemImage)
@@ -100,12 +100,21 @@ struct AnnotationToolbar: View {
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
-        // ⌘-digit selects the tool (⌘1…⌘8). A Command-modified shortcut fires reliably on
-        // macOS and never hijacks the code editor's typing (a modifier-less key would).
-        .keyboardShortcut(tool.keyEquivalent, modifiers: .command)
-        .help(Text(tool.label) + Text(verbatim: " (⌘\(tool.keyEquivalent.character))"))
         .accessibilityLabel(tool.label)
         .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
+
+        // ⌘-digit selects the tool (⌘1…⌘9, ⌘0). A Command-modified shortcut fires
+        // reliably on macOS and never hijacks the code editor's typing (a modifier-less
+        // key would). Tools past the digit row have no shortcut and a plain tooltip.
+        return Group {
+            if let key = tool.keyEquivalent {
+                button
+                    .keyboardShortcut(key, modifiers: .command)
+                    .help(Text(tool.label) + Text(verbatim: " (⌘\(key.character))"))
+            } else {
+                button.help(tool.label)
+            }
+        }
     }
 
     private func historyButton(

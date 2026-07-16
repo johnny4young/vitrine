@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- **Spotlight.** A new annotation tool dims everything except the regions you draw —
+  the "look here" effect for walkthroughs. Multiple spotlights punch multiple holes in
+  one scrim; arrows and callouts stay at full brightness above it.
 - **Curved arrows.** A second arrow style (⌘0): a quadratic swoop with the chevron head
   kept tangent to the curve — the hand-drawn callout look — sharing the straight arrow's
   color and weight controls.
