@@ -96,11 +96,13 @@ enum RecentsSortOrder: String, CaseIterable, Identifiable {
 
     var id: Self { self }
 
-    /// Ties on the sort key fall back to the input's own order (the store's MRU
+    /// Ties on the sort key fall back to the input's position (the store's MRU
     /// order), not a UUID comparison: two captures added in the same instant carry
-    /// equal `date`s, and a random-UUID tie-break would order them differently from
-    /// run to run — the flake that hit CI. Position is just as deterministic for a
-    /// given list and preserves what the user actually did last.
+    /// equal `date`s (CI's virtualized clock quantizes), and a random-UUID tie-break
+    /// would order them differently from run to run — the flake that hit CI. The
+    /// position tie-break follows the sort's direction: the store keeps newest
+    /// additions first, so newest-first keeps that order and oldest-first reverses
+    /// it (the first capture added is the oldest, even on an equal timestamp).
     func sorted(_ captures: [Capture]) -> [Capture] {
         captures.enumerated()
             .sorted { lhs, rhs in
@@ -129,6 +131,6 @@ enum RecentsSortOrder: String, CaseIterable, Identifiable {
             return newestFirst
                 ? lhs.element.date > rhs.element.date : lhs.element.date < rhs.element.date
         }
-        return lhs.offset < rhs.offset
+        return newestFirst ? lhs.offset < rhs.offset : lhs.offset > rhs.offset
     }
 }
