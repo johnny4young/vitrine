@@ -99,6 +99,16 @@ extension EditorView {
                 .font(.system(size: VitrineTokens.FontSize.caption))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
                 .multilineTextAlignment(.center)
+            // OCR the beautified image back into copyable text (feature #34) — the
+            // reverse of the copyable-text sidecar, fully on-device via Vision.
+            Button {
+                copyTextFromImage()
+            } label: {
+                Label("Copy text from image", systemImage: "text.viewfinder")
+            }
+            .disabled(isExtractingText)
+            .help("Recognize the image's text on-device and copy it")
+            .accessibilityIdentifier("copy-image-text-button")
             Button(role: .destructive) {
                 settings.config.foregroundImage = nil
             } label: {
@@ -109,6 +119,34 @@ extension EditorView {
         }
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Recognizes the beautified image's text on-device and copies it (feature #34):
+    /// resolve the image, run Vision off-main, put the result on the pasteboard, and
+    /// confirm through the HUD — or say clearly that nothing legible was found. Only
+    /// the character count is ever logged (CS-048), never the recognized text.
+    func copyTextFromImage() {
+        guard let reference = settings.config.foregroundImage,
+            let image = foregroundImageStore.image(for: reference),
+            let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        else { return }
+        isExtractingText = true
+        Task {
+            defer { isExtractingText = false }
+            let text = (try? await ImageTextExtractor.recognizeText(in: cgImage)) ?? ""
+            guard !text.isEmpty else {
+                CaptureHUDController.shared.present(
+                    Notifier.confirmation(String(localized: "No text found in the image")))
+                return
+            }
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
+            Log.export.notice(
+                "Copied recognized image text (\(text.count, privacy: .public) chars)")
+            CaptureHUDController.shared.present(
+                Notifier.confirmation(String(localized: "Text copied from image")))
+        }
     }
 
     /// The line count shown beside the CODE label, or an em dash when empty.
