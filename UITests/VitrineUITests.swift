@@ -75,21 +75,26 @@ final class VitrineUITests: XCTestCase {
 
         // The 12-line demo snippet fits one slide at the default cap (12); one
         // decrement (→11) must split it in two, so the live count is recomputing —
-        // the label text is localized, so assert change, not wording.
+        // the text is localized, so assert change, not wording. macOS exposes a
+        // static text's string as AXValue, not AXTitle, so read `value` over `label`.
         let count = element("carousel-slide-count", in: app)
         assertExists(count, in: app, timeout: 3)
-        let initial = count.label
+        let readCount = {
+            (count.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? count.label
+        }
+        let initial = readCount()
+        XCTAssertFalse(initial.isEmpty, "the slide-count text must be exposed to accessibility")
         let decrement = element("carousel-export-sheet", in: app)
             .descendants(matching: .decrementArrow).firstMatch
         assertExists(decrement, in: app, timeout: 3)
         decrement.click()
 
         let deadline = Date().addingTimeInterval(3)
-        while count.label == initial, Date() < deadline {
+        while readCount() == initial, Date() < deadline {
             Thread.sleep(forTimeInterval: 0.2)
         }
         XCTAssertNotEqual(
-            count.label, initial,
+            readCount(), initial,
             "Stepping lines-per-slide down must recompute the live slide count")
 
         element("carousel-cancel", in: app).click()
