@@ -22,6 +22,7 @@ struct MenuBarContent: View {
         VStack(alignment: .leading, spacing: 13) {
             header
             captureCTA
+            presetCaptureMenu
             lastCaptureStatus
             recentsSection
             themeSection
@@ -33,6 +34,44 @@ struct MenuBarContent: View {
         // brand asset in this repo, so force the AppKit system token.
         .tint(VitrineTokens.Accent.system)
         .accessibilityContainerIdentifier("menubar-panel")
+    }
+
+    /// A one-off destination choice for the clipboard. This does not replace the
+    /// user's default output preset; it only frames this render, so experimenting
+    /// from the menu bar cannot silently change future captures.
+    private var presetCaptureMenu: some View {
+        Menu {
+            ForEach(ExportPreset.all) { preset in
+                Button {
+                    QuickCapture.perform(settings: settings, destinationPreset: preset)
+                    dismiss()
+                } label: {
+                    Text(verbatim: preset.displayName)
+                }
+                .accessibilityIdentifier("menu-capture-preset-\(preset.id)")
+            }
+        } label: {
+            HStack(spacing: VitrineTokens.Spacing.xs) {
+                Image(systemName: "rectangle.3.group")
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+                Text("Render Clipboard As…")
+                    .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(VitrineTokens.Text.secondary)
+            .padding(.vertical, 5)
+            .padding(.horizontal, 6)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .accessibilityHint("Choose a destination size without changing the default preset")
+        .accessibilityIdentifier("menu-capture-preset-picker")
     }
 
     // MARK: - Header

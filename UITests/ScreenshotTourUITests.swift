@@ -221,12 +221,37 @@ final class ScreenshotTourUITests: XCTestCase {
         if panel.waitForExistence(timeout: 3) {
             Thread.sleep(forTimeInterval: 0.5)
             save(panel.screenshot(), as: "50-menubar-panel", note: "Menu-bar panel (.window)")
+
+            let presetPicker = element("menu-capture-preset-picker", in: app)
+            if presetPicker.isHittable {
+                presetPicker.click()
+                let openGraph = app.menuItems["OpenGraph 1200×630"]
+                if openGraph.waitForExistence(timeout: 3) {
+                    Thread.sleep(forTimeInterval: 0.3)
+                    if let visibleMenu = app.menus.allElementsBoundByIndex.first(where: {
+                        !$0.frame.isEmpty
+                    }) {
+                        save(
+                            visibleMenu.screenshot(), as: "51-menubar-destination-presets",
+                            note: "Menu-bar one-off destination preset picker")
+                    } else {
+                        miss(
+                            "51-menubar-destination-presets",
+                            reason: "preset menu had no visible accessibility frame")
+                    }
+                    app.typeKey(.escape, modifierFlags: [])
+                } else {
+                    miss("51-menubar-destination-presets", reason: "preset menu did not open")
+                }
+            } else {
+                miss("51-menubar-destination-presets", reason: "preset picker was not hittable")
+            }
         } else {
             miss("50-menubar-panel", reason: "status panel did not open")
         }
 
         // The standard About panel, branded with the Settings About pane's identity copy.
-        let about = element("command-about", in: app)
+        let about = app.buttons["command-about"]
         if about.waitForExistence(timeout: 3) {
             about.click()
             let aboutWindow = app.windows.firstMatch
