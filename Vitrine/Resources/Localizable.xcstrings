@@ -4928,6 +4928,39 @@
         }
       }
     },
+    "Copy text from image" : {
+      "comment" : "Button: OCR the beautified image back into copyable text (feature #34).",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar texto de la imagen"
+          }
+        }
+      }
+    },
+    "No text found in the image" : {
+      "comment" : "HUD message when on-device OCR recognized nothing legible.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontró texto en la imagen"
+          }
+        }
+      }
+    },
+    "Recognize the image's text on-device and copy it" : {
+      "comment" : "Help for the copy-text-from-image button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconoce el texto de la imagen en el dispositivo y lo copia"
+          }
+        }
+      }
+    },
     "Suggest a title: " : {
       "comment" : "Help prefix for the title-suggestion wand; the suggestion follows verbatim.",
       "localizations" : {
@@ -4946,6 +4979,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sugerir un título"
+          }
+        }
+      }
+    },
+    "Text copied from image" : {
+      "comment" : "HUD confirmation after on-device OCR copied the image's text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto copiado de la imagen"
           }
         }
       }

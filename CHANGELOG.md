@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- **Copy text from image.** A beautified screenshot can be turned back into copyable
+  text: one click runs on-device OCR (Vision, nothing leaves the Mac) and puts the
+  recognized text on the clipboard — the reverse of the copyable-text sidecar.
 - **Suggested titles.** A wand next to the header-title field fills it from what the
   code declares — the filename chip, else the first declared identifier — shown only
   while it would change something.
