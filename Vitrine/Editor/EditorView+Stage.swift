@@ -180,6 +180,15 @@ extension EditorView {
                         position: $brandKit.brandKit.freePosition,
                         contentRect: CGRect(origin: .zero, size: cardSize))
                 }
+                // Safe-area guide (feature #20): editor-only chrome over the preview —
+                // never part of the export, which is why it lives here beside the
+                // annotation overlay rather than inside SnapshotCanvas.
+                if showsSafeAreaGuides {
+                    SafeAreaGuideOverlay(
+                        canvasSize: cardSize,
+                        code: settings.config.code,
+                        showsGuideRect: settings.effectiveFixedSize != nil)
+                }
             }
             .scaleEffect(scale)
             // `scaleEffect` does not shrink the layout footprint, so without this the

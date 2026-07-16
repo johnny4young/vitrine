@@ -17,6 +17,10 @@ can never drift.
 - **Spotlight.** A new annotation tool dims everything except the regions you draw —
   the "look here" effect for walkthroughs. Multiple spotlights punch multiple holes in
   one scrim; arrows and callouts stay at full brightness above it.
+- **Safe-area guides.** An editor-only overlay (Inspector ▸ Output ▸ Guides) draws the
+  margin platforms may crop or cover over a fixed-size destination, plus a live
+  "lines × widest column" chip — so you know the snippet fits before you post. Never
+  part of the export.
 - **Curved arrows.** A second arrow style (⌘0): a quadratic swoop with the chevron head
   kept tangent to the curve — the hand-drawn callout look — sharing the straight arrow's
   color and weight controls.
