@@ -14,7 +14,7 @@ gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so) and
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v0.20.0%20shipped-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v0.21.0%20shipped-brightgreen.svg)](#status)
 
 </div>
 
@@ -177,20 +177,25 @@ GitHub-style; window chrome, padding, corner radius, and shadow are all yours to
 
 ### Annotate
 
-A CleanShot-style palette in the title bar — arrows, lines, rectangles, text callouts,
-a highlighter, blur/redaction boxes, and numbered counters. Draw them on the live
+A CleanShot-style palette in the title bar — arrows (straight and **curved**), lines,
+rectangles, text callouts, a highlighter, blur/redaction boxes, numbered counters,
+**emoji stickers**, a **spotlight** that dims everything but the regions you draw, and a
+**measure** ruler that labels the pixel span between two points. Draw them on the live
 preview, move and resize with handles, undo with ⌘Z; they are baked into the export.
 **Redact secrets** goes one better: one click scans the capture for API keys, tokens,
 and passwords and blurs those lines for you — image *and* copyable text.
 
 ### Export & share
 
-Retina **PNG** and **PDF** to the clipboard, a file, or the Share Sheet — sRGB by
-default (Display P3 on demand), with real alpha for transparent backgrounds.
+Retina **PNG**, **PDF**, and **HEIC** to the clipboard, a file, or the Share Sheet — sRGB
+by default (Display P3 on demand), with real alpha for transparent backgrounds.
 The editor's alternate copy menu can also produce highlighted RTF/HTML, a PNG data URI,
 or a self-contained Markdown block with the rendered image and redaction-safe source.
+The share sheet gains **Post to X / LinkedIn / Bluesky** compose targets — the image is
+staged on the clipboard and the compose page opens, one paste from posting.
 Destination presets cover **OpenGraph** (1200×630), an **Instagram Story**, and a
-**GitHub banner**. [PRO](#vitrine-pro) adds **multi-size one-pass export** and the bundled
+**GitHub banner**. [PRO](#vitrine-pro) adds **multi-size one-pass export**, **carousel
+export** (a long snippet split into numbered 4:5 slides), and the bundled
 **`vitrine` CLI** that renders the same pixels from your terminal.
 
 ### Crafted & private
@@ -210,9 +215,9 @@ Shortcuts and App Intents.
 | **Capture** | Menu-bar app, global hotkey, clipboard auto-detect (code · URL · HTML), Quick and editor modes |
 | **Beautify** | Drop/paste any image → frame it (macOS window · browser · MacBook · iPhone) with auto-matched chrome |
 | **Style** | 13 themes + custom, 160+ languages, fonts, gradient & image backgrounds, focus mode, diff coloring |
-| **Annotate** | Arrows, lines, boxes, text, highlighter, blur, numbered counters — on the live preview, with undo/redo |
+| **Annotate** | Arrows (straight · curved), lines, boxes, text, highlighter, blur, counters, spotlight, measure, stickers — with undo/redo |
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
-| **Export** | Retina PNG/PDF, Markdown/data-URI/rich-text copy, file · Share Sheet, OpenGraph · Story · GitHub-banner presets |
+| **Export** | Retina PNG/PDF/HEIC, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
 | **PRO** | Brand Kit watermark · multi-size one-pass export · automation (`vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
 
@@ -222,14 +227,19 @@ Shortcuts and App Intents.
 - 🍫 Native **menu-bar app** (`MenuBarExtra`, `LSUIElement` — no Dock icon, no app switcher).
 - ⌨️ Configurable **global hotkey** (`⇧⌘S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
-- 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact — including **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included — and a copyable-text sidecar can ship the output as text alongside the image. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
+- 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact — including **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included — and a copyable-text sidecar can ship the output as text alongside the image. `vpane` *(PRO)* images a tmux pane's visible contents without re-running anything, and dropping an **asciinema** recording (`.cast`) replays it into the same renderer. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
 - 🖼️ **Beautify any image** — drop, paste, or quick-capture any screenshot (not just code) and render it on the same backgrounds, padding, and shadow, optionally wrapped in a macOS-window, browser, or MacBook / iPhone device frame. The frame chrome auto-tints to the image's top-edge color so it blends in (Light/Dark are manual overrides). Browser and device frames are PRO.
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
-- ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows, lines, rectangles, text callouts, a highlighter, blur/redaction boxes, and numbered counters. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
+- ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight and curved), lines, rectangles, text callouts, a highlighter, blur/redaction boxes, numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
 - 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
-- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
+- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format and **HEIC** as the compact one for docs sites and wikis. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
+- 📣 **Post to X / LinkedIn / Bluesky** — compose targets in the share sheet: the image is staged on the clipboard and the network's compose page opens with a paste hint. One paste from posting; Vitrine sends nothing anywhere.
+- 🎠 **Carousel export** *(PRO)* — split a long snippet into numbered 4:5 slides (`carousel-01.png` …) for a LinkedIn/Instagram carousel. Pick the lines per slide; the split balances so the last slide never trails, and every slide carries your style and brand mark.
+- 📌 **Pinned snapshot** — pin the current render in a floating window that stays above every app and follows you across Spaces, so the error or design you're working against stays visible while you code.
+- 🔤 **Copy text from image** — one click runs on-device OCR (Vision) on a beautified screenshot and puts the recognized text on the clipboard. Nothing leaves the Mac.
+- 📐 **Safe-area guides** — an editor-only overlay that draws the margin platforms may crop over a fixed-size destination, with a live "lines × widest column" chip; never part of the export.
 - 📝 **Developer-grade copy formats** — copy highlighted RTF/HTML, a standalone PNG data URI, or one self-contained Markdown block containing the image plus copyable fenced source. Redacted lines stay redacted in every text representation.
 - 🪧 **Social cards** — compose a 1200×630 card from your code (template, theme, background) to copy, save, or share, with **Instagram Story** and **GitHub banner** export presets.
 - 🌐 **Web snapshots** — render pasted **HTML** to an image, or capture a **webpage** (direct-download build) — entirely locally in WebKit, with a first-use privacy disclosure. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
@@ -241,7 +251,7 @@ Shortcuts and App Intents.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
 - 🌍 **Localized** in English and Spanish (String Catalog), with pseudolocale and RTL layout tests.
 - 🖥️ **Command-line renderer** *(PRO)* — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app (no network, screen recording, or Accessibility needed).
-- 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark, multi-size one-pass export, and the automation surfaces above; the free tier loses nothing.
+- 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark (now with a scannable **QR link chip** and a **signature footer bar** placement), multi-size one-pass export, carousel export, and the automation surfaces above; the free tier loses nothing.
 - 🔒 Sandboxed, no network by default — your code **never leaves your Mac**.
 
 </details>
@@ -648,7 +658,7 @@ to leave the repo:
 
 ## Status
 
-🟢 **v0.20.0 — shipped and stable.** Everything under [Features](#features) is built and
+🟢 **v0.21.0 — shipped and stable.** Everything under [Features](#features) is built and
 driven by one design-token system ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in
 light and dark. It is covered by a Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
