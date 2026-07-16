@@ -28,6 +28,33 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-drop-target", in: app), in: app)
     }
 
+    @MainActor
+    func testCopyOptionsExposeMarkdownExport() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        let editor = element("editor-window", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        assertHittable(
+            "copy-options-menu", in: app,
+            "The alternate copy formats menu must be reachable from the editor toolbar")
+        element("copy-options-menu", in: app).click()
+        assertHittable(
+            "copy-markdown-button", in: app,
+            "Copy as Markdown must be exposed for source-based snapshots")
+
+        // Let the SwiftUI menu and syntax-highlighted preview finish their first
+        // compositing pass so the retained visual evidence is not mid-transition.
+        Thread.sleep(forTimeInterval: 0.5)
+        let screenshot = editor.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "copy-markdown-menu"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     // MARK: - Multi-window editing and restoration (CS-053)
 
     @MainActor

@@ -1473,6 +1473,17 @@
         }
       }
     },
+    "Copy as Markdown" : {
+      "comment" : "Editor copy-options command: copy a self-contained image and its source as Markdown.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar como Markdown"
+          }
+        }
+      }
+    },
     "Copy code" : {
       "comment" : "Onboarding step 1 title.",
       "extractionState" : "stale",
@@ -1556,6 +1567,17 @@
         }
       }
     },
+    "Copy image and source as Markdown" : {
+      "comment" : "VoiceOver label for the Copy as Markdown command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar imagen y código fuente como Markdown"
+          }
+        }
+      }
+    },
     "Copy image to clipboard" : {
       "comment" : "VoiceOver label for the Copy Image command.",
       "extractionState" : "stale",
@@ -1576,6 +1598,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar código con resaltado de sintaxis"
+          }
+        }
+      }
+    },
+    "Copy the code or image in alternate formats" : {
+      "comment" : "Editor toolbar: copy-options menu help.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el código o la imagen en formatos alternativos"
           }
         }
       }

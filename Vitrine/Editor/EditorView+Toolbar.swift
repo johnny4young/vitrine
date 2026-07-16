@@ -150,8 +150,9 @@ extension EditorView {
     }
 
     /// The explicit alternative copy targets behind the rich-text icon
-    /// (CS-054): "Copy Highlighted Code" (syntax colors and font as RTF/HTML)
-    /// and "Copy as Data URI" (`data:image/png;base64,…`). A menu so the
+    /// (CS-054): "Copy Highlighted Code" (syntax colors and font as RTF/HTML),
+    /// "Copy as Markdown" (self-contained image plus source), and "Copy as Data
+    /// URI" (`data:image/png;base64,…`). A menu so the
     /// one-click CTA stays the primary action while the developer-grade
     /// formats stay clearly labeled, one click away.
     var copyOptionsMenu: some View {
@@ -165,6 +166,15 @@ extension EditorView {
                         systemImage: VitrineCommand.copyHighlightedCode.systemImageName)
                 }
                 .accessibilityIdentifier("copy-highlighted-code-button")
+
+                Button {
+                    copyMarkdown()
+                } label: {
+                    Label(
+                        VitrineCommand.copyMarkdown.title,
+                        systemImage: VitrineCommand.copyMarkdown.systemImageName)
+                }
+                .accessibilityIdentifier("copy-markdown-button")
             }
 
             Button {
@@ -189,7 +199,7 @@ extension EditorView {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Copy the highlighted code as rich text, or the image as a data URI")
+        .help("Copy the code or image in alternate formats")
         .accessibilityLabel("More copy options")
         .accessibilityIdentifier("copy-options-menu")
         .disabled(!settings.config.hasRenderableContent)
@@ -319,6 +329,14 @@ extension EditorView {
     /// URI string (CS-054), honoring the active preset's framing.
     func copyDataURI() {
         RichPasteboard.copyDataURI(
+            for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
+    }
+
+    /// Copies a self-contained Markdown image embed followed by the visible,
+    /// redaction-safe source in a language-tagged code fence.
+    func copyMarkdown() {
+        RichPasteboard.copyMarkdown(
             for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
     }
