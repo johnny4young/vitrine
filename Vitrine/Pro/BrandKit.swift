@@ -22,6 +22,10 @@ struct BrandKit: Equatable, Codable {
     /// The project/repository label, e.g. `vitrine`. Normalized; may be empty.
     var project: String
 
+    /// The link the QR chip encodes (a profile/repo/article URL), or empty for no
+    /// chip (feature #28). Normalized; rendered fully on-device.
+    var linkURL: String
+
     /// The accent tint for the mark's text, or `nil` to use the legible default.
     var accent: RGBAColor?
 
@@ -36,6 +40,7 @@ struct BrandKit: Equatable, Codable {
         logo: ImageReference? = nil,
         handle: String = "",
         project: String = "",
+        linkURL: String = "",
         accent: RGBAColor? = nil,
         placement: Watermark.Placement = .bottomTrailing,
         freePosition: CGPoint = CGPoint(x: 0.84, y: 0.9)
@@ -43,6 +48,7 @@ struct BrandKit: Equatable, Codable {
         self.logo = logo
         self.handle = Self.normalized(handle)
         self.project = Self.normalized(project)
+        self.linkURL = Self.normalized(linkURL)
         self.accent = accent
         self.placement = placement
         self.freePosition = Watermark.clampFreePosition(freePosition)
@@ -54,8 +60,11 @@ struct BrandKit: Equatable, Codable {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Whether the kit carries anything to draw — a logo or a non-empty line.
-    var hasContent: Bool { logo != nil || !handle.isEmpty || !project.isEmpty }
+    /// Whether the kit carries anything to draw — a logo, a non-empty line, or a
+    /// QR link.
+    var hasContent: Bool {
+        logo != nil || !handle.isEmpty || !project.isEmpty || !linkURL.isEmpty
+    }
 
     /// The composed `handle · project` line for the watermark (either part may be
     /// absent), or an empty string when both are blank.
@@ -64,7 +73,7 @@ struct BrandKit: Equatable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case logo, handle, project, accent, placement, freePosition
+        case logo, handle, project, linkURL, accent, placement, freePosition
     }
 
     /// Decodes tolerantly and re-normalizes, so a corrupt blob degrades to a clean
@@ -75,6 +84,7 @@ struct BrandKit: Equatable, Codable {
             logo: try? container.decodeIfPresent(ImageReference.self, forKey: .logo),
             handle: (try? container.decodeIfPresent(String.self, forKey: .handle)) ?? "",
             project: (try? container.decodeIfPresent(String.self, forKey: .project)) ?? "",
+            linkURL: (try? container.decodeIfPresent(String.self, forKey: .linkURL)) ?? "",
             accent: try? container.decodeIfPresent(RGBAColor.self, forKey: .accent),
             placement: (try? container.decodeIfPresent(Watermark.Placement.self, forKey: .placement))
                 ?? .bottomTrailing,
@@ -116,10 +126,12 @@ final class BrandKitStore {
         didSet {
             guard !isReloading else {
                 refreshLogoCache()
+                refreshQRCache(previousLink: nil)
                 return
             }
             persist()
             refreshLogoCache()
+            refreshQRCache(previousLink: oldValue.linkURL)
         }
     }
 
@@ -143,6 +155,11 @@ final class BrandKitStore {
     /// the file from disk on every SwiftUI body pass (audit P1-Perf-5).
     private var cachedLogoImage: NSImage?
 
+    /// The generated QR chip for `brandKit.linkURL`, cached so `resolvedWatermark`
+    /// never runs the Core Image filter on the render/preview hot path (feature #28).
+    /// Regenerated only when the link actually changes.
+    private var cachedQRImage: NSImage?
+
     /// Suppresses write-back while `reload()` mirrors an external reset into memory.
     private var isReloading = false
 
@@ -157,6 +174,7 @@ final class BrandKitStore {
         self.brandKit = Self.read(from: defaults)
         self.isEnabled = defaults.object(forKey: Keys.enabled) as? Bool ?? false
         refreshLogoCache()
+        refreshQRCache(previousLink: nil)
     }
 
     /// The render-ready watermark, or `nil` when the kit is disabled, PRO is locked,
@@ -165,7 +183,7 @@ final class BrandKitStore {
     func resolvedWatermark(isPro: Bool) -> Watermark? {
         guard isEnabled, isPro else { return nil }
         let text = brandKit.watermarkText
-        guard cachedLogoData != nil || !text.isEmpty else { return nil }
+        guard cachedLogoData != nil || !text.isEmpty || cachedQRImage != nil else { return nil }
         return Watermark(
             text: text,
             logoImageData: cachedLogoData,
@@ -173,7 +191,9 @@ final class BrandKitStore {
             logoIdentity: brandKit.logo?.fileName,
             tint: brandKit.accent,
             placement: brandKit.placement,
-            freePosition: brandKit.freePosition)
+            freePosition: brandKit.freePosition,
+            qrImage: cachedQRImage,
+            qrIdentity: brandKit.linkURL.isEmpty ? nil : brandKit.linkURL)
     }
 
     /// Imports a user-picked logo file into the container and adopts it, returning
@@ -203,6 +223,15 @@ final class BrandKitStore {
         defer { isReloading = false }
         brandKit = Self.read(from: defaults)
         isEnabled = defaults.object(forKey: Keys.enabled) as? Bool ?? false
+    }
+
+    /// Regenerates the QR chip when the link changed (or on init/reload, where
+    /// `previousLink` is nil and the cache must be rebuilt unconditionally).
+    private func refreshQRCache(previousLink: String?) {
+        if let previousLink, previousLink == brandKit.linkURL { return }
+        cachedQRImage = QRCodeGenerator.image(for: brandKit.linkURL).map { cg in
+            NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+        }
     }
 
     private func refreshLogoCache() {
