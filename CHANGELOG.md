@@ -14,6 +14,11 @@ can never drift.
 
 ### Performance
 
+- **Custom themes are now cached like the built-ins.** A user-palette theme used to
+  re-run its (slow) HTML-importer highlight on every preview frame — an inspector tweak
+  or a keystroke re-tokenized the whole snippet each time. It's now cached on the palette
+  itself, so a re-render that didn't change the code, palette, or font is a cache hit
+  (measured: the custom-theme render's p95 dropped from ~88 ms to ~2 ms).
 - **The live preview no longer re-highlights the whole document on every keystroke.**
   The editor's preview now renders a copy of the code that trails your typing by a short
   debounce, so a burst of keystrokes coalesces into one re-highlight once it settles

@@ -69,6 +69,24 @@ final class HighlightManager {
     private var terminalCache: [TerminalKey: AttributedString] = [:]
     private var terminalOrder: [TerminalKey] = []
 
+    /// Cache for **custom** (user-palette) themes (analysis §2.A4). These used to bypass
+    /// every cache: a custom palette can change under a stable theme id, so it can't be
+    /// keyed on `themeID` like the built-in caches. Keying on the value-hashable palette
+    /// itself is safe — a changed palette is a different key — and it removes the
+    /// per-`body` re-run of `CustomThemeRenderer`, whose `NSAttributedString(html:)`
+    /// import is one of the slowest text paths on macOS. Two caches mirror the built-in
+    /// pair: the `NSAttributedString` result and its SwiftUI bridge.
+    private struct CustomHighlightKey: Hashable {
+        let code: String
+        let language: Language
+        let palette: ThemePalette
+        let font: NSFont
+    }
+    private var customCache: [CustomHighlightKey: NSAttributedString] = [:]
+    private var customOrder: [CustomHighlightKey] = []
+    private var customSwiftUICache: [CustomHighlightKey: AttributedString] = [:]
+    private var customSwiftUIOrder: [CustomHighlightKey] = []
+
     private init() {}
 
     /// Highlights `code` for `language`, using `theme` and the given `font`. Falls
@@ -105,8 +123,18 @@ final class HighlightManager {
         )
 
         if let palette = theme.palette {
-            return customRenderer?.attributedString(
-                for: code, language: language, palette: palette, font: font) ?? fallback
+            // Custom theme: cache on the palette itself (§2.A4), so a re-render that
+            // didn't change the code/palette/font skips the slow HTML-importer path.
+            let key = CustomHighlightKey(
+                code: code, language: language, palette: palette, font: font)
+            if let cached = customCache[key] { return cached }
+            let result =
+                customRenderer?.attributedString(
+                    for: code, language: language, palette: palette, font: font) ?? fallback
+            insertFIFO(
+                result, forKey: key, into: &customCache, order: &customOrder,
+                limit: Self.highlightCacheLimit)
+            return result
         }
 
         guard let highlightr else { return fallback }
@@ -145,7 +173,19 @@ final class HighlightManager {
         for code: String, language: Language, theme: Theme, font: NSFont
     ) -> AttributedString {
         let ns = attributedString(for: code, language: language, theme: theme, font: font)
-        guard theme.palette == nil else { return AttributedString(ns) }
+        // Custom theme: bridge is cached on the palette too (§2.A4), matching the
+        // built-in pair — the O(n) NSAttributedString→AttributedString walk no longer
+        // repeats on every `body` pass for a custom-theme user.
+        if let palette = theme.palette {
+            let key = CustomHighlightKey(
+                code: code, language: language, palette: palette, font: font)
+            if let cached = customSwiftUICache[key] { return cached }
+            let bridged = AttributedString(ns)
+            insertFIFO(
+                bridged, forKey: key, into: &customSwiftUICache, order: &customSwiftUIOrder,
+                limit: Self.highlightCacheLimit)
+            return bridged
+        }
         let key = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
         if let cached = swiftUICache[key] { return cached }
         let bridged = AttributedString(ns)

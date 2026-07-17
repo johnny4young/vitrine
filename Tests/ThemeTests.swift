@@ -597,6 +597,57 @@ struct CustomThemeRenderTests {
         let lightPNG = try #require(ExportManager.pngData(from: lightImage))
         #expect(darkPNG != lightPNG)
     }
+
+    // MARK: - Custom-theme highlight cache (§2.A4)
+
+    private func highlight(_ code: String, theme: Theme) -> NSAttributedString {
+        HighlightManager.shared.attributedString(
+            for: code, language: .swift, theme: theme,
+            font: .monospacedSystemFont(ofSize: 14, weight: .regular))
+    }
+
+    /// A repeated highlight of the same custom theme returns an equal result — the
+    /// cache serves the same tokenization, not a re-import that could differ.
+    @Test func customThemeHighlightIsStableAcrossCalls() {
+        let theme = Theme(id: "custom.cache", displayName: "Cache", palette: samplePalette())
+        let first = highlight(sampleCode, theme: theme)
+        let second = highlight(sampleCode, theme: theme)
+        #expect(first.isEqual(to: second))
+        #expect(first.string == sampleCode)
+    }
+
+    /// The critical invariant that lets a custom theme be cached at all: a palette that
+    /// changes under a **stable theme id** must not serve the previous palette's colors.
+    /// The cache keys on the palette itself, so this is a fresh render, not a stale hit —
+    /// exactly the case the built-in `themeID`-keyed cache had to exclude.
+    @Test func changingThePaletteUnderAStableIDReflowsTheColors() {
+        let warm = Theme(id: "custom.mutable", displayName: "Mutable", palette: samplePalette())
+        _ = highlight(sampleCode, theme: warm)  // prime the cache under this id
+
+        let differentPalette = ThemePalette(
+            background: HexColor("#FFFFFF")!, foreground: HexColor("#111111")!,
+            keyword: HexColor("#FF0000")!, string: HexColor("#00AA00")!)
+        let mutated = Theme(
+            id: "custom.mutable", displayName: "Mutable", palette: differentPalette)
+
+        let keywordColor = RGBAColor(differentPalette.keyword.color)
+        let rendered = highlight(sampleCode, theme: mutated)
+        var found = Set<RGBAColor>()
+        rendered.enumerateAttribute(
+            .foregroundColor, in: NSRange(location: 0, length: rendered.length)
+        ) { value, _, _ in
+            if let color = (value as? NSColor)?.usingColorSpace(.sRGB) {
+                found.insert(
+                    RGBAColor(
+                        red: color.redComponent, green: color.greenComponent,
+                        blue: color.blueComponent, opacity: color.alphaComponent))
+            }
+        }
+        #expect(
+            found.contains(keywordColor),
+            "the new palette's keyword color must appear — the cache must not serve the old palette"
+        )
+    }
 }
 
 // MARK: - Custom theme editor draft (preview before saving, CS-031)
