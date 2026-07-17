@@ -56,6 +56,37 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testCommandPaletteOpensFiltersAndRunsACommand() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        let editor = element("editor-window", in: app)
+        assertExists(editor, in: app, timeout: 8)
+
+        // ⌘K opens the palette from anywhere in the editor.
+        app.typeKey("k", modifierFlags: .command)
+        let field = element("command-palette-field", in: app)
+        assertExists(field, in: app, timeout: 3)
+
+        // Typing filters the list; "dracula" narrows to the Dracula theme command.
+        field.typeText("dracula")
+        Thread.sleep(forTimeInterval: 0.4)  // let the filtered list settle before the shot
+        let screenshot = editor.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "command-palette-filtered"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        // Return runs the top result and dismisses the palette.
+        field.typeText("\r")
+        XCTAssertTrue(
+            element("command-palette", in: app).waitForNonExistence(timeout: 3),
+            "Running a command must dismiss the palette")
+    }
+
+    @MainActor
     func testCarouselSheetStepperUpdatesTheSlideCount() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()

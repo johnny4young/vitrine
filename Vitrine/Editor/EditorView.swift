@@ -107,6 +107,10 @@ struct EditorView: View {
     @State var showSavePresetPrompt = false
     @State var savePresetName = ""
 
+    /// Whether the ⌘K command palette overlay is up (feature #56). Editor-only UI
+    /// state — the fast path over the inspector's panes.
+    @State var showCommandPalette = false
+
     /// This editor's own `NSWindow`, captured via `WindowAccessor`, so actions like
     /// close-after-copy target it directly instead of guessing at `keyWindow`.
     @State var editorWindow: NSWindow?
@@ -164,6 +168,25 @@ struct EditorView: View {
         // supported window; the stage column absorbs all extra width.
         .frame(minWidth: 940, minHeight: 520)
         .background(WindowAccessor { editorWindow = $0 })
+        // A zero-size button carries the ⌘K shortcut so the palette opens from
+        // anywhere in the editor without stealing a letter the code editor needs.
+        .background {
+            Button("", action: { showCommandPalette = true })
+                .keyboardShortcut("k", modifiers: .command)
+                .opacity(0)
+                .accessibilityHidden(true)
+        }
+        // The command palette floats over the whole editor (feature #56).
+        .overlay {
+            if showCommandPalette {
+                CommandPaletteView(
+                    isPresented: $showCommandPalette, commands: commandPaletteCommands)
+            }
+        }
+        // Opened from outside the view (a dev launch hook; a future menu/App Intent).
+        .onReceive(NotificationCenter.default.publisher(for: .vitrineOpenCommandPalette)) { _ in
+            showCommandPalette = true
+        }
         .tint(VitrineTokens.Accent.system)
         .alert("Save Preset", isPresented: $showSavePresetPrompt) {
             TextField("Name", text: $savePresetName)
