@@ -4983,6 +4983,39 @@
         }
       }
     },
+    "Copy share link" : {
+      "comment" : "Copy-options menu: copy a vitrine://open link reproducing this snapshot.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar enlace para compartir"
+          }
+        }
+      }
+    },
+    "Share link copied" : {
+      "comment" : "HUD confirmation after copying the shareable snapshot link.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlace para compartir copiado"
+          }
+        }
+      }
+    },
+    "This snapshot is too large to share as a link" : {
+      "comment" : "HUD failure when the snapshot's code is too large to fit in a share link.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta captura es demasiado grande para compartir como enlace"
+          }
+        }
+      }
+    },
     "%lld slides" : {
       "comment" : "Live slide count in the carousel export sheet.",
       "localizations" : {
