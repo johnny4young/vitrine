@@ -57,3 +57,53 @@ struct EditorPreviewTests {
         #expect(preview.code == EditorPreview.sampleCode)
     }
 }
+
+// MARK: - Debounced preview code (§2.A1)
+
+extension EditorPreviewTests {
+    /// Before the first debounce sync (`stagedCode == nil`), the preview uses the live
+    /// document code, so the stage is correct from the first frame — no flash of the
+    /// empty-state sample when a window opens onto real code.
+    @Test func nilStagedCodeUsesTheLiveCode() {
+        var live = SnapshotConfig()
+        live.code = "let live = 1"
+        let preview = EditorPreview.configForPreview(live, stagedCode: nil)
+        #expect(preview.code == "let live = 1")
+    }
+
+    /// Once staged, the preview renders the debounced code, not the live keystroke —
+    /// this is the whole point: the cache key stays stable between keystrokes.
+    @Test func stagedCodeIsWhatThePreviewRenders() {
+        var live = SnapshotConfig()
+        live.code = "let live = 999"  // the just-typed character the preview should NOT chase
+        let preview = EditorPreview.configForPreview(live, stagedCode: "let staged = 1")
+        #expect(preview.code == "let staged = 1")
+    }
+
+    /// Only `code` is debounced: a style edit reaches the preview immediately even
+    /// though the code is still the older staged copy.
+    @Test func styleEditsBypassTheCodeDebounce() {
+        var live = SnapshotConfig()
+        live.code = "let live = 1"
+        live.theme = Theme.dracula
+        live.padding = 64
+        let preview = EditorPreview.configForPreview(live, stagedCode: "let staged = 1")
+        #expect(preview.code == "let staged = 1", "code trails behind…")
+        #expect(preview.theme.id == Theme.dracula.id, "…but style is immediate")
+        #expect(preview.padding == 64)
+    }
+
+    /// A staged code that is empty still falls back to the sample, so deleting all the
+    /// text leaves the stage showing the placeholder rather than a blank card.
+    @Test func emptyStagedCodeStillFallsBackToTheSample() {
+        var live = SnapshotConfig()
+        live.code = "  "
+        let preview = EditorPreview.configForPreview(live, stagedCode: "")
+        #expect(preview.code == EditorPreview.sampleCode)
+    }
+
+    @Test func theDebounceWindowIsShortButNonZero() {
+        #expect(EditorPreview.previewCodeDebounce > .zero)
+        #expect(EditorPreview.previewCodeDebounce <= .milliseconds(150))
+    }
+}
