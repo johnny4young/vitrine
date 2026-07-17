@@ -109,6 +109,17 @@ extension EditorView {
             .disabled(isExtractingText)
             .help("Recognize the image's text on-device and copy it")
             .accessibilityIdentifier("copy-image-text-button")
+            // Redact secrets in the image (analysis §10.4): OCR the image, then blur
+            // the regions whose text looks like a key/token/password — the image-mode
+            // analogue of the code editor's line-based "Redact secrets".
+            Button {
+                redactImageSecrets()
+            } label: {
+                Label("Redact secrets", systemImage: "eye.slash")
+            }
+            .disabled(isExtractingText)
+            .help("Scan the image on-device and blur regions that look like secrets")
+            .accessibilityIdentifier("redact-image-secrets-button")
             Button(role: .destructive) {
                 settings.config.foregroundImage = nil
             } label: {
@@ -146,6 +157,42 @@ extension EditorView {
                 "Copied recognized image text (\(text.count, privacy: .public) chars)")
             CaptureHUDController.shared.present(
                 Notifier.confirmation(String(localized: "Text copied from image")))
+        }
+    }
+
+    /// Redacts secrets in the beautified image (analysis §10.4): recognize the image's
+    /// text regions on-device, cover the ones `SecretScanner` flags, and replace the
+    /// foreground image with the redacted copy so the secret is gone from the exported
+    /// bytes — not merely hidden behind an overlay that a frame/padding offset could
+    /// misplace. The redaction paints the image's own pixels, so it is correct whatever
+    /// frame is applied, and destructive by design (a covered secret cannot be
+    /// recovered). Only the count of redactions is ever logged (CS-048), never the text.
+    func redactImageSecrets() {
+        guard let reference = settings.config.foregroundImage,
+            let image = foregroundImageStore.image(for: reference),
+            let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        else { return }
+        isExtractingText = true
+        Task {
+            defer { isExtractingText = false }
+            let lines = (try? await ImageTextExtractor.recognizeLines(in: cgImage)) ?? []
+            let size = CGSize(width: cgImage.width, height: cgImage.height)
+            let rects = ImageSecretRedactor.secretPixelRects(imageSize: size, for: lines)
+            guard !rects.isEmpty,
+                let redacted = ImageSecretRedactor.redacted(cgImage, coveringPixelRects: rects),
+                let data = ExportManager.pngData(from: redacted),
+                let newReference = try? foregroundImageStore.importImage(
+                    data: data, preferredExtension: "png")
+            else {
+                CaptureHUDController.shared.present(
+                    Notifier.confirmation(String(localized: "No secrets found in the image")))
+                return
+            }
+            settings.config.foregroundImage = newReference
+            Log.export.notice(
+                "Redacted image secrets (\(rects.count, privacy: .public) regions)")
+            CaptureHUDController.shared.present(
+                Notifier.confirmation(String(localized: "Secrets redacted")))
         }
     }
 

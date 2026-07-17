@@ -3656,6 +3656,39 @@
         }
       }
     },
+    "No secrets found in the image" : {
+      "comment" : "HUD message when the image redaction scan found nothing to blur.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontraron secretos en la imagen"
+          }
+        }
+      }
+    },
+    "Scan the image on-device and blur regions that look like secrets" : {
+      "comment" : "Help tooltip for the image-mode Redact secrets button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanea la imagen en el dispositivo y difumina regiones que parezcan secretos"
+          }
+        }
+      }
+    },
+    "Secrets redacted" : {
+      "comment" : "HUD message after blurring secret regions in a beautified image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secretos ocultados"
+          }
+        }
+      }
+    },
     "No custom themes yet" : {
       "comment" : "Library pane: custom themes empty-state row label (design/handoff).",
       "localizations" : {

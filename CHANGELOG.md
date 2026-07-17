@@ -22,6 +22,12 @@ can never drift.
 
 ### Added
 
+- **Redact secrets in a beautified image.** The one-click secret scan now works on
+  dropped/pasted images, not just code: Settings-free, it runs on-device OCR (Vision),
+  finds regions that look like API keys, tokens, or passwords, and covers them in the
+  image itself — so the secret is gone from the exported bytes, correct whatever frame
+  or padding is applied. Reuses the same detector as the code path, including its
+  multi-line private-key handling.
 - **Command palette (⌘K).** A fast, fuzzy-searched palette over the editor's actions —
   apply any theme, toggle line numbers / shadow / window chrome / wrap / ligatures, run
   Surprise Me, or copy/save/export — without hunting through the inspector. Type to

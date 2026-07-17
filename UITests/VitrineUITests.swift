@@ -56,6 +56,27 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testImagePanelExposesRedactAndCopyTextActions() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        // A foreground image puts the editor in "beautify any image" mode, which
+        // replaces the code column with the image panel and its on-device actions.
+        let app = launch(arguments: ["--demo-beautify-image"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        // Redact secrets (analysis §10.4) and Copy text from image (feature #34) both
+        // live in the image panel; what they *do* is pinned by the unit suites
+        // (ImageSecretRedactorTests runs the real geometry), so the smoke only proves
+        // the panel surfaces them.
+        assertHittable(
+            "redact-image-secrets-button", in: app,
+            "The image panel must expose Redact secrets")
+        assertExists(element("copy-image-text-button", in: app), in: app, timeout: 3)
+        assertExists(element("remove-image-button", in: app), in: app, timeout: 3)
+    }
+
+    @MainActor
     func testCommandPaletteOpensFiltersAndRunsACommand() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
