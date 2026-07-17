@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- **Command palette (⌘K).** A fast, fuzzy-searched palette over the editor's actions —
+  apply any theme, toggle line numbers / shadow / window chrome / wrap / ligatures, run
+  Surprise Me, or copy/save/export — without hunting through the inspector. Type to
+  filter (a subsequence match, so "clr" finds "Clear"), ↑/↓ to move, Return to run.
+
 ## [0.21.0] - 2026-07-16
 
 From snapshot to post: split a long snippet into carousel slides, share to

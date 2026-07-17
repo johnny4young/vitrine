@@ -3645,6 +3645,17 @@
         }
       }
     },
+    "No matching commands" : {
+      "comment" : "Command palette (⌘K): empty-state row when the query matches no command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ningún comando coincide"
+          }
+        }
+      }
+    },
     "No custom themes yet" : {
       "comment" : "Library pane: custom themes empty-state row label (design/handoff).",
       "localizations" : {
@@ -5594,6 +5605,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tratar las URL copiadas como objetivo de captura"
+          }
+        }
+      }
+    },
+    "Type a command…" : {
+      "comment" : "Command palette (⌘K): placeholder in the search field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribe un comando…"
           }
         }
       }

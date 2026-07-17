@@ -270,6 +270,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             EditorWindowController.shared.show()
             didOpenWindow = true
         }
+        if arguments.contains("--open-command-palette") {
+            EditorWindowController.shared.show()
+            didOpenWindow = true
+            // Let the editor window finish coming up, then ask it to open the palette.
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(400))
+                NotificationCenter.default.post(name: .vitrineOpenCommandPalette, object: nil)
+            }
+        }
         if arguments.contains("--open-settings") {
             SettingsWindowManager.shared.show()
             didOpenWindow = true
