@@ -34,4 +34,31 @@ enum ImageTextExtractor {
             .compactMap { $0.topCandidates(1).first?.string }
         return lines.joined(separator: "\n")
     }
+
+    /// Recognizes the text in `cgImage` as regions, each with the string Vision read
+    /// and its bounding box — the input to `ImageSecretRedactor` for redacting secrets
+    /// in a beautified image (analysis §10.4). Same on-device, accurate, no-language-
+    /// correction recognizer as `recognizeText`; the only difference is that the box is
+    /// kept alongside the string instead of discarded. Boxes are in Vision's space
+    /// (normalized, origin bottom-left); the redactor flips them.
+    ///
+    /// `@concurrent` so the CPU-bound `perform` runs off the main actor; `CGImage` is
+    /// `Sendable` and the returned value type carries no Vision object across the hop.
+    @concurrent
+    nonisolated static func recognizeLines(
+        in cgImage: CGImage
+    ) async throws -> [ImageSecretRedactor.RecognizedLine] {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false
+
+        let handler = VNImageRequestHandler(cgImage: cgImage)
+        try handler.perform([request])
+
+        return (request.results ?? []).compactMap { observation in
+            guard let text = observation.topCandidates(1).first?.string else { return nil }
+            return ImageSecretRedactor.RecognizedLine(
+                text: text, boundingBox: observation.boundingBox)
+        }
+    }
 }

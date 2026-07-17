@@ -279,6 +279,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NotificationCenter.default.post(name: .vitrineOpenCommandPalette, object: nil)
             }
         }
+        if arguments.contains("--demo-beautify-image") {
+            // Load the app icon as a foreground image so the editor opens in image mode
+            // (the "beautify any image" panel), for the image-panel UI smoke tests.
+            if let data = NSApp.applicationIconImage.tiffRepresentation,
+                let reference = try? BackgroundImageStore.foregroundContainer.importImage(
+                    data: data, preferredExtension: "tiff")
+            {
+                AppSettings.shared.config.foregroundImage = reference
+            }
+            EditorWindowController.shared.show()
+            didOpenWindow = true
+        }
         if arguments.contains("--open-settings") {
             SettingsWindowManager.shared.show()
             didOpenWindow = true
