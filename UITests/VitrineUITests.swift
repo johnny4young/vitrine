@@ -44,6 +44,10 @@ final class VitrineUITests: XCTestCase {
         assertHittable(
             "copy-markdown-button", in: app,
             "Copy as Markdown must be exposed for source-based snapshots")
+        // The reproducible share link (§14.1) lives in the same menu; the round-trip
+        // itself is pinned by SnapshotShareLinkTests, so the smoke only proves it's
+        // reachable.
+        assertExists(element("copy-share-link-button", in: app), in: app, timeout: 3)
 
         // Let the SwiftUI menu and syntax-highlighted preview finish their first
         // compositing pass so the retained visual evidence is not mid-transition.

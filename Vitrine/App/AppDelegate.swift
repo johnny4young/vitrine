@@ -80,12 +80,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openHandoff(url)
     }
 
+    /// Routes an incoming `vitrine://…` URL by host: `edit` is the CLI's content
+    /// handoff (`--edit`), `open` is a shared-snapshot link (§14.1). Any other host is
+    /// ignored, so a stray open can never act on an unrecognized URL.
+    func openHandoff(_ url: URL) {
+        switch url.host {
+        case EditorHandoff.editHost: openEditHandoff(url)
+        case SnapshotShareLink.host: openSharedSnapshot(url)
+        default: break
+        }
+    }
+
     /// Seeds the editor from a `vitrine://edit` handoff (the CLI's `--edit`): reads the
     /// staged content and optional language hint, then loads it into the primary editor
     /// — replacing that window's document like quick capture and the Open-Code App Intent
-    /// do (CS-027/034), seeded on the user's current style. A no-op for any other URL or
-    /// an empty payload, so a stray open can never blank the editor.
-    func openHandoff(_ url: URL) {
+    /// do (CS-027/034), seeded on the user's current style. A no-op for an empty payload.
+    private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
         var config = AppSettings.shared.config
         config.code = handoff.content
@@ -93,6 +103,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         EditorWindowController.shared.loadIntoPrimary(config)
         NSApp.activate(ignoringOtherApps: true)
         Log.app.notice("Opened a CLI --edit handoff in the editor")
+    }
+
+    /// Opens a shared-snapshot link (`vitrine://open`, §14.1): decodes the untrusted
+    /// payload into a `SharedSnapshot`, applies it onto a fresh config so the receiver
+    /// sees exactly the sender's styled code (never a leftover foreground image), and
+    /// loads it into the primary editor. A malformed or unsupported link is a silent
+    /// no-op — the decoder already refused it — so a hostile URL can't disturb the
+    /// current document.
+    private func openSharedSnapshot(_ url: URL) {
+        guard let snapshot = try? SnapshotShareLink.snapshot(from: url) else { return }
+        var config = SnapshotConfig()
+        snapshot.apply(to: &config)
+        EditorWindowController.shared.loadIntoPrimary(config)
+        NSApp.activate(ignoringOtherApps: true)
+        Log.app.notice("Opened a shared snapshot link in the editor")
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

@@ -22,6 +22,13 @@ can never drift.
 
 ### Added
 
+- **Share a snapshot as a link.** The copy menu gains *Copy share link*: a
+  `vitrine://open` URL that reproduces the whole styled snapshot — code, theme,
+  background, annotations, header — so a teammate opens your exact image with one click.
+  Fully local (no server, no upload); the link carries no file references (an image
+  background degrades to the signature gradient) and the code travels in clear text, so
+  don't share a snapshot with a live secret. A snapshot too large to fit a link is
+  reported rather than copied.
 - **Redact secrets in a beautified image.** The one-click secret scan now works on
   dropped/pasted images, not just code: Settings-free, it runs on-device OCR (Vision),
   finds regions that look like API keys, tokens, or passwords, and covers them in the
