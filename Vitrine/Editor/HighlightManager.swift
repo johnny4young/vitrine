@@ -77,6 +77,22 @@ final class HighlightManager {
     /// A built-in theme uses Highlightr directly; a custom theme (CS-031) is
     /// rendered by `CustomThemeRenderer` from its palette, with the same plain-text
     /// fallback so an unavailable engine never crashes the render.
+    /// Pays the syntax highlighter's one-time cold start ahead of the user's first
+    /// capture.
+    ///
+    /// `Highlightr` creates its JavaScriptCore engine and parses the theme CSS lazily
+    /// on the first `highlight` call — a cost real enough that `PerformanceTests`
+    /// discards a warm-up pass. A user whose very first interaction is the ⇧⌘S quick
+    /// capture would otherwise eat that cold start inside the gesture the product sells
+    /// as "instant". Running one tiny highlight in a low-priority task after launch
+    /// moves the cost off that path. Idempotent and cheap on a warm engine (a cache
+    /// hit), so a redundant call is harmless. Never throws — a missing engine (the
+    /// fallback path) just no-ops.
+    func prewarm() {
+        let font = CodeFont.resolved(family: CodeFont.default, size: 14, ligatures: false)
+        _ = attributedString(for: "let x = 0", language: .swift, theme: .oneDark, font: font)
+    }
+
     func attributedString(
         for code: String,
         language: Language,
