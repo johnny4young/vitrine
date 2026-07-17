@@ -12,6 +12,14 @@ can never drift.
 
 ## [Unreleased]
 
+### Performance
+
+- **The live preview no longer re-highlights the whole document on every keystroke.**
+  The editor's preview now renders a copy of the code that trails your typing by a short
+  debounce, so a burst of keystrokes coalesces into one re-highlight once it settles
+  instead of re-tokenizing the entire snippet on each character. Style edits (theme,
+  padding, background) still update the preview instantly.
+
 ### Added
 
 - **Command palette (⌘K).** A fast, fuzzy-searched palette over the editor's actions —

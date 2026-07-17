@@ -244,6 +244,20 @@ extension EditorView {
         .overlay(alignment: .bottom) { statusCapsule }
         .layoutPriority(2)
         .accessibilityIdentifier("editor-preview-stage")
+        // Debounce the preview's code so a keystroke doesn't re-tokenize the whole
+        // document in the body pass (§2.A1). `.task(id:)` cancels its prior run when
+        // the code changes, so a burst of typing coalesces into one re-highlight after
+        // a short quiet window. The first sync (window open, or code loaded before
+        // appear) is immediate so the preview is right from the first frame.
+        .task(id: settings.config.code) {
+            if stagedPreviewCode == nil {
+                stagedPreviewCode = settings.config.code
+                return
+            }
+            try? await Task.sleep(for: EditorPreview.previewCodeDebounce)
+            guard !Task.isCancelled else { return }
+            stagedPreviewCode = settings.config.code
+        }
     }
 
     /// The scale that keeps the card fully visible with a 72 pt margin, never
@@ -345,7 +359,7 @@ extension EditorView {
     /// editor state shows a sample"). The substitution is preview-only and never
     /// mutates the live document (see ``EditorPreview``).
     var previewConfig: SnapshotConfig {
-        var config = EditorPreview.configForPreview(settings.config)
+        var config = EditorPreview.configForPreview(settings.config, stagedCode: stagedPreviewCode)
         // WYSIWYG: the preview shows the same brand watermark the export will apply
         // (CS-092), resolved from the observed brand kit + entitlement so it tracks
         // changes live. Off unless the user enabled it and PRO is unlocked.

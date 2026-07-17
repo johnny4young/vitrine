@@ -111,6 +111,18 @@ struct EditorView: View {
     /// state — the fast path over the inspector's panes.
     @State var showCommandPalette = false
 
+    /// The code the live preview renders, trailing the document's `code` by a short
+    /// debounce (analysis §2.A1). The stage embeds `SnapshotCanvas` as a *live* view
+    /// that syntax-highlights synchronously in its body, and the highlight cache keys
+    /// on the whole code string — so without this, every keystroke is a guaranteed
+    /// cache miss and a full re-tokenize + relayout inside the SwiftUI body pass.
+    /// Feeding the preview a debounced copy keeps the cache key stable between
+    /// keystrokes (cache hits, no re-tokenize) and re-highlights once the typing
+    /// settles; style edits still update the preview instantly because only `code`
+    /// is debounced. `nil` until the first sync, which is immediate (no placeholder
+    /// flash on open).
+    @State var stagedPreviewCode: String?
+
     /// This editor's own `NSWindow`, captured via `WindowAccessor`, so actions like
     /// close-after-copy target it directly instead of guessing at `keyWindow`.
     @State var editorWindow: NSWindow?
