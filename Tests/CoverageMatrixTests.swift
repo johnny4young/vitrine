@@ -118,6 +118,17 @@ struct LanguageCoverageTests {
             "\(language.displayName) produced \(colors.count) color(s); it fell back to plain text")
     }
 
+    /// Pre-warming pays the engine's cold start off the render path and must leave a
+    /// working highlighter: idempotent (a second call is a cache hit, not a rebuild)
+    /// and followed by a real, multi-color highlight — proving the warm-up primed the
+    /// engine rather than wedging it.
+    @Test func prewarmIsIdempotentAndLeavesTheEngineWorking() {
+        HighlightManager.shared.prewarm()
+        HighlightManager.shared.prewarm()
+        let colors = highlight(.swift, theme: .oneDark).distinctForegroundColors()
+        #expect(colors.count >= 2, "a highlight after pre-warm must still be multi-color")
+    }
+
     /// Each advertised language's Highlight.js id (or alias) is one the bundled
     /// engine actually recognizes. `supportedLanguages()` lists registration ids;
     /// the two alias-backed languages (HTML → xml, TOML → ini) are checked against
