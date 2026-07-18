@@ -149,6 +149,11 @@ struct CommandPaletteView: View {
             panel
                 .padding(.top, 96)
         }
+        // `.contain` keeps the field/rows identifiers reachable under the root id — an
+        // id on the bare ZStack propagates down and clobbers them (the same
+        // SwiftUI gotcha as the export sheets; here it hid `command-palette-field`
+        // from the UI smoke on CI while the palette itself rendered fine).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("command-palette")
         .onAppear {
             selection = 0
