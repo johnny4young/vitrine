@@ -195,9 +195,18 @@ struct EditorView: View {
                     isPresented: $showCommandPalette, commands: commandPaletteCommands)
             }
         }
-        // Opened from outside the view (a dev launch hook; a future menu/App Intent).
+        // Opened from outside the view (a future menu / App Intent posts this).
         .onReceive(NotificationCenter.default.publisher(for: .vitrineOpenCommandPalette)) { _ in
             showCommandPalette = true
+        }
+        // The `--open-command-palette` dev hook: read the argument when the editor
+        // appears (guaranteed after its subscriptions are live) rather than relying on
+        // a one-shot notification's timing. Gated on the argument, so a normal launch
+        // never opens the palette.
+        .task {
+            if ProcessInfo.processInfo.arguments.contains("--open-command-palette") {
+                showCommandPalette = true
+            }
         }
         .tint(VitrineTokens.Accent.system)
         .alert("Save Preset", isPresented: $showSavePresetPrompt) {
