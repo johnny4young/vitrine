@@ -296,13 +296,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             didOpenWindow = true
         }
         if arguments.contains("--open-command-palette") {
+            // The editor reads this same argument in its own `.task` and opens the
+            // palette when it appears — robust to the window's bring-up timing (a
+            // one-shot notification posted here could arrive before the editor
+            // subscribed, which flaked on the slow CI runner).
             EditorWindowController.shared.show()
             didOpenWindow = true
-            // Let the editor window finish coming up, then ask it to open the palette.
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(400))
-                NotificationCenter.default.post(name: .vitrineOpenCommandPalette, object: nil)
-            }
         }
         if arguments.contains("--demo-beautify-image") {
             // Load the app icon as a foreground image so the editor opens in image mode
