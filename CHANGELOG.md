@@ -14,6 +14,10 @@ can never drift.
 
 ### Performance
 
+- **The line-numbered / diff layout no longer re-splits the document every frame.** The
+  gutter and diff bands slice the highlighted code into one line per row — a
+  character-by-character walk that rebuilt on every preview frame. It's now cached on the
+  same key as the highlight itself, so an unchanged snapshot reuses the split.
 - **Custom themes are now cached like the built-ins.** A user-palette theme used to
   re-run its (slow) HTML-importer highlight on every preview frame — an inspector tweak
   or a keystroke re-tokenized the whole snippet each time. It's now cached on the palette
