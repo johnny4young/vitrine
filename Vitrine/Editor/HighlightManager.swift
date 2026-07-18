@@ -87,6 +87,19 @@ final class HighlightManager {
     private var customSwiftUICache: [CustomHighlightKey: AttributedString] = [:]
     private var customSwiftUIOrder: [CustomHighlightKey] = []
 
+    /// Cache of the row-split `[AttributedString]` (analysis §2.A9). The gutter/diff
+    /// layout slices the highlighted document into one `AttributedString` per line — a
+    /// character-by-character index walk that rebuilt on every `body` pass. Cached on
+    /// the same cheap keys as the bridge above (built-in, custom, and terminal), so a
+    /// re-render that didn't change the code/theme/font reuses the split instead of
+    /// re-walking. The value is identical to splitting the bridged string by hand.
+    private var lineCache: [HighlightKey: [AttributedString]] = [:]
+    private var lineOrder: [HighlightKey] = []
+    private var customLineCache: [CustomHighlightKey: [AttributedString]] = [:]
+    private var customLineOrder: [CustomHighlightKey] = []
+    private var terminalLineCache: [TerminalKey: [AttributedString]] = [:]
+    private var terminalLineOrder: [TerminalKey] = []
+
     private init() {}
 
     /// Highlights `code` for `language`, using `theme` and the given `font`. Falls
@@ -215,6 +228,58 @@ final class HighlightManager {
             bridged, forKey: key, into: &terminalCache, order: &terminalOrder,
             limit: Self.highlightCacheLimit)
         return bridged
+    }
+
+    /// The highlighted code, split into one `AttributedString` per line and cached
+    /// (§2.A9), for the gutter/diff row layout. Serves the same rows a fresh
+    /// `LineSplitter.attributedLines` of `swiftUIAttributedString(…)` would — the empty
+    /// document still yields a single (empty) row so the layout never collapses.
+    func swiftUIAttributedLines(
+        for code: String, language: Language, theme: Theme, font: NSFont
+    ) -> [AttributedString] {
+        let bridged = swiftUIAttributedString(
+            for: code, language: language, theme: theme, font: font)
+        if let palette = theme.palette {
+            let key = CustomHighlightKey(
+                code: code, language: language, palette: palette, font: font)
+            if let cached = customLineCache[key] { return cached }
+            let lines = Self.splitRows(bridged)
+            insertFIFO(
+                lines, forKey: key, into: &customLineCache, order: &customLineOrder,
+                limit: Self.highlightCacheLimit)
+            return lines
+        }
+        let key = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
+        if let cached = lineCache[key] { return cached }
+        let lines = Self.splitRows(bridged)
+        insertFIFO(
+            lines, forKey: key, into: &lineCache, order: &lineOrder,
+            limit: Self.highlightCacheLimit)
+        return lines
+    }
+
+    /// The terminal (ANSI) render, split into rows and cached (§2.A9) — the terminal
+    /// analogue of `swiftUIAttributedLines`, for a terminal capture shown with a gutter.
+    func terminalAttributedLines(
+        for code: String, theme: Theme, font: NSFont, columns: Int?
+    ) -> [AttributedString] {
+        let bridged = terminalAttributedString(
+            for: code, theme: theme, font: font, columns: columns)
+        guard theme.palette == nil else { return Self.splitRows(bridged) }
+        let key = TerminalKey(code: code, themeID: theme.id, font: font, columns: columns)
+        if let cached = terminalLineCache[key] { return cached }
+        let lines = Self.splitRows(bridged)
+        insertFIFO(
+            lines, forKey: key, into: &terminalLineCache, order: &terminalLineOrder,
+            limit: Self.highlightCacheLimit)
+        return lines
+    }
+
+    /// Splits `attributed` into row lines, guarding the empty document to a single
+    /// empty row so the gutter/highlight always has something to align to.
+    private static func splitRows(_ attributed: AttributedString) -> [AttributedString] {
+        let split = LineSplitter.attributedLines(of: attributed)
+        return split.isEmpty ? [AttributedString()] : split
     }
 
     /// Inserts `value` into a FIFO-bounded cache, evicting the oldest key past `limit`.

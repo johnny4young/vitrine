@@ -138,9 +138,10 @@ struct GutterMetrics {
 /// the same inter-line spacing the canvas applies as `lineSpacing`, so toggling
 /// the gutter does not reflow the code.
 struct CodeLinesView: View {
-    /// The full, already syntax-highlighted code as an `AttributedString`, sliced
-    /// into rows so each line keeps its colors.
-    let highlighted: AttributedString
+    /// The already syntax-highlighted code, pre-split into one `AttributedString` per
+    /// line (each keeping its colors) and cached by `HighlightManager` (§2.A9), so the
+    /// character-by-character split does not rebuild on every `body` pass.
+    let rows: [AttributedString]
     /// Whether to draw the leading line-number gutter.
     let showLineNumbers: Bool
     /// Normalized 1-based inclusive ranges to highlight.
@@ -168,19 +169,7 @@ struct CodeLinesView: View {
     /// on, the diff band takes precedence over the plain highlight band.
     var diffDecorations: Bool = false
 
-    /// The code split into rows once, each keeping its syntax colors. Computed in
-    /// `body` and passed down so the split runs a single time per render rather
-    /// than once per row.
-    private var rows: [AttributedString] {
-        let split = LineSplitter.attributedLines(of: highlighted)
-        // Guard against an empty document collapsing to zero rows: a blank canvas
-        // still shows one (empty) row so the gutter and highlight have something
-        // to align to and never render a zero-height band.
-        return split.isEmpty ? [AttributedString()] : split
-    }
-
     var body: some View {
-        let rows = self.rows
         let metrics = GutterMetrics(font: font, lineCount: rows.count)
         VStack(alignment: .leading, spacing: lineSpacing) {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, line in
