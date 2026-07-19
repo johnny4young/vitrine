@@ -28,4 +28,13 @@ struct AppLaunchGuardTests {
         // resolve to "do not enforce".
         #expect(!AppDelegate.shouldEnforceSingleInstance(ProcessInfo.processInfo.environment))
     }
+
+    @Test func handoffRoutingIsCaseInsensitiveAndRejectsForeignSchemes() {
+        #expect(
+            AppDelegate.handoffRoute(for: URL(string: "VITRINE://OPEN?d=x")!)
+                == .sharedSnapshot)
+        #expect(AppDelegate.handoffRoute(for: URL(string: "vitrine://EDIT?d=x")!) == .edit)
+        #expect(AppDelegate.handoffRoute(for: URL(string: "https://open?d=x")!) == nil)
+        #expect(AppDelegate.handoffRoute(for: URL(string: "vitrine://unknown?d=x")!) == nil)
+    }
 }

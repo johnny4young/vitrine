@@ -44,9 +44,8 @@ final class VitrineUITests: XCTestCase {
         assertHittable(
             "copy-markdown-button", in: app,
             "Copy as Markdown must be exposed for source-based snapshots")
-        // The reproducible share link (§14.1) lives in the same menu; the round-trip
-        // itself is pinned by SnapshotShareLinkTests, so the smoke only proves it's
-        // reachable.
+        // The reproducible share link lives in the same menu. Its round trip is pinned
+        // by unit tests, so this smoke only proves the action is reachable.
         assertExists(element("copy-share-link-button", in: app), in: app, timeout: 3)
 
         // Let the SwiftUI menu and syntax-highlighted preview finish their first
@@ -69,10 +68,8 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
-        // Redact secrets (analysis §10.4) and Copy text from image (feature #34) both
-        // live in the image panel; what they *do* is pinned by the unit suites
-        // (ImageSecretRedactorTests runs the real geometry), so the smoke only proves
-        // the panel surfaces them.
+        // Both on-device actions live in the image panel. Their behavior is pinned by
+        // unit tests, so this smoke only proves the panel surfaces them.
         assertHittable(
             "redact-image-secrets-button", in: app,
             "The image panel must expose Redact secrets")
@@ -84,18 +81,16 @@ final class VitrineUITests: XCTestCase {
     func testCommandPaletteOpensFiltersAndRunsACommand() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        // Open the palette via the dev hook rather than a synthetic ⌘K: a modifier
-        // key-combo doesn't reliably reach the zero-size shortcut button on the
-        // headless CI runner. The hook posts the same notification the shortcut does,
-        // so this still exercises the real open → field → filter → run → dismiss path.
+        // Open via the launch hook rather than a synthetic ⌘K, which does not reliably
+        // reach the zero-size shortcut button on a headless runner. The editor reads the
+        // argument after its view appears, then exercises the real filter and run path.
         let app = launch(arguments: ["--open-command-palette"])
         defer { app.terminate() }
 
         let editor = element("editor-window", in: app)
         assertExists(editor, in: app, timeout: 8)
 
-        // The hook posts the open notification ~400 ms after the window comes up, so
-        // give the field a generous window to appear.
+        // Give the field a generous window to appear after editor startup.
         let field = element("command-palette-field", in: app)
         assertExists(field, in: app, timeout: 5)
 

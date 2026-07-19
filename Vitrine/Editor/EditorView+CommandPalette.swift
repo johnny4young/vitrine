@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The editor's ⌘K command catalog (feature #56 / analysis §8.2).
+/// The editor's ⌘K command catalog.
 ///
 /// Each command wraps an action the editor already exposes — applying a theme,
 /// toggling a style, running an export — so the palette is a faster route to them,
@@ -17,9 +17,13 @@ extension EditorView {
         Theme.all.map { theme in
             EditorCommand(
                 id: "theme.\(theme.id)",
-                title: "Theme: \(theme.displayName)",
-                group: "Theme",
-                keywords: [theme.appearance == .dark ? "dark" : "light", "color", "syntax"],
+                title: "\(String(localized: "Theme")): \(theme.displayName)",
+                group: String(localized: "Theme"),
+                keywords: [
+                    theme.appearance == .dark
+                        ? String(localized: "Dark") : String(localized: "Light"),
+                    String(localized: "Color"), String(localized: "Syntax"),
+                ],
                 symbol: "paintpalette"
             ) { settings.selectTheme(theme) }
         }
@@ -30,23 +34,39 @@ extension EditorView {
     private var toggleCommands: [EditorCommand] {
         [
             toggle(
-                id: "toggle.lineNumbers", noun: "line numbers", symbol: "list.number",
+                id: "toggle.lineNumbers",
+                offTitle: String(localized: "Show line numbers"),
+                onTitle: String(localized: "Hide line numbers"),
+                symbol: "list.number",
+                keywords: [String(localized: "Line numbers")],
                 isOn: settings.config.showLineNumbers,
                 set: { settings.config.showLineNumbers = $0 }),
             toggle(
-                id: "toggle.shadow", noun: "shadow", symbol: "shadow",
+                id: "toggle.shadow",
+                offTitle: String(localized: "Show shadow"),
+                onTitle: String(localized: "Hide shadow"),
+                symbol: "shadow",
                 isOn: settings.config.showShadow, set: { settings.config.showShadow = $0 }),
             toggle(
-                id: "toggle.chrome", noun: "window controls", symbol: "macwindow",
+                id: "toggle.chrome",
+                offTitle: String(localized: "Show window controls"),
+                onTitle: String(localized: "Hide window controls"),
+                symbol: "macwindow",
                 keywords: ["chrome", "traffic lights", "dots"],
                 isOn: settings.config.showChrome, set: { settings.config.showChrome = $0 }),
             toggle(
-                id: "toggle.wrap", noun: "line wrap", symbol: "text.wrap",
+                id: "toggle.wrap",
+                offTitle: String(localized: "Show line wrap"),
+                onTitle: String(localized: "Hide line wrap"),
+                symbol: "text.wrap",
                 keywords: ["soft wrap", "long lines"],
                 isOn: settings.config.wrapsLongLines,
                 set: { settings.config.wrapColumns = $0 ? SettingsDefaults.wrapColumns : nil }),
             toggle(
-                id: "toggle.ligatures", noun: "font ligatures", symbol: "textformat",
+                id: "toggle.ligatures",
+                offTitle: String(localized: "Enable font ligatures"),
+                onTitle: String(localized: "Disable font ligatures"),
+                symbol: "textformat",
                 isOn: settings.config.fontLigatures,
                 set: { settings.config.fontLigatures = $0 }),
         ]
@@ -56,7 +76,8 @@ extension EditorView {
     private var styleCommands: [EditorCommand] {
         [
             EditorCommand(
-                id: "style.surprise", title: "Surprise Me", group: "Style",
+                id: "style.surprise", title: String(localized: "Surprise Me"),
+                group: String(localized: "Style"),
                 keywords: ["random", "shuffle", "lucky", "theme"], symbol: "dice"
             ) { _ = settings.applySurpriseStyle() }
         ]
@@ -66,33 +87,35 @@ extension EditorView {
     private var exportCommands: [EditorCommand] {
         [
             EditorCommand(
-                id: "export.copy", title: "Copy image", group: "Export",
+                id: "export.copy", title: VitrineCommand.copyImage.title,
+                group: String(localized: "Export"),
                 keywords: ["png", "clipboard"], symbol: "doc.on.doc"
             ) { copyImage() },
             EditorCommand(
-                id: "export.save", title: "Save to file…", group: "Export",
+                id: "export.save", title: VitrineCommand.saveImage.title,
+                group: String(localized: "Export"),
                 keywords: ["png", "pdf", "heic", "disk"], symbol: "square.and.arrow.down"
             ) { saveImage() },
             EditorCommand(
-                id: "export.markdown", title: "Copy as Markdown", group: "Export",
+                id: "export.markdown", title: VitrineCommand.copyMarkdown.title,
+                group: String(localized: "Export"),
                 keywords: ["md", "fenced", "readme"],
                 symbol: "chevron.left.forwardslash.chevron.right"
             ) { copyMarkdown() },
         ]
     }
 
-    /// Builds a toggle command whose title names the action a run performs — "Show
-    /// line numbers" when off, "Hide line numbers" when on — so the label is always
-    /// the verb, never the current value.
+    /// Builds a toggle command whose localized title names the next action.
     private func toggle(
-        id: String, noun: String, symbol: String, keywords: [String] = [],
+        id: String, offTitle: String, onTitle: String, symbol: String,
+        keywords: [String] = [],
         isOn: Bool, set: @escaping (Bool) -> Void
     ) -> EditorCommand {
         EditorCommand(
             id: id,
-            title: isOn ? "Hide \(noun)" : "Show \(noun)",
-            group: "Style",
-            keywords: keywords + [noun, "toggle"],
+            title: isOn ? onTitle : offTitle,
+            group: String(localized: "Style"),
+            keywords: keywords + [String(localized: "Toggle")],
             symbol: symbol
         ) { set(!isOn) }
     }

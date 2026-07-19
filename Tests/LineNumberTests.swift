@@ -137,11 +137,11 @@ struct LineSplitterTests {
     }
 }
 
-/// The cached row split (analysis §2.A9): `HighlightManager.swiftUIAttributedLines`
+/// The cached row split from `HighlightManager.swiftUIAttributedLines`
 /// must serve exactly the rows a fresh `LineSplitter.attributedLines` of the bridged
 /// string would — the cache is a speed-up, never a behavior change.
 @MainActor
-@Suite("Cached row split (§2.A9)")
+@Suite("Cached row split")
 struct CachedRowSplitTests {
     private static func font() -> NSFont { .monospacedSystemFont(ofSize: 14, weight: .regular) }
 

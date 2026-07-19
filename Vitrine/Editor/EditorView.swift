@@ -107,12 +107,12 @@ struct EditorView: View {
     @State var showSavePresetPrompt = false
     @State var savePresetName = ""
 
-    /// Whether the ⌘K command palette overlay is up (feature #56). Editor-only UI
-    /// state — the fast path over the inspector's panes.
+    /// Whether the ⌘K command palette overlay is up. Editor-only UI state for the fast
+    /// path over the inspector's panes.
     @State var showCommandPalette = false
 
     /// The code the live preview renders, trailing the document's `code` by a short
-    /// debounce (analysis §2.A1). The stage embeds `SnapshotCanvas` as a *live* view
+    /// debounce. The stage embeds `SnapshotCanvas` as a *live* view
     /// that syntax-highlights synchronously in its body, and the highlight cache keys
     /// on the whole code string — so without this, every keystroke is a guaranteed
     /// cache miss and a full re-tokenize + relayout inside the SwiftUI body pass.
@@ -188,7 +188,7 @@ struct EditorView: View {
                 .opacity(0)
                 .accessibilityHidden(true)
         }
-        // The command palette floats over the whole editor (feature #56).
+        // The command palette floats over the whole editor.
         .overlay {
             if showCommandPalette {
                 CommandPaletteView(

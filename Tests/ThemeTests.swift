@@ -598,7 +598,7 @@ struct CustomThemeRenderTests {
         #expect(darkPNG != lightPNG)
     }
 
-    // MARK: - Custom-theme highlight cache (§2.A4)
+    // MARK: - Custom-theme highlight cache
 
     private func highlight(_ code: String, theme: Theme) -> NSAttributedString {
         HighlightManager.shared.attributedString(

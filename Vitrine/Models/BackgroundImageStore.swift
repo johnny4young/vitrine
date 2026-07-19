@@ -308,7 +308,7 @@ struct BackgroundImageStore {
     /// backgrounds) never evicts at all.
     private static let cacheCostLimit = 256 * 1024 * 1024
 
-    @MainActor private static let imageCache: NSCache<NSString, NSImage> = {
+    private static let imageCache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 32
         cache.totalCostLimit = cacheCostLimit
@@ -322,11 +322,14 @@ struct BackgroundImageStore {
     /// pixel — the RGBA form the renderer draws from. A vector-only image with no
     /// bitmap representation reports the minimum cost of 1: it is cheap to hold, and a
     /// zero cost would exempt it from the limit entirely.
-    nonisolated static func decodedByteCost(of image: NSImage) -> Int {
+    static func decodedByteCost(of image: NSImage) -> Int {
         let pixels = image.representations.reduce(0) { largest, representation in
-            max(largest, representation.pixelsWide * representation.pixelsHigh)
+            let (count, overflow) = representation.pixelsWide.multipliedReportingOverflow(
+                by: representation.pixelsHigh)
+            return overflow ? Int.max : max(largest, count)
         }
-        return max(1, pixels * 4)
+        let (cost, overflow) = pixels.multipliedReportingOverflow(by: 4)
+        return overflow ? Int.max : max(1, cost)
     }
 
     /// Loads the referenced image, or `nil` if it cannot be resolved or decoded.

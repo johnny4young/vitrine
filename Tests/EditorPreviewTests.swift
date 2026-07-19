@@ -58,7 +58,7 @@ struct EditorPreviewTests {
     }
 }
 
-// MARK: - Debounced preview code (§2.A1)
+// MARK: - Debounced preview code
 
 extension EditorPreviewTests {
     /// Before the first debounce sync (`stagedCode == nil`), the preview uses the live

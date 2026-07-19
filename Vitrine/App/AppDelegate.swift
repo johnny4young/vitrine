@@ -8,6 +8,11 @@ import OSLog
 /// The whole module defaults to `@MainActor` isolation (see `project.yml`), so this
 /// delegate and the task it starts run on the main actor without extra annotations.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    enum HandoffRoute: Equatable {
+        case edit
+        case sharedSnapshot
+    }
+
     private var hotkeyTask: Task<Void, Never>?
 
     /// Whether the menu-bar icon's hover tooltip has been installed yet, so the
@@ -80,21 +85,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openHandoff(url)
     }
 
-    /// Routes an incoming `vitrine://…` URL by host: `edit` is the CLI's content
-    /// handoff (`--edit`), `open` is a shared-snapshot link (§14.1). Any other host is
-    /// ignored, so a stray open can never act on an unrecognized URL.
+    /// Classifies a Vitrine URL using the case-insensitive scheme and host rules defined
+    /// by URL standards. Keeping this pure prevents the AppleEvent route from drifting
+    /// from the link decoders.
+    static func handoffRoute(for url: URL) -> HandoffRoute? {
+        guard url.scheme?.lowercased() == SnapshotShareLink.scheme else { return nil }
+        switch url.host?.lowercased() {
+        case EditorHandoff.editHost: return .edit
+        case SnapshotShareLink.host: return .sharedSnapshot
+        default: return nil
+        }
+    }
+
+    /// Routes an incoming `vitrine://…` URL by host. Any unrecognized URL is ignored.
     func openHandoff(_ url: URL) {
-        switch url.host {
-        case EditorHandoff.editHost: openEditHandoff(url)
-        case SnapshotShareLink.host: openSharedSnapshot(url)
-        default: break
+        switch Self.handoffRoute(for: url) {
+        case .edit: openEditHandoff(url)
+        case .sharedSnapshot: openSharedSnapshot(url)
+        case nil: break
         }
     }
 
     /// Seeds the editor from a `vitrine://edit` handoff (the CLI's `--edit`): reads the
     /// staged content and optional language hint, then loads it into the primary editor
-    /// — replacing that window's document like quick capture and the Open-Code App Intent
-    /// do (CS-027/034), seeded on the user's current style. A no-op for an empty payload.
+    /// — replacing that window's document like quick capture and the Open-Code App
+    /// Intent do, seeded on the user's current style. A no-op for an empty payload.
     private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
         var config = AppSettings.shared.config
@@ -105,7 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.app.notice("Opened a CLI --edit handoff in the editor")
     }
 
-    /// Opens a shared-snapshot link (`vitrine://open`, §14.1): decodes the untrusted
+    /// Opens a shared-snapshot link (`vitrine://open`): decodes the untrusted
     /// payload into a `SharedSnapshot`, applies it onto a fresh config so the receiver
     /// sees exactly the sender's styled code (never a leftover foreground image), and
     /// loads it into the primary editor. A malformed or unsupported link is a silent

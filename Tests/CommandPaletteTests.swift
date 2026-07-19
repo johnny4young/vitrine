@@ -2,8 +2,7 @@ import Testing
 
 @testable import Vitrine
 
-/// The command palette's ranking (feature #56 / analysis §8.2). The matcher is pure,
-/// so its behavior is pinned here without opening a window.
+/// The command palette's pure ranking behavior, pinned without opening a window.
 @MainActor
 @Suite("Command palette ranking")
 struct CommandPaletteTests {
@@ -32,6 +31,11 @@ struct CommandPaletteTests {
         let catalog = [command("a", "Clear annotations")]
         #expect(ids(CommandPaletteFilter.rank(catalog, query: "clr")) == ["a"])
         #expect(ids(CommandPaletteFilter.rank(catalog, query: "CLEAR")) == ["a"])
+    }
+
+    @Test func matchingIsDiacriticInsensitive() {
+        let catalog = [command("capture", "Captúra rápida")]
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "captura")) == ["capture"])
     }
 
     @Test func prefixBeatsWordStartBeatsSubstringBeatsSubsequence() {

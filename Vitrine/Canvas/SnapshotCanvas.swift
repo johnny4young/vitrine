@@ -367,7 +367,7 @@ struct SnapshotCanvas: View {
         )
     }
 
-    /// The highlighted code pre-split into rows and cached (§2.A9), for the gutter/diff
+    /// The highlighted code pre-split into rows and cached for the gutter/diff
     /// layout — the same source/placeholder and terminal-vs-code routing as
     /// `highlightedCode`, but returning the cached line array so the split doesn't
     /// rebuild on every `body` pass.
