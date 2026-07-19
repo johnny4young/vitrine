@@ -7,8 +7,8 @@ extension Notification.Name {
     static let vitrineOpenCommandPalette = Notification.Name("vitrine.openCommandPalette")
 }
 
-/// One action the command palette can run (feature #56 / analysis §8.2): a titled,
-/// keyword-tagged command that fuzzy-search surfaces and Return executes.
+/// One action the command palette can run: a titled, keyword-tagged command that
+/// fuzzy-search surfaces and Return executes.
 ///
 /// The palette is the fast path over the editor's controls — apply a theme, toggle a
 /// style, jump to an export — without hunting through the inspector's panes. Each
@@ -41,10 +41,10 @@ struct EditorCommand: Identifiable {
         self.run = run
     }
 
-    /// The lowercased strings a query is matched against: the title, the group, and
-    /// every keyword. Computed once per rank pass by the filter.
+    /// Searchable title, group, and keywords with locale-aware case and diacritic
+    /// folding applied.
     var searchTargets: [String] {
-        ([title, group] + keywords).map { $0.lowercased() }
+        ([title, group] + keywords).map(CommandPaletteFilter.foldForSearch)
     }
 }
 
@@ -60,7 +60,7 @@ enum CommandPaletteFilter {
     /// unchanged (the palette opens showing everything in author order); otherwise
     /// only matching commands are returned, best first.
     static func rank(_ commands: [EditorCommand], query: String) -> [EditorCommand] {
-        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let needle = foldForSearch(query.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !needle.isEmpty else { return commands }
 
         return
@@ -75,6 +75,10 @@ enum CommandPaletteFilter {
                 lhs.score != rhs.score ? lhs.score > rhs.score : lhs.order < rhs.order
             }
             .map(\.command)
+    }
+
+    static func foldForSearch(_ value: String) -> String {
+        value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
     }
 
     /// The best score of `needle` against any of a command's search targets, or `nil`
@@ -123,8 +127,8 @@ enum CommandPaletteFilter {
     }
 }
 
-/// The ⌘K command palette overlay (feature #56): a focused search field over a live
-/// filtered list of `EditorCommand`s. Type to filter, ↑/↓ to move, Return to run,
+/// The ⌘K command palette overlay: a focused search field over a live filtered list of
+/// `EditorCommand`s. Type to filter, ↑/↓ to move, Return to run,
 /// Escape (or a click outside) to dismiss. The ranking is `CommandPaletteFilter`;
 /// this view is only the presentation and keyboard handling.
 struct CommandPaletteView: View {
@@ -190,12 +194,17 @@ struct CommandPaletteView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(spacing: 2) {
+                        LazyVStack(spacing: 2) {
                             ForEach(Array(results.enumerated()), id: \.element.id) {
                                 index, command in
-                                row(command, isSelected: index == selection)
-                                    .id(index)
-                                    .onTapGesture { run(command) }
+                                Button {
+                                    run(command)
+                                } label: {
+                                    row(command, isSelected: index == selection)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("command-palette-command-\(command.id)")
+                                .id(index)
                             }
                         }
                         .padding(6)

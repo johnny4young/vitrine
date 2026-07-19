@@ -139,7 +139,7 @@ struct GutterMetrics {
 /// the gutter does not reflow the code.
 struct CodeLinesView: View {
     /// The already syntax-highlighted code, pre-split into one `AttributedString` per
-    /// line (each keeping its colors) and cached by `HighlightManager` (§2.A9), so the
+    /// line (each keeping its colors) and cached by `HighlightManager`, so the
     /// character-by-character split does not rebuild on every `body` pass.
     let rows: [AttributedString]
     /// Whether to draw the leading line-number gutter.

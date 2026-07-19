@@ -65,8 +65,8 @@ struct PerformanceTests {
 
         /// Hard ceiling for the paths the default fixture does not exercise:
         /// a terminal capture (the cell-buffer emulator + per-run styling), a
-        /// custom theme (which bypasses the highlight caches and imports through
-        /// AppKit's HTML reader), a blur-annotated render (which composites the
+        /// custom theme (which uses a separate renderer and cache), a blur-annotated
+        /// render (which composites the
         /// whole canvas twice and blurs a full copy), and a 3× export.
         ///
         /// Deliberately the same generous ceiling as the default case: these are

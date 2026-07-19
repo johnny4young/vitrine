@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The shared chrome behind the export sheets (analysis §3.2.5).
+/// The shared chrome behind the export sheets.
 ///
 /// The multi-size and carousel sheets are the same shape: a bold title over a subtitle,
 /// a body of choices, an optional red failure note, and a footer of Cancel · live
@@ -42,7 +42,7 @@ struct ExportSheetScaffold<Body: View>: View {
 
     /// The sheet's distinct body — the stepper, the preset list — between the header
     /// and the failure note.
-    @ViewBuilder let content: () -> Body
+    @ViewBuilder let content: Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -55,7 +55,7 @@ struct ExportSheetScaffold<Body: View>: View {
                     .foregroundStyle(VitrineTokens.Text.secondary)
             }
 
-            content()
+            content
 
             if let failureNote {
                 Text(verbatim: failureNote)

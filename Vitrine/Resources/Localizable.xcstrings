@@ -3657,7 +3657,7 @@
       }
     },
     "No secrets found in the image" : {
-      "comment" : "HUD message when the image redaction scan found nothing to blur.",
+      "comment" : "HUD message when the image redaction scan found nothing to cover.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3667,19 +3667,19 @@
         }
       }
     },
-    "Scan the image on-device and blur regions that look like secrets" : {
+    "Scan the image on-device and cover regions that look like secrets" : {
       "comment" : "Help tooltip for the image-mode Redact secrets button.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escanea la imagen en el dispositivo y difumina regiones que parezcan secretos"
+            "value" : "Escanea la imagen en el dispositivo y cubre las regiones que parezcan secretos"
           }
         }
       }
     },
     "Secrets redacted" : {
-      "comment" : "HUD message after blurring secret regions in a beautified image.",
+      "comment" : "HUD message after covering secret regions in a beautified image.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -8497,6 +8497,160 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ordena las capturas manteniendo primero las favoritas fijadas"
+          }
+        }
+      }
+    },
+    "Couldn't copy the share link" : {
+      "comment" : "HUD failure when a snapshot share link cannot be encoded or copied.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar el enlace de la captura"
+          }
+        }
+      }
+    },
+    "Couldn't recognize text in the image" : {
+      "comment" : "HUD failure after on-device image text recognition fails.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo reconocer el texto de la imagen"
+          }
+        }
+      }
+    },
+    "Couldn't redact secrets in the image" : {
+      "comment" : "HUD failure after image secret redaction cannot be completed.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron ocultar los secretos de la imagen"
+          }
+        }
+      }
+    },
+    "Disable font ligatures" : {
+      "comment" : "Command palette action that turns font ligatures off.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivar ligaduras tipográficas"
+          }
+        }
+      }
+    },
+    "Enable font ligatures" : {
+      "comment" : "Command palette action that turns font ligatures on.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activar ligaduras tipográficas"
+          }
+        }
+      }
+    },
+    "Hide line numbers" : {
+      "comment" : "Command palette action that hides the line-number gutter.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar números de línea"
+          }
+        }
+      }
+    },
+    "Hide line wrap" : {
+      "comment" : "Command palette action that turns line wrapping off.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar ajuste de línea"
+          }
+        }
+      }
+    },
+    "Hide shadow" : {
+      "comment" : "Command palette action that hides the snapshot shadow.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar sombra"
+          }
+        }
+      }
+    },
+    "Hide window controls" : {
+      "comment" : "Command palette action that hides the window controls.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar controles de ventana"
+          }
+        }
+      }
+    },
+    "Show line numbers" : {
+      "comment" : "Command palette action that shows the line-number gutter.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar números de línea"
+          }
+        }
+      }
+    },
+    "Show line wrap" : {
+      "comment" : "Command palette action that turns line wrapping on.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar ajuste de línea"
+          }
+        }
+      }
+    },
+    "Show shadow" : {
+      "comment" : "Command palette action that shows the snapshot shadow.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar sombra"
+          }
+        }
+      }
+    },
+    "Show window controls" : {
+      "comment" : "Command palette action that shows the window controls.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar controles de ventana"
+          }
+        }
+      }
+    },
+    "Toggle" : {
+      "comment" : "Command palette search keyword for style toggles.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alternar"
           }
         }
       }

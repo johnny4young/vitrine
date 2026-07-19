@@ -293,15 +293,16 @@ enum ANSIRenderer {
         let italic: Bool
     }
 
-    /// Memoizes the four styled variants per base font. A colorful terminal frame
+    /// Memoizes styled variants per base font. A colorful terminal frame
     /// (`htop`, `eza`) is hundreds to thousands of styled runs, and each one used to
     /// rebuild its variant through `NSFontManager.convert` plus the Nerd-Font cascade
     /// descriptor — hundreds of font-descriptor allocations per render. There are only
-    /// ever four variants (plain / bold / italic / bold-italic) for a given base font,
-    /// so this collapses that to at most four builds per render pass. Main-actor
-    /// isolated like the whole render path; unbounded is fine because the key space is
-    /// tiny (one base font per render, four variants).
-    @MainActor private static var styledFontCache: [StyledFontKey: NSFont] = [:]
+    /// four variants (plain / bold / italic / bold-italic) per base font, so this
+    /// collapses repeated work while a bounded FIFO prevents font changes across a long
+    /// editing session from retaining every variant forever.
+    private static let styledFontCacheLimit = 128
+    private static var styledFontCache: [StyledFontKey: NSFont] = [:]
+    private static var styledFontOrder: [StyledFontKey] = []
 
     /// Derives the bold / italic variant of the monospaced base font, keeping its
     /// size (falling back to the base font when a trait is unavailable), then appends
@@ -319,6 +320,12 @@ enum ANSIRenderer {
         if italic { traits.insert(.italicFontMask) }
         let base = traits.isEmpty ? font : NSFontManager.shared.convert(font, toHaveTrait: traits)
         let styled = CodeFont.applyingNerdCascade(to: base)
+        if styledFontCache[key] == nil {
+            styledFontOrder.append(key)
+            if styledFontOrder.count > styledFontCacheLimit {
+                styledFontCache.removeValue(forKey: styledFontOrder.removeFirst())
+            }
+        }
         styledFontCache[key] = styled
         return styled
     }

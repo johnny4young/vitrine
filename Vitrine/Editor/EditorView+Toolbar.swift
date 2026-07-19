@@ -179,7 +179,7 @@ extension EditorView {
                 }
                 .accessibilityIdentifier("copy-markdown-button")
 
-                // A reproducible link (§14.1): the whole styled snapshot as a
+                // A reproducible link: the whole styled snapshot as a
                 // `vitrine://open` URL a teammate can open to get your exact image.
                 Button {
                     copyShareLink()
@@ -413,10 +413,9 @@ extension EditorView {
         RichPasteboard.copyHighlightedCode(for: settings.config)
     }
 
-    /// Copies a `vitrine://open` link that reproduces this snapshot — code, style, and
-    /// annotations — so a teammate opens your exact image (§14.1). The link carries the
-    /// code in clear text and no local file references (an image background degrades to
-    /// the gradient); a snapshot too large to fit a link is reported rather than copied.
+    /// Copies a self-contained `vitrine://open` link that reproduces this snapshot. The
+    /// link carries redaction-safe text and no local file references; an image background
+    /// degrades to the default gradient.
     func copyShareLink() {
         do {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
@@ -425,10 +424,13 @@ extension EditorView {
             pasteboard.setString(url.absoluteString, forType: .string)
             CaptureHUDController.shared.present(
                 Notifier.confirmation(String(localized: "Share link copied")))
-        } catch {
+        } catch SnapshotShareLink.ShareLinkError.tooLarge {
             CaptureHUDController.shared.present(
                 Notifier.failure(
                     String(localized: "This snapshot is too large to share as a link")))
+        } catch {
+            CaptureHUDController.shared.present(
+                Notifier.failure(String(localized: "Couldn't copy the share link")))
         }
     }
 }

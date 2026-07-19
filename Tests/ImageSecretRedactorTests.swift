@@ -3,8 +3,8 @@ import Testing
 
 @testable import Vitrine
 
-/// Redacting secrets in a beautified image (analysis §10.4): OCR regions → cover the
-/// pixels of the ones `SecretScanner` flags. The geometry (Vision box → image pixel
+/// Redacting secrets in a beautified image: OCR regions are mapped to covers over the
+/// pixels that `SecretScanner` flags. The geometry (Vision box → image pixel
 /// rect), the filtering, and the destructive cover are pinned here without Vision.
 @Suite("Image secret redactor")
 struct ImageSecretRedactorTests {
@@ -112,6 +112,25 @@ struct ImageSecretRedactorTests {
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         let image = try #require(context.makeImage())
         #expect(ImageSecretRedactor.redacted(image, coveringPixelRects: []) === image)
+    }
+
+    @Test func highLevelRedactionDistinguishesCleanAndRedactedResults() throws {
+        let context = try #require(
+            CGContext(
+                data: nil, width: 40, height: 20, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        let image = try #require(context.makeImage())
+        let box = CGRect(x: 0.1, y: 0.5, width: 0.7, height: 0.1)
+
+        #expect(
+            try ImageSecretRedactor.redactSecrets(
+                in: image, recognizedLines: [line("let count = 0", box)]) == nil)
+        let redaction = try ImageSecretRedactor.redactSecrets(
+            in: image, recognizedLines: [line("AKIAIOSFODNN7EXAMPLE", box)])
+        let result = try #require(redaction)
+        #expect(result.regionCount == 1)
+        #expect(result.image !== image)
     }
 
     /// Reads a pixel and reports whether it is dark (the redaction cover), tolerant of

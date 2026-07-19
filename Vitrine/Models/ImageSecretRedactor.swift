@@ -1,7 +1,6 @@
 import CoreGraphics
 
-/// Redacts secrets in a beautified image (analysis §10.4 — the one axis where Xnapper
-/// leads) by painting over the image's own pixels.
+/// Redacts secrets in a beautified image by painting over the image's own pixels.
 ///
 /// The code-redaction path blurs whole *lines* of a snippet; a beautified screenshot
 /// has no lines, so this redacts *regions*. Crucially it operates in the **image's own
@@ -15,6 +14,10 @@ import CoreGraphics
 /// The geometry and filtering are pure and UI-free so they are unit-testable without
 /// Vision or a render.
 enum ImageSecretRedactor {
+    enum RedactionError: Error, Equatable {
+        case renderingFailed
+    }
+
     /// One recognized text region: the string Vision read and its box in **Vision's**
     /// coordinate space — normalized `0...1`, origin **bottom-left**.
     struct RecognizedLine: Equatable {
@@ -87,5 +90,20 @@ enum ImageSecretRedactor {
             context.fill(flipped)
         }
         return context.makeImage()
+    }
+
+    /// Produces a redacted image and its number of covered regions. A clean scan is a
+    /// successful `nil` result; failure to render the replacement is an error, keeping
+    /// the UI from reporting a processing failure as "no secrets found."
+    static func redactSecrets(
+        in cgImage: CGImage, recognizedLines: [RecognizedLine]
+    ) throws -> (image: CGImage, regionCount: Int)? {
+        let size = CGSize(width: cgImage.width, height: cgImage.height)
+        let rects = secretPixelRects(imageSize: size, for: recognizedLines)
+        guard !rects.isEmpty else { return nil }
+        guard let image = redacted(cgImage, coveringPixelRects: rects) else {
+            throw RedactionError.renderingFailed
+        }
+        return (image, rects.count)
     }
 }

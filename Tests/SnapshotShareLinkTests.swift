@@ -3,9 +3,8 @@ import Testing
 
 @testable import Vitrine
 
-/// The reproducible snapshot share link (analysis §14.1): a `vitrine://open` URL that
-/// round-trips content + style, decodes untrusted input defensively, and never carries
-/// a local file reference.
+/// A `vitrine://open` URL that round-trips content and style, decodes untrusted input
+/// defensively, and never carries a local file reference.
 @Suite("Snapshot share link")
 struct SnapshotShareLinkTests {
     private func sampleConfig() -> SnapshotConfig {
@@ -19,7 +18,14 @@ struct SnapshotShareLinkTests {
         config.background = .gradient(.sunset)
         config.showLineNumbers = true
         config.windowTitle = "Greeter.swift"
+        config.metadata = SnapshotMetadata(
+            filename: "Greeter.swift", title: "Greeting", caption: "Example",
+            showLanguageBadge: true)
+        config.shadowRadius = 34
         config.highlightedLineRanges = [1...1]
+        config.focusHighlightedLines = true
+        config.diffDecorations = true
+        config.terminalColumns = 96
         config.annotations = [
             Annotation(kind: .arrow, start: CGPoint(x: 0.1, y: 0.2), end: CGPoint(x: 0.6, y: 0.5))
         ]
@@ -52,8 +58,27 @@ struct SnapshotShareLinkTests {
         #expect(target.padding == source.padding)
         #expect(target.background == source.background)
         #expect(target.windowTitle == source.windowTitle)
+        #expect(target.metadata == source.metadata)
+        #expect(target.shadowRadius == source.shadowRadius)
         #expect(target.highlightedLineRanges == source.highlightedLineRanges)
+        #expect(target.focusHighlightedLines == source.focusHighlightedLines)
+        #expect(target.diffDecorations == source.diffDecorations)
+        #expect(target.terminalColumns == source.terminalColumns)
         #expect(target.annotations == source.annotations)
+    }
+
+    @Test func redactedSourceNeverTravelsInTheLink() throws {
+        var config = sampleConfig()
+        config.code = "let visible = true\nlet apiKey = \"secret-value\"\nprint(visible)"
+        config.redactedLineRanges = [2...2]
+
+        let snapshot = SharedSnapshot(capturing: config)
+        #expect(!snapshot.code.contains("secret-value"))
+        #expect(snapshot.code.contains(SnapshotConfig.redactedLinePlaceholder))
+
+        let decoded = try SnapshotShareLink.snapshot(from: SnapshotShareLink.url(for: snapshot))
+        #expect(!decoded.code.contains("secret-value"))
+        #expect(decoded.code.split(separator: "\n").count == 3)
     }
 
     // MARK: - Portability (no local file references)
@@ -138,6 +163,73 @@ struct SnapshotShareLinkTests {
         }
     }
 
+    @Test func aHighlyCompressibleDecodedPayloadCannotCrossTheOutputLimit() throws {
+        let oversized = Data(
+            String(repeating: "compressible payload\n", count: 80_000).utf8)
+        let compressed = try Zlib.compress(oversized)
+        #expect(compressed.count < SnapshotShareLink.maxEncodedLength)
+        #expect(throws: Zlib.ZlibError.outputTooLarge) {
+            try Zlib.decompress(
+                compressed, maxOutputBytes: SnapshotShareLink.maxDecodedLength)
+        }
+    }
+
+    @Test func aCompressibleSnapshotLargerThanTheDecodedLimitIsRefusedAtEncodeTime() {
+        var config = SnapshotConfig()
+        config.code = String(repeating: "let value = 0\n", count: 90_000)
+        #expect(throws: SnapshotShareLink.ShareLinkError.tooLarge) {
+            try SnapshotShareLink.url(for: SharedSnapshot(capturing: config))
+        }
+    }
+
+    @Test func schemeAndHostAreCaseInsensitive() throws {
+        let original = try SnapshotShareLink.url(for: SharedSnapshot(capturing: sampleConfig()))
+        let mixedCase = URL(
+            string: original.absoluteString.replacingOccurrences(
+                of: "vitrine://open", with: "VITRINE://OPEN"))!
+        #expect(try SnapshotShareLink.snapshot(from: mixedCase).code == sampleConfig().code)
+    }
+
+    @Test func ambiguousURLShapesAreRejected() throws {
+        let valid = try SnapshotShareLink.url(for: SharedSnapshot(capturing: sampleConfig()))
+        let payload = try #require(
+            URLComponents(url: valid, resolvingAgainstBaseURL: false)?.queryItems?.first?.value)
+        let malformed = [
+            "vitrine://open/path?d=\(payload)",
+            "vitrine://user@open?d=\(payload)",
+            "vitrine://open:123?d=\(payload)",
+            "vitrine://open?d=\(payload)&d=\(payload)",
+            "vitrine://open?d=\(payload)#fragment",
+        ]
+        for raw in malformed {
+            #expect(throws: SnapshotShareLink.ShareLinkError.malformed) {
+                try SnapshotShareLink.snapshot(from: URL(string: raw)!)
+            }
+        }
+    }
+
+    @Test func decodedAnnotationsAndLineRangesAreBounded() throws {
+        var snapshot = SharedSnapshot(capturing: sampleConfig())
+        snapshot.code = "one\ntwo\nthree"
+        snapshot.annotations = [
+            Annotation(
+                kind: .counter, start: CGPoint(x: -20, y: 30),
+                end: CGPoint(x: 40, y: -50), text: String(repeating: "x", count: 5_000),
+                thickness: 1_000, number: -4)
+        ]
+        snapshot.highlightedLineRanges = [-20...Int.max]
+
+        let decoded = try SnapshotShareLink.snapshot(
+            from: SnapshotShareLink.url(for: snapshot))
+        let annotation = try #require(decoded.annotations.first)
+        #expect(annotation.start == CGPoint(x: 0, y: 1))
+        #expect(annotation.end == CGPoint(x: 1, y: 0))
+        #expect(annotation.text.count == 4_096)
+        #expect(annotation.thickness == Annotation.thicknessRange.upperBound)
+        #expect(annotation.number == 0)
+        #expect(decoded.highlightedLineRanges == [1...3])
+    }
+
     @Test func aFutureSchemaVersionIsRefusedAsUnsupported() throws {
         // Hand-build a payload whose version is one ahead of this build.
         var snapshot = SharedSnapshot(capturing: sampleConfig())
@@ -165,6 +257,6 @@ struct SnapshotShareLinkTests {
         let text = Data(String(repeating: "let x = 0\n", count: 500).utf8)
         let compressed = try Zlib.compress(text)
         #expect(compressed.count < text.count, "repetitive code must compress")
-        #expect(try Zlib.decompress(compressed) == text)
+        #expect(try Zlib.decompress(compressed, maxOutputBytes: text.count) == text)
     }
 }
