@@ -282,7 +282,7 @@ struct SnapshotCanvas: View {
     private var codeRows: some View {
         if config.usesLineRows {
             CodeLinesView(
-                highlighted: highlightedCode,
+                rows: highlightedCodeLines,
                 showLineNumbers: config.showLineNumbers,
                 highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
                 redactedRanges: LineHighlight.normalize(config.redactedLineRanges),
@@ -365,5 +365,21 @@ struct SnapshotCanvas: View {
             theme: config.theme,
             font: codeFont
         )
+    }
+
+    /// The highlighted code pre-split into rows and cached for the gutter/diff
+    /// layout — the same source/placeholder and terminal-vs-code routing as
+    /// `highlightedCode`, but returning the cached line array so the split doesn't
+    /// rebuild on every `body` pass.
+    private var highlightedCodeLines: [AttributedString] {
+        let placeholder = "// Paste or type code…"
+        let source = config.code.isEmpty ? placeholder : config.code
+        if config.language == .terminal {
+            return HighlightManager.shared.terminalAttributedLines(
+                for: source, theme: config.theme, font: codeFont,
+                columns: config.terminalColumns)
+        }
+        return HighlightManager.shared.swiftUIAttributedLines(
+            for: source, language: config.language, theme: config.theme, font: codeFont)
     }
 }

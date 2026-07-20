@@ -99,7 +99,7 @@ extension EditorView {
                 .font(.system(size: VitrineTokens.FontSize.caption))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
                 .multilineTextAlignment(.center)
-            // OCR the beautified image back into copyable text (feature #34) — the
+            // OCR the beautified image back into copyable text — the
             // reverse of the copyable-text sidecar, fully on-device via Vision.
             Button {
                 copyTextFromImage()
@@ -109,6 +109,15 @@ extension EditorView {
             .disabled(isExtractingText)
             .help("Recognize the image's text on-device and copy it")
             .accessibilityIdentifier("copy-image-text-button")
+            // OCR the image, then cover regions whose text looks like a secret.
+            Button {
+                redactImageSecrets()
+            } label: {
+                Label("Redact secrets", systemImage: "eye.slash")
+            }
+            .disabled(isExtractingText)
+            .help("Scan the image on-device and cover regions that look like secrets")
+            .accessibilityIdentifier("redact-image-secrets-button")
             Button(role: .destructive) {
                 settings.config.foregroundImage = nil
             } label: {
@@ -121,10 +130,8 @@ extension EditorView {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Recognizes the beautified image's text on-device and copies it (feature #34):
-    /// resolve the image, run Vision off-main, put the result on the pasteboard, and
-    /// confirm through the HUD — or say clearly that nothing legible was found. Only
-    /// the character count is ever logged (CS-048), never the recognized text.
+    /// Recognizes the beautified image's text on-device and copies it. Only the
+    /// character count is logged, never the recognized text.
     func copyTextFromImage() {
         guard let reference = settings.config.foregroundImage,
             let image = foregroundImageStore.image(for: reference),
@@ -133,19 +140,75 @@ extension EditorView {
         isExtractingText = true
         Task {
             defer { isExtractingText = false }
-            let text = (try? await ImageTextExtractor.recognizeText(in: cgImage)) ?? ""
-            guard !text.isEmpty else {
+            do {
+                let text = try await ImageTextExtractor.recognizeText(in: cgImage)
+                guard settings.config.foregroundImage == reference else { return }
+                guard !text.isEmpty else {
+                    CaptureHUDController.shared.present(
+                        Notifier.confirmation(String(localized: "No text found in the image")))
+                    return
+                }
+                let pasteboard = NSPasteboard.general
+                pasteboard.clearContents()
+                pasteboard.setString(text, forType: .string)
+                Log.export.notice(
+                    "Copied recognized image text (\(text.count, privacy: .public) chars)")
                 CaptureHUDController.shared.present(
-                    Notifier.confirmation(String(localized: "No text found in the image")))
-                return
+                    Notifier.confirmation(String(localized: "Text copied from image")))
+            } catch {
+                guard settings.config.foregroundImage == reference else { return }
+                Log.export.error("Image text recognition failed")
+                CaptureHUDController.shared.present(
+                    Notifier.failure(
+                        String(localized: "Couldn't recognize text in the image")))
             }
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(text, forType: .string)
-            Log.export.notice(
-                "Copied recognized image text (\(text.count, privacy: .public) chars)")
-            CaptureHUDController.shared.present(
-                Notifier.confirmation(String(localized: "Text copied from image")))
+        }
+    }
+
+    /// Redacts secrets in the beautified image: recognize text regions on-device, cover
+    /// the ones `SecretScanner` flags, and replace the
+    /// foreground image with the redacted copy so the secret is gone from the exported
+    /// bytes — not merely hidden behind an overlay that a frame/padding offset could
+    /// misplace. The redaction paints the image's own pixels, so it is correct whatever
+    /// frame is applied, and destructive by design (a covered secret cannot be
+    /// recovered). Only the count of redactions is logged, never the text.
+    func redactImageSecrets() {
+        guard let reference = settings.config.foregroundImage,
+            let image = foregroundImageStore.image(for: reference),
+            let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        else { return }
+        isExtractingText = true
+        Task {
+            defer { isExtractingText = false }
+            do {
+                let lines = try await ImageTextExtractor.recognizeLines(in: cgImage)
+                guard settings.config.foregroundImage == reference else { return }
+                guard
+                    let result = try ImageSecretRedactor.redactSecrets(
+                        in: cgImage, recognizedLines: lines)
+                else {
+                    CaptureHUDController.shared.present(
+                        Notifier.confirmation(String(localized: "No secrets found in the image")))
+                    return
+                }
+                guard let data = ExportManager.pngData(from: result.image) else {
+                    throw ImageSecretRedactor.RedactionError.renderingFailed
+                }
+                let newReference = try foregroundImageStore.importImage(
+                    data: data, preferredExtension: "png")
+                guard settings.config.foregroundImage == reference else { return }
+                settings.config.foregroundImage = newReference
+                Log.export.notice(
+                    "Redacted image secrets (\(result.regionCount, privacy: .public) regions)")
+                CaptureHUDController.shared.present(
+                    Notifier.confirmation(String(localized: "Secrets redacted")))
+            } catch {
+                guard settings.config.foregroundImage == reference else { return }
+                Log.export.error("Image secret redaction failed")
+                CaptureHUDController.shared.present(
+                    Notifier.failure(
+                        String(localized: "Couldn't redact secrets in the image")))
+            }
         }
     }
 
@@ -244,6 +307,20 @@ extension EditorView {
         .overlay(alignment: .bottom) { statusCapsule }
         .layoutPriority(2)
         .accessibilityIdentifier("editor-preview-stage")
+        // Debounce the preview's code so a keystroke doesn't re-tokenize the whole
+        // document in the body pass. `.task(id:)` cancels its prior run when
+        // the code changes, so a burst of typing coalesces into one re-highlight after
+        // a short quiet window. The first sync (window open, or code loaded before
+        // appear) is immediate so the preview is right from the first frame.
+        .task(id: settings.config.code) {
+            if stagedPreviewCode == nil {
+                stagedPreviewCode = settings.config.code
+                return
+            }
+            try? await Task.sleep(for: EditorPreview.previewCodeDebounce)
+            guard !Task.isCancelled else { return }
+            stagedPreviewCode = settings.config.code
+        }
     }
 
     /// The scale that keeps the card fully visible with a 72 pt margin, never
@@ -345,7 +422,7 @@ extension EditorView {
     /// editor state shows a sample"). The substitution is preview-only and never
     /// mutates the live document (see ``EditorPreview``).
     var previewConfig: SnapshotConfig {
-        var config = EditorPreview.configForPreview(settings.config)
+        var config = EditorPreview.configForPreview(settings.config, stagedCode: stagedPreviewCode)
         // WYSIWYG: the preview shows the same brand watermark the export will apply
         // (CS-092), resolved from the observed brand kit + entitlement so it tracks
         // changes live. Off unless the user enabled it and PRO is unlocked.

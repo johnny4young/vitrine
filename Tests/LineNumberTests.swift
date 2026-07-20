@@ -137,6 +137,50 @@ struct LineSplitterTests {
     }
 }
 
+/// The cached row split from `HighlightManager.swiftUIAttributedLines`
+/// must serve exactly the rows a fresh `LineSplitter.attributedLines` of the bridged
+/// string would — the cache is a speed-up, never a behavior change.
+@MainActor
+@Suite("Cached row split")
+struct CachedRowSplitTests {
+    private static func font() -> NSFont { .monospacedSystemFont(ofSize: 14, weight: .regular) }
+
+    @Test func cachedLinesMatchADirectSplitAndTheRowCount() {
+        let code = "func greet() {\n    print(\"hi\")\n}\n"
+        let cached = HighlightManager.shared.swiftUIAttributedLines(
+            for: code, language: .swift, theme: .oneDark, font: Self.font())
+        let direct = LineSplitter.attributedLines(
+            of: HighlightManager.shared.swiftUIAttributedString(
+                for: code, language: .swift, theme: .oneDark, font: Self.font()))
+        #expect(cached.map { String($0.characters) } == direct.map { String($0.characters) })
+        // "a\nb\nc\n" splits into 4 rows (three lines + a trailing empty one).
+        #expect(cached.count == LineSplitter.lineCount(of: code))
+    }
+
+    @Test func cachedLinesAreStableAcrossCalls() {
+        let code = "let x = 1\nlet y = 2"
+        let first = HighlightManager.shared.swiftUIAttributedLines(
+            for: code, language: .swift, theme: .nord, font: Self.font())
+        let second = HighlightManager.shared.swiftUIAttributedLines(
+            for: code, language: .swift, theme: .nord, font: Self.font())
+        #expect(first == second)
+    }
+
+    @Test func anEmptyDocumentStillYieldsOneRow() {
+        // The gutter must never collapse to zero rows (a zero-height band).
+        let lines = HighlightManager.shared.swiftUIAttributedLines(
+            for: "", language: .swift, theme: .oneDark, font: Self.font())
+        #expect(lines.count == 1)
+    }
+
+    @Test func aTerminalCaptureSplitsIntoCachedRows() {
+        let ansi = "\u{1B}[32mok\u{1B}[0m\n\u{1B}[31mfail\u{1B}[0m"
+        let lines = HighlightManager.shared.terminalAttributedLines(
+            for: ansi, theme: .oneDark, font: Self.font(), columns: nil)
+        #expect(lines.count == 2)
+    }
+}
+
 // MARK: - Gutter geometry
 
 @MainActor

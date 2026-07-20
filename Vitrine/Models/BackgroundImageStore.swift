@@ -297,11 +297,40 @@ struct BackgroundImageStore {
     /// body); it mirrors the decoded-thumbnail cache `RecentsStore` already has
     /// (audit Perf-1). Touched only from the main actor, like every `image(for:)`
     /// caller (the canvas/editor views).
-    @MainActor private static let imageCache: NSCache<NSString, NSImage> = {
+    /// The cache's memory ceiling, in bytes of decoded bitmap.
+    ///
+    /// A count limit alone does not bound memory: imports accept files up to
+    /// `maxImportBytes`, and a single 6K photo decodes to ~100 MB of bitmap, so 32
+    /// cached images could pin well over a gigabyte — invisible until a 5K export
+    /// allocates its own full-canvas buffers on top. The cost limit turns the cache
+    /// into a memory-bounded LRU: browsing a folder of large photos evicts the oldest
+    /// instead of growing without limit, while the common case (a handful of ordinary
+    /// backgrounds) never evicts at all.
+    private static let cacheCostLimit = 256 * 1024 * 1024
+
+    private static let imageCache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 32
+        cache.totalCostLimit = cacheCostLimit
         return cache
     }()
+
+    /// The decoded byte cost of `image`, used as its cache cost.
+    ///
+    /// Measured from the largest bitmap representation rather than `size` (which is in
+    /// points, so a 2× asset would be under-counted fourfold) and assumes 4 bytes per
+    /// pixel — the RGBA form the renderer draws from. A vector-only image with no
+    /// bitmap representation reports the minimum cost of 1: it is cheap to hold, and a
+    /// zero cost would exempt it from the limit entirely.
+    static func decodedByteCost(of image: NSImage) -> Int {
+        let pixels = image.representations.reduce(0) { largest, representation in
+            let (count, overflow) = representation.pixelsWide.multipliedReportingOverflow(
+                by: representation.pixelsHigh)
+            return overflow ? Int.max : max(largest, count)
+        }
+        let (cost, overflow) = pixels.multipliedReportingOverflow(by: 4)
+        return overflow ? Int.max : max(1, cost)
+    }
 
     /// Loads the referenced image, or `nil` if it cannot be resolved or decoded.
     /// Served from `imageCache` on a hit so an unchanged background/foreground never
@@ -311,7 +340,7 @@ struct BackgroundImageStore {
         let key = url.path as NSString
         if let cached = Self.imageCache.object(forKey: key) { return cached }
         guard let image = NSImage(contentsOf: url) else { return nil }
-        Self.imageCache.setObject(image, forKey: key)
+        Self.imageCache.setObject(image, forKey: key, cost: Self.decodedByteCost(of: image))
         return image
     }
 

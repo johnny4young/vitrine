@@ -39,16 +39,29 @@ struct MultiSizeExportView: View {
     private var isExporting: Bool { progress != nil }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Export sizes")
-                    .font(.system(size: VitrineTokens.FontSize.headline, weight: .bold))
-                    .foregroundStyle(VitrineTokens.Text.primary)
-                Text("Write one image per platform size into a folder.")
-                    .font(.system(size: VitrineTokens.FontSize.subhead))
-                    .foregroundStyle(VitrineTokens.Text.secondary)
-            }
+        ExportSheetScaffold(
+            title: "Export sizes",
+            subtitle: "Write one image per platform size into a folder.",
+            width: 420,
+            rootIdentifier: "multi-size-export-sheet",
+            failureNote: failureNote,
+            progress: progress,
+            progressIdentifier: "multi-size-progress",
+            cancelIdentifier: "multi-size-cancel",
+            cancelDisabled: isExporting,
+            onCancel: { dismiss() },
+            confirmTitle: "Export…",
+            confirmIdentifier: "multi-size-export-confirm",
+            confirmDisabled: selected.isEmpty || isExporting,
+            onConfirm: exportSelected,
+            content: { content }
+        )
+    }
 
+    /// The multi-size sheet's distinct body: the scrollable preset list and the
+    /// select-all/none controls.
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 16) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(ExportPreset.all) { preset in
@@ -81,43 +94,7 @@ struct MultiSizeExportView: View {
                     .accessibilityIdentifier("multi-size-select-none")
             }
             .font(.system(size: VitrineTokens.FontSize.caption))
-
-            if let failureNote {
-                Text(verbatim: failureNote)
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            HStack {
-                Button("Cancel") { dismiss() }
-                    .disabled(isExporting)
-                    .accessibilityIdentifier("multi-size-cancel")
-                Spacer()
-                if let progress {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text(verbatim: "\(progress.completed)/\(progress.total)")
-                            .font(.system(size: VitrineTokens.FontSize.caption))
-                            .foregroundStyle(VitrineTokens.Text.secondary)
-                            .monospacedDigit()
-                    }
-                    .accessibilityIdentifier("multi-size-progress")
-                }
-                Button("Export…") { exportSelected() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(selected.isEmpty || isExporting)
-                    .accessibilityIdentifier("multi-size-export-confirm")
-            }
         }
-        .padding(24)
-        .frame(width: 420)
-        .background(VitrineTokens.Surface.window)
-        // `.contain` keeps the children's identifiers reachable under the root id —
-        // an id on a bare VStack propagates down and clobbers them (see
-        // CarouselExportView; root-caused in the UI-test workflow notes).
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("multi-size-export-sheet")
     }
 
     private func binding(for preset: ExportPreset) -> Binding<Bool> {

@@ -49,34 +49,80 @@ final class HighlightManager {
     private var highlightOrder: [HighlightKey] = []
     private static let highlightCacheLimit = 8
 
-    /// Cache of the **bridged** SwiftUI `AttributedString` for built-in themes (audit
-    /// Perf-3). The `AttributedString(nsAttributedString)` bridge is an O(n) run/attribute
+    /// Cache of the **bridged** SwiftUI `AttributedString` for built-in themes. The
+    /// `AttributedString(nsAttributedString)` bridge is an O(n) run/attribute
     /// walk, and the canvas re-derives it on every `body` pass (a keystroke or any
     /// inspector tweak). Keyed identically to `highlightCache`; built-in themes only, since
     /// a custom palette can change under a stable id. FIFO-bounded.
     private var swiftUICache: [HighlightKey: AttributedString] = [:]
     private var swiftUIOrder: [HighlightKey] = []
 
-    /// Cache of the bridged terminal (ANSI) `AttributedString` for built-in themes (audit
-    /// Perf-2). Unlike the Highlightr path this had no cache, so a terminal capture was
-    /// fully re-parsed and re-emulated on every `body` pass. FIFO-bounded; built-in only.
+    /// Cache of the bridged terminal (ANSI) `AttributedString`. A terminal capture
+    /// otherwise gets fully re-parsed and re-emulated on every `body` pass. Custom
+    /// themes include their value-typed palette in the key, so edits cannot return a
+    /// stale render under a stable theme id.
     private struct TerminalKey: Hashable {
         let code: String
         let themeID: String
+        let customPalette: ThemePalette?
         let font: NSFont
         let columns: Int?
     }
     private var terminalCache: [TerminalKey: AttributedString] = [:]
     private var terminalOrder: [TerminalKey] = []
 
+    /// Cache for **custom** user-palette themes. These used to bypass
+    /// every cache: a custom palette can change under a stable theme id, so it can't be
+    /// keyed on `themeID` like the built-in caches. Keying on the value-hashable palette
+    /// itself is safe — a changed palette is a different key — and it removes the
+    /// per-`body` re-run of `CustomThemeRenderer`, whose `NSAttributedString(html:)`
+    /// import is one of the slowest text paths on macOS. Two caches mirror the built-in
+    /// pair: the `NSAttributedString` result and its SwiftUI bridge.
+    private struct CustomHighlightKey: Hashable {
+        let code: String
+        let language: Language
+        let palette: ThemePalette
+        let font: NSFont
+    }
+    private var customCache: [CustomHighlightKey: NSAttributedString] = [:]
+    private var customOrder: [CustomHighlightKey] = []
+    private var customSwiftUICache: [CustomHighlightKey: AttributedString] = [:]
+    private var customSwiftUIOrder: [CustomHighlightKey] = []
+
+    /// Cache of the row-split `[AttributedString]`. The gutter/diff
+    /// layout slices the highlighted document into one `AttributedString` per line — a
+    /// character-by-character index walk that rebuilt on every `body` pass. Cached on
+    /// the same cheap keys as the bridge above (built-in, custom, and terminal), so a
+    /// re-render that didn't change the code/theme/font reuses the split instead of
+    /// re-walking. The value is identical to splitting the bridged string by hand.
+    private var lineCache: [HighlightKey: [AttributedString]] = [:]
+    private var lineOrder: [HighlightKey] = []
+    private var customLineCache: [CustomHighlightKey: [AttributedString]] = [:]
+    private var customLineOrder: [CustomHighlightKey] = []
+    private var terminalLineCache: [TerminalKey: [AttributedString]] = [:]
+    private var terminalLineOrder: [TerminalKey] = []
+
     private init() {}
 
-    /// Highlights `code` for `language`, using `theme` and the given `font`. Falls
-    /// back to plain monospaced text if highlighting is unavailable.
+    /// Pays the syntax highlighter's one-time cold start ahead of the user's first
+    /// capture.
     ///
-    /// A built-in theme uses Highlightr directly; a custom theme (CS-031) is
-    /// rendered by `CustomThemeRenderer` from its palette, with the same plain-text
-    /// fallback so an unavailable engine never crashes the render.
+    /// `Highlightr` creates its JavaScriptCore engine and parses the theme CSS lazily
+    /// on the first `highlight` call — a cost real enough that `PerformanceTests`
+    /// discards a warm-up pass. A user whose very first interaction is the ⇧⌘S quick
+    /// capture would otherwise eat that cold start inside the gesture the product sells
+    /// as "instant". Running one tiny highlight in a low-priority task after launch
+    /// moves the cost off that path. Idempotent and cheap on a warm engine (a cache
+    /// hit), so a redundant call is harmless. Never throws — a missing engine (the
+    /// fallback path) just no-ops.
+    func prewarm() {
+        let font = CodeFont.resolved(family: CodeFont.default, size: 14, ligatures: false)
+        _ = attributedString(for: "let x = 0", language: .swift, theme: .oneDark, font: font)
+    }
+
+    /// Highlights `code` for `language`, using `theme` and the given `font`. Falls
+    /// back to plain monospaced text if highlighting is unavailable. Built-in themes
+    /// use Highlightr; custom themes use `CustomThemeRenderer` with their palette.
     func attributedString(
         for code: String,
         language: Language,
@@ -89,8 +135,18 @@ final class HighlightManager {
         )
 
         if let palette = theme.palette {
-            return customRenderer?.attributedString(
-                for: code, language: language, palette: palette, font: font) ?? fallback
+            // Custom theme: cache on the palette itself, so a re-render that
+            // didn't change the code/palette/font skips the slow HTML-importer path.
+            let key = CustomHighlightKey(
+                code: code, language: language, palette: palette, font: font)
+            if let cached = customCache[key] { return cached }
+            let result =
+                customRenderer?.attributedString(
+                    for: code, language: language, palette: palette, font: font) ?? fallback
+            insertFIFO(
+                result, forKey: key, into: &customCache, order: &customOrder,
+                limit: Self.highlightCacheLimit)
+            return result
         }
 
         guard let highlightr else { return fallback }
@@ -129,7 +185,19 @@ final class HighlightManager {
         for code: String, language: Language, theme: Theme, font: NSFont
     ) -> AttributedString {
         let ns = attributedString(for: code, language: language, theme: theme, font: font)
-        guard theme.palette == nil else { return AttributedString(ns) }
+        // Custom theme: bridge is cached on the palette too, matching the
+        // built-in pair — the O(n) NSAttributedString→AttributedString walk no longer
+        // repeats on every `body` pass for a custom-theme user.
+        if let palette = theme.palette {
+            let key = CustomHighlightKey(
+                code: code, language: language, palette: palette, font: font)
+            if let cached = customSwiftUICache[key] { return cached }
+            let bridged = AttributedString(ns)
+            insertFIFO(
+                bridged, forKey: key, into: &customSwiftUICache, order: &customSwiftUIOrder,
+                limit: Self.highlightCacheLimit)
+            return bridged
+        }
         let key = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
         if let cached = swiftUICache[key] { return cached }
         let bridged = AttributedString(ns)
@@ -151,14 +219,68 @@ final class HighlightManager {
                 ANSIRenderer.attributedString(
                     code, font: font, palette: palette, columns: columns))
         }
-        guard theme.palette == nil else { return render() }
-        let key = TerminalKey(code: code, themeID: theme.id, font: font, columns: columns)
+        let key = TerminalKey(
+            code: code, themeID: theme.id, customPalette: theme.palette, font: font,
+            columns: columns)
         if let cached = terminalCache[key] { return cached }
         let bridged = render()
         insertFIFO(
             bridged, forKey: key, into: &terminalCache, order: &terminalOrder,
             limit: Self.highlightCacheLimit)
         return bridged
+    }
+
+    /// The highlighted code, split into one `AttributedString` per line and cached for
+    /// the gutter/diff row layout. Serves the same rows a fresh
+    /// `LineSplitter.attributedLines` of `swiftUIAttributedString(…)` would — the empty
+    /// document still yields a single (empty) row so the layout never collapses.
+    func swiftUIAttributedLines(
+        for code: String, language: Language, theme: Theme, font: NSFont
+    ) -> [AttributedString] {
+        let bridged = swiftUIAttributedString(
+            for: code, language: language, theme: theme, font: font)
+        if let palette = theme.palette {
+            let key = CustomHighlightKey(
+                code: code, language: language, palette: palette, font: font)
+            if let cached = customLineCache[key] { return cached }
+            let lines = Self.splitRows(bridged)
+            insertFIFO(
+                lines, forKey: key, into: &customLineCache, order: &customLineOrder,
+                limit: Self.highlightCacheLimit)
+            return lines
+        }
+        let key = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
+        if let cached = lineCache[key] { return cached }
+        let lines = Self.splitRows(bridged)
+        insertFIFO(
+            lines, forKey: key, into: &lineCache, order: &lineOrder,
+            limit: Self.highlightCacheLimit)
+        return lines
+    }
+
+    /// The terminal (ANSI) render, split into rows and cached — the terminal
+    /// analogue of `swiftUIAttributedLines`, for a terminal capture shown with a gutter.
+    func terminalAttributedLines(
+        for code: String, theme: Theme, font: NSFont, columns: Int?
+    ) -> [AttributedString] {
+        let bridged = terminalAttributedString(
+            for: code, theme: theme, font: font, columns: columns)
+        let key = TerminalKey(
+            code: code, themeID: theme.id, customPalette: theme.palette, font: font,
+            columns: columns)
+        if let cached = terminalLineCache[key] { return cached }
+        let lines = Self.splitRows(bridged)
+        insertFIFO(
+            lines, forKey: key, into: &terminalLineCache, order: &terminalLineOrder,
+            limit: Self.highlightCacheLimit)
+        return lines
+    }
+
+    /// Splits `attributed` into row lines, guarding the empty document to a single
+    /// empty row so the gutter/highlight always has something to align to.
+    private static func splitRows(_ attributed: AttributedString) -> [AttributedString] {
+        let split = LineSplitter.attributedLines(of: attributed)
+        return split.isEmpty ? [AttributedString()] : split
     }
 
     /// Inserts `value` into a FIFO-bounded cache, evicting the oldest key past `limit`.
