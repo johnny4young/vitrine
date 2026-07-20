@@ -1,6 +1,24 @@
 import AppKit
 import SwiftUI
 
+private enum EditorToolbarDensity: Equatable {
+    case full
+    case condensed
+    case compact
+
+    var annotationDensity: AnnotationToolbarDensity {
+        switch self {
+        case .full: .full
+        case .condensed: .condensed
+        case .compact: .compact
+        }
+    }
+
+    var usesCompactCopyButton: Bool { self != .full }
+    var collapsesSecondaryActions: Bool { self == .compact }
+    var spacing: CGFloat { self == .compact ? 10 : 14 }
+}
+
 /// The editor's glass toolbar and the export/copy actions behind it.
 extension EditorView {
     // MARK: - Toolbar (design system: glass band merged into the title bar)
@@ -14,74 +32,95 @@ extension EditorView {
         // value; this local @Bindable provides the `$settings.config.language` binding the
         // language picker needs.
         @Bindable var settings = settings
-        return HStack(spacing: 14) {
-            // Just the app mark — the "Vitrine Editor" wordmark was redundant next to
-            // the window and only crowded the toolbar.
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 22, height: 22)
-                .accessibilityLabel("Vitrine Editor")
+        @ViewBuilder func contents(_ density: EditorToolbarDensity) -> some View {
+            HStack(spacing: density.spacing) {
+                // Just the app mark — the "Vitrine Editor" wordmark was redundant next to
+                // the window and only crowded the toolbar.
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 22, height: 22)
+                    .accessibilityLabel("Vitrine Editor")
 
-            Picker("Language", selection: $settings.config.language) {
-                ForEach(settings.orderedLanguages) { language in
-                    Text(language.displayName).tag(language)
+                Picker("Language", selection: $settings.config.language) {
+                    ForEach(settings.orderedLanguages) { language in
+                        Text(language.displayName).tag(language)
+                    }
                 }
-            }
-            .labelsHidden()
-            .fixedSize()
-            .help("The language used to syntax-highlight the code.")
-            .accessibilityLabel("Language")
-            .accessibilityIdentifier("language-picker")
-            // Picking the Diff language is an unambiguous "I want diff rendering", so
-            // turn the +/− bands (and the line gutter they read best with) on
-            // automatically — the feature was previously undiscoverable behind an
-            // inspector toggle. The toggle stays as a manual override.
-            .onChange(of: settings.config.language) { _, newValue in
-                if newValue == .diff {
-                    settings.config.diffDecorations = true
-                    settings.config.showLineNumbers = true
+                .labelsHidden()
+                .fixedSize()
+                .help("The language used to syntax-highlight the code.")
+                .accessibilityLabel("Language")
+                .accessibilityIdentifier("language-picker")
+                // Picking the Diff language is an unambiguous "I want diff rendering", so
+                // turn the +/− bands (and the line gutter they read best with) on
+                // automatically — the feature was previously undiscoverable behind an
+                // inspector toggle. The toggle stays as a manual override.
+                .onChange(of: settings.config.language) { _, newValue in
+                    if newValue == .diff {
+                        settings.config.diffDecorations = true
+                        settings.config.showLineNumbers = true
+                    }
                 }
+
+                Spacer(minLength: 8)
+
+                // The annotation tool palette lives in the title bar, so marks
+                // are drawn with the cursor like a dedicated screenshot tool. Picking a
+                // draw tool deselects any mark so its options show the new-draw style.
+                AnnotationToolbar(
+                    activeTool: $activeTool,
+                    color: annotationStyleColor,
+                    thickness: annotationStyleThickness,
+                    stickerGlyph: $newStickerGlyph,
+                    showsColor: annotationStyleUsesColor,
+                    showsThickness: annotationStyleUsesThickness,
+                    canUndo: annotationHistory.canUndo,
+                    canRedo: annotationHistory.canRedo,
+                    shortcutsActive: annotationContextActive,
+                    onUndo: undoAnnotations,
+                    onRedo: redoAnnotations,
+                    hasSelection: selectedAnnotationID != nil,
+                    onDuplicate: duplicateSelection,
+                    canBringToFront: canBringSelectionToFront,
+                    canSendToBack: canSendSelectionToBack,
+                    onBringToFront: bringSelectionToFront,
+                    onSendToBack: sendSelectionToBack,
+                    density: density.annotationDensity
+                )
+                .onChange(of: activeTool) { _, newTool in
+                    if newTool != .select { selectedAnnotationID = nil }
+                }
+
+                Spacer(minLength: 8)
+
+                if density.collapsesSecondaryActions {
+                    copyOptionsMenu
+                    savePresetButton
+                    editorActionsMenu
+                } else {
+                    copyOptionsMenu
+                    iconButton(
+                        .saveImage, "save-button", help: "Render and save the image as a file",
+                        systemImage: "square.and.arrow.down",
+                        action: saveImage)
+                    iconButton(
+                        .shareImage, "share-button", help: "Share the rendered image",
+                        systemImage: "square.and.arrow.up", action: share)
+                    pinSnapshotButton
+                    multiSizeExportButton
+                    carouselExportButton
+                    savePresetButton
+                    makeDefaultButton
+                }
+
+                copyImageCTA(compact: density.usesCompactCopyButton)
             }
+        }
 
-            Spacer(minLength: 8)
-
-            // The annotation tool palette lives in the title bar, so marks
-            // are drawn with the cursor like a dedicated screenshot tool. Picking a
-            // draw tool deselects any mark so its options show the new-draw style.
-            AnnotationToolbar(
-                activeTool: $activeTool,
-                color: annotationStyleColor,
-                thickness: annotationStyleThickness,
-                stickerGlyph: $newStickerGlyph,
-                showsColor: annotationStyleUsesColor,
-                showsThickness: annotationStyleUsesThickness,
-                canUndo: !annotationUndo.isEmpty,
-                canRedo: !annotationRedo.isEmpty,
-                shortcutsActive: annotationContextActive,
-                onUndo: undoAnnotations,
-                onRedo: redoAnnotations
-            )
-            .onChange(of: activeTool) { _, newTool in
-                if newTool != .select { selectedAnnotationID = nil }
-            }
-
-            Spacer(minLength: 8)
-
-            copyOptionsMenu
-            iconButton(
-                .saveImage, "save-button", help: "Render and save the image as a file",
-                systemImage: "square.and.arrow.down",
-                action: saveImage)
-            iconButton(
-                .shareImage, "share-button", help: "Share the rendered image",
-                systemImage: "square.and.arrow.up", action: share)
-            pinSnapshotButton
-            multiSizeExportButton
-            carouselExportButton
-            savePresetButton
-            makeDefaultButton
-
-            copyImageCTA
+        return ViewThatFits(in: .horizontal) {
+            contents(.full)
+            contents(.condensed)
+            contents(.compact)
         }
         .padding(.vertical, 10)
         .padding(.trailing, VitrineTokens.Spacing.md)
@@ -99,11 +138,13 @@ extension EditorView {
 
     /// The gradient "Copy image" capsule — the window's primary action. Bound
     /// to the Copy Image command's shortcut so the menu and CTA stay in lockstep.
-    @ViewBuilder var copyImageCTA: some View {
+    @ViewBuilder func copyImageCTA(compact: Bool) -> some View {
         let button = GradientCTAButton {
             Image(systemName: "doc.on.doc")
                 .font(.system(size: 12, weight: .semibold))
-            Text("Copy image")
+            if !compact {
+                Text("Copy image")
+            }
         } action: {
             copyImage()
         }
@@ -116,6 +157,94 @@ extension EditorView {
             button.keyboardShortcut(shortcut)
         } else {
             button
+        }
+    }
+
+    /// Compact-window access to the secondary actions that do not need to remain
+    /// individually visible. The primary copy action and the annotation controls stay
+    /// directly reachable while this menu prevents title-bar clipping.
+    var editorActionsMenu: some View {
+        Menu {
+            Button(action: saveImage) {
+                Label(VitrineCommand.saveImage.title, systemImage: "square.and.arrow.down")
+            }
+            .disabled(!settings.config.hasRenderableContent)
+            .accessibilityIdentifier("save-button")
+
+            Button(action: share) {
+                Label(VitrineCommand.shareImage.title, systemImage: "square.and.arrow.up")
+            }
+            .disabled(!settings.config.hasRenderableContent)
+            .accessibilityIdentifier("share-button")
+
+            Divider()
+
+            Button(action: pinSnapshot) {
+                Label("Pin snapshot", systemImage: "pin")
+            }
+            .disabled(!settings.config.hasRenderableContent)
+            .accessibilityIdentifier("pin-snapshot-button")
+
+            Button {
+                multiSizeSheet = entitlements.isUnlocked(.multiSizeExport) ? .export : .paywall
+            } label: {
+                Label("Export sizes", systemImage: "square.grid.2x2")
+            }
+            .disabled(!settings.config.hasRenderableContent)
+            .accessibilityIdentifier("export-sizes-button")
+
+            Button {
+                carouselSheet = entitlements.isUnlocked(.carouselExport) ? .export : .paywall
+            } label: {
+                Label("Export carousel", systemImage: "rectangle.stack")
+            }
+            .disabled(!settings.config.hasRenderableContent || settings.config.usesImageContent)
+            .accessibilityIdentifier("export-carousel-button")
+
+            Divider()
+
+            Button(action: session.makeDefault) {
+                Label(
+                    VitrineCommand.makeDefault.title,
+                    systemImage: VitrineCommand.makeDefault.systemImageName)
+            }
+            .accessibilityIdentifier("make-default-button")
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .frame(width: 30, height: 30)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("More editor actions")
+        .accessibilityLabel("More editor actions")
+        .accessibilityIdentifier("editor-actions-menu")
+        .sheet(item: $multiSizeSheet) { sheet in
+            switch sheet {
+            case .export:
+                MultiSizeExportView(
+                    baseConfig: settings.exportConfig, format: settings.export.format,
+                    profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar)
+            case .paywall:
+                PaywallSheet(feature: .multiSizeExport)
+            }
+        }
+        .sheet(item: $carouselSheet) { sheet in
+            switch sheet {
+            case .export:
+                CarouselExportView(
+                    baseConfig: settings.exportConfig,
+                    profile: settings.export.colorProfile)
+            case .paywall:
+                PaywallSheet(feature: .carouselExport)
+            }
         }
     }
 
@@ -364,19 +493,21 @@ extension EditorView {
     /// Pin the current render in a floating always-on-top reference window,
     /// so an error/design stays visible while you work against it.
     var pinSnapshotButton: some View {
-        GlassIconButton(systemImage: "pin") {
-            guard
-                let image = ExportManager.renderNSImage(
-                    settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-                    fixedSize: settings.effectiveFixedSize,
-                    profile: settings.export.colorProfile)
-            else { return }
-            PinnedSnapshotController.shared.pin(image)
-        }
-        .help("Pin the snapshot in a floating window that stays on top")
-        .disabled(!settings.config.hasRenderableContent)
-        .accessibilityLabel("Pin snapshot")
-        .accessibilityIdentifier("pin-snapshot-button")
+        GlassIconButton(systemImage: "pin", action: pinSnapshot)
+            .help("Pin the snapshot in a floating window that stays on top")
+            .disabled(!settings.config.hasRenderableContent)
+            .accessibilityLabel("Pin snapshot")
+            .accessibilityIdentifier("pin-snapshot-button")
+    }
+
+    func pinSnapshot() {
+        guard
+            let image = ExportManager.renderNSImage(
+                settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+                fixedSize: settings.effectiveFixedSize,
+                profile: settings.export.colorProfile)
+        else { return }
+        PinnedSnapshotController.shared.pin(image)
     }
 
     // MARK: - Export/share actions

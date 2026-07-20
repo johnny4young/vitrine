@@ -434,6 +434,38 @@ final class VitrineUITests: XCTestCase {
         element("annotation-tool-select", in: app).click()
     }
 
+    /// Selection-only actions must be present but disabled until a mark is selected.
+    /// The same gate keeps their keyboard shortcuts from firing while code has focus.
+    @MainActor
+    func testAnnotationSelectionActionsStartDisabled() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let directDuplicate = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", "annotation-duplicate"))
+            .allElementsBoundByIndex
+        if directDuplicate.isEmpty {
+            assertHittable(
+                "annotation-selection-actions-menu", in: app,
+                "Compact mark actions must remain reachable")
+            element("annotation-selection-actions-menu", in: app).click()
+        }
+        for identifier in [
+            "annotation-duplicate", "annotation-bring-front", "annotation-send-back",
+        ] {
+            let matches = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == %@", identifier))
+                .allElementsBoundByIndex
+            XCTAssertFalse(matches.isEmpty, "\(identifier) must exist in the mark toolbar")
+            XCTAssertFalse(
+                matches.contains { $0.isEnabled },
+                "\(identifier) must be disabled with no mark selected")
+        }
+    }
+
     /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and
     /// never switch tools. Typing 'abc' must reach the text and leave Select active (no
     /// draw-tool color swatch).
@@ -603,6 +635,21 @@ final class VitrineUITests: XCTestCase {
         element("settings-nav-input", in: app).click()
         assertExists(element("settings-input-pane", in: app), in: app, timeout: 3)
         assertExists(element("reindent-on-paste-toggle", in: app), in: app, timeout: 3)
+    }
+
+    @MainActor
+    func testInputPaneExposesLoopbackCaptureDefaultingOff() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-settings"])
+        defer { app.terminate() }
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-input", in: app).click()
+        assertExists(element("settings-input-pane", in: app), in: app, timeout: 3)
+
+        let toggle = element("web-allow-loopback-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 0, "Loopback capture must default to off")
     }
 
     @MainActor

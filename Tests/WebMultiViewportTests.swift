@@ -44,6 +44,14 @@ struct WebMultiViewportSelectionTests {
         #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.webUsesLoggedInSession))
     }
 
+    @Test func loopbackCaptureIsDefaultOffAndPartOfTheCurrentSchema() {
+        let store = defaults()
+        let settings = WebCaptureSettings(defaults: store)
+        #expect(!settings.allowsLoopbackCapture)
+        #expect(SettingsSchema.current >= 12)
+        #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.webAllowsLoopbackCapture))
+    }
+
     @Test func viewportsDropsDuplicatesKeepingFirstOrder() {
         let store = defaults()
         store.set(["mobile", "desktop", "mobile"], forKey: "webViewports")

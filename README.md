@@ -289,9 +289,12 @@ Vitrine is private by design, and that promise does not soften as the product gr
   on-device. There is **no remote screenshot service** — the URL is never sent off your
   machine to be rendered. URL capture is opt-in, gated behind the network entitlement
   (present only on the direct-download build), and shows a first-use disclosure before any
-  page loads. Only `http`/`https` URLs are accepted, private and loopback hosts are refused,
-  and the web view uses a non-persistent data store by default (no cookies or website data
-  persist across captures unless you opt in).
+  page loads. Only `http`/`https` URLs are accepted. Private and local-network hosts are
+  refused; a separate default-off setting can allow only this Mac's loopback interface
+  (`localhost`, `127/8`, and `::1`) for development servers. `.local`, LAN, link-local,
+  metadata, and other private addresses stay blocked. The web view uses a non-persistent
+  data store by default (no cookies or website data persist across captures unless you
+  opt in).
 - **PRO activation contacts only the license provider, once.** On the direct-download build,
   activating a PRO license makes a single online check to the license provider (Lemon
   Squeezy) to validate your key; afterward PRO is verified from an offline signed token and

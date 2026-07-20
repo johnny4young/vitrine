@@ -380,6 +380,7 @@ struct WebCaptureSettingsPersistenceTests {
         first.webCapture.captureMode = .fullPage
         first.webCapture.waitKind = .networkQuiet
         first.webCapture.waitSeconds = 7
+        first.webCapture.allowsLoopbackCapture = true
 
         let second = AppSettings(defaults: defaults)
         #expect(second.webCapture.viewportKind == .mobile)
@@ -388,6 +389,7 @@ struct WebCaptureSettingsPersistenceTests {
         #expect(second.webCapture.captureMode == .fullPage)
         #expect(second.webCapture.waitKind == .networkQuiet)
         #expect(second.webCapture.waitSeconds == 7)
+        #expect(second.webCapture.allowsLoopbackCapture)
     }
 
     @Test func resetReturnsTheWebCaptureChoicesToTheirDefaults() {
@@ -400,12 +402,14 @@ struct WebCaptureSettingsPersistenceTests {
         settings.webCapture.captureMode = .fullPage
         settings.webCapture.waitKind = .fixedDelay
         settings.webCapture.waitSeconds = 9
+        settings.webCapture.allowsLoopbackCapture = true
 
         settings.resetToDefaults()
         #expect(settings.webCapture.viewportKind == WebDefaults.viewportKind)
         #expect(settings.webCapture.captureMode == WebDefaults.captureMode)
         #expect(settings.webCapture.waitKind == WebDefaults.waitKind)
         #expect(settings.webCapture.waitSeconds == WebDefaults.waitSeconds)
+        #expect(!settings.webCapture.allowsLoopbackCapture)
     }
 
     @Test func aGarbagePersistedValueFallsBackToTheDocumentedDefault() {
