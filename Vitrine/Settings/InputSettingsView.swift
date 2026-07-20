@@ -109,12 +109,32 @@ struct WebCaptureControls: View {
                 waitRow
                 if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
                 loggedInSessionRow
+                loopbackCaptureRow
             }
         } else {
             captureModeRow
             waitRow
             if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
             loggedInSessionRow
+            loopbackCaptureRow
+        }
+    }
+
+    /// Explicit access to development servers bound to this Mac's loopback interface.
+    /// The narrow label and caption avoid implying access to the surrounding network.
+    private var loopbackCaptureRow: some View {
+        TokenRow(
+            label: Text("Allow localhost capture"),
+            caption: Text(
+                "Capture development servers on this Mac through localhost, 127.0.0.1, or ::1. Local-network and .local addresses stay blocked."
+            )
+        ) {
+            Toggle(
+                "Allow localhost capture", isOn: $settings.webCapture.allowsLoopbackCapture
+            )
+            .toggleStyle(.switch)
+            .labelsHidden()
+            .accessibilityIdentifier("web-allow-loopback-toggle")
         }
     }
 

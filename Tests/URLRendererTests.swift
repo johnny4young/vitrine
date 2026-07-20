@@ -144,6 +144,72 @@ struct URLValidationTests {
         }
     }
 
+    @Test func loopbackCanBeAllowedWithoutOpeningLocalNetworks() throws {
+        for raw in [
+            "http://localhost:3000", "http://localhost./admin", "http://127.0.0.1:8080",
+            "http://127.0.0.2:5173", "http://127.1", "http://0177.1",
+            "http://0x7f000001", "http://2130706433", "http://[::1]:9000",
+            "http://[::ffff:127.0.0.1]",
+        ] {
+            let url = try #require(URL(string: raw), "fixture \(raw) must parse")
+            #expect(throws: Never.self, "\(raw) is this Mac's loopback interface") {
+                try WebSnapshotConfig.validate(captureURL: url, allowLoopback: true)
+            }
+        }
+    }
+
+    @Test func loopbackOptionNeverAllowsMulticastDNSOrPrivateRanges() throws {
+        for raw in [
+            "http://dev.local/status", "http://192.168.1.1/", "http://10.0.0.5:8080/",
+            "http://172.16.0.1/", "http://100.64.0.1/",
+            "http://169.254.169.254/latest/meta-data/", "http://[fe80::1]/",
+            "http://[fec0::1]/", "http://[fd00::1]/", "http://[ff02::1]/", "http://[::]/",
+            "http://0.0.0.0:5000/", "http://224.0.0.251/", "http://240.0.0.1/",
+        ] {
+            let url = try #require(URL(string: raw), "fixture \(raw) must parse")
+            #expect(throws: URLValidationError.privateLocalhost, "\(raw) must stay blocked") {
+                try WebSnapshotConfig.validate(captureURL: url, allowLoopback: true)
+            }
+        }
+    }
+
+    @Test func loopbackPredicateIsAStrictSubsetOfTheDefaultBlocklist() {
+        for host in [
+            "localhost", "localhost.", "127.0.0.1", "127.1", "0177.1", "0x7f000001",
+            "2130706433", "::1", "[::1]", "::ffff:127.0.0.1", "::ffff:127.1",
+        ] {
+            #expect(WebSnapshotConfig.isLoopbackHost(host: host), "\(host) must be loopback")
+            #expect(WebSnapshotConfig.isPrivateLocalhost(host: host))
+        }
+
+        for host in [
+            "dev.local", "service.local.", "192.168.1.1", "10.0.0.5", "169.254.169.254",
+            "fe80::1", "fd00::1", "0.0.0.0", "::ffff:192.168.1.1", "example.com",
+            "localhost.example.com",
+        ] {
+            #expect(!WebSnapshotConfig.isLoopbackHost(host: host), "\(host) is not loopback")
+        }
+    }
+
+    @Test func textValidationUsesTheSameLoopbackPolicy() throws {
+        #expect(throws: URLValidationError.privateLocalhost) {
+            try WebSnapshotConfig.validate(captureURLString: " http://localhost:3000\n")
+        }
+        let url = try WebSnapshotConfig.validate(
+            captureURLString: " http://localhost:3000\n", allowLoopback: true)
+        #expect(url.host == "localhost")
+    }
+
+    @Test func configCarriesTheLoopbackChoiceIntoRedirectPolicy() throws {
+        let url = try #require(URL(string: "http://localhost:3000"))
+        let config = try WebSnapshotConfig(captureURL: url, allowsLoopbackCapture: true)
+        #expect(config.allowsLoopbackCapture)
+        #expect(!WebSnapshotConfig.isRefusedHost("localhost", allowLoopback: true))
+        #expect(WebSnapshotConfig.isRefusedHost("localhost", allowLoopback: false))
+        #expect(WebSnapshotConfig.isRefusedHost("dev.local", allowLoopback: true))
+        #expect(WebSnapshotConfig.isRefusedHost("169.254.169.254", allowLoopback: true))
+    }
+
     @Test func resolverEquivalentLocalhostSpellingsAreRejectedByHostGuard() {
         // macOS accepts several IPv4 literal spellings that are not four dotted
         // decimal octets. The SSRF guard must reject them before WebKit hands them to
@@ -426,9 +492,28 @@ struct URLRendererValidationTests {
     @Test func aLocalhostURLInputFailsValidationRatherThanLoading() async throws {
         let renderer = URLRenderer(isNetworkCaptureEnabled: true)
         let local = try #require(URL(string: "http://127.0.0.1:8080/admin"))
-        await #expect(throws: RenderError.renderFailed) {
+        await #expect(throws: RenderError.loopbackCaptureDisabled) {
             try await renderer.render(.url(local), config: SnapshotConfig())
         }
+    }
+
+    @Test func privateNonLoopbackURLsDoNotSuggestTheLoopbackOption() async throws {
+        let renderer = URLRenderer(isNetworkCaptureEnabled: true)
+        for raw in ["http://dev.local/", "http://192.168.1.1/", "http://169.254.169.254/"] {
+            let url = try #require(URL(string: raw))
+            await #expect(throws: RenderError.renderFailed) {
+                try await renderer.render(.url(url), config: SnapshotConfig())
+            }
+        }
+    }
+
+    @Test func configuredRendererCarriesThePersistedLoopbackChoice() {
+        let defaults = UserDefaults(suiteName: "VitrineLoopbackRenderer-\(UUID().uuidString)")!
+        let settings = AppSettings(defaults: defaults)
+        #expect(!URLRenderer.configured(from: settings).allowsLoopbackCapture)
+
+        settings.webCapture.allowsLoopbackCapture = true
+        #expect(URLRenderer.configured(from: settings).allowsLoopbackCapture)
     }
 
     @Test func theEntitlementGateIsCheckedBeforeValidation() async throws {
@@ -461,6 +546,7 @@ struct URLRendererValidationTests {
         // The new typed case must not collapse into the existing ones, or a test
         // asserting the disabled gate would pass against an unrelated failure.
         #expect(RenderError.urlCaptureDisabled != .renderFailed)
+        #expect(RenderError.loopbackCaptureDisabled != .renderFailed)
         #expect(RenderError.urlCaptureDisabled != .noRendererFor(kind: "url"))
         #expect(RenderError.urlCaptureDisabled == .urlCaptureDisabled)
     }

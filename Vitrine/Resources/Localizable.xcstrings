@@ -177,6 +177,39 @@
         }
       }
     },
+    "Allow localhost capture" : {
+      "comment" : "URL-capture toggle: allow this Mac's loopback interface only.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir capturas de localhost"
+          }
+        }
+      }
+    },
+    "Capture development servers on this Mac through localhost, 127.0.0.1, or ::1. Local-network and .local addresses stay blocked." : {
+      "comment" : "Caption for the default-off loopback capture toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura servidores de desarrollo en esta Mac mediante localhost, 127.0.0.1 o ::1. Las direcciones de la red local y .local siguen bloqueadas."
+          }
+        }
+      }
+    },
+    "That address is on this Mac. Turn on “Allow localhost capture” in Settings ▸ Input to capture it." : {
+      "comment" : "Web Snapshot error shown when a loopback URL is refused by the default-off setting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa dirección está en esta Mac. Activa “Permitir capturas de localhost” en Configuración ▸ Entrada para capturarla."
+          }
+        }
+      }
+    },
     "Capture options" : {
       "comment" : "Web Snapshot inspector: collapsible section holding capture mode and wait strategy.",
       "localizations" : {
@@ -370,6 +403,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No se pudo agregar la integración del shell"
+          }
+        }
+      }
+    },
+    "Send to Back" : {
+      "comment" : "Button: move the selected annotation below every other regular mark.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar al fondo"
           }
         }
       }
@@ -1014,6 +1058,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desenfoque"
+          }
+        }
+      }
+    },
+    "Bring to Front" : {
+      "comment" : "Button: move the selected annotation above every other regular mark.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traer al frente"
           }
         }
       }
@@ -2154,8 +2209,7 @@
       }
     },
     "Duplicate" : {
-      "comment" : "Button: duplicate the selected preset.",
-      "extractionState" : "stale",
+      "comment" : "Button: duplicate the selected preset or annotation.",
       "localizations" : {
         "es" : {
           "stringUnit" : {

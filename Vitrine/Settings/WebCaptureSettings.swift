@@ -83,6 +83,13 @@ final class WebCaptureSettings {
         didSet { defaults.set(usesLoggedInSession, forKey: Keys.webUsesLoggedInSession) }
     }
 
+    /// Whether URL capture may reach `localhost`, IPv4 `127/8`, or IPv6 `::1` on
+    /// this Mac. Off by default. The LAN, multicast-DNS `.local` names, link-local,
+    /// and all other private/reserved addresses remain refused when enabled.
+    var allowsLoopbackCapture: Bool {
+        didSet { defaults.set(allowsLoopbackCapture, forKey: Keys.webAllowsLoopbackCapture) }
+    }
+
     /// The composed data-store policy for a URL capture: the persistent store (cookies
     /// available) only when the user opted in, otherwise the private per-render default.
     var dataStoreMode: WebSnapshotConfig.DataStoreMode {
@@ -149,6 +156,8 @@ final class WebCaptureSettings {
         // Off by default: cookies/persistent data are opt-in only.
         usesLoggedInSession =
             defaults.object(forKey: Keys.webUsesLoggedInSession) as? Bool ?? false
+        allowsLoopbackCapture =
+            defaults.object(forKey: Keys.webAllowsLoopbackCapture) as? Bool ?? false
     }
 
     /// Restores every web-capture setting to its factory default, driven by
@@ -165,5 +174,6 @@ final class WebCaptureSettings {
         waitSeconds = WebDefaults.waitSeconds
         consentGiven = false
         usesLoggedInSession = false
+        allowsLoopbackCapture = false
     }
 }

@@ -1,6 +1,41 @@
 import CoreGraphics
 import Foundation
 
+/// Draw-order operations for annotations painted in the regular marks layer. Moving
+/// one mark preserves every other mark's relative order.
+extension Array where Element == Annotation {
+    /// The index the mark with `id` would need to occupy to become frontmost, or
+    /// `nil` when the mark is absent, fixed-depth, or already frontmost.
+    func frontmostMove(for id: UUID) -> Int? {
+        reorderTarget(for: id, front: true)
+    }
+
+    func backmostMove(for id: UUID) -> Int? {
+        reorderTarget(for: id, front: false)
+    }
+
+    /// Moves a regular mark to the front or back of the visible draw order. Fixed-depth
+    /// compositing effects do not participate and keep their existing list positions.
+    mutating func moveMark(_ id: UUID, toFront front: Bool) {
+        guard let target = reorderTarget(for: id, front: front),
+            let index = firstIndex(where: { $0.id == id })
+        else { return }
+        let mark = remove(at: index)
+        insert(mark, at: target)
+    }
+
+    private func reorderTarget(for id: UUID, front: Bool) -> Int? {
+        guard let index = firstIndex(where: { $0.id == id }),
+            self[index].kind.participatesInZOrder
+        else { return nil }
+
+        let drawn = indices.filter { self[$0].kind.participatesInZOrder }
+        guard let firstDrawn = drawn.first, let lastDrawn = drawn.last else { return nil }
+        let target = front ? lastDrawn : firstDrawn
+        return target == index ? nil : target
+    }
+}
+
 /// A single annotation drawn over the code snapshot: an arrow,
 /// line, rectangle, text callout, highlighter, blur/redaction box, or a numbered
 /// counter badge.
@@ -30,6 +65,11 @@ struct Annotation: Identifiable, Equatable, Codable {
         /// Whether dragging defines two free points (a shaft/box) versus a single
         /// anchor that is clicked into place (text, counters, and stickers).
         var isPointPlaced: Bool { self == .text || self == .counter || self == .sticker }
+
+        /// Whether list position determines this annotation's visible depth. Blur and
+        /// spotlight are compositing effects rendered at fixed depths beneath the
+        /// regular marks layer, so reordering them would not change the canvas.
+        var participatesInZOrder: Bool { self != .blur && self != .spotlight }
     }
 
     var id: UUID
@@ -116,6 +156,40 @@ extension Annotation {
     /// off the canvas.
     static func clampNormalized(_ point: CGPoint) -> CGPoint {
         CGPoint(x: min(max(point.x, 0), 1), y: min(max(point.y, 0), 1))
+    }
+
+    /// Keyboard movement in canvas points: one point normally and ten with Shift.
+    static let nudgeStep: Double = 1
+    static let coarseNudgeStep: Double = 10
+
+    /// Distance between an original mark and a duplicate in canvas points.
+    static let duplicateOffset: Double = 16
+
+    /// Returns a fresh copy offset from the original. A counter receives the next
+    /// number supplied by the owning collection.
+    func duplicated(in canvasSize: CGSize, counterNumber: Int) -> Annotation {
+        var copy = self
+        copy.id = UUID()
+        if kind == .counter { copy.number = counterNumber }
+
+        let offset = CGSize(width: Self.duplicateOffset, height: Self.duplicateOffset)
+        copy.nudge(by: offset, in: canvasSize)
+        if copy.start == start, copy.end == end {
+            copy.nudge(by: CGSize(width: -offset.width, height: -offset.height), in: canvasSize)
+        }
+        return copy
+    }
+
+    /// Moves the whole mark by a canvas-space delta without shearing it at an edge.
+    /// The permitted delta is clamped against the mark's complete bounding extent.
+    mutating func nudge(by points: CGSize, in canvasSize: CGSize) {
+        guard canvasSize.width > 0, canvasSize.height > 0 else { return }
+        let requested = CGSize(
+            width: points.width / canvasSize.width, height: points.height / canvasSize.height)
+        let dx = min(max(requested.width, -min(start.x, end.x)), 1 - max(start.x, end.x))
+        let dy = min(max(requested.height, -min(start.y, end.y)), 1 - max(start.y, end.y))
+        start = CGPoint(x: start.x + dx, y: start.y + dy)
+        end = CGPoint(x: end.x + dx, y: end.y + dy)
     }
 
     /// A stable, **id-independent** serialization of the annotation's visual state,

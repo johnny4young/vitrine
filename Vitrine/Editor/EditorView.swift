@@ -67,6 +67,11 @@ struct EditorView: View {
     /// is selected. Editor-only UI state, not persisted.
     @State var selectedAnnotationID: UUID?
 
+    /// Whether the preview stage holds keyboard focus while a mark is selected. The
+    /// stage is focusable only in that state, so it does not compete with the code
+    /// editor for caret navigation.
+    @FocusState var stageFocused: Bool
+
     /// The text callout being edited inline . Non-nil shows a focused
     /// field over the mark and blanks its canvas copy so the field is the only text
     /// drawn; committing keeps non-empty content or drops an empty callout. Editor-only.
@@ -96,11 +101,10 @@ struct EditorView: View {
     @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
     var showsSafeAreaGuides = false
 
-    /// Undo/redo history for annotation edits: each entry is a full snapshot
-    /// of `config.annotations` captured just before a draw/move/resize/delete. Bounded
-    /// so a long session never grows without limit.
-    @State var annotationUndo: [[Annotation]] = []
-    @State var annotationRedo: [[Annotation]] = []
+    /// Undo/redo history for annotation edits. Full snapshots are captured before
+    /// each discrete change, while stack semantics and bounds live in a testable value
+    /// type rather than in the view.
+    @State var annotationHistory = AnnotationHistory()
 
     /// True while the save-style-preset prompt is up (the toolbar star).
     @State var showSavePresetPrompt = false

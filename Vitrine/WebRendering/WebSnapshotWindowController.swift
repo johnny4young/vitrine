@@ -368,7 +368,8 @@ final class WebSnapshotModel {
                 captureMode: settings.webCapture.captureMode,
                 waitStrategy: settings.webCapture.waitStrategy,
                 profile: settings.export.colorProfile,
-                dataStoreMode: settings.webCapture.dataStoreMode)
+                dataStoreMode: settings.webCapture.dataStoreMode,
+                allowsLoopbackCapture: settings.webCapture.allowsLoopbackCapture)
             return try await renderer.render(input, config: settings.config)
         case .code:
             // The web snapshot flow only ever resolves `.url`/`.html`; a `.code` input
@@ -392,6 +393,11 @@ final class WebSnapshotModel {
         switch error {
         case .urlCaptureDisabled:
             String(localized: "URL capture is only available in the direct-download build.")
+        case .loopbackCaptureDisabled:
+            String(
+                localized:
+                    "That address is on this Mac. Turn on “Allow localhost capture” in Settings ▸ Input to capture it."
+            )
         case .renderFailed:
             String(localized: "Couldn't load or render that — check the input and try again.")
         case .noRendererFor:
