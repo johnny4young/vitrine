@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Canonical destination-chip ids and their short labels, single-sourced so the
-/// Settings picker and the editor inspector's two-row variant never drift (UX audit).
+/// Settings picker and the editor inspector's two-row variant never drift.
 /// The labels are product/brand tokens shown verbatim in every locale.
 enum DestinationChips {
     /// Every chip in display order. The editor inspector shows all of them.
@@ -14,14 +14,14 @@ enum DestinationChips {
         ("transparent-slide", "Slide"),
     ]
 
-    /// The Settings row, which **deliberately** omits Transparent Slide: the handoff's
+    /// The Settings row, which deliberately omits Transparent Slide: the compact
     /// single row fits six segments (Custom + five), and Slide stays reachable via the
     /// editor's two-row picker and the header popup.
     static let settingsRow = all.filter { $0.id != "transparent-slide" }
 }
 
-/// The destination preset as the redesign's segmented pill row: "Custom"
-/// leading, then the presets under the handoff's short labels (CS-020). The
+/// The destination preset as the current design's segmented pill row: "Custom"
+/// leading, then the presets under short labels. The
 /// settings panes use this; the editor's Output disclosure carries its own
 /// two-row variant that adds Transparent Slide, drawing labels from the same
 /// `DestinationChips` source so the two surfaces stay aligned.
@@ -62,7 +62,7 @@ struct DestinationSegmentedPicker: View {
     }
 }
 
-/// An editor for the selected-line highlight spec (CS-021).
+/// An editor for the selected-line highlight spec.
 ///
 /// The user types a compact spec like `3, 7-9, 12`; on every change it is parsed
 /// into normalized 1-based inclusive ranges and pushed into `config`. The text the
@@ -97,14 +97,14 @@ struct HighlightedLinesField: View {
 }
 
 /// Editors for the optional metadata header — filename, title, caption, and a
-/// language-badge toggle (CS-022).
+/// language-badge toggle.
 ///
 /// Each text field maps to an optional `SnapshotMetadata` field through a binding
 /// that normalizes on the way in (trim, empty → `nil`), so a blank entry never
 /// reserves header space. The fields are reused by both the Style pane and the
 /// editor's inline metadata bar so there is one labeled, accessible set of
 /// controls. Every control carries an explicit accessibility label and identifier
-/// (CS-022 acceptance).
+/// .
 struct MetadataFields: View {
     @Bindable var settings: AppSettings
 

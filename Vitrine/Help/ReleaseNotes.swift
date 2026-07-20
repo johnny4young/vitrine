@@ -1,6 +1,6 @@
 import Foundation
 
-/// The bundled, offline release notes that back the "What's New" surface (CS-049).
+/// The bundled, offline release notes that back the "What's New" surface.
 ///
 /// Notes live in the repo (here) rather than being fetched, so the whole feature
 /// works with no network access: the same binary that ships a version also ships
@@ -30,7 +30,7 @@ struct ReleaseNote: Identifiable, Equatable {
     var semanticVersion: SemanticVersion { SemanticVersion(version) ?? .zero }
 }
 
-/// The single source of truth for Vitrine's bundled release notes (CS-049).
+/// The single source of truth for Vitrine's bundled release notes.
 ///
 /// Authoring a release adds an entry here (newest first) as part of the release
 /// checklist in `docs/RELEASING.md`, keeping the notes versioned in the repo and
@@ -41,6 +41,20 @@ enum ReleaseNotes {
     /// Keep this ordered with the most recent release at the top; `latest` and the
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
+        ReleaseNote(
+            version: "0.22.0",
+            headline: "Faster previews, safer sharing",
+            highlights: [
+                "Find and run editor actions from the new Command Palette: press ⌘K, "
+                    + "type a few letters, and apply themes, change the preview, or export "
+                    + "without leaving the keyboard.",
+                "Copy a fully local share link that opens the same styled snapshot in "
+                    + "Vitrine — no server or upload. The link contains the snapshot's code, "
+                    + "so review it before sharing sensitive content.",
+                "Secret redaction now works on images with on-device OCR, while faster "
+                    + "bounded preview caches and stricter input validation keep editing "
+                    + "responsive and predictable.",
+            ]),
         ReleaseNote(
             version: "0.21.0",
             headline: "From snapshot to post",
@@ -323,14 +337,14 @@ enum ReleaseNotes {
     /// once the user has seen "What's New" for this version.
     static var latestVersion: String? { latest?.version }
 
-    /// Decides whether the version-gated "What's New" should be presented (CS-049).
+    /// Decides whether the version-gated "What's New" should be presented.
     ///
     /// It appears only when the newest bundled notes are strictly newer than the
     /// version the user last saw. The rules, in order:
     ///
     /// - With no bundled notes, there is nothing to show.
     /// - On a clean first run (`lastSeenVersion == nil`), it does **not** appear:
-    ///   onboarding owns the first-run experience (CS-035), so a brand-new user is
+    ///   onboarding owns the first-run experience, so a brand-new user is
     ///   never shown both. The current version is instead recorded as already seen
     ///   by the launch path so the *next* upgrade is what surfaces notes.
     /// - Otherwise it appears exactly when `latest > lastSeen`, and never for the
@@ -351,7 +365,7 @@ enum ReleaseNotes {
 }
 
 /// A minimal, dependency-free semantic-version value for *ordering* version
-/// strings (CS-049).
+/// strings.
 ///
 /// It parses a dotted numeric string (`"1.2.3"`, `"0.10"`, `"2"`) into its numeric
 /// components and compares them component-by-component, so `"0.10.0"` sorts after

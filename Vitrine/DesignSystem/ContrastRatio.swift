@@ -2,7 +2,7 @@ import SwiftUI
 
 extension Brand {
 
-    /// WCAG 2.1 contrast utilities (CS-036). Used to assert that critical
+    /// WCAG 2.1 contrast utilities. Used to assert that critical
     /// text/background pairs in the brand palette stay legible across light,
     /// dark, and high-contrast appearances.
     enum Contrast {

@@ -95,7 +95,7 @@ enum ANSIParser {
                 index = end
             default:
                 // A charset designation or other escape with intermediate bytes
-                // (0x20–0x2F, e.g. `ESC ( B` emitted by `tput sgr0`) consumes the
+                // (0x20–0x2F, e.g. `ESC (B` emitted by `tput sgr0`) consumes the
                 // intermediates plus the final byte — mirroring the grid emulator in
                 // `TerminalScreen.feed` — so no stray final byte leaks into the text.
                 // Any other two-byte escape (`ESC <byte>`) drops both bytes.

@@ -1,8 +1,8 @@
 import SwiftUI
 
-// The shared chrome components of the redesigned surfaces (design/handoff).
+// The shared chrome components of the current designed surfaces.
 // Every visual value here resolves through `VitrineTokens`; the shapes and
-// measurements mirror the HTML UI kits' component classes one to one, so the
+// measurements mirror the design-system component classes one to one, so the
 // Settings window, the editor inspector, and the menu-bar panel all read as the
 // same design system.
 
@@ -10,7 +10,7 @@ import SwiftUI
 
 /// The representative chip colors for the built-in themes — the card
 /// background plus three signature palette dots (keyword / string / function),
-/// exactly as specified in the handoff kits. Custom themes derive the same
+/// consistently across the app. Custom themes derive the same
 /// quartet from their user palette.
 enum ThemeChipColors {
     /// `id → (background, dot1, dot2, dot3)` for the built-in catalog.
@@ -30,17 +30,17 @@ enum ThemeChipColors {
         "xcode-dark": ("#1F1F24", "#FC5FA3", "#FC6A5D", "#5DD8FF"),
     ]
 
-    /// The kits' chip display order: the signature One Dark / One Light pair
+    /// The chip display order: the signature One Dark / One Light pair
     /// leads (they are the default and its light twin), then the rest of the
     /// catalog. Pickers elsewhere stay alphabetical; the chip strips follow
-    /// the handoff exactly.
+    /// the shared design exactly.
     private static let displayOrder: [String] = [
         "one-dark", "one-light", "dracula", "github", "github-dark", "gruvbox",
         "monokai", "night-owl", "nord", "solarized", "solarized-light",
         "tokyo-night", "xcode-dark",
     ]
 
-    /// The built-in catalog in the kits' chip order. Any built-in missing from
+    /// The built-in catalog in chip order. Any built-in missing from
     /// the order list (a future addition) is appended rather than dropped.
     static var orderedBuiltIns: [Theme] {
         let byID = Dictionary(uniqueKeysWithValues: Theme.builtIns.map { ($0.id, $0) })
@@ -50,7 +50,7 @@ enum ThemeChipColors {
         return ordered
     }
 
-    /// The chip quartet for a theme: the kit-specified colors for a built-in,
+    /// The chip quartet for a theme: the shared colors for a built-in,
     /// or the palette-derived ones for a custom theme. A theme with neither
     /// (not expected) falls back to the One Dark chip so the strip never gaps.
     static func colors(for theme: Theme) -> (bg: Color, dots: [Color]) {
@@ -76,7 +76,7 @@ enum ThemeChipColors {
 
 /// One selectable theme chip: a small card in the theme's background with
 /// three palette dots, the name underneath, and the accent ring when selected.
-/// Sized 50×32 in the Settings kit and 52×34 in the editor inspector.
+/// Sized 50×32 in Settings and 52×34 in the editor inspector.
 struct ThemeChip: View {
     let theme: Theme
     let isSelected: Bool

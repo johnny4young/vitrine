@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// The editor-only safe-area guide for a fixed-size destination (feature #20): the
+/// The editor-only safe-area guide for a fixed-size destination: the
 /// margin platforms tend to cover with their own UI (avatars, action bars, crop
 /// rounding), plus the live line/column budget of the code being framed.
 ///

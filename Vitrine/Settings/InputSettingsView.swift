@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Input pane: URL handling (CS-010 · Input) and the web URL-capture viewport and
-/// wait strategy (CS-044).
+/// Input pane: URL handling (Input) and the web URL-capture viewport and
+/// wait strategy.
 struct InputSettingsView: View {
     @Bindable var settings: AppSettings
 
@@ -39,7 +39,7 @@ struct InputSettingsView: View {
     }
 }
 
-/// The Web-capture transparency + consent row (CS-045): states plainly what URL
+/// The Web-capture transparency + consent row: states plainly what URL
 /// capture does to the network, reflects the first-use consent state, and lets the
 /// user revoke it (re-arming the disclosure) — or shows that capture is unavailable on
 /// this build. The network model lives here so it is always consultable in Settings,
@@ -78,11 +78,10 @@ struct WebCaptureConsentRow: View {
     }
 }
 
-/// The web URL-capture viewport, capture mode, and wait-strategy controls (CS-044).
+/// The web URL-capture viewport, capture mode, and wait-strategy controls.
 ///
-/// URL capture is a Product Phase 2 feature gated on the network entitlement, so
-/// these controls set the policy a future URL capture will use; the footer states
-/// that plainly. Choosing the viewport, the visible-vs-full-page mode, and the wait
+/// URL capture is gated on the network entitlement. These controls configure the
+/// active capture policy. Choosing the viewport, the visible-vs-full-page mode, and the wait
 /// strategy here is what makes a web screenshot predictable across sites. The
 /// width/height fields appear only for a custom viewport, and the seconds field only
 /// for a timed wait strategy, so the surface stays as small as the chosen options.
@@ -119,7 +118,7 @@ struct WebCaptureControls: View {
         }
     }
 
-    /// Opt-in to capturing with your existing cookies/logged-in session (CS-043), for
+    /// Opt-in to capturing with your existing cookies/logged-in session, for
     /// pages behind a login. Off by default — the private per-render store sends no
     /// cookies — so this is a deliberate, privacy-widening choice the caption spells out.
     private var loggedInSessionRow: some View {
@@ -235,7 +234,7 @@ struct WebCaptureControls: View {
         }
     }
 
-    /// The segment label for a viewport kind — the handoff's short names. The
+    /// The short segment label for a viewport kind. The
     /// custom segment reads "Custom…" rather than echoing the stored size,
     /// because the size is set by the rows below it.
     private func viewportSegmentLabel(for kind: WebSnapshotConfig.ViewportPreset.Kind) -> Text {
@@ -248,7 +247,7 @@ struct WebCaptureControls: View {
         }
     }
 
-    /// A selectable chip for one viewport kind in the multi-capture set (CS-044).
+    /// A selectable chip for one viewport kind in the multi-capture set.
     /// Toggling adds/removes the kind in `settings.webCapture.viewports`; the last selected
     /// kind cannot be removed, so a capture always has at least one size.
     private func viewportChip(_ kind: WebSnapshotConfig.ViewportPreset.Kind) -> some View {
@@ -307,7 +306,7 @@ struct WebCaptureControls: View {
 
     private var waitSecondsLabel: String {
         // One interpolated key whose singular/plural is chosen by the catalog's
-        // plural variations (CS-047), rather than a Swift `== 1` branch — so every
+        // plural variations, rather than a Swift `== 1` branch — so every
         // locale's own plural categories are honored, not just one/other.
         String(localized: "\(settings.webCapture.waitSeconds) seconds")
     }

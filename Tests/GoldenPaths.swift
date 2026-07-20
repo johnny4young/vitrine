@@ -1,6 +1,6 @@
 import Foundation
 
-/// Locates the committed golden-fixtures directory in the source tree (CS-025).
+/// Locates the committed golden-fixtures directory in the source tree.
 ///
 /// The unit-test bundle runs from a built product, not the repository, so the
 /// fixtures cannot be found relative to the working directory. Instead the path is

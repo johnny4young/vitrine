@@ -2,7 +2,7 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-049 — language-aware code tidying (structural re-indent + dedent + JSON re-indent,
+/// language-aware code tidying (structural re-indent + dedent + JSON re-indent,
 /// routed per language family).
 @Suite("Code formatter")
 struct CodeFormatterTests {
@@ -315,7 +315,7 @@ struct CodeFormatterTests {
     }
 
     /// Go re-indents with tabs (gofmt's unit) and is fixed even when already flush-left
-    /// — the case dedent cannot help because there is no shared margin to strip.
+    /// the case dedent cannot help because there is no shared margin to strip.
     @Test func tidyReindentsGoWithTabs() {
         let input = "func add(a, b int) int {\nreturn a + b\n}"
         #expect(
@@ -355,7 +355,7 @@ struct CodeFormatterTests {
         #expect(CodeFormatter.tidy(input, language: .diff) == input)
     }
 
-    // MARK: - smart trim (feature #18)
+    // MARK: - smart trim
 
     /// Blank lines pasted above and below a snippet read as accidental padding on top of
     /// the canvas's own, so trim drops them.

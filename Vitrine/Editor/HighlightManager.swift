@@ -4,10 +4,10 @@ import JavaScriptCore
 import SwiftUI
 
 /// Wraps Highlightr (Highlight.js) to produce a syntax-highlighted
-/// `NSAttributedString` and the theme's own background color (CS-003/006).
+/// `NSAttributedString` and the theme's own background color.
 ///
 /// Built-in themes render on Highlightr's fast path with a bundled stylesheet. A
-/// **custom** theme (CS-031) carries its own `ThemePalette` instead of a bundled
+/// **custom** theme carries its own `ThemePalette` instead of a bundled
 /// stylesheet name, so it is rendered through `CustomThemeRenderer`, which reuses
 /// the same bundled Highlight.js engine for tokenization but paints the user's
 /// palette colors. The built-in path is left untouched, so default output is
@@ -177,7 +177,7 @@ final class HighlightManager {
     }
 
     /// Highlights `code` and returns it as a SwiftUI `AttributedString`, caching the
-    /// `NSAttributedString`→`AttributedString` bridge for built-in themes (audit Perf-3) so
+    /// `NSAttributedString`→`AttributedString` bridge for built-in themes so
     /// the canvas does not repeat the O(n) bridge on every `body` pass. A custom theme is
     /// bridged fresh (its `NSAttributedString` isn't cached either). The value is identical
     /// to bridging `attributedString(for:…)` by hand.
@@ -208,7 +208,7 @@ final class HighlightManager {
     }
 
     /// Renders terminal (ANSI) `code` as a SwiftUI `AttributedString` in `theme`'s palette,
-    /// caching the parse-emulate-and-bridge result for built-in themes (audit Perf-2). The
+    /// caching the parse-emulate-and-bridge result for built-in themes. The
     /// value is identical to bridging `ANSIRenderer.attributedString(…)` by hand.
     func terminalAttributedString(
         for code: String, theme: Theme, font: NSFont, columns: Int?
@@ -297,7 +297,7 @@ final class HighlightManager {
     }
 
     /// The Highlight.js language identifiers the bundled engine recognizes, or
-    /// `nil` if the engine is unavailable (CS-052).
+    /// `nil` if the engine is unavailable.
     ///
     /// This is the registration list `highlight(_:as:)` matches an id against
     /// before falling back to auto-detection, so it is the authoritative check that
@@ -308,7 +308,7 @@ final class HighlightManager {
         highlightr?.supportedLanguages()
     }
 
-    /// The code-card background for a theme (CS-006/031).
+    /// The code-card background for a theme.
     ///
     /// For a built-in theme this is taken from the Highlight.js stylesheet itself —
     /// so a built-in stays a pure syntax theme, not a hand-picked color. For a custom
@@ -319,7 +319,7 @@ final class HighlightManager {
     }
 
     /// A neutral foreground color for gutter line numbers that stays legible on a
-    /// theme's own card background (CS-021).
+    /// theme's own card background.
     ///
     /// Highlight.js themes expose only a background color, not a default text
     /// color, so the gutter color is derived from the background's luminance:
@@ -329,13 +329,13 @@ final class HighlightManager {
         themeChrome(for: theme).isDark ? .white : .black
     }
 
-    /// The band color drawn behind a highlighted (selected) code row (CS-021).
+    /// The band color drawn behind a highlighted (selected) code row.
     ///
     /// The tint is luminance-aware so a selected line is visible in both light and
     /// dark themes: a translucent white wash lifts a dark theme's row, a
     /// translucent black wash deepens a light theme's row. Because the band sits on
     /// the theme's opaque card background — not the canvas background — it stays
-    /// correct even when the canvas background is transparent (CS-024).
+    /// correct even when the canvas background is transparent.
     func lineHighlightColor(for theme: Theme) -> Color {
         themeChrome(for: theme).isDark
             ? Color.white.opacity(0.10)
@@ -343,12 +343,12 @@ final class HighlightManager {
     }
 
     /// The fill color for a metadata badge/chip drawn in the header, tinted so it
-    /// reads as a subtle pill on the theme's own card background (CS-022).
+    /// reads as a subtle pill on the theme's own card background.
     ///
     /// Like the line-highlight band, the tint is luminance-aware (a translucent
     /// white wash on a dark theme, a translucent black wash on a light theme) and
     /// sits on the opaque card background, so it stays legible even when the canvas
-    /// background is transparent (CS-024).
+    /// background is transparent.
     func metadataBadgeColor(for theme: Theme) -> Color {
         themeChrome(for: theme).isDark
             ? Color.white.opacity(0.10)
@@ -372,7 +372,7 @@ final class HighlightManager {
 
     /// The theme's background as an `NSColor`.
     ///
-    /// A custom theme (CS-031) resolves straight to its palette background — no
+    /// A custom theme resolves straight to its palette background — no
     /// engine call, so it is deterministic. A built-in theme reads its background
     /// from the bundled stylesheet, with a documented dark fallback if Highlightr
     /// cannot supply one.
@@ -396,10 +396,10 @@ final class HighlightManager {
     }
 }
 
-// MARK: - Custom theme rendering (CS-031)
+// MARK: - Custom theme rendering
 
 /// Renders a custom (user-palette) theme by reusing Highlight.js for tokenization
-/// and applying the user's palette colors (CS-031).
+/// and applying the user's palette colors.
 ///
 /// ## Why a separate path
 ///
@@ -411,7 +411,7 @@ final class HighlightManager {
 /// with the palette's synthesized stylesheet, and lets AppKit's HTML reader produce
 /// the attributed string. The result paints real, per-token palette colors over the
 /// palette's own background, and — because the palette is fixed sRGB — renders the
-/// same pixels on any Mac, keeping exported screenshots deterministic (CS-031).
+/// same pixels on any Mac, keeping exported screenshots deterministic.
 ///
 /// If the engine cannot be loaded (an unexpected packaging problem), the renderer is
 /// `nil` and the caller falls back to plain monospaced text.

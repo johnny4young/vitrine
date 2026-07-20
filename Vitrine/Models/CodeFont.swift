@@ -1,7 +1,7 @@
 import AppKit
 import CoreText
 
-/// Monospaced fonts offered for the code (CS-006/052). Bundled families are
+/// Monospaced fonts offered for the code. Bundled families are
 /// registered at launch via `ATSApplicationFontsPath` (see Info.plist +
 /// Resources/Fonts); system families always exist. Stored as the family name
 /// used by `NSFont(name:)`.
@@ -21,7 +21,7 @@ enum CodeFont {
     static let `default` = "JetBrains Mono"
 
     /// Families that ship programming ligatures (e.g. `->`, `=>`, `!=`, `>=`),
-    /// for which the opt-in ligature toggle has a visible effect (CS-052).
+    /// for which the opt-in ligature toggle has a visible effect.
     ///
     /// Membership is keyed off the family name regardless of whether the family is
     /// currently installed: Cascadia Code is a well-known ligature font a user may
@@ -38,7 +38,7 @@ enum CodeFont {
     }
 
     /// Resolves the code font for `family` at `size`, enabling or disabling
-    /// programming ligatures (CS-052).
+    /// programming ligatures.
     ///
     /// Ligatures are controlled through the font descriptor's `kLigaturesType`
     /// feature so the choice rides on the font itself and is honored everywhere the
@@ -62,7 +62,7 @@ enum CodeFont {
     /// OpenType `liga` (standard ligatures) and `calt` (contextual alternates)
     /// feature tags. The base advance widths are untouched — a monospace ligature
     /// font keeps each ligature the width of the glyphs it replaces — so toggling
-    /// is purely a glyph-level swap that never reflows the code (CS-052).
+    /// is purely a glyph-level swap that never reflows the code.
     ///
     /// OpenType feature *tags* are used deliberately over the legacy AAT
     /// `kLigaturesType` selectors: fonts like Fira Code drive their ligatures

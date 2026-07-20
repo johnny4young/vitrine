@@ -61,7 +61,6 @@
   }
 
   /* ===========================================================
-     Vitrine landing — PROPOSAL, direction B: "The Vitrine".
      A vitrine is a glass display case. The page is that case:
      a calm, light, gallery-grade chrome where the only colour is
      the work on the wall — the exported cards. Editorial layout,
@@ -611,7 +610,7 @@
       <a class="flink" href="https://github.com/johnny4young/vitrine/blob/main/LICENSE">License</a>
     </div>
     <span class="pill" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9" rx="2"></rect><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"></path></svg> <span data-i18n="foot.pill">No account · no network by default · no telemetry</span></span>
-    <p class="note" data-i18n="foot.note">Open source under the MIT license. Built by <a href="https://github.com/johnny4young" style="color:var(--accent)">johnny4young</a>. This page is a design-system proposal built on the Vitrine tokens.</p>
+    <p class="note" data-i18n="foot.note">Open source under the MIT license. Built by <a href="https://github.com/johnny4young" style="color:var(--accent)">johnny4young</a>.</p>
   </div>
 </footer>
 
@@ -622,7 +621,7 @@
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
   /* ---------- i18n: English / Español ---------- */
-  (function () {
+  (function {
     var KEY = "vitrine-landing-b-lang";
     var ES = {
       "nav.bench": "Estilos", "nav.features": "Funciones", "nav.changelog": "Cambios", "nav.pricing": "Precio", "nav.download": "Descargar",
@@ -672,7 +671,7 @@
       "inst.lead": "Instala con Homebrew, o descarga el DMG firmado y notarizado. En ambos casos, la CLI <code>vitrine</code> queda en tu PATH.",
       "inst.dmg": "Descargar el DMG", "inst.src": "Compilar desde el código",
       "foot.pill": "Sin cuenta · sin red por defecto · sin telemetría",
-      "foot.note": "Código abierto bajo licencia MIT. Hecho por <a href=\"https://github.com/johnny4young\" style=\"color:var(--accent)\">johnny4young</a>. Esta página es una propuesta de design system sobre los tokens de Vitrine."
+      "foot.note": "Código abierto bajo licencia MIT. Hecho por <a href=\"https://github.com/johnny4young\" style=\"color:var(--accent)\">johnny4young</a>."
     };
     var nodes = document.querySelectorAll("[data-i18n]");
     var EN = {};
@@ -691,12 +690,12 @@
       if (window.__vtag) document.querySelectorAll("[data-version]").forEach(function (el) { el.textContent = window.__vtag; });
     }
     apply(lsGet(KEY) || "en");
-    enBtn.onclick = function () { lsSet(KEY, "en"); apply("en"); };
-    esBtn.onclick = function () { lsSet(KEY, "es"); apply("es"); };
+    enBtn.onclick = function { lsSet(KEY, "en"); apply("en"); };
+    esBtn.onclick = function { lsSet(KEY, "es"); apply("es"); };
   })();
 
   /* appearance toggle */
-  (function () {
+  (function {
     var KEY = "vitrine-landing-b-appearance";
     var light = document.getElementById("set-light"), dark = document.getElementById("set-dark");
     function apply(mode) {
@@ -706,12 +705,12 @@
       dark.classList.toggle("active", isDark);
     }
     apply(lsGet(KEY) || "light");
-    light.onclick = function () { lsSet(KEY, "light"); apply("light"); };
-    dark.onclick = function () { lsSet(KEY, "dark"); apply("dark"); };
+    light.onclick = function { lsSet(KEY, "light"); apply("light"); };
+    dark.onclick = function { lsSet(KEY, "dark"); apply("dark"); };
   })();
 
   /* ---------- style bench ---------- */
-  (function () {
+  (function {
     var stage = document.getElementById("stage");
     var card = document.getElementById("benchCard");
     var codeEl = document.getElementById("benchCode");

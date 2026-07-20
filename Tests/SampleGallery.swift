@@ -11,7 +11,7 @@ import Testing
 // model for this file, matching `BackgroundTests`.
 private typealias BackgroundStyle = Vitrine.BackgroundStyle
 
-/// The launch-gallery catalog and its design-QA suite (CS-039).
+/// The launch-gallery catalog and its design-QA suite.
 ///
 /// ## What this is
 ///
@@ -27,7 +27,7 @@ private typealias BackgroundStyle = Vitrine.BackgroundStyle
 ///
 /// ## The three jobs of this suite
 ///
-/// Mirroring the golden-image architecture (CS-025), one catalog feeds three
+/// Mirroring the golden-image architecture, one catalog feeds three
 /// consumers so a sample can never drift between them:
 ///
 /// 1. **Render regression (always on).** `SampleGalleryTests.everySampleRenders`
@@ -94,7 +94,7 @@ enum SampleGallery {
 
     /// The visual surface a sample exercises. Every case in `Category.allCases`
     /// must be represented by at least one sample (asserted by the suite), so the
-    /// gallery provably covers the acceptance list: languages, themes, transparent
+    /// gallery provably covers the documented coverage: languages, themes, transparent
     /// backgrounds, social presets, and accessibility/high-contrast states.
     enum Category: String, CaseIterable, Sendable {
         case language
@@ -159,8 +159,7 @@ enum SampleGallery {
     ///
     /// This is the catalog every consumer reads. Adding a sample here automatically
     /// flows it into the render regression, the generator, the manifest, and the
-    /// artifact-presence checks — one place, no duplication (CS-039 "adding a
-    /// sample is a one-file change").
+    /// artifact-presence checks without duplication.
     static let all: [Sample] =
         languageSamples + themeSamples + presetSamples
         + transparentSamples + accessibilitySamples
@@ -219,7 +218,7 @@ enum SampleGallery {
         }
     }
 
-    /// One sample per export/social preset (CS-020) applied to the signature theme,
+    /// One sample per export/social preset applied to the signature theme,
     /// so the gallery shows the framed output a user actually shares to each surface.
     /// The fixed-size OpenGraph preset renders at its pinned 1× so the committed
     /// fixture is exactly 1200×630.
@@ -239,7 +238,7 @@ enum SampleGallery {
         }
     }
 
-    /// Transparent-background samples — the load-bearing real-alpha case (CS-024).
+    /// Transparent-background samples — the load-bearing real-alpha case.
     /// Both a dark and a light theme are shown so the gallery proves the corners
     /// stay clear regardless of the code card's luminance.
     private static var transparentSamples: [Sample] {
@@ -262,7 +261,7 @@ enum SampleGallery {
         }
     }
 
-    /// The accessibility / high-contrast sample (CS-039 "...and accessibility/
+    /// The accessibility / high-contrast sample ("...and accessibility/
     /// high-contrast states when implemented").
     ///
     /// The rendered code image takes its contrast from the chosen theme — there is
@@ -361,9 +360,9 @@ enum SampleGallery {
 
 // MARK: - Paths
 
-/// Locates the committed launch-gallery directory in the source tree (CS-039).
+/// Locates the committed launch-gallery directory in the source tree.
 ///
-/// Like the golden fixtures (CS-025), the test bundle runs from a built product, so
+/// Like the golden fixtures, the test bundle runs from a built product, so
 /// the gallery is anchored to this source file via `#filePath`: the generator stages
 /// images and the artifact suite reads them from the same `Tests/Fixtures/Samples/`.
 enum SampleGalleryPaths {
@@ -405,7 +404,7 @@ enum SampleGalleryPaths {
 // MARK: - Manifest
 
 /// The manifest written next to the committed gallery PNGs
-/// (`Tests/Fixtures/Samples/manifest.json`), describing what was generated (CS-039).
+/// (`Tests/Fixtures/Samples/manifest.json`), describing what was generated.
 ///
 /// Unlike the golden manifest, this one is **not** pinned to a runner image: the
 /// gallery is design-review evidence, not a byte-exact baseline, so the artifact
@@ -465,9 +464,9 @@ struct GalleryManifest: Codable, Equatable {
 
 /// Renders every gallery sample on any machine and asserts the pipeline produces a
 /// real image, so a routine `make test` exercises the full launch-gallery set end to
-/// end (CS-039 "sample generation command" coverage, runnable without the opt-in).
+/// end without requiring the opt-in generator.
 @MainActor
-@Suite("Sample gallery — render regression (CS-039)")
+@Suite("Sample gallery — render regression")
 struct SampleGalleryTests {
     @Test func catalogIsNonEmpty() {
         #expect(!SampleGallery.all.isEmpty)
@@ -504,7 +503,7 @@ struct SampleGalleryTests {
     }
 
     /// The fixed-size OpenGraph preset must render at exactly 1200×630 so its
-    /// committed gallery fixture is the canonical link-card size (CS-020).
+    /// committed gallery fixture is the canonical link-card size.
     @Test func openGraphSampleIsExactSize() throws {
         let sample = try #require(
             SampleGallery.sample(withID: "preset-opengraph"),
@@ -552,7 +551,7 @@ struct SampleGalleryTests {
     /// recorded hash). The manifest-vs-catalog check cannot prove any of this on its
     /// own — it compares the fingerprint against itself, which a hard-coded constant
     /// would also satisfy. These assertions fail loudly for that degenerate
-    /// implementation. (Mirrors the golden suite's fingerprint guard, CS-025.)
+    /// implementation. This mirrors the golden suite's fingerprint guard.
     @Test func configFingerprintIsStableDistinctAndAFullDigest() {
         for sample in SampleGallery.all {
             #expect(
@@ -636,7 +635,7 @@ struct SampleGalleryTests {
     /// disagree, the catalog-sync check silently never runs against real data. Prove
     /// the contract directly: a manifest survives encode → decode unchanged, and the
     /// encoding is byte-stable (sorted keys) so a re-generate yields a minimal diff
-    /// rather than reshuffled JSON. (Mirrors the golden manifest round-trip, CS-025.)
+    /// rather than reshuffled JSON. This mirrors the golden manifest round-trip.
     @Test func manifestRoundTripsAndEncodesDeterministically() throws {
         let original = GalleryManifest(
             schema: GalleryManifest.currentSchema,
@@ -662,13 +661,13 @@ struct SampleGalleryTests {
 
 // MARK: - Artifact presence (always on, once committed)
 
-/// Asserts the committed gallery fixtures exist and stay in sync with the catalog
-/// (CS-039 "artifact presence assertions"). These checks run on every machine; they
+/// Asserts the committed gallery fixtures exist and stay in sync with the catalog.
+/// These checks run on every machine; they
 /// gate on whether the fixtures have been generated and committed yet, so the first
 /// landing of the catalog (before `make gallery` has run) is not a hard failure —
 /// once a manifest is present, every sample and the counts must match.
 @MainActor
-@Suite("Sample gallery — committed artifacts (CS-039)")
+@Suite("Sample gallery — committed artifacts")
 struct SampleArtifactTests {
     /// Whether the gallery has been generated and committed (a manifest is present).
     /// When it has not, the presence assertions become informational so the catalog
@@ -726,7 +725,7 @@ struct SampleArtifactTests {
 /// A free helper (not a static on the suite) so the `@Suite(.enabled(if:))` trait —
 /// a `Sendable`, nonisolated closure — can read it without the macro hitting a
 /// circular reference to the type it is attached to (the same pattern as the golden
-/// recorder, CS-025).
+/// recorder).
 enum GalleryGeneration {
     /// `nonisolated` so the `@Suite(.enabled(if:))` trait can read it from any
     /// context; it only touches `ProcessInfo`.
@@ -738,7 +737,7 @@ enum GalleryGeneration {
     }
 }
 
-/// The launch-gallery **generator** (CS-039).
+/// The launch-gallery **generator**.
 ///
 /// `make gallery` runs only this suite with `VITRINE_GENERATE_GALLERY=1`. It renders
 /// every catalog sample through the production export path and stages the PNGs plus
@@ -751,7 +750,7 @@ enum GalleryGeneration {
 /// explicit, reviewed step.
 @MainActor
 @Suite(
-    "Sample gallery — generator (CS-039)",
+    "Sample gallery — generator",
     .enabled(
         if: GalleryGeneration.isActive,
         "set VITRINE_GENERATE_GALLERY=1 (make gallery) to (re)generate the launch gallery"))

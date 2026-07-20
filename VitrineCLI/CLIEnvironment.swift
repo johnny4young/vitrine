@@ -1,6 +1,6 @@
 import Foundation
 
-/// Locates resources the `vitrine` executable ships with (CS-033).
+/// Locates resources the `vitrine` executable ships with.
 ///
 /// The binary runs from two layouts. As a development tool, resources are copied
 /// into the build output **next to the binary**. As the embedded copy inside the

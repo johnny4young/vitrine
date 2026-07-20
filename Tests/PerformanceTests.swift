@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-/// Render-latency performance budget (CS-026).
+/// Render-latency performance budget.
 ///
 /// Vitrine's product promise is "one shortcut away": the perceived workflow has
 /// to feel instant, so a slow render is a correctness bug, not just a polish
@@ -30,7 +30,7 @@ import Testing
 ///
 /// ## Thresholds (documented, two-tier)
 ///
-/// The acceptance bar is "default code render completes under 300 ms on a CI Mac
+/// The performance target is "default code render completes under 300 ms on a CI Mac
 /// runner after warm-up". That 300 ms is the **target** (`PerfBudget.target`):
 /// crossing it prints a `PERF WARN` line so a regression is visible immediately,
 /// but does not fail the suite, because shared CI hardware is noisy and a single
@@ -40,7 +40,7 @@ import Testing
 /// large-snippet fixture has its own, larger documented budget; the
 /// representative inputs share one render path, so the same two-tier rule applies.
 @MainActor
-@Suite("Render performance budget (CS-026)")
+@Suite("Render performance budget")
 struct PerformanceTests {
     // MARK: - Documented budgets
 
@@ -48,8 +48,8 @@ struct PerformanceTests {
     /// These are the single source of truth referenced by the `make perf` target
     /// and the CI step; keep the documented numbers and the assertions in sync.
     enum PerfBudget {
-        /// Target for a default-size code render after warm-up (the CS-026
-        /// acceptance bar). Exceeding it warns but does not fail.
+        /// Target for a default-size code render after warm-up (the
+        /// performance target). Exceeding it warns but does not fail.
         static let target: Duration = .milliseconds(300)
 
         /// Hard ceiling for a default-size render. Exceeding it fails the suite —
@@ -220,7 +220,7 @@ struct PerformanceTests {
         // is not convertible to it.
         #expect(
             stats.p95 <= hardCeiling,
-            "\(label) p95 \(p95Ms) ms over hard ceiling \(ceilingMs) ms (CS-026)")
+            "\(label) p95 \(p95Ms) ms over hard ceiling \(ceilingMs) ms")
         return stats
     }
 
@@ -234,14 +234,14 @@ struct PerformanceTests {
         if let target, stats.p95 > target {
             print(
                 "PERF WARN \(label) p95 \(stats.p95.milliseconds)ms exceeds target "
-                    + "\(target.milliseconds)ms (CS-026)")
+                    + "\(target.milliseconds)ms")
         }
     }
 
     // MARK: - Cases
 
     @Test func defaultRenderMeetsBudget() {
-        // The headline acceptance bar: a default-size code render after warm-up.
+        // The headline performance target: a default-size code render after warm-up.
         // Fails only past the hard ceiling; the 300 ms target is reported as a
         // warning so a regression toward the limit is visible before it breaks CI.
         measureRender(
@@ -316,7 +316,7 @@ struct PerformanceTests {
         report(stats, label: "default@3x", target: PerfBudget.target)
         #expect(
             stats.p95 <= PerfBudget.secondaryHardCeiling,
-            "default@3x p95 over the secondary hard ceiling (CS-026)")
+            "default@3x p95 over the secondary hard ceiling")
     }
 
     @Test func budgetsAreOrdered() {
@@ -334,16 +334,16 @@ struct PerformanceTests {
 // MARK: - Statistics summarizer
 
 /// Direct unit tests for the `Statistics` summarizer that turns raw render
-/// samples into the median/p95 the budget asserts against (CS-026).
+/// samples into the median/p95 the budget asserts against.
 ///
 /// The latency cases above feed `Statistics` real, noisy timings, so they can
 /// only ever confirm that *some* number stayed under the ceiling — they cannot
 /// prove the number is the *right* one. If the nearest-rank p95 math were off by
 /// one, or the input were summarized unsorted, the budget would silently grade a
-/// slow render against a wrong statistic and CS-026 would stop catching
+/// slow render against a wrong statistic and the suite would stop catching
 /// regressions. These tests pin the computation on fixed inputs with known
 /// answers so that path is verified independently of any wall-clock timing.
-@Suite("Statistics summarizer (CS-026)")
+@Suite("Statistics summarizer")
 struct StatisticsTests {
     @Test func reportsMedianAndP95ForAKnownSpread() {
         // Ten ascending samples (10…100 ms). count/2 == 5 selects the 60 ms
@@ -416,16 +416,16 @@ struct StatisticsTests {
 
 // MARK: - Render signpost instrumentation
 
-/// Tests for the production signpost that feeds the CS-026 budget (CS-048).
+/// Tests for the production signpost that feeds the performance budget.
 ///
 /// `ExportManager.renderCGImage` brackets every render in an `OSSignposter`
 /// interval named by `RenderSignpost`. That interval is the documented "signal
-/// CS-026's performance budget consumes" — the hook that lets render latency be
+/// 's performance budget consumes" — the hook that lets render latency be
 /// measured in Instruments and the unified log without a stopwatch in the hot
 /// path. These tests assert the plumbing exists and is exercisable, so the
 /// instrumentation cannot be silently dropped while the timing tests above keep
 /// passing on their own out-of-band clock.
-@Suite("Render signpost instrumentation (CS-026)")
+@Suite("Render signpost instrumentation")
 struct RenderSignpostTests {
     @Test func intervalNameIsStable() {
         // The interval name is what an Instruments template / `log` filter keys

@@ -1,6 +1,6 @@
 import AppKit
 
-/// Registers Vitrine's Services menu provider with AppKit at launch (CS-034).
+/// Registers Vitrine's Services menu provider with AppKit at launch.
 ///
 /// Two things make a Services action work, and both must agree:
 ///

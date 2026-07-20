@@ -1,6 +1,6 @@
 import Foundation
 
-/// Versioning and migration for the persisted preferences schema (CS-050).
+/// Versioning and migration for the persisted preferences schema.
 ///
 /// `AppSettings` reads many `UserDefaults` keys directly. As the schema grows
 /// (presets, themes, backgrounds), unversioned reads risk silent breakage or
@@ -18,43 +18,43 @@ enum SettingsSchema {
     ///
     /// Version history:
     /// - `1`: the original, *unversioned* layout (no version key was written).
-    ///   Any install that predates CS-050 reports this version.
-    /// - `2`: CS-050 — introduces the version key and normalizes a few values
+    ///   Any install that predates schema versioning reports this version.
+    /// - `2`: introduces the version key and normalizes a few values
     ///   that earlier builds could persist out of range or with names that no
     ///   longer resolve (`exportScale`, `gradientPreset`).
-    /// - `3`: CS-051 — backgrounds gain solid/custom-gradient/image kinds and are
-    ///   persisted as a single JSON-encoded `backgroundStyle`. A pre-CS-051 store
+    /// - `3`: backgrounds gain solid/custom-gradient/image kinds and are
+    ///   persisted as a single JSON-encoded `backgroundStyle`. A legacy store
     ///   only ever wrote a `gradientPreset` name; that name is still honored as a
     ///   read-time fallback, so no value migration is required here.
-    /// - `4`: CS-052 — adds the opt-in `fontLigatures` flag. A new boolean key with
+    /// - `4`: adds the opt-in `fontLigatures` flag. A new boolean key with
     ///   a documented default (off) needs no data transform; a store predating it
     ///   simply reads the default, so this step only advances the version.
-    /// - `5`: CS-030 — adds saved style presets, persisted as a single JSON blob
+    /// - `5`: adds saved style presets, persisted as a single JSON blob
     ///   under `userStylePresets`. It is a brand-new key with a documented default
     ///   (no user presets); an older store simply has no value for it, so this step
     ///   only advances the version.
-    /// - `6`: CS-035 — adds the first-run quick-start completion flag
+    /// - `6`: adds the first-run quick-start completion flag
     ///   (`hasSeenWelcome`). A new boolean key with a documented default (false, i.e.
     ///   "not yet shown") needs no data transform; a store predating it simply reads
     ///   the default, so this step only advances the version.
-    /// - `7`: CS-049 — adds the last-seen "What's New" version key
+    /// - `7`: adds the last-seen "What's New" version key
     ///   (`lastSeenWhatsNewVersion`). A new optional string key with a documented
     ///   default (nil, treated as a clean first run) needs no data transform; a store
     ///   predating it simply has no value, so this step only advances the version.
-    /// - `8`: CS-044 — adds the web URL-capture viewport and wait settings
+    /// - `8`: adds the web URL-capture viewport and wait settings
     ///   (`webViewportKind`, `webCustomViewportWidth`, `webCustomViewportHeight`,
     ///   `webCaptureMode`, `webWaitKind`, `webWaitSeconds`). All brand-new keys with
     ///   documented defaults; an older store simply has no value for them and reads
     ///   the defaults, so this step only advances the version.
-    /// - `9`: CS-044 (multi-resolution) — adds the `webViewports` multi-capture set.
+    /// - `9`: adds the `webViewports` multi-capture set.
     ///   A brand-new key with a documented default (falls back to the single
     ///   `webViewportKind`); an older store has no value for it and falls back, so this
     ///   step only advances the version.
-    /// - `10`: CS-092 — adds Brand Kit persistence (`brandKit`, `brandKitEnabled`).
+    /// - `10`: adds Brand Kit persistence (`brandKit`, `brandKitEnabled`).
     ///   Both are brand-new keys with documented defaults (empty kit, disabled), so an
     ///   older store simply has no value and reads the defaults; this step only
     ///   advances the version.
-    /// - `11`: CS-043 — exposes the persistent URL-capture data-store preference
+    /// - `11`: exposes the persistent URL-capture data-store preference
     ///   (`webUsesLoggedInSession`). It is a brand-new boolean key with a documented
     ///   default (off), so older stores simply read the privacy-preserving default;
     ///   this step only advances the version.
@@ -64,7 +64,7 @@ enum SettingsSchema {
     static let versionKey = "settingsSchemaVersion"
 
     /// The version assumed for an install that has never recorded one. Existing
-    /// pre-CS-050 users fall here and are migrated forward on first launch.
+    /// pre-versioning users fall here and are migrated forward on first launch.
     static let legacyVersion = 1
 
     /// Reads the stored schema version, tolerating a missing or garbage value.
@@ -137,21 +137,21 @@ enum SettingsSchema {
                 defaults.removeObject(forKey: LegacyKeys.gradientPreset)
             }
         },
-        // v2 → v3: CS-051 expands backgrounds (solid/custom-gradient/image) and
+        // v2 → v3: expands backgrounds (solid/custom-gradient/image) and
         // persists them as a JSON `backgroundStyle`. Any legacy `gradientPreset`
         // name is still read as a fallback by `AppSettings` and is re-encoded
         // into the new key on the next style change, so this step needs no data
         // transform; it only advances the version.
         Migration(from: 2, to: 3) { _ in },
-        // v3 → v4: CS-052 adds the opt-in `fontLigatures` flag. It is a brand-new
+        // v3 → v4: adds the opt-in `fontLigatures` flag. It is a brand-new
         // boolean key with a documented default (off); an older store simply has
         // no value for it and reads the default, so there is nothing to transform.
         Migration(from: 3, to: 4) { _ in },
-        // v4 → v5: CS-030 adds saved style presets under `userStylePresets`. It is
+        // v4 → v5: adds saved style presets under `userStylePresets`. It is
         // a brand-new JSON key with a documented default (no presets); an older
         // store simply has no value for it, so there is nothing to transform.
         Migration(from: 4, to: 5) { _ in },
-        // v5 → v6: CS-035 adds the first-run quick-start flag `hasSeenWelcome`. It is
+        // v5 → v6: adds the first-run quick-start flag `hasSeenWelcome`. It is
         // a brand-new boolean key with a documented default (false); an older store
         // simply has no value for it and reads the default, so there is nothing to
         // transform. An upgrading user has clearly already used the app, but it is
@@ -159,7 +159,7 @@ enum SettingsSchema {
         // the upgrade, so the flag is intentionally left at its default rather than
         // back-filled to true here.
         Migration(from: 5, to: 6) { _ in },
-        // v6 → v7: CS-049 adds the last-seen "What's New" version key
+        // v6 → v7: adds the last-seen "What's New" version key
         // `lastSeenWhatsNewVersion`. It is a brand-new optional string key with a
         // documented default (nil); an older store simply has no value for it and
         // reads the default, so there is nothing to transform. The default (nil) is
@@ -169,22 +169,22 @@ enum SettingsSchema {
         // effectively already running — so the surface first appears on the upgrade
         // *after* this one.
         Migration(from: 6, to: 7) { _ in },
-        // v7 → v8: CS-044 adds the web URL-capture viewport and wait settings
+        // v7 → v8: adds the web URL-capture viewport and wait settings
         // (`webViewportKind`, `webCustomViewportWidth`, `webCustomViewportHeight`,
         // `webCaptureMode`, `webWaitKind`, `webWaitSeconds`). All brand-new keys with
         // documented defaults; an older store simply has no value for them and reads
         // the defaults via `WebDefaults`, so there is nothing to transform.
         Migration(from: 7, to: 8) { _ in },
-        // v8 → v9: CS-044 (multi-resolution) adds the `webViewports` multi-capture set.
+        // v8 → v9: adds the `webViewports` multi-capture set.
         // A brand-new key with a documented default (falls back to the single
         // viewport); an older store has no value for it, so there is nothing to
         // transform.
         Migration(from: 8, to: 9) { _ in },
-        // v9 → v10: CS-092 adds the Brand Kit JSON blob and "apply to captures"
+        // v9 → v10: adds the Brand Kit JSON blob and "apply to captures"
         // switch. Both are additive keys with documented defaults (`BrandKit()` and
         // disabled), so there is no data to transform.
         Migration(from: 9, to: 10) { _ in },
-        // v10 → v11: CS-043 exposes the persistent URL-capture data-store opt-in.
+        // v10 → v11: exposes the persistent URL-capture data-store opt-in.
         // It is an additive boolean key with a documented default (false), so there
         // is no data to transform.
         Migration(from: 10, to: 11) { _ in },
@@ -203,7 +203,7 @@ enum SettingsSchema {
         static let exportScale = "exportScale"
         static let gradientPreset = "gradientPreset"
 
-        /// Every key a non-CS-050 build of the app could have written. Presence
+        /// Every key a pre-versioning build of the app could have written. Presence
         /// of any of these (without a version key) marks a legacy store.
         static let all = [
             "themeID", "languageID", "fontSize", "padding", "cornerRadius",
@@ -214,7 +214,7 @@ enum SettingsSchema {
     }
 }
 
-/// Canonical default values and clamping rules for persisted settings (CS-050).
+/// Canonical default values and clamping rules for persisted settings.
 ///
 /// Centralizing these keeps the "documented fallback" for each typed read in one
 /// place and lets both `AppSettings` and `SettingsSchema` agree on what a valid
@@ -232,9 +232,8 @@ enum SettingsDefaults {
     static let paddingRange = 16.0...64.0
     static let padding = SnapshotConfig().padding
 
-    /// Sane bounds for the code-card corner radius. The Style pane does not yet
-    /// expose this, but persisted/hand-edited values are still clamped so a wild
-    /// number cannot distort the render.
+    /// Sane bounds for the code-card corner radius. Persisted and hand-edited values
+    /// are clamped so a wild number cannot distort the render.
     static let cornerRadiusRange = 0.0...48.0
     static let cornerRadius = SnapshotConfig().cornerRadius
 

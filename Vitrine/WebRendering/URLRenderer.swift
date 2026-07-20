@@ -4,12 +4,12 @@ import OSLog
 import WebKit
 
 /// Captures a user-provided URL by loading the page **locally** in an offscreen
-/// `WKWebView` and rasterizing it (CS-043).
+/// `WKWebView` and rasterizing it.
 ///
-/// URL screenshots are Product Phase 2, but they keep Vitrine's privacy promise:
+/// URL screenshots are part of web capture, but they keep Vitrine's privacy promise:
 /// the page is loaded on this Mac and turned into a bitmap on-device — there is
 /// **no remote render service**. The renderer slots into the existing `Renderer`
-/// abstraction (CS-040) so a coordinator routes a `.url` input here exactly as it
+/// abstraction so a coordinator routes a `.url` input here exactly as it
 /// routes code to `CodeRenderer` and HTML to `HTMLRenderer`.
 ///
 /// ## Safety gate
@@ -19,8 +19,8 @@ import WebKit
 /// 1. **The network entitlement.** URL capture is disabled until the app target
 ///    carries `com.apple.security.network.client`; without it the renderer throws
 ///    `RenderError.urlCaptureDisabled` before touching WebKit, because a sandboxed
-///    build with no network entitlement cannot reach a remote page anyway. Phase 1
-///    ships without the entitlement, so this renderer is inert in a Phase 1 build.
+///    build with no network entitlement cannot reach a remote page anyway. The network-free
+///    distribution ships without the entitlement, so this renderer remains unavailable there.
 /// 2. **URL validation.** Only `http`/`https` URLs are accepted; `file:`, `data:`,
 ///    `javascript:`, private localhost, and malformed URLs are refused as typed
 ///    `URLValidationError`s mapped to `RenderError.renderFailed`. Validation runs
@@ -38,23 +38,23 @@ struct URLRenderer: Renderer {
     /// Output scale (1/2/3), matching `ExportManager`'s default.
     var scale: CGFloat = 2
 
-    /// The viewport preset the page is laid out in. Defaults to OpenGraph's 1200×630
-    /// (CS-020); CS-044 adds the full preset set (desktop, full-HD, mobile, custom).
+    /// The viewport preset the page is laid out in. Defaults to Open Graph's 1200×630,
+    /// with desktop, full-HD, mobile, and custom alternatives.
     var viewportPreset: WebSnapshotConfig.ViewportPreset = .openGraph
 
-    /// Whether to capture the visible viewport or the full scrollable page (CS-044).
+    /// Whether to capture the visible viewport or the full scrollable page.
     /// `.visibleViewport` by default — the deterministic, preset-sized capture.
     var captureMode: WebSnapshotConfig.CaptureMode = .visibleViewport
 
-    /// How long, and on what signal, to wait before snapshotting (CS-044).
+    /// How long, and on what signal, to wait before snapshotting.
     /// `.domContentLoaded` by default — snapshot as soon as the load settles.
     var waitStrategy: WebSnapshotConfig.WaitStrategy = .domContentLoaded
 
-    /// The memory- and time-safety ceilings applied to every capture (CS-044).
+    /// The memory- and time-safety ceilings applied to every capture.
     /// Always applied; bounds the captured page height and the total wait.
     var safetyCaps: WebSnapshotConfig.SafetyCaps = .standard
 
-    /// Color profile to tag the output with — sRGB by default (CS-024).
+    /// Color profile to tag the output with — sRGB by default.
     var profile: ColorProfile = .sRGB
 
     /// What the web view may persist. `.nonPersistent` by default; `.persistent` is
@@ -81,7 +81,7 @@ struct URLRenderer: Renderer {
     /// Order of operations: confirm the network entitlement, validate the URL into a
     /// `WebSnapshotConfig` (which can only hold an `http`/`https` non-localhost URL),
     /// load it offscreen with the chosen data-store mode, then normalize and tag the
-    /// bitmap with `profile` (CS-024) so a URL snapshot flows through the same
+    /// bitmap with `profile` so a URL snapshot flows through the same
     /// clipboard/save/share paths as a code snapshot. Any failure throws a typed
     /// error — never a blank image.
     func render(_ input: CaptureInput, config: SnapshotConfig) async throws -> RenderedAsset {
@@ -134,13 +134,13 @@ struct URLRenderer: Renderer {
 }
 
 extension URLRenderer {
-    /// Builds a renderer configured from the user's persisted web-capture settings
-    /// (CS-044): the chosen viewport preset, capture mode, and wait strategy, plus
+    /// Builds a renderer configured from the user's persisted web-capture settings:
+    /// the chosen viewport preset, capture mode, and wait strategy, plus
     /// the shared export scale and color profile.
     ///
     /// This is the seam that connects the Input pane's controls to the URL render
     /// path. URL capture stays gated on the network entitlement, so the resulting
-    /// renderer is still inert in a Phase 1 build; when the entitlement is added, the
+    /// renderer is still inert in a network-free build; when the entitlement is added, the
     /// coordinator can build the renderer from settings so a capture uses exactly the
     /// viewport and timing the user selected.
     static func configured(from settings: AppSettings) -> URLRenderer {
@@ -169,7 +169,7 @@ extension URLValidationError {
 
 /// The local, network-free-by-default engine behind `URLRenderer`: it loads a
 /// validated URL in an offscreen `WKWebView`, applies the chosen wait strategy and
-/// capture mode, and rasterizes the result to a `CGImage` (CS-043, CS-044).
+/// capture mode, and rasterizes the result to a `CGImage`.
 ///
 /// This is the URL analogue of `WebSnapshotView` (which renders pasted HTML). It
 /// owns the web view's lifecycle, picks the data store from the config's
@@ -180,7 +180,7 @@ extension URLValidationError {
 /// Recording permission is involved, and the bitmap path is shared with
 /// `WebSnapshotView` so a URL snapshot sizes identically to an HTML one.
 ///
-/// ## Capture mode and bounded full-page rendering (CS-044)
+/// ## Capture mode and bounded full-page rendering
 ///
 /// In `.visibleViewport` mode the snapshot rect is exactly the preset size, so the
 /// bitmap is `viewport × scale` device pixels — fully deterministic. In `.fullPage`
@@ -189,7 +189,7 @@ extension URLValidationError {
 /// the whole page. The clamp is what keeps a runaway document from asking for a
 /// multi-gigapixel bitmap.
 ///
-/// ## Lazy-load scroll behavior (CS-044)
+/// ## Lazy-load scroll behavior
 ///
 /// Many pages defer images and sections until they scroll into view, so a top-only
 /// full-page capture would miss them. Before measuring the content height the engine
@@ -568,7 +568,7 @@ private final class LoadCoordinator: NSObject, WKNavigationDelegate {
         resume(.failure(WebSnapshotError.loadFailed))
     }
 
-    /// Re-validates every navigation target against the SSRF host filter (CS-043). The entry
+    /// Re-validates every navigation target against the SSRF host filter. The entry
     /// URL is checked before `load`, but a public page can 30x-redirect — or embed a frame —
     /// to a private, loopback, or link-local host (e.g. the `169.254.169.254` cloud-metadata
     /// endpoint); without this, WebKit would follow it and render the private response. This
@@ -578,7 +578,7 @@ private final class LoadCoordinator: NSObject, WKNavigationDelegate {
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
-        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
     ) {
         if let host = navigationAction.request.url?.host,
             WebSnapshotConfig.isPrivateLocalhost(host: host)

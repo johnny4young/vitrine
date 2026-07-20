@@ -1,6 +1,6 @@
 import OSLog
 
-/// Structured logging for Vitrine (CS-048).
+/// Structured logging for Vitrine.
 ///
 /// Everything goes through Apple's unified logging system (`os.Logger`) under a
 /// single subsystem — `com.johnny4young.vitrine` — split into a fixed set of categories so a
@@ -20,14 +20,14 @@ import OSLog
 /// by default, but we do not rely on that alone — we simply do not pass user
 /// content in.
 /// `nonisolated` so logging works from any isolation — including the `@concurrent`
-/// off-main export/encode hops (C3). Every member is a `Sendable` `Logger` (or a
+/// off-main export/encode hops. Every member is a `Sendable` `Logger` (or a
 /// pure factory), so there is no main-actor state to protect.
 nonisolated enum Log {
     /// The single subsystem all categories share. Matches the bundle identifier so
     /// the unified-logging stream is easy to find (`log stream --subsystem com.johnny4young.vitrine`).
     static let subsystem = "com.johnny4young.vitrine"
 
-    /// The fixed set of logging categories, one per feature area (CS-048 design).
+    /// The fixed set of logging categories, one per product area.
     /// Keeping these as an enum — rather than ad-hoc category strings scattered
     /// across the codebase — guarantees the diagnostics bundle can enumerate every
     /// category it knows about and document exactly what it collects.
@@ -43,7 +43,7 @@ nonisolated enum Log {
     static let app = logger(.app)
     /// Quick-capture path: clipboard → render → clipboard/file, with no user content.
     static let capture = logger(.capture)
-    /// Canvas/render path. Also carries the render signposts that feed CS-026.
+    /// Canvas/render path. Also carries the render signposts that feed performance metrics.
     static let render = logger(.render)
     /// Image export to clipboard, file, or share sheet.
     static let export = logger(.export)
@@ -56,7 +56,7 @@ nonisolated enum Log {
     }
 }
 
-/// Signposting for the render path (CS-048 → feeds the CS-026 performance budget).
+/// Signposting for the render path, which feeds the performance budget.
 ///
 /// `OSSignposter` emits interval markers visible in Instruments' os_signpost track
 /// and in the unified log, so render latency can be measured without a stopwatch in

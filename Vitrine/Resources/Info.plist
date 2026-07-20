@@ -4,7 +4,7 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<!-- Localization (CS-047): advertise English (development language) plus
+	<!-- Localization: advertise English (development language) plus
 	     Spanish so the app reports a real second locale and the system offers it
 	     in Language & Region. The strings themselves live in the String Catalog
 	     (Localizable.xcstrings). -->
@@ -36,7 +36,7 @@
 	<!-- Register the bundled monospaced fonts at launch (Contents/Resources/Fonts). -->
 	<key>ATSApplicationFontsPath</key>
 	<string>Fonts</string>
-	<!-- Menu-bar agent: no Dock icon, no app-switcher entry (CS-001). -->
+	<!-- Menu-bar agent: no Dock icon, no app-switcher entry. -->
 	<key>LSUIElement</key>
 	<true/>
 	<!-- Custom URL scheme for the CLI → editor handoff (`vitrine render … --edit`,
@@ -61,22 +61,22 @@
 	     32 bytes), injected ONLY into the official release at build time from the
 	     VITRINE_LICENSE_SIGNING_KEY env var via the same-named build setting (project.yml).
 	     Empty on every normal/CI/from-source build → the app cannot mint a license token and
-	     stays free (CS-090, Architecture B). Read by LicenseSigningKey.embedded. Never commit
+	     stays free (embedded-key activation model). Read by LicenseSigningKey.embedded. Never commit
 	     a real value here; see docs/ACTIVATION.md. -->
 	<key>VitrineLicenseSigningKey</key>
 	<string>$(VITRINE_LICENSE_SIGNING_KEY)</string>
 	<!-- The app reads the clipboard locally to render code/URLs; nothing leaves the
-	     Mac (CS-045). Phase 1 promise is unchanged: copied code is turned into an
-	     image entirely on-device. In Product Phase 2, a copied URL is captured by
+	     Mac. local-rendering promise is unchanged: copied code is turned into an
+	     image entirely on-device. In web capture, a copied URL is captured by
 	     loading the requested webpage locally in WebKit on this Mac — there is no
 	     remote screenshot service, no account, and no analytics or telemetry.
 	     This is the only declared usage string; it is the Info.plist row of the
-	     permission matrix in docs/PERMISSIONS.md (CS-065). No Screen Recording usage
-	     string is declared — arbitrary screen capture stays parked until approved
-	     (CS-046). Tests/PrivacyManifestTests.swift fails on drift. -->
+	     permission matrix in docs/PERMISSIONS.md. No Screen Recording usage
+	     string is declared because arbitrary screen capture is outside the product.
+	     Tests/PrivacyManifestTests.swift fails on drift. -->
 	<key>NSPasteboardUsageDescription</key>
 	<string>Vitrine reads the clipboard to turn copied code or a URL into an image. Code never leaves your Mac, and a URL is captured by loading the webpage locally in WebKit on your Mac.</string>
-	<!-- Services menu action (CS-034): "Render Code Image with Vitrine" takes a
+	<!-- Services menu action: "Render Code Image with Vitrine" takes a
 	     text selection from any app and returns a rendered PNG image. The runtime
 	     provider is registered in AppDelegate (NSApp.servicesProvider); this
 	     declaration is what populates the system-wide Services menu. Rendering is
@@ -111,7 +111,7 @@
 			<string>com.johnny4young.vitrine.render-code-image</string>
 		</dict>
 	</array>
-	<!-- Sparkle auto-update channel (CS-064, see docs/RELEASING.md). These keys
+	<!-- Sparkle auto-update channel (see docs/RELEASING.md). These keys
 	     configure the direct-download update story; the App Store build excludes
 	     Sparkle entirely (it removes the VITRINE_DIRECT_DOWNLOAD compilation
 	     condition and strips the framework — see docs/APP-STORE.md), so Sparkle
@@ -136,7 +136,7 @@
 	<!-- Privacy: Sparkle's optional anonymous system-profiling feature is OFF, so an
 	     update check sends no usage data — only the request needed to fetch the
 	     appcast and the chosen download. This keeps the app's no-analytics, no-
-	     telemetry promise on the update path too (CS-064; mirrors the privacy posture
+	     telemetry promise on the update path too (mirrors the privacy posture
 	     documented in docs/PERMISSIONS.md and PrivacyInfo.xcprivacy). No profiling
 	     delegate is installed in code either, so this cannot be silently re-enabled. -->
 	<key>SUEnableSystemProfiling</key>

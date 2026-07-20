@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-/// Token availability + monotonic scale checks for the design system (CS-036).
+/// Token availability + monotonic scale checks for the design system.
 @MainActor
 @Suite("Design tokens")
 struct DesignTokenTests {
@@ -48,7 +48,7 @@ struct DesignTokenTests {
     }
 }
 
-/// The app UI and exported presets must share one brand vocabulary (CS-036).
+/// The app UI and exported presets must share one brand vocabulary.
 @MainActor
 @Suite("Brand vocabulary")
 struct BrandVocabularyTests {
@@ -90,7 +90,7 @@ struct BrandVocabularyTests {
 }
 
 /// Every brand color must produce a concrete value in light, dark, and both
-/// high-contrast appearances (CS-036).
+/// high-contrast appearances.
 @MainActor
 @Suite("Palette appearances")
 struct PaletteAppearanceTests {
@@ -151,7 +151,7 @@ struct PaletteAppearanceTests {
     }
 }
 
-/// WCAG contrast checks for the critical text/background pairs (CS-036).
+/// WCAG contrast checks for the critical text/background pairs.
 @MainActor
 @Suite("Contrast")
 struct ContrastTests {
@@ -209,7 +209,7 @@ struct ContrastTests {
 /// The accent and stage colors live twice — in code (`Brand.Palette`) and in the
 /// asset catalog (`AccentColor`/`BrandStage`). DESIGN-SYSTEM.md promises they are
 /// mirrored across the same four variants, so this asserts the catalog cannot
-/// silently drift from the code palette (CS-036).
+/// silently drift from the code palette.
 ///
 /// The catalog's source-of-truth `Contents.json` declares sRGB components per
 /// appearance. We compare those declared values directly to the code palette's

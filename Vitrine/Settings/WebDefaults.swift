@@ -1,18 +1,18 @@
 import Foundation
 
 /// Canonical defaults and defensive reads for the web URL-capture viewport and wait
-/// settings (CS-044), mirroring `SettingsDefaults` for the rest of the store.
+/// settings, mirroring `SettingsDefaults` for the rest of the store.
 ///
-/// URL capture is a Product Phase 2 feature gated on the network entitlement, so
-/// these settings have no effect in a Phase 1 build; they are still persisted with
-/// the same versioned, defensively-read discipline as every other setting (CS-050),
+/// URL capture is a web capture feature gated on the network entitlement, so
+/// these settings have no effect in a network-free build; they are still persisted with
+/// the same versioned, defensively-read discipline as every other setting,
 /// so the choice survives across launches and a corrupt or hand-edited value can
 /// never reach the renderer as a degenerate viewport or a negative wait.
 enum WebDefaults {
     /// The default viewport: OpenGraph's social-card size.
     static let viewportKind: WebSnapshotConfig.ViewportPreset.Kind = .openGraph
 
-    /// The default set of viewports for a multi-resolution capture (CS-044): just the
+    /// The default set of viewports for a multi-resolution capture: just the
     /// single OpenGraph default, so a fresh install behaves exactly like the
     /// single-viewport baseline until the user selects more.
     static let viewports: [WebSnapshotConfig.ViewportPreset.Kind] = [.openGraph]
@@ -45,7 +45,7 @@ enum WebDefaults {
         return kind
     }
 
-    /// Reads the persisted multi-capture viewport set (CS-044 multi-resolution): an
+    /// Reads the persisted multi-capture viewport set (multi-resolution): an
     /// ordered, de-duplicated list of kinds. Unknown raw values are dropped; an empty
     /// or missing list falls back to the single `viewportKind(from:)`, so the
     /// multi-select degrades cleanly to today's single-viewport capture.

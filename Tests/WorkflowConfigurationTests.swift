@@ -1,10 +1,10 @@
 import Foundation
 import Testing
 
-/// CS-060 — CI hardening and GitHub Actions observability.
+/// CI hardening and GitHub Actions observability.
 ///
 /// These tests assert that the committed GitHub Actions workflows, the `Makefile`,
-/// and `docs/RELEASING.md` actually encode every acceptance criterion of the ticket,
+/// and `docs/RELEASING.md` retain the repository's release requirements,
 /// so a future edit that drops the weekly drift job, the release gate, the toolchain
 /// logging, the SPM cache, the `.xcresult` upload, or the UI-test policy fails the
 /// unit suite rather than silently weakening CI.
@@ -15,7 +15,7 @@ import Testing
 /// "Validate workflow YAML" step parses each file with Ruby's standard-library YAML
 /// parser); here we additionally guard against tab-indentation — a YAML syntax error
 /// the targeted structural reads below would not otherwise catch.
-@Suite("CI workflow configuration · CS-060")
+@Suite("CI workflow configuration")
 struct WorkflowConfigurationTests {
 
     // MARK: - Repository anchoring
@@ -57,76 +57,6 @@ struct WorkflowConfigurationTests {
         try text("docs", "RELEASING.md")
     }
 
-    private static func verificationWorkflow() throws -> String {
-        try text("tools", "verify-cs.workflow.js")
-    }
-
-    // MARK: - Files exist
-
-    @Test func theWorkflowFilesAndSupportingFilesExist() {
-        let fileManager = FileManager.default
-        for path in [
-            Self.url(".github", "workflows", "ci.yml"),
-            Self.url(".github", "workflows", "release.yml"),
-            Self.url("Makefile"),
-            Self.url("docs", "RELEASING.md"),
-        ] {
-            #expect(
-                fileManager.fileExists(atPath: path.path),
-                "CS-060 expects \(path.lastPathComponent) to exist")
-        }
-    }
-
-    /// The CS verification workflow is only useful when its "likely files" hints point
-    /// at current source locations. This catches stale paths after large mechanical
-    /// splits (for example, the removed SettingsPanes.swift file) before a reviewer
-    /// agent wastes time on dead evidence.
-    @Test func csVerificationWorkflowReferencesCurrentFiles() throws {
-        let workflow = try Self.verificationWorkflow()
-        #expect(
-            !workflow.contains("SettingsPanes.swift"),
-            "verify-cs.workflow.js must not point reviewers at the removed SettingsPanes.swift")
-
-        let fileManager = FileManager.default
-        let hints = workflow.components(separatedBy: .newlines)
-            .compactMap(Self.fileHintList)
-            .flatMap(Self.concreteFileHints)
-
-        #expect(!hints.isEmpty, "Expected CS workflow to contain likely-file hints")
-        for hint in hints {
-            let url = hint.split(separator: "/").reduce(Self.repositoryRoot) {
-                $0.appendingPathComponent(String($1))
-            }
-            #expect(
-                fileManager.fileExists(atPath: url.path),
-                "verify-cs.workflow.js references a missing file hint: \(hint)")
-        }
-    }
-
-    private static func fileHintList(from line: String) -> String? {
-        guard let marker = line.range(of: #"files: ""#) else { return nil }
-        let rest = line[marker.upperBound...]
-        guard let end = rest.firstIndex(of: "\"") else { return nil }
-        return String(rest[..<end])
-    }
-
-    private static func concreteFileHints(from list: String) -> [String] {
-        list.split(separator: ",")
-            .map { raw in
-                var hint = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                if let annotation = hint.range(of: " (") {
-                    hint = String(hint[..<annotation.lowerBound])
-                }
-                return hint
-            }
-            .filter { hint in
-                hint.hasSuffix(".swift") || hint.hasSuffix(".yml") || hint.hasSuffix(".md")
-                    || hint.hasSuffix(".rb") || hint.hasSuffix(".sh")
-                    || hint == "Makefile" || hint == "project.yml"
-                    || hint.hasSuffix(".xcprivacy")
-            }
-    }
-
     // MARK: - YAML well-formedness guard (tabs)
 
     /// YAML forbids tab characters for indentation; a stray tab is a syntax error that
@@ -144,11 +74,11 @@ struct WorkflowConfigurationTests {
         }
     }
 
-    // MARK: - Acceptance: log exact macOS / Xcode versions before building
+    // MARK: - Contract: log exact macOS / Xcode versions before building
 
     /// The CI workflow must record the exact toolchain (macOS image, Xcode, Swift)
     /// before it builds, since it runs on the moving `macos-latest` image rather than a
-    /// pinned one. The acceptance is satisfied by *logging* the versions; assert the
+    /// pinned one. The contract is satisfied by *logging* the versions; assert the
     /// version-probe commands are present and that the step runs before the build.
     @Test func ciLogsExactToolchainVersionsBeforeBuilding() throws {
         let ci = try Self.ci()
@@ -161,17 +91,17 @@ struct WorkflowConfigurationTests {
         let buildMarker = try #require(ci.range(of: "run: make build"))
         #expect(
             toolchainMarker.lowerBound < buildMarker.lowerBound,
-            "Toolchain versions must be logged before building (CS-060)")
+            "Toolchain versions must be logged before building")
     }
 
-    // MARK: - Acceptance: cache SPM dependencies where safe
+    // MARK: - Contract: cache SPM dependencies where safe
 
     @Test func ciCachesSwiftPackageManagerDependencies() throws {
         let ci = try Self.ci()
         #expect(ci.contains("actions/cache@"), "CI must cache something (SPM)")
         #expect(
             ci.contains("org.swift.swiftpm"),
-            "CI must cache the Swift Package Manager cache directory (CS-060)")
+            "CI must cache the Swift Package Manager cache directory")
         // Keyed on project.yml — the dependency source of truth (the resolved project
         // is generated, not committed).
         #expect(
@@ -179,14 +109,14 @@ struct WorkflowConfigurationTests {
             "The SPM cache key must be bound to project.yml")
     }
 
-    // MARK: - Acceptance: upload .xcresult bundles / test logs on failure
+    // MARK: - Contract: upload .xcresult bundles / test logs on failure
 
     @Test func ciUploadsXcresultBundlesOnFailure() throws {
         let ci = try Self.ci()
         // The build/test steps must request an .xcresult bundle…
         #expect(
             ci.contains("RESULT_BUNDLE="),
-            "CI must direct an .xcresult bundle via RESULT_BUNDLE (CS-060)")
+            "CI must direct an .xcresult bundle via RESULT_BUNDLE")
         // …and there must be a failure-gated upload of it.
         #expect(ci.contains("actions/upload-artifact@"))
         #expect(
@@ -200,7 +130,7 @@ struct WorkflowConfigurationTests {
         let preceding = String(ci[..<uploadName.lowerBound])
         #expect(
             preceding.contains("if: failure()"),
-            "The .xcresult upload must be gated on failure (CS-060)")
+            "The .xcresult upload must be gated on failure")
     }
 
     /// The Makefile must honor `RESULT_BUNDLE` on the build/test/UI-test-build targets,
@@ -210,13 +140,13 @@ struct WorkflowConfigurationTests {
         let make = try Self.makefile()
         #expect(
             make.contains("RESULT_BUNDLE_FLAG"),
-            "Makefile must define a RESULT_BUNDLE flag for .xcresult capture (CS-060)")
+            "Makefile must define a RESULT_BUNDLE flag for .xcresult capture")
         #expect(
             make.contains("-resultBundlePath"),
             "Makefile must pass -resultBundlePath to xcodebuild when RESULT_BUNDLE is set")
     }
 
-    // MARK: - Acceptance: run `make build-ui-tests` on every PR
+    // MARK: - Contract: run `make build-ui-tests` on every PR
 
     @Test func ciRunsBuildUITestsOnPullRequests() throws {
         let ci = try Self.ci()
@@ -225,14 +155,14 @@ struct WorkflowConfigurationTests {
             "CI must trigger on pull requests")
         #expect(
             ci.contains("make build-ui-tests"),
-            "CI must compile the UI tests on every PR (CS-060)")
+            "CI must compile the UI tests on every PR")
     }
 
-    // MARK: - Acceptance: weekly scheduled drift job
+    // MARK: - Contract: weekly scheduled drift job
 
     @Test func ciHasAWeeklyScheduledDriftJob() throws {
         let ci = try Self.ci()
-        #expect(ci.contains("schedule:"), "CI must declare a schedule trigger (CS-060)")
+        #expect(ci.contains("schedule:"), "CI must declare a schedule trigger")
         // A weekly cron: 5 fields, day-of-week constrained (the 5th field is not "*").
         let cronLine = try #require(
             ci.components(separatedBy: .newlines).first { $0.contains("cron:") },
@@ -244,10 +174,10 @@ struct WorkflowConfigurationTests {
         #expect(fields.count == 5, "cron must have five fields, got: \(quoted)")
         #expect(
             fields.last != "*",
-            "a weekly drift job must constrain the day-of-week field (CS-060), got: \(quoted)")
+            "a weekly drift job must constrain the day-of-week field, got: \(quoted)")
     }
 
-    // MARK: - Acceptance: release refuses to publish if any gate fails
+    // MARK: - Contract: release refuses to publish if any gate fails
 
     /// The release workflow must run lint, build, the unit suite, and the UI-test
     /// build, and the publish step must depend on that gate so a failing check blocks
@@ -261,13 +191,13 @@ struct WorkflowConfigurationTests {
         #expect(release.contains("make build "), "release gate must run the Debug build")
         #expect(
             release.contains("make build-ui-tests"),
-            "release gate must compile the UI tests (CS-060)")
+            "release gate must compile the UI tests")
         #expect(release.contains("make test "), "release gate must run the unit suite")
 
         // The publish job depends on the gate.
         #expect(
             release.contains("needs: verify"),
-            "the publish job must depend on the verify gate so a failure blocks publishing (CS-060)"
+            "the publish job must depend on the verify gate so a failure blocks publishing"
         )
 
         // The DMG build and release publish belong to the dependent publish job, which
@@ -291,10 +221,10 @@ struct WorkflowConfigurationTests {
             "the verify gate must be declared before the publish job")
     }
 
-    // MARK: - Acceptance: the release gate logs the exact toolchain before building
+    // MARK: - Contract: the release gate logs the exact toolchain before building
 
     /// The release `verify` job runs on the same moving `macos-latest` image as CI, so
-    /// the "log exact macOS/Xcode/Swift versions before building" acceptance applies to
+    /// the "log exact macOS/Xcode/Swift versions before building" contract applies to
     /// it too: a DMG must be traceable to the toolchain it was validated against. Assert
     /// the version-probe commands are present in `release.yml` and run before its first
     /// build, so a future edit that drops toolchain logging from the release gate fails
@@ -310,12 +240,12 @@ struct WorkflowConfigurationTests {
         let buildMarker = try #require(release.range(of: "run: make build "))
         #expect(
             toolchainMarker.lowerBound < buildMarker.lowerBound,
-            "Toolchain versions must be logged before building in the release gate (CS-060)")
+            "Toolchain versions must be logged before building in the release gate")
     }
 
-    // MARK: - Acceptance: the release gate uploads .xcresult bundles on failure
+    // MARK: - Contract: the release gate uploads .xcresult bundles on failure
 
-    /// The `.xcresult`-on-failure acceptance is not CI-only: when the release `verify`
+    /// The `.xcresult`-on-failure contract is not CI-only: when the release `verify`
     /// gate blocks a tag, the same offline-triage diagnostics must be available from the
     /// tag run. Assert the gate passes `RESULT_BUNDLE=` through every xcodebuild phase
     /// (build, build-ui-tests, test) and uploads the bundles through a `failure()`-gated
@@ -330,7 +260,7 @@ struct WorkflowConfigurationTests {
                 "release gate must invoke `\(phase.trimmingCharacters(in: .whitespaces))`")
             #expect(
                 invocation.contains("RESULT_BUNDLE="),
-                "release gate `\(phase.trimmingCharacters(in: .whitespaces))` must capture an .xcresult bundle (CS-060)"
+                "release gate `\(phase.trimmingCharacters(in: .whitespaces))` must capture an .xcresult bundle"
             )
         }
 
@@ -345,7 +275,7 @@ struct WorkflowConfigurationTests {
         let preceding = String(release[..<uploadName.lowerBound])
         #expect(
             preceding.contains("if: failure()"),
-            "the release gate's .xcresult upload must be gated on failure (CS-060)")
+            "the release gate's .xcresult upload must be gated on failure")
 
         // The diagnostics upload belongs to the verify gate, not the publish job, so it
         // captures gate failures (which never reach publish).
@@ -354,10 +284,10 @@ struct WorkflowConfigurationTests {
         #expect(
             verifyMarker.upperBound < uploadName.lowerBound
                 && uploadName.lowerBound < publishMarker.lowerBound,
-            "the .xcresult upload must live in the verify gate (CS-060)")
+            "the .xcresult upload must live in the verify gate")
     }
 
-    // MARK: - Acceptance: CI executes the full UI suite
+    // MARK: - Contract: CI executes the full UI suite
 
     /// Compile-only `build-ui-tests` let UI-test failures accumulate silently on
     /// `main`; CI must actually execute the XCUITest suite. Assert `ci.yml` declares
@@ -384,14 +314,14 @@ struct WorkflowConfigurationTests {
             "the UI-test job must run `make test-ui`")
         #expect(
             invocation.contains("RESULT_BUNDLE="),
-            "the UI-test run must capture an .xcresult bundle (CS-060)")
+            "the UI-test run must capture an .xcresult bundle")
         #expect(
             uiJob.contains("timeout-minutes:"),
             "the UI-test job must bound its runtime — a blocked automation session hangs rather than fails"
         )
         #expect(
             uiJob.contains("if: failure()"),
-            "the UI-test job must upload its .xcresult bundle on failure (CS-060)")
+            "the UI-test job must upload its .xcresult bundle on failure")
 
         // Skips must never be silent: if the job excludes tests (the
         // display-geometry-sensitive set), every run must annotate them, mirroring
@@ -413,11 +343,11 @@ struct WorkflowConfigurationTests {
         let body = String(make[target.lowerBound...])
         #expect(
             body.contains("$(RESULT_BUNDLE_FLAG)"),
-            "the test-ui target must pass RESULT_BUNDLE_FLAG so CI can capture an .xcresult bundle (CS-060)"
+            "the test-ui target must pass RESULT_BUNDLE_FLAG so CI can capture an .xcresult bundle"
         )
     }
 
-    // MARK: - Acceptance: the UI-test execution policy is documented
+    // MARK: - Contract: the UI-test execution policy is documented
 
     @Test func releasingDocExplainsTheUITestPolicy() throws {
         let doc = try Self.releasingDoc()
@@ -431,7 +361,7 @@ struct WorkflowConfigurationTests {
             "RELEASING.md must document the full UI suite command")
         #expect(
             doc.contains("automationmodetool"),
-            "RELEASING.md must explain the pre-authorized automation mode that lets hosted runners execute the suite (CS-060)"
+            "RELEASING.md must explain the pre-authorized automation mode that lets hosted runners execute the suite"
         )
         #expect(
             doc.localizedCaseInsensitiveContains("automation permission"),
@@ -439,28 +369,25 @@ struct WorkflowConfigurationTests {
         )
     }
 
-    // MARK: - Acceptance: CI is documented as a release gate
+    // MARK: - Contract: CI is documented as a release gate
 
     @Test func releasingDocDocumentsTheCIGateAndDriftJob() throws {
         let doc = try Self.releasingDoc()
         #expect(
-            doc.contains("CS-060"),
-            "RELEASING.md must reference the CI-hardening ticket")
-        #expect(
             doc.localizedCaseInsensitiveContains("drift"),
-            "RELEASING.md must document the weekly drift watch (CS-060)")
+            "RELEASING.md must document the weekly drift watch")
         #expect(
             doc.localizedCaseInsensitiveContains(".xcresult"),
-            "RELEASING.md must document the .xcresult-on-failure artifacts (CS-060)")
+            "RELEASING.md must document the .xcresult-on-failure artifacts")
     }
 
-    // MARK: - Acceptance: third-party actions are commit-SHA pinned (S2)
+    // MARK: - Contract: third-party actions are commit-SHA pinned
 
     /// Every `uses:` in every workflow must reference a full 40-character commit SHA,
     /// never a mutable `@vN`/`@branch` tag — the release workflow holds the Developer ID
     /// `.p12`, the notary `.p8`, the Sparkle EdDSA key, the license-signing key, and the
     /// tap deploy key, so a hijacked tag on a community action is a direct path to those
-    /// secrets (the tj-actions incident pattern; see docs/DEEP-REVIEW-2026-07.md, S2).
+    /// secrets (the tj-actions incident pattern).
     /// A trailing `# vX.Y.Z` comment must record the human-readable version the SHA
     /// corresponds to, which is also what Dependabot rewrites when it bumps the pin.
     @Test func thirdPartyActionsArePinnedToCommitSHAs() throws {
@@ -485,13 +412,13 @@ struct WorkflowConfigurationTests {
                 let ref = String(value[value.index(after: atIndex)...])
                 #expect(
                     ref.wholeMatch(of: sha40) != nil,
-                    "\(name): `uses: \(value)` must pin a 40-char commit SHA, not the mutable ref `\(ref)` (S2)"
+                    "\(name): `uses: \(value)` must pin a 40-char commit SHA, not the mutable ref `\(ref)`"
                 )
                 // And the line must carry the version the SHA maps to, for auditability
                 // and for Dependabot's bump comment.
                 #expect(
                     rawLine.contains("# v"),
-                    "\(name): `uses: \(value)` must carry a `# vX.Y.Z` version comment (S2)")
+                    "\(name): `uses: \(value)` must carry a `# vX.Y.Z` version comment")
             }
         }
     }

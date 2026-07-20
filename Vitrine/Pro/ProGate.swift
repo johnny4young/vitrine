@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// PRO gating UI (CS-091): a view modifier that lets a feature's call site stay clean —
+/// PRO gating UI: a view modifier that lets a feature's call site stay clean —
 /// when locked it intercepts the action and presents the paywall (and shows a discreet
 /// "PRO" badge); when unlocked it passes straight through. Nothing here nags or interrupts
 /// the free flow: the paywall appears only when the user reaches for a PRO action.
@@ -35,7 +35,7 @@ private struct ProGateModifier: ViewModifier {
     }
 }
 
-/// A small "PRO" badge marking a locked affordance (CS-091).
+/// A small "PRO" badge marking a locked affordance.
 struct ProBadge: View {
     var body: some View {
         Text(verbatim: "PRO")
@@ -48,7 +48,7 @@ struct ProBadge: View {
     }
 }
 
-/// The PRO upgrade sheet (CS-091): reads the title and blurb from the `ProFeature` the user
+/// The PRO upgrade sheet: reads the title and blurb from the `ProFeature` the user
 /// reached for, then offers the per-build path to unlock — a StoreKit purchase + Restore on
 /// the App Store build, or a license-key field on the direct-download build. Non-invasive:
 /// it is only ever presented in response to a tap on a gated action, never on launch.

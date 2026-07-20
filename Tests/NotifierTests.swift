@@ -4,18 +4,18 @@ import Testing
 @testable import Vitrine
 
 /// Tests for the quick-capture feedback policy and the capture HUD's
-/// reduced-motion / timing behavior (CS-038).
+/// reduced-motion / timing behavior.
 ///
 /// Everything asserted here is the *pure* policy layer — the message a user sees,
 /// which recovery actions an outcome offers, and whether decorative animation runs
-/// — so no window is created. The actual presentation (`CaptureHUDController`,
+/// so no window is created. The actual presentation (`CaptureHUDController`,
 /// `CaptureFeedbackPresenter`) is exercised manually via the menu-bar smoke
 /// checklist documented at the bottom of this file.
 @MainActor
 @Suite("Notifier feedback policy")
 struct NotifierFeedbackTests {
 
-    // MARK: Legacy single-line messages (CS-016 compatibility)
+    // MARK: Legacy single-line messages (compatibility)
 
     @Test func legacyMessagesAreStable() {
         #expect(Notifier.message(for: .copied) != nil)
@@ -43,7 +43,7 @@ struct NotifierFeedbackTests {
 
     // MARK: Destination-aware success copy
     //
-    // CS-038 acceptance: "Feedback says whether output was copied, saved, shared,
+    // Behavior: "Feedback says whether output was copied, saved, shared,
     // or blocked." The success message names exactly what happened to the image.
 
     @Test func successMessageNamesTheDestination() {
@@ -71,7 +71,7 @@ struct NotifierFeedbackTests {
         #expect(savedOnly.category == .success)
     }
 
-    // MARK: Standalone action confirmation (CS-053)
+    // MARK: Standalone action confirmation
     //
     // "Make This Window the Default" is an explicit action that changes nothing on
     // screen, so it confirms through the shared HUD. The confirmation reuses the
@@ -89,7 +89,7 @@ struct NotifierFeedbackTests {
 
     // MARK: Recovery actions (failure recovery)
     //
-    // CS-038 acceptance: an empty clipboard or a URL fallback must offer the user a
+    // Behavior: an empty clipboard or a URL fallback must offer the user a
     // way forward rather than leaving them stuck.
 
     @Test func emptyClipboardOffersTheEditor() {
@@ -131,12 +131,12 @@ struct NotifierFeedbackTests {
     }
 }
 
-/// Reduced-motion and timing behavior of the capture HUD (CS-038).
+/// Reduced-motion and timing behavior of the capture HUD.
 @MainActor
 @Suite("CaptureHUD behavior")
 struct CaptureHUDBehaviorTests {
 
-    // CS-038 acceptance: "Reduced Motion disables decorative animation while
+    // Behavior: "Reduced Motion disables decorative animation while
     // keeping status feedback." The animation is gated; the feedback itself (the
     // message/category) is independent of motion and always present.
 
@@ -156,7 +156,7 @@ struct CaptureHUDBehaviorTests {
         #expect(animated.feedback.message == feedback.message)
     }
 
-    // CS-038: routine confirmations are brief; feedback offering recovery actions
+    // Routine confirmations are brief; feedback offering recovery actions
     // lingers long enough to click one.
 
     @Test func feedbackWithActionsStaysLonger() {
@@ -174,7 +174,7 @@ struct CaptureHUDBehaviorTests {
 }
 
 /// The save-outcome plumbing that lets feedback name a real save vs. a cancel or
-/// failure (CS-038), exercised through the quick-capture `Result` rather than the
+/// failure, exercised through the quick-capture `Result` rather than the
 /// interactive save panel.
 @MainActor
 @Suite("Capture result destinations", .serialized)
@@ -228,13 +228,13 @@ struct CaptureResultDestinationTests {
 
     @Test func saveOutcomeEnumDistinguishesStates() {
         // The exporter reports a written file apart from a cancel or a failure so
-        // feedback can be precise (CS-038).
+        // feedback can be precise.
         #expect(ExportManager.SaveOutcome.saved != .cancelled)
         #expect(ExportManager.SaveOutcome.failed != .saved)
     }
 }
 
-// MARK: - Manual menu-bar smoke checklist (CS-038)
+// MARK: - Manual menu-bar smoke checklist
 //
 // These steps are verified by hand on a real menu-bar build; they are recorded
 // here so the checklist lives next to the automated coverage.

@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The editor's annotation toolbar state and undo/redo history (CS-085/086).
+/// The editor's annotation toolbar state and undo/redo history.
 extension EditorView {
-    // MARK: - Annotation toolbar style (CS-085)
+    // MARK: - Annotation toolbar style
 
     /// The annotation currently selected in Select mode, if any.
     var selectedAnnotation: Annotation? {
@@ -44,7 +44,7 @@ extension EditorView {
     /// the active draw tool). The selected-mark case derives from the same
     /// `AnnotationTool` policy as the draw-tool case, so a kind excluded there (blur,
     /// sticker, spotlight) never shows an inert swatch when selected — the ad hoc
-    /// `!= .blur` check had drifted from the tool policy (deep-review finding).
+    /// `!= .blur` check had drifted from the tool policy.
     var annotationStyleUsesColor: Bool {
         if let selected = selectedAnnotation { return tool(for: selected.kind)?.usesColor ?? true }
         return activeTool.usesColor
@@ -65,7 +65,7 @@ extension EditorView {
         AnnotationTool.allCases.first { $0.kind == kind }
     }
 
-    // MARK: - Annotation undo/redo (CS-086)
+    // MARK: - Annotation undo/redo
 
     /// Whether the user is in an annotation context (a draw tool is active or a mark
     /// is selected). The undo/redo keyboard shortcut is gated on this so it never

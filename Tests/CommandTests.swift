@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-// CS-032 — the app command surface: titles, shortcuts, accessibility, menu
+// — the app command surface: titles, shortcuts, accessibility, menu
 // assembly, and editor-command gating. These are pure/model-level checks; the
 // menu's runtime behavior is smoke-tested in the UI tests.
 
@@ -114,7 +114,7 @@ struct VitrineCommandShortcutTests {
 @Suite("VitrineCommand toolbar/menu shortcut parity")
 @MainActor
 struct VitrineCommandShortcutParityTests {
-    // CS-032's core promise is that a toolbar/menu-bar button binds the *same*
+    // 's core promise is that a toolbar/menu-bar button binds the *same*
     // shortcut as its AppKit main-menu counterpart. The SwiftUI side builds that
     // shortcut as `KeyboardShortcut(keyEquivalent.first!, modifiers:
     // swiftUIEventModifiers)`, so parity reduces to two checks: the key character
@@ -137,7 +137,7 @@ struct VitrineCommandShortcutParityTests {
 
     @Test func modifierTranslationPreservesEveryFlag() {
         // Each command's bridged modifiers must equal the translation of its AppKit
-        // modifiers exactly — a dropped flag here is the drift CS-032 forbids.
+        // modifiers exactly — a dropped flag here is the drift this test forbids.
         for command in VitrineCommand.allCases {
             #expect(
                 command.swiftUIEventModifiers == expectedModifiers(command.modifiers),
@@ -258,7 +258,7 @@ struct AppMenuTests {
 
     /// Format Code lives in the Edit menu (it is a text-edit operation, not an export),
     /// carries ⌥⌘F, and dispatches to the editor responder so the menu and the editor
-    /// toolbar button stay in lockstep (CS-032/CS-049).
+    /// toolbar button stay in lockstep.
     @Test func formatCodeIsInTheEditMenuWithItsShortcut() {
         let edit = submenu(named: "Edit")
         let item = edit.items.first {

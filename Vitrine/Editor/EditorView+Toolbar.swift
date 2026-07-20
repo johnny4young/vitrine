@@ -1,13 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// The editor's glass toolbar and the export/copy actions behind it (CS-032/037).
+/// The editor's glass toolbar and the export/copy actions behind it.
 extension EditorView {
-    // MARK: - Toolbar (design/handoff: glass band merged into the title bar)
+    // MARK: - Toolbar (design system: glass band merged into the title bar)
 
     /// The glass toolbar: brand mark + title, the language picker, then the
     /// secondary export actions as bordered icon buttons and the gradient
-    /// "Copy image" CTA. Each action mirrors its File-menu command (CS-032),
+    /// "Copy image" CTA. Each action mirrors its File-menu command,
     /// sharing the command's VoiceOver label and keyboard shortcut.
     var editorToolbar: some View {
         // `settings` arrives via @Environment (an @Observable), which has no projected
@@ -16,7 +16,7 @@ extension EditorView {
         @Bindable var settings = settings
         return HStack(spacing: 14) {
             // Just the app mark — the "Vitrine Editor" wordmark was redundant next to
-            // the window and only crowded the toolbar (CS-087).
+            // the window and only crowded the toolbar.
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .frame(width: 22, height: 22)
@@ -35,7 +35,7 @@ extension EditorView {
             // Picking the Diff language is an unambiguous "I want diff rendering", so
             // turn the +/− bands (and the line gutter they read best with) on
             // automatically — the feature was previously undiscoverable behind an
-            // inspector toggle (CS-084). The toggle stays as a manual override.
+            // inspector toggle. The toggle stays as a manual override.
             .onChange(of: settings.config.language) { _, newValue in
                 if newValue == .diff {
                     settings.config.diffDecorations = true
@@ -45,7 +45,7 @@ extension EditorView {
 
             Spacer(minLength: 8)
 
-            // The annotation tool palette lives in the title bar (CS-085), so marks
+            // The annotation tool palette lives in the title bar, so marks
             // are drawn with the cursor like a dedicated screenshot tool. Picking a
             // draw tool deselects any mark so its options show the new-draw style.
             AnnotationToolbar(
@@ -120,12 +120,12 @@ extension EditorView {
     }
 
     /// Renders and copies the image, then — by default — closes the editor window so
-    /// it gets out of the way once its job is done (CS-084). Users who copy more than
+    /// it gets out of the way once its job is done. Users who copy more than
     /// once can keep it open from Settings.
     func copyImage() {
         // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
-        // render/encode failure — mirroring the menu command and the quick-capture HUD
-        // (audit UX-1). The HUD shows near the menu bar regardless of `closeAfterCopy`.
+        // render/encode failure — mirroring the menu command and the quick-capture HUD.
+        // The HUD shows near the menu bar regardless of `closeAfterCopy`.
         let copied = ExportManager.copyToPasteboard(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
@@ -142,7 +142,7 @@ extension EditorView {
     }
 
     /// Renders and saves the image, confirming the outcome through the shared HUD so the
-    /// toolbar Save button gives the same feedback as the File-menu command (audit UX-1).
+    /// toolbar Save button gives the same feedback as the File-menu command.
     /// A cancelled save panel is silent.
     func saveImage() {
         ExportFeedback.presentSave(
@@ -152,8 +152,8 @@ extension EditorView {
                 profile: settings.export.colorProfile))
     }
 
-    /// The explicit alternative copy targets behind the rich-text icon
-    /// (CS-054): "Copy Highlighted Code" (syntax colors and font as RTF/HTML),
+    /// The explicit alternative copy targets behind the rich-text icon:
+    /// "Copy Highlighted Code" (syntax colors and font as RTF/HTML),
     /// "Copy as Markdown" (self-contained image plus source), and "Copy as Data
     /// URI" (`data:image/png;base64,…`). A menu so the
     /// one-click CTA stays the primary action while the developer-grade
@@ -217,7 +217,7 @@ extension EditorView {
         .disabled(!settings.config.hasRenderableContent)
     }
 
-    /// The PRO multi-size export entry (CS-093): when unlocked it opens the size
+    /// The PRO multi-size export entry: when unlocked it opens the size
     /// picker; when locked it shows a discreet "PRO" badge and opens the paywall
     /// instead. Both sheets are anchored here; disabled with the rest of the toolbar
     /// when there is no code to render.
@@ -244,7 +244,7 @@ extension EditorView {
         }
     }
 
-    /// The carousel export entry (feature #15): split a long snippet into numbered
+    /// The carousel export entry: split a long snippet into numbered
     /// 4:5 slides for a LinkedIn/Instagram carousel. Same PRO gate as multi-size —
     /// it is the same batch-export family.
     var carouselExportButton: some View {
@@ -326,7 +326,7 @@ extension EditorView {
         .accessibilityIdentifier("editor-style-preset-picker")
     }
 
-    /// Promotes this window's current style to the app-wide default (CS-053). Distinct
+    /// Promotes this window's current style to the app-wide default. Distinct
     /// from the export buttons in that it is code-independent — adopting a look is
     /// meaningful even before any code is typed — so it does not disable on an empty
     /// editor. It mirrors the File-menu "Make This Window the Default" command.
@@ -361,8 +361,8 @@ extension EditorView {
         }
     }
 
-    /// Pin the current render in a floating always-on-top reference window
-    /// (feature #33), so an error/design stays visible while you work against it.
+    /// Pin the current render in a floating always-on-top reference window,
+    /// so an error/design stays visible while you work against it.
     var pinSnapshotButton: some View {
         GlassIconButton(systemImage: "pin") {
             guard
@@ -392,7 +392,7 @@ extension EditorView {
     }
 
     /// Copies the rendered image to the clipboard as a `data:image/png;base64,…`
-    /// URI string (CS-054), honoring the active preset's framing.
+    /// URI string, honoring the active preset's framing.
     func copyDataURI() {
         RichPasteboard.copyDataURI(
             for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
@@ -408,7 +408,7 @@ extension EditorView {
     }
 
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
-    /// and the selected font (CS-054).
+    /// and the selected font.
     func copyHighlightedCode() {
         RichPasteboard.copyHighlightedCode(for: settings.config)
     }

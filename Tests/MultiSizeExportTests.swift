@@ -4,11 +4,11 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-093 — the PRO multi-size one-pass export: one capture fanned out over
-/// `ExportPreset` sizes into a folder. These pin the acceptance — N selected presets
+/// the PRO multi-size one-pass export: one capture fanned out over
+/// `ExportPreset` sizes into a folder. These pin the contract — N selected presets
 /// write N correctly-named files in one action, and each file is byte-for-byte what a
 /// single export with THAT preset selected (at its pinned scale) produces.
-@Suite("Multi-size export · CS-093")
+@Suite("Multi-size export")
 @MainActor
 struct MultiSizeExportTests {
     private func tempDirectory() -> URL {
@@ -112,7 +112,7 @@ struct MultiSizeExportTests {
         #expect(contents?.isEmpty ?? true)
     }
 
-    /// The progress callback (C3) reports monotonically increasing completed counts up
+    /// The progress callback reports monotonically increasing completed counts up
     /// to the total, so the export sheet can show live progress off the main-actor hop.
     @Test func progressCallbackReportsEachCompletedPreset() async throws {
         let dir = tempDirectory()

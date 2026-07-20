@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Release artifact QA checklist (CS-066).
+# Release artifact QA checklist.
 #
 # Verifies that a *published* Vitrine artifact actually works on a clean,
 # compatible Mac — the machine a user installs on, not the developer box where
@@ -21,7 +21,7 @@
 #   scripts/qa-release.sh path/to/Vitrine.app              # an extracted .app
 #   scripts/qa-release.sh                                  # auto-detect dist/*.dmg
 #
-# What it does automatically (the scriptable half — see "Tests" in the ticket):
+# What it does automatically (the scriptable half — see the documented test procedure):
 #   * Records the QA environment: macOS version, hardware architecture, the
 #     artifact's app version (CFBundleShortVersionString + CFBundleVersion), bundle
 #     identifier, and the signing identity (codesign authority). Every manual run
@@ -168,8 +168,8 @@ fi
 
 # --- QA environment record --------------------------------------------------
 # Every manual QA run must record WHERE it ran and WHAT it tested, so a pass/fail
-# is tied to a known machine and artifact. (Acceptance: record macOS version,
-# architecture, app version, and signing identity.)
+# is tied to a known machine and artifact: macOS version, architecture, app
+# version, and signing identity.
 INFO_PLIST="$APP/Contents/Info.plist"
 plist_value() {
 	# Read one Info.plist key without depending on the repo; plutil ships on every
@@ -219,12 +219,12 @@ else
 	fail_app "CFBundleShortVersionString missing from Info.plist"
 fi
 
-# The menu-bar agent must declare LSUIElement so it has NO Dock icon (CS-001). A
+# The menu-bar agent must declare LSUIElement so it has NO Dock icon. A
 # missing/false value is an app bug the manual "no Dock icon" check would also catch.
 if [ "$LSUIELEMENT" = "true" ] || [ "$LSUIELEMENT" = "1" ] || [ "$LSUIELEMENT" = "YES" ]; then
 	pass "LSUIElement is set (menu-bar agent, no Dock icon)"
 else
-	fail_app "LSUIElement is not set — the app would show a Dock icon (CS-001)"
+	fail_app "LSUIElement is not set — the app would show a Dock icon"
 fi
 
 EXECUTABLE="$(plist_value CFBundleExecutable)"
@@ -311,26 +311,26 @@ section "Manual checklist — run these by hand on this clean Mac"
 cat <<'CHECKLIST'
     Work top to bottom; record pass/fail for each in the release QA log.
 
-    [ ]  1. DMG opens          — double-click the .dmg; the volume window appears.
+    [ ]  1. DMG opens         — double-click the .dmg; the volume window appears.
     [ ]  2. Drag to /Applications — drag Vitrine.app onto the Applications alias.
-    [ ]  3. First launch       — open Vitrine from /Applications; it launches past
+    [ ]  3. First launch      — open Vitrine from /Applications; it launches past
                                   Gatekeeper WITHOUT the "unidentified developer"
                                   block (a signed + notarized build is required).
-    [ ]  4. Gatekeeper         — no "cannot be opened because the developer cannot
+    [ ]  4. Gatekeeper        — no "cannot be opened because the developer cannot
                                   be verified" dialog on that first launch.
-    [ ]  5. Menu-bar icon      — the Vitrine icon appears in the menu bar.
-    [ ]  6. No Dock icon       — Vitrine shows NO Dock icon and no app-switcher
-                                  (Cmd-Tab) entry (LSUIElement agent, CS-001).
-    [ ]  7. Quick capture      — trigger Quick Capture; it renders the clipboard /
+    [ ]  5. Menu-bar icon     — the Vitrine icon appears in the menu bar.
+    [ ]  6. No Dock icon      — Vitrine shows NO Dock icon and no app-switcher
+                                  (Cmd-Tab) entry (LSUIElement agent).
+    [ ]  7. Quick capture     — trigger Quick Capture; it renders the clipboard /
                                   selection to an image.
-    [ ]  8. Editor export      — open the editor, paste code, and export a PNG;
+    [ ]  8. Editor export     — open the editor, paste code, and export a PNG;
                                   the saved file opens and looks correct.
-    [ ]  9. Settings           — open Settings; panes load and a changed setting
+    [ ]  9. Settings          — open Settings; panes load and a changed setting
                                   persists across an app relaunch.
-    [ ] 10. Launch at login    — toggle "Launch at login" on; log out and back in
+    [ ] 10. Launch at login   — toggle "Launch at login" on; log out and back in
                                   (or reboot) and confirm Vitrine starts. Toggle it
                                   off and confirm it no longer auto-starts.
-    [ ] 11. Uninstall          — quit Vitrine, move it to the Trash (or
+    [ ] 11. Uninstall         — quit Vitrine, move it to the Trash (or
                                   `brew uninstall --cask vitrine`); it leaves no
                                   menu-bar icon and no login item behind.
 CHECKLIST

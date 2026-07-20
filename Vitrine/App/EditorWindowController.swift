@@ -2,7 +2,7 @@ import AppKit
 import OSLog
 import SwiftUI
 
-/// One editor window's per-window state (CS-053): a stable identity, an independent
+/// One editor window's per-window state: a stable identity, an independent
 /// settings instance seeded from the app-wide defaults, and the live config the
 /// window's `EditorView` edits.
 ///
@@ -18,7 +18,7 @@ final class EditorSession {
     let identity: EditorWindowIdentity
 
     /// The window's independent settings, seeded from the app-wide defaults but backed
-    /// by a throwaway store, so its edits never clobber the global default (CS-053).
+    /// by a throwaway store, so its edits never clobber the global default.
     let settings: AppSettings
 
     /// Creates a session for `identity` with its own volatile settings.
@@ -26,7 +26,7 @@ final class EditorSession {
     /// The **primary** window adopts the app's live working document — the
     /// `AppSettings.shared` config, including any code a quick capture, App Intent, or
     /// `--demo` just loaded — so "Open Editor" always surfaces the current document,
-    /// exactly as the single-window app did. **Additional** windows (CS-053) seed only
+    /// exactly as the single-window app did. **Additional** windows seed only
     /// the default *style* and open with an empty editor, so "New Editor Window" is a
     /// fresh canvas in the user's default look. A test can inject `settings` directly.
     init(identity: EditorWindowIdentity, settings: AppSettings? = nil) {
@@ -44,23 +44,23 @@ final class EditorSession {
         }
     }
 
-    /// A restoration snapshot of the window's current draft document/style (CS-053).
+    /// A restoration snapshot of the window's current draft document/style.
     var windowState: EditorWindowState { EditorWindowState(config: settings.config) }
 
     /// Adopts a restored draft as this window's live config, used when a relaunch
-    /// rebuilds the window from its archived state (CS-053).
+    /// rebuilds the window from its archived state.
     func restore(_ state: EditorWindowState) {
         settings.config = state.config()
     }
 
-    /// Promotes this window's current look to the app-wide default (CS-053 "make
-    /// default is explicit"): future captures and new windows start from it.
+    /// Promotes this window's current look to the app-wide default so future
+    /// captures and new windows start from it.
     ///
     /// Because the acting window already displays that style, the promotion changes
     /// nothing on screen — so it confirms with a brief in-app HUD ("Set as the
     /// default style") to give the explicit action explicit, visible feedback,
     /// consistent with the rest of the app's microinteractions. The same shared HUD
-    /// (CS-038) backs routine capture confirmations, so this never posts a
+    /// backs routine capture confirmations, so this never posts a
     /// Notification Center banner. Both the editor toolbar's star and the File-menu
     /// "Make This Window the Default" route through here, so a single call site
     /// covers both.
@@ -71,7 +71,7 @@ final class EditorSession {
     }
 
     /// Tears down the volatile backing store when the window closes so a per-window
-    /// suite never accumulates on disk (CS-053).
+    /// suite never accumulates on disk.
     func discard() {
         settings.discardVolatileStore()
     }
@@ -80,7 +80,7 @@ final class EditorSession {
 /// Owns the app's editor windows (hosted SwiftUI), opened from the menu, the global
 /// hotkey, or App Intents without a SwiftUI `openWindow` environment.
 ///
-/// ## Multi-window editing and restoration (CS-053)
+/// ## Multi-window editing and restoration
 ///
 /// Vitrine behaves like a native multi-window Mac app: the user can open more than one
 /// editor at a time, each with its own ``EditorSession`` (and therefore its own
@@ -99,7 +99,7 @@ final class EditorSession {
 ///   now-unplugged monitor never opens off-screen.
 ///
 /// Editor windows use the shared `TitleBarAlignedWindow` so the traffic lights stay
-/// centered on the tall glass toolbar (CS-087), the same as the Web Snapshot and Social
+/// centered on the tall glass toolbar, the same as the Web Snapshot and Social
 /// Card composers.
 ///
 /// `EditorWindowController` is a `NSObject` so it can serve as each window's delegate
@@ -125,8 +125,8 @@ final class EditorWindowController: NSObject {
     private var restorableStateGeneration: [Int: Int] = [:]
 
     /// The opening content size for a brand-new editor window. Wide enough for the
-    /// preset strip plus the code / preview / inspector columns of the redesigned
-    /// editor (CS-037); the SwiftUI root enforces its own minimum below this. A window
+    /// preset strip plus the code / preview / inspector columns of the current designed
+    /// editor; the SwiftUI root enforces its own minimum below this. A window
     /// restored from a saved frame overrides this.
     private static let defaultContentSize = NSSize(width: 1180, height: 680)
 
@@ -134,7 +134,7 @@ final class EditorWindowController: NSObject {
         super.init()
         // Recover any window that ends up off-screen after the display arrangement
         // changes (a monitor unplugged or rearranged), so a restored frame is never
-        // stranded where it cannot be reached (CS-053).
+        // stranded where it cannot be reached.
         NotificationCenter.default.addObserver(
             self, selector: #selector(screenArrangementChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
@@ -149,7 +149,7 @@ final class EditorWindowController: NSObject {
         showWindow(for: .primary)
     }
 
-    /// Opens an *additional* editor window with its own independent session (CS-053
+    /// Opens an *additional* editor window with its own independent session (
     /// "users can open multiple editor windows"). The new window takes the lowest free
     /// index, so a closed window's slot — and its remembered frame — is reused first.
     func openNewWindow() {
@@ -159,7 +159,7 @@ final class EditorWindowController: NSObject {
 
     /// Shows the editor preloaded with the onboarding sample snippet when the primary
     /// window has no code yet, so a first-run user can explore the flow without external
-    /// clipboard content (CS-035).
+    /// clipboard content.
     func showWithSample() {
         let session = session(for: .primary)
         if EditorPreview.isEffectivelyEmpty(session.settings.config.code) {
@@ -170,7 +170,7 @@ final class EditorWindowController: NSObject {
 
     /// Loads `config` into the **primary** editor window and shows it, used by the
     /// "hand this off to the editor" paths — quick capture deferring several code
-    /// blocks (CS-027) and the Open-Code-in-Editor App Intent (CS-034). Unlike a plain
+    /// blocks and the Open-Code-in-Editor App Intent. Unlike a plain
     /// `show()` (which only focuses the existing window so it never clobbers an
     /// in-progress document), this is an explicit load: it replaces the primary
     /// window's document with `config`, creating the window if needed.
@@ -199,7 +199,7 @@ final class EditorWindowController: NSObject {
     }
 
     /// Builds the AppKit window hosting an `EditorView` bound to `identity`'s session,
-    /// wired for frame autosave and secure state restoration (CS-053).
+    /// wired for frame autosave and secure state restoration.
     private func makeWindow(for identity: EditorWindowIdentity) -> NSWindow {
         let session = session(for: identity)
         let hosting = NSHostingController(
@@ -211,15 +211,15 @@ final class EditorWindowController: NSObject {
         window.styleMask = [
             .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView,
         ]
-        // The redesign merges the title bar into the editor's glass toolbar:
-        // the traffic lights float over its leading edge (design/handoff).
+        // The current design merges the title bar into the editor's glass toolbar:
+        // the traffic lights float over its leading edge.
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultContentSize)
         window.isReleasedWhenClosed = false
 
         // Vitrine is not a tabbed-document app: each editor is its own independent
-        // window with its own session (CS-053). Disallow tabs so that, on a Mac whose
+        // window with its own session. Disallow tabs so that, on a Mac whose
         // "Prefer tabs when opening documents" is set to Always, "New Editor Window"
         // always opens a separate window rather than folding into the key window's tab
         // group — keeping the multi-window behavior (and its UI smoke test) reliable.
@@ -230,7 +230,7 @@ final class EditorWindowController: NSObject {
         // get an index-suffixed identifier so a specific one can be addressed.
         window.setAccessibilityIdentifier(Self.accessibilityIdentifier(for: identity))
 
-        // Frame persistence + secure state restoration (CS-053). The autosave name
+        // Frame persistence + secure state restoration. The autosave name
         // restores size/position across launches; the restoration class + encoded
         // draft let secure restoration rebuild the document this window held.
         window.setFrameAutosaveName(identity.frameAutosaveName)
@@ -247,7 +247,7 @@ final class EditorWindowController: NSObject {
         // restore. Cap the default size to the screen it opens on — the 1180-point
         // default is wider than a small display (e.g. 1024x768), and a window that
         // overhangs the screen edge leaves its trailing toolbar actions unreachable
-        // (CS-053) — then center it. The SwiftUI root's own minimum still applies, so
+        // — then center it. The SwiftUI root's own minimum still applies, so
         // the cap never squeezes the editor below its supported layout. One with a
         // saved frame keeps the restored position and only needs the off-screen
         // recovery pass in `showWindow(for:)`.
@@ -262,7 +262,7 @@ final class EditorWindowController: NSObject {
     }
 
     /// Begins (or restarts) observing the session's document so the window at `index` keeps
-    /// its restorable state current (CS-053). Bumps the generation first, so any earlier
+    /// its restorable state current. Bumps the generation first, so any earlier
     /// re-arm for this index — from a window that closed or was reopened — sees itself as
     /// stale and stops, leaving exactly one live observation per index.
     private func trackRestorableState(ofSessionAt index: Int) {
@@ -303,8 +303,8 @@ final class EditorWindowController: NSObject {
     // MARK: - Key-window session (menu command target)
 
     /// The session of the key (or, failing that, the main) editor window, so a Copy /
-    /// Save / Share / Make Default initiated from the menu acts on the visible editor
-    /// (CS-053). `nil` when no editor window is key, which is how the editor commands
+    /// Save / Share / Make Default initiated from the menu acts on the visible editor.
+    /// `nil` when no editor window is key, which is how the editor commands
     /// stay disabled outside an editor.
     var keyWindowSession: EditorSession? {
         let target = NSApp.keyWindow ?? NSApp.mainWindow
@@ -315,7 +315,7 @@ final class EditorWindowController: NSObject {
         return nil
     }
 
-    // MARK: - Off-screen recovery (CS-053)
+    // MARK: - Off-screen recovery
 
     /// When the display arrangement changes, nudge any now-off-screen editor window
     /// back onto a visible screen so a window saved on an unplugged monitor is never
@@ -337,7 +337,7 @@ final class EditorWindowController: NSObject {
         }
     }
 
-    /// A UI-test hook (CS-053): shove the primary editor window far off the visible
+    /// A UI-test hook: shove the primary editor window far off the visible
     /// screens and then run the recovery pass, so an automated test can verify the
     /// window is pulled back on-screen without physically rearranging displays. Only
     /// reachable through the `--force-offscreen-editor` launch argument.
@@ -354,7 +354,7 @@ final class EditorWindowController: NSObject {
 extension EditorWindowController: NSWindowDelegate {
     /// Drops the closed window and tears down its volatile session store, so closing
     /// one window never disturbs the others' state and a per-window suite does not
-    /// linger on disk (CS-053). The primary window's session is kept so reopening it
+    /// linger on disk. The primary window's session is kept so reopening it
     /// preserves the user's in-progress document within the same launch; additional
     /// windows are released entirely.
     func windowWillClose(_ notification: Notification) {
@@ -373,7 +373,7 @@ extension EditorWindowController: NSWindowDelegate {
     }
 
     /// Archives the window's current draft config into its restorable state, so secure
-    /// restoration can rebuild the document on the next launch (CS-053). AppKit calls
+    /// restoration can rebuild the document on the next launch. AppKit calls
     /// this delegate hook from the window's `encodeRestorableState(with:)`. The matching
     /// decode happens in `EditorWindowRestoration` when the window is recreated.
     func window(_ window: NSWindow, willEncodeRestorableState state: NSCoder) {
@@ -385,9 +385,9 @@ extension EditorWindowController: NSWindowDelegate {
     }
 }
 
-// MARK: - State restoration (CS-053)
+// MARK: - State restoration
 
-/// Restores editor windows during secure state restoration (CS-053).
+/// Restores editor windows during secure state restoration.
 ///
 /// When AppKit replays a previous session it asks this class to recreate a window for a
 /// saved restoration identifier. The window is rebuilt through `EditorWindowController`
@@ -425,7 +425,7 @@ extension EditorWindowController {
         windows[index] = window
 
         // Re-apply the archived draft so the window restores the exact document it
-        // held; a missing or corrupt blob leaves the seeded default in place (CS-050).
+        // held; a missing or corrupt blob leaves the seeded default in place.
         if let data = state.decodeObject(of: NSData.self, forKey: Self.restorationStateKey)
             as Data?,
             let restored = EditorWindowState.decoded(from: data)

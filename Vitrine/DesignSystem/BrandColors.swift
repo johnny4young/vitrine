@@ -4,7 +4,7 @@ extension Brand {
 
     /// A semantic brand color with explicit appearance variants. Resolving a
     /// single `Color` from these (`BrandColor.color`) guarantees the right value
-    /// for light, dark, and high-contrast appearances (CS-036) without relying on
+    /// for light, dark, and high-contrast appearances without relying on
     /// an asset-catalog lookup, which keeps the palette testable in isolation.
     struct BrandColor: Equatable {
         let light: Color

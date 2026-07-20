@@ -1,6 +1,6 @@
 import Foundation
 
-/// The app's UI language, chosen in Settings and persisted across launches (CS-047).
+/// The app's UI language, chosen in Settings and persisted across launches.
 ///
 /// macOS resolves an app's localization at launch from `AppleLanguages` in the app's
 /// preferences domain, so a change takes effect the next time Vitrine opens (the Settings
@@ -26,7 +26,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     /// in the user's current language; the concrete languages use their own *autonym*
     /// (their name in their own language), so a speaker always recognizes their
     /// language regardless of the current UI language — the convention System Settings
-    /// uses (CS-047).
+    /// uses.
     var displayName: String {
         switch self {
         case .system: String(localized: "System")
@@ -46,7 +46,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// Resolves a persisted raw value to a case, defaulting to `.system` for a missing or
-    /// unrecognized value (CS-050 defensive read).
+    /// unrecognized value (defensive read).
     static func resolve(_ raw: String?) -> AppLanguage {
         raw.flatMap(AppLanguage.init(rawValue:)) ?? .system
     }

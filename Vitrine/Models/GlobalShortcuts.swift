@@ -1,6 +1,6 @@
 import KeyboardShortcuts
 
-/// Global keyboard shortcuts, persisted by the KeyboardShortcuts package (CS-002).
+/// Global keyboard shortcuts, persisted by the KeyboardShortcuts package.
 ///
 /// With the module's default actor isolation set to `MainActor`, these statics are
 /// main-actor isolated and need no `Sendable`/`nonisolated(unsafe)` annotations.

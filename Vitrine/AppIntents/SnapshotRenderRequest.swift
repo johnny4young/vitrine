@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// A pure, value-typed request to render a piece of code text into an image,
-/// shared by every automation surface (App Intents and the Services menu, CS-034).
+/// shared by every automation surface (App Intents and the Services menu).
 ///
 /// `SnapshotRenderRequest` is the automation counterpart to the CLI's `CLIOptions`:
 /// it carries no AppKit state and does no rendering, so it can be unit-tested off
@@ -20,7 +20,7 @@ import Foundation
 ///   the built-in catalog.
 /// - `presetID: nil` applies no destination preset; an explicit id reframes the
 ///   presentation/output (size, scale, background) just like the GUI, and never
-///   touches the code (CS-020).
+///   touches the code.
 /// - `transparent` forces a real transparent background, winning over a preset's
 ///   background, mirroring the CLI's `--transparent`.
 ///
@@ -55,11 +55,11 @@ struct SnapshotRenderRequest: Equatable {
     /// The output image format. PNG is the default; PDF is the vector option.
     var format: ExportFormat = .png
 
-    /// The ICC color profile for PNG export (CS-024). PDF ignores this.
+    /// The ICC color profile for PNG export. PDF ignores this.
     var profile: ColorProfile = .sRGB
 
     /// Render a real transparent background, preserving alpha on export and winning
-    /// over any preset background (CS-024). Off by default.
+    /// over any preset background. Off by default.
     var transparent: Bool = false
 
     /// The live style an automation starts from before applying its overrides —
@@ -77,7 +77,7 @@ struct SnapshotRenderRequest: Equatable {
     ///   4. The transparent-background override (wins over a preset's background).
     ///
     /// The code is set from `code` and the language from `resolvedLanguage`; neither
-    /// is ever altered by a preset (a preset is presentation/output only, CS-020).
+    /// is ever altered by a preset (a preset is presentation/output only).
     func makeConfig() -> SnapshotConfig {
         var config = baseStyle.styled(
             presetID: presetID, themeID: themeID, transparent: transparent)
@@ -100,14 +100,14 @@ struct SnapshotRenderRequest: Equatable {
     /// The effective export scale, applying the GUI's precedence: an explicit scale
     /// wins; otherwise a chosen preset's recommended scale is used; with neither, the
     /// app default. Clamped to the valid 1...3 range so a wild value can never reach
-    /// the renderer (CS-020/050).
+    /// the renderer.
     var effectiveScale: CGFloat {
         let raw = scale ?? resolvedPreset?.scale ?? SettingsDefaults.exportScale
         return CGFloat(SettingsDefaults.clampExportScale(raw))
     }
 
     /// The exact logical canvas size to render, when the active preset pins one
-    /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content (CS-020).
+    /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content.
     var fixedSize: CGSize? { resolvedPreset?.sizing.fixedSize }
 
     /// Whether the request carries usable (non-empty) code. An automation that hands

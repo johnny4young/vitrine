@@ -1,12 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// Owns and presents the redesigned preferences window (design/handoff).
+/// Owns and presents the current designed preferences window.
 ///
 /// The window is a fixed 720×600 card hosting `SettingsRootView` — a sidebar
 /// of panes on the left and the active pane on the right. The title bar is
 /// transparent and merged into the content (the sidebar runs to the top, under
-/// the traffic lights), matching the handoff reference while keeping the
+/// the traffic lights), matching the app's settings layout while keeping the
 /// standard close control.
 final class SettingsWindowManager {
     static let shared = SettingsWindowManager()

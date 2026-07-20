@@ -5,9 +5,9 @@ import UniformTypeIdentifiers
 
 @testable import Vitrine
 
-/// Rich export targets and multi-representation clipboard (CS-054).
+/// Rich export targets and multi-representation clipboard.
 ///
-/// These tests pin the five guarantees the ticket is about:
+/// These tests pin five rich-export guarantees:
 ///  1. Copy puts image data on the pasteboard and, when enabled, an additional
 ///     rich representation — without breaking the existing PNG round-trip.
 ///  2. "Copy as data URI" yields a valid `data:image/png;base64,…` string that
@@ -21,7 +21,7 @@ import UniformTypeIdentifiers
 /// private, named `NSPasteboard` so they never clobber the developer's clipboard
 /// and never interfere with one another.
 @MainActor
-@Suite("Rich export (CS-054)", .serialized)
+@Suite("Rich export", .serialized)
 struct RichExportTests {
     // MARK: - Fixtures & helpers
 
@@ -479,7 +479,7 @@ struct RichExportTests {
     }
 
     @Test func richPayloadStillCarriesTheImageWhenAStyledRepresentationIsDropped() throws {
-        // The ticket's core safety promise: an oversized/failed rich representation
+        // The core safety promise: an oversized/failed rich representation
         // is *omitted, never fatal* — the image still copies. The size cap is fixed
         // on `makePayload`, so this proves the composition directly: the styled text
         // for this snippet is dropped under a 16-byte cap, yet the same snippet's

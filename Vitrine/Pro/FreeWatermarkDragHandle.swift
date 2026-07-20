@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The interactive drag layer for a free-placed brand mark (CS-092 follow-up).
+/// The interactive drag layer for a free-placed brand mark .
 ///
 /// The mark itself is drawn by `SnapshotCanvas`'s `WatermarkOverlay` (in the live
 /// editor preview) or baked into the rendered preview image (in Settings) beneath
@@ -88,7 +88,7 @@ struct FreeWatermarkDragHandle: View {
     }
 
     /// The largest rect with `imageSize`'s aspect ratio that fits centered in `bounds`
-    /// — the content rect of an aspect-fit preview image, so a drag maps to the image,
+    /// the content rect of an aspect-fit preview image, so a drag maps to the image,
     /// not the letterbox around it.
     static func aspectFitRect(imageSize: CGSize, in bounds: CGSize) -> CGRect {
         guard imageSize.width > 0, imageSize.height > 0, bounds.width > 0, bounds.height > 0

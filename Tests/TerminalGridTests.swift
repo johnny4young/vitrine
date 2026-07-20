@@ -157,7 +157,7 @@ struct TerminalGridTests {
     // MARK: - Charset designation must not leak its final byte
 
     @Test func charsetDesignationIsConsumedNotPrinted() {
-        // `ESC ( B` (designate ASCII into G0) is three bytes; htop and friends emit it
+        // `ESC (B` (designate ASCII into G0) is three bytes; htop and friends emit it
         // constantly. The final `B` must be swallowed, not printed as stray text.
         #expect(plain("A\(esc)(BC") == "AC")
         #expect(plain("\(esc)(0x\(esc)(By") == "xy")  // line-drawing in, ASCII back out

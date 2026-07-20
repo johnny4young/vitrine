@@ -26,8 +26,8 @@ Guidance for AI agents and contributors. Keep it short; only non-obvious rules l
 - **Formatting:** run `make format` before committing; `make lint` must pass
   (Apple `swift-format`, configured by [`.swift-format`](.swift-format)).
 - Match the module layout under `Vitrine/` (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
-- Unimplemented work is marked `// TODO: CS-0xx` referencing the local working spec.
-  Keep those markers accurate.
+- `TODO` comments must describe the missing behavior directly. Do not put private
+  planning identifiers, private work-item names, or local-document references in tracked files.
 - No network code in the core. Sandboxed without `network.client`; user content never
   leaves the Mac.
 
@@ -42,7 +42,7 @@ Guidance for AI agents and contributors. Keep it short; only non-obvious rules l
 - **Never add AI co-authorship or "generated-by" trailers** to commits or PRs
   (no `Co-Authored-By: Claude…`, no `🤖 Generated with…`). Only on explicit request.
 - Conventional, imperative subject lines (e.g. `feat(menubar): add Theme submenu`).
-  Reference tickets where relevant (`CS-009`).
+- Keep private planning identifiers out of commit subjects, PR text, code, and docs.
 
 ## Verifying a change
 

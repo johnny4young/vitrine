@@ -1,6 +1,6 @@
 import AppKit
 
-/// The standard macOS "About Vitrine" panel, branded with the app's tagline (CS-036).
+/// The standard macOS "About Vitrine" panel, branded with the app's tagline.
 ///
 /// The system panel supplies the app icon, name, and version, and shows the
 /// `NSHumanReadableCopyright` from `Info.plist` on its own. The branded credits add

@@ -24,23 +24,23 @@ struct SourceTextClipboardTests {
     }
 }
 
-/// SVG export and the deterministic vector fallback (CS-023).
+/// SVG export and the deterministic vector fallback.
 ///
-/// CS-023 is a Discovery/spike with a documented decision: there is **no** faithful
+/// A technical evaluation established that there is **no** faithful
 /// full-canvas SVG path, so PDF is the supported vector format, and a hand-authored
 /// SVG serializer exists **only** for the deterministic simple-template subset
 /// (`VectorTemplateSVG`) — never the arbitrary code canvas, and never as a fake
 /// raster-in-SVG wrapper. These tests pin exactly those guarantees:
 ///
 /// - the export-format menu states honestly which output is vector (PDF), and the
-///   format value round-trips through persistence (CS-050);
+///   format value round-trips through persistence;
 /// - the supported vector exports carry the right signatures (PDF `%PDF`, SVG
 ///   `<?xml …><svg …>`) and the SVG uses native primitives, with no `<image>`
 ///   element or embedded raster payload anywhere;
 /// - a transparent background stays genuinely transparent in both vector outputs;
 /// - the template SVG is byte-for-byte deterministic for the same input.
 @MainActor
-@Suite("Export · SVG and vector fallback (CS-023)")
+@Suite("Export · SVG and vector fallback")
 struct VectorExportTests {
     // MARK: - Fixtures
 
@@ -55,7 +55,7 @@ struct VectorExportTests {
 
     private static let cardSize = CGSize(width: 1200, height: 630)
 
-    // MARK: - Format menu accuracy (CS-023 acceptance: "menu shows supported vector outputs")
+    // MARK: - Format menu accuracy
 
     @Test("PNG, PDF, HEIC, and AVIF are offered; PDF is the only vector option")
     func formatCasesAndVectorFlag() {
@@ -83,7 +83,7 @@ struct VectorExportTests {
         #expect(ExportFormat.pdf.summary.lowercased().contains("vector"))
     }
 
-    // MARK: - Format round-trip (CS-023 tests: "format round-trip")
+    // MARK: - Format round-trip (tests: "format round-trip")
 
     @Test("Format round-trips through its persisted raw value")
     func formatRoundTrip() {
@@ -91,7 +91,7 @@ struct VectorExportTests {
             #expect(ExportFormat.resolve(format.rawValue) == format)
             #expect(ExportFormat(rawValue: format.rawValue) == format)
         }
-        // Raw values are the stable persistence contract (CS-050); they must not
+        // Raw values are the stable persistence contract; they must not
         // drift, or stored preferences would silently change format.
         #expect(ExportFormat.png.rawValue == "png")
         #expect(ExportFormat.pdf.rawValue == "pdf")
@@ -177,7 +177,7 @@ struct VectorExportTests {
         #expect(SuggestedFilename.basename(for: terminal) == "vitrine")
     }
 
-    // MARK: - PDF signature (CS-023 tests: "exported PDF signature")
+    // MARK: - PDF signature (tests: "exported PDF signature")
 
     @Test("PDF export is a real PDF document (%PDF magic)")
     func pdfSignature() throws {
@@ -198,8 +198,8 @@ struct VectorExportTests {
         // Rasterize the whole page into a fully transparent bitmap. The padding
         // around the code card has a transparent background, so those regions must
         // stay clear (alpha 0); an opaque matte would force every pixel to alpha
-        // 255. This is the same transparency the PNG path guarantees (CS-024),
-        // exercised through the supported vector format (CS-023).
+        // 255. This is the same transparency the PNG path guarantees,
+        // exercised through the supported vector format.
         let width = max(Int(box.width), 1)
         let height = max(Int(box.height), 1)
         let bytesPerRow = width * 4
@@ -220,7 +220,7 @@ struct VectorExportTests {
         #expect(clearPixels > 0)
     }
 
-    // MARK: - Template SVG signature (CS-023 tests: "exported SVG signature")
+    // MARK: - Template SVG signature (tests: "exported SVG signature")
 
     @Test("Solid-background template serializes to a real SVG document")
     func svgSolidSignature() throws {
@@ -268,14 +268,14 @@ struct VectorExportTests {
         #expect(svg.contains("stop-opacity=\"0.5\""))
     }
 
-    // MARK: - No raster-in-SVG fallback (CS-023 acceptance & tests)
+    // MARK: - No raster-in-SVG fallback (contract & tests)
 
     @Test("Image background is unsupported, not a raster-in-SVG wrapper")
     func imageBackgroundReturnsNil() {
         let image = BackgroundStyle.image(
             ImageBackground(reference: ImageReference(fileName: "photo.png")))
         // The serializer refuses an image background rather than embedding a raster:
-        // there is no fake .svg wrapping a PNG (CS-023).
+        // there is no fake .svg wrapping a PNG.
         #expect(VectorTemplateSVG.background(image, size: Self.cardSize) == nil)
         #expect(VectorTemplateSVG.supports(image) == false)
         // Every other simple-template background is supported.
@@ -296,7 +296,7 @@ struct VectorExportTests {
             let svg = try #require(
                 VectorTemplateSVG.background(background, size: Self.cardSize))
             // A real vector card never embeds a bitmap: no <image> element and no
-            // base64 PNG/JPEG payload smuggled in as a data URI (CS-023).
+            // base64 PNG/JPEG payload smuggled in as a data URI.
             #expect(!svg.contains("<image"))
             #expect(!svg.lowercased().contains("data:image"))
             #expect(!svg.contains("base64"))
@@ -304,7 +304,7 @@ struct VectorExportTests {
         }
     }
 
-    // MARK: - Transparent vector export (CS-023 acceptance)
+    // MARK: - Transparent vector export
 
     @Test("Transparent template SVG has no background rectangle")
     func svgTransparentHasNoBackground() throws {
@@ -359,7 +359,7 @@ struct VectorExportTests {
         // Substring checks pass even on malformed markup (an unbalanced tag, a
         // broken attribute). Parsing with XMLDocument proves the serializer emits a
         // real, well-formed SVG document — the "valid, well-formed SVG" guarantee
-        // CS-023 makes for every case, including the empty transparent canvas.
+        // the serializer makes for every case, including the empty transparent canvas.
         for background in [
             BackgroundStyle.solid(
                 RGBAColor(Color(.sRGB, red: 0.1, green: 0.5, blue: 0.9, opacity: 0.7))),

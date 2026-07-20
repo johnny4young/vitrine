@@ -1,4 +1,4 @@
-# Releasing Vitrine (CS-012)
+# Releasing Vitrine
 
 > **First time shipping?** Opening the Apple Developer account, generating the signing
 > certificate and notary/Sparkle keys, picking the names, and creating the GitHub
@@ -10,7 +10,7 @@ Vitrine ships as a Developer ID-signed, notarized DMG attached to a GitHub relea
 installable via a Homebrew cask. The pipeline degrades gracefully: without signing
 secrets it still produces an **unsigned** DMG for local development — but that
 unsigned build is **never production-ready** (Gatekeeper rejects it). See
-[Signing, notarization & Gatekeeper (CS-061)](#signing-notarization--gatekeeper-cs-061).
+[Signing, notarization & Gatekeeper](#signing-notarization--gatekeeper).
 
 ## One command, locally
 
@@ -29,10 +29,10 @@ git push origin v0.1.0
 ```
 
 The workflow builds the Release app, signs + notarizes it when the signing secrets
-are configured (CS-061), verifies the signature and runs a Gatekeeper assessment,
+are configured, verifies the signature and runs a Gatekeeper assessment,
 creates the DMG, and publishes a GitHub release with auto-generated notes.
 
-## Continuous integration (CS-060)
+## Continuous integration
 
 CI is a release gate, not just a compile check.
 
@@ -110,7 +110,7 @@ on `main` has already had the full suite executed by `ci.yml`, and a UI-level
 flake should not block an urgent tag. Run `make test-ui` locally before tagging if
 the release includes UI changes that never went through a PR.
 
-## Signing, notarization & Gatekeeper (CS-061)
+## Signing, notarization & Gatekeeper
 
 Outside the Mac App Store, modern macOS expects a direct download to be **Developer
 ID-signed and notarized**, or Gatekeeper blocks first launch. `scripts/build-dmg.sh`
@@ -176,7 +176,7 @@ Apple ID style (fallback):
 | `MACOS_NOTARY_PASSWORD` | App-specific password |
 | `MACOS_NOTARY_TEAM_ID` | Developer Team ID |
 
-PRO direct-download activation (CS-090):
+PRO direct-download activation:
 
 | Secret | Purpose |
 | --- | --- |
@@ -223,7 +223,7 @@ spctl -a -vv dist/Vitrine-0.1.0.dmg   # "accepted … Notarized Developer ID"
 xcrun stapler validate Vitrine.app
 ```
 
-## Homebrew cask — CS-063
+## Homebrew cask
 
 The goal is a reliable `brew install --cask johnny4young/tap/vitrine`.
 
@@ -330,7 +330,7 @@ rm -rf "$TAP"
 The offline audit checks the stanzas. An `--online` audit additionally downloads the
 DMG, so it only passes once a real release with a matching checksum exists.
 
-## Release notes (What's New) — CS-049
+## Release notes (What's New)
 
 Release notes are bundled in the app and surface as a version-aware "What's New"
 window, so they ship offline with the binary. They live in the repo at
@@ -374,7 +374,7 @@ the changelog's newest version to both `MARKETING_VERSION` and `ReleaseNotes.lat
 the three can never drift. That version's section is also what you paste into the GitHub
 Release body and the Sparkle appcast description.
 
-## Auto-update (Sparkle) — CS-064
+## Auto-update (Sparkle)
 
 The **direct-download** build updates itself with [Sparkle](https://sparkle-project.org):
 it checks a signed EdDSA appcast and installs the next build without a manual reinstall.
@@ -397,11 +397,11 @@ mechanism, and a third-party updater is disallowed there) — see
   (`https://johnny4young.github.io/vitrine/appcast.xml`); `SUPublicEDKey` is the EdDSA public
   key Sparkle verifies every download against.
 - **Direct-download entitlements.** The DMG signs with
-  `Vitrine/Resources/Vitrine.DirectDownload.entitlements`, the Phase 1 set **plus**
+  `Vitrine/Resources/Vitrine.DirectDownload.entitlements`, the minimal set **plus**
   `com.apple.security.network.client` (so Sparkle can download) and the two Sparkle XPC
   `mach-lookup` exceptions. `scripts/build-dmg.sh` selects this file via
   `CODE_SIGN_ENTITLEMENTS`. The default and App Store builds keep the minimal
-  `Vitrine.entitlements` (no network, no Sparkle), so the Phase 1 "no network" posture in
+  `Vitrine.entitlements` (no network, no Sparkle), so the local rendering "no network" posture in
   [`docs/PERMISSIONS.md`](PERMISSIONS.md) is unchanged.
 - **No analytics.** Sparkle's optional system profiling is off (`SUEnableSystemProfiling`
   is `NO`, and no profiling delegate is installed), so an update check sends only the
@@ -478,7 +478,7 @@ is `false`, the **Check for Updates…** command is not added to the menu, and n
 runs. The App Store entitlements (`Vitrine.entitlements`) stay network-free, so that channel
 keeps the documented "no network" posture.
 
-## Visual review — the launch gallery (CS-039)
+## Visual review — the launch gallery
 
 Vitrine ships with generated design-QA evidence: a launch gallery of representative
 screenshots rendered by the app itself, committed under `Tests/Fixtures/Samples/`.
@@ -492,7 +492,7 @@ Before tagging:
 
 See [DESIGN-QA.md](DESIGN-QA.md) for what the gallery covers and how it is enforced.
 
-## Release artifact QA — the clean-Mac checklist (CS-066)
+## Release artifact QA — the clean-Mac checklist
 
 Local debug success is not distribution success. A build that launches fine from
 DerivedData on the developer's machine can still be rejected by Gatekeeper, ship an
@@ -526,7 +526,7 @@ release QA log.
 **What it checks automatically.** The signing/notarization assessment a user's
 Gatekeeper runs at first launch, plus a bundle sanity check — on both the DMG and the
 app inside it: `codesign --verify --deep --strict`, the hardened-runtime flag, `spctl
--a` (Gatekeeper acceptance), `stapler validate` (so first launch works offline), and
+-a` (Gatekeeper validation), `stapler validate` (so first launch works offline), and
 `plutil` Info.plist validation (including `LSUIElement`, the no-Dock-icon marker).
 
 **App bug vs. signing failure.** A failed check is classified and the **exit code says
@@ -581,8 +581,7 @@ interactive items above are the manual half.
 - [ ] Tag pushed; release workflow `verify` gate and DMG publish both green
 - [ ] Tap PR opened: cask `version` + `sha256` set from the release's
       `vitrine-cask-update.txt`, `brew audit --cask --strict` green in the tap, and
-      `brew install`/`brew uninstall --cask` smoke-tested on a clean Mac (CS-063)
+      `brew install`/`brew uninstall --cask` smoke-tested on a clean Mac
 - [ ] **Release artifact QA on a clean Mac** done: `scripts/qa-release.sh` run against
       the published DMG, its environment header + manual checklist recorded in the
       release QA log, and any failure triaged as app bug vs. signing/notarization
-      (CS-066)

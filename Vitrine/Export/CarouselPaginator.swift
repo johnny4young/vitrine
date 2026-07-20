@@ -1,6 +1,6 @@
 import Foundation
 
-/// Splits a long snippet into the pages of a carousel export (feature #15): N slides
+/// Splits a long snippet into the pages of a carousel export: N slides
 /// of consecutive lines, balanced so the last slide never trails with a line or two.
 /// Pure and deterministic, so the split is unit-testable and a re-export produces the
 /// same slides.

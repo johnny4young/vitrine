@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Weekly drift watch (CS-060): GitHub rolls the macOS runner image and the
+  # Weekly drift watch: GitHub rolls the macOS runner image and the
   # bundled Xcode/SDK on its own schedule, which can break the build with no code
   # change. A scheduled run on the default branch exercises the full gate against
   # whatever the current image ships, so drift surfaces here instead of on the
@@ -45,9 +45,12 @@ jobs:
       - name: Lint shell scripts (shellcheck)
         run: shellcheck --severity=warning scripts/*.sh
 
+      - name: Check repository hygiene
+        run: make hygiene
+
       # Validate every workflow's YAML syntax. This is the CI counterpart to
-      # WorkflowConfigurationTests, which asserts the *structure* the acceptance
-      # criteria require; this step guards against a malformed YAML edit that the
+      # WorkflowConfigurationTests, which asserts the required structure; this step
+      # guards against a malformed YAML edit that the
       # structural test's targeted reads might not surface.
       - name: Validate workflow YAML
         run: |
@@ -63,7 +66,7 @@ jobs:
       - name: CHANGELOG matches project version
         run: make changelog-check
 
-      # Localization completeness (CS-047): every translatable key in the String
+      # Localization completeness: every translatable key in the String
       # Catalog must carry a translated Spanish entry (or fully translated plural
       # variations). The macOS LocalizationTests enforce deeper invariants; this
       # cheap gate catches a missing translation before any macOS minutes.
@@ -91,7 +94,7 @@ jobs:
               and not translated(entry.get("localizations", {}).get("es", {}))
           ]
           for key in sorted(failures):
-              print(f"::error title=Missing Spanish translation (CS-047)::{key!r} has no translated 'es' entry in Localizable.xcstrings.")
+              print(f"::error title=Missing Spanish translation::{key!r} has no translated 'es' entry in Localizable.xcstrings.")
           if failures:
               sys.exit(1)
           print(f"✓ all {len(catalog['strings'])} catalog keys carry a translated Spanish entry.")
@@ -99,7 +102,7 @@ jobs:
 
       # Architecture-doc drift guard: docs/ARCHITECTURE.md bills itself as
       # mirroring the module layout under Vitrine/, and it is the one artifact the
-      # deep review found drifting (a whole module missing). Fail when a top-level
+      # repository audit found drifting (a whole module missing). Fail when a top-level
       # module directory is never mentioned.
       - name: ARCHITECTURE.md mentions every module
         run: |
@@ -115,7 +118,7 @@ jobs:
           [ "$status" -eq 0 ] && echo "✓ every Vitrine/ module is documented."
           exit "$status"
 
-      # Golden baseline integrity (CS-025): every scenario pinned in the manifest
+      # Golden baseline integrity: every scenario pinned in the manifest
       # must have its PNG committed, and every committed PNG must be pinned. A gap
       # means the strict pixel diff silently degrades to render-only coverage.
       - name: Golden manifest ↔ fixture cross-check
@@ -129,9 +132,9 @@ jobs:
           missing = scenarios - pngs
           orphaned = pngs - scenarios
           for name in sorted(missing):
-              print(f"::error title=Golden fixture missing (CS-025)::{name} is pinned in manifest.json but {name}.png is not committed — the strict diff can never run for it.")
+              print(f"::error title=Golden fixture missing::{name} is pinned in manifest.json but {name}.png is not committed — the strict diff can never run for it.")
           for name in sorted(orphaned):
-              print(f"::error title=Golden fixture orphaned (CS-025)::{name}.png is committed but not pinned in manifest.json.")
+              print(f"::error title=Golden fixture orphaned::{name}.png is committed but not pinned in manifest.json.")
           if missing or orphaned:
               sys.exit(1)
           print(f"✓ {len(scenarios)} golden scenarios all have committed fixtures.")
@@ -141,8 +144,8 @@ jobs:
     name: Lint & build
     # macos-latest is the moving "current" image; the drift job above is what
     # catches it rolling. The "Toolchain versions" step records the exact
-    # macOS/Xcode/Swift this run built against, satisfying the CS-060 acceptance
-    # to log exact versions before building.
+    # macOS/Xcode/Swift this run built against, keeping every build traceable to
+    # its exact toolchain.
     runs-on: macos-latest
     # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
@@ -158,14 +161,14 @@ jobs:
       - name: Export DEVELOPER_DIR
         run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
 
-      # Record the exact toolchain this run built against (CS-060). Printed before
+      # Record the exact toolchain this run built against. Printed before
       # any build step and echoed into the job summary so a green/red result is
       # always tied to a known macOS image, Xcode, and Swift version — the anchor
       # for diagnosing runner drift.
       - name: Toolchain versions
         run: |
           {
-            echo "### Toolchain (CS-060)"
+            echo "### Toolchain"
             echo '```'
             echo "Event: ${GITHUB_EVENT_NAME}"
             echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
@@ -179,7 +182,7 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      # Cache the global Swift Package Manager download/clone cache (CS-060). This
+      # Cache the global Swift Package Manager download/clone cache. This
       # directory is a content-addressed checkout cache, safe to restore across
       # runs; xcodebuild repopulates and re-resolves into DerivedData as needed, so
       # a stale or partial cache only costs a re-download, never a wrong build. The
@@ -197,7 +200,7 @@ jobs:
       - name: Lint (swift-format)
         run: make lint
 
-      # Capture an .xcresult bundle for each xcodebuild phase (CS-060) so a failure
+      # Capture an .xcresult bundle for each xcodebuild phase so a failure
       # can be triaged offline from the uploaded artifact. RESULT_BUNDLE is honored
       # by the build/test/build-ui-tests make targets.
       - name: Build (Debug)
@@ -238,7 +241,7 @@ jobs:
             ${{ runner.temp }}/test.xcresult
           if-no-files-found: ignore
 
-      # Launch-gallery design-QA artifacts (CS-039). The unit suite already renders
+      # Launch-gallery design-QA artifacts. The unit suite already renders
       # and verifies every gallery sample; on a FAILURE, regenerate the gallery into
       # a workspace directory and upload it so a reviewer can eyeball the *actual*
       # rendered images for design review instead of inferring a visual regression
@@ -260,7 +263,7 @@ jobs:
             cp "${staging}/manifest.json" "${dest}/" 2>/dev/null || true
             echo "Collected $(ls "${dest}"/*.png 2>/dev/null | wc -l | tr -d ' ') gallery images for review."
           else
-            echo "::warning title=Gallery render (CS-039)::could not locate the generator staging directory."
+            echo "::warning title=Gallery render::could not locate the generator staging directory."
           fi
       - name: Upload gallery design-review artifacts
         if: failure()
@@ -270,12 +273,12 @@ jobs:
           path: ${{ runner.temp }}/vitrine-gallery-review
           if-no-files-found: ignore
 
-      # Render-latency budget (CS-026). Documented two-tier threshold: the suite
+      # Render-latency budget. Documented two-tier threshold: the suite
       # FAILS only past the hard ceiling (a real, order-of-magnitude regression),
       # and WARNS when the 300 ms target is exceeded — surfaced here as GitHub
       # annotations so a drift toward the limit is visible on the PR without
       # red-flagging noisy shared CI hardware.
-      - name: Performance budget (CS-026)
+      - name: Performance budget
         run: |
           set -o pipefail
           make perf 2>&1 | tee perf.log
@@ -287,11 +290,11 @@ jobs:
         run: |
           if [ -f perf.log ] && grep -q 'PERF WARN' perf.log; then
             grep 'PERF WARN' perf.log | while IFS= read -r line; do
-              echo "::warning title=Render latency over target (CS-026)::${line}"
+              echo "::warning title=Render latency over target::${line}"
             done
           fi
 
-      # Golden-image regression suite (CS-025). The strict pixel comparison runs
+      # Golden-image regression suite. The strict pixel comparison runs
       # only on the pinned runner image recorded in Tests/Fixtures/Golden/
       # manifest.json; on any other image each scenario logs `GOLDEN SKIP` and the
       # render is still exercised end to end, so this step stays green off the pin
@@ -302,7 +305,7 @@ jobs:
       # golden suite is the most CoreText-heavy in the repo, and concurrent
       # typesetting intermittently crashes the harness (see the Makefile's `test`
       # target for the full rationale).
-      - name: Golden-image suite (CS-025)
+      - name: Golden-image suite
         run: |
           set -o pipefail
           env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
@@ -313,7 +316,7 @@ jobs:
         if: always()
         run: |
           if [ -f golden.log ] && grep -q 'GOLDEN SKIP' golden.log; then
-            echo "::warning title=Golden pixel diff skipped (CS-025)::This runner is not the pinned image; strict golden comparison was skipped (render coverage still ran)."
+            echo "::warning title=Golden pixel diff skipped::This runner is not the pinned image; strict golden comparison was skipped (render coverage still ran)."
           fi
       # Upload the rendered "actual" images and diff masks for inspection when a
       # golden comparison fails on the pinned image. The suite writes them under a
@@ -326,12 +329,12 @@ jobs:
           path: ${{ runner.temp }}/vitrine-golden-diffs
           if-no-files-found: ignore
 
-      # Artifact smoke for the standalone comparator (CS-025): prove
+      # Artifact smoke for the standalone comparator: prove
       # scripts/compare-goldens.swift can diff a committed golden against an exact
       # copy of itself (a guaranteed match) and against an obviously different
       # image (a guaranteed mismatch), so the tool CI would use to triage an
       # uploaded artifact is itself verified.
-      - name: Golden comparator smoke (CS-025)
+      - name: Golden comparator smoke
         run: |
           set -euo pipefail
           golden=$(ls Tests/Fixtures/Golden/*.png 2>/dev/null | head -n 1 || true)
@@ -346,13 +349,13 @@ jobs:
           if [ "${other}" != "${golden}" ]; then
             echo "Different-image comparison (expect DIFFER, exit 1):"
             if swift scripts/compare-goldens.swift "${golden}" "${other}"; then
-              echo "::error title=Golden comparator smoke (CS-025)::expected a mismatch but the comparator reported a match"
+              echo "::error title=Golden comparator smoke::expected a mismatch but the comparator reported a match"
               exit 1
             fi
             echo "Comparator correctly reported a mismatch."
           fi
 
-  # Full XCUITest execution (CS-060 follow-up). Compile-only `build-ui-tests`
+  # Full XCUITest execution ( follow-up). Compile-only `build-ui-tests`
   # kept UI-test failures invisible on main; this job actually runs the suite on
   # every PR/push. Driving the menu-bar app through XCUIAutomation needs the
   # macOS automation authorization, which is interactive on a dev machine — but
@@ -379,12 +382,12 @@ jobs:
       - name: Export DEVELOPER_DIR
         run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
 
-      # Same toolchain anchor as the build job (CS-060): tie this job's result to
+      # Same toolchain anchor as the build job: tie this job's result to
       # the exact image/Xcode it ran against.
       - name: Toolchain versions
         run: |
           {
-            echo "### Toolchain — UI tests (CS-060)"
+            echo "### Toolchain — UI tests"
             echo '```'
             echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
             sw_vers

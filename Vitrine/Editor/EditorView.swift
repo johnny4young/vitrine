@@ -1,9 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// The editor window, redesigned around presets (CS-037): a preset-first command
+/// The editor window, redesigned around presets: a preset-first command
 /// strip on top, then code on the left, a hero preview on a neutral stage in the
-/// center, and a focused inspector on the right (CS-005/006/007/008/037).
+/// center, and a focused inspector on the right.
 ///
 /// ## Why this layout
 ///
@@ -23,40 +23,39 @@ struct EditorView: View {
     @Environment(AppSettings.self) var settings
     @Environment(\.foregroundImageStore) var foregroundImageStore
 
-    /// This window's editor session (CS-053). Each editor window has its own session
+    /// This window's editor session. Each editor window has its own session
     /// (and therefore its own `settings` above), so a window can promote *its* style to
     /// the app-wide default without affecting the others. Injected by
     /// `EditorWindowController` when the window is created.
     @Environment(EditorSession.self) var session
 
     /// The saved-preset catalog and the custom-theme resolver, shared with the
-    /// Settings panes so the editor and Preferences operate on the same data
-    /// (CS-030/031). Held as observed singletons so the strip and inspector update
+    /// Settings panes so the editor and Preferences operate on the same data.
+    /// Held as observed singletons so the strip and inspector update
     /// live when presets or themes change anywhere in the app.
     let presets = PresetStore.shared
     let themes = CustomThemeStore.shared
 
     /// The PRO brand kit and entitlement, observed so the live preview shows (or
     /// drops) the watermark the moment the kit, the "apply to captures" switch, or
-    /// the PRO state changes anywhere in the app (CS-092).
+    /// the PRO state changes anywhere in the app.
     @Bindable var brandKit = BrandKitStore.shared
     let entitlements = Entitlements.shared
 
-    /// True while a drag is hovering the editor, used to draw the drop affordance
-    /// (CS-028).
+    /// True while a drag is hovering the editor, used to draw the drop affordance.
     @State var isDropTargeted = false
 
     /// A binary/too-large/unreadable file the user tried to drop; presented as an
-    /// alert so the rejection is clearly explained (CS-028).
+    /// alert so the rejection is clearly explained.
     @State var dropError: FileInputLoader.LoadError?
 
     /// A successful load that is waiting on the user to choose replace vs. append,
-    /// because the editor already has code (CS-028). `nil` when no decision is
+    /// because the editor already has code. `nil` when no decision is
     /// pending.
     @State var pendingDrop: PendingDrop?
 
     /// The natural (unscaled) size of the preview card, measured so the stage
-    /// can scale it to always fit (design/handoff "scale-to-fit").
+    /// can scale it to always fit (the shared scale-to-fit rule).
     @State var cardSize: CGSize = .zero
 
     /// The stage's current size, recorded so the capsule can report the live
@@ -64,16 +63,16 @@ struct EditorView: View {
     @State var stageSize: CGSize = .zero
 
     /// The currently selected annotation, shared between the preview's interactive
-    /// overlay and the inspector's annotation controls (CS-083). `nil` when nothing
+    /// overlay and the inspector's annotation controls. `nil` when nothing
     /// is selected. Editor-only UI state, not persisted.
     @State var selectedAnnotationID: UUID?
 
-    /// The text callout being edited inline (CS-085 follow-up). Non-nil shows a focused
+    /// The text callout being edited inline . Non-nil shows a focused
     /// field over the mark and blanks its canvas copy so the field is the only text
     /// drawn; committing keeps non-empty content or drops an empty callout. Editor-only.
     @State var editingAnnotationID: UUID?
 
-    /// The active annotation tool (CS-085). `.select` moves/resizes existing marks;
+    /// The active annotation tool. `.select` moves/resizes existing marks;
     /// any other tool puts the preview into draw mode. Editor-only UI state.
     @State var activeTool: AnnotationTool = .select
 
@@ -82,22 +81,22 @@ struct EditorView: View {
     @State var newDrawColor: Color = Annotation.defaultColor.color
     @State var newDrawThickness: Double = Annotation.defaultThickness
 
-    /// The emoji the sticker tool places next (feature #13). Defaults to the first of
+    /// The emoji the sticker tool places next. Defaults to the first of
     /// the curated set; the toolbar's sticker picker changes it.
     @State var newStickerGlyph: String = AnnotationTool.stickerChoices[0]
 
-    /// True while Vision is recognizing the beautified image's text (feature #34),
+    /// True while Vision is recognizing the beautified image's text,
     /// so the Copy-text button can't be double-fired mid-recognition.
     @State var isExtractingText = false
 
-    /// Whether the stage draws the safe-area guide over the preview (feature #20):
+    /// Whether the stage draws the safe-area guide over the preview:
     /// the margin platforms may crop or cover, plus the live line/column budget.
     /// Editor-only chrome — the export never includes it. Persisted app-wide (it is
     /// a working preference, not a per-document style).
     @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
     var showsSafeAreaGuides = false
 
-    /// Undo/redo history for annotation edits (CS-086): each entry is a full snapshot
+    /// Undo/redo history for annotation edits: each entry is a full snapshot
     /// of `config.annotations` captured just before a draw/move/resize/delete. Bounded
     /// so a long session never grows without limit.
     @State var annotationUndo: [[Annotation]] = []
@@ -129,8 +128,7 @@ struct EditorView: View {
 
     /// Which PRO multi-size sheet is up — the size picker when unlocked, the paywall
     /// when locked — or nil. A single `.sheet(item:)` drives both so they can never
-    /// collide: two sibling `.sheet(isPresented:)` on one view can silently drop one
-    /// (CS-093).
+    /// collide: two sibling `.sheet(isPresented:)` on one view can silently drop one.
     @State var multiSizeSheet: MultiSizeSheet?
 
     /// The two mutually-exclusive multi-size sheets.
@@ -139,7 +137,7 @@ struct EditorView: View {
         var id: String { rawValue }
     }
 
-    /// The carousel export sheet, or the paywall when PRO is locked (feature #15).
+    /// The carousel export sheet, or the paywall when PRO is locked.
     /// Same single-`.sheet(item:)` discipline as `multiSizeSheet`.
     @State var carouselSheet: MultiSizeSheet?
 
@@ -150,7 +148,7 @@ struct EditorView: View {
 
         /// The dialog title names the source so the choice has context — the
         /// filename for a dropped file, or a generic label for dropped text.
-        /// Localized through the String Catalog (CS-047); the filename is inserted
+        /// Localized through the String Catalog; the filename is inserted
         /// into the localized template.
         var promptTitle: String {
             loaded.filename.isEmpty
@@ -174,7 +172,7 @@ struct EditorView: View {
         // with a hidden, transparent title bar, but SwiftUI still insets its content
         // below the title bar by default, leaving an empty strip above the toolbar.
         // Extending into the top safe area pulls the glass toolbar up to the window
-        // edge, with the traffic lights floating over its leading 86 pt (CS-037).
+        // edge, with the traffic lights floating over its leading 86 pt.
         .ignoresSafeArea(.container, edges: .top)
         // A comfortable minimum that still fits the three columns on the smallest
         // supported window; the stage column absorbs all extra width.
@@ -195,7 +193,7 @@ struct EditorView: View {
                     isPresented: $showCommandPalette, commands: commandPaletteCommands)
             }
         }
-        // Opened from outside the view (a future menu / App Intent posts this).
+        // Opened from outside the view through the app-level notification.
         .onReceive(NotificationCenter.default.publisher(for: .vitrineOpenCommandPalette)) { _ in
             showCommandPalette = true
         }
@@ -224,10 +222,10 @@ struct EditorView: View {
         // No identifier on this root: the VStack is not an accessibility element,
         // so an identifier here would propagate down and *override* the nearest
         // descendant elements' identifiers (the preset strip would report the
-        // root's name instead of `editor-preset-strip`), breaking the CS-037 and
-        // CS-047 UI tests. The window itself is tagged `editor-window`.
+        // root's name instead of `editor-preset-strip`), breaking accessibility and
+        // UI tests. The window itself is tagged `editor-window`.
         // A rejected file (binary, too large, unreadable) explains why in plain
-        // language rather than failing silently (CS-028).
+        // language rather than failing silently.
         .alert(
             "Can't Load That File",
             isPresented: Binding(
@@ -239,7 +237,7 @@ struct EditorView: View {
             Text(dropError?.message ?? "")
         }
         // When the editor already has code, a drop asks before clobbering it:
-        // replace everything, or append to the end (CS-028 "clear prompt").
+        // replace everything, or append to the end.
         .confirmationDialog(
             pendingDrop?.promptTitle ?? "",
             isPresented: Binding(
@@ -249,7 +247,7 @@ struct EditorView: View {
         ) {
             // Replacing discards the entire current document, so it is marked
             // destructive (red) to distinguish it from the safe Append — matching
-            // every other irreversible action in the app (CS-028).
+            // every other irreversible action in the app.
             Button("Replace", role: .destructive) { applyDrop(replacing: true) }
             Button("Append") { applyDrop(replacing: false) }
             Button("Cancel", role: .cancel) { pendingDrop = nil }

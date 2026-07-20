@@ -1,6 +1,7 @@
+import OSLog
 import ServiceManagement
 
-/// Wraps `SMAppService.mainApp` for "launch at login" (CS-014) — the modern
+/// Wraps `SMAppService.mainApp` for "launch at login" — the modern
 /// ServiceManagement API, not the deprecated `SMLoginItemSetEnabled`.
 enum LaunchAtLogin {
     /// Whether the app is currently registered to launch at login.
@@ -13,8 +14,8 @@ enum LaunchAtLogin {
         status == .enabled
     }
 
-    /// Registers or unregisters the login item. Errors are swallowed for now;
-    /// surfacing them in the UI is future work.
+    /// Registers or unregisters the login item. Failures are logged without user data;
+    /// the system status remains the source of truth shown by the settings control.
     static func setEnabled(_ enabled: Bool) {
         do {
             if enabled {
@@ -23,7 +24,10 @@ enum LaunchAtLogin {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            // Ignore: typically an unsigned/dev build or a pending approval.
+            let nsError = error as NSError
+            Log.settings.error(
+                "Launch-at-login update failed (\(nsError.domain, privacy: .public):\(nsError.code, privacy: .public))"
+            )
         }
     }
 }

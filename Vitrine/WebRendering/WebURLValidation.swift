@@ -7,7 +7,7 @@ import Foundation
 // MARK: - URL validation
 
 /// Why a URL was refused for capture, as a typed error rather than a silent
-/// fallback (CS-043). Each case names a distinct, non-PII reason so the first-use
+/// fallback. Each case names a distinct, non-PII reason so the first-use
 /// UI can explain the refusal and tests can assert the exact cause — the value
 /// never carries the rejected URL.
 enum URLValidationError: Error, Equatable {
@@ -30,7 +30,7 @@ extension WebSnapshotConfig {
     /// Validates a candidate capture URL, returning a normalized `http`/`https` URL
     /// or throwing a typed `URLValidationError`.
     ///
-    /// The rules, in order, implement the CS-043 acceptance criteria:
+    /// The rules, in order, enforce the URL safety contract:
     ///
     /// 1. A scheme that is present but not `http`/`https` is rejected as
     ///    `unsupportedScheme`, naming the scheme — this is the explicit refusal for
@@ -45,7 +45,7 @@ extension WebSnapshotConfig {
     ///
     /// Checking the scheme before the host means a non-web scheme is always reported
     /// as such, even when it happens to have no host (e.g. `file:///etc/hosts`),
-    /// which is the more useful, acceptance-aligned refusal. The check is pure (a
+    /// which is the more useful refusal. The check is pure (a
     /// function of the URL alone, with no network access), so it is fully
     /// unit-testable without a web view.
     static func validate(captureURL: URL) throws -> URL {
@@ -83,11 +83,11 @@ extension WebSnapshotConfig {
 
     /// The only schemes a URL capture may use. Deliberately limited to the two web
     /// schemes; everything else — `file:`, `data:`, `javascript:`, `blob:`, `ftp:`
-    /// — is refused unless a future explicit local-file mode is added.
+    /// is refused unless a future explicit local-file mode is added.
     static let allowedSchemes: Set<String> = ["http", "https"]
 
     /// Whether `host` is local, private, or link-local — refused for capture as the
-    /// SSRF defense for CS-043. Covers `localhost`/`.local` (including trailing-dot
+    /// SSRF defense. Covers `localhost`/`.local` (including trailing-dot
     /// FQDN spellings), resolver-equivalent IPv4 literals such as `127.1`,
     /// `0177.1`, `0x7f000001`, and `2130706433`, `0.0.0.0/8`, IPv4 loopback
     /// `127.0.0.0/8`, the RFC1918 private ranges (`10/8`, `172.16/12`, `192.168/16`),

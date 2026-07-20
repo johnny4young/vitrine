@@ -5,12 +5,12 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-094 — PRO gating for automation plus the folder `batch` command. Covers the
-/// CLI's offline token verification (the acceptance "the CLI accepts only a
+/// PRO gating for automation plus the folder `batch` command. Covers the
+/// CLI's offline token verification (the contract "the CLI accepts only a
 /// signature-valid token"), the `batch` parsing + directory loop, the clear
 /// PRO-required error, and the guardrail that the local Debug bypass can never ship.
 @MainActor
-@Suite("CLI automation gating · CS-094")
+@Suite("CLI automation gating")
 struct CLIAutomationTests {
     // MARK: - Offline token verification (the CLI entitlement)
 
@@ -116,7 +116,7 @@ struct CLIAutomationTests {
 
         let fallback = CLIVersion.output(
             format: .text, infoDictionary: [:], executablePath: "/missing/vitrine-cli")
-        #expect(fallback == "vitrine 0.21.0 (22)\n")
+        #expect(fallback == "vitrine 0.22.0 (23)\n")
     }
 
     @Test func versionFallbackConstantsMatchProjectSettings() throws {

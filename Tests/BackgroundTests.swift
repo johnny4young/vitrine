@@ -12,16 +12,16 @@ import UniformTypeIdentifiers
 // for this test file.
 private typealias BackgroundStyle = Vitrine.BackgroundStyle
 
-/// Custom and image backgrounds (CS-051).
+/// Custom and image backgrounds.
 ///
-/// Pins the ticket's guarantees: every background kind is `Codable` and survives
+/// Pins the behavioral guarantees: every background kind is `Codable` and survives
 /// a persistence round-trip; each kind renders with the expected dimensions and
 /// alpha (opaque for color/image, real transparency for `transparent`); a
 /// solid/custom-gradient color round-trips through fixed sRGB; image access is
 /// container-scoped with a graceful fallback for a missing file; and the persisted
-/// background reloads (including the pre-CS-051 legacy gradient name).
+/// background reloads (including the pre- legacy gradient name).
 @MainActor
-@Suite("Background (CS-051)")
+@Suite("Background")
 struct BackgroundTests {
     // MARK: - Fixtures & helpers
 
@@ -104,7 +104,7 @@ struct BackgroundTests {
         return try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
     }
 
-    // MARK: - Codable round-trip (Acceptance: all kinds Codable)
+    // MARK: - Codable round-trip (Contract: all kinds Codable)
 
     @Test func solidRoundTrips() throws {
         let original = BackgroundStyle.solid(
@@ -174,11 +174,11 @@ struct BackgroundTests {
         #expect(abs(a.alphaComponent - b.alphaComponent) < 0.001)
     }
 
-    // MARK: - Defensive decode (Acceptance: never crash on bad data)
+    // MARK: - Defensive decode (Contract: never crash on bad data)
 
     @Test func unknownGradientPresetDecodesToSignatureDefault() throws {
         // A persisted gradient whose preset name no longer resolves degrades to
-        // the signature default instead of failing the decode (CS-050).
+        // the signature default instead of failing the decode.
         let json = #"{"kind":"gradient","preset":"Retired Preset"}"#
         let decoded = try JSONDecoder().decode(BackgroundStyle.self, from: Data(json.utf8))
         #expect(decoded == .gradient(.aurora))
@@ -263,7 +263,7 @@ struct BackgroundTests {
 
     @Test func transparentBackgroundCornerHasRealAlpha() throws {
         // Transparent export must keep a real, fully-clear corner with no matte
-        // (RGB zero at alpha zero), the load-bearing CS-024 guarantee.
+        // (RGB zero at alpha zero), the load-bearing transparency guarantee.
         let config = Self.sampleConfig(background: .transparent)
         let image = try decodedPNG(config)
         let corner = try pixel(image, x: 1, y: 1)
@@ -318,7 +318,7 @@ struct BackgroundTests {
         }
     }
 
-    // MARK: - Missing-image fallback (Acceptance: degrade gracefully)
+    // MARK: - Missing-image fallback (Contract: degrade gracefully)
 
     @Test func missingImageResolvesToNilFromStore() {
         let store = Self.tempStore()
@@ -368,8 +368,8 @@ struct BackgroundTests {
 
     @Test func imageIsServedFromCacheOnRepeatedResolves() throws {
         // A live preview resolves the same reference on every body pass; the second
-        // resolve must return the cached instance rather than re-decoding from disk
-        // (audit Perf-1). Content-addressed names make the path immutable, so the
+        // resolve must return the cached instance rather than re-decoding from disk.
+        // Content-addressed names make the path immutable, so the
         // cached image can never be stale.
         let store = Self.tempStore()
         let reference = try store.importImage(from: Self.makeSamplePNG(.systemTeal))
@@ -426,7 +426,7 @@ struct BackgroundTests {
         }
     }
 
-    // MARK: - Image store: download from URL (CS-082, Phase 4)
+    // MARK: - Image store: download from URL (image-input)
 
     @Test func downloadingFromURLImportsAndResolves() async throws {
         // A stubbed loader returns valid PNG bytes with a 200; the image imports
@@ -614,7 +614,7 @@ struct BackgroundTests {
         #expect(store.url(for: ImageReference(fileName: "..")) == nil)
     }
 
-    // MARK: - Persistence (Acceptance: participates in CS-050 persistence)
+    // MARK: - Persistence
 
     @Test func backgroundPersistsAcrossReloadForEveryKind() {
         let kinds: [BackgroundStyle] = [
@@ -642,7 +642,7 @@ struct BackgroundTests {
     }
 
     @Test func legacyGradientPresetNameStillLoads() {
-        // A pre-CS-051 store wrote only a `gradientPreset` name and no
+        // A pre- store wrote only a `gradientPreset` name and no
         // `backgroundStyle` blob. That name must still load so an upgrading user
         // keeps their chosen gradient.
         let defaults = Self.freshDefaults()
@@ -730,7 +730,7 @@ struct BackgroundTests {
 
     @Test func diagnosticsKindNeverLeaksUserContent() {
         // Solid and image kinds report only their kind, never the RGBA or file
-        // name, so a diagnostics bundle cannot echo user-specific data (CS-048).
+        // name, so a diagnostics bundle cannot echo user-specific data.
         #expect(BackgroundStyle.solid(RGBAColor(Color(hex: "#ABCDEF"))).diagnosticsKind == "solid")
         #expect(
             BackgroundStyle.image(
@@ -742,7 +742,7 @@ struct BackgroundTests {
     }
 }
 
-// MARK: - Image cache cost (A6 — memory bound)
+// MARK: - Image cache memory bound
 
 extension BackgroundTests {
     /// The decoded-byte cost drives the cache's `totalCostLimit`, so it must track the

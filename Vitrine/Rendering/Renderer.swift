@@ -2,20 +2,20 @@ import CoreGraphics
 import Foundation
 
 /// The product of a successful render: the image plus the facts a caller needs to
-/// encode, copy, or save it without knowing which renderer produced it (CS-040).
+/// encode, copy, or save it without knowing which renderer produced it.
 ///
-/// A `RenderedAsset` is deliberately renderer-agnostic — a code snapshot, a future
-/// URL capture, and a social card all resolve to the same value type — so the
+/// A `RenderedAsset` is deliberately renderer-agnostic — code, URL, HTML, and social-card
+/// renderers resolve to the same value type — so the
 /// clipboard, save, and share flows stay decoupled from the input kind. The image
-/// is already normalized and tagged into `profile`'s color space (the exporter's
-/// CS-024 step), so encoding it to PNG is a pure ImageIO call.
-// `nonisolated` + `Sendable` (P6): a pure value type over a `Sendable` `CGImage`, built
+/// is already normalized and tagged into `profile`'s color space, so encoding it
+/// to PNG is a pure ImageIO call.
+// `nonisolated` + `Sendable`: a pure value type over a `Sendable` `CGImage`, built
 // and passed between the concurrent per-viewport capture tasks and the main actor.
 nonisolated struct RenderedAsset: Sendable {
     /// The rendered image, in `profile`'s color space.
     var cgImage: CGImage
 
-    /// The color profile the image is tagged with (sRGB by default, CS-024).
+    /// The color profile the image is tagged with (sRGB by default).
     var profile: ColorProfile
 
     /// Pixel width of `cgImage` (scale already applied).
@@ -30,7 +30,7 @@ nonisolated struct RenderedAsset: Sendable {
 }
 
 /// Why a render did not produce an asset, as a typed error rather than a `nil`
-/// image or a blank picture (CS-040). Distinguishing *failed* (a renderer that
+/// image or a blank picture. Distinguishing *failed* (a renderer that
 /// tried and could not encode) from *disabled* (URL capture without the network
 /// entitlement) lets the capture layer offer the right recovery and lets tests
 /// assert on the specific reason.
@@ -45,19 +45,19 @@ enum RenderError: Error, Equatable, Sendable {
     case renderFailed
 
     /// A URL capture was requested in a build that does not carry the network
-    /// client entitlement (CS-043). The App Store build ships without
+    /// client entitlement. The App Store build ships without
     /// `com.apple.security.network.client`, so the `URLRenderer` refuses early with
     /// this typed reason — distinct from a render that tried and failed.
     case urlCaptureDisabled
 }
 
-/// One strategy for turning a `CaptureInput` into a `RenderedAsset` (CS-040).
+/// One strategy for turning a `CaptureInput` into a `RenderedAsset`.
 ///
 /// The protocol intentionally has **no `associatedtype`**: an associatedtype
 /// protocol cannot be stored as `any Renderer` or selected by input case, which is
 /// exactly what routing needs. Dispatch happens on the `CaptureInput` enum and
 /// each concrete renderer declares, via `canRender`, the cases it handles. This is
-/// what lets the code path and the Phase 2 paths evolve as independent types
+/// what lets the code path and the web-rendering paths evolve as independent types
 /// behind one coordinator.
 protocol Renderer {
     /// Whether this renderer handles `input`. A coordinator calls this to route;
@@ -70,10 +70,10 @@ protocol Renderer {
     func render(_ input: CaptureInput, config: SnapshotConfig) async throws -> RenderedAsset
 }
 
-/// Picks the first registered renderer that accepts an input and delegates to it
-/// (CS-040). The order of `renderers` is the routing priority, so a more specific
+/// Picks the first registered renderer that accepts an input and delegates to it.
+/// The order of `renderers` is the routing priority, so a more specific
 /// renderer can precede a fallback. The coordinator owns no rendering logic itself
-/// — it is purely the seam between input classification and rendering.
+/// it is purely the seam between input classification and rendering.
 struct RenderCoordinator {
     /// Renderers in priority order, e.g. `[CodeRenderer(), URLRenderer(), …]`.
     let renderers: [any Renderer]

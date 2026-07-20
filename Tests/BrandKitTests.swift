@@ -4,12 +4,12 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-092 — the PRO Brand Kit: the brand-kit model, the store's resolver gate
+/// the PRO Brand Kit: the brand-kit model, the store's resolver gate
 /// (disabled / not-PRO / empty all yield no watermark), persistence, the logo
 /// round-trip, and the render-core guarantee that a watermark is purely additive —
 /// `nil` renders byte-identically to today's output, and a present watermark visibly
 /// changes the image.
-@Suite("Brand Kit · CS-092")
+@Suite("Brand Kit")
 @MainActor
 struct BrandKitTests {
     /// A throwaway defaults suite so each test's persistence is isolated from the
@@ -57,7 +57,7 @@ struct BrandKitTests {
         }
     }
 
-    // MARK: - Free placement (CS-092 follow-up)
+    // MARK: - Free placement
 
     @Test func freePlacementPersistsItsPositionAndResolvesIntoTheMark() {
         let defaults = isolatedDefaults()

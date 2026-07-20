@@ -1,9 +1,9 @@
 import AppKit
 import Foundation
 
-/// `vitrine` — the command-line renderer entry point (CS-033).
+/// `vitrine` — the command-line renderer entry point.
 ///
-/// ## Hosting strategy (decided per the CS-033 design note)
+/// ## Hosting strategy
 ///
 /// `ImageRenderer` and Highlightr require AppKit on the **main actor**, so a plain
 /// SwiftPM executable that never starts AppKit is not sufficient. Rather than driving
@@ -109,7 +109,7 @@ CLIFontRegistration.registerBundledFonts(in: CLIEnvironment.bundledFontsDirector
 
 do {
     let options = try CLIArguments.parse(Array(CommandLine.arguments.dropFirst()))
-    // PRO gate at the process boundary (CS-094): the CLI is direct-download only and
+    // PRO gate at the process boundary: the CLI is direct-download only and
     // re-verifies the app's signed activation token itself. `--help` already exited
     // above (parse threw `helpRequested`), so a free build still sees usage but never
     // renders.

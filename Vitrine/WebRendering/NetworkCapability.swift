@@ -7,11 +7,11 @@ import Foundation
 // MARK: - Network capability gate
 
 /// Whether this build is actually permitted to reach the network for a URL
-/// capture (CS-043).
+/// capture.
 ///
 /// URL capture stays **disabled until the app target includes**
-/// `com.apple.security.network.client`. Phase 1 ships without that entitlement
-/// (the core is fully local), so a Phase 1 build provably cannot load a remote
+/// `com.apple.security.network.client`. local rendering ships without that entitlement
+/// (the core is fully local), so a network-free build provably cannot load a remote
 /// page even if the URL path is wired up. This gate reads the running app's own
 /// entitlement at launch — there is no network call and no private API — so the
 /// renderer can refuse early with a clear reason rather than failing deep inside

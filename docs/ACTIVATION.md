@@ -1,11 +1,11 @@
 # PRO activation — direct-download (Lemon Squeezy) runbook
 
 How to turn on real PRO activation for the **direct-download / Homebrew (DMG)** build. The
-activation subsystem is built and tested (CS-090); the remaining release work is your **Lemon
+activation subsystem is built and tested; the remaining release work is your **Lemon
 Squeezy account/product**, the release-machine **private-key injection**, and any deliberate
 public-key rotation. The Mac App Store channel is separate — see [APP-STORE.md](APP-STORE.md).
 
-## How it works (Architecture B — the app signs locally)
+## How it works (the official app signs locally)
 
 ```
 user pastes license key
@@ -93,7 +93,7 @@ repo. Tip: keep it in your login Keychain and export it in the build step, e.g.
 
 ## Security notes
 
-- The private key is **in the distributed binary** (Architecture B). For the honor model that is
+- The private key is **in the distributed binary** (embedded-key activation model). For the honor model that is
   acceptable — a determined user can extract it, the same way they could fork the open-source app.
   It is not a DRM boundary; it is a convenience + an offline-trust mechanism for the CLI.
 - The signed token is stored device-only in the Keychain (`kSecAttrAccessibleAfterFirstUnlock…

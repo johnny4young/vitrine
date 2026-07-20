@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A set of highlighted 1-based line ranges, with parsing and membership (CS-021).
+/// A set of highlighted 1-based line ranges, with parsing and membership.
 ///
 /// Technical posts often need to point at a line ("see line 12") without
 /// annotating the image in another tool. `LineHighlight` is the value model
@@ -9,7 +9,7 @@ import SwiftUI
 /// (`"3, 7-9, 12"`) typed in settings into normalized, de-overlapped ranges.
 ///
 /// Ranges are **1-based and inclusive**, matching how editors and reviewers
-/// refer to lines. Parsing is forgiving by design (CS-050 spirit): whitespace and
+/// refer to lines. Parsing is forgiving by design (defensive behavior): whitespace and
 /// empty fragments are ignored, a reversed pair like `9-7` is normalized to
 /// `7...9`, non-positive and non-numeric fragments are dropped, and the result is
 /// merged and sorted so the same visible selection always yields the same value
@@ -95,8 +95,7 @@ enum LineHighlight {
     }
 }
 
-/// Geometry for the line-number gutter, derived from the code's own `NSFont`
-/// (CS-021).
+/// Geometry for the line-number gutter, derived from the code's own `NSFont`.
 ///
 /// Alignment is the whole game here: the gutter must sit on the same baseline as
 /// the code for every bundled font and the default line height, with no per-row
@@ -128,7 +127,7 @@ struct GutterMetrics {
 }
 
 /// The code body, rendered row-by-row so an optional line-number gutter and
-/// selected-line highlight bands align exactly with each code line (CS-021).
+/// selected-line highlight bands align exactly with each code line.
 ///
 /// The plain export path keeps drawing the code as a single `Text` (see
 /// `SnapshotCanvas`); this per-row layout is used only when the gutter or a
@@ -191,7 +190,7 @@ struct CodeLinesView: View {
             if showLineNumbers {
                 // Verbatim: a line number is a locale-neutral numeral, not catalog
                 // copy — and this also keeps Xcode's extractor from emitting a bare
-                // "%@" key into the String Catalog (CS-047).
+                // "%@" key into the String Catalog.
                 Text(verbatim: "\(lineNumber)")
                     .font(Font(font))
                     .monospacedDigit()
@@ -243,7 +242,7 @@ struct CodeLinesView: View {
     /// The actual text for one row, before any optional soft-wrap frame is applied.
     private func textForLine(_ line: AttributedString) -> Text {
         // Verbatim: the zero-width space is a layout placeholder, not user copy, so
-        // it must not become a String Catalog key (CS-047).
+        // it must not become a String Catalog key.
         if line.characters.isEmpty { return Text(verbatim: "\u{200B}").font(Font(font)) }
         return Text(line)
     }
@@ -275,7 +274,7 @@ struct CodeLinesView: View {
 }
 
 /// Splits text and attributed text into lines on `\n`, preserving empty interior
-/// and trailing lines so line numbering matches an editor's (CS-021).
+/// and trailing lines so line numbering matches an editor's.
 ///
 /// Swift's `String.split` drops empty subsequences by default, which would
 /// misnumber blank lines; this splitter keeps every line, including a trailing

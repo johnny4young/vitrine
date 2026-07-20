@@ -2,7 +2,7 @@ import AppKit
 import OSLog
 import UniformTypeIdentifiers
 
-/// Provides the macOS Services menu action "Render Code Image with Vitrine" (CS-034).
+/// Provides the macOS Services menu action "Render Code Image with Vitrine".
 ///
 /// When the user selects code text in any app that vends a selection to Services
 /// (TextEdit, Xcode, Notes, the browser, …) and picks this service, macOS hands the
@@ -71,7 +71,7 @@ final class CodeImageService: NSObject {
         pasteboard: NSPasteboard,
         isProUnlocked: Bool = Entitlements.shared.isUnlocked(.automation)
     ) -> Outcome {
-        // Automation requires PRO (CS-094): the Services menu is an automation surface,
+        // Automation requires PRO: the Services menu is an automation surface,
         // so a free build reports the PRO requirement and renders nothing. The check is
         // injectable so the gate is unit-testable; production calls use the default.
         guard isProUnlocked else {
@@ -94,7 +94,7 @@ final class CodeImageService: NSObject {
             code: interpreted.code,
             language: interpreted.language,
             // `exportConfig`, not `config`, so a PRO user's enabled Brand Kit watermark
-            // marks the Services output too (CS-092). Free/disabled → no watermark.
+            // marks the Services output too. Free/disabled → no watermark.
             baseStyle: AppSettings.shared.exportConfig)
 
         let cgImage: CGImage

@@ -2,8 +2,8 @@ import SwiftUI
 
 extension Notification.Name {
     /// Posted to ask the frontmost editor to open its ⌘K command palette. The editor
-    /// observes it so the palette can be opened from outside the view — a dev launch
-    /// hook today, and a future View-menu item or App Intent without new plumbing.
+    /// observes it so launch automation and other app-owned surfaces can open the
+    /// palette without coupling to the editor's view state.
     static let vitrineOpenCommandPalette = Notification.Name("vitrine.openCommandPalette")
 }
 
