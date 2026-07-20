@@ -164,14 +164,20 @@ lint: hygiene
 hygiene:
 	./scripts/check-repository-hygiene.sh
 
-## changelog-check: assert CHANGELOG.md's newest version matches MARKETING_VERSION (release gate)
+## changelog-check: validate release version and changelog link traceability
 changelog-check:
 	@cl=$$(grep -m1 -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'); \
 	mv=$$(grep -m1 -oE 'MARKETING_VERSION: *"?[0-9][0-9A-Za-z.-]*' project.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'); \
 	grep -q '^## \[Unreleased\]' CHANGELOG.md || { echo "✗ CHANGELOG.md is missing an [Unreleased] section"; exit 1; }; \
 	[ -n "$$cl" ] || { echo "✗ no released '## [x.y.z]' heading in CHANGELOG.md"; exit 1; }; \
 	[ "$$cl" = "$$mv" ] || { echo "✗ CHANGELOG top ($$cl) != MARKETING_VERSION ($$mv)"; exit 1; }; \
-	echo "✓ CHANGELOG $$cl matches MARKETING_VERSION $$mv"
+	grep -q "^\[Unreleased\]: https://github.com/johnny4young/vitrine/compare/v$$mv\.\.\.HEAD$$" CHANGELOG.md || \
+		{ echo "✗ [Unreleased] compare link must start at v$$mv"; exit 1; }; \
+	for version in $$(grep -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'); do \
+		grep -q "^\[$$version\]: https://" CHANGELOG.md || \
+			{ echo "✗ CHANGELOG release $$version has no link definition"; exit 1; }; \
+	done; \
+	echo "✓ CHANGELOG $$cl matches MARKETING_VERSION $$mv and all release links are defined"
 
 ## icon: regenerate the app icon set (scripts/make-appicon.swift)
 icon:

@@ -12,6 +12,10 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-07-19
+
+Faster editing, safer sharing, and a command palette that keeps every action close.
+
 ### Performance
 
 - **The line-numbered / diff layout no longer re-splits the document every frame.** The
@@ -187,6 +191,8 @@ Turn *any* screenshot into a share-ready image — not just code.
 
 The plain image and the macOS window frame are free; the browser and device frames are part of
 Vitrine PRO.
+
+## [0.19.0] - 2026-06-28
 
 A one-click safety net for the most embarrassing way to leak a credential: sharing a
 screenshot with it still in frame.
@@ -615,7 +621,21 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/johnny4young/vitrine/compare/v0.21.0...v0.22.0
+[0.21.0]: https://github.com/johnny4young/vitrine/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/johnny4young/vitrine/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/johnny4young/vitrine/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/johnny4young/vitrine/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/johnny4young/vitrine/compare/v0.16.1...v0.17.0
+[0.16.1]: https://github.com/johnny4young/vitrine/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/johnny4young/vitrine/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/johnny4young/vitrine/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/johnny4young/vitrine/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/johnny4young/vitrine/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/johnny4young/vitrine/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/johnny4young/vitrine/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/johnny4young/vitrine/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/johnny4young/vitrine/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/johnny4young/vitrine/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/johnny4young/vitrine/compare/v0.7.0...v0.8.0

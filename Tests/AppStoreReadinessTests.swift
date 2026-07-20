@@ -236,20 +236,54 @@ struct AppStoreReadinessTests {
             "CHANGELOG.md's newest version must match the bundled ReleaseNotes.latest")
     }
 
-    /// The README — the project's front page — keeps its shipped-status badge and its
+    @Test func changelogKeepsReleaseNotesAndCompareLinksTraceable() throws {
+        let changelog = try Self.text("CHANGELOG.md")
+        let fullRange = NSRange(changelog.startIndex..<changelog.endIndex, in: changelog)
+        let headingRegex = try NSRegularExpression(
+            pattern: #"(?m)^##\s*\[([0-9]+\.[0-9]+\.[0-9]+)\]"#)
+        let linkRegex = try NSRegularExpression(
+            pattern: #"(?m)^\[([0-9]+\.[0-9]+\.[0-9]+)\]:\s+https://"#)
+
+        func versions(matching regex: NSRegularExpression) -> Set<String> {
+            Set(
+                regex.matches(in: changelog, range: fullRange).compactMap { match in
+                    Range(match.range(at: 1), in: changelog).map { String(changelog[$0]) }
+                })
+        }
+
+        let headings = versions(matching: headingRegex)
+        let links = versions(matching: linkRegex)
+        let releaseNoteVersions = Set(ReleaseNotes.all.map(\.version))
+
+        #expect(
+            releaseNoteVersions.isSubset(of: headings),
+            "every bundled release note must have a matching changelog section")
+        #expect(
+            headings == links,
+            "changelog release headings and compare links must cover the same versions")
+        let latestVersion = try #require(ReleaseNotes.latestVersion)
+        #expect(
+            changelog.contains(
+                "[Unreleased]: https://github.com/johnny4young/vitrine/compare/v"
+                    + "\(latestVersion)...HEAD"
+            ),
+            "the Unreleased section must link from the latest release to HEAD")
+    }
+
+    /// The README — the project's front page — keeps its release-status badge and its
     /// `## Status` section in lockstep with `MARKETING_VERSION`. The badge encodes the
     /// version in its shields.io URL (`status-vX.Y.Z…`) and the section prose names it
-    /// in the "shipped and stable" line; a version bump that forgets either would greet
+    /// in the current release-status line; a version bump that forgets either would greet
     /// every visitor with a stale release number. This fails the bump until the README
     /// is updated, exactly like the CHANGELOG and APP-STORE guards above, so the README
     /// can never silently drift behind a release again.
-    @Test func readmeStatusMatchesTheShippedVersion() throws {
+    @Test func readmeStatusMatchesTheProjectVersion() throws {
         let readme = try Self.text("README.md")
         let marketingVersion = try Self.marketingVersion()
 
         #expect(
             readme.contains("status-v\(marketingVersion)"),
-            "README.md status badge must name the shipped version v\(marketingVersion) (stale badge — bump it with the release)"
+            "README.md status badge must name project version v\(marketingVersion) (stale badge — bump it with the release)"
         )
 
         let statusSection = try #require(
@@ -257,7 +291,7 @@ struct AppStoreReadinessTests {
             "README.md must keep a `## Status` section")
         #expect(
             statusSection.contains("v\(marketingVersion)"),
-            "README.md `## Status` section must name the shipped version v\(marketingVersion)")
+            "README.md `## Status` section must name project version v\(marketingVersion)")
     }
 
     // MARK: - Contract: App Sandbox remains enabled; entitlements minimal and justified
