@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum AnnotationToolbarDensity: Equatable {
+    case full
+    case condensed
+    case compact
+}
+
 /// The annotation tool palette in the editor's title bar, modeled on
 /// CleanShot: a row of tools (the active one highlighted), then the active tool's
 /// options — a color swatch that opens a palette, and a size slider. Picking a tool
@@ -23,35 +29,52 @@ struct AnnotationToolbar: View {
     let shortcutsActive: Bool
     let onUndo: () -> Void
     let onRedo: () -> Void
+    var hasSelection: Bool = false
+    var onDuplicate: () -> Void = {}
+    var canBringToFront: Bool = false
+    var canSendToBack: Bool = false
+    var onBringToFront: () -> Void = {}
+    var onSendToBack: () -> Void = {}
+    var density: AnnotationToolbarDensity = .full
 
     var body: some View {
         HStack(spacing: 8) {
             HStack(spacing: 2) {
-                historyButton(
+                iconButton(
                     "arrow.uturn.backward", help: "Undo", identifier: "annotation-undo",
                     enabled: canUndo && shortcutsActive,
                     shortcut: KeyboardShortcut("z", modifiers: .command), action: onUndo)
-                historyButton(
+                iconButton(
                     "arrow.uturn.forward", help: "Redo", identifier: "annotation-redo",
                     enabled: canRedo && shortcutsActive,
                     shortcut: KeyboardShortcut("z", modifiers: [.command, .shift]), action: onRedo)
+                if density == .full {
+                    selectionActionButtons
+                } else {
+                    selectionActionsMenu
+                }
             }
             .padding(3)
             .background(Capsule().fill(VitrineTokens.Surface.stage.opacity(0.6)))
             .overlay(
                 Capsule().strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline))
 
-            HStack(spacing: 2) {
-                ForEach(AnnotationTool.allCases) { tool in
-                    toolButton(tool)
+            if density == .compact {
+                toolPicker
+            } else {
+                HStack(spacing: 2) {
+                    ForEach(AnnotationTool.allCases) { tool in
+                        toolButton(tool)
+                    }
                 }
+                .padding(3)
+                .background(
+                    Capsule().fill(VitrineTokens.Surface.stage.opacity(0.6))
+                )
+                .overlay(
+                    Capsule().strokeBorder(
+                        VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline))
             }
-            .padding(3)
-            .background(
-                Capsule().fill(VitrineTokens.Surface.stage.opacity(0.6))
-            )
-            .overlay(
-                Capsule().strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline))
 
             if activeTool == .sticker, let stickerGlyph {
                 StickerSwatchButton(glyph: stickerGlyph)
@@ -82,6 +105,97 @@ struct AnnotationToolbar: View {
         .animation(.easeInOut(duration: 0.15), value: showsThickness)
     }
 
+    @ViewBuilder private var selectionActionButtons: some View {
+        iconButton(
+            "plus.square.on.square", help: "Duplicate",
+            identifier: "annotation-duplicate", enabled: hasSelection,
+            shortcut: KeyboardShortcut("d", modifiers: .command), action: onDuplicate)
+        iconButton(
+            "square.3.layers.3d.top.filled", help: "Bring to Front",
+            identifier: "annotation-bring-front", enabled: canBringToFront,
+            shortcut: KeyboardShortcut("]", modifiers: [.command, .option]),
+            action: onBringToFront)
+        iconButton(
+            "square.3.layers.3d.bottom.filled", help: "Send to Back",
+            identifier: "annotation-send-back", enabled: canSendToBack,
+            shortcut: KeyboardShortcut("[", modifiers: [.command, .option]),
+            action: onSendToBack)
+    }
+
+    private var selectionActionsMenu: some View {
+        Menu {
+            Button(action: onDuplicate) {
+                Label("Duplicate", systemImage: "plus.square.on.square")
+            }
+            .keyboardShortcut("d", modifiers: .command)
+            .disabled(!hasSelection)
+            .accessibilityIdentifier("annotation-duplicate")
+
+            Button(action: onBringToFront) {
+                Label("Bring to Front", systemImage: "square.3.layers.3d.top.filled")
+            }
+            .keyboardShortcut("]", modifiers: [.command, .option])
+            .disabled(!canBringToFront)
+            .accessibilityIdentifier("annotation-bring-front")
+
+            Button(action: onSendToBack) {
+                Label("Send to Back", systemImage: "square.3.layers.3d.bottom.filled")
+            }
+            .keyboardShortcut("[", modifiers: [.command, .option])
+            .disabled(!canSendToBack)
+            .accessibilityIdentifier("annotation-send-back")
+        } label: {
+            Image(systemName: "square.3.layers.3d")
+                .font(.system(size: 12.5, weight: .medium))
+                .frame(width: 26, height: 25)
+                .foregroundStyle(
+                    hasSelection ? VitrineTokens.Text.secondary : VitrineTokens.Text.tertiary
+                )
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Selected mark actions")
+        .accessibilityLabel("Selected mark actions")
+        .accessibilityIdentifier("annotation-selection-actions-menu")
+    }
+
+    private var toolPicker: some View {
+        Menu {
+            ForEach(AnnotationTool.allCases) { tool in
+                Button {
+                    activeTool = tool
+                } label: {
+                    Label(tool.label, systemImage: tool.systemImage)
+                }
+                .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
+            }
+        } label: {
+            Image(systemName: activeTool.systemImage)
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(VitrineTokens.Accent.systemContrast)
+                .frame(width: 30, height: 25)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(VitrineTokens.Accent.system)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .padding(3)
+                .background(Capsule().fill(VitrineTokens.Surface.stage.opacity(0.6)))
+                .overlay(
+                    Capsule().strokeBorder(
+                        VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(Text("Annotation tool: ") + Text(activeTool.label))
+        .accessibilityLabel("Annotation tool")
+        .accessibilityValue(activeTool.label)
+        .accessibilityIdentifier("annotation-tool-picker")
+    }
+
     private func toolButton(_ tool: AnnotationTool) -> some View {
         let button = Button {
             activeTool = tool
@@ -109,7 +223,6 @@ struct AnnotationToolbar: View {
         return Group {
             if let key = tool.keyEquivalent {
                 button
-                    .keyboardShortcut(key, modifiers: .command)
                     .help(Text(tool.label) + Text(verbatim: " (⌘\(key.character))"))
             } else {
                 button.help(tool.label)
@@ -117,7 +230,7 @@ struct AnnotationToolbar: View {
         }
     }
 
-    private func historyButton(
+    private func iconButton(
         _ systemImage: String, help: LocalizedStringKey, identifier: String, enabled: Bool,
         shortcut: KeyboardShortcut, action: @escaping () -> Void
     ) -> some View {

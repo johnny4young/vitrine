@@ -49,6 +49,10 @@ enum RenderError: Error, Equatable, Sendable {
     /// `com.apple.security.network.client`, so the `URLRenderer` refuses early with
     /// this typed reason — distinct from a render that tried and failed.
     case urlCaptureDisabled
+
+    /// A loopback URL was refused because the explicit localhost option is off.
+    /// Kept distinct so the UI can name the safe recovery instead of blaming the URL.
+    case loopbackCaptureDisabled
 }
 
 /// One strategy for turning a `CaptureInput` into a `RenderedAsset`.

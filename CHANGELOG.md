@@ -12,6 +12,18 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- **Faster, more precise annotation editing.** Selected marks can be duplicated,
+  moved one point at a time with the arrow keys (ten with Shift), and sent to the
+  front or back of the regular mark layer. Annotation undo/redo now uses a bounded,
+  independently tested history.
+- **Optional localhost webpage capture.** The direct-download build can capture a
+  development server on this Mac after an explicit, default-off setting is enabled.
+  The exception is limited to `localhost`, IPv4 `127/8`, IPv6 `::1`, and mapped
+  loopback; `.local`, LAN, link-local, metadata, and other private addresses remain
+  blocked for both initial requests and redirects.
+
 ## [0.22.0] - 2026-07-19
 
 Faster editing, safer sharing, and a command palette that keeps every action close.

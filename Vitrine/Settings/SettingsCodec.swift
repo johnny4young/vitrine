@@ -56,6 +56,9 @@ enum SettingsCodec {
         /// Whether URL capture uses the persistent (cookie/logged-in) data store.
         /// Opt-in only; off by default.
         static let webUsesLoggedInSession = "webUsesLoggedInSession"
+        /// Whether URL capture may reach this Mac's loopback interface. Default-off
+        /// and intentionally narrower than local/private address access.
+        static let webAllowsLoopbackCapture = "webAllowsLoopbackCapture"
         static let recentLanguages = "recentLanguages"
         static let fontName = "fontName"
         static let fontLigatures = "fontLigatures"
@@ -98,7 +101,8 @@ enum SettingsCodec {
             colorProfile, richClipboard, textSidecar, hotkeyAction, appLanguage, treatURLs,
             reindentOnPaste,
             webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,
-            webCaptureMode, webWaitKind, webWaitSeconds, webUsesLoggedInSession, recentLanguages,
+            webCaptureMode, webWaitKind, webWaitSeconds, webUsesLoggedInSession,
+            webAllowsLoopbackCapture, recentLanguages,
             fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
             hasSeenWelcome, lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
             brandKit, brandKitEnabled,

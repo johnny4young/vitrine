@@ -19,8 +19,8 @@ final class VitrineUITests: XCTestCase {
         element("inspector-disclosure-output", in: app).click()
         assertExists(element("editor-destination-preset-picker", in: app), in: app)
         assertExists(element("copy-button", in: app), in: app)
-        assertExists(element("save-button", in: app), in: app)
-        assertExists(element("share-button", in: app), in: app)
+        assertToolbarActionsReachable(
+            ["save-button", "share-button"], from: "editor-actions-menu", in: app)
         // The editor advertises a drop target for source files / text.
         // Driving a real drag from outside the app is not reliably automatable, so
         // the smoke test asserts the target exists; the loading policy itself is
@@ -122,10 +122,9 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
-        assertHittable(
-            "export-carousel-button", in: app,
-            "The carousel export entry must be reachable from the editor toolbar")
-        element("export-carousel-button", in: app).click()
+        revealToolbarAction(
+            "export-carousel-button", from: "editor-actions-menu", in: app
+        ).click()
         assertExists(element("carousel-export-sheet", in: app), in: app, timeout: 3)
 
         // The 12-line demo snippet fits one slide at the default cap (12); one
@@ -261,8 +260,7 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
-        assertExists(element("make-default-button", in: app), in: app, timeout: 3)
-        assertHittable("make-default-button", in: app, "Make Default action is not reachable")
+        revealToolbarAction("make-default-button", from: "editor-actions-menu", in: app)
     }
 
     @MainActor
@@ -403,35 +401,69 @@ final class VitrineUITests: XCTestCase {
 
         assertExists(element("editor-toolbar", in: app), in: app, timeout: 8)
 
-        // The annotation tool palette lives in the title bar; every tool is
-        // present and addressable.
-        for tool in [
+        // The annotation tool palette lives in the title bar. At compact widths it
+        // becomes a menu, but every tool remains addressable.
+        let toolIdentifiers = [
             "select", "arrow", "curvedArrow", "rectangle", "highlighter", "counter", "sticker",
             "spotlight", "measure",
-        ] {
-            XCTAssertTrue(
-                element("annotation-tool-\(tool)", in: app).waitForExistence(timeout: 3),
-                "Annotation toolbar is missing the \(tool) tool")
-        }
+        ].map { "annotation-tool-\($0)" }
+        assertToolbarActionsReachable(
+            toolIdentifiers, from: "annotation-tool-picker", in: app)
 
         // Activating a draw tool reveals its options — the color swatch and the size
         // slider — which the Select pointer hides.
-        assertHittable("annotation-tool-arrow", in: app, "Arrow tool is not reachable")
-        element("annotation-tool-arrow", in: app).click()
+        revealToolbarAction(
+            "annotation-tool-arrow", from: "annotation-tool-picker", in: app
+        ).click()
         assertExists(element("annotation-color-swatch", in: app), in: app, timeout: 3)
         assertExists(element("annotation-thickness-slider", in: app), in: app)
 
         // The sticker tool swaps the color swatch (an emoji has its own colors) for the
         // sticker-glyph swatch, and keeps the size slider.
-        assertHittable("annotation-tool-sticker", in: app, "Sticker tool is not reachable")
-        element("annotation-tool-sticker", in: app).click()
+        revealToolbarAction(
+            "annotation-tool-sticker", from: "annotation-tool-picker", in: app
+        ).click()
         assertExists(element("annotation-sticker-swatch", in: app), in: app, timeout: 3)
         assertExists(element("annotation-thickness-slider", in: app), in: app)
         XCTAssertFalse(
             element("annotation-color-swatch", in: app).exists,
             "The sticker tool must hide the color swatch — an emoji has its own colors")
 
-        element("annotation-tool-select", in: app).click()
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+    }
+
+    /// Selection-only actions must be present but disabled until a mark is selected.
+    /// The same gate keeps their keyboard shortcuts from firing while code has focus.
+    @MainActor
+    func testAnnotationSelectionActionsStartDisabled() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let directDuplicate = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", "annotation-duplicate"))
+            .allElementsBoundByIndex
+        if directDuplicate.isEmpty {
+            assertHittable(
+                "annotation-selection-actions-menu", in: app,
+                "Compact mark actions must remain reachable")
+            element("annotation-selection-actions-menu", in: app).click()
+        }
+        for identifier in [
+            "annotation-duplicate", "annotation-bring-front", "annotation-send-back",
+        ] {
+            let matches = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == %@", identifier))
+                .allElementsBoundByIndex
+            XCTAssertFalse(matches.isEmpty, "\(identifier) must exist in the mark toolbar")
+            XCTAssertFalse(
+                matches.contains { $0.isEnabled },
+                "\(identifier) must be disabled with no mark selected")
+        }
     }
 
     /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and
@@ -603,6 +635,21 @@ final class VitrineUITests: XCTestCase {
         element("settings-nav-input", in: app).click()
         assertExists(element("settings-input-pane", in: app), in: app, timeout: 3)
         assertExists(element("reindent-on-paste-toggle", in: app), in: app, timeout: 3)
+    }
+
+    @MainActor
+    func testInputPaneExposesLoopbackCaptureDefaultingOff() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-settings"])
+        defer { app.terminate() }
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-input", in: app).click()
+        assertExists(element("settings-input-pane", in: app), in: app, timeout: 3)
+
+        let toggle = element("web-allow-loopback-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 0, "Loopback capture must default to off")
     }
 
     @MainActor
@@ -1280,7 +1327,6 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         for identifier in [
             "editor-toolbar", "editor-preview-stage", "editor-inspector", "copy-button",
-            "save-button", "share-button",
         ] {
             XCTAssertTrue(
                 element(identifier, in: app).waitForExistence(timeout: 3),
@@ -1292,6 +1338,8 @@ final class VitrineUITests: XCTestCase {
                 identifier, in: app,
                 "Editor control \(identifier) is clipped or unreachable under RTL")
         }
+        assertToolbarActionsReachable(
+            ["save-button", "share-button"], from: "editor-actions-menu", in: app)
     }
 
     /// A locale/text-direction override applied to a launch. Passed through

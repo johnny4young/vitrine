@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Annotation Tool" : {
+      "comment" : "Edit-menu submenu containing annotation tool choices and shortcuts.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramienta de anotación"
+          }
+        }
+      }
+    },
+    "Annotation tool" : {
+      "comment" : "Accessibility label for the compact annotation tool picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramienta de anotación"
+          }
+        }
+      }
+    },
+    "Annotation tool: " : {
+      "comment" : "Help prefix followed by the active annotation tool name.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramienta de anotación: "
+          }
+        }
+      }
+    },
     "Auto" : {
       "comment" : "Image frame appearance option: chrome color sampled from the image.",
       "localizations" : {
@@ -30,6 +63,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apariencia del marco"
+          }
+        }
+      }
+    },
+    "More editor actions" : {
+      "comment" : "Accessibility label and help for the compact editor actions menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más acciones del editor"
+          }
+        }
+      }
+    },
+    "Selected mark actions" : {
+      "comment" : "Accessibility label and help for the selected annotation actions menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones de la marca seleccionada"
           }
         }
       }
@@ -173,6 +228,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Captura una página web"
+          }
+        }
+      }
+    },
+    "Allow localhost capture" : {
+      "comment" : "URL-capture toggle: allow this Mac's loopback interface only.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir capturas de localhost"
+          }
+        }
+      }
+    },
+    "Capture development servers on this Mac through localhost, 127.0.0.1, or ::1. Local-network and .local addresses stay blocked." : {
+      "comment" : "Caption for the default-off loopback capture toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura servidores de desarrollo en esta Mac mediante localhost, 127.0.0.1 o ::1. Las direcciones de la red local y .local siguen bloqueadas."
+          }
+        }
+      }
+    },
+    "That address is on this Mac. Turn on “Allow localhost capture” in Settings ▸ Input to capture it." : {
+      "comment" : "Web Snapshot error shown when a loopback URL is refused by the default-off setting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa dirección está en esta Mac. Activa “Permitir capturas de localhost” en Configuración ▸ Entrada para capturarla."
           }
         }
       }
@@ -370,6 +458,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No se pudo agregar la integración del shell"
+          }
+        }
+      }
+    },
+    "Send to Back" : {
+      "comment" : "Button: move the selected annotation below every other regular mark.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar al fondo"
           }
         }
       }
@@ -1014,6 +1113,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desenfoque"
+          }
+        }
+      }
+    },
+    "Bring to Front" : {
+      "comment" : "Button: move the selected annotation above every other regular mark.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traer al frente"
           }
         }
       }
@@ -2154,8 +2264,7 @@
       }
     },
     "Duplicate" : {
-      "comment" : "Button: duplicate the selected preset.",
-      "extractionState" : "stale",
+      "comment" : "Button: duplicate the selected preset or annotation.",
       "localizations" : {
         "es" : {
           "stringUnit" : {

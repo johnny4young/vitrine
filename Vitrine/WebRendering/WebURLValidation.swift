@@ -20,9 +20,8 @@ enum URLValidationError: Error, Equatable {
     /// without echoing the URL.
     case unsupportedScheme(String)
 
-    /// The URL points at the local machine (localhost, a loopback IP, or a
-    /// `.local` host). Capturing a private localhost service is refused until a
-    /// future explicit local mode exists.
+    /// The URL points at a local, private, link-local, or reserved host. Loopback
+    /// remains available only through the explicit, default-off loopback option.
     case privateLocalhost
 }
 
@@ -39,16 +38,15 @@ extension WebSnapshotConfig {
     /// 2. Otherwise the URL must parse and carry both a scheme and a non-empty host
     ///    (`malformed` otherwise) — this rejects empty input, scheme-only strings,
     ///    and `javascript:`/`data:` payloads that carry no host.
-    /// 3. The host must not be the local machine (`privateLocalhost` otherwise) —
-    ///    `localhost`, loopback IPv4/IPv6, and `.local` hosts are refused so a
-    ///    private localhost service is never captured by default.
+    /// 3. The host must not be local/private (`privateLocalhost` otherwise). A
+    ///    default-off option may lift this rule only for the strict loopback subset.
     ///
     /// Checking the scheme before the host means a non-web scheme is always reported
     /// as such, even when it happens to have no host (e.g. `file:///etc/hosts`),
     /// which is the more useful refusal. The check is pure (a
     /// function of the URL alone, with no network access), so it is fully
     /// unit-testable without a web view.
-    static func validate(captureURL: URL) throws -> URL {
+    static func validate(captureURL: URL, allowLoopback: Bool = false) throws -> URL {
         // A present, non-web scheme is refused as such first — including a
         // `file:///path` URL with an empty host — so the reported reason names the
         // scheme rather than a missing host.
@@ -62,7 +60,7 @@ extension WebSnapshotConfig {
             throw URLValidationError.malformed
         }
 
-        if isPrivateLocalhost(host: host) {
+        if isRefusedHost(host, allowLoopback: allowLoopback) {
             throw URLValidationError.privateLocalhost
         }
 
@@ -73,12 +71,12 @@ extension WebSnapshotConfig {
     /// whitespace (a pasted URL often carries a trailing newline) before parsing,
     /// and surfaces `malformed` for a string `URL` cannot parse — so the textual
     /// entry point shares the exact same rules as the `URL` one.
-    static func validate(captureURLString text: String) throws -> URL {
+    static func validate(captureURLString text: String, allowLoopback: Bool = false) throws -> URL {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let url = URL(string: trimmed) else {
             throw URLValidationError.malformed
         }
-        return try validate(captureURL: url)
+        return try validate(captureURL: url, allowLoopback: allowLoopback)
     }
 
     /// The only schemes a URL capture may use. Deliberately limited to the two web
@@ -92,24 +90,18 @@ extension WebSnapshotConfig {
     /// `0177.1`, `0x7f000001`, and `2130706433`, `0.0.0.0/8`, IPv4 loopback
     /// `127.0.0.0/8`, the RFC1918 private ranges (`10/8`, `172.16/12`, `192.168/16`),
     /// CGNAT/Tailscale `100.64.0.0/10`, link-local `169.254.0.0/16` (including the
-    /// `169.254.169.254` cloud-metadata endpoint), reserved `240.0.0.0/4` + broadcast,
-    /// IPv6 loopback `::1`, link-local `fe80::/10`, unique-local `fc00::/7`, and
-    /// IPv4-mapped IPv6 (`::ffff:a.b.c.d`). A public hostname or address passes through.
+    /// `169.254.169.254` cloud-metadata endpoint), multicast `224.0.0.0/4`, reserved
+    /// `240.0.0.0/4` + broadcast, IPv6 unspecified `::`, loopback `::1`, link-local
+    /// `fe80::/10`, deprecated site-local `fec0::/10`, unique-local `fc00::/7`, multicast
+    /// `ff00::/8`, and IPv4-mapped IPv6 (`::ffff:a.b.c.d`). A public hostname or address
+    /// passes through.
     ///
     /// This is a pre-resolution host blocklist, so **DNS rebinding** (a public hostname
     /// that resolves to a private address) is a known residual risk; the first-use consent
     /// disclosure is the primary mitigation for that vector, and the page is loaded locally
     /// in WebKit with a compiled content-rule blocklist.
     nonisolated static func isPrivateLocalhost(host: String) -> Bool {
-        let lowered = host.lowercased()
-        // Strip the brackets WebKit/URL use around an IPv6 literal host.
-        var bare = lowered.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
-        // A fully-qualified localhost spelling (`localhost.` / `service.local.`)
-        // still resolves locally. Strip only terminal DNS-root dots; interior dots
-        // remain untouched, so `localhost.example.com` stays a public hostname.
-        while bare.count > 1, bare.hasSuffix(".") {
-            bare.removeLast()
-        }
+        let bare = normalizedHost(host)
 
         // Hostnames that always resolve to the local machine / link.
         if bare == "localhost" { return true }
@@ -134,6 +126,49 @@ extension WebSnapshotConfig {
             ? String(addressLiteral.dropFirst("::ffff:".count)) : addressLiteral
         guard let octets = ipv4Octets(from: ipv4) else { return false }
         return isPrivateIPv4(octets)
+    }
+
+    /// The single host policy shared by entry validation and redirect guards.
+    /// Opting in removes the refusal only for this Mac's loopback interface; `.local`,
+    /// LAN, link-local, CGNAT, metadata, and reserved addresses remain blocked.
+    nonisolated static func isRefusedHost(_ host: String, allowLoopback: Bool) -> Bool {
+        guard isPrivateLocalhost(host: host) else { return false }
+        return !(allowLoopback && isLoopbackHost(host: host))
+    }
+
+    /// Whether `host` names this Mac's loopback interface specifically. This is a
+    /// strict subset of the default blocklist: `localhost`, IPv4 `127/8`, IPv6 `::1`,
+    /// and IPv4-mapped loopback. Multicast-DNS `.local` names are deliberately not
+    /// included because they can identify other devices on the local network.
+    nonisolated static func isLoopbackHost(host: String) -> Bool {
+        let bare = normalizedHost(host)
+        if bare == "localhost" { return true }
+
+        let addressLiteral = bare.split(separator: "%", maxSplits: 1).first.map(String.init) ?? bare
+        if let ipv6 = ipv6Bytes(from: addressLiteral) {
+            if isLoopbackIPv6(ipv6) { return true }
+            if isIPv4MappedIPv6(ipv6) {
+                return isLoopbackIPv4(Array(ipv6.suffix(4)))
+            }
+            return false
+        }
+
+        let ipv4 =
+            addressLiteral.hasPrefix("::ffff:")
+            ? String(addressLiteral.dropFirst("::ffff:".count)) : addressLiteral
+        guard let octets = ipv4Octets(from: ipv4) else { return false }
+        return isLoopbackIPv4(octets)
+    }
+
+    /// Applies identical normalization to the blocklist and its loopback subset.
+    nonisolated private static func normalizedHost(_ host: String) -> String {
+        var bare = host.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        while bare.count > 1, bare.hasSuffix(".") { bare.removeLast() }
+        return bare
+    }
+
+    nonisolated private static func isLoopbackIPv4(_ octets: [UInt8]) -> Bool {
+        octets.count == 4 && octets[0] == 127
     }
 
     /// Parses strict and legacy resolver-equivalent IPv4 literals without DNS.
@@ -177,8 +212,11 @@ extension WebSnapshotConfig {
 
     nonisolated private static func isPrivateIPv6(_ bytes: [UInt8]) -> Bool {
         guard bytes.count == 16 else { return false }
-        // Link-local fe80::/10 and unique-local fc00::/7.
-        if bytes[0] == 0xfe, (bytes[1] & 0xc0) == 0x80 { return true }
+        // Unspecified, multicast, link-local/site-local, and unique-local addresses
+        // never identify a public web origin.
+        if bytes.allSatisfy({ $0 == 0 }) { return true }
+        if bytes[0] == 0xff { return true }
+        if bytes[0] == 0xfe, (bytes[1] & 0xc0) >= 0x80 { return true }
         if (bytes[0] & 0xfe) == 0xfc { return true }
         return false
     }
@@ -200,7 +238,7 @@ extension WebSnapshotConfig {
         case (169, 254): return true  // 169.254/16 link-local + cloud metadata
         case (172, 16...31): return true  // 172.16.0.0/12 private
         case (192, 168): return true  // 192.168.0.0/16 private
-        case (240...255, _): return true  // 240.0.0.0/4 reserved + 255.255.255.255 broadcast
+        case (224...255, _): return true  // multicast, reserved, and limited broadcast
         default: return false
         }
     }

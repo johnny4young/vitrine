@@ -32,10 +32,14 @@ struct WebSnapshotModelTests {
         // The entitlement gate has its own clear message, distinct from a render
         // failure, so a build without URL capture explains itself.
         let disabled = WebSnapshotModel.message(for: .urlCaptureDisabled)
+        let loopback = WebSnapshotModel.message(for: .loopbackCaptureDisabled)
         let failed = WebSnapshotModel.message(for: .renderFailed)
         #expect(!disabled.isEmpty)
         #expect(!failed.isEmpty)
+        #expect(!loopback.isEmpty)
         #expect(disabled != failed)
+        #expect(loopback != failed)
+        #expect(loopback.localizedCaseInsensitiveContains("localhost"))
     }
 
     @Test func canRenderReflectsTheActiveModeInput() {

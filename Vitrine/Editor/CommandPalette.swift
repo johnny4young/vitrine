@@ -1,12 +1,5 @@
 import SwiftUI
 
-extension Notification.Name {
-    /// Posted to ask the frontmost editor to open its ⌘K command palette. The editor
-    /// observes it so launch automation and other app-owned surfaces can open the
-    /// palette without coupling to the editor's view state.
-    static let vitrineOpenCommandPalette = Notification.Name("vitrine.openCommandPalette")
-}
-
 /// One action the command palette can run: a titled, keyword-tagged command that
 /// fuzzy-search surfaces and Return executes.
 ///

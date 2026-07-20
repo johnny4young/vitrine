@@ -58,7 +58,10 @@ enum SettingsSchema {
     ///   (`webUsesLoggedInSession`). It is a brand-new boolean key with a documented
     ///   default (off), so older stores simply read the privacy-preserving default;
     ///   this step only advances the version.
-    static let current = 11
+    /// - `12`: adds the default-off loopback URL-capture preference
+    ///   (`webAllowsLoopbackCapture`). Older stores read the secure default, so this
+    ///   step only advances the version.
+    static let current = 12
 
     /// The `UserDefaults` key that stores the persisted schema version.
     static let versionKey = "settingsSchemaVersion"
@@ -188,6 +191,9 @@ enum SettingsSchema {
         // It is an additive boolean key with a documented default (false), so there
         // is no data to transform.
         Migration(from: 10, to: 11) { _ in },
+        // v11 → v12: adds the loopback-only URL-capture opt-in. It is an additive
+        // boolean key with a documented default (false), so no transform is needed.
+        Migration(from: 11, to: 12) { _ in },
     ]
 
     /// Whether the store holds any key this app is known to write. Used to tell a

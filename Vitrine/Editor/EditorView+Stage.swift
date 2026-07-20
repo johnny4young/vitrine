@@ -272,7 +272,8 @@ extension EditorView {
                     canvasSize: cardSize, activeTool: activeTool,
                     drawColor: newDrawColor, drawThickness: newDrawThickness,
                     stickerGlyph: newStickerGlyph,
-                    onBeginEdit: recordAnnotationUndo)
+                    onBeginEdit: beginAnnotationEdit,
+                    onEndEdit: endAnnotationEdit)
                 // Free-placement: drag the brand mark anywhere on the canvas. The
                 // handle shares the canvas coordinate space (a sibling at cardSize),
                 // so a drag maps straight to the normalized brand-kit position.
@@ -290,6 +291,22 @@ extension EditorView {
                         code: settings.config.code,
                         showsGuideRect: settings.effectiveFixedSize != nil)
                 }
+            }
+            // Route arrow keys to a selected mark without competing with code-editor
+            // navigation when the annotation canvas has no selection.
+            .focusable(selectedAnnotationID != nil && editingAnnotationID == nil)
+            .focused($stageFocused)
+            .focusEffectDisabled()
+            .onChange(of: selectedAnnotationID) { _, id in
+                stageFocused = id != nil && editingAnnotationID == nil
+            }
+            .onChange(of: editingAnnotationID) { _, id in
+                stageFocused = id == nil && selectedAnnotationID != nil
+            }
+            .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+                nudgeSelection(
+                    press.key, shift: press.modifiers.contains(.shift),
+                    isRepeat: press.phase == .repeat) ? .handled : .ignored
             }
             .scaleEffect(scale)
             // `scaleEffect` does not shrink the layout footprint, so without this the
