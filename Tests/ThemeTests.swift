@@ -5,10 +5,10 @@ import Testing
 
 @testable import Vitrine
 
-// CS-031 — custom themes: the documented file schema, its validation, the store's
+// — custom themes: the documented file schema, its validation, the store's
 // fallback/immutability guarantees, and a sample custom theme render.
 //
-// The acceptance bullets this file pins:
+// The documented behaviors this file pins:
 //   • users can import a theme file from a documented schema;
 //   • a bad color or a missing required key fails with a clear validation error;
 //   • built-in themes remain immutable (a custom theme can never shadow, rename, or
@@ -101,13 +101,13 @@ struct HexColorTests {
 
     @Test func colorIsReconstructedInSRGB() {
         // A captured hex color round-trips back to the same hex via the sRGB-pinned
-        // `Color`, proving the value is display-independent (CS-031 determinism).
+        // `Color`, proving the value is display-independent (deterministic sizing).
         let color = try! #require(HexColor("#3A7BD5"))
         #expect(color.color.hexColor == color)
     }
 }
 
-// MARK: - ThemePalette schema validation (CS-031)
+// MARK: - ThemePalette schema validation
 
 @Suite("ThemePalette schema validation")
 struct ThemePaletteValidationTests {
@@ -199,12 +199,12 @@ struct ThemePaletteValidationTests {
         #expect(decoded == palette)
         // Re-encoding the decoded value yields byte-identical JSON: a palette
         // round-trips deterministically, which is what keeps a shared theme file
-        // and its render stable on any Mac (CS-031).
+        // and its render stable on any Mac.
         #expect(try encoder.encode(decoded) == data)
     }
 }
 
-// MARK: - CustomThemeDocument envelope (the documented file schema, CS-031)
+// MARK: - CustomThemeDocument envelope (the documented file schema)
 
 @Suite("Custom theme file schema")
 struct CustomThemeDocumentTests {
@@ -317,7 +317,7 @@ struct CustomThemeDocumentTests {
     }
 }
 
-// MARK: - CustomThemeStore: catalog, immutability, fallback (CS-031)
+// MARK: - CustomThemeStore: catalog, immutability, fallback
 
 @MainActor
 @Suite("Custom theme store")
@@ -414,7 +414,7 @@ struct CustomThemeStoreTests {
         #expect(store.customThemes.count == 1)
 
         // Importing the same file again adds a second, distinctly-keyed copy rather
-        // than overwriting the first (CS-031 "an import only ever adds").
+        // than overwriting the first ("an import only ever adds").
         let secondAdded = try store.importThemes(from: data)
         #expect(secondAdded.count == 1)
         #expect(store.customThemes.count == 2)
@@ -435,7 +435,7 @@ struct CustomThemeStoreTests {
     }
 }
 
-// MARK: - Store persistence fallbacks (CS-031 / CS-050 spirit)
+// MARK: - Store persistence fallbacks (defensive behavior)
 
 @MainActor
 @Suite("Custom theme store fallback behavior")
@@ -499,7 +499,7 @@ struct CustomThemeStoreFallbackTests {
     }
 }
 
-// MARK: - Sample custom theme render (CS-031)
+// MARK: - Sample custom theme render
 
 @MainActor
 @Suite("Sample custom theme render")
@@ -556,7 +556,7 @@ struct CustomThemeRenderTests {
     }
 
     @Test func aCustomThemeRenderIsDeterministicAcrossRenders() throws {
-        // CS-031 acceptance: "exported screenshots are deterministic across custom
+        // Behavior: "exported screenshots are deterministic across custom
         // themes." Rendering the same custom-theme config twice yields byte-identical
         // PNG output, because the palette is captured in fixed sRGB.
         let theme = Theme(id: "custom.det", displayName: "Deterministic", palette: samplePalette())
@@ -650,10 +650,10 @@ struct CustomThemeRenderTests {
     }
 }
 
-// MARK: - Custom theme editor draft (preview before saving, CS-031)
+// MARK: - Custom theme editor draft (preview before saving)
 
 /// The editor's `CustomThemeDraft` is the editable, `Color`-backed form behind both
-/// the live preview and the Save action (CS-031 "theme preview appears before
+/// the live preview and the Save action ("theme preview appears before
 /// saving"). The editor builds its preview *and* the saved theme from the same
 /// `draft.palette()`, so these tests pin the load-bearing guarantee that what the
 /// user previews is exactly the palette that gets saved — and that opening an
@@ -732,7 +732,7 @@ struct CustomThemeDraftTests {
     @Test func theDraftPaletteRendersTheSamePreviewTheStoreWouldSave() throws {
         // The preview renders `draft.palette()`; saving stores the same palette. Render
         // both as a theme and assert byte-identical PNGs, proving the preview the user
-        // approves is pixel-for-pixel what the saved custom theme produces (CS-031
+        // approves is pixel-for-pixel what the saved custom theme produces (
         // "preview before saving" tied to the determinism guarantee).
         let draft = CustomThemeDraft(
             editingID: "custom.preview", name: "Preview", palette: samplePalette())

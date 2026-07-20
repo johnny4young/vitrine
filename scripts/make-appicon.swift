@@ -1,5 +1,5 @@
 #!/usr/bin/env swift  //
-// Reproducibly generates the macOS app icon set (CS-017): a rounded-rect ocean
+// Reproducibly generates the macOS app icon set: a rounded-rect ocean
 // gradient with a "</>" glyph, rendered crisply at every required size.
 // Run from the repo root: `swift scripts/make-appicon.swift` (or `make icon`).
 //

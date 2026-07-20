@@ -4,12 +4,12 @@ import OSLog
 
 /// Drives a single `vitrine render` invocation: read the source file, build the
 /// snapshot, render it through the **unchanged** app render path, and write the
-/// image (CS-033).
+/// image.
 ///
 /// The render path is `ExportManager` over a `SnapshotCanvas` — byte-for-byte the
 /// same pipeline the editor and quick capture use — so a CLI render is pixel-identical
-/// to the app for the same options (the CS-033 acceptance "reuse `SnapshotCanvas`/
-/// `ExportManager` unchanged"). This type adds only the file I/O around that pipeline;
+/// to the app for the same options. This type reuses `SnapshotCanvas` and
+/// `ExportManager` unchanged, adding only file I/O around that pipeline;
 /// it never re-implements rendering.
 ///
 /// It is `@MainActor` because `ImageRenderer` and Highlightr require AppKit on the
@@ -122,7 +122,7 @@ enum CLIRenderer {
     ///
     /// `fileLoader` is injected so tests can exercise the render-and-write half
     /// without touching the security-scoped file reader; it defaults to the real
-    /// `FileInputLoader.load(from:)` used by the editor's drag-and-drop (CS-028), so
+    /// `FileInputLoader.load(from:)` used by the editor's drag-and-drop, so
     /// the CLI reuses the same text-only, language-inferring loader as the app.
     @discardableResult
     static func run(
@@ -139,7 +139,7 @@ enum CLIRenderer {
         case .code:
             let loaded = try loadInput(options, fileLoader: fileLoader)
             // An explicit `--language` overrides the inferred one; otherwise the loader's
-            // extension/content inference wins, exactly as the editor does (CS-027/028).
+            // extension/content inference wins, exactly as the editor does.
             let language = options.language ?? loaded.language
             var config = options.makeConfig(
                 code: loaded.text, language: language,
@@ -157,7 +157,7 @@ enum CLIRenderer {
 
     /// Renders one code/stdin source through each selected destination preset and
     /// writes the resulting files into one output directory. This is the CLI form of
-    /// the app's CS-093 multi-size export: the source is loaded once, every preset
+    /// the app's multi-size export: the source is loaded once, every preset
     /// uses the shared `CLIOptions.makeConfig` precedence and `renderAndWrite` encoder,
     /// and filenames match the app's stable `vitrine-<preset id>.<ext>` convention.
     @discardableResult
@@ -449,7 +449,7 @@ enum CLIRenderer {
     }
 
     /// Runs a folder `batch`: renders every readable text file in the input directory
-    /// to the output directory, one image per file (CS-094).
+    /// to the output directory, one image per file.
     ///
     /// Non-text/unreadable files are skipped (not fatal), so a mixed folder still
     /// produces images for the code in it; the summary reports how many were skipped.
@@ -1159,7 +1159,7 @@ enum CLIRenderer {
         do {
             try data.write(to: url)
         } catch {
-            // Log only the format, never the (user-chosen) path (CS-048 privacy rule).
+            // Log only the format, never the (user-chosen) path (privacy policy).
             let nsError = error as NSError
             Log.export.error(
                 "CLI write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"

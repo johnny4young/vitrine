@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-// CS-042/CS-043 — the Web Snapshot surface (app integration). The renderers and
+// — the Web Snapshot surface (app integration). The renderers and
 // validation are covered by HTMLRendererTests / URLRendererTests; these pin the seams
 // the window adds: the model's input logic, the consent flag's persistence, the
 // presenter bridge, and the File-menu command wiring.
@@ -20,7 +20,7 @@ struct WebSnapshotModelTests {
 
     @Test func normalizedURLRejectsNonWebSchemesAndEmpty() {
         // Mirrors the renderer's scheme gate so the UI refuses an obviously bad URL
-        // before a render attempt (CS-043).
+        // before a render attempt.
         #expect(WebSnapshotModel.normalizedURL("") == nil)
         #expect(WebSnapshotModel.normalizedURL("file:///etc/passwd") == nil)
         #expect(WebSnapshotModel.normalizedURL("javascript:alert(1)") == nil)
@@ -111,7 +111,7 @@ struct URLCaptureConsentTests {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let settings = AppSettings(defaults: defaults)
-        // Off on a fresh suite, so the first capture always discloses first (CS-045).
+        // Off on a fresh suite, so the first capture always discloses first.
         #expect(!settings.webCapture.consentGiven)
 
         settings.webCapture.consentGiven = true

@@ -34,7 +34,7 @@ struct FramedImageView: View {
         // (`FrameChrome.topEdgeColor`) — otherwise re-run on every `body` pass (a slider
         // drag, typing). The foreground image's file name is the SHA-256 of its bytes
         // (content-addressed, immutable), so cache the resolved chrome by that name, the
-        // same reasoning as `BackgroundImageStore`'s decoded-image cache (P1).
+        // same reasoning as `BackgroundImageStore`'s decoded-image cache.
         let key = reference.fileName as NSString
         if let cached = Self.autoChromeCache.object(forKey: key) { return cached.chrome }
         let resolved = FrameChrome.of(.auto, image: image)
@@ -44,7 +44,7 @@ struct FramedImageView: View {
 
     /// Process-wide cache of resolved `.auto` chrome, keyed by the content-addressed
     /// (SHA-256) foreground image file name, so a given name maps to one immutable
-    /// sample. Mirrors `BackgroundImageStore.imageCache` (P1).
+    /// sample. Mirrors `BackgroundImageStore.imageCache`.
     @MainActor private static let autoChromeCache = NSCache<NSString, FrameChromeBox>()
 
     var body: some View {

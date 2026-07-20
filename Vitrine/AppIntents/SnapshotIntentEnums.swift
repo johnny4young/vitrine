@@ -1,6 +1,6 @@
 import AppIntents
 
-/// App Intents picker enums for the automation surfaces (CS-034).
+/// App Intents picker enums for the automation surfaces.
 ///
 /// Each `AppEnum` exposes one of the app's existing model catalogs to Shortcuts and
 /// the Intents UI as a friendly, localized picker. The cases are kept deliberately
@@ -8,14 +8,14 @@ import AppIntents
 /// `ExportPreset` id, and `ExportFormat`), so there is a single source of truth for
 /// what the app can render and the intent parameters cannot drift from it. The color
 /// profile is intentionally not exposed — automation always outputs deliberate sRGB
-/// (the universally safe space, CS-024); the advanced P3 option stays an in-app choice.
+/// (the universally safe space); the advanced P3 option stays an in-app choice.
 ///
 /// `caseDisplayRepresentations` uses the same display names the in-app pickers use,
 /// so a Shortcut shows "X / Twitter", "Dracula", "Swift", etc. — not raw ids.
 
 // MARK: - Language
 
-/// The language an automation renders with, mirroring `Language` (CS-034).
+/// The language an automation renders with, mirroring `Language`.
 ///
 /// "Automatic" is the default and most useful case: it defers to Vitrine's own
 /// detection (Markdown fences, file-path hints, then content scoring), so a Shortcut
@@ -85,11 +85,10 @@ enum SnapshotLanguageAppEnum: String, AppEnum, CaseIterable {
 
 // MARK: - Theme
 
-/// A built-in syntax theme an automation can pick, mirroring `Theme.builtIns`
-/// (CS-034).
+/// A built-in syntax theme an automation can pick, mirroring `Theme.builtIns`.
 ///
 /// "Default" keeps the user's current theme; every other case is a built-in theme by
-/// its stable id. Only built-ins are offered because a user's custom themes (CS-031)
+/// its stable id. Only built-ins are offered because a user's custom themes
 /// are machine-local and not addressable by a stable, shareable id in a Shortcut.
 enum SnapshotThemeAppEnum: String, AppEnum, CaseIterable {
     case `default`
@@ -138,8 +137,8 @@ enum SnapshotThemeAppEnum: String, AppEnum, CaseIterable {
 
 // MARK: - Destination preset
 
-/// A destination preset an automation can apply, mirroring `ExportPreset.all`
-/// (CS-034). "None" applies no preset (the user's own framing); every other case is
+/// A destination preset an automation can apply, mirroring `ExportPreset.all`.
+/// "None" applies no preset (the user's own framing); every other case is
 /// a preset by its stable id.
 enum SnapshotPresetAppEnum: String, AppEnum, CaseIterable {
     case none
@@ -177,7 +176,7 @@ enum SnapshotPresetAppEnum: String, AppEnum, CaseIterable {
 
 // MARK: - Output format
 
-/// The image format an automation produces, mirroring `ExportFormat` (CS-034).
+/// The image format an automation produces, mirroring `ExportFormat`.
 enum SnapshotFormatAppEnum: String, AppEnum, CaseIterable {
     case png
     case pdf

@@ -111,7 +111,7 @@ struct SnapshotMetadataCodableTests {
 
     @Test func decodingReNormalizesPersistedText() throws {
         // A hand-edited blob with untrimmed or empty-but-present strings must not
-        // carry that into the renderer; the decoder re-normalizes (CS-050 spirit).
+        // carry that into the renderer; the decoder re-normalizes (defensive behavior).
         let json = #"{"filename":"  a.swift  ","title":"   ","caption":""}"#
         let decoded = try JSONDecoder().decode(SnapshotMetadata.self, from: Data(json.utf8))
         #expect(decoded.filename == "a.swift")

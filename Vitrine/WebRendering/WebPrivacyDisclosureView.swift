@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// The first-use privacy disclosure shown before Vitrine captures a webpage
-/// (CS-045).
+/// The first-use privacy disclosure shown before Vitrine captures a webpage.
 ///
 /// URL capture is the web-capture capability, and the moment the app reaches the
 /// network it changes the product promise. This view is the user-facing half of
@@ -15,8 +14,8 @@ import SwiftUI
 ///
 /// The disclosure title, body, and button labels come from
 /// `WebSnapshotConfig.firstUseDisclosure`, which builds them from the String
-/// Catalog (CS-047) so the copy localizes and is asserted in tests. This view never
-/// hard-codes that wording; it only adds the Phase 1 reminder line and lays the
+/// Catalog so the copy localizes and is asserted in tests. This view never
+/// hard-codes that wording; it only adds the local rendering reminder line and lays the
 /// pieces out, so the reviewable privacy sentence lives in exactly one place and is
 /// reused wherever the disclosure appears.
 ///
@@ -111,7 +110,7 @@ struct WebPrivacyDisclosureView: View {
         .accessibilityAddTraits(.isHeader)
     }
 
-    /// The Phase 1 reminder: code capture stays entirely on the Mac. Phrasing it
+    /// The local rendering reminder: code capture stays entirely on the Mac. Phrasing it
     /// here keeps the promise visible the first time the network is ever used, so
     /// the user sees that URL capture is the deliberate exception, not a change to
     /// how their code is handled.
@@ -167,7 +166,7 @@ struct WebPrivacyDisclosureView: View {
     }
 
     /// The confirm button's tooltip, matching its state: in a capable build it names
-    /// the action; in a Phase 1 build (where the button is disabled) it gives the same
+    /// the action; in a network-free build (where the button is disabled) it gives the same
     /// reason as the inline note, so hovering the dead control is never a mystery.
     private var confirmHelp: LocalizedStringKey {
         isURLCaptureEnabled
@@ -182,7 +181,7 @@ struct WebPrivacyDisclosureView: View {
         .background(Brand.Palette.stage.color)
 }
 
-#Preview("Phase 1 (capture disabled)") {
+#Preview("local rendering (capture disabled)") {
     WebPrivacyDisclosureView(onConfirm: {}, onCancel: {}, isURLCaptureEnabled: false)
         .padding(Brand.Spacing.xxl)
         .background(Brand.Palette.stage.color)

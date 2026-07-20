@@ -1,24 +1,24 @@
 import Foundation
 import Testing
 
-/// CS-066 — Release artifact QA checklist.
+/// Release artifact QA checklist.
 ///
 /// These tests assert that the committed QA tooling — `scripts/qa-release.sh` and
 /// the `docs/RELEASING.md` section that documents it — actually encodes every
-/// acceptance criterion of the ticket, so a future edit that drops a checklist
+/// release requirement, so a future edit that drops a checklist
 /// item, the environment record, the self-contained property, or the
 /// app-bug-vs-signing-failure distinction fails the unit suite rather than
 /// silently shipping a QA process that misses a release blocker.
 ///
-/// Like `ReleaseSigningTests` (CS-061), `HomebrewCaskTests` (CS-063), and
-/// `WorkflowConfigurationTests` (CS-060), they read the committed files from the
+/// Like `ReleaseSigningTests`, `HomebrewCaskTests`, and
+/// `WorkflowConfigurationTests`, they read the committed files from the
 /// source tree (anchored to this file via `#filePath`) rather than any built
 /// bundle, because the QA script is run by a human against a *published* artifact
 /// on a clean Mac — something no hosted unit test can reproduce (it has no
 /// Developer ID-signed DMG, no second machine). This suite is the structural guard
 /// that the checklist and its automated checks stay complete and internally
 /// consistent.
-@Suite("Release artifact QA checklist · CS-066")
+@Suite("Release artifact QA checklist")
 struct ReleaseQAChecklistTests {
 
     // MARK: - Repository anchoring
@@ -48,7 +48,7 @@ struct ReleaseQAChecklistTests {
         try text("docs", "RELEASING.md")
     }
 
-    /// The interactive checklist items the ticket enumerates. Both the script
+    /// The interactive checklist items the checklist enumerates. Both the script
     /// (which prints the checklist) and `RELEASING.md` (which documents it) must
     /// cover every one of them. Each entry is a list of acceptable substrings —
     /// any one matching counts — so wording can evolve without making the guard
@@ -77,7 +77,7 @@ struct ReleaseQAChecklistTests {
         ] {
             #expect(
                 fileManager.fileExists(atPath: path.path),
-                "CS-066 expects \(path.lastPathComponent) to exist")
+                " expects \(path.lastPathComponent) to exist")
         }
     }
 
@@ -103,7 +103,7 @@ struct ReleaseQAChecklistTests {
             "qa-release.sh must use strict bash mode (set -euo pipefail)")
     }
 
-    // MARK: - Acceptance: the checklist covers every required item
+    // MARK: - Contract: the checklist covers every required item
 
     /// The printed checklist in the script must cover all eleven interactive items.
     @Test func scriptChecklistCoversEveryRequiredItem() throws {
@@ -111,7 +111,7 @@ struct ReleaseQAChecklistTests {
         for item in Self.checklistItems {
             #expect(
                 item.needles.contains(where: script.contains),
-                "qa-release.sh checklist must cover \(item.label) (CS-066)")
+                "qa-release.sh checklist must cover \(item.label)")
         }
     }
 
@@ -122,11 +122,11 @@ struct ReleaseQAChecklistTests {
         for item in Self.checklistItems {
             #expect(
                 item.needles.contains(where: doc.contains),
-                "RELEASING.md QA section must cover \(item.label) (CS-066)")
+                "RELEASING.md QA section must cover \(item.label)")
         }
     }
 
-    // MARK: - Acceptance: runs on a clean Mac without the repo or DerivedData
+    // MARK: - Contract: runs on a clean Mac without the repo or DerivedData
 
     /// The script must be self-contained — it cannot depend on the repository
     /// build tooling, because it runs on a machine that has neither the checkout
@@ -146,13 +146,13 @@ struct ReleaseQAChecklistTests {
         for command in ["xcodebuild", "xcodegen", "make build", "make project"] {
             #expect(
                 !executableLines.contains(command),
-                "qa-release.sh must not invoke `\(command)`; it runs on a clean Mac (CS-066)")
+                "qa-release.sh must not invoke `\(command)`; it runs on a clean Mac")
         }
         // It must rely only on stock macOS tools that are present without the repo.
         for tool in ["codesign", "spctl", "plutil", "sw_vers", "hdiutil"] {
             #expect(
                 script.contains(tool),
-                "qa-release.sh should use the stock macOS tool `\(tool)` (CS-066)")
+                "qa-release.sh should use the stock macOS tool `\(tool)`")
         }
     }
 
@@ -161,21 +161,18 @@ struct ReleaseQAChecklistTests {
     @Test func releasingDocRequiresACleanMac() throws {
         let doc = try Self.releasingDoc()
         #expect(
-            doc.contains("CS-066"),
-            "RELEASING.md must reference the QA-checklist ticket")
-        #expect(
             doc.localizedCaseInsensitiveContains("clean")
                 && doc.localizedCaseInsensitiveContains("Mac"),
-            "RELEASING.md must require running QA on a clean Mac (CS-066)")
+            "RELEASING.md must require running QA on a clean Mac")
         #expect(
             doc.contains("DerivedData"),
-            "RELEASING.md must note the clean Mac has no DerivedData (CS-066)")
+            "RELEASING.md must note the clean Mac has no DerivedData")
         #expect(
             doc.contains("scripts/qa-release.sh"),
-            "RELEASING.md must point at scripts/qa-release.sh (CS-066)")
+            "RELEASING.md must point at scripts/qa-release.sh")
     }
 
-    // MARK: - Acceptance: records macOS version, architecture, app version, signing identity
+    // MARK: - Contract: records macOS version, architecture, app version, signing identity
 
     /// Every QA run must record where it ran and what it tested. The script reads
     /// each fact with a stock tool: the macOS version (`sw_vers`), the architecture
@@ -185,17 +182,17 @@ struct ReleaseQAChecklistTests {
         let script = try Self.script()
         #expect(
             script.contains("sw_vers"),
-            "qa-release.sh must record the macOS version (sw_vers) (CS-066)")
+            "qa-release.sh must record the macOS version (sw_vers)")
         #expect(
             script.contains("uname -m"),
-            "qa-release.sh must record the hardware architecture (uname -m) (CS-066)")
+            "qa-release.sh must record the hardware architecture (uname -m)")
         #expect(
             script.contains("CFBundleShortVersionString"),
-            "qa-release.sh must record the app version (CFBundleShortVersionString) (CS-066)")
+            "qa-release.sh must record the app version (CFBundleShortVersionString)")
         // The signing identity comes from the codesign authority line.
         #expect(
             script.contains("codesign") && script.localizedCaseInsensitiveContains("Authority"),
-            "qa-release.sh must record the signing identity (codesign Authority) (CS-066)")
+            "qa-release.sh must record the signing identity (codesign Authority)")
     }
 
     /// The documentation must list the same recorded fields, so the QA log captures
@@ -204,38 +201,38 @@ struct ReleaseQAChecklistTests {
         let doc = try Self.releasingDoc()
         #expect(
             doc.localizedCaseInsensitiveContains("macOS version"),
-            "RELEASING.md must say QA records the macOS version (CS-066)")
+            "RELEASING.md must say QA records the macOS version")
         #expect(
             doc.localizedCaseInsensitiveContains("architecture"),
-            "RELEASING.md must say QA records the architecture (CS-066)")
+            "RELEASING.md must say QA records the architecture")
         #expect(
             doc.localizedCaseInsensitiveContains("app version")
                 || doc.contains("CFBundleShortVersionString"),
-            "RELEASING.md must say QA records the app version (CS-066)")
+            "RELEASING.md must say QA records the app version")
         #expect(
             doc.localizedCaseInsensitiveContains("signing identity"),
-            "RELEASING.md must say QA records the signing identity (CS-066)")
+            "RELEASING.md must say QA records the signing identity")
     }
 
-    // MARK: - Acceptance: scriptable codesign / spctl / plutil / stapler checks
+    // MARK: - Contract: scriptable codesign / spctl / plutil / stapler checks
 
     /// The automated half must run exactly the assessment a user's Gatekeeper runs,
-    /// plus an Info.plist sanity check — the ticket's "optional scripted checks for
+    /// plus an Info.plist sanity check covering
     /// codesign/spctl/plutil".
     @Test func scriptRunsTheGatekeeperAndPlistChecks() throws {
         let script = try Self.script()
         #expect(
             script.contains("codesign --verify"),
-            "qa-release.sh must verify the code signature (codesign --verify) (CS-066)")
+            "qa-release.sh must verify the code signature (codesign --verify)")
         #expect(
             script.contains("spctl -a"),
-            "qa-release.sh must run a Gatekeeper assessment (spctl -a) (CS-066)")
+            "qa-release.sh must run a Gatekeeper assessment (spctl -a)")
         #expect(
             script.contains("plutil"),
-            "qa-release.sh must validate the Info.plist with plutil (CS-066)")
+            "qa-release.sh must validate the Info.plist with plutil")
         #expect(
             script.contains("stapler validate"),
-            "qa-release.sh must check the notarization staple (stapler validate) (CS-066)")
+            "qa-release.sh must check the notarization staple (stapler validate)")
     }
 
     /// The checks must cover the DMG container the user actually downloads, not only
@@ -244,15 +241,15 @@ struct ReleaseQAChecklistTests {
         let script = try Self.script()
         #expect(
             script.contains("hdiutil attach"),
-            "qa-release.sh must mount the DMG to inspect it (CS-066)")
+            "qa-release.sh must mount the DMG to inspect it")
         // Both the app and the DMG variables are assessed (the `$DMG` checks live in
         // the signing section).
         #expect(
             script.contains("\"$DMG\""),
-            "qa-release.sh must assess the DMG container, not just the app (CS-066)")
+            "qa-release.sh must assess the DMG container, not just the app")
     }
 
-    // MARK: - Acceptance: failures distinguish app bugs from signing/notarization failures
+    // MARK: - Contract: failures distinguish app bugs from signing/notarization failures
 
     /// A failed check must say which CLASS of failure it is, because an app bug and
     /// a signing/notarization failure have different owners and fixes. The script
@@ -263,27 +260,27 @@ struct ReleaseQAChecklistTests {
         // Distinct, machine-checkable failure classes in the output.
         #expect(
             script.contains("[APP]"),
-            "qa-release.sh must label app/packaging failures distinctly (CS-066)")
+            "qa-release.sh must label app/packaging failures distinctly")
         #expect(
             script.contains("[SIGNING]"),
-            "qa-release.sh must label signing/notarization failures distinctly (CS-066)")
+            "qa-release.sh must label signing/notarization failures distinctly")
         // Separate accounting for the two classes.
         #expect(
             script.contains("APP_FAILURES") && script.contains("SIGNING_FAILURES"),
-            "qa-release.sh must track app vs. signing failures separately (CS-066)")
+            "qa-release.sh must track app vs. signing failures separately")
         // Distinct exit codes: an app/packaging failure and a signing failure must
         // not collapse to the same status.
         #expect(
             script.contains("exit 3"),
-            "qa-release.sh must exit with a distinct code for an app/packaging failure (CS-066)")
+            "qa-release.sh must exit with a distinct code for an app/packaging failure")
         #expect(
             script.contains("exit 2"),
-            "qa-release.sh must exit with a distinct code for a signing/notarization failure (CS-066)"
+            "qa-release.sh must exit with a distinct code for a signing/notarization failure"
         )
         // The unsigned dev artifact is a warning, never a production-ready pass.
         #expect(
             script.localizedCaseInsensitiveContains("not production-ready"),
-            "qa-release.sh must flag an unsigned artifact as not production-ready (CS-066)")
+            "qa-release.sh must flag an unsigned artifact as not production-ready")
     }
 
     /// The documentation must explain the same app-bug-vs-signing distinction so a
@@ -294,11 +291,11 @@ struct ReleaseQAChecklistTests {
             doc.localizedCaseInsensitiveContains("app bug")
                 || doc.localizedCaseInsensitiveContains("app / packaging")
                 || doc.localizedCaseInsensitiveContains("app/packaging"),
-            "RELEASING.md must describe the app-bug failure class (CS-066)")
+            "RELEASING.md must describe the app-bug failure class")
         #expect(
             doc.localizedCaseInsensitiveContains("notariz")
                 && doc.localizedCaseInsensitiveContains("signing"),
-            "RELEASING.md must describe the signing/notarization failure class (CS-066)")
+            "RELEASING.md must describe the signing/notarization failure class")
     }
 
     // MARK: - Internal consistency

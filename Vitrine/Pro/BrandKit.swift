@@ -4,13 +4,13 @@ import SwiftUI
 
 /// The user's brand identity — a logo, a handle, an optional project label, an
 /// accent color, and a corner placement — applied as a watermark to exported
-/// snapshots (CS-092, the PRO Brand Kit).
+/// snapshots (the PRO Brand Kit).
 ///
 /// One brand kit is shared app-wide (like the working social card), persisted as a
 /// JSON blob and resolved into a render-ready `Watermark` by `BrandKitStore`. Text
 /// fields are normalized (trimmed) on the way in, and decoding re-normalizes, so a
 /// hand-edited or corrupt store can never feed stray whitespace into the layout
-/// (CS-050 posture).
+/// (defensive posture).
 struct BrandKit: Equatable, Codable {
     /// The logo image, stored in the app container and referenced by name
     /// (`BackgroundImageStore`). `nil` for a text-only mark.
@@ -23,7 +23,7 @@ struct BrandKit: Equatable, Codable {
     var project: String
 
     /// The link the QR chip encodes (a profile/repo/article URL), or empty for no
-    /// chip (feature #28). Normalized; rendered fully on-device.
+    /// chip. Normalized; rendered fully on-device.
     var linkURL: String
 
     /// The accent tint for the mark's text, or `nil` to use the legible default.
@@ -77,7 +77,7 @@ struct BrandKit: Equatable, Codable {
     }
 
     /// Decodes tolerantly and re-normalizes, so a corrupt blob degrades to a clean
-    /// default rather than feeding bad data into the mark (CS-050).
+    /// default rather than feeding bad data into the mark.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
@@ -95,7 +95,7 @@ struct BrandKit: Equatable, Codable {
 }
 
 /// Owns the app-wide brand kit and the "apply to captures" switch, and resolves the
-/// kit into a render-ready `Watermark` (CS-092).
+/// kit into a render-ready `Watermark`.
 ///
 /// Mirrors `PresetStore`/`CustomThemeStore`: a single shared instance backed by the
 /// app's resolved defaults, with `UserDefaults` (and the logo image store)
@@ -135,7 +135,7 @@ final class BrandKitStore {
         }
     }
 
-    /// Whether the brand kit is applied to captures (CS-092). Off by default, so a
+    /// Whether the brand kit is applied to captures. Off by default, so a
     /// fresh install (and the golden suite) renders unbranded until the user opts in.
     var isEnabled: Bool {
         didSet {
@@ -152,11 +152,11 @@ final class BrandKitStore {
     private var cachedLogoData: Data?
 
     /// The decoded logo image, cached so the Settings preview doesn't re-read and re-decode
-    /// the file from disk on every SwiftUI body pass (audit P1-Perf-5).
+    /// the file from disk on every SwiftUI body pass.
     private var cachedLogoImage: NSImage?
 
     /// The generated QR chip for `brandKit.linkURL`, cached so `resolvedWatermark`
-    /// never runs the Core Image filter on the render/preview hot path (feature #28).
+    /// never runs the Core Image filter on the render/preview hot path.
     /// Regenerated only when the link actually changes.
     private var cachedQRImage: NSImage?
 
@@ -178,7 +178,7 @@ final class BrandKitStore {
     }
 
     /// The render-ready watermark, or `nil` when the kit is disabled, PRO is locked,
-    /// or there is nothing to draw (CS-092). This is the only path that turns a brand
+    /// or there is nothing to draw. This is the only path that turns a brand
     /// kit into a rendered mark, so a free or empty build never watermarks an export.
     func resolvedWatermark(isPro: Bool) -> Watermark? {
         guard isEnabled, isPro else { return nil }
@@ -198,7 +198,7 @@ final class BrandKitStore {
 
     /// Imports a user-picked logo file into the container and adopts it, returning
     /// whether it succeeded. The file is validated as an image and copied under a
-    /// content-addressed name, exactly like a background image (CS-051).
+    /// content-addressed name, exactly like a background image.
     @discardableResult
     func importLogo(from url: URL) -> Bool {
         do {

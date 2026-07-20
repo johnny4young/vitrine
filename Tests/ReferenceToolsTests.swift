@@ -4,12 +4,12 @@ import Testing
 
 @testable import Vitrine
 
-/// Features #12/#33 — the reference-and-measurement band: the dimension-callout
+/// The reference-and-measurement tools: the dimension-callout
 /// ruler annotation and the floating pinned-snapshot window.
 @Suite("Reference tools (measure + pin)", .serialized)
 @MainActor
 struct ReferenceToolsTests {
-    // MARK: - Measure (#12)
+    // MARK: - Measure
 
     @Test func measureChangesTheRenderedPixelsAndTracksItsSpan() throws {
         var plain = SnapshotConfig()
@@ -49,7 +49,7 @@ struct ReferenceToolsTests {
         #expect(restored.first?.end == CGPoint(x: 0.7, y: 0.2))
     }
 
-    // MARK: - Pinned snapshot (#33)
+    // MARK: - Pinned snapshot
 
     /// Pinning shows a floating, all-Spaces panel; pinning again reuses the same
     /// panel (one reference at a time); unpinning hides it.

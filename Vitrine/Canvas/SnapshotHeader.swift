@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// A compact metadata header drawn above the code, inside the exported card
-/// (CS-022).
+/// A compact metadata header drawn above the code, inside the exported card.
 ///
 /// The header gives a screenshot context — the file it came from, a title, a
 /// caption, and/or a language badge — without editing the image afterward. It is
@@ -12,8 +11,8 @@ import SwiftUI
 /// Like the line-number gutter, the header inherits the active theme rather than
 /// the app's light/dark appearance: its text color is derived from the theme's
 /// card background luminance and its chips use a luminance-aware tint, so it reads
-/// correctly on every theme and even over a transparent canvas background
-/// (CS-024). It uses tight, secondary styling so it frames the code without
+/// correctly on every theme and even over a transparent canvas background.
+/// It uses tight, secondary styling so it frames the code without
 /// crowding the body.
 struct SnapshotHeader: View {
     let metadata: SnapshotMetadata

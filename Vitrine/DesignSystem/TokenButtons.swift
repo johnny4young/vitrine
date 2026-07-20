@@ -1,8 +1,8 @@
 import SwiftUI
 
-// The shared chrome components of the redesigned surfaces (design/handoff).
+// The shared chrome components of the current designed surfaces.
 // Every visual value here resolves through `VitrineTokens`; the shapes and
-// measurements mirror the HTML UI kits' component classes one to one, so the
+// measurements mirror the design-system component classes one to one, so the
 // Settings window, the editor inspector, and the menu-bar panel all read as the
 // same design system.
 
@@ -40,7 +40,7 @@ struct GradientCTAButton<Label: View>: View {
                     .stroke(isFocused ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
             )
             // No accent shadow when disabled — a glowing, full-color capsule must not
-            // read as the active primary action when it does nothing (audit UX).
+            // read as the active primary action when it does nothing.
             .brandShadow(isEnabled ? VitrineTokens.Chrome.ctaShadow : Brand.ShadowStyle.none)
             .brightness(isHovered ? 0.06 : 0)
             .contentShape(Capsule(style: .continuous))
@@ -56,7 +56,7 @@ struct GradientCTAButton<Label: View>: View {
     }
 }
 
-/// Scales the pressed control to 0.98 — the kits' universal press affordance.
+/// Scales the pressed control to 0.98 — the universal press affordance.
 struct PressScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -136,7 +136,7 @@ struct GlassIconButton: View {
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 // A `.plain` button over a hand-drawn border does not dim on its own;
-                // fade it so a disabled icon button reads as inert (audit UX).
+                // fade it so a disabled icon button reads as inert.
                 .opacity(isEnabled ? 1 : 0.4)
         }
         .buttonStyle(.plain)

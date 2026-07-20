@@ -28,7 +28,7 @@ struct LineHighlightParserTests {
 
     @Test func toleratesWhitespaceAndNewlinesAndBlanks() {
         // Spaces around values and separators, stray commas, and newlines are all
-        // forgiven (CS-021 / CS-050 spirit).
+        // forgiven (defensive behavior).
         #expect(LineHighlight.parse("  3 ,, 7 - 9 \n 12 ") == [3...3, 7...9, 12...12])
     }
 
@@ -193,7 +193,7 @@ struct GutterMetricsTests {
     @Test func reservesAtLeastTwoDigitColumnsForShortSnippets() {
         // A handful of lines must not produce a cramped one-digit gutter: the
         // column count floors at two so "1" through "9" still reserve the same
-        // width a two-digit number would (CS-021).
+        // width a two-digit number would.
         #expect(GutterMetrics(font: Self.font(), lineCount: 1).digitColumns == 2)
         #expect(GutterMetrics(font: Self.font(), lineCount: 9).digitColumns == 2)
         #expect(GutterMetrics(font: Self.font(), lineCount: 10).digitColumns == 2)
@@ -226,7 +226,7 @@ struct GutterMetricsTests {
 
     @Test func digitWidthIsMeasuredFromTheCodeFontSoItScalesWithSize() {
         // Width tracks the real digit advance of the passed font, so a larger font
-        // yields a wider gutter column (the gutter is not a fixed guess, CS-021).
+        // yields a wider gutter column (the gutter is not a fixed guess).
         let small = GutterMetrics(font: Self.font(size: 12), lineCount: 10)
         let large = GutterMetrics(font: Self.font(size: 24), lineCount: 10)
         #expect(small.digitWidth > 0)
@@ -334,7 +334,7 @@ struct LineNumberRenderTests {
 
     @Test func enablingTheGutterWidensTheImage() throws {
         // The gutter adds a fixed-width column, so the same code renders wider with
-        // line numbers on than off (CS-021 acceptance: the gutter shows in export).
+        // line numbers on than off ( the gutter shows in export).
         var plain = SnapshotConfig()
         plain.code = Self.sample
 
@@ -371,7 +371,7 @@ struct LineNumberRenderTests {
     }
 
     @Test func emptyCodeWithGutterRendersWithoutGlitch() throws {
-        // Empty code must not collapse to a zero-size render (CS-021 acceptance).
+        // Empty code must not collapse to a zero-size render .
         var config = SnapshotConfig()
         config.code = ""
         config.showLineNumbers = true
@@ -402,8 +402,8 @@ struct LineNumberRenderTests {
     }
 
     @Test func gutterRendersAcrossLightAndDarkThemes() throws {
-        // The gutter and highlight must work in both light and dark themes (CS-021
-        // acceptance); GitHub is a light theme, One Dark a dark one.
+        // The gutter and highlight must work in both light and dark themes (
+        // contract); GitHub is a light theme, One Dark a dark one.
         for theme in [Theme.github, Theme.oneDark] {
             var config = SnapshotConfig()
             config.code = Self.sample
@@ -438,7 +438,7 @@ struct LineNumberRenderTests {
 struct LineHighlightColorTests {
     @Test func highlightColorDiffersBetweenLightAndDarkThemes() {
         // A light theme deepens its row, a dark theme lifts it, so the band is
-        // visible in both (CS-021 acceptance). Compared via fixed-sRGB components
+        // visible in both . Compared via fixed-sRGB components
         // because SwiftUI `Color.==` is unreliable across construction paths.
         let dark = RGBAColor(HighlightManager.shared.lineHighlightColor(for: .oneDark))
         let light = RGBAColor(HighlightManager.shared.lineHighlightColor(for: .github))
@@ -448,7 +448,7 @@ struct LineHighlightColorTests {
     @Test func highlightBandIsTranslucentInBothThemes() {
         // The band is a wash over the theme's own card, never an opaque fill, so it
         // tints the selected row instead of replacing it — and stays valid over a
-        // transparent canvas (CS-021 / CS-024). A fully opaque band would regress
+        // transparent canvas. A fully opaque band would regress
         // both. Guard the upper bound strictly so the band can never go solid.
         for theme in [Theme.oneDark, Theme.github] {
             let band = RGBAColor(HighlightManager.shared.lineHighlightColor(for: theme))
@@ -477,8 +477,8 @@ struct LineHighlightColorTests {
 
     @Test func gutterForegroundIsOpaqueAndContrastsTheTheme() {
         // The gutter number color is the high-contrast base the row dims from: an
-        // opaque near-white on a dark theme, an opaque near-black on a light theme
-        // (CS-021). It must stay fully opaque so the per-row opacity dimming is the
+        // opaque near-white on a dark theme, an opaque near-black on a light theme.
+        // It must stay fully opaque so the per-row opacity dimming is the
         // only thing that fades it.
         let dark = RGBAColor(HighlightManager.shared.gutterForegroundColor(for: .oneDark))
         let light = RGBAColor(HighlightManager.shared.gutterForegroundColor(for: .github))
@@ -491,7 +491,7 @@ struct LineHighlightColorTests {
 
 // MARK: - Highlight actually paints pixels
 
-/// Proof that a selected-line highlight is *drawn*, not merely modeled (CS-021).
+/// Proof that a selected-line highlight is *drawn*, not merely modeled.
 ///
 /// The dimension tests prove a highlight does not reflow the code, and the color
 /// tests prove the band tint is theme-correct — but neither would fail if the

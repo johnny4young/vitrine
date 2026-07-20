@@ -2,9 +2,9 @@ import CoreGraphics
 import Foundation
 
 /// The configuration and safety policy for capturing a user-provided URL through
-/// local WebKit (CS-043).
+/// local WebKit.
 ///
-/// URL screenshots are Product Phase 2, and they must preserve Vitrine's privacy
+/// URL screenshots are web capture, and they must preserve Vitrine's privacy
 /// promise: the requested page is loaded **locally** in a `WKWebView` on this Mac,
 /// never through a remote render service. This type carries the explicit network
 /// mode that makes that promise auditable — what is persisted, whether cookies are
@@ -26,9 +26,9 @@ import Foundation
 /// into the CLI alongside this file (the validating initializer below depends on
 /// `validate`, and settings surfaces read the capability gate).
 ///
-/// ## What CS-044 layers on
+/// ## Predictable capture policy
 ///
-/// CS-044 makes a web screenshot *predictable across sites* by carrying the layout
+/// The configuration makes a web screenshot *predictable across sites* by carrying the layout
 /// and timing policy as values the tests drive directly:
 ///
 /// - **Viewport presets** (`ViewportPreset`): 1200×630, 1440×900, 1920×1080, a
@@ -43,7 +43,7 @@ import Foundation
 ///   timeout ceiling, so a full-page capture of a runaway document cannot exhaust
 ///   memory or hang.
 ///
-/// CS-043 kept this type to the network mode and the safety gate.
+/// These policies keep network behavior explicit and the safety gate reviewable.
 struct WebSnapshotConfig: Equatable {
     /// The validated page to capture. Always an `http`/`https` URL that passed
     /// `WebSnapshotConfig.validate(captureURL:)` — the initializer is the only way
@@ -53,7 +53,7 @@ struct WebSnapshotConfig: Equatable {
     /// The viewport preset the page is laid out in. The width is always honored; the
     /// height is the captured height only in `.visibleViewport` mode (in `.fullPage`
     /// mode the height grows to the document's content height, capped by
-    /// `safetyCaps.maxPageHeight`). Defaults to OpenGraph's 1200×630 (CS-020).
+    /// `safetyCaps.maxPageHeight`). Defaults to OpenGraph's 1200×630.
     var viewportPreset: ViewportPreset = .openGraph
 
     /// The captured viewport size in points, derived from `viewportPreset`. The page
@@ -81,7 +81,7 @@ struct WebSnapshotConfig: Equatable {
     /// is `viewport × scale` device pixels.
     var scale: CGFloat = 2
 
-    /// Color profile to tag the output with — sRGB by default (CS-024).
+    /// Color profile to tag the output with — sRGB by default.
     var profile: ColorProfile = .sRGB
 
     /// What the web view is allowed to persist while loading the page. Defaults to
@@ -164,7 +164,7 @@ extension WebSnapshotConfig {
 // MARK: - Viewport presets
 
 extension WebSnapshotConfig {
-    /// The size the page is laid out and captured in (CS-044).
+    /// The size the page is laid out and captured in.
     ///
     /// A web screenshot is only predictable if its layout width is fixed, so the
     /// renderer never captures "whatever size the window happens to be". The presets
@@ -174,7 +174,7 @@ extension WebSnapshotConfig {
     /// width; the height is the captured height only for a visible-viewport capture
     /// (a full-page capture extends past it to the document's content height).
     enum ViewportPreset: Equatable, Sendable {
-        /// OpenGraph's 1200×630 — the default, sized for a social share card (CS-020).
+        /// OpenGraph's 1200×630 — the default, sized for a social share card.
         case openGraph
         /// 1440×900 — a common laptop logical resolution.
         case desktop
@@ -200,7 +200,7 @@ extension WebSnapshotConfig {
         }
 
         /// A short, localized label for the preset, used in the settings picker. The
-        /// names flow through the String Catalog (CS-047) so the picker reads in the
+        /// names flow through the String Catalog so the picker reads in the
         /// user's language, matching the localized chrome around it.
         var displayName: String {
             switch self {
@@ -284,7 +284,7 @@ extension WebSnapshotConfig {
         /// Reconstructs a preset from a persisted `kind` plus the stored custom size.
         /// A non-custom kind ignores the size; a custom kind clamps the size into the
         /// safe range, so a hand-edited or out-of-range stored value can never produce
-        /// a degenerate viewport (CS-050 defensive-read posture).
+        /// a degenerate viewport (defensive-read posture).
         static func resolve(kind: Kind, customWidth: Int, customHeight: Int) -> ViewportPreset {
             switch kind {
             case .openGraph: .openGraph
@@ -300,8 +300,7 @@ extension WebSnapshotConfig {
 // MARK: - Capture mode
 
 extension WebSnapshotConfig {
-    /// Whether a capture is the visible viewport or the whole scrollable page
-    /// (CS-044).
+    /// Whether a capture is the visible viewport or the whole scrollable page.
     ///
     /// The visible viewport is the deterministic default: the page is captured at
     /// exactly the preset size, which is what a social card or a hero shot wants.
@@ -317,7 +316,7 @@ extension WebSnapshotConfig {
         case fullPage
 
         /// A short, localized label for the mode, used in the settings picker. Flows
-        /// through the String Catalog (CS-047) so it reads in the user's language.
+        /// through the String Catalog so it reads in the user's language.
         var displayName: String {
             switch self {
             case .visibleViewport: String(localized: "Visible area")
@@ -334,7 +333,7 @@ extension WebSnapshotConfig {
 // MARK: - Wait strategy
 
 extension WebSnapshotConfig {
-    /// How long to wait, and on what signal, before snapshotting a page (CS-044).
+    /// How long to wait, and on what signal, before snapshotting a page.
     ///
     /// A static page is ready the instant its load settles, but a page that fetches
     /// its content with JavaScript is blank at that point. The strategies trade
@@ -381,7 +380,7 @@ extension WebSnapshotConfig {
         }
 
         /// A short, localized label for the strategy, used in the settings picker.
-        /// Flows through the String Catalog (CS-047) so it reads in the user's
+        /// Flows through the String Catalog so it reads in the user's
         /// language, matching the localized chrome around it.
         var displayName: String {
             switch self {
@@ -422,7 +421,7 @@ extension WebSnapshotConfig {
         /// Reconstructs a strategy from a persisted `kind` plus a post-load delay in
         /// seconds. `.domContentLoaded` ignores the delay; the timed strategies clamp
         /// the seconds to a non-negative value, so a corrupt stored value can never
-        /// produce a negative `Duration` (CS-050 defensive-read posture).
+        /// produce a negative `Duration` (defensive-read posture).
         static func resolve(kind: Kind, extraWaitSeconds: Int) -> WaitStrategy {
             let seconds = Duration.seconds(max(extraWaitSeconds, 0))
             switch kind {
@@ -437,7 +436,7 @@ extension WebSnapshotConfig {
 // MARK: - Safety caps
 
 extension WebSnapshotConfig {
-    /// The memory- and time-safety ceilings applied to every capture (CS-044).
+    /// The memory- and time-safety ceilings applied to every capture.
     ///
     /// These bound the two ways a hostile or pathological page could harm the app: a
     /// full-page capture of an infinitely tall document (memory) and a page that
@@ -497,7 +496,7 @@ extension WebSnapshotConfig {
     /// live only for the single render and are never written to disk or shared with
     /// any other web view. `.persistent` is an explicit opt-in for the rare case a
     /// user needs a logged-in page; it is never the default, which is what keeps the
-    /// "cookies and persistent website data are opt-in only" acceptance true.
+    /// "cookies and persistent website data are opt-in only" contract true.
     enum DataStoreMode: String, CaseIterable, Equatable, Sendable {
         /// The default: nothing the page touches is persisted (a per-render data
         /// store). Cookies are not sent or stored across renders.
@@ -523,11 +522,11 @@ extension WebSnapshotConfig {
 
 extension WebSnapshotConfig {
     /// The plain-language explanation shown the first time a user captures a URL,
-    /// so the privacy posture is understood before any page loads (CS-043).
+    /// so the privacy posture is understood before any page loads.
     ///
     /// The copy makes the one fact that matters explicit: Vitrine loads the
     /// requested webpage **locally in WebKit on this Mac**, and the screenshot is
-    /// produced on-device — there is no remote render service. CS-045 owns the full
+    /// produced on-device — there is no remote render service.  owns the full
     /// disclosure view; this is the reviewable, localizable source of its words so
     /// the copy is asserted in tests and reused wherever the disclosure appears.
     struct FirstUseDisclosure: Equatable {
@@ -542,7 +541,7 @@ extension WebSnapshotConfig {
     }
 
     /// The first-use disclosure copy. Built from the String Catalog so it localizes
-    /// (CS-047) and reads cleanly in every UI that presents it.
+    /// and reads cleanly in every UI that presents it.
     static var firstUseDisclosure: FirstUseDisclosure {
         FirstUseDisclosure(
             title: String(localized: "Capture a webpage?"),

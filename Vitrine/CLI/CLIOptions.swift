@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// The parsed options for a single `vitrine render` invocation (CS-033).
+/// The parsed options for a single `vitrine render` invocation.
 ///
 /// `CLIOptions` is the pure, value-typed result of parsing `argv` — it carries no
 /// AppKit state and does no rendering, so it can be unit-tested off the main actor
@@ -12,7 +12,7 @@ import Foundation
 /// Every field defaults to the app's own default, taken from `SnapshotConfig()`,
 /// `SettingsDefaults`, and `ColorProfile.fallback`, so a bare `vitrine render
 /// input.swift --out image.png` renders what the editor would render with untouched
-/// settings (CS-033 "CLI defaults match app defaults unless overridden").
+/// settings ("CLI defaults match app defaults unless overridden").
 ///
 /// Main-actor isolated (the module default) so `makeConfig` can build a
 /// `SnapshotConfig` and apply the main-actor `ExportPreset`/`Theme`/`SettingsDefaults`
@@ -20,7 +20,7 @@ import Foundation
 @MainActor
 struct CLIOptions: Equatable {
     /// Whether this is a single-file `render`, one-source `multi-size`, or folder
-    /// `batch` invocation (CS-094). Output paths are directories for the latter two.
+    /// `batch` invocation. Output paths are directories for the latter two.
     var command: Command = .render
 
     /// The CLI subcommand. `render` writes one image, `multi-size` fans one source out
@@ -77,7 +77,7 @@ struct CLIOptions: Equatable {
     var language: Language?
     /// An explicit destination preset id (e.g. `opengraph`), or `nil` for no preset.
     /// A preset reframes presentation/output exactly as it does in the GUI and never
-    /// touches the source (CS-020).
+    /// touches the source.
     var presetID: String?
     /// Canonically ordered destination preset ids selected by `multi-size`. Empty for
     /// other commands; the parser expands an omitted `--presets` to the full catalog.
@@ -91,7 +91,7 @@ struct CLIOptions: Equatable {
     var canvasSize: CGSize?
     /// The export resolution multiplier (1/2/3). When a preset is chosen and no
     /// explicit scale is given, the preset's recommended scale is used, mirroring the
-    /// GUI's "preset seeds the scale, an explicit value overrides it" rule (CS-020).
+    /// GUI's "preset seeds the scale, an explicit value overrides it" rule.
     var scale: Int?
     /// Optional code font family override. Resolved through `CodeFont.all` so the CLI
     /// accepts the same bundled/system programming fonts as the editor.
@@ -111,7 +111,7 @@ struct CLIOptions: Equatable {
     var shadowRadius: Double?
     /// An explicit terminal reconstruction width (columns), or `nil` to infer it from
     /// the captured output. Only meaningful for `--language terminal`; set by `vgrab -w`
-    /// so a known-width capture wraps exactly as it did in the live terminal (CS-070).
+    /// so a known-width capture wraps exactly as it did in the live terminal.
     var terminalColumns: Int?
     /// Optional soft-wrap column count for long code lines. Mirrors the editor's
     /// "Wrap long lines" control and stays nil by default so bare renders still
@@ -122,10 +122,10 @@ struct CLIOptions: Equatable {
     var formatCode: Bool = false
     /// The output format. Defaults to PNG; PDF is the supported vector format.
     var format: ExportFormat = .png
-    /// The ICC color profile for PNG export (CS-024). PDF ignores this.
+    /// The ICC color profile for PNG export. PDF ignores this.
     var profile: ColorProfile = .fallback
     /// Render with a real transparent background (no gradient/solid), preserving the
-    /// alpha channel on export (CS-024). Overrides any preset background.
+    /// alpha channel on export. Overrides any preset background.
     var transparent: Bool = false
     /// Optional built-in gradient or solid-color canvas override. Nil preserves the
     /// app/preset background; the parser keeps it mutually exclusive with transparency.
@@ -391,7 +391,7 @@ struct CLIOptions: Equatable {
     ///   6. CLI presentation overrides.
     ///
     /// `code` and `language` are set from the input file and never altered by a
-    /// preset, exactly as in the GUI (a preset is presentation/output only, CS-020).
+    /// preset, exactly as in the GUI (a preset is presentation/output only).
     func makeConfig(
         code: String, language: Language, backgroundImageReference: ImageReference? = nil,
         watermarkLogoData: Data? = nil
@@ -495,13 +495,13 @@ struct CLIOptions: Equatable {
     /// The effective export scale, applying the GUI's precedence: an explicit
     /// `--scale` wins; otherwise a chosen preset's recommended scale is used; with
     /// neither, the app default. The result is clamped to the valid 1...3 range so a
-    /// wild value can never reach the renderer (CS-020/050).
+    /// wild value can never reach the renderer.
     var effectiveScale: CGFloat {
         let raw = scale ?? resolvedPreset?.scale ?? Self.defaultScale
         return CGFloat(SettingsDefaults.clampExportScale(raw))
     }
 
     /// The exact logical canvas size to render. An explicit CLI size wins over a
-    /// destination preset; `nil` lets the canvas hug its content (CS-020).
+    /// destination preset; `nil` lets the canvas hug its content.
     var fixedSize: CGSize? { canvasSize ?? resolvedPreset?.sizing.fixedSize }
 }

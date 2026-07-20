@@ -2,15 +2,15 @@ import CryptoKit
 import Foundation
 import Security
 
-/// A local PRO license token for the direct-download build (CS-090): a small signed payload
+/// A local PRO license token for the direct-download build: a small signed payload
 /// the app stores after a successful Lemon Squeezy activation, then verifies **offline** on
 /// every launch — and which the `vitrine` CLI re-verifies — against an embedded Ed25519
 /// public key.
 ///
-/// Honor/convenience model (the epic is explicit: not anti-fork DRM). The signature lets the
+/// This is an honor/convenience model, not anti-fork DRM. The signature lets the
 /// CLI trust the app's activation without re-contacting Lemon Squeezy and rejects a
 /// hand-edited token; it is not a defense against a determined forker (the code is open
-/// source). Architecture B (`docs/ACTIVATION.md`): the app signs the token **locally** at
+/// source). In the embedded-key activation model (`docs/ACTIVATION.md`), the app signs the token **locally** at
 /// activation with a private key injected only into the official release build
 /// (`LicenseSigningKey.embedded`). A build compiled from source has no such key, so it cannot
 /// mint a token and stays free — the public half lives in source for offline verification.
@@ -23,7 +23,7 @@ struct LicenseToken: Codable, Equatable {
     let issuedAt: Date
 }
 
-/// Verifies a signed `LicenseToken` offline against an embedded Ed25519 public key (CS-090).
+/// Verifies a signed `LicenseToken` offline against an embedded Ed25519 public key.
 /// Shared by the app and the CLI so both reach the same verdict from the same token bytes.
 struct LicenseVerifier {
     /// The signing public key, embedded in the build. This value is safe to ship in source;
@@ -45,15 +45,15 @@ struct LicenseVerifier {
         return decoded
     }
 
-    /// The verifier built from the embedded **production** public key (CS-090, Architecture B).
+    /// The verifier built from the embedded **production** public key (embedded-key activation model).
     ///
     /// This is the public half of the direct-download license-signing keypair. The matching
     /// private half is injected only into the official release (`LicenseSigningKey.embedded`)
     /// and never committed; a token the app mints with it verifies here — and in the `vitrine`
     /// CLI — entirely offline. The exact bytes are pinned by
-    /// `embeddedPublicKeyIsThePinnedProductionKey` (so a forgotten swap to a throwaway key can't
-    /// silently lock out paying users, audit P1-Security-6), and
-    /// `embeddedVerifierRejectsForeignTokens` guards that no foreign-signed token validates.
+    /// `embeddedPublicKeyIsThePinnedProductionKey`, so a forgotten swap to a throwaway key cannot
+    /// silently lock out paying users. `embeddedVerifierRejectsForeignTokens` guards against
+    /// accepting a token signed by a foreign key.
     static let embedded = LicenseVerifier(
         publicKey: LicensePublicKeys.production
     )
@@ -72,7 +72,7 @@ private enum LicensePublicKeys {
     }()
 }
 
-/// Mints a signed token from a private key (CS-090). Under Architecture B the **app** runs this
+/// Mints a signed token from a private key. Under embedded-key activation model the **app** runs this
 /// at activation, with the build-injected `LicenseSigningKey.embedded`; the same function backs
 /// the unit tests' mint → verify → tamper path with a throwaway development key.
 enum LicenseSigner {
@@ -106,10 +106,10 @@ extension JSONDecoder {
 }
 
 #if VITRINE_DIRECT_DOWNLOAD
-    /// Where the signed PRO license token is persisted (CS-090). The default is the
+    /// Where the signed PRO license token is persisted. The default is the
     /// **Keychain** (device-only, no iCloud sync) rather than `UserDefaults`, whose plist is
     /// world-readable by any process running as the user — making the token trivial to copy
-    /// and replay across machines (audit P1-Security-1). Injectable so tests use an in-memory
+    /// and replay across machines. Injectable so tests use an in-memory
     /// store without touching the real Keychain.
     protocol LicenseTokenStore {
         func read() -> String?
@@ -154,7 +154,7 @@ extension JSONDecoder {
     }
 
     /// Mirrors the signed activation token into the shared file the bundled `vitrine` CLI
-    /// reads (CS-094), so the CLI's offline PRO check agrees with the app without a StoreKit
+    /// reads, so the CLI's offline PRO check agrees with the app without a StoreKit
     /// or IPC bridge. The sandboxed app writes inside its **own container's** Application
     /// Support; the non-sandboxed CLI reads that exact physical path via
     /// `CLIEntitlement.defaultTokenURL`. The `url` is injectable so tests use a temp file and
@@ -190,7 +190,7 @@ extension JSONDecoder {
         }
     }
 
-    /// The direct-download entitlement provider (CS-090): PRO is unlocked by a locally-stored,
+    /// The direct-download entitlement provider: PRO is unlocked by a locally-stored,
     /// signed `LicenseToken`, verified offline against the embedded public key at every launch
     /// and by the CLI. `LicenseActivationService` performs the one-time online activation and
     /// hands the minted token here; this provider persists it and mirrors it to the CLI file.

@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-// CS-041 — the social-card editor surface (app integration). The card model and
+// — the social-card editor surface (app integration). The card model and
 // renderer are covered by `SocialCardTests`; these pin the seams the editor adds:
 // the working card's persistence in `AppSettings` and the File-menu command wiring.
 
@@ -62,7 +62,7 @@ struct SocialCardPersistenceTests {
     }
 
     @Test func aCorruptStoredBlobFallsBackToTheDefaultCard() {
-        // CS-050 posture: a hand-edited or garbage blob never traps; it degrades to a
+        // Defensive posture: a hand-edited or garbage blob never traps; it degrades to a
         // fresh default card.
         let suite = "VitrineSocialCardCorrupt-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

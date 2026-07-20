@@ -303,7 +303,7 @@ struct TerminalScreen {
                     index += 2
                 default:
                     // ESC followed by an intermediate byte (0x20–0x2F) is a longer
-                    // sequence — most often charset designation (`ESC ( B`, which htop and
+                    // sequence — most often charset designation (`ESC (B`, which htop and
                     // friends emit constantly): consume the intermediate(s) and the final
                     // byte, so the final (e.g. `B`) is never printed as stray text. Any
                     // other `ESC <byte>` is a two-byte escape (`ESC =`) — drop both.

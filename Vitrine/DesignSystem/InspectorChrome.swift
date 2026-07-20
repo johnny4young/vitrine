@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Inspector chrome (editor kit)
+// MARK: - Inspector chrome
 //
 // Shared inspector building blocks used by the Editor, Web Snapshot, and Social
 // Card inspectors so every inspector column reads the same. Promoted here from the
@@ -88,7 +88,7 @@ struct InspectorRow<Content: View>: View {
     }
 }
 
-/// A collapsed-by-default disclosure (`.disc` in the kit): hairline on top, a
+/// A collapsed-by-default disclosure: hairline on top, a
 /// rotating chevron, and a semibold body label.
 struct InspectorDisclosure<Content: View>: View {
     let label: Text

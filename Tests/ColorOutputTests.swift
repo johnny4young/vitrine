@@ -7,16 +7,16 @@ import UniformTypeIdentifiers
 
 @testable import Vitrine
 
-/// Color management and transparent-background hardening (CS-024).
+/// Color management and transparent-background hardening.
 ///
-/// These tests pin the two guarantees the ticket is about: PNG export is sRGB by
+/// These tests pin two color guarantees: PNG export is sRGB by
 /// default with Display P3 only as an explicit opt-in, and a transparent
 /// background exports with a real alpha channel and no matte. They work on the
 /// real `ExportManager` pipeline (`SnapshotCanvas` → `ImageRenderer` → ImageIO),
 /// decoding the encoded PNG and sampling pixels rather than trusting the
 /// in-memory `CGImage`, so they verify what a downstream app would actually open.
 @MainActor
-@Suite("Color output (CS-024)")
+@Suite("Color output")
 struct ColorOutputTests {
     // MARK: - Fixtures & helpers
 
@@ -77,7 +77,7 @@ struct ColorOutputTests {
         return (bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3])
     }
 
-    // MARK: - sRGB is the default (Acceptance: PNG export defaults to sRGB)
+    // MARK: - sRGB is the default (Contract: PNG export defaults to sRGB)
 
     @Test func defaultProfileIsSRGB() {
         #expect(ColorProfile.fallback == .sRGB)
@@ -121,7 +121,7 @@ struct ColorOutputTests {
     }
 
     @Test func p3ConversionRemapsSaturatedPixelValues() throws {
-        // The ticket's promise is *predictable* color, and `normalized(_:to:)`
+        // The color-management promise is *predictable* color, and `normalized(_:to:)`
         // documents that it converts (applies the sRGB↔P3 matrix), not merely
         // retags. A pure-saturated red exercises the gamut difference: encoded as
         // sRGB vs P3, the stored RGB bytes of the same logical color must differ.
@@ -254,7 +254,7 @@ struct ColorOutputTests {
         #expect(normalized.alphaInfo == .premultipliedLast)
     }
 
-    // MARK: - Persistence (advanced option round-trips, CS-050 fallback)
+    // MARK: - Persistence (advanced option round-trips,  fallback)
 
     @Test func colorProfileResolvesUnknownAndMissingToSRGB() {
         #expect(ColorProfile.resolve(nil) == .sRGB)

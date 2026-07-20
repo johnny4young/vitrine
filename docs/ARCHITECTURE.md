@@ -1,7 +1,7 @@
 # Vitrine — Architecture
 
-> In-repo copy of the technical design from the original spec. Mirrors the module
-> layout in [`Vitrine/`](../Vitrine).
+This document mirrors the shipping module layout in [`Vitrine/`](../Vitrine) and the
+runtime boundaries enforced by the test suite.
 
 ## Experience: menu bar + submenu
 
@@ -53,7 +53,7 @@ global hotkey triggers quick mode or the editor depending on the user's preferen
 - **Permission:** a clear `NSPasteboardUsageDescription`; content **never leaves the
   Mac** (no network by default).
 
-## Color management (CS-024)
+## Color management
 
 PNG export is **sRGB by default**, and the exporter tags every image deliberately
 rather than trusting `ImageRenderer`'s default: each render is redrawn through a
@@ -69,10 +69,10 @@ true transparency (its empty pixels stay fully clear, `(0,0,0,0)`) and is never
 composited over an opaque matte, so the result drops cleanly onto any slide or
 page background.
 
-## Vector export (CS-023)
+## Vector export
 
 The supported scalable format is **PDF**, not SVG. This is a deliberate decision
-from the CS-023 spike, not an omission.
+from the  spike, not an omission.
 
 **Finding — there is no faithful full-canvas SVG path.** SwiftUI, `ImageRenderer`,
 and AppKit expose no API that emits the rendered code canvas as vector SVG. A code
@@ -91,7 +91,7 @@ public path that re-emits that glyph layout as SVG `<text>`/`<path>` vectors. So
   same guarantee as the PNG path.
 
 **The one place SVG is honest — the deterministic simple-template subset.** The
-backgrounds of the social-card / simple templates (CS-041) are pure geometry and
+backgrounds of the social-card / simple templates are pure geometry and
 color with no text layout, so they *can* be emitted as native SVG primitives.
 `VectorTemplateSVG.background(_:size:)` serializes exactly that subset:
 
@@ -108,13 +108,13 @@ fixed number formatting and attribute order), so the same template always produc
 identical bytes. This serializer is intentionally **not** wired up as a general
 export choice for the arbitrary code canvas; it exists for the template path only.
 
-## Command-line renderer (CS-033)
+## Command-line renderer
 
 `vitrine render input.swift --out image.png` renders code to an image from the
 command line, for docs pipelines and automation. It is a separate **`VitrineCLI`**
 target (product name `vitrine`); the GUI app is unchanged.
 
-**Hosting strategy (the decision the CS-033 design note asked for).** `ImageRenderer`
+**Hosting strategy (the decision the  design note asked for).** `ImageRenderer`
 and Highlightr require AppKit on the **main actor**, so a plain SwiftPM executable
 that never starts AppKit cannot render. Two options were on the table: (a) bundle a
 headless helper the CLI drives over IPC, or (b) make the CLI itself a minimal AppKit
@@ -184,7 +184,7 @@ options cannot silently pass in automation.
 fail before replacing an image or sidecar, while batch jobs skip existing targets and
 can pair that with skipped reports or `--fail-on-skipped`. A preset reframes
 presentation/output (size, padding, background) and never touches the source, exactly
-as in the GUI (CS-020). Unknown ids and out-of-range values are rejected up front with
+as in the GUI. Unknown ids and out-of-range values are rejected up front with
 a clear message so an automation pipeline fails loud.
 
 **Copyable sidecars.** `--text-sidecar`, `--markdown-sidecar`, `--html-sidecar`, and
@@ -258,7 +258,7 @@ or wrap them in a tarball). Build the binary with `make cli`; the staged folder 
 bundle are written into the same `BUILT_PRODUCTS_DIR`. A code-signed, notarized release
 artifact is future work (see RELEASING.md); the current target is local/CI use.
 
-## Automation: Shortcuts, Services, and App Intents (CS-034)
+## Automation: Shortcuts, Services, and App Intents
 
 Vitrine meets users in the macOS automation surfaces they already use. Two are
 exposed, and both reuse the **exact same render pipeline** as the editor, quick
@@ -273,7 +273,7 @@ share one pure value type and one render shell, both in `Vitrine/AppIntents/`:
   theme, preset, scale, format, transparency, starting from a `baseStyle`). Its
   `makeConfig()` builds a `SnapshotConfig` with the **same precedence** the GUI uses
   (base style → preset → theme → transparent override) and never lets a preset touch
-  the code (CS-020). It is unit-tested off the render path.
+  the code. It is unit-tested off the render path.
 - `SnapshotRenderService` is the thin `@MainActor` shell that turns a request into
   PNG/PDF data or an `NSImage` through the **unchanged** `ExportManager`, adding only
   request resolution and an empty-input guard. A unit test asserts its bytes equal a
@@ -321,7 +321,7 @@ NSStatusItem (menu bar) → quick mode or editor
     ↓
 CaptureEngine → NSPasteboard.general.string(forType: .string)
     ↓
-RenderEngine (Product Phase 1: code; Product Phase 2: URL/HTML/social cards)
+RenderEngine (Product local rendering: code; web capture: URL/HTML/social cards)
   ├── SyntaxHighlighter (Highlightr — 160+ languages via Highlight.js)
   ├── Theme catalog (Theme + CustomThemeStore — selection persists via AppSettings)
   ├── BackgroundRenderer (gradients, solid, transparent)
@@ -336,7 +336,7 @@ ExportEngine
   └── Save to file (NSSavePanel) / Share sheet
 ```
 
-## First-run quick-start (CS-035)
+## First-run quick-start
 
 A lightweight, **skippable** welcome window teaches the core loop the first time the
 app runs and never again. It is gated by a single persisted flag,
@@ -388,9 +388,6 @@ gate lives in one place.
 
 ## Module / folder structure
 
-> The original spec used `Codeshot*` identifiers; they are renamed to `Vitrine*`
-> here (e.g. `VitrineApp.swift`).
-
 ```
 Vitrine/
 ├── App/
@@ -400,7 +397,7 @@ Vitrine/
 │   ├── MenuBarContent.swift   # the menu + submenus (SwiftUI)
 │   └── QuickCapture.swift     # no-UI quick mode: clipboard → PNG
 ├── Onboarding/
-│   └── WelcomeView.swift      # first-run quick-start + window controller (CS-035)
+│   └── WelcomeView.swift      # first-run quick-start + window controller
 ├── Editor/
 │   ├── EditorView.swift       # scene shell + window-level state
 │   ├── EditorView+Toolbar/Stage/Annotations/DragDrop.swift
@@ -415,9 +412,9 @@ Vitrine/
 ├── Export/
 │   ├── ExportManager.swift    # PNG, PDF, clipboard
 │   ├── ShareManager.swift     # NSSharingService
-│   ├── MultiSizeExportView.swift # multi-size export sheet (PRO, CS-093)
+│   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
 │   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
-│   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset (CS-023)
+│   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset
 ├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
 │   ├── ANSIParser.swift       # escape-sequence tokenizer
 │   ├── TerminalGrid.swift     # VT screen model (CSI dispatch, scrollback, alt screen)
@@ -429,7 +426,7 @@ Vitrine/
 │   ├── General/Style/Output/Input/Library/AboutSettingsView.swift
 │   │                         # pane-level settings surfaces
 │   ├── BrandKitSettingsSection.swift / SettingsSharedControls.swift
-│   └── CustomThemeStore.swift # built-in + user theme catalog (CS-031)
+│   └── CustomThemeStore.swift # built-in + user theme catalog
 ├── Models/
 │   ├── Theme.swift
 │   ├── Language.swift
@@ -437,47 +434,47 @@ Vitrine/
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
-│   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…" (CS-048)
-├── CLI/                       # `vitrine render` core, shared with VitrineCLI (CS-033)
+│   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…"
+├── CLI/                       # `vitrine render` core, shared with VitrineCLI
 │   ├── CLIArguments.swift     # dependency-free arg parser + CLIError/CLIUsage
 │   ├── CLICatalog.swift       # local theme/language/preset discovery for automation
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
 │   ├── CLIRenderer.swift      # load input → ExportManager (unchanged) → write file
 │   └── CLIFontRegistration.swift # register bundled fonts with Core Text at launch
-├── AppIntents/                # Shortcuts/Siri actions, app-only (CS-034)
+├── AppIntents/                # Shortcuts/Siri actions, app-only
 │   ├── SnapshotRenderRequest.swift   # pure request → SnapshotConfig (app precedence)
 │   ├── SnapshotRenderService.swift   # @MainActor shell over unchanged ExportManager
 │   ├── SnapshotIntentEnums.swift     # AppEnum pickers mirroring the model catalogs
 │   ├── RenderCodeImageIntent.swift   # "Render Code to Image" → IntentFile
 │   ├── OpenCodeInEditorIntent.swift  # "Open Code in Editor" → editor window
 │   └── VitrineShortcuts.swift        # AppShortcutsProvider (phrases for Spotlight/Siri)
-├── Services/                  # macOS Services menu action, app-only (CS-034)
+├── Services/                  # macOS Services menu action, app-only
 │   ├── CodeImageService.swift # provider: selected text → rendered PNG on pasteboard
 │   └── ServiceRegistration.swift # NSApp.servicesProvider + send/return types
-├── Pro/                       # Vitrine PRO open-core gate (CS-088–094) — see docs/PRO.md
+├── Pro/                       # Vitrine PRO open-core gate — see docs/PRO.md
 │   ├── Entitlements.swift / StoreKitProvider.swift / LicenseKey.swift
 │   └── BrandKit.swift / ProGate.swift   # (CLI side: CLI/CLIEntitlement.swift)
-├── WebRendering/              # URL/HTML capture via WKWebView, app-only (CS-043/044)
+├── WebRendering/              # URL/HTML capture via WKWebView, app-only
 │   ├── URLRenderer / HTMLRenderer / CodeRenderer / WebSnapshotView
 │   ├── WebSnapshot{WindowController,EditorView}.swift
 │   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode value type
 │   ├── WebURLValidation.swift        # http(s)-only + SSRF host blocklist (typed errors)
 │   ├── NetworkCapability.swift       # network-entitlement gate for URL capture
 │   └── ResponsiveBoardComposer.swift # multi-viewport board (deterministic)
-├── SocialCards/               # social-card editor + renderer (CS-041); Canvas/SocialCardCanvas
+├── SocialCards/               # social-card editor + renderer; Canvas/SocialCardCanvas
 ├── Rendering/                 # shared Renderer / RenderedAsset abstractions
 ├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
-├── State/                     # RecentsStore + pure window-state model (CS-053)
+├── State/                     # RecentsStore + pure window-state model
 ├── Recents/ · Updates/ · Help/ # recents gallery; SoftwareUpdater (Sparkle on DMG); Help/What's New
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
-│   └── Log.swift              # os.Logger per subsystem + render signposts (CS-048)
+│   └── Log.swift              # os.Logger per subsystem + render signposts
 └── Resources/
     ├── Assets.xcassets
     ├── Info.plist
     └── Vitrine.entitlements
 
-VitrineCLI/                    # the `vitrine` executable target (CS-033)
+VitrineCLI/                    # the `vitrine` executable target
 ├── main.swift                 # minimal accessory NSApplication host → CLIRenderer
 └── CLIEnvironment.swift       # locates the Fonts/ folder staged next to the binary
 ```
@@ -488,11 +485,11 @@ VitrineCLI/                    # the `vitrine` executable target (CS-033)
 | ------------------- | ------------------------------------------------------------ | ----------------------------------------------------- |
 | `Highlightr`        | SPM ([raspu/Highlightr](https://github.com/raspu/Highlightr)) | Syntax highlighting (Highlight.js — 160+ languages)   |
 | `KeyboardShortcuts` | SPM ([sindresorhus/KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)) | Configurable global hotkey                             |
-| `Sparkle`           | Vendored framework (`scripts/fetch-sparkle.sh`, checksum-pinned) | Auto-update on the direct-download build only (stripped from the App Store binary; CS-064) |
-| AppKit / SwiftUI / `ImageRenderer` / `CryptoKit` / `WebKit` | Built-in | `NSStatusItem`, View→PNG, Ed25519 license verify (CS-090), URL/HTML capture (CS-043) |
+| `Sparkle`           | Vendored framework (`scripts/fetch-sparkle.sh`, checksum-pinned) | Auto-update on the direct-download build only (stripped from the App Store binary) |
+| AppKit / SwiftUI / `ImageRenderer` / `CryptoKit` / `WebKit` | Built-in | `NSStatusItem`, View→PNG, Ed25519 license verify, URL/HTML capture |
 
-> The Settings window is now a custom SwiftUI shell (`Settings/SettingsRootView.swift`, the
-> design/handoff redesign), not the `sindresorhus/Settings` package, which has been removed.
+> The Settings window is a custom SwiftUI shell (`Settings/SettingsRootView.swift`), not
+> the `sindresorhus/Settings` package, which has been removed.
 > The Vitrine PRO monetization subsystem is documented in **`docs/PRO.md`**.
 
 **Why Highlightr and not swift-syntax:** swift-syntax only covers Swift; Highlightr

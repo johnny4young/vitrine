@@ -3,24 +3,24 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-062 — Mac App Store distribution readiness.
+/// Mac App Store distribution readiness.
 ///
 /// These tests assert that the committed App Store documentation, the shipped resources,
-/// and the optional dry-run workflow actually encode every acceptance criterion of the
-/// ticket, so a future edit that drops the documented metadata, weakens the sandbox/
+/// and the optional dry-run workflow actually encode every contract criterion of the
+/// release contract, so a future edit that drops the documented metadata, weakens the sandbox/
 /// entitlement posture, lets the App Store privacy labels drift from `PrivacyInfo.xcprivacy`,
 /// removes the TestFlight upload path, strips the App Review notes, or turns the dry-run
 /// workflow into an auto-submitting one fails the unit suite rather than silently breaking
 /// App Store review.
 ///
-/// Like `WorkflowConfigurationTests` (CS-060), `ReleaseSigningTests` (CS-061), and the
-/// permission-matrix suites (CS-065), they read the **committed** files from the source
+/// Like `WorkflowConfigurationTests`, `ReleaseSigningTests`, and the
+/// permission-matrix suites, they read the **committed** files from the source
 /// tree (anchored to this file via `#filePath`) rather than any built bundle — a real App
 /// Store archive/validation cannot run in a hosted unit test without an Apple account, so
 /// this suite is the structural guard that the documented readiness stays complete. The
 /// archive itself is validated manually in Xcode Organizer (or via the dry-run workflow
 /// once App Store Connect credentials exist).
-@Suite("App Store distribution readiness · CS-062")
+@Suite("App Store distribution readiness")
 struct AppStoreReadinessTests {
 
     // MARK: - Repository anchoring
@@ -109,11 +109,11 @@ struct AppStoreReadinessTests {
         ] {
             #expect(
                 fileManager.fileExists(atPath: path.path),
-                "CS-062 expects \(path.lastPathComponent) to exist")
+                " expects \(path.lastPathComponent) to exist")
         }
     }
 
-    // MARK: - Acceptance: bundle identifier, category, versioning, copyright, metadata documented
+    // MARK: - Contract: bundle identifier, category, versioning, copyright, metadata documented
 
     /// The doc must document the App Store metadata. Each value is cross-checked against the
     /// real source of truth (`Info.plist` / `project.yml`) so the doc cannot drift from the
@@ -260,9 +260,9 @@ struct AppStoreReadinessTests {
             "README.md `## Status` section must name the shipped version v\(marketingVersion)")
     }
 
-    // MARK: - Acceptance: App Sandbox remains enabled; entitlements minimal and justified
+    // MARK: - Contract: App Sandbox remains enabled; entitlements minimal and justified
 
-    /// The App Sandbox stays enabled and the entitlement set is the minimal Phase 1 set —
+    /// The App Sandbox stays enabled and the entitlement set is the minimal minimal set —
     /// the App Store-compatible posture. Asserted against the real entitlements so the App
     /// Store readiness claim is concrete: the App Store requires the sandbox, and nothing
     /// broader than user-selected file access may appear.
@@ -270,7 +270,7 @@ struct AppStoreReadinessTests {
         let entitlements = try Self.entitlements()
         #expect(
             entitlements["com.apple.security.app-sandbox"] as? Bool == true,
-            "App Store builds must keep the App Sandbox enabled (CS-062)")
+            "App Store builds must keep the App Sandbox enabled")
         #expect(
             entitlements["com.apple.security.files.user-selected.read-write"] as? Bool == true)
 
@@ -282,14 +282,14 @@ struct AppStoreReadinessTests {
                 "com.apple.security.files.user-selected.read-write",
             ],
             """
-            App Store entitlement set drifted from the documented minimal set (CS-062). \
+            App Store entitlement set drifted from the documented minimal set. \
             Found \(keys.sorted()). Update docs/APP-STORE.md, docs/PERMISSIONS.md, and the \
             tests in the same change.
             """)
     }
 
     /// The doc must state that the App Sandbox remains enabled and that the entitlement set
-    /// is minimal and justified — the acceptance criterion in prose, beside the entitlement
+    /// is minimal and justified — the contract criterion in prose, beside the entitlement
     /// check above.
     @Test func documentsSandboxAndMinimalJustifiedEntitlements() throws {
         let doc = try Self.doc()
@@ -306,16 +306,16 @@ struct AppStoreReadinessTests {
             "APP-STORE.md must reference the entitlement matrix (docs/PERMISSIONS.md)")
     }
 
-    // MARK: - Acceptance: network entitlement absent for Phase 1 App Store builds
+    // MARK: - Contract: network entitlement absent for local rendering App Store builds
 
-    /// Phase 1 App Store builds request **no network**: the network-client entitlement is
-    /// absent from the shipped entitlements (so a Phase 1 build provably cannot reach the
+    /// local rendering App Store builds request **no network**: the network-client entitlement is
+    /// absent from the shipped entitlements (so a network-free build provably cannot reach the
     /// network), and the doc states this for the App Store channel.
-    @Test func phase1AppStoreBuildsRequestNoNetwork() throws {
+    @Test func appStoreBuildsRequestNoNetwork() throws {
         let entitlements = try Self.entitlements()
         #expect(
             entitlements[NetworkCapability.networkClientEntitlement] == nil,
-            "Phase 1 App Store builds must not request \(NetworkCapability.networkClientEntitlement) (CS-062)"
+            "local rendering App Store builds must not request \(NetworkCapability.networkClientEntitlement)"
         )
 
         let doc = try Self.doc()
@@ -325,31 +325,28 @@ struct AppStoreReadinessTests {
             "APP-STORE.md must name the network-client entitlement it says is absent")
     }
 
-    // MARK: - Acceptance: Phase 2 URL capture updates the network entitlement and privacy copy first
+    // MARK: - URL capture channel boundary
 
-    /// If Phase 2 URL capture ships, the network entitlement and the privacy copy must be
-    /// updated **before** an App Store submission. The doc must spell out that gate: name the
-    /// network entitlement as the switch, require the privacy copy update, and tie it to the
-    /// drift-guard test.
-    @Test func documentsThePhase2NetworkAndPrivacyGate() throws {
+    /// URL capture ships in the direct-download channel while the App Store channel stays
+    /// network-free. The doc must state the local WebKit posture, capability gate, disclosure,
+    /// and drift guard without presenting unshipped App Store work as current behavior.
+    @Test func documentsTheURLCaptureChannelBoundary() throws {
         let doc = try Self.doc()
-        #expect(doc.localizedCaseInsensitiveContains("Phase 2"))
-        #expect(doc.localizedCaseInsensitiveContains("URL capture"))
+        let prose = doc.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        #expect(prose.localizedCaseInsensitiveContains("web capture"))
+        #expect(prose.localizedCaseInsensitiveContains("URL capture"))
         // The page loads locally in WebKit — no remote screenshot service.
-        #expect(doc.localizedCaseInsensitiveContains("locally in WebKit"))
-        #expect(doc.localizedCaseInsensitiveContains("no remote screenshot service"))
-        // The gate: add the network entitlement and update privacy copy before submission.
+        #expect(prose.localizedCaseInsensitiveContains("locally in WebKit"))
+        #expect(prose.localizedCaseInsensitiveContains("no remote screenshot service"))
         #expect(doc.contains(NetworkCapability.networkClientEntitlement))
-        #expect(
-            doc.localizedCaseInsensitiveContains("before")
-                && doc.localizedCaseInsensitiveContains("privacy copy"),
-            "APP-STORE.md must require the privacy copy to be updated before an App Store submission"
-        )
-        // It points at the test that enforces the entitlement is absent today.
+        #expect(prose.localizedCaseInsensitiveContains("direct-download channel"))
+        #expect(prose.localizedCaseInsensitiveContains("App Store channel"))
+        #expect(doc.contains("NetworkCapability"))
+        #expect(prose.localizedCaseInsensitiveContains("first-use disclosure"))
         #expect(doc.contains("Tests/PrivacyManifestTests.swift"))
     }
 
-    // MARK: - Acceptance: App Store privacy labels listed and match PrivacyInfo.xcprivacy
+    // MARK: - Contract: App Store privacy labels listed and match PrivacyInfo.xcprivacy
 
     /// The App Store privacy labels are listed in the doc and match the bundled privacy
     /// manifest. The manifest is read and asserted to be "no tracking, no collected data,
@@ -369,7 +366,7 @@ struct AppStoreReadinessTests {
         let doc = try Self.doc()
         #expect(
             doc.localizedCaseInsensitiveContains("privacy label"),
-            "APP-STORE.md must list the App Store privacy labels (CS-062)")
+            "APP-STORE.md must list the App Store privacy labels")
         #expect(
             doc.localizedCaseInsensitiveContains("Data Not Collected"),
             "the overall App Store privacy label must be Data Not Collected, matching the manifest")
@@ -381,31 +378,31 @@ struct AppStoreReadinessTests {
         #expect(doc.contains("CA92.1"))
     }
 
-    // MARK: - Acceptance: TestFlight upload path documented (Organizer / Transporter / altool)
+    // MARK: - Contract: TestFlight upload path documented (Organizer / Transporter / altool)
 
     /// The TestFlight upload path must be documented through Xcode Organizer, Transporter,
     /// **or** `xcrun altool`/Transporter CLI. Assert all three are present so the
-    /// "any of these" acceptance is genuinely covered, not just one path.
+    /// "any of these" contract is genuinely covered, not just one path.
     @Test func documentsTheTestFlightUploadPaths() throws {
         let doc = try Self.doc()
         #expect(doc.localizedCaseInsensitiveContains("TestFlight"))
         // Xcode Organizer path.
         #expect(
             doc.localizedCaseInsensitiveContains("Organizer"),
-            "APP-STORE.md must document the Xcode Organizer upload path (CS-062)")
+            "APP-STORE.md must document the Xcode Organizer upload path")
         // Transporter path.
         #expect(
             doc.contains("Transporter"),
-            "APP-STORE.md must document the Transporter upload path (CS-062)")
+            "APP-STORE.md must document the Transporter upload path")
         // altool / command-line path.
         #expect(
             doc.contains("altool"),
-            "APP-STORE.md must document the xcrun altool upload path (CS-062)")
+            "APP-STORE.md must document the xcrun altool upload path")
         // The upload step itself is named.
         #expect(doc.localizedCaseInsensitiveContains("upload"))
     }
 
-    // MARK: - Acceptance: App Review notes explain clipboard, local rendering, launch-at-login, no telemetry
+    // MARK: - Contract: App Review notes explain clipboard, local rendering, launch-at-login, no telemetry
 
     /// The App Review notes must explain clipboard usage, local rendering, launch-at-login,
     /// and that there is no telemetry — the four points reviewers need to evaluate a
@@ -414,7 +411,7 @@ struct AppStoreReadinessTests {
         let doc = try Self.doc()
         #expect(
             doc.localizedCaseInsensitiveContains("App Review"),
-            "APP-STORE.md must include App Review notes (CS-062)")
+            "APP-STORE.md must include App Review notes")
         // Clipboard usage.
         #expect(doc.localizedCaseInsensitiveContains("clipboard"))
         // Local rendering — nothing leaves the Mac.
@@ -446,7 +443,7 @@ struct AppStoreReadinessTests {
         let plist = try Self.infoPlist()
         #expect(
             plist["LSUIElement"] as? Bool == true,
-            "Info.plist must set LSUIElement = true so the App Review 'no Dock icon' note holds (CS-062)"
+            "Info.plist must set LSUIElement = true so the App Review 'no Dock icon' note holds"
         )
 
         let doc = try Self.doc()
@@ -469,7 +466,7 @@ struct AppStoreReadinessTests {
             usageKeys == ["NSPasteboardUsageDescription"],
             """
             Info.plist must declare exactly one usage string (clipboard), matching the App \
-            Store review notes (CS-062). Found \(usageKeys). A new usage string expands the \
+            Store review notes. Found \(usageKeys). A new usage string expands the \
             review surface — update docs/APP-STORE.md and the review notes in the same change.
             """)
         // The doc names the same single usage string in its entitlement summary.
@@ -501,14 +498,14 @@ struct AppStoreReadinessTests {
         let workflow = try Self.workflow()
         #expect(
             workflow.contains("workflow_dispatch"),
-            "appstore.yml must be manually triggered (workflow_dispatch) (CS-062)")
+            "appstore.yml must be manually triggered (workflow_dispatch)")
         #expect(
             workflow.contains("--validate-app"),
-            "appstore.yml must run App Store validation as a dry run (CS-062)")
+            "appstore.yml must run App Store validation as a dry run")
         // The critical safety property: it must never upload/submit a build automatically.
         #expect(
             !workflow.contains("--upload-app"),
-            "appstore.yml must NOT upload/submit a build automatically (it is a dry run only, CS-062)"
+            "appstore.yml must NOT upload/submit a build automatically (it is a dry run only)"
         )
         #expect(
             workflow.localizedCaseInsensitiveContains("never")
@@ -518,27 +515,27 @@ struct AppStoreReadinessTests {
 
     /// The dry-run validation is gated on the App Store Connect API-key secrets so the
     /// workflow degrades gracefully: with no credentials the archive still builds and the
-    /// validation step is skipped, mirroring the signed DMG pipeline (CS-061). Assert the
+    /// validation step is skipped, mirroring the signed DMG pipeline. Assert the
     /// archive step and the secret gate are both present.
     @Test func workflowGatesValidationOnSecretsAndStillArchivesWithout() throws {
         let workflow = try Self.workflow()
         // The archive always runs (buildable without an Apple Distribution identity).
         #expect(
             workflow.contains("archive"),
-            "appstore.yml must archive the app (CS-062)")
+            "appstore.yml must archive the app")
         #expect(
             workflow.contains("CODE_SIGNING_ALLOWED=NO"),
             "the dry-run archive must build without a signing identity")
         // Validation is gated on the App Store Connect API-key secret.
         #expect(
             workflow.contains("MACOS_NOTARY_KEY_P8"),
-            "appstore.yml must gate validation on the App Store Connect API key (CS-062)")
+            "appstore.yml must gate validation on the App Store Connect API key")
         _ = try #require(
             workflow.range(of: "--validate-app"),
             "appstore.yml must contain the validate-app step")
         #expect(
             workflow.contains(#"[ -z "${MACOS_NOTARY_KEY_ID:-}" ]"#),
-            "the validate-app step must be gated on the App Store Connect API-key secrets (CS-062)")
+            "the validate-app step must be gated on the App Store Connect API-key secrets")
         #expect(
             workflow.contains(#"--p8-file-path "${APPSTORE_KEY_P8}""#),
             "the validate-app step must pass altool the staged App Store Connect private key file")
@@ -550,7 +547,7 @@ struct AppStoreReadinessTests {
         let doc = try Self.doc()
         #expect(
             doc.contains("appstore.yml"),
-            "APP-STORE.md must reference the optional .github/workflows/appstore.yml (CS-062)")
+            "APP-STORE.md must reference the optional .github/workflows/appstore.yml")
         #expect(doc.localizedCaseInsensitiveContains("dry run"))
         #expect(
             doc.localizedCaseInsensitiveContains("never")

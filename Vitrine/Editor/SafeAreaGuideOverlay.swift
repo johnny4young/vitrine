@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Draws the safe-area guide over the editor's preview (feature #20): a dashed
+/// Draws the safe-area guide over the editor's preview: a dashed
 /// rectangle marking the margin platforms may crop or cover, plus a small chip with
 /// the snippet's live line × column budget. Editor-only chrome — it is a sibling of
 /// the annotation overlay in the stage, so the export (`SnapshotCanvas`) never sees it.

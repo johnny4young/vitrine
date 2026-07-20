@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 /// Owns the user's saved style presets and the built-in catalog, and brokers
 /// every preset operation: save the current style, apply, duplicate, rename,
-/// delete, and import/export as JSON (CS-030).
+/// delete, and import/export as JSON.
 ///
 /// ## Design
 ///
@@ -12,18 +12,17 @@ import UniformTypeIdentifiers
 ///   the user's presets for display but are never persisted, renamed, edited, or
 ///   deleted. The mutating operations refuse to touch a built-in and offer
 ///   *duplicate* instead, which copies it into an editable user preset. This is
-///   the CS-030 acceptance "built-in presets cannot be overwritten, only
-///   duplicated".
+///   the rule that built-in presets can be duplicated but not overwritten.
 /// - **Only user presets persist.** They are stored as one JSON blob under a
 ///   single `UserDefaults` key, mirroring how `AppSettings` persists the
 ///   background. Reads are defensive: a missing or corrupt blob yields an empty
 ///   user list rather than trapping, so a hand-edited store can never crash the
-///   app (CS-050 spirit).
+///   app (defensive behavior).
 /// - **`UserDefaults` is injectable** so the whole store is unit-testable without
 ///   touching the real app container, exactly like `AppSettings`.
 ///
 /// Applying a preset is delegated to `AppSettings` so the existing "diverged from
-/// preset" bookkeeping for destination presets (CS-020) is untouched; a style
+/// preset" bookkeeping for destination presets is untouched; a style
 /// preset only writes presentation fields into the live config.
 @Observable
 final class PresetStore {
@@ -69,7 +68,7 @@ final class PresetStore {
     // MARK: - Save / duplicate
 
     /// Saves the current style of `config` as a new user preset named `name`,
-    /// returning the created preset (CS-030 "save current style as a named
+    /// returning the created preset ("save current style as a named
     /// preset"). The capture is presentation-only — code and language are never
     /// stored — and the name is sanitized to be non-empty.
     @discardableResult
@@ -81,7 +80,7 @@ final class PresetStore {
     }
 
     /// Duplicates any preset — built-in or user — into a new, fully editable user
-    /// preset, appending " Copy" to the name (CS-030). This is the only way to get
+    /// preset, appending " Copy" to the name. This is the only way to get
     /// an editable version of a built-in.
     @discardableResult
     func duplicate(_ preset: StylePreset) -> StylePreset {
@@ -130,7 +129,7 @@ final class PresetStore {
     }
 
     /// Imports presets from preset-file `data`, validating the envelope and adding
-    /// the contained presets as new user presets (CS-030).
+    /// the contained presets as new user presets.
     ///
     /// Imported presets are re-keyed with fresh ids so importing the same file
     /// twice, or a file that happens to reuse an id, never overwrites an existing
@@ -170,7 +169,7 @@ final class PresetStore {
     // MARK: - Persistence
 
     /// Reads the persisted user presets, tolerating any missing or corrupt value
-    /// (CS-050 / CS-030 "invalid preset files do not crash"). A garbage blob simply
+    /// ("invalid preset files do not crash"). A garbage blob simply
     /// yields an empty list, leaving the built-ins available. Any preset whose id
     /// collides with a built-in's reserved id is dropped so a hand-edited store
     /// cannot shadow or "overwrite" a built-in.
@@ -180,7 +179,7 @@ final class PresetStore {
                 [FailableDecodable<StylePreset>].self, from: data)
         else { return [] }
         // One corrupt element drops itself rather than wiping every user preset on the
-        // next launch (deep-review B9).
+        // next launch.
         return decoded.compactMap(\.value).filter { !StylePreset.builtInIDs.contains($0.id) }
     }
 
@@ -197,9 +196,9 @@ final class PresetStore {
     }
 }
 
-// MARK: - File panels (CS-030)
+// MARK: - File panels
 
-/// The user-initiated import/export of preset files (CS-030).
+/// The user-initiated import/export of preset files.
 ///
 /// Both directions use only the existing user-selected file-access entitlement —
 /// the same one `DiagnosticsExporter` relies on — so no new entitlement is

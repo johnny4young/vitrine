@@ -49,6 +49,33 @@ can never drift.
   Surprise Me, or copy/save/export — without hunting through the inspector. Type to
   filter (a subsequence match, so "clr" finds "Clear"), ↑/↓ to move, Return to run.
 
+### Fixed
+
+- **Latest editor and web-preview state now wins.** Cancelled or superseded asynchronous
+  work can no longer publish a stale render after the user changes the input, mode, or
+  configuration.
+- **Keyboard and assistive-technology behavior is consistent across new controls.** The
+  command palette, export actions, and related controls keep stable labels, identifiers,
+  focus behavior, and complete English and Spanish localization metadata.
+- **Shared snapshot links reject malformed or ambiguous URLs.** Parsing now accepts only
+  the documented scheme and host, rejects credentials and unexpected components, and
+  reports oversized or invalid payloads without partially applying them.
+
+### Security
+
+- **Remote and encoded inputs are bounded before expensive work.** Downloads,
+  decompression, decoded images, snapshot-link payloads, and caches enforce explicit
+  limits to prevent memory amplification and unbounded retention.
+- **Remote destinations are validated throughout navigation.** URL capture and remote
+  image import reject unsafe schemes, private/local destinations, and unsafe redirect
+  results instead of validating only the initial string.
+
+### Changed
+
+- **Preview and rendering caches are bounded and keyed by the complete render inputs.**
+  This keeps the performance gains deterministic without allowing caches to grow for the
+  life of the process or reuse a result for a different configuration.
+
 ## [0.21.0] - 2026-07-16
 
 From snapshot to post: split a long snippet into carousel slides, share to
@@ -308,7 +335,7 @@ A usability pass over the whole app from a 4-agent UX audit, shipped as one rele
   *final screen* (cursor positioning, screen clears, scroll regions, and the alternate
   screen) with its colors intact, rendered in your theme; the surrounding shell prompt is
   left out. It kicks in **automatically** by content — `vgrab htop` captures the dashboard
-  — while plain scrolling output (a `git log`, a test run) keeps rendering the full
+ — while plain scrolling output (a `git log`, a test run) keeps rendering the full
   transcript line by line. See [docs/TERMINAL.md](docs/TERMINAL.md).
 
 ## [0.13.0] - 2026-06-23
@@ -398,14 +425,14 @@ A usability pass over the whole app from a 4-agent UX audit, shipped as one rele
   Accent-filled chips use the AppKit on-accent text color so they stay legible for
   every accent.
 - **Annotations and highlighted lines reset on a new capture.** Loading new content
-  — the Paste button, a select-all paste, a dropped file that replaces the document,
+ — the Paste button, a select-all paste, a dropped file that replaces the document,
   or a quick capture — clears marks that were positioned over the old code; a
   mid-edit paste keeps them. Reusable style (theme, font, background, header) stays.
 - **Native, legible Settings buttons.** The Library and the other Settings panes use
   explicit `.bordered` / `.borderedProminent` styles with a clear primary/secondary
   hierarchy instead of low-contrast accent-tinted titles.
-- **Refreshed website.** The landing page adopts the "The Vitrine" design-system
-  proposal (light-first, appearance toggle, interactive style bench).
+- **Refreshed website.** The landing page adopts the "The Vitrine" visual direction
+  (light-first, appearance toggle, interactive style bench).
 
 ### Fixed
 

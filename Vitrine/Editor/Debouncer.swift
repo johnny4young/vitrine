@@ -1,7 +1,7 @@
 import Foundation
 
 /// Coalesces rapid calls into a single trailing call after a quiet window,
-/// using structured concurrency (CS-003). Each `schedule` cancels the pending one.
+/// using structured concurrency. Each `schedule` cancels the pending one.
 final class Debouncer {
     private let interval: Duration
     private var task: Task<Void, Never>?

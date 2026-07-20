@@ -2,9 +2,9 @@ import CryptoKit
 import Foundation
 
 #if VITRINE_DIRECT_DOWNLOAD
-    /// One-time online license activation for the direct-download build (CS-090).
+    /// One-time online license activation for the direct-download build.
     ///
-    /// Flow (Architecture B — the app signs locally): the user pastes a Lemon Squeezy license
+    /// Flow (the official app signs locally): the user pastes a Lemon Squeezy license
     /// key → `LicenseActivationService` validates it once against the Lemon Squeezy License API
     /// → on success the app mints its **own** `LicenseToken`, signs it with a private key
     /// **injected at build time** (`LicenseSigningKey.embedded`), and hands the signed token to

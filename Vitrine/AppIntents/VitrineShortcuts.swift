@@ -1,6 +1,6 @@
 import AppIntents
 
-/// Surfaces Vitrine's App Intents to Shortcuts, Spotlight, and Siri (CS-034).
+/// Surfaces Vitrine's App Intents to Shortcuts, Spotlight, and Siri.
 ///
 /// Declaring the intents here makes them appear as ready-made actions in the
 /// Shortcuts gallery and as Spotlight suggestions without the user assembling a

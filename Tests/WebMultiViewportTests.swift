@@ -4,10 +4,10 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-044 multi-resolution capture: the viewport selection set and the composite
+/// Multi-resolution capture: the viewport selection set and the composite
 /// "responsive board". The single-viewport baseline lives in `WebSnapshotConfigTests`.
 
-@Suite("Web multi-viewport selection · CS-044")
+@Suite("Web multi-viewport selection")
 @MainActor
 struct WebMultiViewportSelectionTests {
     private func defaults() -> UserDefaults {
@@ -27,7 +27,7 @@ struct WebMultiViewportSelectionTests {
     @Test func loggedInSessionIsOffByDefaultAndDrivesTheDataStoreMode() {
         let store = defaults()
         let settings = WebCaptureSettings(defaults: store)
-        // Privacy default: no cookies, private per-render store (CS-043).
+        // Privacy default: no cookies, private per-render store.
         #expect(settings.usesLoggedInSession == false)
         #expect(settings.dataStoreMode == .nonPersistent)
 
@@ -88,13 +88,13 @@ struct WebMultiViewportSelectionTests {
 
     @Test func selectedPresetsDropDuplicateKindsKeepingFirstOrder() {
         // `viewports` is an unconstrained array; a repeated kind must not render — or compose
-        // into the board — the same viewport twice (PR #2 review).
+        // into the board — the same viewport twice.
         let settings = AppSettings(defaults: defaults())
         settings.webCapture.viewports = [.mobile, .desktop, .mobile, .desktop]
         #expect(settings.webCapture.selectedViewportPresets == [.mobile, .desktop])
     }
 
-    // MARK: - Prefilled-URL auto-capture (UX audit)
+    // MARK: - Prefilled-URL auto-capture
 
     @Test func autoCaptureGatesOnURLModeAndAvailability() {
         // Auto-fire a prefilled URL only in URL mode and only where URL capture works, so a
@@ -123,7 +123,7 @@ struct WebMultiViewportSelectionTests {
     }
 }
 
-@Suite("Responsive board composite · CS-044")
+@Suite("Responsive board composite")
 @MainActor
 struct ResponsiveBoardComposerTests {
     @Test func composingAnEmptySetReturnsNil() {

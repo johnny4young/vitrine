@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The annotation tool palette in the editor's title bar (CS-085), modeled on
+/// The annotation tool palette in the editor's title bar, modeled on
 /// CleanShot: a row of tools (the active one highlighted), then the active tool's
 /// options — a color swatch that opens a palette, and a size slider. Picking a tool
 /// puts the preview into draw mode; `Select` returns to move/resize.
@@ -8,14 +8,14 @@ struct AnnotationToolbar: View {
     @Binding var activeTool: AnnotationTool
     @Binding var color: Color
     @Binding var thickness: Double
-    /// The emoji the sticker tool will place next (feature #13); the sticker swatch
+    /// The emoji the sticker tool will place next; the sticker swatch
     /// edits it. Defaulted so existing call sites without the sticker option compile.
     var stickerGlyph: Binding<String>?
     /// Whether the current context (active tool, or the selected mark) exposes color
     /// / thickness — so the options only appear when they do something.
     let showsColor: Bool
     let showsThickness: Bool
-    /// Undo/redo wiring (CS-086). `shortcutsActive` gates the Cmd-Z / Cmd-Shift-Z
+    /// Undo/redo wiring. `shortcutsActive` gates the Cmd-Z / Cmd-Shift-Z
     /// shortcuts on the annotation context, so they never steal the code editor's own
     /// undo while typing code.
     let canUndo: Bool
@@ -76,7 +76,7 @@ struct AnnotationToolbar: View {
         // region — and dragging suppresses hover, so tooltips stop after the first
         // interaction. Backing it with a non-draggable view restores normal mouse
         // tracking (tooltips keep working); the surrounding title bar stays draggable
-        // so the window can still be moved (CS-087).
+        // so the window can still be moved.
         .background(NonDraggableArea())
         .animation(.easeInOut(duration: 0.15), value: showsColor)
         .animation(.easeInOut(duration: 0.15), value: showsThickness)
@@ -141,7 +141,7 @@ struct AnnotationToolbar: View {
 }
 
 /// The current sticker glyph, opening the curated sticker palette as a popover
-/// (feature #13) — the sticker-tool analogue of `ColorSwatchButton`.
+/// — the sticker-tool analogue of `ColorSwatchButton`.
 private struct StickerSwatchButton: View {
     @Binding var glyph: String
     @State private var showsPalette = false
@@ -187,7 +187,7 @@ private struct StickerSwatchButton: View {
     }
 }
 
-/// A color swatch that opens a vertical palette popover (CS-085), with a custom-color
+/// A color swatch that opens a vertical palette popover, with a custom-color
 /// well at the bottom.
 private struct ColorSwatchButton: View {
     @Binding var color: Color
@@ -251,7 +251,7 @@ extension Color {
     }
 }
 
-/// A non-draggable backing for title-bar content (CS-087). macOS lets you drag a
+/// A non-draggable backing for title-bar content. macOS lets you drag a
 /// window by its title-bar content, and that drag tracking suppresses hover — so
 /// `.help()` tooltips stop appearing after the first interaction. An `NSView` that
 /// reports `mouseDownCanMoveWindow == false` keeps its region from moving the window,

@@ -1,9 +1,9 @@
 import Foundation
 
 /// A programming language Vitrine can highlight. `hljsName` maps to the
-/// Highlight.js identifier used by Highlightr (CS-004/052).
+/// Highlight.js identifier used by Highlightr.
 ///
-/// ## Adding a language (a one-file change, CS-052)
+/// ## Adding a language (a one-file change)
 ///
 /// To advertise a new language, add a `case` here, then extend `displayName`
 /// (the picker label) and — only if the raw value differs from the Highlight.js
@@ -91,7 +91,7 @@ enum Language: String, CaseIterable, Identifiable {
     /// This is the *forward* mapping (one language → one extension). The
     /// *reverse* mapping (extension → language) lives in `LanguageDetector`,
     /// which also recognizes common aliases (`.yml`, `.htm`, `.cc`, `.h`, …) that
-    /// cannot round-trip back to a single canonical extension (CS-027).
+    /// cannot round-trip back to a single canonical extension.
     var fileExtension: String? {
         switch self {
         case .swift: "swift"

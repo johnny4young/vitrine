@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The editor's three columns: the code input, the ambient preview stage, and the
-/// inspector (CS-037).
+/// inspector.
 extension EditorView {
     // MARK: - Columns
 
@@ -69,7 +69,7 @@ extension EditorView {
         }
         // Accept a dropped source file or selected text. `.onDrop` with UTType
         // payloads is the current API; the read happens off the closure via a
-        // main-actor Task so the handler stays synchronous (CS-028).
+        // main-actor Task so the handler stays synchronous.
         .onDrop(of: [.image, .fileURL, .text], isTargeted: $isDropTargeted) { providers in
             Task { await handleDrop(providers) }
             return true
@@ -213,7 +213,7 @@ extension EditorView {
     }
 
     /// The line count shown beside the CODE label, or an em dash when empty.
-    /// One interpolated key whose plural variant the catalog chooses (CS-047).
+    /// One interpolated key whose plural variant the catalog chooses.
     var lineCountLabel: String {
         let code = settings.config.code
         guard !code.isEmpty else { return "—" }
@@ -222,7 +222,7 @@ extension EditorView {
     }
 
     /// The 26 pt format action in the code header — the mouse route to the
-    /// shared, undo-aware ⌥⌘F command (CS-032/CS-049).
+    /// shared, undo-aware ⌥⌘F command.
     var formatButton: some View {
         Button {
             EditorCommandResponder.shared.formatCode(nil)
@@ -247,7 +247,7 @@ extension EditorView {
     // MARK: - Stage
 
     /// The stage: the preview card floating in ambient light "cast" by the
-    /// selected background, always scaled to fit (design/handoff). Two radial
+    /// selected background, always scaled to fit. Two radial
     /// glows tint the neutral stage from the background's stop colors, the
     /// card throws a matching tinted shadow, and a status capsule reports the
     /// destination, output size, format, and zoom.
@@ -256,9 +256,9 @@ extension EditorView {
             let scale = fitScale(in: proxy.size)
             // The preview mirrors the active preset's framing, so selecting a
             // fixed-size preset (e.g. OpenGraph 1200×630) updates the canvas
-            // immediately (CS-020). The interactive annotation overlay is a sibling at
+            // immediately. The interactive annotation overlay is a sibling at
             // the canvas's natural size, so it shares the canvas coordinate space and
-            // scales with it (CS-083) — a pointer drag maps straight to normalized
+            // scales with it — a pointer drag maps straight to normalized
             // annotation coordinates.
             ZStack {
                 SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
@@ -281,7 +281,7 @@ extension EditorView {
                         position: $brandKit.brandKit.freePosition,
                         contentRect: CGRect(origin: .zero, size: cardSize))
                 }
-                // Safe-area guide (feature #20): editor-only chrome over the preview —
+                // Safe-area guide: editor-only chrome over the preview —
                 // never part of the export, which is why it lives here beside the
                 // annotation overlay rather than inside SnapshotCanvas.
                 if showsSafeAreaGuides {
@@ -410,7 +410,7 @@ extension EditorView {
     }
 
     /// The focused inspector column with progressive disclosure for advanced
-    /// controls (CS-037), on glass per the redesign.
+    /// controls, on glass per the current design.
     var inspectorColumn: some View {
         EditorInspectorView(settings: settings, themes: themes)
     }
@@ -418,13 +418,13 @@ extension EditorView {
     /// The config the center stage renders. When the editor is empty it shows a
     /// representative sample so the preview is never a blank card — the empty state
     /// over the code column still invites pasting, but the user immediately sees
-    /// what a finished image looks like with the current presets (CS-037 "empty
+    /// what a finished image looks like with the current presets ("empty
     /// editor state shows a sample"). The substitution is preview-only and never
     /// mutates the live document (see ``EditorPreview``).
     var previewConfig: SnapshotConfig {
         var config = EditorPreview.configForPreview(settings.config, stagedCode: stagedPreviewCode)
-        // WYSIWYG: the preview shows the same brand watermark the export will apply
-        // (CS-092), resolved from the observed brand kit + entitlement so it tracks
+        // WYSIWYG: the preview shows the same brand watermark the export will apply,
+        // resolved from the observed brand kit + entitlement so it tracks
         // changes live. Off unless the user enabled it and PRO is unlocked.
         config.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
         // While a text callout is being edited, blank its canvas copy so the inline
@@ -441,7 +441,7 @@ extension EditorView {
     }
 
     /// A subtle border + label shown while a drag hovers the editor, so the editor
-    /// reads as a drop target (CS-028). Non-interactive so it never intercepts the
+    /// reads as a drop target. Non-interactive so it never intercepts the
     /// drop itself.
     @ViewBuilder
     var dropAffordance: some View {
@@ -474,7 +474,7 @@ extension EditorView {
         // Pasting fresh code is a new capture, so drop content-bound marks (annotations,
         // highlighted lines) that were positioned over whatever was here before.
         settings.config.clearContentMarks()
-        // Tidy the indentation on paste when the user opts in (CS-049); the global
+        // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
         settings.config.code =
             AppSettings.shared.reindentOnPaste ? CodeFormatter.tidy(text, language: language) : text

@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The social-card composer (CS-041): a live 1200×630 preview beside an inspector
+/// The social-card composer: a live 1200×630 preview beside an inspector
 /// that edits the working ``SocialCardModel``, with copy / save / share export in a
 /// glass toolbar. Everything is local and deterministic — the preview *is* the
 /// exported image (`ImageRenderer` over ``SocialCardCanvas``), with no WebKit and no
@@ -23,7 +23,7 @@ struct SocialCardEditorView: View {
             }
         }
         // Merge the toolbar into the title bar so the title sits in the traffic-light row
-        // (the editor pattern, CS-037): extending into the top safe area pulls the glass
+        // (the editor pattern): extending into the top safe area pulls the glass
         // toolbar to the window edge, with the traffic lights floating over its leading 86 pt.
         .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 860, minHeight: 560)
@@ -75,7 +75,7 @@ struct SocialCardEditorView: View {
 
     /// The gradient "Copy card" capsule — the window's primary action. Disabled until
     /// the card has something to draw (a title or a non-empty excerpt), so it never
-    /// copies a blank image (CS-041 `isRenderable`).
+    /// copies a blank image (`isRenderable`).
     private var copyCardCTA: some View {
         GradientCTAButton {
             Image(systemName: "doc.on.doc")
@@ -295,7 +295,7 @@ private struct SocialCardInspector: View {
         }
     }
 
-    /// A PRO affordance that fills the footer from the app-global Brand Kit (CS-092):
+    /// A PRO affordance that fills the footer from the app-global Brand Kit:
     /// the handle and project become the author/project lines and the logo is enabled.
     /// Gated through the shared `proGated` modifier, so it runs when PRO is unlocked
     /// and opens the paywall (with a "PRO" badge) when it is not.
@@ -459,7 +459,7 @@ private struct SocialCardInspector: View {
     // MARK: Chrome helpers
 
     /// Local sugar over the shared `InspectorSection` so call sites keep passing a
-    /// `LocalizedStringKey`; the chrome is the shared editor-kit component, so every
+    /// `LocalizedStringKey`; the chrome is the shared editor component, so every
     /// inspector reads with one section metric.
     private func section<Content: View>(
         _ title: LocalizedStringKey, @ViewBuilder content: () -> Content

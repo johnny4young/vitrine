@@ -1,7 +1,7 @@
 import Foundation
 
-/// Builds the web compose ("intent") URLs behind the share sheet's Post-to targets
-/// (feature #25). Pure URL construction — opening the browser and staging the image on
+/// Builds the web compose ("intent") URLs behind the share sheet's Post-to targets.
+/// Pure URL construction — opening the browser and staging the image on
 /// the clipboard is the caller's job — so the encoding is unit-testable.
 ///
 /// The web intents cannot attach an image, so the flow is: copy the rendered PNG to

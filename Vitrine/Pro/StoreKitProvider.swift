@@ -10,7 +10,7 @@ enum PurchaseOutcome: Equatable {
     case failed
 }
 
-/// The App Store entitlement provider (CS-089): PRO is a single **non-consumable** IAP
+/// The App Store entitlement provider: PRO is a single **non-consumable** IAP
 /// ("Vitrine PRO", lifetime). It reads `Transaction.currentEntitlements` for the live
 /// state, exposes purchase and the required **Restore Purchases**, and can observe
 /// `Transaction.updates` for out-of-band changes (a purchase on another device, a refund).
@@ -21,9 +21,9 @@ enum PurchaseOutcome: Equatable {
 /// `#if !VITRINE_DIRECT_DOWNLOAD`. The direct-download build uses the license-key provider
 /// instead. Nothing here transmits anything about the purchase beyond StoreKit's own flow —
 /// no receipt is sent anywhere, no analytics; a failure logs only the error domain/code,
-/// never a receipt, product, or account detail (CS-048).
+/// never a receipt, product, or account detail.
 ///
-/// Refund handling (decision #4): a refunded purchase is revoked (`revocationDate` set), so
+/// A refunded purchase is revoked (`revocationDate` set), so
 /// it drops out of `currentEntitlements` and `isPro` flips to `false` on the next refresh —
 /// PRO re-locks, but nothing the user made (exports, presets, brand kit) is destroyed.
 @MainActor
@@ -82,7 +82,7 @@ final class StoreKitProvider: EntitlementProvider {
             }
         } catch {
             // A purchase failure is exactly when a Console trace helps support; log the
-            // error domain/code only (non-PII), matching the CS-048 logging discipline.
+            // error domain/code only (non-PII), matching the logging policy.
             let nsError = error as NSError
             Log.settings.error(
                 "StoreKit purchase failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"

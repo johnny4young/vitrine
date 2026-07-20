@@ -1,21 +1,21 @@
 import SwiftUI
 
 /// A hand-authored SVG serializer for the **deterministic simple-template subset
-/// only** — never the arbitrary code canvas (CS-023, Step 3).
+/// only** — never the arbitrary code canvas (Step 3).
 ///
 /// ## Why this is scoped, not a general SVG export
 ///
-/// The CS-023 spike confirmed that SwiftUI, `ImageRenderer`, and AppKit expose no
+/// A technical evaluation confirmed that SwiftUI, `ImageRenderer`, and AppKit expose no
 /// faithful full-canvas SVG path: a code snapshot's text is laid out and
 /// rasterized by the text system (per-glyph kerning, ligatures, sub-pixel
 /// positioning, theme attributes), and there is no public API that re-emits that
 /// layout as vector glyphs. The supported vector format for the full canvas is
 /// therefore **PDF** (`ExportManager.pdfData`). Shipping a `.svg` that simply
 /// wrapped a raster PNG in an `<image>` element would be a fake vector file, which
-/// the ticket explicitly forbids.
+/// the vector contract forbids.
 ///
 /// What *can* be expressed as honest, resolution-independent SVG is the
-/// **background of a deterministic social-card / simple template** (CS-041): a
+/// **background of a deterministic social-card / simple template**: a
 /// solid color, a built-in gradient preset, a custom gradient, or transparency.
 /// Those are pure geometry and color with no text layout, so this serializer emits
 /// native SVG primitives (`<rect>`, `<linearGradient>`) — real vectors, byte-for-

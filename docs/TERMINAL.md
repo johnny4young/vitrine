@@ -214,7 +214,7 @@ omitted. `--edit` is mutually exclusive with `--copy`/`--out`.
 - Everything else about a snapshot still applies: background, padding, window title,
   annotations (arrow a failing assert, blur a secret), multi-size export, Brand Kit.
 
-## Roadmap
+## Current capabilities
 
 Full-screen TUI capture is feature-complete (the cell-buffer emulator described in
 [Full-screen apps (TUIs)](#full-screen-apps-tuis)): a fixed-height screen that **scrolls**

@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 
 @testable import Vitrine
 
-/// CS-033 — `vitrine render` command-line renderer.
+/// `vitrine render` command-line renderer.
 ///
 /// These tests cover the CLI layers separately so neither needs a live process:
 ///
@@ -19,13 +19,13 @@ import UniformTypeIdentifiers
 ///   output is read back: PNG signature, exact pixel dimensions, transparency, preset
 ///   sizing, and PDF output are all asserted. A dedicated test proves the CLI output
 ///   is **byte-for-byte identical** to the app's own `ExportManager` render for the
-///   same options, which is the CS-033 "pixel-identical to the app" guarantee.
+///   same options, preserving the pixel-identical-to-the-app guarantee.
 ///
 /// The suite is `@MainActor` because the render path uses AppKit/`ImageRenderer` on
 /// the main actor (every render test in the project is); the test host is the app
 /// bundle, so the bundled fonts are already registered.
 @MainActor
-@Suite("CLI renderer (CS-033)")
+@Suite("CLI renderer")
 struct CLITests {
     // MARK: - Fixtures
 
@@ -1395,7 +1395,7 @@ struct CLITests {
         #expect(options.inputPath.isEmpty)
 
         let loaded = try FileInputLoader.decode(
-            data: Data("export const Button = () => <button>Save</button>\n".utf8),
+            data: Data("export const Button = => <button>Save</button>\n".utf8),
             filename: options.stdinFilename ?? "")
         #expect(loaded.language == .typescript)
         #expect(loaded.filename == "Component.tsx")
@@ -1900,7 +1900,7 @@ struct CLITests {
         }
     }
 
-    // MARK: - Preset/scale precedence (CS-020)
+    // MARK: - Preset/scale precedence
 
     @Test func presetSeedsScaleAndFixedSize() throws {
         let options = try CLIArguments.parse([
@@ -1942,8 +1942,7 @@ struct CLITests {
 
         var tooLow = try CLIArguments.parse(["render", "in.swift", "-o", "o.png"])
         tooLow.scale = 0
-        // Below the range falls back to the app default (the documented clamp,
-        // CS-050), not the floor.
+        // Below the range falls back to the app default, not the floor.
         #expect(tooLow.effectiveScale == CGFloat(SettingsDefaults.exportScale))
     }
 
@@ -3103,7 +3102,7 @@ struct CLITests {
         #expect(document.numberOfPages == 1)
     }
 
-    // MARK: - Pixel-identity with the app render path (CS-033 core promise)
+    // MARK: - Pixel-identity with the app render path (core promise)
 
     @Test func cliOutputMatchesTheAppRendererPixelDimensions() throws {
         // Pin the input with an injected loader so both sides render from the exact
@@ -3292,7 +3291,7 @@ struct CLITests {
     }
 }
 
-/// CS-033 — runtime registration of the app's bundled fonts for the command-line
+/// runtime registration of the app's bundled fonts for the command-line
 /// renderer.
 ///
 /// `CLIFontRegistration` is what keeps a default CLI render pixel-identical to the
@@ -3312,7 +3311,7 @@ struct CLITests {
 /// every render, so the suites are independent of the order Swift Testing schedules
 /// them in.
 @MainActor
-@Suite("CLI font registration (CS-033)")
+@Suite("CLI font registration")
 struct CLIFontRegistrationTests {
     /// A unique scratch directory for one test.
     private func makeTempDirectory() throws -> URL {

@@ -5,9 +5,9 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-042 — the local HTML renderer backed by an offscreen `WKWebView`.
+/// the local HTML renderer backed by an offscreen `WKWebView`.
 ///
-/// These suites prove the acceptance criteria the ticket asks for:
+/// These suites prove the documented behavior:
 ///
 /// 1. **Deterministic offscreen render** — a static HTML fixture rasterizes to a
 ///    real image whose pixel size is exactly `viewport × scale`, produced by a web
@@ -148,7 +148,7 @@ private enum HTMLFixture {
 
 @MainActor
 @Suite(
-    "WebSnapshotView renders HTML offscreen · CS-042",
+    "WebSnapshotView renders HTML offscreen · ",
     .enabled("requires a launchable WKWebView web process (unavailable in a sandboxed test host)") {
         await WebKitAvailability.canRenderOffscreen()
     })
@@ -161,7 +161,7 @@ struct WebSnapshotRenderTests {
             scale: 2)
         let image = try await engine.snapshot(of: request)
         // The viewport is fixed and the scale is applied, so the bitmap is exactly
-        // viewport × scale — the determinism the acceptance criteria require.
+        // viewport × scale — the determinism the documented contract require.
         #expect(image.width == 1200)
         #expect(image.height == 800)
     }
@@ -200,7 +200,7 @@ struct WebSnapshotRenderTests {
 
 @MainActor
 @Suite(
-    "Pasted HTML cannot reach the network · CS-042",
+    "Pasted HTML cannot reach the network · ",
     .enabled("requires a launchable WKWebView web process (unavailable in a sandboxed test host)") {
         await WebKitAvailability.canRenderOffscreen()
     })
@@ -225,7 +225,7 @@ struct WebSnapshotNetworkTests {
         // The default request blocks network: the same fixture renders without the
         // caller having to opt out, proving `allowsNetwork` defaults to false.
         // Scale is pinned to 1 so the pixel assertion is exact — the request's
-        // default scale is 2, which doubles the bitmap (CS-042 determinism).
+        // default scale is 2, which doubles the bitmap (deterministic sizing).
         let engine = WebSnapshotView()
         let image = try await engine.snapshot(
             of: .init(
@@ -237,7 +237,7 @@ struct WebSnapshotNetworkTests {
 
     @Test func remoteBlockRulesCompileIntoAUsableRuleList() async throws {
         // The rule list is the load-bearing isolation layer for pasted HTML on a
-        // network-entitled build (CS-064 DMG): subresources and script-initiated
+        // network-entitled build (DMG): subresources and script-initiated
         // requests never reach the navigation delegate, so blocking happens in the
         // web process. This proves the committed rule JSON actually compiles —
         // a malformed rule source would otherwise fail every HTML render closed.
@@ -250,7 +250,7 @@ struct WebSnapshotNetworkTests {
 
 @MainActor
 @Suite(
-    "HTML resolves only local assets · CS-042",
+    "HTML resolves only local assets · ",
     .enabled("requires a launchable WKWebView web process (unavailable in a sandboxed test host)") {
         await WebKitAvailability.canRenderOffscreen()
     })
@@ -295,7 +295,7 @@ struct WebSnapshotLocalAssetTests {
 /// launch WebKit. That is what keeps the "typed error, not a blank image" contract
 /// executable on every machine.
 @MainActor
-@Suite("Snapshot failures are typed errors · CS-042")
+@Suite("Snapshot failures are typed errors")
 struct WebSnapshotErrorTests {
     @Test func zeroWidthViewportThrowsInvalidViewport() async throws {
         let engine = WebSnapshotView()
@@ -364,7 +364,7 @@ struct WebSnapshotErrorTests {
 
 // MARK: - Network policy (pure logic, no web process needed)
 
-/// The privacy guarantee at the heart of CS-042 — *"pasted HTML cannot reach the
+/// The privacy guarantee at the heart of — *"pasted HTML cannot reach the
 /// network"* — is the navigation delegate's allow/cancel decision. That decision is
 /// pure (the request's scheme plus the caller's `allowsNetwork` flag), so it is
 /// proven here directly against `WebSnapshotView.NetworkPolicy` with **no
@@ -372,7 +372,7 @@ struct WebSnapshotErrorTests {
 /// only runs where WebKit can launch. This is the assertion that keeps the
 /// network-blocking contract executable on every machine, including the sandboxed
 /// test host where a real render cannot run.
-@Suite("Pasted HTML network policy is local-only by default · CS-042")
+@Suite("Pasted HTML network policy is local-only by default")
 struct WebSnapshotNetworkPolicyTests {
     private typealias Policy = WebSnapshotView.NetworkPolicy
 
@@ -437,14 +437,14 @@ struct WebSnapshotNetworkPolicyTests {
 
 // MARK: - Deterministic pixel sizing (pure math + real draw, no web process needed)
 
-/// The other headline guarantee CS-042 makes — a snapshot is **exactly
+/// The other headline guarantee the renderer makes — a snapshot is **exactly
 /// `viewport × scale` device pixels**, deterministically — is sizing arithmetic
 /// plus a CoreGraphics draw, neither of which needs WebKit. The live render suite
 /// asserts this end to end where WebKit can launch; here the same guarantee is
 /// proven on every machine by driving `WebSnapshotView`'s own sizing and bitmap
 /// path against a synthesized `NSImage` standing in for the web view's snapshot.
 @MainActor
-@Suite("Snapshot sizing is deterministic · CS-042")
+@Suite("Snapshot sizing is deterministic")
 struct WebSnapshotSizingTests {
     /// A solid-color `NSImage` of a known point size, used as a stand-in for the
     /// image `WKWebView.takeSnapshot` would hand back — so the sizing and bitmap
@@ -539,11 +539,11 @@ struct WebSnapshotSizingTests {
 
 // MARK: - HTMLRenderer routing (pure logic, no web process needed)
 
-/// Routing and acceptance are decided without rendering, so this suite always runs:
+/// Routing and contract are decided without rendering, so this suite always runs:
 /// these tests pin that `HTMLRenderer` accepts only HTML and throws — never returns a
 /// blank image — for an input it rejects.
 @MainActor
-@Suite("HTMLRenderer routing · CS-042")
+@Suite("HTMLRenderer routing")
 struct HTMLRendererRoutingTests {
     @Test func htmlRendererAcceptsOnlyHTML() throws {
         let renderer = HTMLRenderer()
@@ -572,7 +572,7 @@ struct HTMLRendererRoutingTests {
 
 @MainActor
 @Suite(
-    "HTMLRenderer produces a tagged asset · CS-042",
+    "HTMLRenderer produces a tagged asset · ",
     .enabled("requires a launchable WKWebView web process (unavailable in a sandboxed test host)") {
         await WebKitAvailability.canRenderOffscreen()
     })
@@ -610,13 +610,13 @@ struct HTMLRendererRenderTests {
 
 // MARK: - No Screen Recording, no network entitlement
 
-@Suite("Local HTML rendering needs no screen or network capability · CS-042")
+@Suite("Local HTML rendering needs no screen or network capability")
 struct HTMLRenderingCapabilityTests {
     /// Local HTML rendering must not add `com.apple.security.network.client` to the
     /// app target: the engine renders a pasted fragment locally and blocks remote
     /// loads, so it never needs the network. The entitlements file is excluded from
     /// the app's compiled sources, so it is read from the source tree via `#filePath`
-    /// — the same anchoring the renderer and golden tests use.
+    /// the same anchoring the renderer and golden tests use.
     @Test func appHasNoNetworkClientEntitlement() throws {
         let entitlements = Self.appEntitlements()
         let data = try Data(contentsOf: entitlements)
@@ -625,7 +625,7 @@ struct HTMLRenderingCapabilityTests {
             "Vitrine.entitlements must be a property list")
         #expect(
             plist["com.apple.security.network.client"] == nil,
-            "Local HTML rendering must not request the network client entitlement (CS-042)")
+            "Local HTML rendering must not request the network client entitlement")
         #expect(plist["com.apple.security.app-sandbox"] as? Bool == true)
     }
 

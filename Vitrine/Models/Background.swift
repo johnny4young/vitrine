@@ -1,6 +1,6 @@
 import Foundation
 
-/// The canvas background style (CS-005 / CS-051).
+/// The canvas background style.
 ///
 /// ray.so / Carbon parity: the background is the single biggest lever on
 /// perceived quality, so Vitrine supports a built-in **gradient preset**, a
@@ -8,13 +8,13 @@ import Foundation
 /// **image** (fit/blur/dimming), and real **transparency**.
 ///
 /// Every case is value-typed and `Codable` so a background round-trips through
-/// presets (CS-030) and persisted preferences (CS-050). The preset gradient and
+/// presets and persisted preferences. The preset gradient and
 /// custom gradient are deliberately *separate* cases rather than one parameter:
 /// it keeps `.gradient(.aurora)` — the value used everywhere as the signature
 /// default — unchanged, and lets a preset gradient persist by name (stable across
 /// palette tweaks) while a custom gradient persists by value.
 ///
-/// The transparent case is load-bearing for color management (CS-024): it must
+/// The transparent case is load-bearing for color management: it must
 /// export with a real alpha channel and never composite the canvas over an
 /// opaque matte (see `BackgroundView`).
 enum BackgroundStyle {
@@ -24,8 +24,8 @@ enum BackgroundStyle {
     case image(ImageBackground)
     case transparent
 
-    /// A short, non-PII label for the background kind, used by diagnostics
-    /// (CS-048). A solid color reports only `"solid"`, not its RGBA, and an image
+    /// A short, non-PII label for the background kind, used by diagnostics.
+    /// A solid color reports only `"solid"`, not its RGBA, and an image
     /// reports only `"image"`, never the file name or path — so nothing
     /// user-specific leaks. A gradient reports its preset name; a custom gradient
     /// reports only `"custom-gradient"`.
@@ -45,8 +45,8 @@ enum BackgroundStyle {
 /// Equality and hashing are **value-based on fixed-sRGB color components**.
 ///
 /// Solid colors are stored as `RGBAColor` (quantized fixed-sRGB), so a background
-/// compares equal to its own persistence round-trip — the behavior presets (CS-030)
-/// and the "diverged from preset" check (CS-020) rely on. (A raw `SwiftUI.Color` would
+/// compares equal to its own persistence round-trip — the behavior presets
+/// and the "diverged from preset" check rely on. (A raw `SwiftUI.Color` would
 /// not: a named `.red`, a `Color(hex:)`, and a restored color can differ underneath.)
 extension BackgroundStyle: Equatable, Hashable {
     static func == (lhs: BackgroundStyle, rhs: BackgroundStyle) -> Bool {
@@ -121,7 +121,7 @@ extension BackgroundStyle: Codable {
             self = .solid(try container.decode(RGBAColor.self, forKey: .color))
         case .gradient:
             // An unknown preset name degrades to the signature default rather than
-            // failing the whole decode (CS-050 documented fallback).
+            // failing the whole decode (documented fallback).
             let raw = try container.decode(String.self, forKey: .preset)
             self = .gradient(GradientPreset(rawValue: raw) ?? .aurora)
         case .customGradient:
@@ -141,7 +141,7 @@ extension BackgroundStyle: Codable {
 ///
 /// `aurora` is Vitrine's signature preset: it uses the same violet→azure brand
 /// vocabulary as the app accent and chrome (`Brand.Palette`), so a rendered
-/// screenshot is recognizably "Vitrine" (CS-036).
+/// screenshot is recognizably "Vitrine".
 enum GradientPreset: String, CaseIterable, Identifiable, Codable {
     case aurora = "Aurora"
     case ocean = "Ocean"
@@ -169,8 +169,8 @@ enum GradientPreset: String, CaseIterable, Identifiable, Codable {
     }
 
     /// The equivalent editable custom gradient, used to seed the custom-gradient
-    /// editor from a preset so "tweak this preset" is a one-tap starting point
-    /// (CS-051). Stops are spread evenly; the angle matches the preset's
+    /// editor from a preset so "tweak this preset" is a one-tap starting point.
+    /// Stops are spread evenly; the angle matches the preset's
     /// top-leading → bottom-trailing diagonal.
     var asCustomGradient: CustomGradient {
         let colors = stopColors
@@ -188,7 +188,7 @@ enum GradientPreset: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-// MARK: - Custom gradient (CS-051)
+// MARK: - Custom gradient
 
 /// One color stop in a custom gradient: a color at a normalized location
 /// (`0...1`) along the gradient axis.
@@ -242,7 +242,7 @@ extension GradientStop: Equatable, Hashable {
 }
 
 /// A user-defined linear gradient: ordered color stops plus an angle in degrees
-/// (`0` = left→right, `90` = top→bottom), rendered locally (CS-051).
+/// (`0` = left→right, `90` = top→bottom), rendered locally.
 struct CustomGradient: Equatable, Hashable, Codable {
     /// Color stops. Always kept with at least two entries so the gradient is
     /// well-defined; the initializer pads a short list from the default.
@@ -288,7 +288,7 @@ struct CustomGradient: Equatable, Hashable, Codable {
     }
 }
 
-// MARK: - Image background (CS-051)
+// MARK: - Image background
 
 /// How an image background fills the canvas.
 enum BackgroundFit: String, CaseIterable, Identifiable, Codable {
@@ -307,14 +307,14 @@ enum BackgroundFit: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-/// A user-chosen image background with fit, optional blur, and dimming (CS-051).
+/// A user-chosen image background with fit, optional blur, and dimming.
 ///
 /// The image is referenced by `ImageReference`, which resolves to a file the app
 /// is allowed to read — copied into the app's container, never auto-uploaded and
 /// never requiring a broad file entitlement. `blur` and `dimming` are normalized
 /// post-processing applied locally at render time.
 struct ImageBackground: Equatable, Hashable, Codable {
-    /// Where the image lives (a file in the app container; CS-051).
+    /// Where the image lives (a file in the app container).
     var reference: ImageReference
     /// How the image fills the canvas.
     var fit: BackgroundFit
@@ -348,7 +348,7 @@ struct ImageBackground: Equatable, Hashable, Codable {
         self.reference = try container.decode(ImageReference.self, forKey: .reference)
         // A missing or unknown fit decodes to the common `.fill`; numeric values
         // are re-clamped so a hand-edited store can never feed a wild radius to
-        // the renderer (CS-050).
+        // the renderer.
         self.fit =
             (try? container.decode(BackgroundFit.self, forKey: .fit)) ?? .fill
         self.blur = Self.clamp(
@@ -358,14 +358,14 @@ struct ImageBackground: Equatable, Hashable, Codable {
     }
 }
 
-/// A stable reference to an image background file (CS-051).
+/// A stable reference to an image background file.
 ///
 /// The app copies the user-selected image into its own container and stores only
 /// the relative file name here — not an absolute path and not the bytes — so the
 /// reference is small, sandbox-safe, and survives relaunch without a broad file
 /// entitlement. `BackgroundImageStore` resolves a reference to a concrete URL and
 /// handles the missing-file case by reporting `nil`, which callers degrade to a
-/// safe default background (CS-051 graceful degradation).
+/// safe default background (graceful degradation).
 struct ImageReference: Equatable, Hashable, Codable {
     /// The file name within the app's background-images directory (no path).
     let fileName: String

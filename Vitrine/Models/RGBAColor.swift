@@ -1,8 +1,8 @@
 import Foundation
 
 /// A `Codable`, UI-free sRGB color: four straight (non-premultiplied) components in
-/// `0...1`, resolved through a fixed color space so the value is display-independent
-/// (CS-050/CS-051). This is the model layer's color representation — it carries no
+/// `0...1`, resolved through a fixed color space so the value is display-independent.
+/// This is the model layer's color representation — it carries no
 /// `SwiftUI`/`AppKit` dependency, so the models that store colors stay UI-free (the
 /// prerequisite for a `VitrineCore` package). The `SwiftUI.Color` bridging lives in
 /// `Color+Hex.swift` in the UI layer.

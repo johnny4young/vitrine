@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-// CS-049 — the paste → re-indent pipeline inside the editor's NSTextView.
+// — the paste → re-indent pipeline inside the editor's NSTextView.
 //
 // `CodeFormatter.tidy` is covered as pure logic in CodeFormatterTests; what this
 // suite pins is the *editor wiring*: the coordinator applies the tidied text
@@ -12,7 +12,7 @@ import Testing
 // edit (⌘Z restores the exact pasted text), and a no-op paste registers nothing.
 
 @MainActor
-@Suite("Paste re-indent goes through the editor's undo cycle · CS-049")
+@Suite("Paste re-indent goes through the editor's undo cycle")
 struct CodeEditorReindentTests {
     /// A coordinator bound to a throwaway editor view; the binding is constant
     /// because these tests assert on the text view, not the SwiftUI write-back.

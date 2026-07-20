@@ -3,7 +3,7 @@ import Foundation
 
 #if VITRINE_DIRECT_DOWNLOAD
     /// The Ed25519 **private** key the direct-download build uses to sign a freshly-activated
-    /// `LicenseToken` locally (CS-090, Architecture B). It is injected **only into the official
+    /// `LicenseToken` locally (embedded-key activation model). It is injected **only into the official
     /// release** at build time and is never committed to the repository.
     ///
     /// Injection mirrors the project's existing build-secret pattern (`VITRINE_ENTITLEMENTS_FILE`):

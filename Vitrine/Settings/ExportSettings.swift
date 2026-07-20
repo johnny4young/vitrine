@@ -1,15 +1,15 @@
 import Foundation
 import Observation
 
-/// The image-output settings (CS-010 · Output), extracted from `AppSettings` into a
-/// focused sub-store (audit A1) so the main settings object stays cohesive rather than
+/// The image-output settings (Output), extracted from `AppSettings` into a
+/// focused sub-store so the main settings object stays cohesive rather than
 /// accreting every feature's knobs — following the `WebCaptureSettings` precedent. Held
 /// by `AppSettings`; because both are `@Observable`, a SwiftUI surface that reads
 /// `settings.export.<field>` observes the nested store directly and refreshes on an
 /// output-settings edit, so no manual change-forwarding is needed.
 ///
 /// Persistence is unchanged from when these lived on `AppSettings`: every property reads
-/// and writes the same `SettingsCodec.Keys` with the same defensive defaults (CS-050), so
+/// and writes the same `SettingsCodec.Keys` with the same defensive defaults, so
 /// a store written by an older build loads identically and the settings schema/migration
 /// is untouched. The redundant `export` prefix the `exportScale`/`exportFormat` members
 /// carried on the god object is dropped here — the `export` namespace now supplies that
@@ -21,12 +21,12 @@ final class ExportSettings {
     /// Copy the rendered image to the clipboard automatically (quick mode).
     var autoCopy: Bool { didSet { defaults.set(autoCopy, forKey: Keys.autoCopy) } }
 
-    /// Also save the rendered image to a file (CS-010 · Output).
+    /// Also save the rendered image to a file (Output).
     var alsoSaveToFile: Bool {
         didSet { defaults.set(alsoSaveToFile, forKey: Keys.alsoSaveToFile) }
     }
 
-    /// Close the editor window after a successful "Copy image" (CS-084). On by
+    /// Close the editor window after a successful "Copy image". On by
     /// default: the window's job is done once the image is on the clipboard, so it
     /// gets out of the way like a focused capture utility. Users who copy repeatedly
     /// can turn it off in Settings.
@@ -37,18 +37,18 @@ final class ExportSettings {
     /// Export resolution multiplier: 1, 2 (retina), or 3.
     var scale: Int { didSet { defaults.set(scale, forKey: Keys.exportScale) } }
 
-    /// Exported image format (CS-010 · Output).
+    /// Exported image format (Output).
     var format: ExportFormat {
         didSet { defaults.set(format.rawValue, forKey: Keys.exportFormat) }
     }
 
-    /// PNG color profile: sRGB by default, Display P3 as an advanced option (CS-024).
+    /// PNG color profile: sRGB by default, Display P3 as an advanced option.
     var colorProfile: ColorProfile {
         didSet { defaults.set(colorProfile.rawValue, forKey: Keys.colorProfile) }
     }
 
     /// Add a rich-text representation (highlighted RTF/HTML) alongside the PNG on every
-    /// copy (CS-054). Off by default so the one-shortcut copy stays a plain image; when
+    /// copy. Off by default so the one-shortcut copy stays a plain image; when
     /// on, a paste into a rich-text editor keeps the syntax colors and font while an
     /// image well still receives the picture.
     var richClipboard: Bool {
@@ -66,7 +66,7 @@ final class ExportSettings {
     private let defaults: UserDefaults
 
     /// Seeds every property from `defaults` with the same documented fallbacks the god
-    /// object used (CS-050): a missing or garbage value falls back to the default, so
+    /// object used: a missing or garbage value falls back to the default, so
     /// loading from empty, partial, or corrupt defaults always yields a usable config.
     init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -80,7 +80,7 @@ final class ExportSettings {
         textSidecar = defaults.object(forKey: Keys.textSidecar) as? Bool ?? false
     }
 
-    /// Restores every output setting to its factory default (CS-050), driven by
+    /// Restores every output setting to its factory default, driven by
     /// `AppSettings.resetToDefaults()`. The persisted keys are cleared by that caller's
     /// key sweep; this resets the live published state so the UI updates at once.
     func resetToDefaults() {

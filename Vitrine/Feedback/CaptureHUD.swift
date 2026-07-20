@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// A short-lived, in-app heads-up display anchored near the menu bar that
-/// confirms a quick capture without a Notification Center banner (CS-038).
+/// confirms a quick capture without a Notification Center banner.
 ///
 /// The HUD is the preferred surface for *routine* success so the app does not
 /// post a system notification for every ordinary capture; Notification Center is
@@ -16,15 +16,15 @@ import SwiftUI
 /// the Reduced Motion behavior and timing can be unit-tested without a window.
 enum CaptureHUD {
     /// Whether decorative HUD animation should run, given the system Reduce Motion
-    /// setting (CS-038 acceptance: "Reduced Motion disables decorative animation
+    /// setting ( "Reduced Motion disables decorative animation
     /// while keeping status feedback.").
     ///
     /// When Reduce Motion is on, the HUD still appears and still shows its status
-    /// — only the slide/scale/fade *animation* is suppressed; the content snaps in
+    /// only the slide/scale/fade *animation* is suppressed; the content snaps in
     /// instead.
     static func shouldAnimate(reduceMotion: Bool) -> Bool { !reduceMotion }
 
-    /// The current system Reduce Motion preference (CS-038).
+    /// The current system Reduce Motion preference.
     ///
     /// Reads AppKit's accessibility display setting, which mirrors System Settings
     /// ▸ Accessibility ▸ Display ▸ Reduce motion. Centralized here so the presenter
@@ -33,7 +33,7 @@ enum CaptureHUD {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
-    /// How long the HUD stays on screen before auto-dismissing (CS-038).
+    /// How long the HUD stays on screen before auto-dismissing.
     ///
     /// Routine confirmations are brief so they read as a glance, not an alert;
     /// feedback that offers recovery actions lingers so the user has time to click
@@ -44,7 +44,7 @@ enum CaptureHUD {
 }
 
 /// The SwiftUI content of the capture HUD: an icon, the message, and any inline
-/// recovery actions (CS-038). Kept separate from the window so it can be previewed
+/// recovery actions. Kept separate from the window so it can be previewed
 /// and so the presenter only deals with hosting.
 struct CaptureHUDView: View {
     let feedback: Notifier.CaptureFeedback
@@ -93,7 +93,7 @@ struct CaptureHUDView: View {
         .brandShadow(Brand.Shadow.card)
         // Decorative entrance only — gated on Reduce Motion. When suppressed the
         // content is simply shown at full opacity/scale with no transition, so the
-        // status is still delivered (CS-038).
+        // status is still delivered.
         .opacity(animate ? (shown ? 1 : 0) : 1)
         .scaleEffect(animate ? (shown ? 1 : 0.96) : 1, anchor: .top)
         .onAppear {
@@ -114,7 +114,7 @@ struct CaptureHUDView: View {
     }
 }
 
-/// Owns the floating HUD window and its auto-dismiss timer (CS-038).
+/// Owns the floating HUD window and its auto-dismiss timer.
 ///
 /// A single reusable, borderless, non-activating panel is positioned under the
 /// menu bar on the active screen and hosts `CaptureHUDView`. Presenting again
@@ -130,7 +130,7 @@ final class CaptureHUDController {
     private init() {}
 
     /// Shows `feedback` in the HUD, optionally animating its entrance, and routes
-    /// any recovery-action tap to `onAction` before dismissing (CS-038).
+    /// any recovery-action tap to `onAction` before dismissing.
     func present(
         _ feedback: Notifier.CaptureFeedback,
         animate: Bool? = nil,
@@ -166,7 +166,7 @@ final class CaptureHUDController {
 
     /// Lazily builds (and reuses) the floating panel. It is non-activating and
     /// borderless so showing it never pulls focus away from the user's frontmost
-    /// app — the whole point of a no-UI quick capture (CS-038).
+    /// app — the whole point of a no-UI quick capture.
     private func reusablePanel() -> NSPanel {
         if let panel { return panel }
         let panel = NSPanel(
@@ -188,7 +188,7 @@ final class CaptureHUDController {
     }
 
     /// Anchors the panel just under the menu bar at the trailing edge of the
-    /// active screen — i.e. near the menu-bar item it confirms (CS-038).
+    /// active screen — i.e. near the menu-bar item it confirms.
     private func position(_ panel: NSPanel, fitting size: NSSize) {
         let width = max(size.width, 1)
         let height = max(size.height, 1)

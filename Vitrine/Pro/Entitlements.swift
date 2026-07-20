@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// The single source of truth for Vitrine PRO state (CS-088), the open-core monetization
+/// The single source of truth for Vitrine PRO state, the open-core monetization
 /// gate. The gate lives at the **edges** (UI actions, CLI/Shortcuts entry points) and
 /// never touches the render core (`ExportManager`, `SnapshotCanvas`) or the golden suite,
 /// so every shipped feature keeps producing the same output with or without a license.
@@ -13,7 +13,7 @@ import Observation
 /// interface without changing call sites, and tests drive a fake.
 ///
 /// `WKWebView`-free and network-free by itself: nothing here logs or transmits anything
-/// about purchases (the CS-048 privacy rule extends to entitlement checks).
+/// about purchases; the privacy rule extends to entitlement checks.
 @MainActor
 @Observable
 final class Entitlements {
@@ -48,7 +48,7 @@ final class Entitlements {
         if current != isPro { isPro = current }
     }
 
-    /// Begins live entitlement updates (CS-089): re-resolves the entitlement now, and on the
+    /// Begins live entitlement updates: re-resolves the entitlement now, and on the
     /// App Store build observes out-of-band `Transaction.updates` — a refund (revokes the
     /// transaction → `isPro` flips to `false`) or a purchase on another device — so PRO
     /// re-locks/unlocks without a relaunch. Call once at launch. Idempotent enough for the
@@ -64,7 +64,7 @@ final class Entitlements {
 
     /// Starts a PRO purchase and reports the outcome (so the paywall can surface a failure
     /// instead of silently clearing), refreshing after. Delegates to the active provider —
-    /// the StoreKit provider buys; the license-key/free/debug providers no-op (audit P2-3).
+    /// the StoreKit provider buys; the license-key/free/debug providers no-op.
     @discardableResult
     func purchase() async -> PurchaseOutcome {
         let outcome = await provider.purchase()
@@ -81,8 +81,8 @@ final class Entitlements {
     }
 
     #if VITRINE_DIRECT_DOWNLOAD
-        /// Activates a Lemon Squeezy license key on the direct-download build (CS-090,
-        /// Architecture B), returning whether PRO is unlocked afterward.
+        /// Activates a Lemon Squeezy license key on the direct-download build (
+        /// embedded-key activation model), returning whether PRO is unlocked afterward.
         ///
         /// Validates the key once online via `LicenseActivationService`, which on success mints
         /// a locally-signed token; that token is handed to the `LicenseKeyProvider`, which
@@ -101,8 +101,8 @@ final class Entitlements {
     #endif
 
     /// The provider backing `shared`, chosen per build. The App Store build resolves PRO
-    /// from the StoreKit non-consumable IAP (CS-089); the direct-download build resolves
-    /// from a locally stored signed license token (CS-090) and is free until activation
+    /// from the StoreKit non-consumable IAP; the direct-download build resolves
+    /// from a locally stored signed license token and is free until activation
     /// succeeds. In a **Debug** build only, `VITRINE_PRO_UNLOCK=1` swaps in
     /// `DebugUnlockProvider` so PRO can be exercised locally — that override is compiled
     /// out of release, so a shipped binary has no path to PRO through it.
@@ -123,31 +123,31 @@ final class Entitlements {
         #endif
         #if VITRINE_DIRECT_DOWNLOAD
             // Direct-download build: PRO resolves from a locally-stored, signed license
-            // token (CS-090), verified offline. Free until a token is activated.
+            // token, verified offline. Free until a token is activated.
             return LicenseKeyProvider()
         #else
-            // App Store build: PRO resolves from the StoreKit non-consumable IAP (CS-089).
+            // App Store build: PRO resolves from the StoreKit non-consumable IAP.
             return StoreKitProvider()
         #endif
     }
 }
 
-/// A gated PRO capability (CS-088). Each case carries its own paywall copy so the
-/// `PaywallSheet` (CS-091) reads its title and blurb straight from the feature the user
+/// A gated PRO capability. Each case carries its own paywall copy so the
+/// `PaywallSheet` reads its title and blurb straight from the feature the user
 /// tried to use.
 enum ProFeature: String, CaseIterable, Sendable {
-    /// User logo + handle + accent color + watermark applied in one click (CS-092).
+    /// User logo + handle + accent color + watermark applied in one click.
     case brandKit
-    /// One capture exported to many platform sizes in a single pass (CS-093).
+    /// One capture exported to many platform sizes in a single pass.
     case multiSizeExport
-    /// A long snippet split into numbered 4:5 slides for a carousel post (feature #15).
+    /// A long snippet split into numbered 4:5 slides for a carousel post.
     /// Unlocks with the same tier as everything else; a distinct case so the paywall
     /// describes the feature the user actually tapped.
     case carouselExport
-    /// The `vitrine` CLI, Shortcuts, and folder batch rendering (CS-094).
+    /// The `vitrine` CLI, Shortcuts, and folder batch rendering.
     case automation
-    /// The richer frames for beautified images — browser windows (and future device
-    /// mockups). The plain image and the macOS window frame stay free.
+    /// The richer browser and device frames for beautified images. The plain image
+    /// and macOS window frame stay free.
     case advancedFrames
 
     /// The paywall headline for this feature.
@@ -180,8 +180,8 @@ enum ProFeature: String, CaseIterable, Sendable {
     }
 }
 
-/// Resolves the current PRO entitlement for a build (CS-088). Implementations are the
-/// real StoreKit (CS-089) and license-key (CS-090) providers, plus the free default and
+/// Resolves the current PRO entitlement for a build. Implementations are the
+/// real StoreKit and license-key providers, plus the free default and
 /// the test/dev fakes. `cachedIsPro` must be a synchronous, offline read (used at boot);
 /// `currentIsPro()` may do async work (a StoreKit query, a token re-check).
 protocol EntitlementProvider {
@@ -197,7 +197,7 @@ protocol EntitlementProvider {
 
 extension EntitlementProvider {
     /// Default no-ops, so only the StoreKit provider implements a real purchase/restore and
-    /// `Entitlements` need not downcast to it (audit P2-3).
+    /// `Entitlements` need not downcast to it.
     func purchase() async -> PurchaseOutcome { .cancelled }
     func restore() async -> Bool { cachedIsPro }
 }
@@ -210,7 +210,7 @@ struct FreeProvider: EntitlementProvider {
 }
 
 #if DEBUG
-    /// A Debug-only local unlock (CS-088): PRO is always on. Compiled **only** into Debug
+    /// A Debug-only local unlock: PRO is always on. Compiled **only** into Debug
     /// builds (`#if DEBUG`), so it is physically absent from any release binary — the
     /// "bypass locally, never in releases" guarantee. Activated via `VITRINE_PRO_UNLOCK=1`
     /// in `Entitlements.defaultProvider()`. Tests inject their own fake instead of this.

@@ -2,11 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Vitrine does not track users and collects no data (CS-011). This manifest is
-	     the privacy row of the permission matrix in docs/PERMISSIONS.md (CS-065);
+	<!-- Vitrine does not track users and collects no data. This manifest is
+	     the privacy row of the permission matrix in docs/PERMISSIONS.md;
 	     Tests/PrivacyManifestTests.swift fails if it drifts.
 
-	     Product Phase 2 URL capture (CS-043/CS-045) does not change this manifest:
+	     web capture URL capture does not change this manifest:
 	     loading a user-requested webpage locally in WebKit and rasterizing it
 	     on-device introduces no required-reason API beyond UserDefaults (used only
 	     for the app's own settings) and collects no data. There is no analytics,

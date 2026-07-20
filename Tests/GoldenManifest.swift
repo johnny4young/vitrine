@@ -1,7 +1,7 @@
 import Foundation
 
 /// The manifest recorded next to the golden PNGs (`Tests/Fixtures/Golden/manifest.json`),
-/// pinning the runner image the committed fixtures were generated on (CS-025).
+/// pinning the runner image the committed fixtures were generated on.
 ///
 /// Text rasterization differs across macOS/Xcode versions, so a golden PNG is only
 /// a valid baseline on the image that produced it. This manifest records *which*

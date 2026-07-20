@@ -3,15 +3,15 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-027 — Markdown fence and file-input detection.
+/// Markdown fence and file-input detection.
 ///
 /// These suites exercise the pure detection layer (`MarkdownFence`,
 /// `LanguageDetector.language(forFileExtension:)` / `forPath:`, and
 /// `LanguageDetector.interpret(_:)`) plus the quick-capture wiring that turns a
 /// multi-block paste into a deferred-to-editor outcome.
 
-private func cs027Defaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrineCS027-\(UUID().uuidString)")!
+private func quickCaptureDefaults() -> UserDefaults {
+    UserDefaults(suiteName: "VitrineQuickCapture-\(UUID().uuidString)")!
 }
 
 // MARK: - Markdown fence parsing (table-driven)
@@ -389,7 +389,7 @@ struct LanguageDetectorInterpretTests {
     }
 
     /// A bare http(s) URL renders as plain text, not source: neither keyword scoring
-    /// nor a trailing extension in the URL path may color it like code (CS-004). The
+    /// nor a trailing extension in the URL path may color it like code. The
     /// `…/v0.1.0` form (digits that look like numeric literals) and a `.css`/`.rb`
     /// path suffix (which would otherwise hint a language) both stay plaintext.
     @Test func bareURLRendersAsPlainText() {
@@ -411,10 +411,10 @@ struct LanguageDetectorInterpretTests {
 // MARK: - QuickCapture wiring
 
 @MainActor
-@Suite("QuickCapture · CS-027", .serialized)
+@Suite("QuickCapture · ", .serialized)
 struct QuickCaptureFenceTests {
     @Test func destinationPresetResolvesPresentationAndGeometryWithoutChangingDefaults() {
-        let settings = AppSettings(defaults: cs027Defaults())
+        let settings = AppSettings(defaults: quickCaptureDefaults())
         let original = settings.config
 
         let plan = QuickCapture.renderPlan(
@@ -430,10 +430,10 @@ struct QuickCaptureFenceTests {
     }
 
     @Test func destinationPresetIsAppliedWhenSeveralBlocksDeferToEditor() {
-        let settings = AppSettings(defaults: cs027Defaults())
+        let settings = AppSettings(defaults: quickCaptureDefaults())
         let outcome = QuickCapture.run(
             settings: settings,
-            recents: RecentsStore(defaults: cs027Defaults()),
+            recents: RecentsStore(defaults: quickCaptureDefaults()),
             destinationPreset: .twitter,
             clipboard: { "```swift\nlet a = 1\n```\n\n```swift\nlet b = 2\n```" })
 
@@ -443,9 +443,9 @@ struct QuickCaptureFenceTests {
     }
 
     @Test func singleFenceIsStrippedBeforeStoring() {
-        let recents = RecentsStore(defaults: cs027Defaults())
+        let recents = RecentsStore(defaults: quickCaptureDefaults())
         let outcome = QuickCapture.run(
-            settings: AppSettings(defaults: cs027Defaults()),
+            settings: AppSettings(defaults: quickCaptureDefaults()),
             recents: recents,
             clipboard: { "```swift\nlet x = 1\n```" })
         #expect(outcome == .copied)
@@ -456,8 +456,8 @@ struct QuickCaptureFenceTests {
     }
 
     @Test func multipleBlocksDeferToEditorAndStoreNothing() {
-        let settings = AppSettings(defaults: cs027Defaults())
-        let recents = RecentsStore(defaults: cs027Defaults())
+        let settings = AppSettings(defaults: quickCaptureDefaults())
+        let recents = RecentsStore(defaults: quickCaptureDefaults())
         let clip = """
             ```swift
             let a = 1
@@ -480,9 +480,9 @@ struct QuickCaptureFenceTests {
     }
 
     @Test func filePathClipboardHintsLanguage() {
-        let recents = RecentsStore(defaults: cs027Defaults())
+        let recents = RecentsStore(defaults: quickCaptureDefaults())
         let outcome = QuickCapture.run(
-            settings: AppSettings(defaults: cs027Defaults()),
+            settings: AppSettings(defaults: quickCaptureDefaults()),
             recents: recents,
             clipboard: { "~/src/server/main.go" })
         #expect(outcome == .copied)
@@ -490,9 +490,9 @@ struct QuickCaptureFenceTests {
     }
 
     @Test func plainCodeBehaviorIsUnchanged() {
-        let recents = RecentsStore(defaults: cs027Defaults())
+        let recents = RecentsStore(defaults: quickCaptureDefaults())
         let outcome = QuickCapture.run(
-            settings: AppSettings(defaults: cs027Defaults()),
+            settings: AppSettings(defaults: quickCaptureDefaults()),
             recents: recents,
             clipboard: { "def greet():\n    pass" })
         #expect(outcome == .copied)
@@ -508,9 +508,9 @@ struct QuickCaptureFenceTests {
     /// so nothing is recorded. This guards the blank-input branch that the
     /// Markdown/path interpretation path sits behind.
     @Test func whitespaceOnlyClipboardIsEmptyAndStoresNothing() {
-        let recents = RecentsStore(defaults: cs027Defaults())
+        let recents = RecentsStore(defaults: quickCaptureDefaults())
         let outcome = QuickCapture.run(
-            settings: AppSettings(defaults: cs027Defaults()),
+            settings: AppSettings(defaults: quickCaptureDefaults()),
             recents: recents,
             clipboard: { "   \n\t  " })
         #expect(outcome == .empty)

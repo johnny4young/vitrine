@@ -2,7 +2,7 @@ import AppKit
 import OSLog
 
 /// The pure, testable state layer behind editor-window restoration and
-/// multi-window editing (CS-053).
+/// multi-window editing.
 ///
 /// Vitrine is a menu-bar agent that opens editor windows on demand. To behave like
 /// a native multi-window Mac app, each window must:
@@ -23,7 +23,7 @@ import OSLog
 // MARK: - Per-window identity (frame autosave name)
 
 /// The stable identity of one editor window: a small integer index and the derived
-/// frame-autosave name AppKit uses to persist that window's frame (CS-053).
+/// frame-autosave name AppKit uses to persist that window's frame.
 ///
 /// The first editor window is index 1 and autosaves under the bare `editor` name so
 /// it keeps the frame an earlier single-window build saved (no migration needed);
@@ -60,9 +60,9 @@ struct EditorWindowIdentity: Equatable, Hashable {
     /// The window's title bar / Window-menu label. The primary window reads simply
     /// "Vitrine Editor"; additional windows append their index ("Vitrine Editor 2",
     /// "Vitrine Editor 3", …) so several open editors are distinguishable in the
-    /// Window menu and Mission Control rather than all reading identically (CS-053).
+    /// Window menu and Mission Control rather than all reading identically.
     /// Mirrors the index-suffix scheme of `frameAutosaveName` and the accessibility
-    /// identifier. Localized through the String Catalog (CS-047); the index is
+    /// identifier. Localized through the String Catalog; the index is
     /// inserted into the localized template.
     var windowTitle: String {
         index == 1
@@ -86,7 +86,7 @@ struct EditorWindowIdentity: Equatable, Hashable {
 // MARK: - Per-window draft config (state restoration payload)
 
 /// A fully `Codable`, value-typed snapshot of an editor window's ``SnapshotConfig``,
-/// used as the per-window state-restoration payload (CS-053).
+/// used as the per-window state-restoration payload.
 ///
 /// `SnapshotConfig` carries a `Theme` (a SwiftUI-facing value that is deliberately
 /// not `Codable`) and normalized line-highlight ranges, so it cannot be archived
@@ -94,7 +94,7 @@ struct EditorWindowIdentity: Equatable, Hashable {
 /// `AppSettings` already persists — the theme by id, the language by raw value, the
 /// highlighted lines as their canonical spec string, and the `Codable` background and
 /// metadata verbatim — so a window's draft round-trips with exactly the same fidelity
-/// and the same documented fallbacks as the app-wide settings (CS-050 posture).
+/// and the same documented fallbacks as the app-wide settings (defensive posture).
 ///
 /// Decoding resolves the theme through a ``CustomThemeStore`` so a window that was
 /// editing a *custom* theme restores it, falling back to the built-in lookup (and
@@ -246,7 +246,7 @@ struct EditorWindowState: Codable, Equatable {
 // MARK: - Off-screen recovery (frame geometry)
 
 /// Pure geometry for keeping a restored window frame on a currently-visible screen
-/// (CS-053 "behaves correctly across display changes without off-screen windows").
+/// ("behaves correctly across display changes without off-screen windows").
 ///
 /// A frame saved on one display arrangement can land entirely off-screen after a
 /// monitor is unplugged or rearranged. ``onScreenFrame(for:visibleFrames:)`` decides

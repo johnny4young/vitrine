@@ -1,4 +1,4 @@
-# Homebrew cask for Vitrine (CS-012, CS-063).
+# Homebrew cask for Vitrine.
 #
 # This file is the source template that lives in the app repo; the released cask
 # lives in the tap (johnny4young/homebrew-tap, `Casks/vitrine.rb`). On each
@@ -20,20 +20,20 @@ cask "vitrine" do
   homepage "https://vitrineframe.app"
 
   # A stable release-URL pattern exists (GitHub release tags), so livecheck can
-  # track new versions straight from the releases page (CS-063).
+  # track new versions straight from the releases page.
   livecheck do
     url :url
     strategy :github_latest
   end
 
-  # Sparkle keeps the installed app current in place (CS-064), so Homebrew
+  # Sparkle keeps the installed app current in place, so Homebrew
   # should not flag user-updated copies as outdated.
   auto_updates true
   depends_on macos: :sonoma
 
   app "Vitrine.app"
   # The `vitrine` command-line renderer ships embedded in the app bundle
-  # (CS-033); this symlinks it onto PATH so a cask install gets the CLI too.
+  #; this symlinks it onto PATH so a cask install gets the CLI too.
   # It is named `vitrine-cli` inside the bundle (a `vitrine` sibling would
   # collide with the `Vitrine` app executable on case-insensitive APFS) and
   # surfaces on PATH under its real name via `target:`.

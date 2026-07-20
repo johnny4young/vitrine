@@ -1,6 +1,6 @@
 import Foundation
 
-/// A code theme is a **syntax/theme palette** (CS-006/052/031). The theme controls
+/// A code theme is a **syntax/theme palette**. The theme controls
 /// only the syntax colors; the code-card background is taken from the palette's own
 /// background (see `HighlightManager.backgroundColor(for:)`), and the canvas
 /// background (gradient/solid/transparent) is configured separately.
@@ -9,12 +9,12 @@ import Foundation
 ///
 /// - **Built-in** themes ship with the app and resolve through a Highlight.js
 ///   stylesheet bundled with Highlightr (`hlJsTheme`). They are immutable.
-/// - **Custom** themes (CS-031) are user-defined and carry their own `palette`,
+/// - **Custom** themes are user-defined and carry their own `palette`,
 ///   which `HighlightManager` synthesizes into a Highlight.js-compatible stylesheet
 ///   at render time. They are stored, imported, and exported through
 ///   `CustomThemeStore` and never overwrite a built-in.
 ///
-/// ## Adding a built-in theme (a one-file change, CS-052)
+/// ## Adding a built-in theme (a one-file change)
 ///
 /// To add a built-in theme, declare a `static let` whose `hlJsTheme` is the name of
 /// a Highlight.js stylesheet bundled with Highlightr, then list it in `builtIns`.
@@ -34,7 +34,7 @@ struct Theme: Identifiable, Hashable, Sendable {
     }
 
     /// Where a theme's colors come from: a bundled Highlight.js stylesheet
-    /// (built-in) or a user-defined palette (custom, CS-031).
+    /// (built-in) or a user-defined palette (custom).
     enum Source: Hashable, Sendable {
         /// A built-in theme backed by the named Highlight.js stylesheet.
         case builtIn(hlJsTheme: String)
@@ -51,7 +51,7 @@ struct Theme: Identifiable, Hashable, Sendable {
 
     /// Whether this theme is a built-in (immutable) one. Recomputed from the
     /// built-in catalog rather than trusted from any persisted flag, so origin can
-    /// never be spoofed by a hand-edited theme file (CS-031).
+    /// never be spoofed by a hand-edited theme file.
     var isBuiltIn: Bool { Self.builtInIDs.contains(id) }
 
     /// The Highlight.js stylesheet name for a built-in theme, or `nil` for a custom
@@ -80,7 +80,7 @@ struct Theme: Identifiable, Hashable, Sendable {
         self.source = .builtIn(hlJsTheme: hlJsTheme)
     }
 
-    /// Builds a custom theme from a user-defined palette (CS-031). The appearance is
+    /// Builds a custom theme from a user-defined palette. The appearance is
     /// derived from the palette's background luminance so menus group it correctly.
     nonisolated init(id: String, displayName: String, palette: ThemePalette) {
         self.id = id
@@ -125,7 +125,7 @@ struct Theme: Identifiable, Hashable, Sendable {
         appearance: .light)
 
     /// All bundled (built-in) themes, listed alphabetically by display name so the
-    /// menu and theme pickers are predictable to scan (CS-031). Appearance (dark/light)
+    /// menu and theme pickers are predictable to scan. Appearance (dark/light)
     /// is metadata only and does not affect this order.
     nonisolated static let builtIns: [Theme] = [
         .dracula, .github, .githubDark, .gruvbox, .monokai, .nightOwl, .nord,
@@ -133,7 +133,7 @@ struct Theme: Identifiable, Hashable, Sendable {
     ]
 
     /// The set of ids reserved for built-in themes, used to recompute `isBuiltIn`
-    /// and to refuse any custom theme that would shadow a built-in (CS-031).
+    /// and to refuse any custom theme that would shadow a built-in.
     nonisolated static let builtInIDs: Set<String> = Set(builtIns.map(\.id))
 
     /// Backwards-compatible alias for the built-in catalog. Existing call sites and
@@ -143,7 +143,7 @@ struct Theme: Identifiable, Hashable, Sendable {
 
     /// Looks up a **built-in** theme by id, falling back to One Dark.
     ///
-    /// Custom themes (CS-031) live in `CustomThemeStore` and are resolved through
+    /// Custom themes live in `CustomThemeStore` and are resolved through
     /// `CustomThemeStore.shared.theme(withID:)`, which falls back to this for a
     /// built-in id or an unknown one. This function stays `nonisolated` and
     /// pure so the `Codable`, off-main-actor call sites (`Capture`, `StyleSnapshot`)
@@ -153,10 +153,9 @@ struct Theme: Identifiable, Hashable, Sendable {
     }
 }
 
-// MARK: - Custom theme palette (CS-031)
+// MARK: - Custom theme palette
 
-/// A user-defined syntax palette: the documented schema a custom theme file carries
-/// (CS-031).
+/// A user-defined syntax palette: the documented schema a custom theme file carries.
 ///
 /// A palette is a small, self-contained set of named hex colors — a `background`,
 /// a default `foreground`, and one color per syntax token group (keywords, strings,
@@ -171,13 +170,13 @@ struct Theme: Identifiable, Hashable, Sendable {
 /// fall back to `foreground` when omitted, so a minimal two-color file is valid.
 /// Every supplied value must be a `#RGB`/`#RGBA`/`#RRGGBB`/`#RRGGBBAA` hex string.
 /// `validated(...)` and the throwing decoder reject a bad color or a missing
-/// required key with a specific `ValidationError` (CS-031 "bad colors or missing
+/// required key with a specific `ValidationError` ("bad colors or missing
 /// keys fail with clear validation errors"), so an invalid file is refused up front
 /// rather than feeding a broken color into the renderer.
 ///
 /// Because the palette is captured by value and resolved through a fixed sRGB
 /// representation, the same palette renders the same pixels on any Mac, which keeps
-/// exported screenshots deterministic across custom themes (CS-031 acceptance).
+/// exported screenshots deterministic across custom themes .
 struct ThemePalette: Hashable, Sendable, Codable {
     /// The card background the code sits on (the only background a syntax theme
     /// owns; the canvas background is configured separately).
@@ -235,7 +234,7 @@ struct ThemePalette: Hashable, Sendable, Codable {
     }
 
     /// A problem found while validating a palette, each mapping to clear user-facing
-    /// copy at the call site (CS-031 "clear validation errors").
+    /// copy at the call site ("clear validation errors").
     enum ValidationError: Error, Equatable {
         /// A required key (`background` or `foreground`) was missing.
         case missingKey(String)
@@ -262,7 +261,7 @@ struct ThemePalette: Hashable, Sendable, Codable {
 
     /// Decodes a palette from a theme file, **rejecting** a missing required key or
     /// any invalid color so a bad file fails with a clear error instead of crashing
-    /// or silently degrading (CS-031). Optional token colors default to `foreground`.
+    /// or silently degrading. Optional token colors default to `foreground`.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         background = try Self.decodeRequired(container, .background)
@@ -349,10 +348,10 @@ struct ThemePalette: Hashable, Sendable, Codable {
     }
 }
 
-// MARK: - Hex color (CS-031)
+// MARK: - Hex color
 
 /// A validated sRGB color stored as a hex string, the on-disk form custom-theme
-/// files use (CS-031).
+/// files use.
 ///
 /// Unlike `Color(hex:)` — which is a release-tolerant convenience that falls back to
 /// black on bad input — `HexColor` is **strict**: its failable initializer returns

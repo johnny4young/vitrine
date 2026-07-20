@@ -10,7 +10,7 @@ import Testing
 /// The canonical models the render and golden suites share, so the bytes that are
 /// recorded and the bytes that are compared come from the exact same input.
 enum SocialCardFixtures {
-    /// The default-template card used for the golden fixture (CS-041 "golden image
+    /// The default-template card used for the golden fixture ("golden image
     /// fixture for default template"). Every pixel-affecting field is pinned: the
     /// signature template, theme, background, and the bundled JetBrains Mono font.
     static let defaultCard = SocialCardModel(
@@ -35,7 +35,7 @@ enum SocialCardFixtures {
 
 /// Locates the committed social-card fixtures directory in the source tree
 /// (`<repo>/Tests/Fixtures/SocialCards/`), anchored to this file via `#filePath`
-/// just like `GoldenPaths` does for the CS-025 fixtures.
+/// just like `GoldenPaths` does for the other fixtures.
 enum SocialCardGoldenPaths {
     static var fixturesDirectory: URL {
         URL(fileURLWithPath: #filePath)
@@ -56,9 +56,9 @@ enum SocialCardGoldenPaths {
     }
 }
 
-// MARK: - Model validation (CS-041 "model validation")
+// MARK: - Model validation ("model validation")
 
-@Suite("SocialCardModel validation (CS-041)")
+@Suite("SocialCardModel validation")
 struct SocialCardModelValidationTests {
     @Test func blankTextFieldsNormalizeToNil() {
         let card = SocialCardModel(
@@ -162,7 +162,7 @@ struct SocialCardModelValidationTests {
 
 // MARK: - Template catalog
 
-@Suite("SocialCardTemplate catalog (CS-041)")
+@Suite("SocialCardTemplate catalog")
 struct SocialCardTemplateTests {
     @Test func everyTemplateIsNamedAndDescribed() {
         for template in SocialCardTemplate.allCases {
@@ -195,7 +195,7 @@ struct SocialCardTemplateTests {
 
 // MARK: - Codable round-trip + tolerance
 
-@Suite("SocialCardModel Codable (CS-041)")
+@Suite("SocialCardModel Codable")
 struct SocialCardModelCodableTests {
     @Test func roundTripsThroughJSON() throws {
         let original = SocialCardFixtures.defaultCard
@@ -222,7 +222,7 @@ struct SocialCardModelCodableTests {
 
     @Test func unknownThemeAndLanguageDegradeToDefaults() throws {
         // A hand-edited blob with an unknown theme/language must not crash the
-        // decode; it degrades to the documented defaults (CS-050 spirit).
+        // decode; it degrades to the documented defaults (defensive behavior).
         let json = """
             {"title":"Hi","codeExcerpt":"x","language":"klingon","theme":"no-such-theme",\
             "template":"standard","background":{"kind":"gradient","preset":"Aurora"},\
@@ -257,7 +257,7 @@ struct SocialCardModelCodableTests {
 
 // MARK: - Fingerprint determinism
 
-@Suite("SocialCardModel fingerprint (CS-041)")
+@Suite("SocialCardModel fingerprint")
 struct SocialCardFingerprintTests {
     @Test func fingerprintIsStableAcrossCalls() {
         let card = SocialCardFixtures.defaultCard
@@ -290,13 +290,13 @@ struct SocialCardFingerprintTests {
     }
 }
 
-// MARK: - Render dimensions (CS-041 "render dimensions")
+// MARK: - Render dimensions ("render dimensions")
 
 @MainActor
-@Suite("Social card render dimensions (CS-041)")
+@Suite("Social card render dimensions")
 struct SocialCardRenderDimensionTests {
     @Test func defaultRenderIsExactly1200x630At1x() throws {
-        // The headline acceptance: the default export is 1200×630. `ImageRenderer`
+        // The headline contract: the default export is 1200×630. `ImageRenderer`
         // honors the pinned proposedSize, so this dimension is OS-independent and is
         // asserted on every runner.
         let image = try #require(
@@ -376,7 +376,7 @@ struct SocialCardRenderDimensionTests {
 
     @Test func transparentBackgroundKeepsRealAlpha() throws {
         // A transparent-background card must export with a real alpha channel and no
-        // opaque matte, the same CS-024 guarantee a snapshot has.
+        // opaque matte, the same transparency guarantee a snapshot has.
         var card = SocialCardFixtures.defaultCard
         card.background = .transparent
         let image = try #require(SocialCardRenderer.renderCGImage(card, scale: 1))
@@ -384,19 +384,19 @@ struct SocialCardRenderDimensionTests {
     }
 }
 
-// MARK: - Rendered content (CS-041 "templates render title, subtitle, code excerpt, …")
+// MARK: - Rendered content ("templates render title, subtitle, code excerpt, …")
 
-/// Proves the templates actually *draw* each acceptance field, not merely model
+/// Proves the templates actually *draw* each rendered field, not merely model
 /// it. The dimension and fingerprint suites confirm the model reacts to a field
 /// and the render keeps its size, but a field could silently fail to paint and
 /// every one of those checks would still pass. Here two cards that differ only in
 /// one rendered field are rasterized at the same fixed size and diffed pixel-for-
-/// pixel through the CS-025 comparator: if the field is genuinely drawn, the
+/// pixel through the shared comparator: if the field is genuinely drawn, the
 /// images diverge far past the anti-aliasing floor; if it is dropped, they would
 /// match and the test fails. This is the render-level counterpart to the model's
 /// `fingerprint` test.
 @MainActor
-@Suite("Social card rendered content (CS-041)")
+@Suite("Social card rendered content")
 struct SocialCardRenderedContentTests {
     /// Renders `lhs` and `rhs` at the same 1200×630 size and returns the fraction of
     /// pixels that differ beyond the comparator's per-channel tolerance.
@@ -605,7 +605,7 @@ struct SocialCardRenderedContentTests {
 // MARK: - Clipboard flow
 
 @MainActor
-@Suite("Social card clipboard flow (CS-041)")
+@Suite("Social card clipboard flow")
 struct SocialCardClipboardTests {
     @Test func copyPlacesAPNGOnThePasteboard() throws {
         // The clipboard flow writes a PNG representation a paste can consume. A
@@ -620,16 +620,16 @@ struct SocialCardClipboardTests {
     }
 }
 
-// MARK: - Save & share flow refusal (CS-041 "clipboard, save, and share flows")
+// MARK: - Save & share flow refusal ("clipboard, save, and share flows")
 
 /// The save and share flows present modal AppKit UI on success, so a unit test
 /// cannot drive a real save panel or share picker headlessly. What it *can* pin —
-/// and what the acceptance turns on — is that both flows refuse an unrenderable
+/// and what the behavior depends on — is that both flows refuse an unrenderable
 /// model *before* any UI is shown: `saveToFile` returns `.failed` and `share`
 /// returns `false` while never touching the panel or `ShareManager`. That keeps
 /// every entry point honest about an empty card without requiring a UI session.
 @MainActor
-@Suite("Social card save & share flows (CS-041)")
+@Suite("Social card save & share flows")
 struct SocialCardSaveShareTests {
     @Test func saveRefusesAnEmptyModelBeforeShowingAPanel() {
         // `renderCGImage` returns nil for an empty model, so `saveToFile` short-
@@ -656,7 +656,7 @@ struct SocialCardSaveShareTests {
     }
 }
 
-// MARK: - Golden fixture (CS-041 "golden image fixture for default template")
+// MARK: - Golden fixture ("golden image fixture for default template")
 
 /// Whether the social-card golden recorder is armed. Opt-in via
 /// `VITRINE_RECORD_SOCIAL_CARD`, so a routine `make test` is read-only and never
@@ -671,13 +671,13 @@ enum SocialCardRecording {
 }
 
 @MainActor
-@Suite("Social card golden fixture (CS-041)")
+@Suite("Social card golden fixture")
 struct SocialCardGoldenTests {
     /// The committed manifest, or `nil` if none has been recorded yet.
     static let manifest = GoldenManifest.load(from: SocialCardGoldenPaths.fixturesDirectory)
 
     /// Whether the live runner matches the manifest's pinned image, gating the
-    /// strict pixel comparison exactly like the CS-025 suite.
+    /// strict pixel comparison exactly like the golden-image suite.
     static var isPinnedImage: Bool {
         guard let manifest else { return false }
         return manifest.pinnedImage == .current()
@@ -741,7 +741,7 @@ struct SocialCardGoldenTests {
     }
 
     /// Records the default-template fixture and its manifest into the staging
-    /// directory (CS-041). Opt-in: armed only by `VITRINE_RECORD_SOCIAL_CARD`, it
+    /// directory. Opt-in: armed only by `VITRINE_RECORD_SOCIAL_CARD`, it
     /// stages into the sandbox-writable temp dir and prints the path, which is then
     /// copied into `Tests/Fixtures/SocialCards/` from outside the sandbox.
     @Test(

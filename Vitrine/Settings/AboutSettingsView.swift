@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// About pane: version, links, copyright (CS-010), and a privacy-safe diagnostics
-/// export for bug reports (CS-048).
+/// About pane: version, links, copyright, and a privacy-safe diagnostics
+/// export for bug reports.
 struct AboutSettingsView: View {
     @Bindable var settings: AppSettings
 
@@ -18,8 +18,8 @@ struct AboutSettingsView: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(VitrineTokens.Text.primary)
                     .padding(.top, 10)
-                // The version line's template is localized through the catalog
-                // (CS-047); the version value itself is a semver, inserted verbatim.
+                // The version line's template is localized through the catalog;
+                // the version value itself is a semver, inserted verbatim.
                 Text("Version \(appVersion) · MIT")
                     .font(.system(size: VitrineTokens.FontSize.subhead))
                     .foregroundStyle(VitrineTokens.Text.secondary)
@@ -43,7 +43,7 @@ struct AboutSettingsView: View {
                 .padding(.top, 14)
 
                 // A stable legal/brand string, shown verbatim like the "Vitrine"
-                // wordmark above so it bypasses the String Catalog (CS-047).
+                // wordmark above so it bypasses the String Catalog.
                 Text(verbatim: "© 2026 johnny4young · MIT")
                     .font(.system(size: VitrineTokens.FontSize.caption))
                     .foregroundStyle(VitrineTokens.Text.tertiary)

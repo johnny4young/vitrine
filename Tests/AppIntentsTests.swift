@@ -6,18 +6,18 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-034 — Shortcuts, Services, and App Intents.
+/// Shortcuts, Services, and App Intents.
 ///
 /// The automation surfaces share one pure core (`SnapshotRenderRequest` →
 /// `SnapshotConfig`) and one render shell (`SnapshotRenderService`) that wraps the
-/// unchanged `ExportManager` path, mirroring how the CLI (CS-033) is built. These
+/// unchanged `ExportManager` path, mirroring how the CLI is built. These
 /// tests cover the unit-testable halves directly — request resolution, the picker
 /// enum mappings, the render shell, and the Services registration contract — without
 /// needing the live App Intents / Services runtime:
 ///
 /// - **Request resolution** proves a Shortcut's parameters compose into exactly the
 ///   `SnapshotConfig` the app would render, applying the same precedence and never
-///   touching the user's code (CS-020).
+///   touching the user's code.
 /// - **Picker enums** prove every case maps to a real model and that the literal
 ///   display titles cannot drift from the in-app catalog.
 /// - **Render shell** proves automation produces real image bytes through the shared
@@ -32,7 +32,7 @@ import Testing
 // MARK: - Request resolution (the pure config core)
 
 @MainActor
-@Suite("SnapshotRenderRequest resolution (CS-034)")
+@Suite("SnapshotRenderRequest resolution")
 struct SnapshotRenderRequestTests {
     @Test func defaultsMatchTheAppConfiguration() {
         // A bare request (just code) renders what the editor would with untouched
@@ -142,7 +142,7 @@ struct SnapshotRenderRequestTests {
 // MARK: - Picker enums (no drift from the model catalogs)
 
 @MainActor
-@Suite("Snapshot intent picker enums (CS-034)")
+@Suite("Snapshot intent picker enums")
 struct SnapshotIntentEnumTests {
     @Test func languageEnumSentinelMeansAutomatic() {
         #expect(SnapshotLanguageAppEnum.automatic.language == nil)
@@ -184,8 +184,8 @@ struct SnapshotIntentEnumTests {
     @Test func everyNonDefaultThemeCaseIsABuiltIn() {
         // The picker only offers stable, shareable built-in theme ids.
         for value in SnapshotThemeAppEnum.allCases where value != .default {
-            let id = try? #require(value.themeID)
-            #expect(Theme.builtInIDs.contains(id ?? ""), "\(value) is not a built-in theme id")
+            let id = value.themeID ?? ""
+            #expect(Theme.builtInIDs.contains(id), "\(value) is not a built-in theme id")
         }
     }
 
@@ -242,7 +242,7 @@ struct SnapshotIntentEnumTests {
 // MARK: - Render shell (the shared automation render path)
 
 @MainActor
-@Suite("SnapshotRenderService (CS-034)")
+@Suite("SnapshotRenderService")
 struct SnapshotRenderServiceTests {
     @Test func rendersRealPNGBytes() throws {
         let request = SnapshotRenderRequest(code: "let x = 1", language: .swift)
@@ -286,7 +286,7 @@ struct SnapshotRenderServiceTests {
     @Test func automationRenderGoesThroughTheSameExportManagerPipeline() throws {
         // The shell adds only request resolution + an empty-code guard around the
         // unchanged `ExportManager` path, so a render through the service must match a
-        // direct `ExportManager` render of the same config — the CS-034 "same pipeline
+        // direct `ExportManager` render of the same config — the "same pipeline
         // as the app" guarantee.
         //
         // Equality is asserted on the *decoded image dimensions*, not raw PNG bytes:
@@ -321,7 +321,7 @@ struct SnapshotRenderServiceTests {
 // MARK: - Services registration contract (matches the Info.plist NSServices)
 
 @MainActor
-@Suite("Services registration (CS-034)")
+@Suite("Services registration")
 struct ServiceRegistrationTests {
     @Test func acceptsPlainTextAndReturnsImageTypes() {
         // The service takes a text selection and returns an image, matching the
@@ -369,7 +369,7 @@ struct ServiceRegistrationTests {
     }
 
     @Test func servicesMenuIsGatedByProAndNeverRendersWhenLocked() {
-        // CS-094: without PRO the Services menu reports the requirement and writes no
+        // Without PRO the Services menu reports the requirement and writes no
         // image — automation never bypasses the gate.
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("VitrineServiceTest-locked"))
         pasteboard.clearContents()

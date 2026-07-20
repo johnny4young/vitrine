@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Regenerate the golden-image fixtures + manifest (CS-025).
+# Regenerate the golden-image fixtures + manifest.
 #
 # The unit-test host is sandboxed and cannot write into the source tree, so the
 # recorder test stages the PNGs and manifest in its own container temp and prints

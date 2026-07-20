@@ -3,9 +3,9 @@ import Testing
 
 @testable import Vitrine
 
-/// Localization and internationalization coverage (CS-047).
+/// Localization and internationalization coverage.
 ///
-/// These tests pin the three things the ticket's Acceptance and Tests sections
+/// These tests pin the three things the localization contract
 /// call for that can be verified headlessly (the pseudolocale UI smoke lives in
 /// `UITests/VitrineUITests.swift`):
 ///
@@ -21,7 +21,7 @@ import Testing
 ///    untranslated string past the catalog in a localizable view.
 /// 3. **Locale-aware number and date formatting.** Counts use the catalog's plural
 ///    variants and locale-grouped numerals; relative dates are locale-aware.
-@Suite("Localization (CS-047)")
+@Suite("Localization")
 struct LocalizationTests {
 
     // MARK: - Bundle locations
@@ -67,7 +67,7 @@ struct LocalizationTests {
             "The app must ship the English development localization.")
         #expect(
             localizations.contains("es"),
-            "The app must ship a real second locale (Spanish) to prove the pipeline (CS-047).")
+            "The app must ship a real second locale (Spanish) to prove the pipeline.")
 
         // The compiled `.lproj` folders back those advertised localizations.
         #expect(bundle(for: "en") != nil, "Missing compiled en.lproj")
@@ -80,7 +80,7 @@ struct LocalizationTests {
     }
 
     @Test func representativeStringsResolveToSpanish() throws {
-        let spanish = try #require(bundle(for: "es"), "es.lproj is required for CS-047")
+        let spanish = try #require(bundle(for: "es"), "es.lproj is required for ")
 
         // A spread across menus, the editor, feedback, settings, and help — each
         // must come back translated, not as the English key echoed back.
@@ -95,7 +95,7 @@ struct LocalizationTests {
             "help.topic.editor.title": "El editor",
             // The AppKit main-menu chrome: NSMenu/NSMenuItem titles are plain
             // strings that AppKit never auto-localizes, so they must resolve
-            // through the catalog like any other copy (CS-047).
+            // through the catalog like any other copy.
             "Edit": "Edición",
             "Services": "Servicios",
             "Bring All to Front": "Traer todo al frente",
@@ -182,7 +182,7 @@ struct LocalizationTests {
             }
             #expect(
                 entry.localizations["es"]?.isTranslated == true,
-                "String(localized: \"\(key)\") has no Spanish translation in the catalog (CS-047).")
+                "String(localized: \"\(key)\") has no Spanish translation in the catalog.")
         }
     }
 
@@ -195,7 +195,7 @@ struct LocalizationTests {
         #expect(
             offenders.isEmpty,
             """
-            Found user-facing strings built verbatim (bypassing the String Catalog, CS-047):
+            Found user-facing strings built verbatim (bypassing the String Catalog):
             \(offenders.joined(separator: "\n"))
             """)
     }
@@ -223,13 +223,13 @@ struct LocalizationTests {
                     """
                     A SwiftUI LocalizedStringKey literal "\(key)" is used in a view but is \
                     missing from the String Catalog. Add it (with an `es` translation), or use \
-                    `Text(verbatim:)` if it is a non-localizable symbol/brand string (CS-047).
+                    `Text(verbatim:)` if it is a non-localizable symbol/brand string.
                     """)
                 continue
             }
             #expect(
                 entry.localizations["es"]?.isTranslated == true,
-                "LocalizedStringKey \"\(key)\" has no Spanish translation in the catalog (CS-047).")
+                "LocalizedStringKey \"\(key)\" has no Spanish translation in the catalog.")
         }
     }
 
@@ -261,7 +261,7 @@ struct LocalizationTests {
 
     @Test func integerFormattingIsLocaleAware() {
         // A large count groups digits per the user's locale: en uses "," and es-ES
-        // uses ".". This is the locale-aware numeral formatting CS-047 requires for
+        // uses ".". This is the locale-aware numeral formatting the UI requires for
         // any number Vitrine shows.
         let value = 1_234_567
         let enGrouped = value.formatted(.number.locale(Locale(identifier: "en_US")))
@@ -462,15 +462,15 @@ private struct Catalog: Decodable {
     }
 }
 
-// MARK: - App language picker model (CS-047)
+// MARK: - App language picker model
 
 /// The Settings language picker's model: persisted-value resolution and the
 /// autonym labels. This is the contract the picker and the relaunch flow rely on,
 /// independent of any UI.
-@Suite("App language model resolves and labels correctly · CS-047")
+@Suite("App language model resolves and labels correctly")
 struct AppLanguageTests {
     @Test func resolveDefaultsToSystemForMissingOrGarbageValues() {
-        // CS-050 defensive read: a missing or hand-edited defaults value must
+        // A defensive read: a missing or hand-edited defaults value must
         // never crash or mis-pin a language — it falls back to following macOS.
         #expect(AppLanguage.resolve(nil) == .system)
         #expect(AppLanguage.resolve("") == .system)
