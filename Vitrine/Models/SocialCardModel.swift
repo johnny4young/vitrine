@@ -190,8 +190,7 @@ struct SocialCardModel: Equatable {
     // MARK: - Determinism
 
     /// A stable, content-derived fingerprint of every field that affects pixels,
-    /// recorded alongside the golden fixture ("golden image fixture for
-    /// default template").
+    /// recorded alongside the golden fixture.
     ///
     /// It is a SHA-256 over the normalized copy, the excerpt and language, the
     /// template, the theme id, the font, and the background's non-PII kind, so a

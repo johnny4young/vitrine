@@ -160,7 +160,7 @@ struct StylePresetCodableTests {
         // A hand-edited file that smuggles in an image background (which references a
         // container-local file that won't exist on import) self-heals to the
         // signature gradient on decode, so the renderer never receives a dangling
-        // image reference ("invalid preset files do not crash").
+        // image reference.
         let withImage = StyleSnapshot(themeID: Theme.dracula.id, background: .transparent)
         var json = try #require(
             try JSONSerialization.jsonObject(

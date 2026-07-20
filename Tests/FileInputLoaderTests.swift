@@ -67,8 +67,8 @@ struct FileInputLoaderDecodeTests {
         #expect(loaded.language == .dockerfile)
     }
 
-    /// A binary file — detected by an embedded NUL byte — is rejected with the
-    /// binary error ( "Binary files are rejected with a clear message").
+    /// A binary file — detected by an embedded NUL byte — is rejected with a clear
+    /// binary error.
     @Test func binaryFileWithNulByteIsRejected() {
         var bytes: [UInt8] = Array("PK".utf8)  // ZIP-like header
         bytes.append(contentsOf: [0x03, 0x04, 0x00, 0xFF, 0x00, 0x10])

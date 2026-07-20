@@ -3,8 +3,8 @@ import Foundation
 /// Pure helpers backing the editor's hero preview.
 ///
 /// The current design gives the live preview center stage, and when the document is
-/// empty it shows a representative **sample** so the canvas is never a blank card
-/// ("empty editor state shows a sample"). That sample must be shown *only*
+/// empty it shows a representative **sample** so the canvas is never a blank card.
+/// That sample must be shown *only*
 /// in the preview — it can never leak into the user's document, or opening the
 /// editor and exporting nothing would silently capture code the user never wrote.
 ///

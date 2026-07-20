@@ -414,7 +414,7 @@ struct CustomThemeStoreTests {
         #expect(store.customThemes.count == 1)
 
         // Importing the same file again adds a second, distinctly-keyed copy rather
-        // than overwriting the first ("an import only ever adds").
+        // than overwriting the first.
         let secondAdded = try store.importThemes(from: data)
         #expect(secondAdded.count == 1)
         #expect(store.customThemes.count == 2)
@@ -653,8 +653,7 @@ struct CustomThemeRenderTests {
 // MARK: - Custom theme editor draft (preview before saving)
 
 /// The editor's `CustomThemeDraft` is the editable, `Color`-backed form behind both
-/// the live preview and the Save action ("theme preview appears before
-/// saving"). The editor builds its preview *and* the saved theme from the same
+/// the live preview and the Save action. The editor builds its preview *and* the saved theme from the same
 /// `draft.palette()`, so these tests pin the load-bearing guarantee that what the
 /// user previews is exactly the palette that gets saved — and that opening an
 /// existing theme for editing seeds the wells without drifting its colors.

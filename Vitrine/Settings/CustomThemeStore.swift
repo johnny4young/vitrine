@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 /// - **Built-ins are immutable.** `Theme.builtIns` are the always-present catalog;
 ///   a custom theme can never use a built-in's id (the store re-keys or refuses one
 ///   that would collide), so importing or hand-editing a file can never overwrite or
-///   shadow a built-in ("built-in themes remain immutable").
+///   shadow a built-in.
 /// - **Only user themes persist.** They are stored as one JSON blob under a single
 ///   `UserDefaults` key, mirroring `PresetStore`. Reads are defensive: a missing or
 ///   corrupt blob yields an empty user list rather than trapping, so a hand-edited
@@ -187,8 +187,8 @@ final class CustomThemeStore {
 
     // MARK: - Persistence
 
-    /// Reads the persisted custom themes, tolerating any missing or corrupt value
-    /// ("invalid theme files do not crash"). A garbage blob simply
+    /// Reads the persisted custom themes, tolerating any missing or corrupt value.
+    /// A garbage blob simply
     /// yields an empty list, leaving the built-ins available. Any theme whose id
     /// collides with a built-in's reserved id is dropped so a hand-edited store
     /// cannot shadow or "overwrite" a built-in.
@@ -291,7 +291,7 @@ struct CustomThemeDocument: Codable, Equatable {
     var themes: [StoredCustomTheme]
 
     /// Errors surfaced while importing a theme file. Each maps to clear, user-facing
-    /// copy at the call site ("clear validation errors").
+    /// copy at the call site.
     enum ImportError: Error, Equatable {
         /// The bytes are not valid JSON / not a theme document at all.
         case notAThemeFile

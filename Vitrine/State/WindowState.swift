@@ -245,8 +245,7 @@ struct EditorWindowState: Codable, Equatable {
 
 // MARK: - Off-screen recovery (frame geometry)
 
-/// Pure geometry for keeping a restored window frame on a currently-visible screen
-/// ("behaves correctly across display changes without off-screen windows").
+/// Pure geometry for keeping a restored window frame on a currently-visible screen.
 ///
 /// A frame saved on one display arrangement can land entirely off-screen after a
 /// monitor is unplugged or rearranged. ``onScreenFrame(for:visibleFrames:)`` decides

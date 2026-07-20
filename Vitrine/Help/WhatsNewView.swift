@@ -149,8 +149,7 @@ struct WhatsNewView: View {
 
 /// Owns and presents the version-gated "What's New" window.
 ///
-/// Mirrors `WelcomeWindowController`: the gate ("only when the bundled version is
-/// newer than the last seen, and never on a clean first run") lives in one place,
+/// Mirrors `WelcomeWindowController`: the version gate lives in
 /// `presentIfNewVersion`, which the app lifecycle calls after onboarding so the
 /// two first-launch surfaces never both appear.
 @MainActor

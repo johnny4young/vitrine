@@ -53,8 +53,8 @@ final class EditorSession {
         settings.config = state.config()
     }
 
-    /// Promotes this window's current look to the app-wide default ("make
-    /// default is explicit"): future captures and new windows start from it.
+    /// Promotes this window's current look to the app-wide default so future
+    /// captures and new windows start from it.
     ///
     /// Because the acting window already displays that style, the promotion changes
     /// nothing on screen — so it confirms with a brief in-app HUD ("Set as the

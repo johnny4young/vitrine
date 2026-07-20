@@ -159,8 +159,7 @@ enum SampleGallery {
     ///
     /// This is the catalog every consumer reads. Adding a sample here automatically
     /// flows it into the render regression, the generator, the manifest, and the
-    /// artifact-presence checks — one place, no duplication ("adding a
-    /// sample is a one-file change").
+    /// artifact-presence checks without duplication.
     static let all: [Sample] =
         languageSamples + themeSamples + presetSamples
         + transparentSamples + accessibilitySamples
@@ -465,7 +464,7 @@ struct GalleryManifest: Codable, Equatable {
 
 /// Renders every gallery sample on any machine and asserts the pipeline produces a
 /// real image, so a routine `make test` exercises the full launch-gallery set end to
-/// end ("sample generation command" coverage, runnable without the opt-in).
+/// end without requiring the opt-in generator.
 @MainActor
 @Suite("Sample gallery — render regression")
 struct SampleGalleryTests {
@@ -662,8 +661,8 @@ struct SampleGalleryTests {
 
 // MARK: - Artifact presence (always on, once committed)
 
-/// Asserts the committed gallery fixtures exist and stay in sync with the catalog
-/// ("artifact presence assertions"). These checks run on every machine; they
+/// Asserts the committed gallery fixtures exist and stay in sync with the catalog.
+/// These checks run on every machine; they
 /// gate on whether the fixtures have been generated and committed yet, so the first
 /// landing of the catalog (before `make gallery` has run) is not a hard failure —
 /// once a manifest is present, every sample and the counts must match.

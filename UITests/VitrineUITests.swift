@@ -161,7 +161,7 @@ final class VitrineUITests: XCTestCase {
     func testOpeningASecondEditorWindowKeepsBothOpen() {
         continueAfterFailure = false
         // `--open-second-editor` opens the primary editor plus an additional,
-        // independent editor window ("users can open multiple editor windows").
+        // independent editor window.
         let app = launch(arguments: ["--demo", "--open-second-editor"])
         defer { app.terminate() }
 
@@ -208,8 +208,7 @@ final class VitrineUITests: XCTestCase {
         try skipUnlessADisplayFitsTheEditor()
         // `--force-offscreen-editor` opens the editor, shoves it far off the visible
         // screens, and runs the recovery pass, so a window saved on an unplugged
-        // monitor is pulled back on-screen rather than stranded ("behaves
-        // correctly across display changes without off-screen windows").
+        // monitor is pulled back on-screen rather than stranded.
         let app = launch(arguments: ["--demo", "--force-offscreen-editor"])
         defer { app.terminate() }
 
@@ -257,7 +256,7 @@ final class VitrineUITests: XCTestCase {
         try skipUnlessADisplayFitsTheEditor()
         // The editor surfaces an explicit "Make Default" affordance so promoting a
         // window's style to the app default is discoverable in the editor, not only in
-        // the menu ("make default is explicit").
+        // the menu.
         let app = launch(arguments: ["--demo", "--open-editor"])
         defer { app.terminate() }
 
@@ -362,8 +361,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-style-preset-picker", in: app), in: app)
 
         // The hero preview sits on its own ambient-lit stage so it reads as the
-        // focus of the window, not a small settings thumbnail ("preview
-        // gets visual priority").
+        // focus of the window, not a small settings thumbnail.
         assertExists(element("editor-preview-stage", in: app), in: app)
 
         // The focused inspector is present with its primary style controls surfaced
@@ -383,8 +381,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(inspector, in: app, timeout: 8)
 
         // Advanced controls live behind collapsible inspector disclosures that
-        // start closed ("advanced controls remain available but are
-        // grouped behind an inspector section or disclosure"). The current designed
+        // start closed. The current designed
         // disclosures carry stable identifiers; the Output one reveals the
         // destination presets, resolution, and format.
         let disclosure = element("inspector-disclosure-output", in: app)
@@ -1043,7 +1040,7 @@ final class VitrineUITests: XCTestCase {
     func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() throws {
         continueAfterFailure = false
         // A fresh defaults suite is a first run, so the quick-start appears on
-        // launch with no extra hook ("first launch shows the quick-start").
+        // launch with no extra hook.
         let app = launch(arguments: [])
         defer { app.terminate() }
 
@@ -1058,7 +1055,7 @@ final class VitrineUITests: XCTestCase {
         // and the hotkey/launch-at-login setup is offered.
         assertExists(element("welcome-sample-capture-button", in: app), in: app)
         assertExists(element("welcome-launch-at-login-toggle", in: app), in: app)
-        // A clear way out is present ("user can skip immediately").
+        // A clear way out is present.
         assertExists(element("welcome-skip-button", in: app), in: app)
         assertExists(element("welcome-get-started-button", in: app), in: app)
 
@@ -1077,8 +1074,7 @@ final class VitrineUITests: XCTestCase {
     func testForcedQuickStartCanBeSkippedToReachTheEditor() throws {
         continueAfterFailure = false
         // Force the quick-start open and also open the editor: skipping the
-        // quick-start must not gate access to the rest of the app ("user can
-        // skip immediately and still access all features").
+        // quick-start must not gate access to the rest of the app.
         let app = launch(arguments: ["--show-welcome", "--demo", "--open-editor"])
         defer { app.terminate() }
 
@@ -1112,8 +1108,7 @@ final class VitrineUITests: XCTestCase {
     func testSkippedOnboardingDoesNotReshowQuickStart() {
         continueAfterFailure = false
         // `--skip-onboarding` marks the quick-start as already seen, so a launch
-        // that opens the editor shows no welcome window ("shows the
-        // quick-start only once").
+        // that opens the editor shows no welcome window.
         let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor"])
         defer { app.terminate() }
 
@@ -1150,15 +1145,14 @@ final class VitrineUITests: XCTestCase {
         continueAfterFailure = false
         // `--seen-old-version` records an older last-seen version (and marks
         // onboarding done), so the version gate auto-presents the bundled notes for
-        // the newer shipped version on launch ("appears only when the bundled
-        // notes version is newer than the last-seen version").
+        // the newer shipped version on launch.
         let app = launch(arguments: ["--seen-old-version"])
         defer { app.terminate() }
 
         assertExists(element("whats-new-window", in: app), in: app, timeout: 8)
         assertExists(element("whats-new-view", in: app), in: app, timeout: 3)
         assertExists(element("whats-new-highlights", in: app), in: app)
-        // It is skippable: a clear "Continue" dismisses it ("skippable").
+        // A clear "Continue" dismisses it.
         assertExists(element("whats-new-continue-button", in: app), in: app)
         element("whats-new-continue-button", in: app).click()
         XCTAssertTrue(
@@ -1170,7 +1164,7 @@ final class VitrineUITests: XCTestCase {
     func testWhatsNewDoesNotAppearOnCleanFirstRun() {
         continueAfterFailure = false
         // A clean first run shows the quick-start, never What's New — onboarding owns
-        // the first launch ("never on a clean first run; onboarding owns that").
+        // the first launch.
         let app = launch(arguments: [])
         defer { app.terminate() }
 

@@ -10,8 +10,7 @@ import Testing
 /// The canonical models the render and golden suites share, so the bytes that are
 /// recorded and the bytes that are compared come from the exact same input.
 enum SocialCardFixtures {
-    /// The default-template card used for the golden fixture ("golden image
-    /// fixture for default template"). Every pixel-affecting field is pinned: the
+    /// The default-template card used for the golden fixture. Every pixel-affecting field is pinned: the
     /// signature template, theme, background, and the bundled JetBrains Mono font.
     static let defaultCard = SocialCardModel(
         title: "Ship beautiful code screenshots",
@@ -56,7 +55,7 @@ enum SocialCardGoldenPaths {
     }
 }
 
-// MARK: - Model validation ("model validation")
+// MARK: - Model validation
 
 @Suite("SocialCardModel validation")
 struct SocialCardModelValidationTests {
@@ -290,7 +289,7 @@ struct SocialCardFingerprintTests {
     }
 }
 
-// MARK: - Render dimensions ("render dimensions")
+// MARK: - Render dimensions
 
 @MainActor
 @Suite("Social card render dimensions")
@@ -384,7 +383,7 @@ struct SocialCardRenderDimensionTests {
     }
 }
 
-// MARK: - Rendered content ("templates render title, subtitle, code excerpt, …")
+// MARK: - Rendered content
 
 /// Proves the templates actually *draw* each rendered field, not merely model
 /// it. The dimension and fingerprint suites confirm the model reacts to a field
@@ -620,7 +619,7 @@ struct SocialCardClipboardTests {
     }
 }
 
-// MARK: - Save & share flow refusal ("clipboard, save, and share flows")
+// MARK: - Save & share flow refusal
 
 /// The save and share flows present modal AppKit UI on success, so a unit test
 /// cannot drive a real save panel or share picker headlessly. What it *can* pin —
@@ -656,7 +655,7 @@ struct SocialCardSaveShareTests {
     }
 }
 
-// MARK: - Golden fixture ("golden image fixture for default template")
+// MARK: - Golden fixture
 
 /// Whether the social-card golden recorder is armed. Opt-in via
 /// `VITRINE_RECORD_SOCIAL_CARD`, so a routine `make test` is read-only and never
