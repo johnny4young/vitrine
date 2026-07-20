@@ -1,6 +1,28 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Annotation tool" : {
+      "comment" : "Accessibility label for the compact annotation tool picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramienta de anotación"
+          }
+        }
+      }
+    },
+    "Annotation tool: " : {
+      "comment" : "Help prefix followed by the active annotation tool name.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramienta de anotación: "
+          }
+        }
+      }
+    },
     "Auto" : {
       "comment" : "Image frame appearance option: chrome color sampled from the image.",
       "localizations" : {
@@ -30,6 +52,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apariencia del marco"
+          }
+        }
+      }
+    },
+    "More editor actions" : {
+      "comment" : "Accessibility label and help for the compact editor actions menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más acciones del editor"
+          }
+        }
+      }
+    },
+    "Selected mark actions" : {
+      "comment" : "Accessibility label and help for the selected annotation actions menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones de la marca seleccionada"
           }
         }
       }
