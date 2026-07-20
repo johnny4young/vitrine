@@ -116,7 +116,7 @@ struct CLIAutomationTests {
 
         let fallback = CLIVersion.output(
             format: .text, infoDictionary: [:], executablePath: "/missing/vitrine-cli")
-        #expect(fallback == "vitrine 0.22.0 (23)\n")
+        #expect(fallback == "vitrine 0.23.0 (24)\n")
     }
 
     @Test func versionFallbackConstantsMatchProjectSettings() throws {

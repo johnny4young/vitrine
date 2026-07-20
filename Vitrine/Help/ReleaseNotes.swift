@@ -42,6 +42,18 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.23.0",
+            headline: "Precise annotations, local previews",
+            highlights: [
+                "Edit annotations faster: duplicate a selected mark, nudge it one point "
+                    + "at a time with the arrow keys (ten with Shift), and send it to the "
+                    + "front or back — all backed by a bounded, reliable undo history.",
+                "Capture a local dev server (direct-download build): turn on the "
+                    + "explicit, default-off setting to snapshot a page running on this Mac. "
+                    + "Access stays limited to localhost and loopback — LAN, .local, and "
+                    + "metadata addresses remain blocked, including on redirects.",
+            ]),
+        ReleaseNote(
             version: "0.22.0",
             headline: "Faster previews, safer sharing",
             highlights: [
