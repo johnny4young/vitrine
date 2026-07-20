@@ -183,11 +183,11 @@ BUNDLE_ID="$(plist_value CFBundleIdentifier)"
 LSUIELEMENT="$(plist_value LSUIElement)"
 
 # Signing identity: the Developer ID "Authority" line from the app's signature, or
-# a clear marker when the bundle is unsigned / ad-hoc. codesign exits non-zero on an
-# unsigned bundle, so the `|| true` keeps `set -euo pipefail` from aborting here —
-# an unsigned artifact is a state we report, not a script error.
-SIGN_IDENTITY="$(codesign --display --verbose=2 "$APP" 2>&1 \
-	| awk -F'Authority=' '/^Authority=/ { print $2; exit }' || true)"
+# a clear marker when the bundle is unsigned / ad-hoc. Capture the output once so
+# strict pipefail mode cannot misclassify a valid signature when a short-circuiting
+# parser closes its pipe before codesign finishes writing.
+CODESIGN_DETAILS="$(codesign --display --verbose=2 "$APP" 2>&1 || true)"
+SIGN_IDENTITY="$(awk -F'Authority=' '/^Authority=/ { print $2; exit }' <<<"$CODESIGN_DETAILS")"
 if [ -z "$SIGN_IDENTITY" ]; then
 	SIGN_IDENTITY="(none — unsigned or ad-hoc)"
 fi
@@ -241,10 +241,10 @@ fi
 section "Signing & notarization (Gatekeeper checks)"
 
 # Is the app signed with a real Developer ID at all? An unsigned / ad-hoc bundle
-# is a development artifact and is never production-ready, so we WARN rather than
-# fail (the same posture build-dmg.sh takes) but make the consequence explicit.
+# is a development artifact and is never production-ready. Artifact QA treats that
+# as a signing failure so a release workflow cannot publish it as a successful run.
 SIGNED=0
-if codesign --display --verbose=2 "$APP" 2>&1 | grep -q '^Authority=Developer ID Application'; then
+if [[ "$SIGN_IDENTITY" == "Developer ID Application:"* ]]; then
 	SIGNED=1
 fi
 
@@ -258,7 +258,7 @@ if [ "$SIGNED" -eq 1 ]; then
 	fi
 
 	# Hardened runtime must be on for a notarizable build.
-	if codesign --display --verbose=2 "$APP" 2>&1 | grep -q 'flags=.*runtime'; then
+	if [[ "$CODESIGN_DETAILS" == *"flags="*"runtime"* ]]; then
 		pass "Hardened runtime is enabled"
 	else
 		fail_signing "hardened runtime is OFF — notarization requires it"
@@ -267,7 +267,7 @@ if [ "$SIGNED" -eq 1 ]; then
 	# spctl -a: the Gatekeeper execution assessment. "accepted" + "Notarized
 	# Developer ID" is the production state.
 	SPCTL_APP="$(spctl -a -vv "$APP" 2>&1 || true)"
-	if printf '%s' "$SPCTL_APP" | grep -q 'accepted'; then
+	if [[ "$SPCTL_APP" == *"accepted"* ]]; then
 		pass "Gatekeeper accepts the app (spctl -a -vv)"
 		printf '%s' "$SPCTL_APP" | grep -E 'source|origin' | sed 's/^/      /' || true
 	else
@@ -285,8 +285,11 @@ if [ "$SIGNED" -eq 1 ]; then
 
 	# Assess the DMG container too, since that is what the user actually downloads.
 	if [ -n "$DMG" ]; then
-		if spctl -a -vv -t open --context context:primary-signature "$DMG" 2>&1 | grep -q 'accepted' \
-			|| spctl -a -vv "$DMG" 2>&1 | grep -q 'accepted'; then
+		SPCTL_DMG="$(spctl -a -vv -t open --context context:primary-signature "$DMG" 2>&1 || true)"
+		if [[ "$SPCTL_DMG" != *"accepted"* ]]; then
+			SPCTL_DMG="$(spctl -a -vv "$DMG" 2>&1 || true)"
+		fi
+		if [[ "$SPCTL_DMG" == *"accepted"* ]]; then
 			pass "Gatekeeper accepts the DMG (spctl -a)"
 		else
 			fail_signing "Gatekeeper REJECTS the DMG — sign + notarize the container too"
@@ -298,7 +301,7 @@ if [ "$SIGNED" -eq 1 ]; then
 		fi
 	fi
 else
-	warn "App is UNSIGNED or ad-hoc — Gatekeeper will reject it on a clean Mac."
+	fail_signing "App is UNSIGNED or ad-hoc — Gatekeeper will reject it on a clean Mac."
 	note "This is a development artifact and is NOT production-ready. A signed,"
 	note "notarized build is required before release. Skipping signature/Gatekeeper"
 	note "PASS checks; this is a known state, not an app bug."

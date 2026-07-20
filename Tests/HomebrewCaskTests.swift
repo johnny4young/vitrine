@@ -294,6 +294,9 @@ struct HomebrewCaskTests {
             step.contains(".sha256"),
             "the checksum step must write a `.sha256` sidecar")
         #expect(
+            step.contains(#"$(basename "${DMG}")"#),
+            "the sidecar must name the DMG by basename so it verifies after download")
+        #expect(
             step.contains("vitrine-cask-update.txt"),
             "the checksum step must emit a ready-to-paste cask-update file")
     }
@@ -329,6 +332,17 @@ struct HomebrewCaskTests {
         #expect(
             checksumMarker.lowerBound < publishStep.lowerBound,
             "the checksum must be computed before the GitHub release is published")
+
+        let qaMarker = try #require(
+            release.range(of: "QA the published DMG"),
+            "release.yml must run post-publish artifact QA")
+        let qa = String(release[qaMarker.lowerBound...])
+        #expect(
+            qa.contains("*.dmg.sha256"),
+            "post-publish QA must download the checksum sidecar")
+        #expect(
+            qa.contains("shasum -a 256 -c"),
+            "post-publish QA must verify the downloaded DMG against its sidecar")
     }
 
     // MARK: - Contract: the cask update process is documented through a tap PR

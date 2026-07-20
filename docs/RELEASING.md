@@ -254,7 +254,9 @@ built. It:
 - computes the DMG SHA-256 and **prints** it to the run's job summary (visible from the
   Actions run page, no download needed);
 - **stores** it as a `Vitrine-<version>.dmg.sha256` sidecar, attached to the GitHub
-  release alongside the DMG; and
+  release alongside the DMG; the sidecar names only the DMG basename, so downloading
+  both files into one directory and running `shasum -a 256 -c *.dmg.sha256` works
+  without recreating the workflow's `dist/` path; and
 - writes a ready-to-paste `vitrine-cask-update.txt` (the exact `version "…"` and
   `sha256 "…"` lines), also attached to the release.
 
@@ -540,9 +542,10 @@ which class** it is, because the two have completely different owners and fixes:
 - exit `0` — every automated check passed; now walk the manual checklist.
 - exit `1` — the artifact could not be found or mounted (usage/environment error).
 
-An **unsigned local dev DMG** is reported as a warning, not a failure: it is expected to
-be rejected by Gatekeeper and is **never production-ready** (the same posture
-`build-dmg.sh` takes).
+An **unsigned local dev DMG** exits with signing status `2`: it is expected to be
+rejected by Gatekeeper and is **never production-ready**. `build-dmg.sh` still permits
+unsigned local packaging, but release QA deliberately cannot report that artifact as a
+successful distribution candidate.
 
 **The manual checklist** (the script prints it; no headless check can prove these
 interactive behaviors — walk each on the clean Mac and record pass/fail per release):
