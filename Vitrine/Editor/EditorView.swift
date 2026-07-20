@@ -201,6 +201,15 @@ struct EditorView: View {
         .onReceive(NotificationCenter.default.publisher(for: .vitrineOpenCommandPalette)) { _ in
             showCommandPalette = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .vitrineSelectAnnotationTool)) {
+            notification in
+            guard let targetWindow = notification.object as? NSWindow,
+                targetWindow === editorWindow,
+                let rawValue = notification.userInfo?["tool"] as? String,
+                let tool = AnnotationTool(rawValue: rawValue)
+            else { return }
+            activeTool = tool
+        }
         // The `--open-command-palette` dev hook: read the argument when the editor
         // appears (guaranteed after its subscriptions are live) rather than relying on
         // a one-shot notification's timing. Gated on the argument, so a normal launch
