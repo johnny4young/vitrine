@@ -260,8 +260,9 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let window = element("editor-window", in: app)
         XCTAssertTrue(window.waitForExistence(timeout: 8))
-        XCTAssertTrue(waitForHittableElement("annotation-tool-sticker", in: app, timeout: 5))
-        element("annotation-tool-sticker", in: app).click()
+        revealToolbarAction(
+            "annotation-tool-sticker", from: "annotation-tool-picker", in: app
+        ).click()
         let swatch = element("annotation-sticker-swatch", in: app)
         XCTAssertTrue(swatch.waitForExistence(timeout: 3))
         Thread.sleep(forTimeInterval: 0.4)

@@ -169,6 +169,7 @@ struct AnnotationToolbar: View {
                 } label: {
                     Label(tool.label, systemImage: tool.systemImage)
                 }
+                .modifier(AnnotationToolShortcut(key: tool.keyEquivalent))
                 .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
             }
         } label: {
@@ -251,6 +252,21 @@ struct AnnotationToolbar: View {
         .help(help)
         .accessibilityLabel(help)
         .accessibilityIdentifier(identifier)
+    }
+}
+
+/// Applies a tool shortcut only when the digit row has an available key. Keeping
+/// this on both direct buttons and compact menu items makes window width irrelevant
+/// to keyboard behavior.
+private struct AnnotationToolShortcut: ViewModifier {
+    let key: KeyEquivalent?
+
+    func body(content: Content) -> some View {
+        if let key {
+            content.keyboardShortcut(key, modifiers: .command)
+        } else {
+            content
+        }
     }
 }
 
