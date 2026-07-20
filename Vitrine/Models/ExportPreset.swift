@@ -206,7 +206,7 @@ extension ExportPreset {
 /// `BackgroundStyle`'s own tolerant decode for the background). A hand-edited or
 /// corrupt preset file can therefore never feed an unknown theme, a missing font,
 /// or an out-of-range number into the renderer — it degrades to the documented
-/// default instead ("invalid preset files do not crash",  spirit).
+/// default instead.
 struct StyleSnapshot: Hashable, Codable {
     /// The syntax theme id (e.g. `"dracula"`); resolved through `Theme.theme(withID:)`
     /// so an unknown id falls back to One Dark.
@@ -486,7 +486,7 @@ struct StylePresetDocument: Codable, Equatable {
     var presets: [StylePreset]
 
     /// Errors surfaced while importing a preset file. Each maps to clear, user
-    /// facing copy at the call site ("clear validation errors").
+    /// facing copy at the call site.
     enum ImportError: Error, Equatable {
         /// The bytes are not valid JSON / not a preset document at all.
         case notAPresetFile

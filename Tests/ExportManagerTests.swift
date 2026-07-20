@@ -55,7 +55,7 @@ struct VectorExportTests {
 
     private static let cardSize = CGSize(width: 1200, height: 630)
 
-    // MARK: - Format menu accuracy ( "menu shows supported vector outputs")
+    // MARK: - Format menu accuracy
 
     @Test("PNG, PDF, HEIC, and AVIF are offered; PDF is the only vector option")
     func formatCasesAndVectorFlag() {

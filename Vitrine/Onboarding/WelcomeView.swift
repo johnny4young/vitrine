@@ -31,7 +31,7 @@ struct WelcomeView: View {
     /// worked without leaving the window. `nil` until the user runs it.
     @State private var sampleStatus: SampleStatus?
 
-    /// The chosen starting background ("a style choice"). Mirrors the live
+    /// The chosen starting background. Mirrors the live
     /// config so the swatch row reads the user's current preset; picking one
     /// applies it, and that change alone is what writes the user's style — a
     /// returning user's existing style is never overwritten just by opening the
@@ -201,9 +201,7 @@ struct WelcomeView: View {
     }
 
     /// The live sample: a swatch row that restyles the rendered card on the
-    /// spot, plus a one-click capture that needs **no clipboard content**
-    /// ( "run a sample capture without needing external
-    /// clipboard content").
+    /// spot, plus a one-click capture that needs **no clipboard content**.
     private var sampleCard: some View {
         VStack(alignment: .leading, spacing: VitrineTokens.Spacing.sm) {
             HStack {
@@ -407,7 +405,7 @@ struct WelcomeView: View {
 /// Mirrors the other on-demand window controllers (`EditorWindowController`,
 /// `RecentsGalleryWindowController`): an AppKit window hosting the SwiftUI view,
 /// created lazily and reused. `presentIfFirstRun` is the single entry the app
-/// lifecycle calls so the gate ("only once per defaults suite") lives in one place.
+/// lifecycle calls so the per-defaults-suite gate lives in one place.
 @MainActor
 final class WelcomeWindowController {
     static let shared = WelcomeWindowController()

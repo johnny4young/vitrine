@@ -87,8 +87,7 @@ enum VitrineCommand: String, CaseIterable {
     }
 
     /// The SF Symbol shared with the equivalent toolbar item, so a command reads
-    /// the same in the menu and the toolbar ("toolbar items have
-    /// equivalent menu commands").
+    /// the same in the menu and the toolbar.
     var systemImageName: String {
         switch self {
         case .newCapture: "camera.viewfinder"

@@ -46,8 +46,7 @@ enum SocialCardRenderer {
         let renderer = ImageRenderer(content: SocialCardCanvas(model: model, size: size))
         renderer.scale = scale
         // Pin the layout size so the rendered pixel size is exactly `size × scale`
-        // (1200×630 at 1×), independent of the card's content ("default
-        // export is 1200×630").
+        // (1200×630 at 1×), independent of the card's content.
         renderer.proposedSize = ProposedViewSize(size)
         guard let cgImage = renderer.cgImage else {
             Log.render.error("Social card render produced no image")

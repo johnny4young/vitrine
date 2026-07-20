@@ -237,7 +237,7 @@ struct EditorView: View {
             Text(dropError?.message ?? "")
         }
         // When the editor already has code, a drop asks before clobbering it:
-        // replace everything, or append to the end ("clear prompt").
+        // replace everything, or append to the end.
         .confirmationDialog(
             pendingDrop?.promptTitle ?? "",
             isPresented: Binding(

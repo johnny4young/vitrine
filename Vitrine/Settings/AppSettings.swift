@@ -273,7 +273,7 @@ final class AppSettings {
     }
 
     /// Adopts the presentational parts of `session.config` (and the accompanying output
-    /// settings) as the new app-wide default ("make default is explicit"). Called
+    /// settings) as the new app-wide default. Called
     /// on the shared instance from a window's "Make Default" action so a per-window look
     /// becomes the starting point for future captures and new windows, persisting through
     /// the normal `config` observer. Working content is stripped first: code, annotations,

@@ -418,8 +418,7 @@ extension EditorView {
     /// The config the center stage renders. When the editor is empty it shows a
     /// representative sample so the preview is never a blank card — the empty state
     /// over the code column still invites pasting, but the user immediately sees
-    /// what a finished image looks like with the current presets ("empty
-    /// editor state shows a sample"). The substitution is preview-only and never
+    /// what a finished image looks like with the current presets. The substitution is preview-only and never
     /// mutates the live document (see ``EditorPreview``).
     var previewConfig: SnapshotConfig {
         var config = EditorPreview.configForPreview(settings.config, stagedCode: stagedPreviewCode)

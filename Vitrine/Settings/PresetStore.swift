@@ -68,8 +68,7 @@ final class PresetStore {
     // MARK: - Save / duplicate
 
     /// Saves the current style of `config` as a new user preset named `name`,
-    /// returning the created preset ("save current style as a named
-    /// preset"). The capture is presentation-only — code and language are never
+    /// returning the created preset. The capture is presentation-only — code and language are never
     /// stored — and the name is sanitized to be non-empty.
     @discardableResult
     func savePreset(named name: String, from config: SnapshotConfig) -> StylePreset {
@@ -168,8 +167,8 @@ final class PresetStore {
 
     // MARK: - Persistence
 
-    /// Reads the persisted user presets, tolerating any missing or corrupt value
-    /// ("invalid preset files do not crash"). A garbage blob simply
+    /// Reads the persisted user presets, tolerating any missing or corrupt value.
+    /// A garbage blob simply
     /// yields an empty list, leaving the built-ins available. Any preset whose id
     /// collides with a built-in's reserved id is dropped so a hand-edited store
     /// cannot shadow or "overwrite" a built-in.

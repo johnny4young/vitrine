@@ -74,14 +74,12 @@ struct WhatsNewGateTests {
 
     @Test func neverPresentsOnACleanFirstRun() {
         // A clean install (no last-seen version) is owned by onboarding, so What's
-        // New must not appear even though there are notes ( "never
-        // on a clean first run").
+        // New must not appear even though there are notes.
         #expect(ReleaseNotes.shouldPresent(latest: note("1.0.0"), lastSeenVersion: nil) == false)
     }
 
     @Test func presentsWhenBundledVersionIsNewerThanLastSeen() {
-        // The core case: notes newer than what the user last saw should appear once
-        // ( "appears only when the bundled notes version is newer").
+        // Notes newer than what the user last saw should appear once.
         #expect(
             ReleaseNotes.shouldPresent(latest: note("1.1.0"), lastSeenVersion: "1.0.0") == true)
         #expect(

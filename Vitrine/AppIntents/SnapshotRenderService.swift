@@ -12,8 +12,7 @@ import OSLog
 /// byte-for-byte the same pipeline the editor and quick capture use. Automation
 /// therefore inherits the same privacy and sandbox posture as the app — rendering is
 /// fully local, needs no network, screen recording, or Accessibility, and writes
-/// nothing to disk on its own ("automation does not bypass the same privacy
-/// and sandbox constraints as the app").
+/// nothing to disk on its own.
 ///
 /// `@MainActor` because `ImageRenderer` and Highlightr require AppKit on the main
 /// actor; App Intents `perform()` and the Services provider both run there.

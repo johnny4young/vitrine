@@ -51,7 +51,7 @@ extension EditorView {
     }
 
     /// Loads immediately into an empty editor, or defers to the replace/append
-    /// prompt when the editor already holds code ("clear prompt").
+    /// prompt when the editor already holds code.
     func offerLoaded(_ loaded: FileInputLoader.LoadedFile) {
         if settings.config.code.isEmpty {
             apply(loaded, replacing: true)

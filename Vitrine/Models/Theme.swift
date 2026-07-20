@@ -170,13 +170,12 @@ struct Theme: Identifiable, Hashable, Sendable {
 /// fall back to `foreground` when omitted, so a minimal two-color file is valid.
 /// Every supplied value must be a `#RGB`/`#RGBA`/`#RRGGBB`/`#RRGGBBAA` hex string.
 /// `validated(...)` and the throwing decoder reject a bad color or a missing
-/// required key with a specific `ValidationError` ("bad colors or missing
-/// keys fail with clear validation errors"), so an invalid file is refused up front
+/// required key with a specific `ValidationError`, so an invalid file is refused up front
 /// rather than feeding a broken color into the renderer.
 ///
 /// Because the palette is captured by value and resolved through a fixed sRGB
 /// representation, the same palette renders the same pixels on any Mac, which keeps
-/// exported screenshots deterministic across custom themes .
+/// exported screenshots deterministic across custom themes.
 struct ThemePalette: Hashable, Sendable, Codable {
     /// The card background the code sits on (the only background a syntax theme
     /// owns; the canvas background is configured separately).
@@ -234,7 +233,7 @@ struct ThemePalette: Hashable, Sendable, Codable {
     }
 
     /// A problem found while validating a palette, each mapping to clear user-facing
-    /// copy at the call site ("clear validation errors").
+    /// copy at the call site.
     enum ValidationError: Error, Equatable {
         /// A required key (`background` or `foreground`) was missing.
         case missingKey(String)

@@ -77,8 +77,7 @@ final class CustomThemeDraft: Identifiable {
     }
 }
 
-/// A sheet for creating or editing a custom theme with a live preview before saving
-/// ("theme preview appears before saving").
+/// A sheet for creating or editing a custom theme with a live preview before saving.
 ///
 /// The color wells edit a `CustomThemeDraft`; the preview re-renders the current
 /// code (or a sample snippet) with the draft palette on every change, so the user
