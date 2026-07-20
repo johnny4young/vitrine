@@ -160,7 +160,7 @@ struct StylePresetCodableTests {
         // A hand-edited file that smuggles in an image background (which references a
         // container-local file that won't exist on import) self-heals to the
         // signature gradient on decode, so the renderer never receives a dangling
-        // image reference (CS-030 "invalid preset files do not crash").
+        // image reference.
         let withImage = StyleSnapshot(themeID: Theme.dracula.id, background: .transparent)
         var json = try #require(
             try JSONSerialization.jsonObject(
@@ -614,7 +614,7 @@ struct AppSettingsStylePresetTests {
     }
 
     @Test func appliedStyleDivergesFromAndDropsADestinationPreset() {
-        // A style preset is independent of a destination preset (CS-020); applying
+        // A style preset is independent of a destination preset; applying
         // one that changes a presentation field naturally drops the destination
         // selection to "Custom" through the existing divergence check.
         let settings = AppSettings(defaults: freshDefaults())

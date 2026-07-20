@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The SwiftUI view that becomes an exported social card (CS-041). WYSIWYG: what
+/// The SwiftUI view that becomes an exported social card. WYSIWYG: what
 /// renders here is exactly what `ImageRenderer` exports — no WebKit, no network.
 ///
 /// The card fills a fixed 1200×630 frame (the default OpenGraph size) with the
@@ -147,7 +147,7 @@ struct SocialCardCanvas: View {
     }
 
     /// The footer: an author/handle and/or a project name, shown only when at least
-    /// one is present (CS-041 "author/project").
+    /// one is present ("author/project").
     @ViewBuilder
     private var footerRow: some View {
         if model.hasFooter {
@@ -159,7 +159,7 @@ struct SocialCardCanvas: View {
                 }
                 if model.author != nil, model.project != nil {
                     // A non-localizable middle-dot separator: shown verbatim so it
-                    // never enters the String Catalog (CS-047).
+                    // never enters the String Catalog.
                     Text(verbatim: "·")
                         .font(.system(size: 26, weight: .semibold))
                         .foregroundStyle(onBackgroundSecondary)

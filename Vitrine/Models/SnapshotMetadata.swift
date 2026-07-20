@@ -1,6 +1,6 @@
 import Foundation
 
-/// Optional context shown in a compact header above the code (CS-022).
+/// Optional context shown in a compact header above the code.
 ///
 /// Screenshots dropped into docs, slide decks, or chats often need a little
 /// context — the file they came from, a title, or a one-line caption — without
@@ -16,8 +16,7 @@ import Foundation
 /// and persists cleanly.
 struct SnapshotMetadata: Equatable, Codable {
     /// A filename or path shown as a chip (e.g. `ContentView.swift`). Empty by
-    /// default; inferring one from a file input is left to future quick-capture
-    /// work (CS-022 acceptance) and is not required here.
+    /// default; callers provide it explicitly when the input has a meaningful name.
     var filename: String?
 
     /// A short title shown as the header's primary line (e.g. "Aurora gradient").
@@ -69,7 +68,7 @@ struct SnapshotMetadata: Equatable, Codable {
 
     /// Decodes tolerantly: missing fields default to "no value" and any decoded
     /// strings are re-normalized, so a hand-edited or partial blob can never carry
-    /// untrimmed or empty-but-present text into the renderer (CS-050 spirit).
+    /// untrimmed or empty-but-present text into the renderer (defensive behavior).
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         filename = Self.normalized(try container.decodeIfPresent(String.self, forKey: .filename))

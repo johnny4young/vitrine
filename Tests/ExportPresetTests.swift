@@ -13,7 +13,7 @@ private func freshDefaults() -> UserDefaults {
 @Suite("ExportPreset catalog")
 struct ExportPresetCatalogTests {
     @Test func catalogCoversEverySocialSurface() {
-        // The ticket names six core destinations; Phase 4 added two more (Instagram
+        // The supported set contains six core destinations; image-input added two more (Instagram
         // Story and the GitHub README banner). Each must be present with a stable id.
         let ids = Set(ExportPreset.all.map(\.id))
         #expect(
@@ -60,7 +60,7 @@ struct ExportPresetCatalogTests {
 
     @Test func everyDestinationPinsItsExactSize() {
         // Every shipped destination pins a `.fixed` canvas so the export is exactly
-        // the shape its name promises (CS-020) — the code card is centered and the
+        // the shape its name promises — the code card is centered and the
         // background fills the frame.
         let expected: [String: CGSize] = [
             "twitter": CGSize(width: 1600, height: 900),

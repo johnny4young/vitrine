@@ -3,12 +3,12 @@ import Testing
 
 @testable import Vitrine
 
-/// Features #34/#39 — the input-intelligence band: on-device OCR of a beautified
+/// the input-intelligence band: on-device OCR of a beautified
 /// image back into copyable text, and the inferred header title.
 @Suite("Smart input (OCR + suggested title)")
 @MainActor
 struct SmartInputTests {
-    // MARK: - Suggested title (#39)
+    // MARK: - Suggested title
 
     @Test func filenameChipWinsAndKeepsItsExtension() {
         var config = SnapshotConfig()
@@ -34,7 +34,7 @@ struct SmartInputTests {
         #expect(SuggestedFilename.suggestedTitle(for: plain) == nil)
     }
 
-    // MARK: - OCR (#34)
+    // MARK: - OCR
 
     /// The full loop: render a snapshot of known code through the real export
     /// pipeline, then recognize it back. Asserts on distinctive tokens (not exact

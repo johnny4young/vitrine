@@ -2,14 +2,14 @@ import Foundation
 import UniformTypeIdentifiers
 
 /// The editor's drag-and-drop input: reading a dropped source file or text and
-/// loading it into the live document (CS-028).
+/// loading it into the live document.
 extension EditorView {
-    // MARK: - Drag-and-drop input (CS-028)
+    // MARK: - Drag-and-drop input
 
     /// Handles a drop onto the editor: reads a source file (preferred) or selected
     /// text from the providers, then either loads it straight away (empty editor)
     /// or asks whether to replace or append (non-empty editor). A binary, oversized,
-    /// or unreadable file is rejected with a clear alert (CS-028).
+    /// or unreadable file is rejected with a clear alert.
     func handleDrop(_ providers: [NSItemProvider]) async {
         // An image — a dropped picture file or an in-app drag carrying image bytes —
         // becomes the beautified foreground content (CS "beautify any image"), so it must
@@ -51,7 +51,7 @@ extension EditorView {
     }
 
     /// Loads immediately into an empty editor, or defers to the replace/append
-    /// prompt when the editor already holds code (CS-028 "clear prompt").
+    /// prompt when the editor already holds code.
     func offerLoaded(_ loaded: FileInputLoader.LoadedFile) {
         if settings.config.code.isEmpty {
             apply(loaded, replacing: true)
@@ -72,9 +72,9 @@ extension EditorView {
     /// current language (the existing code defines it) and only grows the text.
     ///
     /// Either way this just fills the editor — it never records a Recent. The
-    /// filename rides along in `metadata.filename` (CS-022) so a *later*
+    /// filename rides along in `metadata.filename` so a *later*
     /// capture/export reflects the source, honoring "Recents record loaded file
-    /// metadata only when the user captures/exports" (CS-028).
+    /// metadata only when the user captures/exports".
     func apply(_ loaded: FileInputLoader.LoadedFile, replacing: Bool) {
         loaded.apply(to: &settings.config, replacing: replacing)
         settings.noteLanguageUsed(settings.config.language)
@@ -135,7 +135,7 @@ extension EditorView {
     /// Reads a dropped file's URL from a provider, or `nil` when it carries none.
     /// The coerced item is a `URL` (or URL bytes), which `FileInputLoader` then
     /// reads under a security-scoped access — no broad file entitlement is
-    /// involved (CS-028).
+    /// involved.
     func readFileURL(from provider: NSItemProvider) async -> URL? {
         let type = UTType.fileURL.identifier
         guard provider.hasItemConformingToTypeIdentifier(type) else { return nil }

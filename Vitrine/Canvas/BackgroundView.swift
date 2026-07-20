@@ -1,19 +1,19 @@
 import SwiftUI
 
 /// Renders the snapshot background: solid color, gradient preset, custom
-/// gradient, user image, or transparent (CS-005 / CS-051).
+/// gradient, user image, or transparent.
 ///
-/// The transparent case is load-bearing for color management (CS-024): it must
+/// The transparent case is load-bearing for color management: it must
 /// export with a real alpha channel and never composite the canvas over an
 /// opaque matte. `Color.clear` produces fully transparent pixels — `(0, 0, 0, 0)`
-/// — which the exporter carries through to the PNG's alpha channel unchanged. The
+/// which the exporter carries through to the PNG's alpha channel unchanged. The
 /// solid and gradient cases are explicitly opaque. Image fit/blur can create
 /// translucent edge pixels in the SwiftUI layer; `ExportManager` composites an
 /// image-backed finished render over black so those pixels never leak into an
 /// exported PNG, HEIC, AVIF, clipboard image, or PDF.
 ///
 /// A missing or unreadable background image degrades gracefully to the signature
-/// gradient default rather than rendering nothing (CS-051), so a relocated file
+/// gradient default rather than rendering nothing, so a relocated file
 /// never produces a blank or broken export.
 struct BackgroundView: View {
     let style: BackgroundStyle
@@ -35,13 +35,13 @@ struct BackgroundView: View {
             imageBackground(image)
         case .transparent:
             // Real transparency: clear in the preview and a true alpha channel in
-            // the export, with no matte fill behind the card (CS-024).
+            // the export, with no matte fill behind the card.
             Color.clear
         }
     }
 
     /// Renders an image background with fit, optional blur, and dimming. Falls
-    /// back to the signature gradient when the file cannot be resolved (CS-051).
+    /// back to the signature gradient when the file cannot be resolved.
     @ViewBuilder
     private func imageBackground(_ image: ImageBackground) -> some View {
         if let nsImage = imageStore.image(for: image.reference) {

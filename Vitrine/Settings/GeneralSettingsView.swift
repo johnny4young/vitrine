@@ -2,8 +2,8 @@ import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
-/// General pane: hotkey, what it triggers, launch at login (CS-002/010/014),
-/// plus a "Reset all settings" action that restores defaults (CS-050).
+/// General pane: hotkey, what it triggers, launch at login,
+/// plus a "Reset all settings" action that restores defaults.
 struct GeneralSettingsView: View {
     @Bindable var settings: AppSettings
     var presets: PresetStore
@@ -11,7 +11,7 @@ struct GeneralSettingsView: View {
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var showResetConfirmation = false
 
-    /// Where the `vitrine` CLI is currently linked, if anywhere (CS-033).
+    /// Where the `vitrine` CLI is currently linked, if anywhere.
     @State private var cliInstalledAt: URL?
     /// A failed install attempt's message; drives the fallback alert.
     @State private var cliInstallError: String?
@@ -69,7 +69,7 @@ struct GeneralSettingsView: View {
 
                 // Shown only once the choice differs from the language the app is
                 // running in, so the user can apply it now instead of quitting and
-                // reopening a Dock-less menu-bar agent by hand (CS-047).
+                // reopening a Dock-less menu-bar agent by hand.
                 if settings.languageChangePendingRelaunch {
                     TokenRow {
                         Button("Relaunch to Apply") { AppRelauncher.relaunch() }
@@ -79,7 +79,7 @@ struct GeneralSettingsView: View {
                 }
 
                 // The DMG-install counterpart of the Homebrew cask's `binary`
-                // stanza (CS-033): link the embedded CLI onto PATH from here.
+                // stanza: link the embedded CLI onto PATH from here.
                 if let cli = CLIToolInstaller.embeddedCLI {
                     TokenRow(label: Text("Command-line tool"), caption: cliToolCaption) {
                         HStack(spacing: VitrineTokens.Spacing.xs) {
@@ -194,7 +194,7 @@ struct GeneralSettingsView: View {
         }
     }
 
-    // MARK: - Command-line tool (CS-033)
+    // MARK: - Command-line tool
 
     /// The CLI row's caption: where the link lives once installed, otherwise
     /// what installing gets you.

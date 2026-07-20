@@ -1,5 +1,5 @@
 #!/usr/bin/env swift
-// Standalone golden-image comparator (CS-025).
+// Standalone golden-image comparator.
 //
 // Diffs two PNGs the same way the in-process suite (`Tests/GoldenComparator.swift`)
 // does, so the tool CI uses to triage an uploaded diff artifact is itself verified.

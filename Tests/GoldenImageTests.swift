@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 
 @testable import Vitrine
 
-/// The golden-image regression suite (CS-025).
+/// The golden-image regression suite.
 ///
 /// Each `GoldenScenario` is rendered through the production export path and
 /// compared against its committed PNG fixture under a documented per-channel
@@ -22,7 +22,7 @@ import UniformTypeIdentifiers
 /// visual diff mask into a stable directory (`vitrine-golden-diffs` under the
 /// runner temp), which CI uploads as an artifact for triage.
 @MainActor
-@Suite("Golden image regression (CS-025)")
+@Suite("Golden image regression")
 struct GoldenImageTests {
     // MARK: - Pin resolution
 

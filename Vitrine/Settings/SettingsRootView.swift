@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The redesigned Settings window shell (design/handoff): a 190 pt sidebar of
+/// The current designed Settings window shell: a 190 pt sidebar of
 /// navigation rows on the left and the active pane's scrolling content on the
 /// right, replacing the classic toolbar tabs.
 ///
@@ -111,7 +111,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The sidebar row SF Symbol (per the handoff icon mapping).
+    /// The sidebar row SF Symbol used by the shared settings design.
     var symbolName: String {
         switch self {
         case .general: "gearshape"
@@ -179,7 +179,7 @@ private struct SettingsSidebarRow: View {
 }
 
 /// The scrolling content column shared by the simple panes: 16 pt group
-/// rhythm inside the kit's 22/26/28 content padding.
+/// rhythm inside the shared 22/26/28 content padding.
 struct SettingsPaneScroll<Content: View>: View {
     @ViewBuilder var content: Content
 

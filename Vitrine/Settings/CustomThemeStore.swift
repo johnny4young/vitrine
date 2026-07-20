@@ -4,18 +4,18 @@ import UniformTypeIdentifiers
 
 /// Owns the user's custom themes and brokers every custom-theme operation: import
 /// from a documented file schema, export, rename, delete, and resolve a theme id to
-/// a `Theme` for the rest of the app (CS-031).
+/// a `Theme` for the rest of the app.
 ///
 /// ## Design
 ///
 /// - **Built-ins are immutable.** `Theme.builtIns` are the always-present catalog;
 ///   a custom theme can never use a built-in's id (the store re-keys or refuses one
 ///   that would collide), so importing or hand-editing a file can never overwrite or
-///   shadow a built-in (CS-031 "built-in themes remain immutable").
+///   shadow a built-in.
 /// - **Only user themes persist.** They are stored as one JSON blob under a single
 ///   `UserDefaults` key, mirroring `PresetStore`. Reads are defensive: a missing or
 ///   corrupt blob yields an empty user list rather than trapping, so a hand-edited
-///   store can never crash the app (CS-050 spirit). Each stored theme is re-validated
+///   store can never crash the app (defensive behavior). Each stored theme is re-validated
 ///   on load, so a value that was somehow corrupted to a bad color is dropped.
 /// - **`UserDefaults` is injectable** so the whole store is unit-testable without
 ///   touching the real app container, exactly like `PresetStore`.
@@ -126,7 +126,7 @@ final class CustomThemeStore {
     }
 
     /// Imports themes from theme-file `data`, validating the envelope and every
-    /// palette, then adding the contained themes as new custom themes (CS-031).
+    /// palette, then adding the contained themes as new custom themes.
     ///
     /// Imported themes are re-keyed with fresh ids so importing the same file twice,
     /// or a file that happens to reuse an id, never overwrites an existing theme or
@@ -187,8 +187,8 @@ final class CustomThemeStore {
 
     // MARK: - Persistence
 
-    /// Reads the persisted custom themes, tolerating any missing or corrupt value
-    /// (CS-050 / CS-031 "invalid theme files do not crash"). A garbage blob simply
+    /// Reads the persisted custom themes, tolerating any missing or corrupt value.
+    /// A garbage blob simply
     /// yields an empty list, leaving the built-ins available. Any theme whose id
     /// collides with a built-in's reserved id is dropped so a hand-edited store
     /// cannot shadow or "overwrite" a built-in.
@@ -216,10 +216,10 @@ final class CustomThemeStore {
     }
 }
 
-// MARK: - Stored / file representations (CS-031)
+// MARK: - Stored / file representations
 
 /// The persisted/on-disk record for one custom theme: a stable id, a display name,
-/// and the palette (CS-031).
+/// and the palette.
 ///
 /// `Theme` itself is a SwiftUI-facing value with a non-`Codable` `Source`, so themes
 /// are stored and shared through this flat, fully-`Codable` record. Decoding routes
@@ -267,14 +267,14 @@ struct StoredCustomTheme: Codable, Equatable {
     }
 }
 
-/// The on-disk JSON envelope for exporting and importing custom themes (CS-031) —
+/// The on-disk JSON envelope for exporting and importing custom themes —
 /// the documented file schema.
 ///
 /// Themes are shared as a single self-describing file: a `format` marker, a
 /// `schemaVersion`, and the array of themes. Import is **strict** both about the
 /// envelope (a wrong format or unsupported version fails fast with a clear error)
 /// and within each theme (a missing required color or a bad hex value is rejected
-/// with a specific message). This satisfies CS-031 "import from a documented schema"
+/// with a specific message). This preserves the documented import schema
 /// and "bad colors or missing keys fail with clear validation errors", while a
 /// totally unrelated JSON file simply fails as "not a theme file" rather than
 /// crashing.
@@ -291,7 +291,7 @@ struct CustomThemeDocument: Codable, Equatable {
     var themes: [StoredCustomTheme]
 
     /// Errors surfaced while importing a theme file. Each maps to clear, user-facing
-    /// copy at the call site (CS-031 "clear validation errors").
+    /// copy at the call site.
     enum ImportError: Error, Equatable {
         /// The bytes are not valid JSON / not a theme document at all.
         case notAThemeFile
@@ -346,7 +346,7 @@ struct CustomThemeDocument: Codable, Equatable {
     }
 
     /// Parses and validates theme-file `data`, returning the contained themes or
-    /// throwing a specific `ImportError` (CS-031).
+    /// throwing a specific `ImportError`.
     ///
     /// Validation order is deliberate: a bad/missing color (surfaced by the palette
     /// decoder) → malformed JSON / not a theme file → wrong format marker →
@@ -373,9 +373,9 @@ struct CustomThemeDocument: Codable, Equatable {
     }
 }
 
-// MARK: - File panels (CS-031)
+// MARK: - File panels
 
-/// The user-initiated import/export of custom-theme files (CS-031).
+/// The user-initiated import/export of custom-theme files.
 ///
 /// Both directions use only the existing user-selected file-access entitlement — the
 /// same one `PresetFileExchange` and `DiagnosticsExporter` rely on — so no new

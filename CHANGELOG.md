@@ -12,6 +12,10 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-07-19
+
+Faster editing, safer sharing, and a command palette that keeps every action close.
+
 ### Performance
 
 - **The line-numbered / diff layout no longer re-splits the document every frame.** The
@@ -48,6 +52,33 @@ can never drift.
   apply any theme, toggle line numbers / shadow / window chrome / wrap / ligatures, run
   Surprise Me, or copy/save/export — without hunting through the inspector. Type to
   filter (a subsequence match, so "clr" finds "Clear"), ↑/↓ to move, Return to run.
+
+### Fixed
+
+- **Latest editor and web-preview state now wins.** Cancelled or superseded asynchronous
+  work can no longer publish a stale render after the user changes the input, mode, or
+  configuration.
+- **Keyboard and assistive-technology behavior is consistent across new controls.** The
+  command palette, export actions, and related controls keep stable labels, identifiers,
+  focus behavior, and complete English and Spanish localization metadata.
+- **Shared snapshot links reject malformed or ambiguous URLs.** Parsing now accepts only
+  the documented scheme and host, rejects credentials and unexpected components, and
+  reports oversized or invalid payloads without partially applying them.
+
+### Security
+
+- **Remote and encoded inputs are bounded before expensive work.** Downloads,
+  decompression, decoded images, snapshot-link payloads, and caches enforce explicit
+  limits to prevent memory amplification and unbounded retention.
+- **Remote destinations are validated throughout navigation.** URL capture and remote
+  image import reject unsafe schemes, private/local destinations, and unsafe redirect
+  results instead of validating only the initial string.
+
+### Changed
+
+- **Preview and rendering caches are bounded and keyed by the complete render inputs.**
+  This keeps the performance gains deterministic without allowing caches to grow for the
+  life of the process or reuse a result for a different configuration.
 
 ## [0.21.0] - 2026-07-16
 
@@ -160,6 +191,8 @@ Turn *any* screenshot into a share-ready image — not just code.
 
 The plain image and the macOS window frame are free; the browser and device frames are part of
 Vitrine PRO.
+
+## [0.19.0] - 2026-06-28
 
 A one-click safety net for the most embarrassing way to leak a credential: sharing a
 screenshot with it still in frame.
@@ -308,7 +341,7 @@ A usability pass over the whole app from a 4-agent UX audit, shipped as one rele
   *final screen* (cursor positioning, screen clears, scroll regions, and the alternate
   screen) with its colors intact, rendered in your theme; the surrounding shell prompt is
   left out. It kicks in **automatically** by content — `vgrab htop` captures the dashboard
-  — while plain scrolling output (a `git log`, a test run) keeps rendering the full
+ — while plain scrolling output (a `git log`, a test run) keeps rendering the full
   transcript line by line. See [docs/TERMINAL.md](docs/TERMINAL.md).
 
 ## [0.13.0] - 2026-06-23
@@ -398,14 +431,14 @@ A usability pass over the whole app from a 4-agent UX audit, shipped as one rele
   Accent-filled chips use the AppKit on-accent text color so they stay legible for
   every accent.
 - **Annotations and highlighted lines reset on a new capture.** Loading new content
-  — the Paste button, a select-all paste, a dropped file that replaces the document,
+ — the Paste button, a select-all paste, a dropped file that replaces the document,
   or a quick capture — clears marks that were positioned over the old code; a
   mid-edit paste keeps them. Reusable style (theme, font, background, header) stays.
 - **Native, legible Settings buttons.** The Library and the other Settings panes use
   explicit `.bordered` / `.borderedProminent` styles with a clear primary/secondary
   hierarchy instead of low-contrast accent-tinted titles.
-- **Refreshed website.** The landing page adopts the "The Vitrine" design-system
-  proposal (light-first, appearance toggle, interactive style bench).
+- **Refreshed website.** The landing page adopts the "The Vitrine" visual direction
+  (light-first, appearance toggle, interactive style bench).
 
 ### Fixed
 
@@ -588,7 +621,21 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/johnny4young/vitrine/compare/v0.21.0...v0.22.0
+[0.21.0]: https://github.com/johnny4young/vitrine/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/johnny4young/vitrine/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/johnny4young/vitrine/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/johnny4young/vitrine/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/johnny4young/vitrine/compare/v0.16.1...v0.17.0
+[0.16.1]: https://github.com/johnny4young/vitrine/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/johnny4young/vitrine/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/johnny4young/vitrine/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/johnny4young/vitrine/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/johnny4young/vitrine/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/johnny4young/vitrine/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/johnny4young/vitrine/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/johnny4young/vitrine/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/johnny4young/vitrine/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/johnny4young/vitrine/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/johnny4young/vitrine/compare/v0.7.0...v0.8.0

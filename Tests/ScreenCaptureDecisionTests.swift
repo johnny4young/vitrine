@@ -1,23 +1,22 @@
 import Foundation
 import Testing
 
-/// CS-046 — Arbitrary screen/window capture discovery.
+/// Arbitrary screen/window capture decision.
 ///
-/// CS-046 is a *decision* ticket, not a feature: it concluded that Vitrine must not
-/// capture arbitrary windows or display regions, and ships **no** screen-capture code in
-/// the app target (`docs/SCREEN-CAPTURE-DISCOVERY.md`, `docs/ROADMAP.md`). There is no
+/// Vitrine must not capture arbitrary windows or display regions, and ships **no**
+/// screen-capture code in the app target. There is no
 /// runtime behavior to exercise, so these tests assert the *invariant the decision
 /// establishes* instead: the shipped targets pull in no capture API and request no Screen
 /// Recording capability, and the decision is recorded in the docs. If anyone later wires
 /// up `ScreenCaptureKit` (or a rejected legacy capture API) or adds the Screen Recording
-/// entitlement without re-opening the decision, this suite fails — the same regression
-/// guard `WebSnapshotPrivacyUXTests` (CS-045) provides for the parked network entitlement.
+/// entitlement without revisiting the product boundary, this suite fails — the same kind
+/// of regression guard used for the network-free App Store entitlement set.
 ///
 /// The checks read the committed source tree (anchored to this file via `#filePath`),
 /// because the entitlements file and the docs are not compiled into the test bundle. No
 /// SwiftUI `body` is rendered, so the suite stays clear of CoreText under the parallel
 /// runner.
-@Suite("Arbitrary screen capture stays parked, no capture code ships · CS-046")
+@Suite("Arbitrary screen capture remains outside the product")
 struct ScreenCaptureDecisionTests {
 
     // MARK: - Repository anchoring
@@ -61,7 +60,7 @@ struct ScreenCaptureDecisionTests {
                 sources.append(url)
             }
         }
-        #expect(!sources.isEmpty, "Expected to find shipped Swift sources to scan (CS-046)")
+        #expect(!sources.isEmpty, "Expected to find shipped Swift sources to scan")
         return sources
     }
 
@@ -77,7 +76,7 @@ struct ScreenCaptureDecisionTests {
     /// identifiers), and covers both `import` lines and symbol uses.
     @Test func shippedSourcesReferenceNoScreenCaptureAPI() throws {
         // Capture frameworks/symbols that must never appear in shipped code. Includes the
-        // modern ScreenCaptureKit surface (parked behind the doc's checklist) and the
+        // modern ScreenCaptureKit surface and the
         // explicitly rejected legacy Quartz/AVFoundation capture APIs.
         let forbiddenSymbols = [
             "ScreenCaptureKit",
@@ -105,18 +104,17 @@ struct ScreenCaptureDecisionTests {
         #expect(
             offenders.isEmpty,
             """
-            CS-046 ships no screen-capture code in the app target. Found capture API \
+            Vitrine ships no screen-capture code in the app target. Found capture API \
             references in shipped sources: \(offenders.joined(separator: ", ")). If capture \
-            is being revived, re-open the decision in docs/SCREEN-CAPTURE-DISCOVERY.md and \
-            docs/ROADMAP.md first.
+            is being reconsidered, update docs/SCREEN-CAPTURE.md first.
             """)
     }
 
     // MARK: - No Screen Recording capability in the entitlements
 
-    /// The app must request **no** Screen Recording capability. CS-046's promise is that a
+    /// The app must request **no** Screen Recording capability. Vitrine's promise is that a
     /// shipped build "needs no Screen Recording," so the entitlements file must stay the
-    /// Phase 1 set (sandbox + user-selected files) and carry no Screen Recording / screen
+    /// minimal set (sandbox + user-selected files) and carry no Screen Recording / screen
     /// capture entitlement key. The entitlements file is excluded from the compiled test
     /// bundle, so it is read from the source tree.
     @Test func appEntitlementsRequestNoScreenRecording() throws {
@@ -125,7 +123,7 @@ struct ScreenCaptureDecisionTests {
             try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
             "Vitrine.entitlements must be a property list")
 
-        // The sandbox stays on; this is the Phase 1 posture the decision preserves.
+        // The sandbox stays on; this is the local rendering posture the decision preserves.
         #expect(plist["com.apple.security.app-sandbox"] as? Bool == true)
 
         // No entitlement key may name screen recording or screen capture. macOS surfaces
@@ -139,7 +137,7 @@ struct ScreenCaptureDecisionTests {
         }
         #expect(
             screenKeys.isEmpty,
-            "CS-046: the app must request no Screen Recording entitlement. Found: \(screenKeys)")
+            ": the app must request no Screen Recording entitlement. Found: \(screenKeys)")
     }
 
     /// No `Info.plist` usage string for Screen Recording may be present anywhere in the
@@ -165,42 +163,39 @@ struct ScreenCaptureDecisionTests {
         #expect(
             offenders.isEmpty,
             """
-            CS-046: no Info.plist may declare a Screen Recording usage string. Found \
+            : no Info.plist may declare a Screen Recording usage string. Found \
             NSScreenCaptureUsageDescription in: \(offenders.joined(separator: ", ")).
             """)
     }
 
     // MARK: - The decision is recorded in the docs
 
-    /// The discovery document exists and records the actual decision: it weighs
-    /// ScreenCaptureKit against the system-screenshot handoff and the rejected legacy paths,
+    /// The decision document exists and records the actual boundary: it weighs
+    /// ScreenCaptureKit against the system-screenshot workflow and rejected legacy paths,
     /// names the required Screen Recording permission and the App Store / trust cost, and
-    /// states the "park it / no code in the app target" conclusion. This is the deliverable
-    /// CS-046 ships; asserting its substantive contents (not merely that the file exists)
+    /// states the no-capture conclusion. Asserting its substantive contents
     /// keeps the recorded decision from being silently gutted.
-    @Test func discoveryDocRecordsTheParkDecisionAndItsTradeoffs() throws {
-        let doc = try Self.text("docs", "SCREEN-CAPTURE-DISCOVERY.md")
+    @Test func decisionDocRecordsTheBoundaryAndItsTradeoffs() throws {
+        let doc = try Self.text("docs", "SCREEN-CAPTURE.md")
 
-        // The three options the acceptance criteria require it to compare.
-        #expect(doc.contains("ScreenCaptureKit"), "Doc must evaluate ScreenCaptureKit (Option A)")
+        // The current API, supported alternative, and rejected legacy paths are explicit.
+        #expect(doc.contains("ScreenCaptureKit"), "Doc must evaluate ScreenCaptureKit")
         #expect(
-            doc.localizedCaseInsensitiveContains("System Screenshot handoff"),
-            "Doc must evaluate the system Screenshot handoff (Option B)")
+            doc.localizedCaseInsensitiveContains("Supported alternative"),
+            "Doc must document importing a system-captured image")
         // The rejected legacy capture paths are named as no-gos.
         #expect(doc.contains("CGWindowListCreateImage"))
         #expect(doc.contains("AVCaptureScreenInput"))
 
         // The required permission and its modern macOS surface name are documented.
         #expect(doc.contains("Screen Recording"))
-        #expect(doc.contains("Screen & System Audio Recording"))
-
-        // App Store risk and user-trust impact are documented.
+        // App Store risk and user trust are documented.
         #expect(doc.contains("App Store"))
-        #expect(doc.localizedCaseInsensitiveContains("user-trust"))
+        #expect(doc.localizedCaseInsensitiveContains("trust boundary"))
 
         // The decision itself: park it, and ship no capture code in the app target.
-        #expect(doc.localizedCaseInsensitiveContains("Park it"))
-        #expect(doc.localizedCaseInsensitiveContains("no screen-capture code"))
+        #expect(doc.localizedCaseInsensitiveContains("does not capture"))
+        #expect(doc.localizedCaseInsensitiveContains("shipping target"))
         #expect(doc.localizedCaseInsensitiveContains("App Sandbox"))
     }
 

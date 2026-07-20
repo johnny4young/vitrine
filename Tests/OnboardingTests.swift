@@ -3,7 +3,7 @@ import Testing
 
 @testable import Vitrine
 
-/// First-run quick-start state and its persistence (CS-035).
+/// First-run quick-start state and its persistence.
 ///
 /// The quick-start is gated by a single persisted flag, `AppSettings.hasSeenWelcome`,
 /// stored in the app's defaults store. UI tests isolate that store with
@@ -42,7 +42,7 @@ struct OnboardingFirstRunTests {
         let defaults = freshDefaults()
         // A hand-edited or corrupt store could hold a non-boolean under the key;
         // the read must fall back to the first-run default rather than trapping
-        // (CS-050 documented-fallback posture).
+        // (documented fallback).
         defaults.set("definitely-not-a-bool", forKey: "hasSeenWelcome")
         let settings = AppSettings(defaults: defaults)
         #expect(settings.hasSeenWelcome == false)
@@ -68,7 +68,7 @@ struct OnboardingResetTests {
         settings.resetToDefaults()
 
         // A "Reset all settings" returns the user to a first-run experience so the
-        // quick-start is offered again (CS-035 / CS-050).
+        // quick-start is offered again.
         #expect(settings.hasSeenWelcome == false)
     }
 
@@ -92,7 +92,7 @@ struct OnboardingResetTests {
 struct OnboardingSchemaMigrationTests {
     @Test func v5StoreMigratesToCurrentWithoutInventingTheFlag() {
         let defaults = freshDefaults()
-        // A store written by the build just before CS-035 (schema 5) carrying a
+        // A store written just before the onboarding flag existed (schema 5), carrying a
         // real setting. Migrating forward must advance the version but never
         // back-fill the new flag — an upgrading user is allowed to see the
         // lightweight quick-start once, and the key only appears once the flow is
@@ -110,7 +110,7 @@ struct OnboardingSchemaMigrationTests {
     }
 
     @Test func currentSchemaIncludesTheOnboardingStep() {
-        // Guards against bumping `current` for this ticket but forgetting the
+        // Guards against bumping `current` for this change but forgetting the
         // matching migration step (the chain must reach `current` without a gap).
         #expect(SettingsSchema.current >= 6)
         let defaults = freshDefaults()

@@ -1,6 +1,6 @@
 import XCTest
 
-/// A design-audit screenshot tour (not a regression gate): walks every user-facing
+/// A visual screenshot tour (not a regression gate): walks every user-facing
 /// surface and writes window-cropped PNGs to `VITRINE_SCREENSHOT_DIR` (passed through
 /// `TEST_RUNNER_VITRINE_SCREENSHOT_DIR`). Each test launches into an isolated defaults
 /// suite, so the tour never touches the real app state. Surfaces that cannot be
@@ -12,7 +12,7 @@ final class ScreenshotTourUITests: XCTestCase {
     override func setUpWithError() throws {
         try XCTSkipIf(
             ProcessInfo.processInfo.environment["VITRINE_SCREENSHOT_DIR"] == nil,
-            "Design-audit tour is opt-in: set TEST_RUNNER_VITRINE_SCREENSHOT_DIR")
+            "Visual tour is opt-in: set TEST_RUNNER_VITRINE_SCREENSHOT_DIR")
     }
 
     // MARK: - Surfaces
@@ -565,12 +565,12 @@ final class ScreenshotTourUITests: XCTestCase {
         let statusItem = app.statusItems.firstMatch
         guard statusItem.waitForExistence(timeout: 8), statusItem.isHittable else {
             // Off-screen/negative frames happen under some display arrangements;
-            // the tour records a miss instead of failing (it is an audit, not a gate).
+            // the tour records a miss instead of failing (it is evidence, not a gate).
             miss("50-menubar-panel", reason: "status item not exposed or not hittable")
             return
         }
-        // The redesigned status surface is a MenuBarExtra window panel, not an
-        // NSMenu: clicking the item opens a panel window (design/handoff).
+        // The current designed status surface is a MenuBarExtra window panel, not an
+        // NSMenu: clicking the item opens a panel window.
         statusItem.click()
         let panel = element("menubar-panel", in: app)
         if panel.waitForExistence(timeout: 3) {

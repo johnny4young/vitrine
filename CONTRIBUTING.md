@@ -59,7 +59,7 @@ See [AGENTS.md](AGENTS.md). In short:
   (`LocalizationTests` enforces it).
 - App-chrome styling reads the token layer in
   [`Vitrine/DesignSystem/`](Vitrine/DesignSystem) — never hard-code a hex in a view.
-- Conventional, imperative commit subjects; reference `CS-0xx` tickets where relevant.
+- Conventional, imperative commit subjects without private planning identifiers.
 - **No AI co-authorship / "generated-by" trailers** in commits or PRs.
 
 ## Adding a theme
@@ -69,8 +69,8 @@ Themes live in `Vitrine/Models/Theme.swift` (metadata + Highlight.js theme name)
 `Theme.builtIns` (kept alphabetical by display name), and make sure the `hlJsTheme`
 matches a bundled Highlight.js theme name.
 
-## Roadmap
+## Finding work
 
-Unimplemented work is marked in the source with `// TODO: CS-0xx` comments (the detailed
-ticket spec is kept as a local working document). Picking up one of those markers is a
-great first contribution.
+Open GitHub issues are the public source for contribution-sized work. Source `TODO`
+comments must explain the missing behavior directly and must not reference private
+planning documents or identifiers.

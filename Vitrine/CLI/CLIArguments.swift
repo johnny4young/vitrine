@@ -1,7 +1,7 @@
 import Foundation
 
 /// A problem the CLI reports to the user, mapped to a clear message and a process
-/// exit code (CS-033). Every failure mode the `render` command can hit has a case
+/// exit code. Every failure mode the `render` command can hit has a case
 /// here so the executable never prints a raw Swift error or crashes.
 ///
 /// `nonisolated` so it is a plain `Sendable & Equatable` error: the executable throws
@@ -52,7 +52,7 @@ nonisolated enum CLIError: Error, Equatable {
     /// non-zero exit instead of a false success.
     case editorOpenFailed
     /// The PRO tier is required for command-line/automation rendering but is not
-    /// active (CS-094). Reported before any file work so a free build never renders.
+    /// active. Reported before any file work so a free build never renders.
     case proRequired
 
     /// A short, human-readable explanation suitable for stderr.
@@ -115,7 +115,7 @@ nonisolated enum CLIError: Error, Equatable {
     }
 }
 
-/// Parses `vitrine` command-line arguments into a `CLIOptions` (CS-033).
+/// Parses `vitrine` command-line arguments into a `CLIOptions`.
 ///
 /// The grammar is deliberately tiny and dependency-free (no third-party arg parser):
 /// a `render`, `multi-size`, or `batch` subcommand, one positional input path/folder,
@@ -133,8 +133,8 @@ nonisolated enum CLIError: Error, Equatable {
 /// executable runs it from `main.swift`, whose top-level code is on the main actor.
 @MainActor
 enum CLIArguments {
-    /// Parses the argument list *after* the executable name (i.e. `CommandLine
-    /// .arguments.dropFirst()`), returning the options for a `render` command.
+    /// Parses the argument list *after* the executable name (that is,
+    /// `CommandLine.arguments.dropFirst()`), returning the options for a `render` command.
     ///
     /// Throws `CLIError.helpRequested` for `--help`/`-h` (the caller prints usage),
     /// and a specific error for any malformed input.

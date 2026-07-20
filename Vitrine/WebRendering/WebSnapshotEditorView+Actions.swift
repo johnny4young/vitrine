@@ -21,7 +21,7 @@ extension WebSnapshotEditorView {
         // user hasn't consented yet. On a build that can't reach the network the disclosure's
         // confirm button is permanently disabled, so routing through it strands the user in a
         // dismiss-and-retry dead end; instead fall through to the capture, which fails fast
-        // with `RenderError.urlCaptureDisabled` and its clear message (audit P0-4).
+        // with `RenderError.urlCaptureDisabled` and its clear message.
         if model.mode == .url,
             !settings.webCapture.consentGiven, NetworkCapability.isURLCaptureEnabled
         {
@@ -74,7 +74,7 @@ extension WebSnapshotEditorView {
         guard let asset = model.renderedAsset else { return }
         // Honor the user's chosen export format through the same ladder the rest of
         // the app uses, then funnel the panel/write through the shared save path so
-        // this flow gets the CS-048 logging discipline like every other save.
+        // this flow follows the same logging policy as every other save.
         guard
             let payload = ExportManager.encodedPayload(
                 settings.export.format,
@@ -89,7 +89,7 @@ extension WebSnapshotEditorView {
     }
 
     /// Exports every captured viewport plus the composite board as PNGs into a folder
-    /// the user picks (CS-044 multi-resolution) — a ready-to-share set in one action.
+    /// the user picks (multi-resolution) — a ready-to-share set in one action.
     func exportAll() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true

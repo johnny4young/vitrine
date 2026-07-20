@@ -4,7 +4,7 @@ import Foundation
     import Sparkle
 #endif
 
-/// The direct-download auto-update channel (CS-064).
+/// The direct-download auto-update channel.
 ///
 /// Vitrine's direct-download build (the signed, notarized DMG) updates itself with
 /// [Sparkle](https://sparkle-project.org): it checks a signed EdDSA appcast and installs

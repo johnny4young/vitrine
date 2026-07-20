@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Builds a Release Vitrine.app, optionally signs + notarizes it with a Developer
-# ID identity, and packages it into a DMG under dist/ (CS-012, CS-061).
+# ID identity, and packages it into a DMG under dist/.
 #
 # The pipeline degrades gracefully and is driven entirely by which environment
 # variables are present:
@@ -18,14 +18,14 @@
 # precedence over the Apple-ID style when both are present:
 #
 #   App Store Connect API key (preferred for CI; no app-specific password):
-#     MACOS_NOTARY_KEY_ID         — App Store Connect API Key ID
-#     MACOS_NOTARY_KEY_ISSUER_ID  — Issuer ID for that key
-#     MACOS_NOTARY_KEY_P8         — path to the .p8 private-key file
+#     MACOS_NOTARY_KEY_ID        — App Store Connect API Key ID
+#     MACOS_NOTARY_KEY_ISSUER_ID — Issuer ID for that key
+#     MACOS_NOTARY_KEY_P8        — path to the .p8 private-key file
 #
 #   Apple-ID style:
-#     MACOS_NOTARY_APPLE_ID       — Apple ID for notarytool
-#     MACOS_NOTARY_PASSWORD       — app-specific password
-#     MACOS_NOTARY_TEAM_ID        — Developer Team ID
+#     MACOS_NOTARY_APPLE_ID      — Apple ID for notarytool
+#     MACOS_NOTARY_PASSWORD      — app-specific password
+#     MACOS_NOTARY_TEAM_ID       — Developer Team ID
 #
 # Verification always runs against whatever was produced:
 #   codesign --verify --deep --strict --verbose=2   (Developer ID builds)
@@ -42,11 +42,11 @@ DERIVED="build"
 APP="$DERIVED/Build/Products/Release/Vitrine.app"
 PLIST_BUDDY="/usr/libexec/PlistBuddy"
 
-# Direct-download channel entitlements (CS-064). The DMG is the direct-download
+# Direct-download channel entitlements. The DMG is the direct-download
 # build, so it signs with the SUPERSET entitlements that add the network-client and
 # Sparkle XPC mach-lookup exceptions Sparkle needs to auto-update a sandboxed app.
 # The default project build and the App Store build keep the minimal
-# Vitrine.entitlements (no network, no Sparkle), so the Phase 1 "no network" posture
+# Vitrine.entitlements (no network, no Sparkle), so the local rendering "no network" posture
 # and the App Store exclusion of Sparkle are unchanged. The app sources still gate
 # every Sparkle call behind VITRINE_DIRECT_DOWNLOAD (set on this build via project.yml).
 DIRECT_DOWNLOAD_ENTITLEMENTS="Vitrine/Resources/Vitrine.DirectDownload.entitlements"
@@ -65,7 +65,7 @@ fi
 
 # The Vitrine target reads its entitlements file from this env var at generate time
 # (project.yml: CODE_SIGN_ENTITLEMENTS: ${VITRINE_ENTITLEMENTS_FILE}). The DMG is the
-# direct-download build, so it signs with the superset (network + Sparkle XPC, CS-064).
+# direct-download build, so it signs with the superset (network + Sparkle XPC).
 "$(dirname "$0")/fetch-sparkle.sh"
 export VITRINE_ENTITLEMENTS_FILE="$DIRECT_DOWNLOAD_ENTITLEMENTS"
 echo "==> Generating project (entitlements: $VITRINE_ENTITLEMENTS_FILE)"
@@ -73,7 +73,7 @@ xcodegen generate
 
 # Hardened runtime must stay enabled for any distributable build; the app target
 # sets ENABLE_HARDENED_RUNTIME=YES in project.yml, and we pass it explicitly here
-# so a Developer ID build can never accidentally ship without it (CS-061).
+# so a Developer ID build can never accidentally ship without it.
 echo "==> Building Release ($VERSION)"
 if [ "$SIGNED" -eq 1 ]; then
 	echo "    Signing identity: $SIGN_IDENTITY (hardened runtime on)"
@@ -188,8 +188,8 @@ fi
 
 # --- Signature verification (Developer ID builds only) ----------------------
 # Gatekeeper rejects an app whose code signature does not verify, so prove it
-# here before we spend a notarization round-trip on it (CS-061 acceptance:
-# `codesign --verify --deep --strict --verbose=2`).
+# here before we spend a notarization round-trip on it with
+# `codesign --verify --deep --strict --verbose=2`.
 if [ "$SIGNED" -eq 1 ]; then
 	echo "==> Verifying code signature (codesign --verify --deep --strict --verbose=2)"
 	codesign --verify --deep --strict --verbose=2 "$APP"
@@ -332,8 +332,8 @@ if [ "$SIGNED" -eq 1 ]; then
 fi
 
 # --- Gatekeeper assessment --------------------------------------------------
-# Run the same check macOS runs on first launch (CS-061 acceptance: `spctl -a
-# -vv`). For an unsigned dev DMG this is expected to be rejected — we report it
+# Run the same `spctl -a -vv` check macOS runs on first launch. For an unsigned
+# dev DMG this is expected to be rejected — we report it
 # without failing the build, because the unsigned path is explicitly a
 # development artifact, never production-ready.
 echo "==> Gatekeeper assessment (spctl -a -vv)"

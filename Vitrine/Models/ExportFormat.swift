@@ -1,15 +1,15 @@
 import CoreGraphics
 import Foundation
 
-/// Exported image format (CS-010 · Output).
+/// Exported image format (Output).
 ///
 /// The format menu lists only outputs the exporter can write **faithfully** from
 /// the full code canvas: raster `png`/`heic`/`avif` and a true vector `pdf`. SVG is
-/// deliberately absent (CS-023): SwiftUI / `ImageRenderer` / AppKit expose no
+/// deliberately absent: SwiftUI / `ImageRenderer` / AppKit expose no
 /// faithful full-canvas SVG path, and Vitrine does not ship a fake `.svg` that is
 /// merely a raster PNG wrapped in an `<image>` tag. PDF is therefore the supported
 /// vector format. A hand-authored SVG exists only for the deterministic
-/// simple-template subset (`VectorTemplateSVG`, CS-041) and is intentionally not a
+/// simple-template subset (`VectorTemplateSVG`) and is intentionally not a
 /// general export choice here. See `docs/ARCHITECTURE.md` ("Vector export").
 enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     case png
@@ -36,7 +36,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     /// Whether this format is a scalable vector format (true for `pdf`).
     ///
     /// Drives the "vector" label/help shown next to the format picker so the menu
-    /// states honestly which output is resolution-independent (CS-023). Raster PNG,
+    /// states honestly which output is resolution-independent. Raster PNG,
     /// HEIC, and AVIF are `false`; PDF is `true`.
     var isVector: Bool {
         switch self {
@@ -46,7 +46,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     }
 
     /// One-line guidance shown next to the format picker, naming the vector option
-    /// so docs/slide workflows know which export scales (CS-023).
+    /// so docs/slide workflows know which export scales.
     var summary: String {
         switch self {
         case .png: "Raster image at the chosen resolution. Best for posting and chat."
@@ -57,7 +57,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     }
 
     /// The value used when nothing is persisted or a stored string no longer
-    /// maps to a case (CS-050 documented fallback).
+    /// maps to a case (documented fallback).
     static let fallback: ExportFormat = .png
 
     /// Decodes a persisted raw value, tolerating `nil` or an unrecognized
@@ -67,7 +67,7 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-/// The ICC color profile a PNG export is rendered and tagged with (CS-024).
+/// The ICC color profile a PNG export is rendered and tagged with.
 ///
 /// `sRGB` is the default because it is the safe, universally understood space:
 /// browsers, Slack, X, Keynote, and non–color-managed viewers all assume sRGB,
@@ -109,11 +109,11 @@ enum ColorProfile: String, CaseIterable, Identifiable, Codable {
     }
 
     /// The default profile: sRGB. PNG export defaults to sRGB so output is
-    /// predictable across displays, apps, and social platforms (CS-024).
+    /// predictable across displays, apps, and social platforms.
     static let fallback: ColorProfile = .sRGB
 
     /// Decodes a persisted raw value, tolerating `nil` or an unrecognized
-    /// string by returning `fallback` (CS-050 documented fallback).
+    /// string by returning `fallback` (documented fallback).
     static func resolve(_ rawValue: String?) -> ColorProfile {
         ColorProfile(rawValue: rawValue ?? "") ?? fallback
     }

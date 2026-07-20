@@ -2,7 +2,7 @@ import AppKit
 import OSLog
 import UniformTypeIdentifiers
 
-/// A privacy-safe diagnostics report a user can attach to a bug report (CS-048).
+/// A privacy-safe diagnostics report a user can attach to a bug report.
 ///
 /// Vitrine ships no telemetry, so when something misbehaves in the field there is
 /// otherwise no supported way to capture what happened. "Export diagnostics…"
@@ -45,7 +45,7 @@ struct DiagnosticsBundle: Equatable {
     /// `log stream --subsystem com.johnny4young.vitrine`.
     let logCategories: [String]
     /// Recent log lines from the app's own subsystem. These are safe to include
-    /// because every Vitrine log statement is non-PII by construction (CS-048);
+    /// because every Vitrine log statement is non-PII by construction;
     /// the reader (`OSLogReader`) further limits collection to the app subsystem.
     let logExcerpts: [LogExcerpt]
 
@@ -166,7 +166,7 @@ struct DiagnosticsBundle: Equatable {
     }
 
     /// A short, fixed statement of what the file does and does not contain, written
-    /// into every bundle so it documents itself (CS-048 acceptance).
+    /// into every bundle so it documents itself .
     static let privacyNote =
         "This report contains no code, clipboard text, file contents, or file paths. "
         + "It was generated locally and is only shared if you choose to send it."
@@ -192,7 +192,7 @@ struct DiagnosticsSettingsSnapshot: Equatable {
     var themeID: String
     var languageID: String
     var fontName: String
-    /// Whether programming ligatures are enabled (CS-052). A plain boolean knob,
+    /// Whether programming ligatures are enabled. A plain boolean knob,
     /// never user-entered text. Defaults to off so older call sites that predate
     /// the flag construct a valid snapshot without it.
     var fontLigatures: Bool = false
@@ -207,7 +207,7 @@ struct DiagnosticsSettingsSnapshot: Equatable {
     var exportScale: Int
     var exportFormat: String
     var colorProfile: String
-    /// Whether the rich-clipboard opt-in is on (CS-054). A plain boolean knob,
+    /// Whether the rich-clipboard opt-in is on. A plain boolean knob,
     /// never user-entered text. Defaults to off so older call sites that predate
     /// the flag construct a valid snapshot without it.
     var richClipboard: Bool = false
@@ -252,7 +252,7 @@ struct DiagnosticsSettingsSnapshot: Equatable {
     }
 }
 
-/// The user-initiated "Export diagnostics…" action (CS-048).
+/// The user-initiated "Export diagnostics…" action.
 ///
 /// This is the *only* path by which any diagnostic information leaves the app, and
 /// it is entirely user-driven: it builds a `DiagnosticsBundle`, presents an
@@ -302,7 +302,7 @@ enum DiagnosticsExporter {
             return url
         } catch {
             // Log only the error domain/code, never `localizedDescription`, which
-            // can contain the user-chosen path (CS-048 privacy rule).
+            // can contain the user-chosen path (privacy policy).
             let nsError = error as NSError
             Log.export.error(
                 "Failed to write diagnostics bundle (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
@@ -312,7 +312,7 @@ enum DiagnosticsExporter {
     }
 }
 
-/// Reads recent entries from the unified log for *this process only* (CS-048).
+/// Reads recent entries from the unified log for *this process only*.
 ///
 /// `OSLogStore(scope: .currentProcessIdentifier)` is the sandbox-safe scope: it
 /// returns the running app's own log entries without any new entitlement and

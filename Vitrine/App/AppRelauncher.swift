@@ -7,7 +7,7 @@ import OSLog
 /// Settings language switcher writes that override immediately, but it only takes
 /// effect next launch — and Vitrine is a menu-bar agent with no Dock icon, so quitting
 /// and reopening by hand is non-obvious. This gives the language picker a one-click
-/// "Relaunch to Apply" so the new language takes effect at once (CS-047).
+/// "Relaunch to Apply" so the new language takes effect at once.
 enum AppRelauncher {
     /// Launches a replacement instance of the app bundle, then terminates this one. The
     /// new process reads the just-written `AppleLanguages` override and localizes
@@ -24,7 +24,7 @@ enum AppRelauncher {
             } catch {
                 // Keep this instance alive: terminating after a failed launch would
                 // leave the user with no running app, breaking the guarantee above.
-                // Log only the error domain/code, never a path (CS-048).
+                // Log only the error domain/code, never a path.
                 Log.app.error(
                     "Relaunch failed; staying in the current instance (\((error as NSError).domain, privacy: .public) \((error as NSError).code, privacy: .public))"
                 )

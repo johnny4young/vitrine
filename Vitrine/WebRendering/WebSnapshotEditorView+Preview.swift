@@ -32,7 +32,7 @@ extension WebSnapshotEditorView {
         .accessibilityIdentifier("web-snapshot-preview-stage")
     }
 
-    /// A filmstrip of the captured viewports in a multi-resolution batch (CS-044): one
+    /// A filmstrip of the captured viewports in a multi-resolution batch: one
     /// labeled thumbnail per size; tapping one shows it in the preview and makes it the
     /// single export target. Hidden for a single-viewport capture.
     @ViewBuilder
@@ -74,7 +74,7 @@ extension WebSnapshotEditorView {
         }
     }
 
-    /// The leading filmstrip tile for the composite responsive board (CS-044). Selected
+    /// The leading filmstrip tile for the composite responsive board. Selected
     /// by default after a multi-size capture; tapping it shows the board in the preview
     /// and makes it the export target.
     @ViewBuilder
@@ -136,7 +136,7 @@ extension WebSnapshotEditorView {
         .accessibilityIdentifier(identifier)
     }
 
-    /// The filmstrip thumbnail size (CS-044): a 16:10-ish tile big enough to read each
+    /// The filmstrip thumbnail size: a 16:10-ish tile big enough to read each
     /// viewport at a glance without crowding the strip.
     private static var tileSize: CGSize { CGSize(width: 92, height: 58) }
 
@@ -179,7 +179,7 @@ extension WebSnapshotEditorView {
     }
 
     /// Stops a running capture so the user is never trapped waiting out a long
-    /// multi-viewport batch (audit). Escape triggers it too.
+    /// multi-viewport batch. Escape triggers it too.
     private var cancelCaptureButton: some View {
         Button(action: cancelCapture) {
             Text("Cancel")

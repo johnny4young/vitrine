@@ -6,9 +6,9 @@ import WebKit
 
 @testable import Vitrine
 
-/// CS-043 — the URL snapshot renderer with an explicit network mode.
+/// the URL snapshot renderer with an explicit network mode.
 ///
-/// These suites prove the acceptance criteria the ticket asks for:
+/// These suites prove the documented behavior:
 ///
 /// 1. **URL validation** — only `http`/`https` URLs are accepted; `file:`, `data:`,
 ///    `javascript:`, private localhost, and malformed URLs are rejected as typed
@@ -63,7 +63,7 @@ private enum URLFixture {
 
 // MARK: - URL validation
 
-@Suite("URL capture validation · CS-043")
+@Suite("URL capture validation")
 struct URLValidationTests {
     @Test func httpAndHttpsURLsAreAccepted() throws {
         let http = try #require(URL(string: "http://example.com"))
@@ -211,7 +211,7 @@ struct URLValidationTests {
 
 // MARK: - WebSnapshotConfig construction
 
-@Suite("WebSnapshotConfig holds only a validated URL · CS-043")
+@Suite("WebSnapshotConfig holds only a validated URL")
 struct WebSnapshotConfigTests {
     @Test func configCanOnlyBeBuiltFromAValidURL() throws {
         let url = try URLFixture.valid()
@@ -245,7 +245,7 @@ struct WebSnapshotConfigTests {
 
 // MARK: - Data-store mode (cookies and website data are opt-in only)
 
-@Suite("URL capture data-store mode is opt-in · CS-043")
+@Suite("URL capture data-store mode is opt-in")
 struct URLDataStoreModeTests {
     @Test func nonPersistentModePersistsNothingAndBlocksCookies() {
         let mode = WebSnapshotConfig.DataStoreMode.nonPersistent
@@ -304,7 +304,7 @@ struct URLDataStoreModeTests {
 
 // MARK: - Network-capability gate
 
-@Suite("URL capture is gated on the network entitlement · CS-043")
+@Suite("URL capture is gated on the network entitlement")
 struct URLNetworkCapabilityTests {
     @Test func urlCaptureIsEnabledExactlyWhenTheEntitlementIsPresent() {
         // The gate is the entitlement and nothing else: enabled iff the network
@@ -323,7 +323,7 @@ struct URLNetworkCapabilityTests {
     @Test func aBuildWithoutTheEntitlementRefusesURLCaptureWithATypedError() async throws {
         // With the gate off, the renderer refuses before touching WebKit and never
         // returns a blank image — the "disabled until the entitlement is present"
-        // acceptance, asserted without needing the entitlement in the test host.
+        // contract, asserted without needing the entitlement in the test host.
         let renderer = URLRenderer(isNetworkCaptureEnabled: false)
         let input = CaptureInput.url(try URLFixture.valid())
         await #expect(throws: RenderError.urlCaptureDisabled) {
@@ -346,19 +346,19 @@ struct URLNetworkCapabilityTests {
     }
 
     /// The app target ships **without** `com.apple.security.network.client` in Phase
-    /// 1 (CS-011/CS-062), so URL capture is inert in the shipping build until the
+    /// 1, so URL capture is inert in the shipping build until the
     /// entitlement is deliberately added. The entitlements file is excluded from the
     /// app's compiled sources and is not a bundle resource, so it is read from the
     /// source tree via `#filePath` — the same anchoring the renderer and golden tests
     /// use.
-    @Test func appShipsWithoutTheNetworkEntitlementInPhase1() throws {
+    @Test func appStoreCompatibleBuildShipsWithoutTheNetworkEntitlement() throws {
         let data = try Data(contentsOf: Self.appEntitlements())
         let plist = try #require(
             try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
             "Vitrine.entitlements must be a property list")
         #expect(
             plist[NetworkCapability.networkClientEntitlement] == nil,
-            "Phase 1 must not request the network client entitlement (CS-043 gates URL capture on it)"
+            "local rendering must not request the network client entitlement ( gates URL capture on it)"
         )
         #expect(plist["com.apple.security.app-sandbox"] as? Bool == true)
     }
@@ -378,7 +378,7 @@ struct URLNetworkCapabilityTests {
 // MARK: - URLRenderer routing (pure logic, no web process needed)
 
 @MainActor
-@Suite("URLRenderer routing · CS-043")
+@Suite("URLRenderer routing")
 struct URLRendererRoutingTests {
     @Test func urlRendererAcceptsOnlyURLs() throws {
         let renderer = URLRenderer()
@@ -408,7 +408,7 @@ struct URLRendererRoutingTests {
 // MARK: - URLRenderer validation through the abstraction (no web process needed)
 
 @MainActor
-@Suite("URLRenderer rejects unsafe URLs as typed failures · CS-043")
+@Suite("URLRenderer rejects unsafe URLs as typed failures")
 struct URLRendererValidationTests {
     /// A non-web URL handed to the enabled renderer is rejected during validation and
     /// surfaces as `RenderError.renderFailed`, never a blank image — proving the
@@ -433,7 +433,7 @@ struct URLRendererValidationTests {
 
     @Test func theEntitlementGateIsCheckedBeforeValidation() async throws {
         // With the gate off, even a malformed/unsafe URL reports the disabled gate,
-        // not a validation failure — the gate is the outermost guard, so a Phase 1
+        // not a validation failure — the gate is the outermost guard, so a local rendering
         // build never reaches the URL-parsing stage for a capture.
         let renderer = URLRenderer(isNetworkCaptureEnabled: false)
         let file = try #require(URL(string: "file:///etc/hosts"))
@@ -468,7 +468,7 @@ struct URLRendererValidationTests {
 
 // MARK: - First-use disclosure (no web process needed)
 
-@Suite("URL capture first-use disclosure · CS-043")
+@Suite("URL capture first-use disclosure")
 struct URLFirstUseDisclosureTests {
     @Test func theDisclosureExplainsLocalWebKitLoading() {
         // The first-use copy must make the privacy fact explicit: the page is loaded
@@ -482,8 +482,8 @@ struct URLFirstUseDisclosureTests {
     }
 
     @Test func theDisclosurePromisesNoRemoteRenderService() {
-        // The copy explicitly rules out a remote render service, the privacy promise
-        // CS-043 preserves.
+        // The copy explicitly rules out a remote render service, preserving the
+        // privacy promise.
         let message = WebSnapshotConfig.firstUseDisclosure.message
         #expect(message.localizedCaseInsensitiveContains("remote"))
         #expect(message.localizedCaseInsensitiveContains("on-device"))
@@ -501,7 +501,7 @@ struct URLFirstUseDisclosureTests {
 /// content process can launch and is reported skipped otherwise.
 @MainActor
 @Suite(
-    "URLSnapshotEngine renders a page offscreen · CS-043",
+    "URLSnapshotEngine renders a page offscreen · ",
     .enabled("requires a launchable WKWebView web process (unavailable in a sandboxed test host)") {
         await WebKitAvailability.canRenderOffscreen()
     })
@@ -515,7 +515,7 @@ struct URLSnapshotEngineRenderTests {
         #expect(config.dataStoreMode == .nonPersistent)
         let image = try await engine.snapshot(of: config)
         // The viewport is fixed and the scale is applied, so the bitmap is exactly
-        // viewport × scale — the determinism the acceptance criteria require.
+        // viewport × scale — the determinism the documented contract require.
         #expect(image.width == 1200)
         #expect(image.height == 800)
     }

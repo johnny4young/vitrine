@@ -1,7 +1,6 @@
 import Foundation
 
-/// A decoupling seam between the app's command surface and the Web Snapshot window
-/// (CS-042/CS-043).
+/// A decoupling seam between the app's command surface and the Web Snapshot window.
 ///
 /// The window and its renderers live in `WebRendering/`, which the headless CLI
 /// target excludes (it ships no WebKit). The File-menu command, the `--open-web-snapshot`

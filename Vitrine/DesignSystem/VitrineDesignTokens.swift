@@ -1,11 +1,10 @@
 import AppKit
 import SwiftUI
 
-/// The flat token namespace for the redesigned app chrome (design/handoff).
+/// The flat token namespace for the current designed app chrome.
 ///
-/// `VitrineTokens` mirrors the design-system tokens in
-/// `design/handoff/tokens/*.css` and re-exports the existing `Brand` palette
-/// (CS-036) where the two overlap, so the redesign and the legacy surfaces
+/// `VitrineTokens` centralizes the design-system values and re-exports the existing
+/// `Brand` palette where the two overlap, so current and older surfaces
 /// resolve identical values from one source of truth. Every color is adaptive:
 /// it carries the light and dark palette and resolves at draw time, so views
 /// never branch on the appearance themselves — and never hard-code a hex.
@@ -19,7 +18,7 @@ enum VitrineTokens {
 
     /// Accent roles from `tokens/colors.css`. Base and secondary re-export the
     /// brand palette; hover/press/contrast are the interaction steps the
-    /// redesign introduces for custom buttons and chips.
+    /// current design uses for custom buttons and chips.
     enum Accent {
         /// `--accent` — #4F46E5 light / #7C8CFF dark (re-exported brand accent).
         static let base = Brand.Palette.accent.color
@@ -183,9 +182,9 @@ enum VitrineTokens {
     // MARK: - Shadows (app chrome only)
 
     /// Shadow recipes from `tokens/elevation.css`, translated for SwiftUI
-    /// (`shadow(radius:)` takes half the CSS blur). These style the redesigned
+    /// (`shadow(radius:)` takes half the CSS blur). These style the current designed
     /// chrome; the exported card keeps `Brand.Shadow` so renders stay
-    /// byte-identical to the pre-redesign goldens.
+    /// byte-identical to the earlier goldens.
     enum Shadows {
         /// `--shadow-card` — subtle lift for cards inside the app chrome.
         static let card = Brand.ShadowStyle(
@@ -200,8 +199,8 @@ enum VitrineTokens {
 
     // MARK: - Chrome component fills
 
-    /// Component-level fills from the handoff UI kits (`design/handoff/ui_kits`).
-    /// These are the low-opacity washes the redesigned chrome layers over
+    /// Component-level fills shared across the app's design system.
+    /// These are the low-opacity washes the current designed chrome layers over
     /// `Surface.window` — kept here so views never spell out a raw rgba.
     enum Chrome {
         /// `.tile` — the grouped-form card fill.
@@ -230,10 +229,10 @@ enum VitrineTokens {
             dark: Color(hex: "#FFFFFF").opacity(0.05)
         ).color
         /// Selected font-pill wash — the lifted accent at 12 % in both
-        /// appearances (the kits use one fixed value).
+        /// appearances (the design uses one fixed value).
         static let pillSelectedFill = Color(hex: "#7C8CFF").opacity(0.12)
         /// Selected gradient-swatch border — accent in light, white over the
-        /// dark stage (`.swatch.on` in the kits).
+        /// dark stage.
         static let swatchSelectedBorder = Brand.BrandColor(
             light: Color(hex: "#4F46E5"),
             dark: Color(hex: "#FFFFFF")
@@ -246,7 +245,7 @@ enum VitrineTokens {
         static let ctaShadow = Brand.ShadowStyle(
             color: Color(hex: "#4F46E5").opacity(0.45), radius: 7, x: 0, y: 4)
         /// The stage's floating status capsule — a fixed dark wash in both
-        /// appearances (`rgba(34,35,43,0.7)` in the editor kit).
+        /// appearances (`rgba(34,35,43,0.7)` in the editor).
         static let statusCapsule = Color(hex: "#22232B").opacity(0.7)
         /// The sticky style-header drop (`0 10px 18px -14px rgba(0,0,0,0.55)`);
         /// SwiftUI has no shadow spread, so this is the closest tight underline.

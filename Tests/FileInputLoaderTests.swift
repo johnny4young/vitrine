@@ -3,7 +3,7 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-028 — drag-and-drop / file input loading.
+/// drag-and-drop / file input loading.
 ///
 /// These suites exercise `FileInputLoader`: the pure `decode(data:filename:)`
 /// policy (size cap, binary rejection, text decoding, language inference) driven
@@ -14,7 +14,7 @@ import Testing
 /// file is created fresh per call so tests never collide.
 private func temporaryFile(named name: String, data: Data) throws -> URL {
     let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("VitrineCS028-\(UUID().uuidString)", isDirectory: true)
+        .appendingPathComponent("VitrineFileInput-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let url = directory.appendingPathComponent(name, isDirectory: false)
     try data.write(to: url)
@@ -26,7 +26,7 @@ private func temporaryFile(named name: String, data: Data) throws -> URL {
 @Suite("FileInputLoader.decode")
 struct FileInputLoaderDecodeTests {
     /// A text file loads its contents verbatim and infers the language from the
-    /// extension (the primary acceptance: "loads text and infers language by
+    /// extension (the primary contract: "loads text and infers language by
     /// extension").
     @Test func textFileLoadsAndInfersLanguageByExtension() throws {
         let source = "import SwiftUI\n\nstruct A {}\n"
@@ -67,8 +67,8 @@ struct FileInputLoaderDecodeTests {
         #expect(loaded.language == .dockerfile)
     }
 
-    /// A binary file — detected by an embedded NUL byte — is rejected with the
-    /// binary error (acceptance: "Binary files are rejected with a clear message").
+    /// A binary file — detected by an embedded NUL byte — is rejected with a clear
+    /// binary error.
     @Test func binaryFileWithNulByteIsRejected() {
         var bytes: [UInt8] = Array("PK".utf8)  // ZIP-like header
         bytes.append(contentsOf: [0x03, 0x04, 0x00, 0xFF, 0x00, 0x10])
@@ -224,7 +224,7 @@ struct FileInputLoaderLoadTests {
     /// than trapping.
     @Test func missingFileIsUnreadable() {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("VitrineCS028-missing-\(UUID().uuidString).swift")
+            .appendingPathComponent("VitrineFileInput-missing-\(UUID().uuidString).swift")
         #expect(throws: FileInputLoader.LoadError.unreadable) {
             _ = try FileInputLoader.load(from: url)
         }
@@ -350,7 +350,7 @@ struct FileInputLoaderApplyTests {
 
 // MARK: - Sandbox entitlement (user-selected only, no broad file access)
 
-@Suite("CS-028 sandbox entitlement")
+@Suite(" sandbox entitlement")
 struct FileInputSandboxEntitlementTests {
     /// The bundled entitlements, parsed from the source-of-truth plist so the check
     /// is independent of how the app is packaged. Located relative to this test
@@ -381,7 +381,7 @@ struct FileInputSandboxEntitlementTests {
         #expect(plist["com.apple.security.files.user-selected.read-write"] as? Bool == true)
     }
 
-    /// CS-028 acceptance: drop input adds **no broad file permissions**. None of
+    /// Drop input adds **no broad file permissions**. None of
     /// the entitlement keys that would widen filesystem reach beyond the
     /// user-selected file may appear — so a future "make drops just work" change
     /// that grants blanket access is caught here.
@@ -414,7 +414,7 @@ struct FileInputSandboxEntitlementTests {
 @Suite("FileInputLoader.LoadError")
 struct FileInputLoaderErrorTests {
     /// Every error case carries a non-empty, user-facing message (the "clear
-    /// message" acceptance) and they are distinct.
+    /// message" contract) and they are distinct.
     @Test func everyErrorHasADistinctMessage() {
         let messages = [
             FileInputLoader.LoadError.binaryFile.message,

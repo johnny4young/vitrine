@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the global hotkey triggers (CS-002).
+/// What the global hotkey triggers.
 enum HotkeyAction: String, CaseIterable, Identifiable, Codable {
     case quickCapture
     case openEditor
@@ -15,7 +15,7 @@ enum HotkeyAction: String, CaseIterable, Identifiable, Codable {
     }
 
     /// The value used when nothing is persisted or a stored string no longer
-    /// maps to a case (CS-050 documented fallback).
+    /// maps to a case (documented fallback).
     static let fallback: HotkeyAction = .quickCapture
 
     /// Decodes a persisted raw value, tolerating `nil` or an unrecognized

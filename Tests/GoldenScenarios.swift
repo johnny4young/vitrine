@@ -5,7 +5,7 @@ import SwiftUI
 
 @testable import Vitrine
 
-/// The shared catalog of golden-image scenarios (CS-025).
+/// The shared catalog of golden-image scenarios.
 ///
 /// This is the **single source of truth** consumed by both the recorder
 /// (`GoldenRecorderTests`, which writes the committed PNG fixtures) and the
@@ -17,7 +17,7 @@ import SwiftUI
 ///
 /// ## What the scenarios cover
 ///
-/// Per the CS-025 acceptance list, the set spans the visual surfaces a screenshot
+/// The set spans the visual surfaces a screenshot
 /// app must not silently regress: the **default** (signature) theme, a **light**
 /// theme, a **transparent** background (real alpha), the **line-number** gutter, a
 /// **selected-line highlight**, and the fixed-size **OpenGraph** preset. Each is a
@@ -39,17 +39,17 @@ enum GoldenScenario: String, CaseIterable, Sendable {
     /// A light syntax theme (One Light), to catch regressions specific to the
     /// light-appearance render path (gutter/badge tints flip on luminance).
     case lightTheme = "light-theme"
-    /// A transparent canvas background, the load-bearing CS-024 alpha case: the
+    /// A transparent canvas background, the load-bearing alpha case: the
     /// corners must stay fully clear with no opaque matte.
     case transparentBackground = "transparent-background"
     /// The line-number gutter enabled, which switches the code body from a single
-    /// `Text` to the row-by-row layout (CS-021).
+    /// `Text` to the row-by-row layout.
     case lineNumbers = "line-numbers"
     /// A selected-line highlight band, the other half of the row-based layout —
-    /// the translucent wash drawn behind chosen rows (CS-021).
+    /// the translucent wash drawn behind chosen rows.
     case selectedLineHighlight = "selected-line-highlight"
     /// The fixed-size OpenGraph 1200×630 preset at 1×, the canonical link-preview
-    /// card whose pixel dimensions are guaranteed regardless of content (CS-020).
+    /// card whose pixel dimensions are guaranteed regardless of content.
     case openGraph = "opengraph"
 
     /// The fixture file name for this scenario (a PNG under `Tests/Fixtures/Golden/`).
@@ -80,7 +80,7 @@ enum GoldenScenario: String, CaseIterable, Sendable {
 
     /// The exact rendered pixel size for a fixed-size scenario (`fixedSize × scale`),
     /// or `nil` for a content-hugging scenario. This dimension is **OS-independent**
-    /// — `ImageRenderer` produces exactly this size for a pinned `proposedSize` — so
+    /// `ImageRenderer` produces exactly this size for a pinned `proposedSize` — so
     /// it can be asserted on any runner, unlike a hugging scenario whose size
     /// derives from text layout.
     var expectedFixedPixelSize: (width: Int, height: Int)? {
@@ -148,7 +148,7 @@ enum GoldenScenario: String, CaseIterable, Sendable {
     }
 
     /// A stable, content-derived fingerprint of this scenario's deterministic
-    /// config and render parameters, recorded in the manifest (CS-025).
+    /// config and render parameters, recorded in the manifest.
     ///
     /// It is a SHA-256 over the pixel-affecting fields (code, language, theme,
     /// font, padding, chrome/shadow/line-number flags, highlight ranges, the

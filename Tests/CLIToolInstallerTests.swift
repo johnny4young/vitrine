@@ -3,10 +3,10 @@ import Testing
 
 @testable import Vitrine
 
-/// The Settings ▸ General "Command-line tool" install logic (CS-033): linking
+/// The Settings ▸ General "Command-line tool" install logic: linking
 /// the embedded CLI onto PATH, detecting an existing link, and the Terminal
 /// fallback for system-owned folders.
-@Suite("CLI tool installer (CS-033)")
+@Suite("CLI tool installer")
 struct CLIToolInstallerTests {
     /// A scratch directory standing in for a PATH bin folder.
     private func makeBinDirectory() throws -> URL {

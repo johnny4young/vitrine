@@ -2,8 +2,7 @@ import Foundation
 import OSLog
 
 /// The persistence codec for `AppSettings`: it owns the `UserDefaults` key names and
-/// the defensive (de)serialization between the store and the typed model
-/// (CS-050/CS-051).
+/// the defensive (de)serialization between the store and the typed model.
 ///
 /// `AppSettings` stays the observable state surface — the `@Observable` properties and
 /// every `$settings.x` binding live there. Keeping this a plain, non-observable enum
@@ -27,7 +26,7 @@ enum SettingsCodec {
         static let highlightedLines = "highlightedLines"
         static let focusHighlightedLines = "focusHighlightedLines"
         static let diffDecorations = "diffDecorations"
-        /// Snapshot annotations (CS-083), stored as a JSON-encoded `[Annotation]`.
+        /// Snapshot annotations, stored as a JSON-encoded `[Annotation]`.
         /// Part of the document/style, so it seeds new editor windows.
         static let annotations = "annotations"
         static let metadata = "metadata"
@@ -45,7 +44,7 @@ enum SettingsCodec {
         static let appLanguage = "appLanguage"
         static let treatURLs = "treatURLsAsScreenshot"
         static let reindentOnPaste = "reindentOnPaste"
-        /// Web URL-capture viewport/wait settings (CS-044). All additive keys with
+        /// Web URL-capture viewport/wait settings. All additive keys with
         /// documented defaults, so an older store simply reads the defaults.
         static let webViewportKind = "webViewportKind"
         static let webViewports = "webViewports"
@@ -54,34 +53,34 @@ enum SettingsCodec {
         static let webCaptureMode = "webCaptureMode"
         static let webWaitKind = "webWaitKind"
         static let webWaitSeconds = "webWaitSeconds"
-        /// Whether URL capture uses the persistent (cookie/logged-in) data store (CS-043).
+        /// Whether URL capture uses the persistent (cookie/logged-in) data store.
         /// Opt-in only; off by default.
         static let webUsesLoggedInSession = "webUsesLoggedInSession"
         static let recentLanguages = "recentLanguages"
         static let fontName = "fontName"
         static let fontLigatures = "fontLigatures"
         static let selectedPreset = "selectedPreset"
-        /// The last-edited social card (CS-041), stored as a JSON-encoded
+        /// The last-edited social card, stored as a JSON-encoded
         /// `SocialCardModel`. App-global (there is one working card, like the
         /// working document), so it is not part of `editorSessionSeed`.
         static let socialCard = "socialCard"
         /// Whether the user has confirmed the first-use URL-capture privacy
-        /// disclosure (CS-045). Defaults false; URL capture shows the disclosure once
+        /// disclosure. Defaults false; URL capture shows the disclosure once
         /// until confirmed, and the Settings transparency row can revoke it.
         static let urlCaptureConsent = "urlCaptureConsentGiven"
-        /// First-run quick-start completion flag (CS-035).
+        /// First-run quick-start completion flag.
         static let hasSeenWelcome = "hasSeenWelcome"
-        /// Last app version whose "What's New" the user has seen (CS-049).
+        /// Last app version whose "What's New" the user has seen.
         static let lastSeenWhatsNewVersion = "lastSeenWhatsNewVersion"
-        /// Saved style presets (CS-030). Owned by `PresetStore`, listed here so a
+        /// Saved style presets. Owned by `PresetStore`, listed here so a
         /// "Reset all settings" clears the user's presets along with the rest of
         /// their data; the store reloads its in-memory copy afterward.
         static let userStylePresets = PresetStore.storageKey
-        /// Custom themes (CS-031). Owned by `CustomThemeStore`, listed here so a
+        /// Custom themes. Owned by `CustomThemeStore`, listed here so a
         /// "Reset all settings" clears the user's themes along with the rest of their
         /// data; the store reloads its in-memory copy afterward.
         static let userCustomThemes = CustomThemeStore.storageKey
-        /// Brand Kit (CS-092). Owned by `BrandKitStore`, listed here so a
+        /// Brand Kit. Owned by `BrandKitStore`, listed here so a
         /// "Reset all settings" clears the user's watermark identity and apply switch
         /// along with the rest of their preferences; the store reloads its in-memory
         /// copy afterward.
@@ -105,8 +104,8 @@ enum SettingsCodec {
             brandKit, brandKitEnabled,
         ]
 
-        /// The keys an editor window seeds from the app-wide defaults when it opens
-        /// (CS-053): the document/style fields plus the per-capture output knobs and
+        /// The keys an editor window seeds from the app-wide defaults when it opens:
+        /// the document/style fields plus the per-capture output knobs and
         /// the selected destination preset. Deliberately excludes the app-global,
         /// non-per-window state — the onboarding/What's-New flags and the hotkey
         /// action — and the shared preset/theme *catalogs* (those resolve through the
@@ -131,7 +130,7 @@ enum SettingsCodec {
         var config = SnapshotConfig()
         if let id = defaults.string(forKey: Keys.themeID) {
             // Resolve through a store bound to the same defaults so a persisted
-            // *custom* theme (CS-031) is restored on relaunch, falling back to the
+            // *custom* theme is restored on relaunch, falling back to the
             // built-in lookup (and ultimately One Dark) for a built-in or unknown id.
             config.theme = CustomThemeStore(defaults: defaults).theme(withID: id)
         }
@@ -180,8 +179,7 @@ enum SettingsCodec {
             config.diffDecorations = value
         }
         // Highlighted lines persist as the canonical spec string ("3, 7-9"); a
-        // missing or malformed value parses to no highlight rather than trapping
-        // (CS-021 / CS-050).
+        // missing or malformed value parses to no highlight rather than trapping.
         if let spec = defaults.string(forKey: Keys.highlightedLines) {
             config.highlightedLineRanges = LineHighlight.parse(spec)
         }
@@ -195,8 +193,8 @@ enum SettingsCodec {
         return config
     }
 
-    /// Reads the persisted annotations, tolerating a missing or corrupt value
-    /// (CS-083 / CS-050). Stored as a JSON-encoded `[Annotation]`; a garbage blob
+    /// Reads the persisted annotations, tolerating a missing or corrupt value.
+    /// Stored as a JSON-encoded `[Annotation]`; a garbage blob
     /// (or any single un-decodable element) yields the empty default — annotations
     /// are non-critical chrome, so a bad store degrades to "no marks" rather than
     /// failing the whole read.
@@ -207,8 +205,8 @@ enum SettingsCodec {
         return decoded
     }
 
-    /// Reads the persisted metadata header, tolerating a missing or corrupt value
-    /// (CS-022 / CS-050). Stored as a JSON-encoded `SnapshotMetadata`; a garbage
+    /// Reads the persisted metadata header, tolerating a missing or corrupt value.
+    /// Stored as a JSON-encoded `SnapshotMetadata`; a garbage
     /// blob simply yields `nil`, leaving the empty default (no header) in place.
     /// `SnapshotMetadata`'s decoder re-normalizes its text fields, so an empty or
     /// untrimmed persisted string can never reach the renderer.
@@ -219,12 +217,11 @@ enum SettingsCodec {
         return decoded
     }
 
-    /// Reads the persisted background, tolerating any missing or corrupt value
-    /// (CS-050 / CS-051).
+    /// Reads the persisted background, tolerating any missing or corrupt value.
     ///
     /// All background kinds — solid, gradient preset, custom gradient, image, and
     /// transparent — are stored as a single JSON-encoded `BackgroundStyle` under
-    /// `backgroundStyle`. For installs that predate CS-051 (which only ever wrote
+    /// `backgroundStyle`. For installs that predate background schema version 3 and only wrote
     /// a `gradientPreset` name), a legacy preset name is honored as a fallback so
     /// the user's chosen gradient survives the upgrade. A garbage JSON blob or an
     /// unknown legacy name simply yields `nil`, leaving the default in place.
@@ -242,8 +239,8 @@ enum SettingsCodec {
         return nil
     }
 
-    /// Reads the persisted social card, tolerating a missing or corrupt value
-    /// (CS-041 / CS-050). Stored as a JSON-encoded `SocialCardModel`; a garbage
+    /// Reads the persisted social card, tolerating a missing or corrupt value.
+    /// Stored as a JSON-encoded `SocialCardModel`; a garbage
     /// blob yields a fresh default card. The model's decoder re-normalizes its
     /// text fields, re-truncates the excerpt, and re-clamps the font size, so an
     /// out-of-range or hand-edited value can never reach the renderer.
@@ -297,7 +294,7 @@ enum SettingsCodec {
     }
 
     /// Persists the annotations as a JSON-encoded `[Annotation]` so every mark's
-    /// kind, normalized geometry, text, and color round-trip (CS-083). An empty
+    /// kind, normalized geometry, text, and color round-trip. An empty
     /// array clears the key so the store has no stale value and a later read
     /// restores the default (no marks); an unexpected encode failure also drops the
     /// key rather than leaving a stale blob behind.
@@ -310,7 +307,7 @@ enum SettingsCodec {
     }
 
     /// Persists the metadata header as a JSON-encoded `SnapshotMetadata` so its
-    /// fields round-trip (CS-022). An empty header clears the key so the store has
+    /// fields round-trip. An empty header clears the key so the store has
     /// no stale value and the default (no header) is what a later read restores;
     /// an unexpected encode failure also drops the key rather than leaving a stale
     /// blob behind.
@@ -323,8 +320,8 @@ enum SettingsCodec {
     }
 
     /// Persists the background as a JSON-encoded `BackgroundStyle` so every kind
-    /// (solid, gradient, custom gradient, image, transparent) round-trips
-    /// (CS-051). The legacy `gradientPreset` string key is cleared on write so the
+    /// (solid, gradient, custom gradient, image, transparent) round-trips.
+    /// The legacy `gradientPreset` string key is cleared on write so the
     /// store has a single source of truth and a stale name can never shadow the
     /// new value on a later read.
     static func persistBackground(_ background: BackgroundStyle, to defaults: UserDefaults) {
@@ -341,7 +338,7 @@ enum SettingsCodec {
     }
 
     /// Persists the social card as a JSON-encoded `SocialCardModel` so every field
-    /// round-trips (CS-041). An encode failure drops the key so a later read restores
+    /// round-trips. An encode failure drops the key so a later read restores
     /// a fresh default card rather than leaving a stale blob behind.
     static func persistSocialCard(_ card: SocialCardModel, to defaults: UserDefaults) {
         guard let data = try? JSONEncoder().encode(card) else {

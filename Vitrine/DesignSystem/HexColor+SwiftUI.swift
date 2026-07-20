@@ -6,7 +6,7 @@ import SwiftUI
 /// adapter reconstructs the `SwiftUI.Color` for rendering.
 extension HexColor {
     /// The SwiftUI color, reconstructed in the fixed sRGB space the components were
-    /// parsed in so it renders identically on any display (CS-031 determinism).
+    /// parsed in so it renders identically on any display (deterministic sizing).
     var color: Color {
         Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
     }

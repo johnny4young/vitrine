@@ -1,4 +1,4 @@
-# Mac App Store distribution readiness — CS-062
+# Mac App Store Distribution Readiness
 
 > The canonical, reviewable record of how Vitrine ships through the **optional** Mac App
 > Store channel without weakening the direct-download app. App Store discoverability is
@@ -8,15 +8,15 @@
 > App Review notes. `Tests/AppStoreReadinessTests.swift` fails if this document or the
 > shipped resources drift from what is documented here.
 
-The App Store build is **post-v0.1 and optional** — the primary channel is the signed,
+The App Store channel is optional; the primary channel is the signed,
 notarized DMG (see [`docs/RELEASING.md`](RELEASING.md)). The **same** app target ships
 through both channels: there is no separate "App Store build" that secretly drops or adds a
 capability. This file is the App Store companion to two existing references:
 
-- [`docs/PERMISSIONS.md`](PERMISSIONS.md) — the per-phase, per-channel entitlement audit
-  table (CS-065). Its "Distribution channels — App Store vs. direct download" section is the
+- [`docs/PERMISSIONS.md`](PERMISSIONS.md) — the per-channel entitlement audit
+  table. Its "Distribution channels — App Store vs. direct download" section is the
   authoritative matrix; this document explains the submission posture around it.
-- [`docs/PROJECT.md`](PROJECT.md#app-store-privacy-labels) — the narrative privacy promise
+- [`docs/PROJECT.md`](PROJECT.md#privacy-and-permissions) — the narrative privacy promise
   and the App Store privacy labels.
 
 The single source of truth for what actually ships is `project.yml` (the generated
@@ -36,20 +36,20 @@ already-shipping identity of the app, listed here so a submission is reproducibl
 | Bundle identifier | `com.johnny4young.vitrine` | `project.yml` → `PRODUCT_BUNDLE_IDENTIFIER` (the `Info.plist` `CFBundleIdentifier` expands from it). |
 | App name (display) | `Vitrine` | `Info.plist` → `CFBundleDisplayName`; `CFBundleName` expands from `PRODUCT_NAME`. |
 | Primary category | Developer Tools (`public.app-category.developer-tools`) | `Info.plist` → `LSApplicationCategoryType`. |
-| Marketing version | `0.21.0` | `project.yml` → `MARKETING_VERSION` (the `Info.plist` `CFBundleShortVersionString` expands from it). |
-| Build number | `22` | `project.yml` → `CURRENT_PROJECT_VERSION` (the `Info.plist` `CFBundleVersion` expands from it). |
+| Marketing version | `0.22.0` | `project.yml` → `MARKETING_VERSION` (the `Info.plist` `CFBundleShortVersionString` expands from it). |
+| Build number | `23` | `project.yml` → `CURRENT_PROJECT_VERSION` (the `Info.plist` `CFBundleVersion` expands from it). |
 | Copyright | `© 2026 johnny4young. MIT-licensed.` | `Info.plist` → `NSHumanReadableCopyright`. |
 | Minimum macOS | 14.0 (Sonoma) | `project.yml` → `deploymentTarget.macOS`; `Info.plist` `LSMinimumSystemVersion` expands from `MACOSX_DEPLOYMENT_TARGET`. |
 | App icon | `AppIcon` asset set | `project.yml` → `ASSETCATALOG_COMPILER_APPICON_NAME`. |
-| Localizations | English (development language), Spanish | `Info.plist` → `CFBundleLocalizations`; strings live in `Localizable.xcstrings` (CS-047). |
+| Localizations | English (development language), Spanish | `Info.plist` → `CFBundleLocalizations`; strings live in `Localizable.xcstrings`. |
 | Agent (no Dock icon) | `LSUIElement = true` | `Info.plist`. A menu-bar agent; documented in the App Review notes below so a reviewer expects no Dock icon. |
 
 ### Versioning policy
 
 - `MARKETING_VERSION` is the user-visible version (e.g. `0.1.0`) and matches the GitHub
   release tag and the Homebrew cask. It also drives the in-app "What's New" window
-  (`Vitrine/Help/ReleaseNotes.swift`, CS-049) — see the version-bump checklist in
-  [`docs/RELEASING.md`](RELEASING.md#release-notes-whats-new--cs-049).
+  (`Vitrine/Help/ReleaseNotes.swift`) — see the version-bump checklist in
+  [`docs/RELEASING.md`](RELEASING.md#release-notes-whats-new).
 - `CURRENT_PROJECT_VERSION` is the build number. **App Store Connect requires the build
   number to be unique and strictly increasing for a given marketing version**, so a
   resubmission of the same `0.1.0` (e.g. to fix a rejected binary) must bump
@@ -60,14 +60,13 @@ already-shipping identity of the app, listed here so a submission is reproducibl
 
 ### Signing identity (App Store vs. direct download)
 
-The App Store and direct-download channels differ in signing identity, review posture, and
-the auto-update mechanism. The App Store-relevant entitlement set is otherwise identical; the
-one deliberate capability difference is **auto-update** (CS-064): the direct-download DMG
-bundles Sparkle and signs with a superset entitlements file
-(`Vitrine.DirectDownload.entitlements`) that adds outbound network + Sparkle's XPC exceptions,
-while the **App Store build excludes Sparkle** and stays network-free (see
+The App Store and direct-download channels deliberately differ in signing identity,
+updates, and network capabilities. The direct-download DMG bundles Sparkle and signs
+with a superset entitlements file (`Vitrine.DirectDownload.entitlements`) that adds
+outbound network access and Sparkle's XPC exceptions, while the **App Store build
+excludes Sparkle and stays network-free** (see
 [`docs/PERMISSIONS.md`](PERMISSIONS.md#distribution-channels--app-store-vs-direct-download) and
-[Auto-update — App Store excludes Sparkle](#auto-update--app-store-excludes-sparkle-cs-064)).
+[Auto-update — App Store excludes Sparkle](#auto-update--app-store-excludes-sparkle)).
 
 | | Direct-download DMG | Mac App Store |
 | --- | --- | --- |
@@ -75,9 +74,9 @@ while the **App Store build excludes Sparkle** and stays network-free (see
 | Distribution | Signed, notarized DMG attached to a GitHub release; Homebrew cask | App Store Connect submission |
 | Trust check | Gatekeeper (`spctl`) validates the notarized, stapled artifact offline | App Review + the App Store delivery pipeline |
 | Auto-update | **Sparkle** (signed EdDSA appcast) | **Excluded** — the App Store updates the app |
-| `DEVELOPMENT_TEAM` | Set from `MACOS_NOTARY_TEAM_ID` for signing (CS-061) | The same Team ID, supplied to the App Store archive/export |
+| `DEVELOPMENT_TEAM` | Set from `MACOS_NOTARY_TEAM_ID` for signing | The same Team ID, supplied to the App Store archive/export |
 
-### Auto-update — App Store excludes Sparkle (CS-064)
+### Auto-update — App Store excludes Sparkle
 
 The direct-download build updates itself with [Sparkle](https://sparkle-project.org); the
 **Mac App Store build excludes Sparkle entirely**, because the App Store provides its own
@@ -95,7 +94,7 @@ not just intended:
 
 The full direct-download update flow (EdDSA keys, the signed appcast, publishing it per release,
 and testing an update from N to N+1) is documented in
-[`docs/RELEASING.md`](RELEASING.md#auto-update-sparkle--cs-064).
+[`docs/RELEASING.md`](RELEASING.md#auto-update-sparkle).
 
 `project.yml` keeps `DEVELOPMENT_TEAM` empty and `CODE_SIGN_STYLE: Automatic` by default so
 the repo builds and tests without an Apple account; a real submission supplies the Team ID
@@ -103,7 +102,7 @@ and the App Store provisioning profile at archive/export time (manually in Xcode
 or via the `ExportOptions.plist` `method: app-store` flow described below). No account
 credentials are committed.
 
-### Embedded CLI — App Store archive must address it (CS-033)
+### Embedded CLI — App Store archive must address it
 
 The app bundle embeds the `vitrine` command-line renderer at
 `Contents/MacOS/vitrine-cli` (for the Homebrew cask's `binary` stanza). App Store
@@ -128,44 +127,28 @@ summary:
 | --- | --- | --- |
 | `com.apple.security.app-sandbox` | **Required** and present. | The baseline containment the App Store mandates; Vitrine is already sandboxed. |
 | `com.apple.security.files.user-selected.read-write` | Present; minimal. | Only user-initiated file access (save panel for exports; open panel / drag-in for presets, themes, backgrounds, a source file). Reviewers expect and accept user-initiated file access. |
-| `com.apple.security.network.client` | **Absent in Phase 1.** | Phase 1 reports **no network**; there is nothing to justify. See the Phase 2 gate below. |
-| Screen Recording (TCC) | **Absent** (arbitrary screen/window capture is parked, CS-046). | Avoids the heaviest privacy-sensitive review scrutiny. No `NSScreenCaptureUsageDescription` and no capture API ship. |
+| `com.apple.security.network.client` | **Absent.** | The current App Store channel is network-free; URL capture and remote image import remain direct-download capabilities. |
+| Screen Recording (TCC) | **Absent by product design.** | Vitrine imports user-captured images instead. No `NSScreenCaptureUsageDescription` and no capture API ship. |
 
 The only declared `Info.plist` usage string is `NSPasteboardUsageDescription` (clipboard),
-which is the core feature: Vitrine turns the code (or, in Phase 2, the URL) you copied into
+which is the core feature: Vitrine turns the code (or, in web capture, the URL) you copied into
 an image. `Tests/PrivacyManifestTests.swift` asserts this is the **only** usage string and
 that no broader file entitlement, network entitlement, or Screen Recording entitlement is
 present.
 
-### Phase 1 App Store builds request no network
+### App Store builds request no network
 
-The network client entitlement is **absent** for Phase 1 App Store builds, exactly as for
-the Phase 1 DMG. `NetworkCapability` reads the entitlement at runtime and refuses any URL
-capture while it is absent, so a Phase 1 App Store build **provably cannot reach the
-network**. The App Store privacy posture for Phase 1 is therefore "no network, no data
-collected".
+The network client entitlement is **absent** from App Store builds. `NetworkCapability`
+reads the entitlement at runtime and refuses any remote URL capture while it is absent,
+so an App Store build **provably cannot reach the
+network**. The App Store privacy posture is therefore "no network, no data collected".
 
-### If Phase 2 URL capture ships, update the network entitlement and privacy copy first
-
-Product Phase 2 (CS-043/CS-045) lets a copied **URL** be captured by loading the requested
-webpage **locally in WebKit on this Mac** (`WKWebView`) and rasterizing it on-device — there
-is **no remote screenshot service**. It is deferred and opt-in. **Before** an App Store
-submission that enables it, the following must be updated in the same change:
-
-1. Add `com.apple.security.network.client` to `Vitrine.entitlements` (this is the single
-   switch that enables URL capture). `Tests/PrivacyManifestTests.swift` currently asserts
-   the key is **absent**, so adding it forces a deliberate matrix + test update.
-2. Update the privacy copy in [`README.md`](../README.md), [`docs/PROJECT.md`](PROJECT.md),
-   and [`docs/PERMISSIONS.md`](PERMISSIONS.md) to describe the outbound request, and re-check
-   the App Store review narrative ("loads the user's URL locally in WebKit, no remote
-   service, no data collected").
-3. Confirm the first-use disclosure (`WebPrivacyDisclosureView`) is shown before any page
-   loads.
-
-The privacy **labels** do not change — loading a user-requested page locally introduces no
-required-reason API beyond UserDefaults and collects no data, so the label stays **Data Not
-Collected** (see below). What changes is the *network* entitlement and the *review
-narrative*, not the data-collection posture.
+The direct-download channel can capture a copied **URL** by loading the requested webpage
+**locally in WebKit on this Mac** (`WKWebView`) and rasterizing it on-device, with no remote
+screenshot service. `NetworkCapability` and a first-use disclosure keep that
+network-backed behavior unavailable in the App Store channel. The channel distinction is
+enforced by `Tests/PrivacyManifestTests.swift` and documented in
+[`docs/PERMISSIONS.md`](PERMISSIONS.md).
 
 ## App Store privacy labels (match `PrivacyInfo.xcprivacy`)
 
@@ -181,7 +164,7 @@ Vitrine does not track users and collects no data:
 | **Overall label** | **Data Not Collected** | the manifest declares no collection |
 | Required-reason API | `NSPrivacyAccessedAPICategoryUserDefaults` (reason `CA92.1`), used only to store the app's own settings | `NSPrivacyAccessedAPITypes` |
 
-Phase 2 URL capture does **not** change these labels (see the Phase 2 gate above). The
+Direct-download URL capture does **not** change these labels. The
 manifest — and therefore the labels — changes only if a new required-reason API or data
 collection is actually introduced. `Tests/PrivacyManifestTests.swift` asserts the manifest
 stays "no tracking, no collected data, UserDefaults-only", so the labels documented here
@@ -217,7 +200,7 @@ credential committed to the repo.
 
    # 2. Validate, then upload to App Store Connect / TestFlight.
    #    Authenticate with an App Store Connect API key (preferred) — the same key
-   #    style used for notarization (CS-061): MACOS_NOTARY_KEY_ID / _ISSUER_ID / _P8.
+   #    style used for notarization: MACOS_NOTARY_KEY_ID / _ISSUER_ID / _P8.
    xcrun altool --validate-app -f build/appstore/Vitrine.pkg -t macos \
      --apiKey "$MACOS_NOTARY_KEY_ID" --apiIssuer "$MACOS_NOTARY_KEY_ISSUER_ID"
    xcrun altool --upload-app   -f build/appstore/Vitrine.pkg -t macos \
@@ -272,10 +255,9 @@ reviewer understands the menu-bar, local-rendering, no-telemetry design before t
 > **Data Not Collected**. The only required-reason API is `UserDefaults`, used solely to
 > store the app's own settings.
 >
-> **No network in this build.** This Phase 1 build requests **no network entitlement** and
-> cannot reach the network. (A future opt-in feature may load a user-requested URL **locally
-> in WebKit** to image it; if and when that ships, the network entitlement and this note
-> will be updated and the behavior remains on-device with no remote screenshot service.)
+> **No network in this build.** This App Store build requests **no network entitlement**
+> and cannot reach the network. URL capture and remote image import are available only in
+> the direct-download channel; normal rendering remains entirely on-device in both channels.
 >
 > **File access.** Only user-initiated: a save panel when you export an image, and an open
 > panel / drag-in when you import a theme, preset, background, or source file.
@@ -288,9 +270,7 @@ reviewer understands the menu-bar, local-rendering, no-telemetry design before t
       `MARKETING_VERSION`) — see [`docs/RELEASING.md`](RELEASING.md).
 - [ ] `make lint && make build && make test` green (includes `AppStoreReadinessTests` and the
       permission/privacy drift guards).
-- [ ] Entitlements unchanged from the documented App Store-compatible set, **or** the Phase 2
-      gate above was followed (network entitlement + privacy copy + matrix + tests updated
-      together).
+- [ ] Entitlements match the documented App Store-compatible set and the permission matrix.
 - [ ] App icon up to date (`make icon`).
 - [ ] Archived on the `Vitrine` scheme; **Validate App** passes in Xcode Organizer (or
       `xcrun altool --validate-app`).
@@ -309,4 +289,4 @@ run** when the App Store Connect API-key secrets (`MACOS_NOTARY_KEY_ID`,
 or auto-uploads** a build. When the secrets are absent (a fork, or before an Apple account
 exists) the archive still builds and the validation step is skipped, so the workflow stays
 green without credentials. This matches the graceful-degradation posture of the signed DMG
-pipeline (CS-061): the secret-gated stages skip cleanly rather than failing the run.
+pipeline: the secret-gated stages skip cleanly rather than failing the run.

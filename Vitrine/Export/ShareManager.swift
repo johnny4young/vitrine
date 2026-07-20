@@ -1,6 +1,6 @@
 import AppKit
 
-/// Presents the macOS Share Sheet for a rendered image (CS-008).
+/// Presents the macOS Share Sheet for a rendered image.
 ///
 /// `NSSharingServicePicker` shows its popover **asynchronously** and must outlive the
 /// `show(...)` call — a transient local would be released the instant `share(_:)`
@@ -35,7 +35,7 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
         Self.active = nil
     }
 
-    /// Adds the Post-to compose targets (feature #25) ahead of the system services.
+    /// Adds the Post-to compose targets ahead of the system services.
     /// Each one stages the image on the clipboard and opens the network's web compose
     /// page with a paste hint — the web intents can't attach an image, so this is the
     /// closest honest flow: one paste away from posting, nothing sent by Vitrine.

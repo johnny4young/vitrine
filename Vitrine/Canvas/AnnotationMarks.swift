@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The exported visual of one annotation (CS-083 / CS-085). `SnapshotCanvas` draws
+/// The exported visual of one annotation. `SnapshotCanvas` draws
 /// these, so a mark looks identical in the editor preview and the rendered PNG/PDF.
 /// Coordinates arrive already denormalized to the canvas `size`. Blur is composited
 /// separately by the canvas (a masked, blurred copy), so it renders nothing here.
@@ -67,7 +67,7 @@ struct ArrowMark: View {
     }
 }
 
-/// A curved arrow (feature #11): a quadratic arc from tail to head — the hand-drawn
+/// A curved arrow: a quadratic arc from tail to head — the hand-drawn
 /// "swooping" callout CleanShot ships — with the same chevron head as the straight
 /// arrow, kept tangent to the curve's end so the head follows the swoop.
 struct CurvedArrowMark: View {
@@ -129,7 +129,7 @@ struct CurvedArrowShape: Shape {
     }
 }
 
-/// The shaft + chevron head of an arrow, in canvas points (CS-083).
+/// The shaft + chevron head of an arrow, in canvas points.
 struct ArrowShape: Shape {
     let from: CGPoint
     let to: CGPoint
@@ -194,7 +194,7 @@ struct RectangleMark: View {
 }
 
 /// A translucent highlighter band — like a marker swiped over the text, with softly
-/// rounded ends so it reads as a highlight and not a filled box (CS-085). The content
+/// rounded ends so it reads as a highlight and not a filled box. The content
 /// stays legible through it.
 struct HighlighterMark: View {
     let annotation: Annotation
@@ -236,7 +236,7 @@ struct TextMark: View {
     private var fontSize: CGFloat { max(12, annotation.thickness * 4) }
 }
 
-/// A dimension callout (feature #12): a technical-drawing measurement — the shaft
+/// A dimension callout: a technical-drawing measurement — the shaft
 /// with perpendicular end caps, and the span's length in canvas points on a small
 /// pill at the midpoint. For a fixed-size destination the canvas points *are* the
 /// export's logical pixels, so the label reads as a true pixel dimension.
@@ -299,7 +299,7 @@ struct MeasureShape: Shape {
 }
 
 /// A numbered badge — a filled circle in the mark color with a white number, for
-/// walking a viewer through steps (CS-085).
+/// walking a viewer through steps.
 struct CounterMark: View {
     let annotation: Annotation
     let size: CGSize

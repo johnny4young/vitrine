@@ -3,7 +3,7 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-065 — Permission and entitlement matrix.
+/// Permission and entitlement matrix.
 ///
 /// These suites are the drift guard for the permission posture documented in
 /// `docs/PERMISSIONS.md`. The matrix is only trustworthy if the shipped entitlements,
@@ -12,16 +12,16 @@ import Testing
 /// those files are not compiled into the test bundle) and fails if they drift from the
 /// matrix without an explicit update:
 ///
-/// - The entitlement set stays the Phase 1 set — sandbox + user-selected files — with
+/// - The entitlement set stays the minimal set — sandbox + user-selected files — with
 ///   **no network and no Screen Recording**; every key present is named in the matrix.
 /// - The only `Info.plist` usage string is the clipboard one, and **no** Screen Recording
 ///   usage string is declared.
 /// - The privacy manifest declares no tracking and no collected data.
-/// - The matrix itself documents every required context (Phase 1, Phase 2 URL, optional
+/// - The matrix itself documents every required context (local rendering, URL capture, optional
 ///   screen/window capture, CLI, App Store, direct download) and the specific claims the
-///   CS-065 acceptance criteria require.
+///    documented contract require.
 ///
-/// This complements `PrivacyManifestTests` (CS-011, in `PrivacyTests.swift`), which
+/// This complements `PrivacyManifestTests` (in `PrivacyTests.swift`), which
 /// asserts the *bundled* manifest from `Bundle.main`; here we tie the *source* files to
 /// the matrix document. No SwiftUI `body` is rendered, so the suites stay clear of
 /// CoreText under the parallel runner.
@@ -128,10 +128,10 @@ enum PermissionMatrix {
         return captured.joined(separator: "\n")
     }
 
-    /// The exact Phase 1 entitlement set the matrix documents: the App Sandbox plus
+    /// The exact minimal App Store entitlement set the matrix documents: the App Sandbox plus
     /// user-selected file access, and nothing else. Anything beyond this is a drift that
     /// the suite flags.
-    static let phase1EntitlementKeys: Set<String> = [
+    static let minimalEntitlementKeys: Set<String> = [
         "com.apple.security.app-sandbox",
         "com.apple.security.files.user-selected.read-write",
     ]
@@ -139,14 +139,14 @@ enum PermissionMatrix {
 
 // MARK: - Entitlement plist tests
 
-/// The shipped app-target entitlements must match the Phase 1 row of the matrix exactly:
+/// The shipped app-target entitlements must match the local rendering row of the matrix exactly:
 /// sandbox on, user-selected file access, and **no network, no Screen Recording**. These
-/// are the "entitlement plist tests" CS-065 calls for, and the guard that "tests fail if
+/// are the "entitlement plist tests"  calls for, and the guard that "tests fail if
 /// entitlements drift from the matrix without an explicit update."
-@Suite("Entitlement matrix · CS-065")
+@Suite("Entitlement matrix")
 struct EntitlementMatrixTests {
 
-    /// The App Sandbox is on. This is the baseline Phase 1 containment the matrix
+    /// The App Sandbox is on. This is the baseline local rendering containment the matrix
     /// documents and the App Store requires.
     @Test func sandboxIsEnabled() throws {
         let entitlements = try PermissionMatrix.entitlements()
@@ -169,26 +169,28 @@ struct EntitlementMatrixTests {
         ]
         for key in broaderFileKeys {
             #expect(
-                entitlements[key] == nil, "Phase 1 must not request the broader \(key) entitlement")
+                entitlements[key] == nil,
+                "local rendering must not request the broader \(key) entitlement")
         }
     }
 
-    /// Phase 1 must request **no network**: the network-client entitlement is absent, so a
-    /// Phase 1 build provably cannot reach the network (`NetworkCapability` reads this same
-    /// key at runtime and refuses URL capture). This is the matrix's "Phase 1 says no
+    /// local rendering must request **no network**: the network-client entitlement is absent, so a
+    /// network-free build provably cannot reach the network (`NetworkCapability` reads this same
+    /// key at runtime and refuses URL capture). This is the matrix's "local rendering says no
     /// network" claim asserted against the real entitlements.
-    @Test func phase1RequestsNoNetwork() throws {
+    @Test func minimalAppBuildRequestsNoNetwork() throws {
         let entitlements = try PermissionMatrix.entitlements()
         #expect(
             entitlements[NetworkCapability.networkClientEntitlement] == nil,
-            "Phase 1 must not request \(NetworkCapability.networkClientEntitlement) (no network).")
+            "local rendering must not request \(NetworkCapability.networkClientEntitlement) (no network)."
+        )
     }
 
-    /// Phase 1 must request **no Screen Recording**. macOS surfaces that grant at runtime
+    /// local rendering must request **no Screen Recording**. macOS surfaces that grant at runtime
     /// via TCC rather than one fixed entitlement key, so this matches defensively on any
     /// key naming recording/capture of the screen. None exist today; this fails loudly if
-    /// one is added — the matrix's "Phase 1 says no Screen Recording" claim, enforced.
-    @Test func phase1RequestsNoScreenRecording() throws {
+    /// one is added — the matrix's "local rendering says no Screen Recording" claim, enforced.
+    @Test func minimalAppBuildRequestsNoScreenRecording() throws {
         let entitlements = try PermissionMatrix.entitlements()
         let screenKeys = entitlements.keys.filter { key in
             let lowered = key.lowercased()
@@ -197,57 +199,57 @@ struct EntitlementMatrixTests {
         }
         #expect(
             screenKeys.isEmpty,
-            "Phase 1 must request no Screen Recording entitlement. Found: \(screenKeys)")
+            "local rendering must request no Screen Recording entitlement. Found: \(screenKeys)")
     }
 
-    /// The entitlement set is **exactly** the Phase 1 set — no more, no less. Pinning the
+    /// The entitlement set is **exactly** the minimal set — no more, no less. Pinning the
     /// full key set (not just individual presences/absences) means *any* added entitlement,
     /// not only network/screen ones, trips this test and forces a matrix + test update in
     /// the same change. Every key here must also be documented in the matrix (asserted in
     /// `PermissionMatrixDocumentTests`).
-    @Test func entitlementSetIsExactlyThePhase1Set() throws {
+    @Test func entitlementSetIsExactlyTheMinimalSet() throws {
         let entitlements = try PermissionMatrix.entitlements()
         let keys = Set(entitlements.keys)
         #expect(
-            keys == PermissionMatrix.phase1EntitlementKeys,
+            keys == PermissionMatrix.minimalEntitlementKeys,
             """
-            Entitlements drifted from the Phase 1 matrix set. Expected exactly \
-            \(PermissionMatrix.phase1EntitlementKeys.sorted()), found \(keys.sorted()). \
-            Update docs/PERMISSIONS.md and this test in the same change (CS-065).
+            Entitlements drifted from the local rendering matrix set. Expected exactly \
+            \(PermissionMatrix.minimalEntitlementKeys.sorted()), found \(keys.sorted()). \
+            Update docs/PERMISSIONS.md and this test in the same change.
             """)
     }
 
     /// Every entitlement key the app actually ships must be named in the matrix document,
     /// so the audit table can never silently omit a live entitlement. (The reverse — the
     /// matrix naming a *deferred* key like the network entitlement that is not yet shipped
-    /// — is allowed and expected.)
+    /// is allowed and expected.)
     @Test func everyShippedEntitlementIsNamedInTheMatrix() throws {
         let entitlements = try PermissionMatrix.entitlements()
         let matrix = try PermissionMatrix.matrix()
         for key in entitlements.keys {
             #expect(
                 matrix.contains(key),
-                "Shipped entitlement \(key) is not documented in docs/PERMISSIONS.md (CS-065).")
+                "Shipped entitlement \(key) is not documented in docs/PERMISSIONS.md.")
         }
     }
 }
 
 // MARK: - Info.plist usage-string tests
 
-/// The "Info.plist usage-string tests" CS-065 calls for: the only declared usage string is
-/// the clipboard one, it keeps the Phase 1 promise, and **no** Screen Recording usage
+/// The "Info.plist usage-string tests"  calls for: the only declared usage string is
+/// the clipboard one, it keeps the local-rendering promise, and **no** Screen Recording usage
 /// string is declared.
-@Suite("Info.plist usage strings · CS-065")
+@Suite("Info.plist usage strings")
 struct InfoPlistUsageStringTests {
 
-    /// `NSPasteboardUsageDescription` is present, non-empty, and keeps the Phase 1 promise
-    /// ("never leaves your Mac") while naming local-WebKit capture for Phase 2 — the matrix
+    /// `NSPasteboardUsageDescription` is present, non-empty, and keeps the local-rendering promise
+    /// ("never leaves your Mac") while naming local-WebKit capture for web capture — the matrix
     /// row for the clipboard usage string.
     @Test func clipboardUsageStringIsPresentAndKeepsThePromise() throws {
         let plist = try PermissionMatrix.infoPlist()
         let usage = try #require(
             plist["NSPasteboardUsageDescription"] as? String,
-            "Info.plist must carry the clipboard usage description (CS-065).")
+            "Info.plist must carry the clipboard usage description.")
         #expect(!usage.isEmpty)
         #expect(usage.localizedCaseInsensitiveContains("never leaves your Mac"))
         #expect(usage.localizedCaseInsensitiveContains("locally in WebKit"))
@@ -255,12 +257,12 @@ struct InfoPlistUsageStringTests {
 
     /// No Screen Recording usage string may be declared. A capture feature would require
     /// `NSScreenCaptureUsageDescription`; its absence is part of the matrix's "no Screen
-    /// Recording" guarantee for every shipping phase.
+    /// Recording" guarantee for every shipping channel.
     @Test func noScreenRecordingUsageString() throws {
         let plist = try PermissionMatrix.infoPlist()
         #expect(
             plist["NSScreenCaptureUsageDescription"] == nil,
-            "Arbitrary screen capture is parked; no Screen Recording usage string may ship (CS-065)."
+            "Arbitrary screen capture is outside the product; no Screen Recording usage string may ship."
         )
     }
 
@@ -275,7 +277,7 @@ struct InfoPlistUsageStringTests {
             """
             The clipboard usage string must be the only declared usage string. Found \
             \(usageKeys.sorted()). Document any new usage in docs/PERMISSIONS.md and this \
-            test in the same change (CS-065).
+            test in the same change.
             """)
     }
 
@@ -288,18 +290,18 @@ struct InfoPlistUsageStringTests {
         // No App Transport Security exceptions: nothing relaxes the network posture.
         #expect(
             plist["NSAppTransportSecurity"] == nil,
-            "Phase 1 declares no relaxed App Transport Security (CS-065).")
+            "local rendering declares no relaxed App Transport Security.")
     }
 }
 
 // MARK: - Privacy manifest tests (tied to the matrix)
 
-/// The "privacy manifest tests" CS-065 calls for, asserted against the **committed**
+/// The "privacy manifest tests"  calls for, asserted against the **committed**
 /// `PrivacyInfo.xcprivacy` and tied to the matrix: no tracking, no collected data, and a
 /// single UserDefaults required-reason API. (The bundle-loaded counterpart lives in
 /// `PrivacyManifestTests` in `PrivacyTests.swift`; this one ties the source file to the
-/// matrix's privacy row, including across Phase 2.)
-@Suite("Privacy manifest matrix · CS-065")
+/// matrix's privacy row, including across web capture.)
+@Suite("Privacy manifest matrix")
 struct PrivacyManifestMatrixTests {
 
     @Test func declaresNoTrackingNoDomainsNoCollectedData() throws {
@@ -310,8 +312,8 @@ struct PrivacyManifestMatrixTests {
     }
 
     /// The only required-reason API is UserDefaults (reason `CA92.1`), used for the app's
-    /// own settings — exactly what the matrix's privacy row states for both Phase 1 and
-    /// Phase 2.
+    /// own settings — exactly what the matrix's privacy row states for both local rendering and
+    /// web capture.
     @Test func theOnlyRequiredReasonAPIIsUserDefaults() throws {
         let plist = try PermissionMatrix.privacyManifest()
         let apiTypes = plist["NSPrivacyAccessedAPITypes"] as? [[String: Any]] ?? []
@@ -326,21 +328,21 @@ struct PrivacyManifestMatrixTests {
 
 /// The matrix is the deliverable; asserting its substantive contents (not merely that the
 /// file exists) keeps it from being silently gutted and pins the specific claims the
-/// CS-065 acceptance criteria require. Reads the committed `docs/PERMISSIONS.md`.
-@Suite("Permission matrix document · CS-065")
+/// documented contract requires. Reads the committed `docs/PERMISSIONS.md`.
+@Suite("Permission matrix document")
 struct PermissionMatrixDocumentTests {
 
-    /// The matrix lists every required context: Phase 1, Phase 2 URL, optional
+    /// The matrix lists every required context: local rendering, URL capture, optional
     /// screen/window capture, CLI, App Store, and direct-download builds.
     @Test func listsEveryRequiredContext() throws {
         let matrix = try PermissionMatrix.matrix()
-        // Product phases.
-        #expect(matrix.localizedCaseInsensitiveContains("Phase 1"))
-        #expect(matrix.localizedCaseInsensitiveContains("Product Phase 2"))
+        // Rendering capabilities.
+        #expect(matrix.localizedCaseInsensitiveContains("local rendering"))
+        #expect(matrix.localizedCaseInsensitiveContains("web capture"))
         #expect(matrix.localizedCaseInsensitiveContains("URL capture"))
         // Optional arbitrary screen/window capture.
         #expect(
-            matrix.localizedCaseInsensitiveContains("screen / window capture")
+            matrix.localizedCaseInsensitiveContains("screen or window capture")
                 || matrix.localizedCaseInsensitiveContains("screen/window capture"))
         // CLI.
         #expect(matrix.localizedCaseInsensitiveContains("CLI"))
@@ -351,24 +353,17 @@ struct PermissionMatrixDocumentTests {
                 || matrix.localizedCaseInsensitiveContains("direct-download"))
     }
 
-    /// Each entitlement in the matrix carries the five required attributes the acceptance
-    /// criteria mandate: reason, user-facing behavior, whether it is required, a
-    /// test/review check, and App Store impact. The matrix renders these as table column
-    /// headers, so their presence proves the schema is in place.
-    @Test func documentsTheFiveRequiredAttributesPerEntitlement() throws {
+    /// The primary matrix keeps the capability, status, and rationale visible together.
+    @Test func documentsStatusAndRationalePerEntitlement() throws {
         let matrix = try PermissionMatrix.matrix()
-        #expect(matrix.localizedCaseInsensitiveContains("Reason"))
-        #expect(matrix.localizedCaseInsensitiveContains("User-facing behavior"))
-        #expect(matrix.localizedCaseInsensitiveContains("Required?"))
-        #expect(
-            matrix.localizedCaseInsensitiveContains("Test / review check")
-                || matrix.localizedCaseInsensitiveContains("Test/review check"))
-        #expect(matrix.localizedCaseInsensitiveContains("App Store impact"))
+        #expect(matrix.localizedCaseInsensitiveContains("Entitlement or permission"))
+        #expect(matrix.localizedCaseInsensitiveContains("Status"))
+        #expect(matrix.localizedCaseInsensitiveContains("Reason and guard"))
     }
 
-    /// The Phase 1 row says **no network and no Screen Recording** — the acceptance
-    /// criterion "Phase 1 matrix says no network and no Screen Recording."
-    @Test func phase1RowSaysNoNetworkAndNoScreenRecording() throws {
+    /// The local rendering row says **no network and no Screen Recording** — the contract
+    /// criterion "local rendering matrix says no network and no Screen Recording."
+    @Test func localRenderingRowSaysNoNetworkAndNoScreenRecording() throws {
         let matrix = try PermissionMatrix.matrix()
         #expect(matrix.localizedCaseInsensitiveContains("no network"))
         #expect(matrix.localizedCaseInsensitiveContains("no Screen Recording"))
@@ -376,10 +371,10 @@ struct PermissionMatrixDocumentTests {
         #expect(matrix.contains(NetworkCapability.networkClientEntitlement))
     }
 
-    /// The Phase 2 URL row says the network client is **required only for URL loading** —
-    /// the acceptance criterion "Phase 2 URL matrix says network client is required only
+    /// The URL capture row says the network client is **required only for URL loading** —
+    /// the contract criterion "URL capture matrix says network client is required only
     /// for URL loading."
-    @Test func phase2RowSaysNetworkClientRequiredOnlyForURLLoading() throws {
+    @Test func urlCaptureRowSaysNetworkClientRequiredOnlyForURLLoading() throws {
         let matrix = try PermissionMatrix.matrix()
         #expect(matrix.localizedCaseInsensitiveContains("required only for URL loading"))
         // And that the page loads locally in WebKit, with no remote service (the privacy
@@ -389,14 +384,14 @@ struct PermissionMatrixDocumentTests {
     }
 
     /// The optional screen/window capture row says Screen Recording is **required** and
-    /// the capability **must stay out of core until approved** — the acceptance criterion
+    /// the capability **must stay out of core until approved** — the contract criterion
     /// for arbitrary capture.
     @Test func screenCaptureRowRequiresScreenRecordingAndStaysOutOfCore() throws {
         let matrix = try PermissionMatrix.matrix()
         #expect(matrix.contains("Screen Recording"))
         #expect(matrix.localizedCaseInsensitiveContains("must stay out of core until approved"))
-        // It points at the discovery decision that parks it.
-        #expect(matrix.contains("SCREEN-CAPTURE-DISCOVERY.md"))
+        // It points at the decision that defines the boundary.
+        #expect(matrix.contains("SCREEN-CAPTURE.md"))
     }
 
     /// The matrix records the change policy that makes the test the guard — that the
@@ -418,11 +413,11 @@ struct PermissionMatrixDocumentTests {
 /// and `Services`", so `NetworkCapability` and `WKWebView` are never compiled into the
 /// tool. Without these checks that row is unenforced prose — the CLI target could quietly
 /// gain an entitlement or pull in the web-rendering surface (and thus the network client)
-/// while the matrix still claimed it had none, exactly the silent drift CS-065 exists to
+/// while the matrix still claimed it had none, exactly the silent drift this suite exists to
 /// stop. These read the committed `project.yml` (the source of truth for the generated,
-/// git-ignored `Vitrine.xcodeproj`), matching how `WorkflowConfigurationTests` (CS-060)
+/// git-ignored `Vitrine.xcodeproj`), matching how `WorkflowConfigurationTests`
 /// asserts against the same file.
-@Suite("CLI permission posture · CS-065")
+@Suite("CLI permission posture")
 struct CLIPermissionPostureTests {
 
     /// The `VitrineCLI` target declares **no** `CODE_SIGN_ENTITLEMENTS`: a command-line
@@ -437,7 +432,7 @@ struct CLIPermissionPostureTests {
         #expect(
             !cli.contains("CODE_SIGN_ENTITLEMENTS"),
             """
-            The VitrineCLI target must declare no CODE_SIGN_ENTITLEMENTS (CS-065): a CLI tool \
+            The VitrineCLI target must declare no CODE_SIGN_ENTITLEMENTS: a CLI tool \
             is not a sandboxed app and ships none of the app's entitlements. If this changes, \
             update the CLI row of docs/PERMISSIONS.md and this test in the same change.
             """)
@@ -455,7 +450,7 @@ struct CLIPermissionPostureTests {
             #expect(
                 cli.contains("\"\(excluded)\"") || cli.contains("- \(excluded)"),
                 """
-                The VitrineCLI target must exclude \(excluded) (CS-065). Excluding WebRendering \
+                The VitrineCLI target must exclude \(excluded). Excluding WebRendering \
                 in particular keeps NetworkCapability and WKWebView out of the CLI, which is why \
                 the matrix can say the CLI uses no network. Update the CLI row of \
                 docs/PERMISSIONS.md and this test together if this changes.

@@ -1,14 +1,14 @@
 import Foundation
 
-/// The out-of-process PRO entitlement check for the `vitrine` CLI (CS-094).
+/// The out-of-process PRO entitlement check for the `vitrine` CLI.
 ///
 /// The CLI is a separate process from the app and a direct-download/Homebrew feature
 /// (the sandboxed App Store build can't symlink a binary onto PATH), so it cannot read
 /// the app's in-process `Entitlements` and there is no StoreKit↔CLI bridge. Instead the
 /// app writes an **Ed25519-signed activation token** to a shared file on activation, and
 /// the CLI re-verifies that signature itself against the embedded public key — it never
-/// trusts a plain boolean (Resolved decision #1). Verification is fully offline and
-/// reuses the same `LicenseVerifier` the app uses (CS-090).
+/// trusts a plain boolean. Verification is fully offline and
+/// reuses the same `LicenseVerifier` the app uses.
 ///
 /// A **Debug-only** env bypass (`VITRINE_PRO_UNLOCK=1`) unlocks the CLI for local
 /// development. It is wrapped in `#if DEBUG`, so it is physically absent from a release
@@ -32,7 +32,7 @@ enum CLIEntitlement {
     }
 
     /// The shared file the app writes the signed activation token to and the CLI reads it
-    /// from (CS-094). The direct-download app is **sandboxed**, so it writes inside its own
+    /// from. The direct-download app is **sandboxed**, so it writes inside its own
     /// container's Application Support (`LicenseKeyProvider` → `CLITokenFile.appContainerURL`,
     /// resolved through `.applicationSupportDirectory`). The CLI is **not** sandboxed, so its
     /// own `.applicationSupportDirectory` would be `~/Library/Application Support` — the wrong

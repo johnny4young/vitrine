@@ -3,7 +3,7 @@ import SwiftUI
 
 /// A mutable, `Color`-backed draft of a custom-theme palette, used by
 /// `CustomThemeEditor` so the color wells bind to live SwiftUI colors and the
-/// preview updates as the user edits (CS-031).
+/// preview updates as the user edits.
 ///
 /// It is `Identifiable` so it can drive a `.sheet(item:)`, and carries an optional
 /// `editingID` so the same editor handles both "new" and "edit an existing theme".
@@ -77,8 +77,7 @@ final class CustomThemeDraft: Identifiable {
     }
 }
 
-/// A sheet for creating or editing a custom theme with a live preview before saving
-/// (CS-031 "theme preview appears before saving").
+/// A sheet for creating or editing a custom theme with a live preview before saving.
 ///
 /// The color wells edit a `CustomThemeDraft`; the preview re-renders the current
 /// code (or a sample snippet) with the draft palette on every change, so the user
@@ -90,7 +89,7 @@ struct CustomThemeEditor: View {
     let onSave: (String, ThemePalette) -> Void
     let onCancel: () -> Void
 
-    /// The rendered preview, recomputed debounced off the `body` pass (P2): rasterizing
+    /// The rendered preview, recomputed outside the `body` pass: rasterizing
     /// a full `ImageRenderer` canvas at scale 2 inside `body` re-ran on every color-well
     /// drag. A `.task(id:)` now coalesces rapid edits into one scale-1 render stored here.
     @State private var renderedImage: NSImage?
@@ -179,7 +178,7 @@ struct CustomThemeEditor: View {
         .frame(width: 460)
         .frame(minHeight: 520)
         .accessibilityIdentifier("custom-theme-editor")
-        // Debounced live preview (P2): coalesce rapid color-well edits into one render
+        // Debounced live preview: coalesce rapid color-well edits into one render
         // after a short quiet window; run once on appear for the initial thumbnail.
         .task(id: PreviewKey(config: previewConfig, profile: settings.export.colorProfile)) {
             try? await Task.sleep(for: .milliseconds(120))

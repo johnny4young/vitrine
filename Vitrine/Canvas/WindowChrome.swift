@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Decorative macOS-style "traffic light" dots drawn atop the code card (CS-005),
+/// Decorative macOS-style "traffic light" dots drawn atop the code card,
 /// optionally with a centered window title (e.g. `ContentView.swift`).
 ///
 /// With no title it sizes to its dots (the signature, golden-stable look). With a

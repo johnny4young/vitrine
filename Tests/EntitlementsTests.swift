@@ -4,12 +4,12 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-088 — the PRO entitlement core: provider-backed `isPro`, per-feature unlock, async
+/// the PRO entitlement core: provider-backed `isPro`, per-feature unlock, async
 /// refresh, and the guardrail that the local Debug unlock can never ship.
-@Suite("PRO entitlement core · CS-088")
+@Suite("PRO entitlement core")
 @MainActor
 struct EntitlementsTests {
-    /// The injectable fake the ticket calls for: a controllable provider with separate
+    /// The injectable fake the test contract needs: a controllable provider with separate
     /// cached (boot) and live (refresh) values.
     final class FakeProvider: EntitlementProvider {
         var cachedIsPro: Bool
@@ -56,7 +56,7 @@ struct EntitlementsTests {
         }
     }
 
-    /// Guardrail (CS-088): the local PRO unlock must be Debug-only so it can never ship.
+    /// Guardrail: the local PRO unlock must be Debug-only so it can never ship.
     /// Source-scan the entitlement file to prove `DebugUnlockProvider` is wrapped in a
     /// `#if DEBUG` block — a release compile therefore contains no unlock path at all.
     @Test func debugUnlockProviderIsCompiledOutOfRelease() throws {
@@ -83,10 +83,10 @@ struct EntitlementsTests {
     }
 }
 
-/// CS-089 — the App Store StoreKit provider. The live purchase/restore/refund flow is
+/// the App Store StoreKit provider. The live purchase/restore/refund flow is
 /// validated manually with an Xcode `.storekit` configuration (it needs StoreKit's test
 /// environment); this pins the deterministic, runtime-free guarantees.
-@Suite("StoreKit PRO provider · CS-089")
+@Suite("StoreKit PRO provider")
 @MainActor
 struct StoreKitProviderTests {
     @Test func startsFreeAndExposesTheConfiguredProduct() {
@@ -99,10 +99,10 @@ struct StoreKitProviderTests {
     }
 }
 
-/// CS-090 — the direct-download license-key provider: offline Ed25519 token verification,
+/// the direct-download license-key provider: offline Ed25519 token verification,
 /// tamper rejection, and the activate/deactivate round-trip. Real Lemon Squeezy activation
 /// is deferred (it needs the LS account); these pin the offline crypto the CLI also relies on.
-@Suite("License key PRO provider · CS-090")
+@Suite("License key PRO provider")
 @MainActor
 struct LicenseKeyTests {
     @Test func aMintedTokenVerifiesAndTamperingIsRejected() throws {
@@ -121,7 +121,7 @@ struct LicenseKeyTests {
 
     @Test func embeddedVerifierRejectsForeignTokens() throws {
         // No foreign-signed token validates against the embedded production public key, so a
-        // forged or hand-edited token cannot unlock PRO (audit P1-Security-6). Only a token the
+        // forged or hand-edited token cannot unlock PRO. Only a token the
         // app minted with the matching, build-injected private key verifies.
         let foreignKey = Curve25519.Signing.PrivateKey()
         let token = try LicenseSigner.sign(
@@ -132,8 +132,8 @@ struct LicenseKeyTests {
     }
 
     @Test func embeddedPublicKeyIsThePinnedProductionKey() {
-        // The embedded verifier must be the fixed production public key (audit
-        // P1-Security-6): a silent key drift would lock out paying users (their
+        // The embedded verifier must be the fixed production public key: silent key
+        // drift would lock out paying users because their
         // real-key-signed tokens would stop verifying), so pin the exact bytes here.
         // Update this literal only alongside a deliberate key rotation.
         #expect(
@@ -143,7 +143,7 @@ struct LicenseKeyTests {
 
     #if VITRINE_DIRECT_DOWNLOAD
         /// An in-memory token store so the provider round-trip is tested without touching the
-        /// real Keychain (CS-090; the Keychain store itself is exercised manually).
+        /// real Keychain (the Keychain store itself is exercised manually).
         final class InMemoryTokenStore: LicenseTokenStore {
             private var token: String?
             func read() -> String? { token }

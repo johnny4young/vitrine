@@ -1,7 +1,7 @@
 import CoreImage.CIFilterBuiltins
 import Foundation
 
-/// Generates the QR chip for the Brand Kit's link (feature #28) — fully on-device via
+/// Generates the QR chip for the Brand Kit's link — fully on-device via
 /// Core Image's `CIQRCodeGenerator`, so nothing about the URL leaves the machine.
 ///
 /// The raw filter output is one point per module; scaling it with anything but

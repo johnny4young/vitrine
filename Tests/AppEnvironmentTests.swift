@@ -3,14 +3,14 @@ import Testing
 
 @testable import Vitrine
 
-// A3/§8 — the composition root. `AppEnvironment` constructs the data-store graph in one
+// The composition root. `AppEnvironment` constructs the data-store graph in one
 // place; the individual `Store.shared` accessors forward to the app-wide root. These pin
 // that a freshly-built environment is an independent, fully-wired graph over its own
 // defaults — the property that makes the store graph injectable (for tests and previews)
 // rather than a set of scattered global singletons.
 
 @MainActor
-@Suite("AppEnvironment composition root · A3")
+@Suite("AppEnvironment composition root")
 struct AppEnvironmentTests {
     @Test func buildsAGraphIsolatedFromTheSharedRoot() {
         let suite = UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)")!

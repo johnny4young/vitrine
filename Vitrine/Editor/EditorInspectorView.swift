@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The editor's right-hand inspector (CS-037), restyled per design/handoff: a
+/// The editor's right-hand inspector, restyled per design system: a
 /// 302 pt glass column of uppercase-labeled sections — Background swatches,
 /// Theme chips, Typography pills, Canvas — with the specialized controls
 /// (Lines, Header, Output) behind collapsed disclosures, so a first-time user
@@ -8,12 +8,12 @@ import SwiftUI
 ///
 /// The chip pickers are the same components the Settings Style pane uses
 /// (``ThemeChipPicker``, ``FontChipPicker``, ``GradientSwatch``), at the editor
-/// kit's slightly larger metrics, so there is one accessible set of style
+/// inspector's slightly larger metrics, so there is one accessible set of style
 /// controls in the app rather than two that can drift.
 struct EditorInspectorView: View {
     @Bindable var settings: AppSettings
 
-    /// Whether the stage draws the safe-area guide (feature #20). Same key/store as
+    /// Whether the stage draws the safe-area guide. Same key/store as
     /// `EditorView.showsSafeAreaGuides`, so the toggle here and the stage overlay stay
     /// in sync through the shared defaults without any plumbing.
     @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
@@ -180,7 +180,7 @@ struct EditorInspectorView: View {
 
     // MARK: - Sections
 
-    /// Clarifies the scope the audit flagged as confusing. The editor binds a *per-window*
+    /// Clarifies the scope distinction. The editor binds a *per-window*
     /// `EditorSession.settings` (see `EditorWindowController.makeWindow`), so these controls
     /// style only the capture in this window. Settings ▸ Style edits `AppSettings.shared`,
     /// the global default that new captures start from (`QuickCapture` copies it into the
@@ -330,7 +330,7 @@ struct EditorInspectorView: View {
     }
 
     /// A slider with a trailing numeric readout, so the user can see (and target) the
-    /// current value instead of guessing from the knob position (audit UX). The value is
+    /// current value instead of guessing from the knob position. The value is
     /// hidden from VoiceOver because the slider already announces it.
     @ViewBuilder
     private func valueSlider(
@@ -379,7 +379,7 @@ struct EditorInspectorView: View {
                                 text: $settings.config.windowTitle
                             )
                             .accessibilityIdentifier("window-title-field")
-                            // Smart title (feature #39): fill the header from what the
+                            // Smart title: fill the header from what the
                             // code declares — the filename chip, else the first declared
                             // identifier. Shown only while it would actually change
                             // something, so it never sits around as dead chrome.
@@ -419,7 +419,7 @@ struct EditorInspectorView: View {
         }
     }
 
-    /// The Output disclosure: destination segments (two rows, as in the kit),
+    /// The Output disclosure: destination segments in two rows,
     /// then resolution and format.
     @ViewBuilder private var outputControls: some View {
         VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
@@ -574,7 +574,7 @@ struct EditorInspectorView: View {
     }
 
     /// Whether the selected font ships programming ligatures, gating the toggle
-    /// so it reads as inert for a font that has none (CS-052).
+    /// so it reads as inert for a font that has none.
     private var fontHasLigatures: Bool {
         CodeFont.hasLigatures(settings.config.fontName)
     }

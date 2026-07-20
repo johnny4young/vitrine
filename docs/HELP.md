@@ -1,4 +1,4 @@
-# Vitrine Help (CS-049)
+# Vitrine Help
 
 This is the source of truth for Vitrine's in-app Help content. The Help window
 (`Vitrine/Help/HelpView.swift`) renders these topics from bundled copy, so help is

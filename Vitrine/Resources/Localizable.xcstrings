@@ -189,7 +189,7 @@
       }
     },
     "Capture pages behind a login by sending your existing cookies. Off by default; your code and captures still stay on your Mac." : {
-      "comment" : "Caption for the URL-capture logged-in-session toggle (CS-043).",
+      "comment" : "Caption for the URL-capture logged-in-session toggle.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -200,7 +200,7 @@
       }
     },
     "Use my logged-in session" : {
-      "comment" : "URL-capture toggle: use the persistent (cookie) data store (CS-043).",
+      "comment" : "URL-capture toggle: use the persistent (cookie) data store.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -409,7 +409,7 @@
       }
     },
     "%@ System folders need an administrator: run the copied command in Terminal instead." : {
-      "comment" : "Settings General: CLI install failure alert message (CS-033).",
+      "comment" : "Settings General: CLI install failure alert message.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -426,7 +426,7 @@
       }
     },
     "%@ · Version %@" : {
-      "comment" : "What's New row: release headline · version number (CS-047).",
+      "comment" : "What's New row: release headline · version number.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -443,7 +443,7 @@
       }
     },
     "%@. %@" : {
-      "comment" : "Punctuation-only join of two localized help strings (CS-047).",
+      "comment" : "Punctuation-only join of two localized help strings.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -460,7 +460,7 @@
       }
     },
     "%lld code blocks found — opening the editor to choose one" : {
-      "comment" : "Capture feedback when several code blocks are detected and handed to the editor (CS-047).",
+      "comment" : "Capture feedback when several code blocks are detected and handed to the editor.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -502,7 +502,7 @@
       }
     },
     "%lld lines" : {
-      "comment" : "Editor code panel: live line count (design/handoff).",
+      "comment" : "Editor code panel: live line count.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -544,7 +544,7 @@
       }
     },
     "%lld seconds" : {
-      "comment" : "Input pane extra-wait value, in seconds; count-aware (CS-047).",
+      "comment" : "Input pane extra-wait value, in seconds; count-aware.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -729,7 +729,7 @@
       }
     },
     "Added %lld presets" : {
-      "comment" : "Confirmation after importing style presets; count-aware (CS-047).",
+      "comment" : "Confirmation after importing style presets; count-aware.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -771,7 +771,7 @@
       }
     },
     "Added %lld themes" : {
-      "comment" : "Confirmation after importing custom themes; count-aware (CS-047).",
+      "comment" : "Confirmation after importing custom themes; count-aware.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -852,7 +852,7 @@
       }
     },
     "Angle (%@°)" : {
-      "comment" : "Gradient slider label with the live angle readout (CS-047).",
+      "comment" : "Gradient slider label with the live angle readout.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -863,7 +863,7 @@
       }
     },
     "App" : {
-      "comment" : "Settings General pane: app-level group title (design/handoff).",
+      "comment" : "Settings General pane: app-level group title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -880,7 +880,7 @@
       }
     },
     "App language" : {
-      "comment" : "Settings General pane: app UI language picker label (CS-047).",
+      "comment" : "Settings General pane: app UI language picker label.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -891,7 +891,7 @@
       }
     },
     "Appearance" : {
-      "comment" : "Style pane sub-tab (design/handoff).",
+      "comment" : "Style pane sub-tab.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -944,7 +944,7 @@
       }
     },
     "Apply a saved style in one click" : {
-      "comment" : "Library pane: preset row caption (design/handoff).",
+      "comment" : "Library pane: preset row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1019,7 +1019,7 @@
       }
     },
     "Bring All to Front" : {
-      "comment" : "Window menu: standard arrange command (CS-047).",
+      "comment" : "Window menu: standard arrange command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1079,7 +1079,7 @@
       }
     },
     "Canvas" : {
-      "comment" : "Style pane: canvas group title (design/handoff).",
+      "comment" : "Style pane: canvas group title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1129,7 +1129,7 @@
       }
     },
     "Capture a webpage?" : {
-      "comment" : "URL capture first-use disclosure title (CS-043).",
+      "comment" : "URL capture first-use disclosure title.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1245,7 +1245,7 @@
       }
     },
     "Choose a folder on your PATH for the vitrine command — for example /opt/homebrew/bin." : {
-      "comment" : "Open-panel message for the CLI install (CS-033).",
+      "comment" : "Open-panel message for the CLI install.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -1344,7 +1344,7 @@
       }
     },
     "Close" : {
-      "comment" : "File menu: standard close-window command (CS-047).",
+      "comment" : "File menu: standard close-window command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1368,7 +1368,7 @@
       }
     },
     "Code" : {
-      "comment" : "Editor code panel: uppercase header label (design/handoff).",
+      "comment" : "Editor code panel: uppercase header label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1385,7 +1385,7 @@
       }
     },
     "Code is too large to format interactively" : {
-      "comment" : "Editor Format Code feedback when the buffer exceeds the interactive formatter limit (CS-049).",
+      "comment" : "Editor Format Code feedback when the buffer exceeds the interactive formatter limit.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1419,7 +1419,7 @@
       }
     },
     "Command-line tool" : {
-      "comment" : "Settings General: CLI install row label (CS-033).",
+      "comment" : "Settings General: CLI install row label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1460,7 +1460,7 @@
       }
     },
     "Copy" : {
-      "comment" : "Edit menu: standard copy command (CS-047).",
+      "comment" : "Edit menu: standard copy command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1519,7 +1519,7 @@
       }
     },
     "Copy Command" : {
-      "comment" : "Settings General: copy the Terminal install command (CS-033).",
+      "comment" : "Settings General: copy the Terminal install command.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -1572,7 +1572,7 @@
       }
     },
     "Copy image" : {
-      "comment" : "Editor toolbar: the gradient CTA (design/handoff).",
+      "comment" : "Editor toolbar: the gradient CTA.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1647,7 +1647,7 @@
       }
     },
     "Copy the equivalent Terminal command, for system folders that need sudo." : {
-      "comment" : "Settings General: help on the Copy Command button (CS-033).",
+      "comment" : "Settings General: help on the Copy Command button.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -1665,7 +1665,7 @@
       }
     },
     "Copy the highlighted code as rich text, or the image as a data URI" : {
-      "comment" : "Editor toolbar: copy-options menu help (design/handoff).",
+      "comment" : "Editor toolbar: copy-options menu help.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -1711,7 +1711,7 @@
       }
     },
     "Couldn't copy the image" : {
-      "comment" : "Editor menu: Copy Image failure feedback (CS-038).",
+      "comment" : "Editor menu: Copy Image failure feedback.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1734,7 +1734,7 @@
       }
     },
     "Couldn't Install the Command" : {
-      "comment" : "Settings General: CLI install failure alert title (CS-033).",
+      "comment" : "Settings General: CLI install failure alert title.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -1752,7 +1752,7 @@
       }
     },
     "Couldn't save the image" : {
-      "comment" : "Editor menu: Save Image failure feedback (CS-038).",
+      "comment" : "Editor menu: Save Image failure feedback.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1798,7 +1798,7 @@
       }
     },
     "Custom (%lld × %lld)" : {
-      "comment" : "Input pane viewport picker label for a custom width × height (CS-044).",
+      "comment" : "Input pane viewport picker label for a custom width × height.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1810,7 +1810,7 @@
       }
     },
     "Custom background" : {
-      "comment" : "Accessibility label of the dashed + background swatch (design/handoff).",
+      "comment" : "Accessibility label of the dashed + background swatch.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -1851,7 +1851,7 @@
       }
     },
     "Custom themes" : {
-      "comment" : "Library pane: custom themes group title (design/handoff).",
+      "comment" : "Library pane: custom themes group title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1880,7 +1880,7 @@
       }
     },
     "Custom — solid color or image" : {
-      "comment" : "Help on the dashed + background swatch (design/handoff).",
+      "comment" : "Help on the dashed + background swatch.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -1909,7 +1909,7 @@
       }
     },
     "Cut" : {
-      "comment" : "Edit menu: standard cut command (CS-047).",
+      "comment" : "Edit menu: standard cut command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -1933,7 +1933,7 @@
       }
     },
     "Delay" : {
-      "comment" : "Web capture wait-strategy segment (design/handoff).",
+      "comment" : "Web capture wait-strategy segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2008,7 +2008,7 @@
       }
     },
     "Desktop" : {
-      "comment" : "Web capture viewport segment (design/handoff).",
+      "comment" : "Web capture viewport segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2025,7 +2025,7 @@
       }
     },
     "Desktop (1440 × 900)" : {
-      "comment" : "Input pane viewport preset: a common laptop logical resolution (CS-044).",
+      "comment" : "Input pane viewport preset: a common laptop logical resolution.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2083,7 +2083,7 @@
       }
     },
     "Don't capture; nothing is loaded." : {
-      "comment" : "Web privacy disclosure: tooltip on the Cancel button (CS-045).",
+      "comment" : "Web privacy disclosure: tooltip on the Cancel button.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2210,7 +2210,7 @@
       }
     },
     "Edit" : {
-      "comment" : "Menu bar: Edit menu title (CS-047).",
+      "comment" : "Menu bar: Edit menu title.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2246,7 +2246,7 @@
       }
     },
     "Editor" : {
-      "comment" : "General pane: hotkey-runs segment (design/handoff).",
+      "comment" : "General pane: hotkey-runs segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2275,7 +2275,7 @@
       }
     },
     "Enter Full Screen" : {
-      "comment" : "View menu: standard full-screen command (CS-047).",
+      "comment" : "View menu: standard full-screen command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2298,7 +2298,7 @@
       }
     },
     "Export" : {
-      "comment" : "Output pane: export group title (design/handoff).",
+      "comment" : "Output pane: export group title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2361,7 +2361,7 @@
       }
     },
     "File" : {
-      "comment" : "Menu bar: File menu title (CS-047).",
+      "comment" : "Menu bar: File menu title.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2396,7 +2396,7 @@
       }
     },
     "Fixed delay" : {
-      "comment" : "Input pane wait-strategy picker label: wait a fixed time after load (CS-044).",
+      "comment" : "Input pane wait-strategy picker label: wait a fixed time after load.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2454,7 +2454,7 @@
       }
     },
     "Format Code" : {
-      "comment" : "Editor toolbar + Edit menu: tidy/format the current code (CS-049).",
+      "comment" : "Editor toolbar + Edit menu: tidy/format the current code.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2466,7 +2466,7 @@
       }
     },
     "Format the code" : {
-      "comment" : "VoiceOver label for the Format Code command (CS-049).",
+      "comment" : "VoiceOver label for the Format Code command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2490,7 +2490,7 @@
       }
     },
     "Full HD (1920 × 1080)" : {
-      "comment" : "Input pane viewport preset: a wide full-HD desktop capture (CS-044).",
+      "comment" : "Input pane viewport preset: a wide full-HD desktop capture.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2502,7 +2502,7 @@
       }
     },
     "Full page" : {
-      "comment" : "Input pane capture-mode picker label: capture the whole scrollable page (CS-044).",
+      "comment" : "Input pane capture-mode picker label: capture the whole scrollable page.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2559,7 +2559,7 @@
       }
     },
     "Global hotkey" : {
-      "comment" : "General pane: hotkey row label (design/handoff).",
+      "comment" : "General pane: hotkey row label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2587,7 +2587,7 @@
       }
     },
     "Gradient" : {
-      "comment" : "Background kind segment (design/handoff).",
+      "comment" : "Background kind segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2616,7 +2616,7 @@
       }
     },
     "Gradient preset" : {
-      "comment" : "Background group title and swatch-row label (design/handoff).",
+      "comment" : "Background group title and swatch-row label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2633,7 +2633,7 @@
       }
     },
     "Gradient preset, solid color, or image" : {
-      "comment" : "Background kind row caption (design/handoff).",
+      "comment" : "Background kind row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2672,7 +2672,7 @@
       }
     },
     "Help" : {
-      "comment" : "Menu bar: Help menu title (CS-047).",
+      "comment" : "Menu bar: Help menu title.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2864,7 +2864,7 @@
       }
     },
     "Hide Others" : {
-      "comment" : "App menu: standard hide-other-apps command (CS-047).",
+      "comment" : "App menu: standard hide-other-apps command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -2899,7 +2899,7 @@
       }
     },
     "Highlight specific lines or ranges" : {
-      "comment" : "Lines group: highlight row caption (design/handoff).",
+      "comment" : "Lines group: highlight row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2939,7 +2939,7 @@
       }
     },
     "Idle" : {
-      "comment" : "Web capture wait-strategy segment (design/handoff).",
+      "comment" : "Web capture wait-strategy segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2956,7 +2956,7 @@
       }
     },
     "Image" : {
-      "comment" : "Background kind segment (design/handoff).",
+      "comment" : "Background kind segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2973,7 +2973,7 @@
       }
     },
     "Image copied to clipboard" : {
-      "comment" : "Editor menu: Copy Image success feedback (CS-038).",
+      "comment" : "Editor menu: Copy Image success feedback.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3032,7 +3032,7 @@
       }
     },
     "Image saved" : {
-      "comment" : "Editor menu: Save Image success feedback (CS-038).",
+      "comment" : "Editor menu: Save Image success feedback.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3126,7 +3126,7 @@
       }
     },
     "Install" : {
-      "comment" : "Open-panel prompt for the CLI install (CS-033).",
+      "comment" : "Open-panel prompt for the CLI install.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -3144,7 +3144,7 @@
       }
     },
     "Install…" : {
-      "comment" : "Settings General: CLI install button (CS-033).",
+      "comment" : "Settings General: CLI install button.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -3174,7 +3174,7 @@
       }
     },
     "Keeps colors and font when pasting; the image is always included" : {
-      "comment" : "Output pane: rich clipboard row caption (design/handoff).",
+      "comment" : "Output pane: rich clipboard row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3272,7 +3272,7 @@
       }
     },
     "Library" : {
-      "comment" : "Settings toolbar tab: presets + custom themes library (CS-010).",
+      "comment" : "Settings toolbar tab: presets + custom themes library.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3349,7 +3349,7 @@
       }
     },
     "Lines & header" : {
-      "comment" : "Style pane sub-tab (design/handoff).",
+      "comment" : "Style pane sub-tab.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3378,7 +3378,7 @@
       }
     },
     "Link the vitrine command onto your PATH so scripts can render images." : {
-      "comment" : "Settings General: help on the Install button (CS-033).",
+      "comment" : "Settings General: help on the Install button.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -3396,7 +3396,7 @@
       }
     },
     "Linked at %@" : {
-      "comment" : "Settings General: CLI row caption once installed (CS-033).",
+      "comment" : "Settings General: CLI row caption once installed.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3449,7 +3449,7 @@
       }
     },
     "Load and Capture" : {
-      "comment" : "URL capture first-use disclosure confirm button (CS-043).",
+      "comment" : "URL capture first-use disclosure confirm button.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3461,7 +3461,7 @@
       }
     },
     "Load this webpage locally in WebKit and capture it." : {
-      "comment" : "Web privacy disclosure: tooltip on the confirm button when URL capture is available (CS-045).",
+      "comment" : "Web privacy disclosure: tooltip on the confirm button when URL capture is available.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3473,7 +3473,7 @@
       }
     },
     "Loaded" : {
-      "comment" : "Web capture wait-strategy segment (design/handoff).",
+      "comment" : "Web capture wait-strategy segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3502,7 +3502,7 @@
       }
     },
     "Make This Window the Default" : {
-      "comment" : "File-menu command and editor toolbar action that promotes the active editor window's style to the app-wide default (CS-053).",
+      "comment" : "File-menu command and editor toolbar action that promotes the active editor window's style to the app-wide default.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3514,7 +3514,7 @@
       }
     },
     "Make this window's style the default" : {
-      "comment" : "VoiceOver label for the Make Default command (CS-053).",
+      "comment" : "VoiceOver label for the Make Default command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3526,7 +3526,7 @@
       }
     },
     "Minimize" : {
-      "comment" : "Window menu: standard minimize command (CS-047).",
+      "comment" : "Window menu: standard minimize command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3538,7 +3538,7 @@
       }
     },
     "Mobile (390 × 844)" : {
-      "comment" : "Input pane viewport preset: an iPhone-class responsive width (CS-044).",
+      "comment" : "Input pane viewport preset: an iPhone-class responsive width.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3574,7 +3574,7 @@
       }
     },
     "Network quiet (best effort)" : {
-      "comment" : "Input pane wait-strategy picker label: best-effort network-idle settle (CS-044).",
+      "comment" : "Input pane wait-strategy picker label: best-effort network-idle settle.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3622,7 +3622,7 @@
       }
     },
     "New Editor Window" : {
-      "comment" : "File-menu command that opens an additional, independent editor window (CS-053).",
+      "comment" : "File-menu command that opens an additional, independent editor window.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3690,7 +3690,7 @@
       }
     },
     "No custom themes yet" : {
-      "comment" : "Library pane: custom themes empty-state row label (design/handoff).",
+      "comment" : "Library pane: custom themes empty-state row label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3766,7 +3766,7 @@
       }
     },
     "Open a new editor window" : {
-      "comment" : "VoiceOver label for the New Editor Window command (CS-053).",
+      "comment" : "VoiceOver label for the New Editor Window command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3790,7 +3790,7 @@
       }
     },
     "Open Editor" : {
-      "comment" : "Menu command title and the 'open the editor' recovery action label (CS-038).",
+      "comment" : "Menu command title and the 'open the editor' recovery action label.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3802,7 +3802,7 @@
       }
     },
     "Open Web Snapshot" : {
-      "comment" : "Recovery action label for opening Web Snapshot with a detected URL (CS-038).",
+      "comment" : "Recovery action label for opening Web Snapshot with a detected URL.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3943,7 +3943,7 @@
       }
     },
     "Page loaded" : {
-      "comment" : "Input pane wait-strategy picker label: snapshot as soon as the page loads (CS-044).",
+      "comment" : "Input pane wait-strategy picker label: snapshot as soon as the page loads.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -3955,7 +3955,7 @@
       }
     },
     "Paste" : {
-      "comment" : "Edit menu: standard paste command (CS-047).",
+      "comment" : "Edit menu: standard paste command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4014,7 +4014,7 @@
       }
     },
     "Pasting" : {
-      "comment" : "Input pane: pasting group title (design/handoff).",
+      "comment" : "Input pane: pasting group title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4031,7 +4031,7 @@
       }
     },
     "Pasting tidies the indentation automatically. Undo with ⌘Z, or format anytime with ⌥⌘F." : {
-      "comment" : "Settings · Input: footnote under the re-indent-on-paste toggle (CS-049).",
+      "comment" : "Settings · Input: footnote under the re-indent-on-paste toggle.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4043,7 +4043,7 @@
       }
     },
     "Phone" : {
-      "comment" : "Web capture viewport segment (design/handoff).",
+      "comment" : "Web capture viewport segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4106,7 +4106,7 @@
       }
     },
     "Presets set the image size and resolution for a destination" : {
-      "comment" : "Output pane: destination row caption (design/handoff).",
+      "comment" : "Output pane: destination row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4181,7 +4181,7 @@
       }
     },
     "Re-indent code on paste" : {
-      "comment" : "Settings · Input: toggle to tidy indentation automatically when pasting (CS-049).",
+      "comment" : "Settings · Input: toggle to tidy indentation automatically when pasting.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4215,7 +4215,7 @@
       }
     },
     "Redo" : {
-      "comment" : "Edit menu: standard redo command (CS-047).",
+      "comment" : "Edit menu: standard redo command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4227,7 +4227,7 @@
       }
     },
     "Relaunch to Apply" : {
-      "comment" : "Settings General pane: button that relaunches the app so a language change takes effect now (CS-047).",
+      "comment" : "Settings General pane: button that relaunches the app so a language change takes effect now.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4311,7 +4311,7 @@
       }
     },
     "Render and copy the image to the clipboard" : {
-      "comment" : "Editor toolbar: Copy image CTA help (design/handoff).",
+      "comment" : "Editor toolbar: Copy image CTA help.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -4362,7 +4362,7 @@
       }
     },
     "Render as Text" : {
-      "comment" : "Recovery action label: render the detected URL as plain text (CS-038).",
+      "comment" : "Recovery action label: render the detected URL as plain text.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4385,7 +4385,7 @@
       }
     },
     "Render images from scripts with the vitrine command" : {
-      "comment" : "Settings General: CLI row caption before installing (CS-033).",
+      "comment" : "Settings General: CLI row caption before installing.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4460,7 +4460,7 @@
       }
     },
     "Restores every preference to its default" : {
-      "comment" : "General pane: reset row caption (design/handoff).",
+      "comment" : "General pane: reset row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4489,7 +4489,7 @@
       }
     },
     "Rich-text code on copy" : {
-      "comment" : "Output pane: rich clipboard row label (design/handoff).",
+      "comment" : "Output pane: rich clipboard row label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4625,7 +4625,7 @@
       }
     },
     "Save the current style, then export or import as JSON" : {
-      "comment" : "Library pane: selected preset row caption (design/handoff).",
+      "comment" : "Library pane: selected preset row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4654,7 +4654,7 @@
       }
     },
     "Select All" : {
-      "comment" : "Edit menu: standard select-all command (CS-047).",
+      "comment" : "Edit menu: standard select-all command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4688,7 +4688,7 @@
       }
     },
     "Services" : {
-      "comment" : "App menu: standard Services submenu title (CS-047).",
+      "comment" : "App menu: standard Services submenu title.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4700,7 +4700,7 @@
       }
     },
     "Set as the default style" : {
-      "comment" : "HUD confirmation shown after promoting an editor window's style to the app-wide default (CS-053).",
+      "comment" : "HUD confirmation shown after promoting an editor window's style to the app-wide default.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4805,7 +4805,7 @@
       }
     },
     "Show All" : {
-      "comment" : "App menu: standard unhide-all command (CS-047).",
+      "comment" : "App menu: standard unhide-all command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4829,7 +4829,7 @@
       }
     },
     "Sizes and styles the image for a place to post it" : {
-      "comment" : "Style pane: destination row caption (design/handoff).",
+      "comment" : "Style pane: destination row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4869,7 +4869,7 @@
       }
     },
     "Social" : {
-      "comment" : "Web capture viewport segment (design/handoff).",
+      "comment" : "Web capture viewport segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4886,7 +4886,7 @@
       }
     },
     "Social card (1200 × 630)" : {
-      "comment" : "Input pane viewport preset: the OpenGraph social-card size (CS-044).",
+      "comment" : "Input pane viewport preset: the OpenGraph social-card size.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -4910,7 +4910,7 @@
       }
     },
     "Solid" : {
-      "comment" : "Background kind segment (design/handoff).",
+      "comment" : "Background kind segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4939,7 +4939,7 @@
       }
     },
     "Step %@: " : {
-      "comment" : "Accessibility label prefix for an onboarding step (CS-047).",
+      "comment" : "Accessibility label prefix for an onboarding step.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4962,7 +4962,7 @@
       }
     },
     "Adds a scannable QR chip to the mark. Generated on-device." : {
-      "comment" : "Caption for the Brand Kit link-URL field (QR chip, feature #28).",
+      "comment" : "Caption for the Brand Kit link-URL field and QR chip.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4973,7 +4973,7 @@
       }
     },
     "Copy text from image" : {
-      "comment" : "Button: OCR the beautified image back into copyable text (feature #34).",
+      "comment" : "Button that recognizes copyable text in the beautified image.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5117,7 +5117,7 @@
       }
     },
     "Post on Bluesky" : {
-      "comment" : "Share-sheet compose target (feature #25).",
+      "comment" : "Share-sheet compose target.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5128,7 +5128,7 @@
       }
     },
     "Post on LinkedIn" : {
-      "comment" : "Share-sheet compose target (feature #25).",
+      "comment" : "Share-sheet compose target.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5139,7 +5139,7 @@
       }
     },
     "Post on X" : {
-      "comment" : "Share-sheet compose target (feature #25).",
+      "comment" : "Share-sheet compose target.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5183,7 +5183,7 @@
       }
     },
     "Pin the snapshot in a floating window that stays on top" : {
-      "comment" : "Help for the pin-snapshot toolbar button (feature #33).",
+      "comment" : "Help for the pin-snapshot toolbar button.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5249,7 +5249,7 @@
       }
     },
     "Suggest a title" : {
-      "comment" : "Accessibility label for the title-suggestion wand (feature #39).",
+      "comment" : "Accessibility label for the title-suggestion wand.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5429,7 +5429,7 @@
       }
     },
     "System" : {
-      "comment" : "Settings General pane: app language option that follows the system language order (CS-047).",
+      "comment" : "Settings General pane: app language option that follows the system language order.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -5477,7 +5477,7 @@
       }
     },
     "That looks like a URL — open Web Snapshot to capture it" : {
-      "comment" : "Capture feedback when the clipboard holds a URL (CS-038).",
+      "comment" : "Capture feedback when the clipboard holds a URL.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -5534,7 +5534,7 @@
       }
     },
     "Theme files are JSON and never leave your Mac" : {
-      "comment" : "Library pane: custom themes caption (design/handoff).",
+      "comment" : "Library pane: custom themes caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5607,7 +5607,7 @@
       }
     },
     "Tidy the code: re-indent JSON, or strip the indentation shared by every line." : {
-      "comment" : "Editor toolbar: Format Code button help (CS-049).",
+      "comment" : "Editor toolbar: Format Code button help.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -5630,7 +5630,7 @@
       }
     },
     "Toolbar" : {
-      "comment" : "Editor toolbar: accessibility container label (design/handoff).",
+      "comment" : "Editor toolbar: accessibility container label.",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
@@ -5648,7 +5648,7 @@
       }
     },
     "Transparent" : {
-      "comment" : "Background kind segment (design/handoff).",
+      "comment" : "Background kind segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5744,7 +5744,7 @@
       }
     },
     "Typography" : {
-      "comment" : "Style pane: typography group title (design/handoff).",
+      "comment" : "Style pane: typography group title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5761,7 +5761,7 @@
       }
     },
     "Undo" : {
-      "comment" : "Edit menu: standard undo command (CS-047).",
+      "comment" : "Edit menu: standard undo command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -5773,7 +5773,7 @@
       }
     },
     "Undo with ⌘Z, or format anytime with ⌥⌘F" : {
-      "comment" : "Input pane: re-indent row caption (design/handoff).",
+      "comment" : "Input pane: re-indent row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5802,7 +5802,7 @@
       }
     },
     "Use this window's style — theme, font, background, and output — for new windows and captures." : {
-      "comment" : "Help tooltip on the editor's Make Default toolbar button (CS-053).",
+      "comment" : "Help tooltip on the editor's Make Default toolbar button.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -5838,7 +5838,7 @@
       }
     },
     "Version %@ · MIT" : {
-      "comment" : "About pane: version line with the license tag (design/handoff).",
+      "comment" : "About pane: version line with the license tag.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5855,7 +5855,7 @@
       }
     },
     "View" : {
-      "comment" : "Menu bar: View menu title (CS-047).",
+      "comment" : "Menu bar: View menu title.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -5879,7 +5879,7 @@
       }
     },
     "View history →" : {
-      "comment" : "Menu-bar panel: link to the Recents gallery (design/handoff).",
+      "comment" : "Menu-bar panel: link to the Recents gallery.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5907,7 +5907,7 @@
       }
     },
     "Visible" : {
-      "comment" : "Web capture mode segment (design/handoff).",
+      "comment" : "Web capture mode segment.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5924,7 +5924,7 @@
       }
     },
     "Visible area" : {
-      "comment" : "Input pane capture-mode picker label: capture only the visible viewport (CS-044).",
+      "comment" : "Input pane capture-mode picker label: capture only the visible viewport.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -5936,7 +5936,7 @@
       }
     },
     "Vitrine Editor" : {
-      "comment" : "Title of an editor window (CS-053).",
+      "comment" : "Title of an editor window.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -5948,7 +5948,7 @@
       }
     },
     "Vitrine Editor %lld" : {
-      "comment" : "Title of an additional editor window, disambiguated by its index in the Window menu (CS-053).",
+      "comment" : "Title of an additional editor window, disambiguated by its index in the Window menu.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -5983,7 +5983,7 @@
       }
     },
     "Vitrine reopens in the selected language next launch" : {
-      "comment" : "General pane: app language row caption (design/handoff).",
+      "comment" : "General pane: app language row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6000,7 +6000,7 @@
       }
     },
     "Vitrine reopens in the selected language the next time you launch it." : {
-      "comment" : "Settings General pane: footnote under the app language picker (CS-047).",
+      "comment" : "Settings General pane: footnote under the app language picker.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -6012,7 +6012,7 @@
       }
     },
     "Vitrine will load this webpage locally in WebKit on your Mac and turn it into an image. The page is rendered on-device — Vitrine never sends the URL to a remote screenshot service." : {
-      "comment" : "URL capture first-use disclosure body explaining local WebKit rendering (CS-043).",
+      "comment" : "URL capture first-use disclosure body explaining local WebKit rendering.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -6058,38 +6058,8 @@
         }
       }
     },
-    "Web capture (Phase 2)" : {
-      "comment" : "Input pane: web capture group title (design/handoff).",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Web capture (Phase 2)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Captura web (Fase 2)"
-          }
-        }
-      }
-    },
-    "Web capture (Product Phase 2)" : {
-      "comment" : "Input pane section header for the web URL-capture settings; Product Phase 2 feature.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Captura web (fase 2 del producto)"
-          }
-        }
-      }
-    },
     "Webpage capture requires the direct-download build with local network access." : {
-      "comment" : "Web privacy disclosure note shown when URL capture is unavailable in the current build (CS-045).",
+      "comment" : "Web privacy disclosure note shown when URL capture is unavailable in the current build.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -6163,7 +6133,7 @@
       }
     },
     "When off, a copied URL is rendered as text" : {
-      "comment" : "Input pane: URL row caption (design/handoff).",
+      "comment" : "Input pane: URL row caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6203,7 +6173,7 @@
       }
     },
     "Window" : {
-      "comment" : "Menu bar: Window menu title (CS-047).",
+      "comment" : "Menu bar: Window menu title.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -6226,7 +6196,7 @@
       }
     },
     "Your code still never leaves your Mac — this only loads the webpage you asked for." : {
-      "comment" : "Web privacy disclosure: the Phase 1 promise restated before the first URL capture (CS-045).",
+      "comment" : "Web privacy disclosure: the local-rendering promise restated before the first URL capture.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -6237,7 +6207,7 @@
       }
     },
     "Zoom" : {
-      "comment" : "Window menu: standard zoom command (CS-047).",
+      "comment" : "Window menu: standard zoom command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -6249,7 +6219,7 @@
       }
     },
     "Social Card" : {
-      "comment" : "Social-card editor window title (CS-041).",
+      "comment" : "Social-card editor window title.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -6261,7 +6231,7 @@
       }
     },
     "New Social Card" : {
-      "comment" : "File-menu command that opens the social-card editor (CS-041).",
+      "comment" : "File-menu command that opens the social-card editor.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -6273,7 +6243,7 @@
       }
     },
     "New social card" : {
-      "comment" : "Accessibility label for the New Social Card command (CS-041).",
+      "comment" : "Accessibility label for the New Social Card command.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -6427,7 +6397,7 @@
       }
     },
     "New Web Snapshot" : {
-      "comment" : "File-menu command that opens the Web Snapshot editor (CS-042/043).",
+      "comment" : "File-menu command that opens the Web Snapshot editor.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
@@ -6676,7 +6646,7 @@
       }
     },
     "URL capture loads the page you ask for locally in WebKit — no Vitrine server, no analytics. Your code never leaves your Mac." : {
-      "comment" : "Settings web capture: network transparency caption (CS-045).",
+      "comment" : "Settings web capture: network transparency caption.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -7296,7 +7266,7 @@
       }
     },
     "Captures every selected size in one pass." : {
-      "comment" : "CS-044: web multi-viewport footer (multiple selected).",
+      "comment" : "Web multi-viewport footer (multiple selected).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7313,7 +7283,7 @@
       }
     },
     "Pick one or more sizes to capture." : {
-      "comment" : "CS-044: web multi-viewport footer (one selected).",
+      "comment" : "Web multi-viewport footer (one selected).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7330,7 +7300,7 @@
       }
     },
     "Captured %lld of %lld sizes; some didn't load." : {
-      "comment" : "CS-044: partial multi-viewport capture failure.",
+      "comment" : "Partial multi-viewport capture failure.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7347,7 +7317,7 @@
       }
     },
     "Capturing %lld of %lld" : {
-      "comment" : "CS-044: multi-viewport capture progress shown in the loading state.",
+      "comment" : "Multi-viewport capture progress shown in the loading state.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7364,7 +7334,7 @@
       }
     },
     "Board" : {
-      "comment" : "CS-044: filmstrip tile for the composite responsive board.",
+      "comment" : "Filmstrip tile for the composite responsive board.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7381,7 +7351,7 @@
       }
     },
     "Responsive board" : {
-      "comment" : "CS-044: a11y label for the composite board tile.",
+      "comment" : "A11y label for the composite board tile.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7398,7 +7368,7 @@
       }
     },
     "Images exported" : {
-      "comment" : "CS-044: export-all confirmation HUD.",
+      "comment" : "Export-all confirmation HUD.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7415,7 +7385,7 @@
       }
     },
     "Couldn't export the images" : {
-      "comment" : "CS-044: export-all failure HUD.",
+      "comment" : "Export-all failure HUD.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7432,7 +7402,7 @@
       }
     },
     "Export all sizes" : {
-      "comment" : "CS-044: export-all toolbar button label.",
+      "comment" : "Export-all toolbar button label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7449,7 +7419,7 @@
       }
     },
     "Export every captured size, plus the board, to a folder" : {
-      "comment" : "CS-044: export-all toolbar button help.",
+      "comment" : "Export-all toolbar button help.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7466,7 +7436,7 @@
       }
     },
     "Viewports" : {
-      "comment" : "CS-044: web multi-viewport selection row label.",
+      "comment" : "Web multi-viewport selection row label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7483,7 +7453,7 @@
       }
     },
     "Brand Kit" : {
-      "comment" : "CS-088: PRO feature paywall title (brand term kept).",
+      "comment" : "PRO feature paywall title (brand term kept).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7500,7 +7470,7 @@
       }
     },
     "Multi-size export" : {
-      "comment" : "CS-088: PRO feature paywall title.",
+      "comment" : "PRO feature paywall title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7517,7 +7487,7 @@
       }
     },
     "Automation" : {
-      "comment" : "CS-088: PRO feature paywall title.",
+      "comment" : "PRO feature paywall title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7534,7 +7504,7 @@
       }
     },
     "Add your logo, handle, and accent color to every snapshot." : {
-      "comment" : "CS-088: PRO paywall blurb (Brand Kit).",
+      "comment" : "PRO paywall blurb (Brand Kit).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7551,7 +7521,7 @@
       }
     },
     "Export one capture to every platform size in a single pass." : {
-      "comment" : "CS-088: PRO paywall blurb (multi-size export).",
+      "comment" : "PRO paywall blurb (multi-size export).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7568,7 +7538,7 @@
       }
     },
     "Unlock the vitrine command line, Shortcuts, and folder batch rendering." : {
-      "comment" : "CS-088: PRO paywall blurb (automation).",
+      "comment" : "PRO paywall blurb (automation).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7585,7 +7555,7 @@
       }
     },
     "Not now" : {
-      "comment" : "CS-091: paywall dismiss.",
+      "comment" : "Paywall dismiss.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7602,7 +7572,7 @@
       }
     },
     "One-time purchase. The free version keeps every feature it has today." : {
-      "comment" : "CS-091: paywall footnote.",
+      "comment" : "Paywall footnote.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7619,7 +7589,7 @@
       }
     },
     "Enter your license key" : {
-      "comment" : "CS-091: paywall license field (direct-download).",
+      "comment" : "Paywall license field (direct-download).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7636,7 +7606,7 @@
       }
     },
     "Activate" : {
-      "comment" : "CS-091: paywall activate button.",
+      "comment" : "Paywall activate button.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7653,7 +7623,7 @@
       }
     },
     "That license key couldn't be activated. Check it and try again." : {
-      "comment" : "CS-091: paywall activation failure.",
+      "comment" : "Paywall activation failure.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7670,7 +7640,7 @@
       }
     },
     "Get Vitrine PRO" : {
-      "comment" : "CS-091: paywall purchase button (App Store).",
+      "comment" : "Paywall purchase button (App Store).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7687,7 +7657,7 @@
       }
     },
     "Restore Purchases" : {
-      "comment" : "CS-091: paywall restore button (App Store).",
+      "comment" : "Paywall restore button (App Store).",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7704,7 +7674,7 @@
       }
     },
     "PRO feature" : {
-      "comment" : "CS-091: PRO badge accessibility label.",
+      "comment" : "PRO badge accessibility label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7721,7 +7691,7 @@
       }
     },
     "Apply to captures" : {
-      "comment" : "CS-092: Brand Kit enable toggle.",
+      "comment" : "Brand Kit enable toggle.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7738,7 +7708,7 @@
       }
     },
     "Adds your mark to every exported image" : {
-      "comment" : "CS-092: Brand Kit toggle caption.",
+      "comment" : "Brand Kit toggle caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7755,7 +7725,7 @@
       }
     },
     "Logo" : {
-      "comment" : "CS-092: Brand Kit logo row label.",
+      "comment" : "Brand Kit logo row label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7772,7 +7742,7 @@
       }
     },
     "Shown small in the chosen corner" : {
-      "comment" : "CS-092: Brand Kit logo caption.",
+      "comment" : "Brand Kit logo caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7789,7 +7759,7 @@
       }
     },
     "Handle" : {
-      "comment" : "CS-092: Brand Kit handle field label.",
+      "comment" : "Brand Kit handle field label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7806,7 +7776,7 @@
       }
     },
     "Accent" : {
-      "comment" : "CS-092: Brand Kit accent color label.",
+      "comment" : "Brand Kit accent color label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7823,7 +7793,7 @@
       }
     },
     "Placement" : {
-      "comment" : "CS-092: Brand Kit watermark placement label.",
+      "comment" : "Brand Kit watermark placement label.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7840,7 +7810,7 @@
       }
     },
     "Remove" : {
-      "comment" : "CS-092: Remove the brand-kit logo.",
+      "comment" : "Remove the brand-kit logo.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7857,7 +7827,7 @@
       }
     },
     "Choose…" : {
-      "comment" : "CS-092: Choose a brand-kit logo file.",
+      "comment" : "Choose a brand-kit logo file.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7874,7 +7844,7 @@
       }
     },
     "Replace…" : {
-      "comment" : "CS-092: Replace the brand-kit logo file.",
+      "comment" : "Replace the brand-kit logo file.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7891,7 +7861,7 @@
       }
     },
     "Unlock Vitrine PRO" : {
-      "comment" : "CS-092: Brand Kit upsell button.",
+      "comment" : "Brand Kit upsell button.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7908,7 +7878,7 @@
       }
     },
     "Choose a logo image for your brand kit." : {
-      "comment" : "CS-092: Logo open-panel message.",
+      "comment" : "Logo open-panel message.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7925,7 +7895,7 @@
       }
     },
     "Choose" : {
-      "comment" : "CS-092: Logo open-panel prompt.",
+      "comment" : "Logo open-panel prompt.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7942,7 +7912,7 @@
       }
     },
     "Bottom right" : {
-      "comment" : "CS-092: Watermark placement option.",
+      "comment" : "Watermark placement option.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7959,7 +7929,7 @@
       }
     },
     "Free" : {
-      "comment" : "CS-092: Watermark placement option — drag the mark anywhere.",
+      "comment" : "Watermark placement option — drag the mark anywhere.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8027,7 +7997,7 @@
       }
     },
     "Bottom left" : {
-      "comment" : "CS-092: Watermark placement option.",
+      "comment" : "Watermark placement option.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8044,7 +8014,7 @@
       }
     },
     "Top right" : {
-      "comment" : "CS-092: Watermark placement option.",
+      "comment" : "Watermark placement option.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8061,7 +8031,7 @@
       }
     },
     "Top left" : {
-      "comment" : "CS-092: Watermark placement option.",
+      "comment" : "Watermark placement option.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8078,7 +8048,7 @@
       }
     },
     "Use Brand Kit" : {
-      "comment" : "CS-092: Social-card footer brand-kit action.",
+      "comment" : "Social-card footer brand-kit action.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8095,7 +8065,7 @@
       }
     },
     "Fill the footer from your Brand Kit" : {
-      "comment" : "CS-092: Social-card brand-kit action help.",
+      "comment" : "Social-card brand-kit action help.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8112,7 +8082,7 @@
       }
     },
     "Export sizes" : {
-      "comment" : "CS-093: Multi-size export sheet/title.",
+      "comment" : "Multi-size export sheet/title.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8129,7 +8099,7 @@
       }
     },
     "Write one image per platform size into a folder." : {
-      "comment" : "CS-093: Multi-size export subtitle.",
+      "comment" : "Multi-size export subtitle.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8146,7 +8116,7 @@
       }
     },
     "Select all" : {
-      "comment" : "CS-093: Select every preset.",
+      "comment" : "Select every preset.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8163,7 +8133,7 @@
       }
     },
     "Select none" : {
-      "comment" : "CS-093: Deselect every preset.",
+      "comment" : "Deselect every preset.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8180,7 +8150,7 @@
       }
     },
     "Choose a folder for the exported images." : {
-      "comment" : "CS-093: Folder open-panel message.",
+      "comment" : "Folder open-panel message.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8197,7 +8167,7 @@
       }
     },
     "Some images couldn't be written. Check the folder and try again." : {
-      "comment" : "CS-093: Multi-size export failure note.",
+      "comment" : "Multi-size export failure note.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8214,7 +8184,7 @@
       }
     },
     "Export this snapshot to several platform sizes at once" : {
-      "comment" : "CS-093: Multi-size export toolbar help.",
+      "comment" : "Multi-size export toolbar help.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8231,7 +8201,7 @@
       }
     },
     "The purchase didn't complete. Please try again." : {
-      "comment" : "CS-089: paywall message when a StoreKit purchase fails.",
+      "comment" : "Paywall message when a StoreKit purchase fails.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8248,7 +8218,7 @@
       }
     },
     "Tints the mark's text" : {
-      "comment" : "CS-092: Brand Kit accent caption.",
+      "comment" : "Brand Kit accent caption.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8265,7 +8235,7 @@
       }
     },
     "Couldn't load that image" : {
-      "comment" : "CS-092: Brand Kit logo import error.",
+      "comment" : "Brand Kit logo import error.",
       "localizations" : {
         "en" : {
           "stringUnit" : {

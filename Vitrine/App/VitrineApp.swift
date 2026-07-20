@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Vitrine — a menu-bar app that turns code into images (CS-001).
+/// Vitrine — a menu-bar app that turns code into images.
 ///
 /// The app lives entirely in the menu bar (`LSUIElement`, see Info.plist). The
-/// `MenuBarExtra` presents the redesigned panel (`.window` style, per
-/// design/handoff); the editor and preferences are AppKit-hosted windows
+/// `MenuBarExtra` presents the current designed panel (`.window` style, per
+/// shared design system); the editor and preferences are AppKit-hosted windows
 /// opened on demand (see `EditorWindowController` / `SettingsWindowManager`).
 @main
 struct VitrineApp: App {

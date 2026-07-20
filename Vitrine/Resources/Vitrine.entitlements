@@ -2,33 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- This entitlement set is the Phase 1 row of the permission matrix in
-	     docs/PERMISSIONS.md (CS-065): sandbox + user-selected file access, with no
+	<!-- This entitlement set is the local rendering row of the permission matrix in
+	     docs/PERMISSIONS.md: sandbox + user-selected file access, with no
 	     network and no Screen Recording. Any change here must update that matrix in
 	     the same change; Tests/PrivacyManifestTests.swift fails on drift. -->
-	<!-- This is also the App Store-compatible entitlement set (CS-062, see
-	     docs/APP-STORE.md). The SAME app target ships through the direct-download DMG
-	     and the optional Mac App Store, so the entitlements are identical across both
-	     channels — there is no separate App Store build that drops or adds a
-	     capability. The App Store REQUIRES the App Sandbox (below); this app already
-	     runs sandboxed, so nothing changes for an App Store submission. The only
-	     channel difference is the signing identity (Developer ID + notarization for
-	     the DMG vs. Apple Distribution for the App Store). Adding the network entitlement
-	     for Phase 2 URL capture is gated: it must update docs/APP-STORE.md, the privacy
-	     copy, and the tests in the same change before any App Store submission. -->
+	<!-- This is the App Store-compatible entitlement set (see docs/APP-STORE.md).
+	     The direct-download build uses Vitrine.DirectDownload.entitlements, which adds
+	     narrowly scoped network and Sparkle capabilities. Both channels keep the App
+	     Sandbox and user-selected file boundary. -->
 	<!-- App Sandbox on. Deliberately NO com.apple.security.network.client:
-	     the core is fully local (CS-011), and Product Phase 2 URL capture (CS-043)
-	     stays disabled until this entitlement is deliberately added. The renderer
+	     the core is fully local, and remote URL capture is unavailable in this channel. The renderer
 	     reads this entitlement at runtime (NetworkCapability) and refuses a URL
-	     capture while it is absent, so a Phase 1 build provably cannot reach the
-	     network. Adding the key here is the single switch that enables URL capture;
-	     CS-045/CS-062 also update the privacy copy and App Store posture when it is. -->
+	     capture while it is absent, so a network-free build provably cannot reach the
+	     network. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 	<!-- User-selected file access only. This single entitlement covers every
-	     file the app touches: saving rendered images via NSSavePanel (CS-007),
-	     importing presets/themes/backgrounds via NSOpenPanel (CS-030/031/051),
-	     and loading a source file the user drags onto the editor (CS-028). A
+	     file the app touches: saving rendered images via NSSavePanel,
+	     importing presets/themes/backgrounds via NSOpenPanel,
+	     and loading a source file the user drags onto the editor. A
 	     dropped file's URL is a user-selected, security-scoped resource, so drop
 	     input needs NO additional or broader file entitlement. -->
 	<key>com.apple.security.files.user-selected.read-write</key>

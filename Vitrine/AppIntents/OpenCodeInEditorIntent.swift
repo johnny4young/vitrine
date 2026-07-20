@@ -1,7 +1,7 @@
 import AppIntents
 import OSLog
 
-/// A Shortcuts action that opens a snippet of code in the Vitrine editor (CS-034).
+/// A Shortcuts action that opens a snippet of code in the Vitrine editor.
 ///
 /// Where `RenderCodeImageIntent` produces a file headlessly, this action is the
 /// "hand it to me to finish" path: it loads the code (and an optional language) into
@@ -55,8 +55,8 @@ struct OpenCodeInEditorIntent: AppIntent {
         settings.noteLanguageUsed(resolved)
 
         // Load the snippet into the primary editor window over the user's default
-        // style, so it appears even if the editor was already open (CS-053: a plain
-        // `show()` no longer clobbers an open window's per-window document).
+        // style, so it appears even if the editor was already open; a plain `show()`
+        // no longer clobbers an open window's per-window document.
         var document = settings.config
         document.code = code
         document.language = resolved

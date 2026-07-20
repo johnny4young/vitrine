@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// One-click image-size/style presets for the surfaces developers actually post
-/// to (CS-020).
+/// to.
 ///
 /// A preset is **presentation/output only**: applying one mutates the snapshot's
 /// look (padding, background) and pins an exact output size and scale, but it
@@ -35,10 +35,10 @@ struct ExportPreset: Identifiable, Hashable {
         /// Render at an exact logical-pixel canvas (width × height). The exporter
         /// fills this frame precisely; OpenGraph uses 1200×630.
         case fixed(width: Double, height: Double)
-        /// Recommend an aspect ratio (width : height) without forcing a size; the
+        /// Recommend an aspect ratio (width:height) without forcing a size; the
         /// canvas still hugs its content. The content-hugging alternative to
-        /// `.fixed` — no shipped destination uses it (they all pin exact pixels), but
-        /// it stays available for a future "shape only" preset.
+        /// `.fixed`. No shipped destination uses it because current destinations pin
+        /// exact pixels, but imported presets can still express a content-hugging shape.
         case aspect(width: Double, height: Double)
 
         /// The exact logical pixel size to render, when the preset pins one.
@@ -49,7 +49,7 @@ struct ExportPreset: Identifiable, Hashable {
             return nil
         }
 
-        /// The width : height ratio this preset targets, for both fixed and
+        /// The width:height ratio this preset targets, for both fixed and
         /// aspect sizing. Never zero (every preset declares positive dimensions).
         var aspectRatio: Double {
             switch self {
@@ -83,7 +83,7 @@ struct ExportPreset: Identifiable, Hashable {
 
 extension ExportPreset {
     /// X / Twitter timeline image — the 16:9 in-stream card at its native
-    /// 1600×900 pixels, so the export is exactly the shape the timeline shows (CS-020).
+    /// 1600×900 pixels, so the export is exactly the shape the timeline shows.
     static let twitter = ExportPreset(
         id: "twitter",
         displayName: "X / Twitter",
@@ -94,7 +94,7 @@ extension ExportPreset {
         padding: 40
     )
 
-    /// LinkedIn feed image — the platform's 1.91:1 link-card shape at 1200×628 (CS-020).
+    /// LinkedIn feed image — the platform's 1.91:1 link-card shape at 1200×628.
     static let linkedIn = ExportPreset(
         id: "linkedin",
         displayName: "LinkedIn",
@@ -105,7 +105,7 @@ extension ExportPreset {
         padding: 40
     )
 
-    /// Keynote / slide deck — a full 1920×1080 (16:9) surface for presentations (CS-020).
+    /// Keynote / slide deck — a full 1920×1080 (16:9) surface for presentations.
     static let keynote = ExportPreset(
         id: "keynote",
         displayName: "Keynote",
@@ -116,8 +116,8 @@ extension ExportPreset {
         padding: 56
     )
 
-    /// Docs / blog — a tighter image that drops into prose without dominating it
-    /// (CS-020). Leaves the background as-is so it can match a site's theme.
+    /// Docs / blog — a tighter image that drops into prose without dominating it.
+    /// Leaves the background as-is so it can match a site's theme.
     static let docs = ExportPreset(
         id: "docs",
         displayName: "Docs / Blog",
@@ -128,8 +128,8 @@ extension ExportPreset {
         padding: 24
     )
 
-    /// Transparent slide — real alpha for dropping onto any deck background
-    /// (CS-020). Pairs transparency with no drop shadow downstream guidance.
+    /// Transparent slide — real alpha for dropping onto any deck background.
+    /// Pairs transparency with no drop shadow downstream guidance.
     static let transparentSlide = ExportPreset(
         id: "transparent-slide",
         displayName: "Transparent Slide",
@@ -140,7 +140,7 @@ extension ExportPreset {
         padding: 48
     )
 
-    /// OpenGraph card — exactly 1200×630 logical pixels at 1× (CS-020). The
+    /// OpenGraph card — exactly 1200×630 logical pixels at 1×. The
     /// canonical link-preview size for X, Slack, Discord, and most CMSs.
     static let openGraph = ExportPreset(
         id: "opengraph",
@@ -152,7 +152,7 @@ extension ExportPreset {
         padding: 56
     )
 
-    /// Instagram Story / Reels cover — the 9:16 vertical canvas at 1080×1920 (CS-020).
+    /// Instagram Story / Reels cover — the 9:16 vertical canvas at 1080×1920.
     static let instagramStory = ExportPreset(
         id: "instagram-story",
         displayName: "Instagram Story",
@@ -163,7 +163,7 @@ extension ExportPreset {
         padding: 64
     )
 
-    /// GitHub README banner — a wide 2:1 header image at 1280×640 (CS-020).
+    /// GitHub README banner — a wide 2:1 header image at 1280×640.
     static let githubBanner = ExportPreset(
         id: "github-banner",
         displayName: "GitHub Banner",
@@ -188,10 +188,10 @@ extension ExportPreset {
     }
 }
 
-// MARK: - Style presets (CS-030)
+// MARK: - Style presets
 
 /// The presentation/style of a snapshot, captured so it can be saved, named,
-/// exported, imported, and shared as a reusable preset (CS-030).
+/// exported, imported, and shared as a reusable preset.
 ///
 /// A `StyleSnapshot` is the *style half* of a `SnapshotConfig`: theme, font,
 /// padding, chrome, shadow, line numbers, line wrapping, and the canvas background. It is
@@ -206,7 +206,7 @@ extension ExportPreset {
 /// `BackgroundStyle`'s own tolerant decode for the background). A hand-edited or
 /// corrupt preset file can therefore never feed an unknown theme, a missing font,
 /// or an out-of-range number into the renderer — it degrades to the documented
-/// default instead (CS-030 "invalid preset files do not crash", CS-050 spirit).
+/// default instead.
 struct StyleSnapshot: Hashable, Codable {
     /// The syntax theme id (e.g. `"dracula"`); resolved through `Theme.theme(withID:)`
     /// so an unknown id falls back to One Dark.
@@ -215,7 +215,7 @@ struct StyleSnapshot: Hashable, Codable {
     var fontName: String
     /// Code point size, clamped to the Style slider range on decode.
     var fontSize: Double
-    /// Whether programming ligatures are on (CS-052).
+    /// Whether programming ligatures are on.
     var fontLigatures: Bool
     /// Canvas padding in points, clamped to the Style slider range on decode.
     var padding: Double
@@ -225,7 +225,7 @@ struct StyleSnapshot: Hashable, Codable {
     var showChrome: Bool
     /// Whether the drop shadow is drawn.
     var showShadow: Bool
-    /// Whether a line-number gutter is drawn (CS-021).
+    /// Whether a line-number gutter is drawn.
     var showLineNumbers: Bool
     /// Optional code soft-wrap column count; `nil` keeps the card size-to-content.
     var wrapColumns: Int?
@@ -234,7 +234,7 @@ struct StyleSnapshot: Hashable, Codable {
     /// safe value rather than failing the whole decode.
     var background: BackgroundStyle
 
-    /// Captures the style of `config` into a portable snapshot (CS-030).
+    /// Captures the style of `config` into a portable snapshot.
     ///
     /// An **image** background is not portable — it points at a file in this app's
     /// container that will not exist on another machine or after a reset — so it is
@@ -351,15 +351,14 @@ struct StyleSnapshot: Hashable, Codable {
     }
 }
 
-/// A named, reusable style the user can save, apply, export, import, and share
-/// (CS-030).
+/// A named, reusable style the user can save, apply, export, import, and share.
 ///
 /// A preset pairs a stable `id` and a display `name` with a `StyleSnapshot`. Two
 /// origins exist:
 ///
 /// - **Built-in** presets ship with the app. They are immutable: the store never
 ///   lets one be renamed, edited, or deleted — only *duplicated* into an editable
-///   user copy (CS-030 acceptance "built-in presets cannot be overwritten, only
+///   user copy (contract "built-in presets cannot be overwritten, only
 ///   duplicated"). `isBuiltIn` is recomputed from the catalog on load rather than
 ///   trusted from a file, so a shared file cannot smuggle in a fake "built-in"
 ///   flag to make itself uneditable.
@@ -443,7 +442,7 @@ extension StylePreset {
             background: .solid(RGBAColor(.white))))
 
     /// The built-in presets, in list order. They are immutable; the store offers
-    /// "Duplicate" instead of editing or deleting any of them (CS-030).
+    /// "Duplicate" instead of editing or deleting any of them.
     static let builtIns: [StylePreset] = [.aurora, .midnight, .sunset, .minimal]
 
     /// Returns the next curated built-in style for a one-click visual refresh.
@@ -464,7 +463,7 @@ extension StylePreset {
     static let builtInIDs: Set<String> = Set(builtIns.map(\.id))
 }
 
-/// The on-disk JSON envelope for exporting and importing style presets (CS-030).
+/// The on-disk JSON envelope for exporting and importing style presets.
 ///
 /// Presets are shared as a single self-describing file: a `format` marker, a
 /// `schemaVersion`, and the array of presets. Import is **strict about the
@@ -487,7 +486,7 @@ struct StylePresetDocument: Codable, Equatable {
     var presets: [StylePreset]
 
     /// Errors surfaced while importing a preset file. Each maps to clear, user
-    /// facing copy at the call site (CS-030 "clear validation errors").
+    /// facing copy at the call site.
     enum ImportError: Error, Equatable {
         /// The bytes are not valid JSON / not a preset document at all.
         case notAPresetFile
@@ -542,7 +541,7 @@ struct StylePresetDocument: Codable, Equatable {
     }
 
     /// Parses and validates preset-file `data`, returning the contained presets or
-    /// throwing a specific `ImportError` (CS-030).
+    /// throwing a specific `ImportError`.
     ///
     /// Validation order is deliberate: malformed JSON → not a preset file → wrong
     /// format marker → unsupported schema → empty. A valid document with at least

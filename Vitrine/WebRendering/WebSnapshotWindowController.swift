@@ -4,16 +4,16 @@ import SwiftUI
 
 /// Which kind of web input the Web Snapshot surface is composing.
 enum WebInputMode: String, CaseIterable, Identifiable {
-    /// A user-provided `http`/`https` URL, captured locally in WebKit (CS-043).
+    /// A user-provided `http`/`https` URL, captured locally in WebKit.
     case url
     /// A pasted HTML fragment or document, rendered locally with remote subresources
-    /// blocked (CS-042).
+    /// blocked.
     case html
 
     var id: String { rawValue }
 }
 
-/// One viewport's capture in a multi-resolution batch (CS-044): the size it was
+/// One viewport's capture in a multi-resolution batch: the size it was
 /// rendered at and the resulting asset, for the result gallery and the responsive board.
 struct CapturedViewport: Identifiable {
     let kind: WebSnapshotConfig.ViewportPreset.Kind
@@ -76,8 +76,7 @@ struct CapturedViewport: Identifiable {
 }
 
 /// The observable document behind the Web Snapshot window: the chosen input mode, the
-/// URL/HTML the user is composing, the rendered result, and the in-flight/error state
-/// (CS-042/CS-043).
+/// URL/HTML the user is composing, the rendered result, and the in-flight/error state.
 ///
 /// The render itself runs here so the view stays declarative: ``render(settings:)``
 /// builds the right renderer (`HTMLRenderer` for HTML, `URLRenderer.configured` for
@@ -96,12 +95,12 @@ final class WebSnapshotModel {
     /// multi-resolution batch this is the primary (first selected) captured viewport.
     var renderedAsset: RenderedAsset?
 
-    /// Every viewport captured in the last multi-resolution batch (CS-044), in selection
+    /// Every viewport captured in the last multi-resolution batch, in selection
     /// order. Drives the result gallery and the responsive board; empty for a failed or
     /// not-yet-run capture.
     var results: [CapturedViewport] = []
 
-    /// The composite "responsive board" for a multi-size batch (CS-044): every capture
+    /// The composite "responsive board" for a multi-size batch: every capture
     /// laid out in one shareable image. `nil` for a single-viewport capture or a failed
     /// batch; when present it is the primary preview/export.
     var boardAsset: RenderedAsset?
@@ -115,7 +114,7 @@ final class WebSnapshotModel {
     /// A user-facing, non-PII error from the last render attempt, or `nil`.
     var errorMessage: String?
 
-    /// Progress through a multi-viewport batch (CS-044 cancel/progress): the 1-based
+    /// Progress through a multi-viewport batch (cancel/progress): the 1-based
     /// index of the viewport being captured and the batch total, so the loading state can
     /// say "Capturing 2 of 4". `nil` when idle or for a single-viewport capture.
     struct RenderProgress: Equatable {
@@ -142,7 +141,7 @@ final class WebSnapshotModel {
 
     /// Releases the large rendered images — a multi-viewport batch can hold several
     /// full-resolution `CGImage`s (~100 MB) — when the window closes. The input text, mode,
-    /// and settings stay, so reopening resumes ready to re-capture (audit P1-Perf-6).
+    /// and settings stay, so reopening resumes ready to re-capture.
     func discardRenderedAssets() {
         renderedAsset = nil
         results = []
@@ -157,7 +156,7 @@ final class WebSnapshotModel {
 
     /// Set when a prefilled URL arrives in a build where URL capture is available, so the
     /// view fires the capture automatically instead of stranding the user on a prefilled
-    /// form (UX audit). Cleared once the view acts on it.
+    /// form. Cleared once the view acts on it.
     var pendingAutoCapture = false
 
     /// Whether a prefilled URL should capture automatically: only in URL mode, and only
@@ -170,7 +169,7 @@ final class WebSnapshotModel {
     /// Loads a URL supplied by quick capture or another presenter, clearing all prior
     /// rendered outputs so stale filmstrip/export-all results cannot survive into the new
     /// capture session, and — where URL capture is available — flags it to auto-capture so
-    /// the user is not left on a static prefilled form (UX audit).
+    /// the user is not left on a static prefilled form.
     func prepareForPrefillURL(_ prefillURL: String) {
         mode = .url
         urlText = prefillURL
@@ -179,13 +178,13 @@ final class WebSnapshotModel {
             mode: .url, urlCaptureEnabled: NetworkCapability.isURLCaptureEnabled)
     }
 
-    /// The maximum number of viewport captures to run at once (P6). Small so a large
+    /// The maximum number of viewport captures to run at once. Small so a large
     /// selection never spawns many heavy `WKWebView`s (and their web-content processes)
     /// at once; the loads still overlap, cutting a multi-size batch well below N× a single
     /// capture.
     private static let maxConcurrentCaptures = 3
 
-    /// The `Sendable` result of one viewport's concurrent capture task (P6): the finished
+    /// The `Sendable` result of one viewport's concurrent capture task: the finished
     /// `RenderedAsset` (or a typed failure) crosses back from the child task, and the
     /// main-actor drain loop wraps it in a `CapturedViewport` (whose `preset` accessors are
     /// main-actor bound) once it knows the completion order.
@@ -199,7 +198,7 @@ final class WebSnapshotModel {
     /// Renders the current input at every selected viewport, publishing the captured
     /// set or a typed error. Safe to call repeatedly; each call replaces the results.
     ///
-    /// Multi-resolution capture (CS-044) overlaps the per-viewport loads with a small
+    /// Multi-resolution capture overlaps the per-viewport loads with a small
     /// concurrency cap (`maxConcurrentCaptures`, P6): each viewport builds its **own**
     /// `WKWebView` — a separate web-content process — so their loads run in parallel even
     /// though `WKWebView` is main-actor bound (the `await` on each load releases the main
@@ -242,7 +241,7 @@ final class WebSnapshotModel {
         var lastError: RenderError?
         var hadUnknownError = false
 
-        // Overlap the per-viewport loads with a small concurrency cap (P6): keep at most
+        // Overlap the per-viewport loads with a small concurrency cap: keep at most
         // `maxConcurrentCaptures` in flight, scheduling the next as each finishes. Each
         // renderer owns its WKWebView/web-content process, so the loads run in parallel;
         // the awaits release the main actor between them. Cancellation (the Cancel button)
@@ -348,7 +347,7 @@ final class WebSnapshotModel {
     ///
     /// The renderer branch is chosen from the captured, immutable `input` — not the live
     /// `mode` — so a parallel batch routes every viewport consistently even if the user
-    /// flips the mode picker mid-render (P6 review): `input` was resolved once from `mode`
+    /// flips the mode picker mid-render: `input` was resolved once from `mode`
     /// at the top of `render`, so it is the authoritative source for all viewports.
     private func renderOne(
         input: CaptureInput,
@@ -401,7 +400,7 @@ final class WebSnapshotModel {
     }
 }
 
-/// Owns the app's single Web Snapshot window (CS-042/CS-043): local HTML rendering and
+/// Owns the app's single Web Snapshot window: local HTML rendering and
 /// (on a build that carries the network entitlement) URL capture, with a live preview
 /// and the same clipboard/save/share export as the rest of the app.
 ///
@@ -479,7 +478,7 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
 
     /// Frees the large rendered images when the window closes. The window is reused
     /// (`isReleasedWhenClosed = false`), so without this a multi-viewport batch's
-    /// full-resolution captures would stay resident for the app's lifetime (audit P1-Perf-6).
+    /// full-resolution captures would stay resident for the app's lifetime.
     func windowWillClose(_ notification: Notification) {
         model.discardRenderedAssets()
     }

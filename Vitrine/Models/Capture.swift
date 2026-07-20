@@ -1,6 +1,6 @@
 import Foundation
 
-/// A past capture stored in Recents (CS-013). Themes and languages are stored by
+/// A past capture stored in Recents. Themes and languages are stored by
 /// id so the model stays `Codable` and decoupled from SwiftUI types.
 struct Capture: Codable, Identifiable, Equatable {
     let id: UUID

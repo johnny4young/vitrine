@@ -2,9 +2,9 @@ import Testing
 
 @testable import Vitrine
 
-/// Covers the editor's hero-preview helper (CS-037): the empty-state sample is
+/// Covers the editor's hero-preview helper: the empty-state sample is
 /// shown in the preview without ever mutating the user's document.
-@Suite("Editor preview (CS-037)")
+@Suite("Editor preview")
 struct EditorPreviewTests {
     @Test func emptyDocumentPreviewsTheSampleWithoutMutatingTheDocument() {
         var live = SnapshotConfig()

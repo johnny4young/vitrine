@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The visual recents gallery (CS-029): a window that shows past captures as
+/// The visual recents gallery: a window that shows past captures as
 /// preview cards instead of only a truncated line of code in a menu.
 ///
 /// People recognize a screenshot far faster by its look — theme, language, and
@@ -183,7 +183,7 @@ struct RecentsGalleryView: View {
         }
         // Clearing recents cannot be undone — it empties the list and deletes the
         // cached previews — so confirm first. The destructive (red) action mirrors
-        // the replace/discard prompts elsewhere in the app (CS-028).
+        // the replace/discard prompts elsewhere in the app.
         .confirmationDialog(
             "Clear Recents?",
             isPresented: $isConfirmingClear,
@@ -248,8 +248,8 @@ struct RecentsGalleryView: View {
     // MARK: - Actions
 
     /// Loads `capture` into the primary editor window as a per-window document — the same
-    /// path the menu-bar Recents row uses (`EditorWindowController.loadIntoPrimary`,
-    /// CS-053). The earlier version mutated the shared `AppSettings` and only `show()`d the
+    /// path the menu-bar Recents row uses (`EditorWindowController.loadIntoPrimary`).
+    /// The earlier version mutated the shared `AppSettings` and only `show()`d the
     /// window, so reopening from the gallery silently overwrote the global default style
     /// *and* left the editor on its previous content; this matches the menu's semantics so
     /// the two recents surfaces behave identically.
@@ -262,7 +262,7 @@ struct RecentsGalleryView: View {
     /// guidance and exact geometry, matching the menu-bar one-off preset flow.
     private func render(_ capture: Capture, as preset: ExportPreset) {
         // `exportConfig`, not `config`: every export surface renders through it so
-        // the PRO Brand Kit watermark is applied at the export seam (CS-092).
+        // the PRO Brand Kit watermark is applied at the export seam.
         var config = capture.applying(to: settings.exportConfig)
         preset.apply(to: &config)
         let copied = ExportManager.copyToPasteboard(
@@ -352,7 +352,7 @@ private struct RecentsCard: View {
                     .aspectRatio(contentMode: .fill)
             } else {
                 // No cached preview (e.g. a capture restored from a build that
-                // predates CS-029): fall back to the brand mark so the card still
+                // predates ): fall back to the brand mark so the card still
                 // reads as a recents entry rather than a broken image.
                 Brand.Gradient.signatureWash()
                 BrandMark(size: 32)
@@ -370,7 +370,7 @@ private struct RecentsCard: View {
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Brand.Palette.textPrimary.color)
                 .lineLimit(1)
-            // A locale-neutral separator dot, shown verbatim (CS-047).
+            // A locale-neutral separator dot, shown verbatim.
             Text(verbatim: "·")
                 .foregroundStyle(Brand.Palette.textSecondary.color)
             Text(capture.theme.displayName)

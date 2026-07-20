@@ -1,8 +1,8 @@
 import SwiftUI
 
-// The shared chrome components of the redesigned surfaces (design/handoff).
+// The shared chrome components of the current designed surfaces.
 // Every visual value here resolves through `VitrineTokens`; the shapes and
-// measurements mirror the HTML UI kits' component classes one to one, so the
+// measurements mirror the design-system component classes one to one, so the
 // Settings window, the editor inspector, and the menu-bar panel all read as the
 // same design system.
 

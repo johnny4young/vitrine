@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fetch Sparkle.framework into Vendor/ for the direct-download build (CS-064).
+# Fetch Sparkle.framework into Vendor/ for the direct-download build.
 #
 # Sparkle is embedded as a LOCAL framework rather than through its Swift Package
 # Manager binary artifact. That artifact's resolution hung intermittently on

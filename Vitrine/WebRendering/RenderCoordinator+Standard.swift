@@ -1,9 +1,8 @@
 import Foundation
 
 extension RenderCoordinator {
-    /// The production coordinator wired with the renderers Vitrine ships: the Phase 1
-    /// `CodeRenderer`, the local `HTMLRenderer`, and the `URLRenderer` (Product Phase
-    /// 2).
+    /// The production coordinator wired with the renderers Vitrine ships: the
+    /// `CodeRenderer`, the local `HTMLRenderer`, and the `URLRenderer`.
     ///
     /// HTML renders locally on every build. URL capture stays gated on the network
     /// entitlement (`NetworkCapability`): a `.url` render is inert — it throws

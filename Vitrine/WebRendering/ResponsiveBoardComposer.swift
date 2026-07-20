@@ -2,7 +2,7 @@ import CoreGraphics
 import SwiftUI
 
 /// Composites the captured viewports of a multi-resolution batch into one shareable
-/// "responsive board" image (CS-044): each capture on a labeled card, laid out in a row
+/// "responsive board" image: each capture on a labeled card, laid out in a row
 /// over a branded background, rendered with `ImageRenderer`.
 ///
 /// The output size is a pure function of the input set — each card's image is scaled to a
@@ -33,7 +33,7 @@ enum ResponsiveBoardComposer {
 
     /// The board's backing gradient, hard-coded (not theme-derived) so the composite stays
     /// deterministic for the golden suite. Named so the two anchor colors live in one place
-    /// rather than as inline literals (audit P2-4).
+    /// rather than as inline literals.
     static let boardGradientColors: [Color] = [
         Color(red: 0.07, green: 0.06, blue: 0.13),
         Color(red: 0.10, green: 0.08, blue: 0.20),

@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The Style-pane editor for the canvas background (CS-051).
+/// The Style-pane editor for the canvas background.
 ///
 /// Surfaces every background kind — gradient preset, custom gradient (stops +
 /// angle), solid color, user image (fit/blur/dimming), and transparent — behind
@@ -150,7 +150,7 @@ enum BackgroundKind: String, CaseIterable, Identifiable {
 }
 
 /// Editor for a custom gradient: an angle slider plus per-stop color wells, with
-/// add/remove for stops (CS-051). Keeps at least two stops so the gradient stays
+/// add/remove for stops. Keeps at least two stops so the gradient stays
 /// well-defined.
 struct CustomGradientEditor: View {
     @Binding var gradient: CustomGradient
@@ -171,7 +171,7 @@ struct CustomGradientEditor: View {
             // endpoints imply a degree readout that the slider alone omits.
             Text("Angle (\(Int(gradient.angle))°)")
         } minimumValueLabel: {
-            // Locale-neutral degree endpoints, shown verbatim (CS-047).
+            // Locale-neutral degree endpoints, shown verbatim.
             Text(verbatim: "0°")
         } maximumValueLabel: {
             Text(verbatim: "360°")
@@ -234,7 +234,7 @@ struct CustomGradientEditor: View {
 }
 
 /// Editor for an image background: the chosen image, a button to pick another,
-/// and fit/blur/dimming controls (CS-051). Picking uses an `NSOpenPanel`
+/// and fit/blur/dimming controls. Picking uses an `NSOpenPanel`
 /// (user-selected access) and imports the file into the app container.
 struct ImageBackgroundEditor: View {
     @Binding var image: ImageBackground

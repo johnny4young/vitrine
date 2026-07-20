@@ -2,13 +2,13 @@ import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
-/// The menu-bar panel (CS-009), redesigned per design/handoff as a
+/// The menu-bar panel, redesigned with the shared design system as a
 /// `MenuBarExtra(.window)` surface: header with the live hotkey, the gradient
 /// "New Capture from Clipboard" CTA, recent captures as thumbnail rows, the
 /// theme chip strip, and the explicit command rows with their shortcuts.
 ///
 /// Titles, SF Symbols, and shortcuts come from `VitrineCommand` so the panel
-/// and the application main menu (CS-032) never drift.
+/// and the application main menu never drift.
 struct MenuBarContent: View {
     @Environment(AppSettings.self) private var settings
     @Environment(RecentsStore.self) private var recents
@@ -129,7 +129,7 @@ struct MenuBarContent: View {
         }
     }
 
-    /// The last capture outcome plus any inline recovery actions (CS-038).
+    /// The last capture outcome plus any inline recovery actions.
     /// Hidden until a capture has run, so a clean launch shows no stale status.
     @ViewBuilder private var lastCaptureStatus: some View {
         if let last = feedback.lastFeedback {
@@ -172,7 +172,7 @@ struct MenuBarContent: View {
 
             if recents.captures.isEmpty {
                 // Teach the core loop here — this panel is the first surface many users
-                // open, before any capture exists (audit UX). The hotkey chip above shows
+                // open before any capture exists. The hotkey chip above shows
                 // exactly which keys "the capture hotkey" means.
                 VStack(alignment: .leading, spacing: 2) {
                     Text("No recent captures")
@@ -290,7 +290,7 @@ struct MenuBarContent: View {
     }
 
     /// One hover-highlighted command row driven by a `VitrineCommand`: shared
-    /// title, SF Symbol, keyboard shortcut, and accessibility identifier (CS-032).
+    /// title, SF Symbol, keyboard shortcut, and accessibility identifier.
     @ViewBuilder
     private func commandRow(_ command: VitrineCommand, action: @escaping () -> Void) -> some View {
         let row = MenuPanelRow(
@@ -326,8 +326,8 @@ struct MenuBarContent: View {
 
     /// Loads a recent capture into the primary editor window and shows it. Builds the
     /// document over the app's default style so the recent's code/language/theme appear
-    /// even if the editor is already open (CS-053: a plain `show()` no longer clobbers
-    /// an open window's per-window document).
+    /// even if the editor is already open; a plain `show()` no longer clobbers an
+    /// open window's per-window document.
     private func reopen(_ capture: Capture) {
         EditorWindowController.shared.loadIntoPrimary(capture.applying(to: settings.config))
     }
@@ -337,7 +337,7 @@ struct MenuBarContent: View {
     /// click from the clipboard again.
     private func copyAgain(_ capture: Capture) {
         // `exportConfig`, not `config`: every export surface renders through it so
-        // the PRO Brand Kit watermark is applied at the export seam (CS-092).
+        // the PRO Brand Kit watermark is applied at the export seam.
         let config = capture.applying(to: settings.exportConfig)
         ExportManager.copyToPasteboard(
             config, scale: CGFloat(settings.effectiveExportScale),
@@ -574,7 +574,7 @@ private struct MenuPanelRow: View {
 
 extension VitrineCommand {
     /// This command's shortcut as typed glyphs (e.g. `"⌘E"`), or `nil` when it
-    /// has none — the panel shows shortcuts as visible `kbd` tags (design/handoff).
+    /// has none — the panel shows shortcuts as visible `kbd` tags.
     var shortcutGlyphs: String? {
         guard let key = keyEquivalent, !key.isEmpty else { return nil }
         var glyphs = ""

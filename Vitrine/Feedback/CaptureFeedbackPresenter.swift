@@ -2,11 +2,11 @@ import Foundation
 import Observation
 
 /// Turns a quick-capture `Result` into the right on-screen feedback and performs
-/// any recovery action the user chooses (CS-038).
+/// any recovery action the user chooses.
 ///
 /// This is the side-effecting counterpart to the pure `Notifier` policy: it asks
 /// `Notifier` what to say, then presents it through the in-app `CaptureHUD` so
-/// Notification Center is *not* used for routine success (CS-038 acceptance:
+/// Notification Center is *not* used for routine success (
 /// "Notification Center is not used repeatedly for routine success if an in-app
 /// HUD is available."). Notification Center remains a fallback for when the HUD
 /// cannot be shown. The most recent feedback is published so the menu-bar menu can
@@ -16,13 +16,13 @@ import Observation
 final class CaptureFeedbackPresenter {
     static let shared = CaptureFeedbackPresenter()
 
-    /// The most recent capture feedback, for the menu-bar surface (CS-038). The
+    /// The most recent capture feedback, for the menu-bar surface. The
     /// menu shows this as a status line plus any inline recovery actions, so the
     /// last result stays reachable after the transient HUD fades.
     private(set) var lastFeedback: Notifier.CaptureFeedback?
 
     /// The URL detected by the last capture, if any — the payload the "Render as
-    /// Text" recovery acts on. Never logged (CS-048 privacy rule).
+    /// Text" recovery acts on. Never logged (privacy policy).
     private var pendingURLText: String?
 
     private let hud: CaptureHUDController
@@ -36,7 +36,7 @@ final class CaptureFeedbackPresenter {
         self.settingsProvider = settings
     }
 
-    /// Presents feedback for a completed capture `result` (CS-038).
+    /// Presents feedback for a completed capture `result`.
     ///
     /// `settings` is the same settings instance the capture ran against, used to
     /// re-render on a recovery action. Routine success shows the HUD only; dead
@@ -61,14 +61,14 @@ final class CaptureFeedbackPresenter {
         }
     }
 
-    /// Runs a recovery action the user picked from the HUD or the menu (CS-038).
+    /// Runs a recovery action the user picked from the HUD or the menu.
     func run(_ action: Notifier.RecoveryAction, settings: AppSettings? = nil) {
         let settings = settings ?? settingsProvider()
         switch action {
         case .openEditor:
             // The deferred capture's combined source lives in `settings.config`; load
             // it into the primary editor so the "Open Editor" recovery surfaces it even
-            // if the editor is already open (CS-027 + CS-053).
+            // if the editor is already open (+ ).
             EditorWindowController.shared.loadIntoPrimary(settings.config)
         case .openWebSnapshot:
             if let text = pendingURLText {
@@ -82,7 +82,7 @@ final class CaptureFeedbackPresenter {
         }
     }
 
-    /// Renders the previously-detected URL as plain text and confirms it (CS-038).
+    /// Renders the previously-detected URL as plain text and confirms it.
     /// Falls back to opening the editor if there is no pending URL to render, so
     /// the action is never a no-op dead end.
     private func renderPendingURLAsText(settings: AppSettings) {

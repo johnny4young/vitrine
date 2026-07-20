@@ -2,9 +2,9 @@ import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
-/// Concise, offline in-app Help (CS-049).
+/// Concise, offline in-app Help.
 ///
-/// CS-032 made the Help command *reachable*; this gives it real content. A single
+/// The Help command is reachable and backed by real content. A single
 /// compact, scrollable window teaches the core surfaces — the global hotkey, quick
 /// capture, the editor, presets, and the privacy posture — entirely from bundled
 /// copy, with no web dependency. The wording matches the privacy promise in
@@ -19,7 +19,7 @@ struct HelpView: View {
     var onDismiss: () -> Void
 
     /// The Help topics, each rendered as a titled card. The copy lives in the String
-    /// Catalog under stable keys (CS-047) — mirrored in `docs/HELP.md` — so the
+    /// Catalog under stable keys — mirrored in `docs/HELP.md` — so the
     /// in-app text is localizable and these long passages don't bloat the source.
     private let topics: [HelpTopic] = [
         HelpTopic(
@@ -125,7 +125,7 @@ struct HelpView: View {
         )
         // Combine the icon-less title and body into one VoiceOver element per topic
         // so navigation reads each card as a single, coherent passage. The label is
-        // built from the localized title and body (CS-047).
+        // built from the localized title and body.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             Text("\(String(localized: topic.title)). \(String(localized: topic.body))")
@@ -173,10 +173,10 @@ struct HelpView: View {
 }
 
 /// One Help topic: an SF Symbol, a title, and a short body, plus a stable
-/// accessibility identifier for UI tests (CS-049).
+/// accessibility identifier for UI tests.
 private struct HelpTopic: Identifiable {
     let symbol: String
-    /// Localized through the String Catalog (CS-047): `LocalizedStringResource` so
+    /// Localized through the String Catalog: `LocalizedStringResource` so
     /// the model carries a catalog reference that `Text(_:)` renders localized,
     /// rather than a baked-in English `String`.
     let title: LocalizedStringResource
@@ -186,7 +186,7 @@ private struct HelpTopic: Identifiable {
     var id: String { identifier }
 }
 
-/// Owns and presents the in-app Help window (CS-049).
+/// Owns and presents the in-app Help window.
 ///
 /// Mirrors the other on-demand window controllers (`WelcomeWindowController`,
 /// `EditorWindowController`): an AppKit window hosting the SwiftUI view, created

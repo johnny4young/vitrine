@@ -26,8 +26,8 @@ nonisolated enum CLIVersion {
     }
 
     static let publicCommandName = "vitrine"
-    static let fallbackMarketingVersion = "0.21.0"
-    static let fallbackBuildNumber = "22"
+    static let fallbackMarketingVersion = "0.22.0"
+    static let fallbackBuildNumber = "23"
 
     static let usage = """
         vitrine --version [--json]

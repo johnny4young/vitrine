@@ -1,8 +1,7 @@
 import Foundation
 import UserNotifications
 
-/// Surfaces quick-capture outcomes as tasteful, non-intrusive feedback (CS-016,
-/// CS-038).
+/// Surfaces quick-capture outcomes as tasteful, non-intrusive feedback.
 ///
 /// `Notifier` is the pure *policy* layer: it turns a `QuickCapture.Outcome` into a
 /// `CaptureFeedback` value (a category, a human message, and any inline recovery
@@ -10,10 +9,10 @@ import UserNotifications
 /// routine success, with Notification Center reserved as a fallback. The mapping
 /// is deliberately free of side effects so it is unit-testable; the actual
 /// presentation (the HUD window, running a recovery action) is wired up by the
-/// app delegate (CS-038).
+/// app delegate.
 enum Notifier {
     /// What kind of feedback an outcome represents, used to pick an icon and to
-    /// decide whether routine in-app confirmation is enough (CS-038).
+    /// decide whether routine in-app confirmation is enough.
     enum Category: Equatable {
         /// The capture succeeded and produced an image the user now has.
         case success
@@ -24,7 +23,7 @@ enum Notifier {
         case failure
     }
 
-    /// A discrete recovery action offered alongside feedback (CS-038).
+    /// A discrete recovery action offered alongside feedback.
     ///
     /// These are the *intents* the feedback surfaces; the app delegate maps each
     /// to a concrete handler (e.g. opening the editor). Keeping them as a small
@@ -39,7 +38,7 @@ enum Notifier {
         case renderAsText
 
         /// The button label shown for this action. Localized through the String
-        /// Catalog (CS-047); the `accessibilityToken` below stays non-localized.
+        /// Catalog; the `accessibilityToken` below stays non-localized.
         var title: String {
             switch self {
             case .openEditor: String(localized: "Open Editor")
@@ -50,7 +49,7 @@ enum Notifier {
 
         /// A stable, non-localized token for accessibility identifiers used by UI
         /// tests, so an action's control can be found regardless of its visible
-        /// title (accessibility-identifier convention; CS-038).
+        /// title (accessibility-identifier convention).
         var accessibilityToken: String {
             switch self {
             case .openEditor: "open-editor"
@@ -60,7 +59,7 @@ enum Notifier {
         }
     }
 
-    /// A fully-resolved piece of user feedback for one capture outcome (CS-038):
+    /// A fully-resolved piece of user feedback for one capture outcome:
     /// its category, a short human-readable message, and any inline recovery
     /// actions. Pure data — safe to build and assert in tests.
     struct CaptureFeedback: Equatable {
@@ -78,7 +77,7 @@ enum Notifier {
         }
     }
 
-    /// The legacy single-line message for an outcome (CS-016). Retained as the
+    /// The legacy single-line message for an outcome. Retained as the
     /// stable, side-effect-free entry point used by older tests; it now simply
     /// reads the message off the richer `feedback(for:)` value. Returns `nil` only
     /// where an outcome has no user-facing message (there are none today).
@@ -86,7 +85,7 @@ enum Notifier {
         feedback(for: outcome).message
     }
 
-    /// Resolves the rich feedback for `outcome` (CS-038).
+    /// Resolves the rich feedback for `outcome`.
     ///
     /// `copiedToClipboard` and `savedToFile` describe what actually happened with
     /// the produced image so a success message can name the destination precisely
@@ -114,7 +113,7 @@ enum Notifier {
                 actions: [.openWebSnapshot, .renderAsText])
         case .empty:
             // An empty clipboard is the most common dead end; route the user
-            // straight to the editor rather than leaving them stuck (CS-038).
+            // straight to the editor rather than leaving them stuck.
             return CaptureFeedback(
                 category: .failure,
                 message: String(localized: "Clipboard is empty — copy some code first"),
@@ -122,7 +121,7 @@ enum Notifier {
         case .deferredToEditor(let blocks):
             // A count-aware, localized message: the catalog carries singular and
             // plural variants per locale, and the number is formatted for the
-            // user's locale (CS-047).
+            // user's locale.
             return CaptureFeedback(
                 category: .info,
                 message: String(
@@ -132,7 +131,7 @@ enum Notifier {
     }
 
     /// A standalone success confirmation for a discrete, non-capture action — e.g.
-    /// promoting a window's style to the app-wide default (CS-053). It reuses the
+    /// promoting a window's style to the app-wide default. It reuses the
     /// HUD's success styling (a checkmark, the accent tint) so an explicit action
     /// gets explicit, transient feedback consistent with the rest of the app's
     /// microinteractions, without a Notification Center banner. Pure data, so the
@@ -143,7 +142,7 @@ enum Notifier {
 
     /// A standalone failure notice for a discrete action that could not complete — e.g.
     /// a menu "Copy Image" / "Save Image" whose render or write failed. Reuses the HUD's
-    /// failure styling so the command never silently no-ops (CS-038 "Feedback says whether
+    /// failure styling so the command never silently no-ops ("Feedback says whether
     /// output was copied, saved, shared, or blocked").
     static func failure(_ message: String) -> CaptureFeedback {
         CaptureFeedback(category: .failure, message: message, actions: [])
@@ -151,7 +150,7 @@ enum Notifier {
 
     /// Builds the success message from what actually happened to the image, so the
     /// user is told precisely where it went: copied, saved, both, or just rendered
-    /// (auto-copy off and no save) (CS-038 acceptance: "Feedback says whether
+    /// (auto-copy off and no save) ( "Feedback says whether
     /// output was copied, saved, shared, or blocked.").
     static func successMessage(copied: Bool, saved: Bool) -> String {
         switch (copied, saved) {
@@ -162,11 +161,11 @@ enum Notifier {
         }
     }
 
-    /// Posts feedback for `outcome` (CS-016). Kept for callers that do not need
+    /// Posts feedback for `outcome`. Kept for callers that do not need
     /// the in-app HUD; it routes through Notification Center only.
     ///
     /// Routine success should prefer the in-app HUD (`CaptureHUD`) so Notification
-    /// Center is not used repeatedly for ordinary captures (CS-038); the app
+    /// Center is not used repeatedly for ordinary captures; the app
     /// delegate owns that decision in `CaptureFeedbackPresenter`.
     static func notify(_ outcome: QuickCapture.Outcome) {
         postNotification(feedback(for: outcome).message)
@@ -174,7 +173,7 @@ enum Notifier {
 
     /// Posts a single Notification Center banner with `body`. No-op when
     /// notifications are unauthorized. Used as the fallback channel when no in-app
-    /// HUD is available (CS-038).
+    /// HUD is available.
     static func postNotification(_ body: String) {
         Task {
             let center = UNUserNotificationCenter.current()
@@ -190,7 +189,7 @@ enum Notifier {
                 try await center.add(request)
             } catch {
                 // Don't leave a failed post completely silent; the body is non-PII
-                // feedback text, but log only the error domain/code to be safe (CS-048).
+                // feedback text, but log only the error domain/code to be safe.
                 Log.app.error(
                     "Notification post failed (\((error as NSError).domain, privacy: .public) \((error as NSError).code, privacy: .public))"
                 )

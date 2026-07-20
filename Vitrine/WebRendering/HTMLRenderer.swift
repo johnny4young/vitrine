@@ -2,35 +2,35 @@ import CoreGraphics
 import Foundation
 import OSLog
 
-/// Renders a `.html` input to an image locally through `WKWebView` (CS-042).
+/// Renders a `.html` input to an image locally through `WKWebView`.
 ///
-/// It slots into the `Renderer` abstraction (CS-040) so a coordinator routes HTML
+/// It slots into the `Renderer` abstraction so a coordinator routes HTML
 /// to it exactly as it routes code to `CodeRenderer`. Rendering is fully
 /// local — the offscreen `WebSnapshotView` it delegates to blocks remote loads for
 /// pasted HTML and never touches the screen — so an HTML snapshot needs neither the
 /// network entitlement nor Screen Recording permission.
 ///
-/// The renderer reuses the exporter's color step (CS-024): the bitmap WebKit
+/// The renderer reuses the exporter's color step: the bitmap WebKit
 /// produces is normalized into and tagged with `profile`'s ICC color space, so an
 /// HTML snapshot and a code snapshot carry the same predictable color and can flow
 /// through the same clipboard, save, and share paths as a uniform `RenderedAsset`.
 struct HTMLRenderer: Renderer {
     /// The viewport the HTML is laid out and snapshotted in. Fixed so the same HTML
-    /// always renders to the same pixel size — the determinism CS-042 requires.
-    /// Defaults to OpenGraph's 1200×630 (CS-020).
+    /// always renders to the same pixel size — the rendering contract requires this.
+    /// Defaults to OpenGraph's 1200×630.
     var viewport: CGSize = CGSize(width: 1200, height: 630)
 
     /// Output scale (1/2/3), matching `ExportManager`'s default. The rendered image
     /// is `viewport × scale` device pixels.
     var scale: CGFloat = 2
 
-    /// Color profile to tag the output with — sRGB by default (CS-024).
+    /// Color profile to tag the output with — sRGB by default.
     var profile: ColorProfile = .sRGB
 
     /// Whether remote (network) loads are allowed for the HTML. `false` (the
     /// default) blocks every remote request, keeping pasted HTML local; a caller
     /// flips this on only for HTML the user has explicitly allowed to reach the
-    /// network. CS-043 owns the real URL network mode.
+    /// network.  owns the real URL network mode.
     var allowsNetwork: Bool = false
 
     /// An optional **local** base URL (a user-selected file or a bundled resource)
@@ -39,7 +39,7 @@ struct HTMLRenderer: Renderer {
     var localBaseURL: URL?
 
     /// Accepts only the HTML input; code and URL are handled by their own renderers
-    /// (`CodeRenderer` and CS-043's URL renderer).
+    /// (`CodeRenderer` and 's URL renderer).
     func canRender(_ input: CaptureInput) -> Bool {
         if case .html = input { return true }
         return false
@@ -71,15 +71,15 @@ struct HTMLRenderer: Renderer {
         } catch let error as WebSnapshotError {
             // Non-PII only: the typed failure mode and a length measure, never the
             // HTML body. A typed engine error becomes the abstraction's typed
-            // `renderFailed`, distinct from a Phase 2 deferral or an unroutable
-            // input — and never a blank picture (CS-042).
+            // `renderFailed`, distinct from a web capture deferral or an unroutable
+            // input — and never a blank picture.
             Log.render.error(
                 "HTMLRenderer failed to snapshot HTML (\(error.diagnosticReason, privacy: .public), \(html.count, privacy: .public) chars)"
             )
             throw RenderError.renderFailed
         }
 
-        // Apply the same color normalization/tagging the exporter uses (CS-024), so
+        // Apply the same color normalization/tagging the exporter uses, so
         // an HTML snapshot carries the same predictable, profile-tagged color as a
         // code snapshot.
         let normalized = ExportManager.normalized(rawImage, to: profile)

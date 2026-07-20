@@ -1,12 +1,12 @@
 import SwiftUI
 
-// The shared chrome components of the redesigned surfaces (design/handoff).
+// The shared chrome components of the current designed surfaces.
 // Every visual value here resolves through `VitrineTokens`; the shapes and
-// measurements mirror the HTML UI kits' component classes one to one, so the
+// measurements mirror the design-system component classes one to one, so the
 // Settings window, the editor inspector, and the menu-bar panel all read as the
 // same design system.
 
-/// The uppercase, letter-spaced group label above a tile (`.lbl` in the kits).
+/// The uppercase, letter-spaced group label above a tile.
 struct TokenGroupLabel: View {
     let title: Text
 
@@ -20,7 +20,7 @@ struct TokenGroupLabel: View {
 }
 
 /// A grouped-form section: optional uppercase label + a rounded tile of rows
-/// (`Group` in the settings kit: tile fill, hairline border, radius 14).
+/// Uses the shared tile fill, hairline border, and 14-point radius.
 struct TokenGroup<Content: View>: View {
     var title: Text? = nil
     /// Optional explanatory line under the section label — for clarifying a
@@ -62,7 +62,7 @@ struct TokenGroup<Content: View>: View {
 }
 
 /// One label + optional caption + trailing control row inside a `TokenGroup`
-/// (`Row` in the settings kit: 9 pt vertical padding, 12 pt gap).
+/// Uses 9-point vertical padding and a 12-point gap.
 struct TokenRow<Content: View>: View {
     var label: Text? = nil
     var caption: Text? = nil
@@ -84,7 +84,7 @@ struct TokenRow<Content: View>: View {
                 }
                 Spacer(minLength: VitrineTokens.Spacing.sm)
                 // When a caption exists, attach it to the control as its VoiceOver hint
-                // so the explanation is announced together with the control (audit UX);
+                // so the explanation is announced together with the control;
                 // no caption means no hint, rather than an empty one. The visible caption
                 // stays accessible below — for a single control that is a harmless second
                 // read, but for a composite control (several buttons in an HStack) the
@@ -107,7 +107,7 @@ struct TokenRow<Content: View>: View {
     }
 }
 
-/// The pill segmented control (`.seg` in the kits): a capsule track of small
+/// The pill segmented control: a capsule track of small
 /// capsule buttons; the selected one lifts onto a card-colored pill.
 struct TokenSegmentedPicker<Value: Hashable>: View {
     /// The selectable values, in display order, each with its visible label.
@@ -176,7 +176,7 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
     }
 }
 
-/// The bordered inline text field of the redesigned forms (`.dfield`): fixed
+/// The bordered inline text field of the current designed forms (`.dfield`): fixed
 /// 160 pt, right-aligned, hairline border that turns into the accent focus
 /// ring while editing.
 struct TokenTextField: View {

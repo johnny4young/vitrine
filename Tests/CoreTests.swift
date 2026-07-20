@@ -11,7 +11,7 @@ struct ModelTests {
         #expect(Language.cpp.hljsName == "cpp")
         #expect(Language.csharp.displayName == "C#")
         #expect(Language.swift.id == "swift")
-        // The CS-052 breadth additions, including the alias-backed ids.
+        // The supported language additions, including alias-backed ids.
         #expect(Language.objectivec.displayName == "Objective-C")
         #expect(Language.toml.hljsName == "ini")
         #expect(Language.html.hljsName == "xml")
@@ -19,7 +19,7 @@ struct ModelTests {
     }
 
     @Test func themeLookupFallsBackToOneDark() {
-        // The curated built-in set (CS-052): a coherent spread of dark and light
+        // The curated built-in set: a coherent spread of dark and light
         // themes, each a verified Highlight.js stylesheet.
         #expect(Theme.all.count == 13)
         #expect(Theme.theme(withID: "dracula").id == "dracula")

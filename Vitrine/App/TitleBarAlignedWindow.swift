@@ -1,7 +1,7 @@
 import AppKit
 
 /// An `NSWindow` that vertically centers the traffic lights with a tall unified glass
-/// toolbar merged into the title bar (CS-087).
+/// toolbar merged into the title bar.
 ///
 /// macOS pins the close / minimize / zoom buttons to the top of a standard 28-pt title
 /// bar. The editor, the Web Snapshot composer, and the Social Card composer all extend a

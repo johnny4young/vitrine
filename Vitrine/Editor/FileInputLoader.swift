@@ -1,7 +1,6 @@
 import Foundation
 
-/// Loads dropped or opened source files into editor-ready text + a language hint
-/// (CS-028).
+/// Loads dropped or opened source files into editor-ready text + a language hint.
 ///
 /// The editor lets users drop code text or a source file onto it. Turning a
 /// file's bytes into something safe to render takes three guarantees, all of
@@ -18,15 +17,15 @@ import Foundation
 ///    editor. Detection is content-based (a NUL byte or undecodable bytes),
 ///    never the extension alone.
 /// 3. **A language hint.** The language is inferred from the filename extension
-///    first (reusing the CS-027 extension table, which also knows
+///    first (reusing the shared extension table, which also knows
 ///    `Dockerfile`), falling back to weighted content detection when the
 ///    extension is unknown — so a `.swift` file opens as Swift and a `LICENSE`
 ///    full of SQL still gets a reasonable guess.
 ///
 /// Loading a file deliberately **does not** touch Recents: a load only fills the
 /// editor. The filename is carried into `SnapshotConfig.metadata.filename`
-/// (CS-022) so that if — and only if — the user later captures or exports, the
-/// recorded snapshot reflects where the code came from. That keeps the CS-028
+/// so that if — and only if — the user later captures or exports, the
+/// recorded snapshot reflects where the code came from. That keeps the
 /// promise that "Recents record loaded file metadata only when the user
 /// captures/exports."
 enum FileInputLoader {
@@ -43,8 +42,8 @@ enum FileInputLoader {
         var filename: String
 
         /// Writes this loaded drop into `config` in place — the same mutation the
-        /// editor performs once the user resolves the replace/append choice
-        /// (CS-028). Kept here, free of AppKit and SwiftUI, so the policy is
+        /// editor performs once the user resolves the replace/append choice.
+        /// Kept here, free of AppKit and SwiftUI, so the policy is
         /// unit-testable rather than buried in a view's private method.
         ///
         /// - Replacing swaps the whole document and adopts the inferred language;
@@ -87,7 +86,7 @@ enum FileInputLoader {
         case unreadable
 
         /// A short, plain-language explanation suitable for an alert body.
-        /// Localized through the String Catalog (CS-047).
+        /// Localized through the String Catalog.
         var message: String {
             switch self {
             case .binaryFile:
@@ -117,7 +116,7 @@ enum FileInputLoader {
     // MARK: - File loading
 
     /// Loads a user-selected file at `url` into editor-ready text + a language
-    /// hint (CS-028).
+    /// hint.
     ///
     /// `url` is a file the user dropped or opened, so access is bracketed by
     /// `startAccessingSecurityScopedResource()`: the read succeeds under the
@@ -133,7 +132,7 @@ enum FileInputLoader {
             data = try Data(contentsOf: url, options: [.mappedIfSafe])
         } catch {
             // Collapse any low-level I/O error into one clear message; never echo
-            // the path or the system error (CS-048 privacy rule).
+            // the path or the system error (privacy policy).
             Log.capture.error("File input: read failed")
             throw LoadError.unreadable
         }
@@ -146,7 +145,7 @@ enum FileInputLoader {
     /// Turns raw file bytes + a filename into a `LoadedFile`, applying the size
     /// cap, binary rejection, text decoding, and language inference — with no
     /// filesystem or AppKit dependency, so the whole policy is unit-testable from
-    /// fixtures (CS-028 tests).
+    /// fixtures (tests).
     static func decode(data: Data, filename: String) throws -> LoadedFile {
         guard data.count <= maximumByteCount else { throw LoadError.tooLarge }
 
@@ -218,7 +217,7 @@ enum FileInputLoader {
         return nil
     }
 
-    /// Infers the language from the filename extension first (reusing the CS-027
+    /// Infers the language from the filename extension first (reusing the
     /// reverse extension table, which also recognizes the extensionless
     /// `Dockerfile`), then falls back to weighted content detection when the
     /// extension is unknown or absent.

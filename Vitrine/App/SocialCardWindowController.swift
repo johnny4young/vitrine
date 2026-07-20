@@ -1,9 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// Owns the app's single social-card editor window (CS-041).
+/// Owns the app's single social-card editor window.
 ///
-/// Unlike the multi-window code editor (CS-053), the social card is an app-global
+/// Unlike the multi-window code editor, the social card is an app-global
 /// document: there is one working card, persisted in `AppSettings.shared.socialCard`,
 /// so this controller keeps exactly one reusable window rather than a keyed set. The
 /// window hosts ``SocialCardEditorView``, which composes and exports the card entirely
@@ -46,7 +46,7 @@ final class SocialCardWindowController: NSObject {
     }
 
     /// Builds the AppKit window hosting a ``SocialCardEditorView`` bound to the shared
-    /// settings, so it edits the app-global working card (CS-041).
+    /// settings, so it edits the app-global working card.
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingController(
             rootView: SocialCardEditorView().environment(AppSettings.shared))
@@ -56,7 +56,7 @@ final class SocialCardWindowController: NSObject {
             .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView,
         ]
         // Merge the title bar into the editor's glass toolbar, like the code editor:
-        // the traffic lights float over the toolbar's leading edge (design/handoff).
+        // the traffic lights float over the toolbar's leading edge.
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultContentSize)
