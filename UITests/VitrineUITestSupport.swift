@@ -96,6 +96,68 @@ extension XCTestCase {
         return false
     }
 
+    /// Reveals a toolbar action that may be direct at wide widths or nested in a
+    /// compact overflow menu, then returns the freshly resolved accessibility element.
+    @MainActor
+    @discardableResult
+    func revealToolbarAction(
+        _ identifier: String,
+        from menuIdentifier: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        if !waitForHittableElement(identifier, in: app, timeout: 0.5) {
+            assertHittable(
+                menuIdentifier,
+                in: app,
+                "Compact toolbar menu \(menuIdentifier) is not reachable",
+                file: file,
+                line: line)
+            element(menuIdentifier, in: app).click()
+        }
+
+        assertHittable(
+            identifier,
+            in: app,
+            "Toolbar action \(identifier) is not reachable",
+            file: file,
+            line: line)
+        return element(identifier, in: app)
+    }
+
+    /// Verifies a group of actions without selecting one. Compact menus stay open
+    /// while every item is checked, whereas wide toolbars need no special handling.
+    @MainActor
+    func assertToolbarActionsReachable(
+        _ identifiers: [String],
+        from menuIdentifier: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        if identifiers.contains(where: {
+            !waitForHittableElement($0, in: app, timeout: 0.5)
+        }) {
+            assertHittable(
+                menuIdentifier,
+                in: app,
+                "Compact toolbar menu \(menuIdentifier) is not reachable",
+                file: file,
+                line: line)
+            element(menuIdentifier, in: app).click()
+        }
+
+        for identifier in identifiers {
+            assertHittable(
+                identifier,
+                in: app,
+                "Toolbar action \(identifier) is not reachable",
+                file: file,
+                line: line)
+        }
+    }
+
     /// Asserts some element carrying `identifier` becomes hittable, polling briefly.
     ///
     /// The control is reachable when any matching element is hittable. On failure it
