@@ -28,67 +28,38 @@ struct CarouselExportView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Export carousel")
-                    .font(.system(size: VitrineTokens.FontSize.headline, weight: .bold))
-                    .foregroundStyle(VitrineTokens.Text.primary)
-                Text("Split the snippet into numbered 4:5 slides for a carousel post.")
-                    .font(.system(size: VitrineTokens.FontSize.subhead))
-                    .foregroundStyle(VitrineTokens.Text.secondary)
-            }
-
-            HStack(spacing: 10) {
-                Stepper(value: $linesPerSlide, in: CarouselPaginator.linesPerSlideRange) {
-                    Text("Lines per slide: \(linesPerSlide)")
-                        .font(.system(size: VitrineTokens.FontSize.body))
-                }
-                .accessibilityIdentifier("carousel-lines-stepper")
-                Spacer(minLength: 0)
-                // The live outcome, so the choice is informed before any file exists.
-                Text("\(pages.count) slides")
-                    .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
-                    .foregroundStyle(VitrineTokens.Text.secondary)
-                    .monospacedDigit()
-                    .accessibilityIdentifier("carousel-slide-count")
-            }
-
-            if let failureNote {
-                Text(verbatim: failureNote)
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            HStack {
-                Button("Cancel") { dismiss() }
-                    .disabled(isExporting)
-                    .accessibilityIdentifier("carousel-cancel")
-                Spacer()
-                if let progress {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text(verbatim: "\(progress.completed)/\(progress.total)")
-                            .font(.system(size: VitrineTokens.FontSize.caption))
-                            .foregroundStyle(VitrineTokens.Text.secondary)
-                            .monospacedDigit()
+        ExportSheetScaffold(
+            title: "Export carousel",
+            subtitle: "Split the snippet into numbered 4:5 slides for a carousel post.",
+            width: 400,
+            rootIdentifier: "carousel-export-sheet",
+            failureNote: failureNote,
+            progress: progress,
+            progressIdentifier: nil,
+            cancelIdentifier: "carousel-cancel",
+            cancelDisabled: isExporting,
+            onCancel: { dismiss() },
+            confirmTitle: "Export…",
+            confirmIdentifier: "carousel-export-confirm",
+            confirmDisabled: pages.isEmpty || isExporting,
+            onConfirm: exportSlides,
+            content: {
+                HStack(spacing: 10) {
+                    Stepper(value: $linesPerSlide, in: CarouselPaginator.linesPerSlideRange) {
+                        Text("Lines per slide: \(linesPerSlide)")
+                            .font(.system(size: VitrineTokens.FontSize.body))
                     }
+                    .accessibilityIdentifier("carousel-lines-stepper")
+                    Spacer(minLength: 0)
+                    // The live outcome, so the choice is informed before any file exists.
+                    Text("\(pages.count) slides")
+                        .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                        .monospacedDigit()
+                        .accessibilityIdentifier("carousel-slide-count")
                 }
-                Button("Export…") { exportSlides() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(pages.isEmpty || isExporting)
-                    .accessibilityIdentifier("carousel-export-confirm")
             }
-        }
-        .padding(24)
-        .frame(width: 400)
-        .background(VitrineTokens.Surface.window)
-        // A plain VStack is not an AX element, so an identifier put directly on it
-        // propagates down and CLOBBERS every child's identifier (the stepper, the
-        // count, the buttons would all report the root's id). `.contain` makes the
-        // root a real container element so the children keep their own ids.
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("carousel-export-sheet")
+        )
     }
 
     private func exportSlides() {

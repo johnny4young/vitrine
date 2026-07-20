@@ -8,6 +8,11 @@ import OSLog
 /// The whole module defaults to `@MainActor` isolation (see `project.yml`), so this
 /// delegate and the task it starts run on the main actor without extra annotations.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    enum HandoffRoute: Equatable {
+        case edit
+        case sharedSnapshot
+    }
+
     private var hotkeyTask: Task<Void, Never>?
 
     /// Whether the menu-bar icon's hover tooltip has been installed yet, so the
@@ -80,12 +85,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openHandoff(url)
     }
 
+    /// Classifies a Vitrine URL using the case-insensitive scheme and host rules defined
+    /// by URL standards. Keeping this pure prevents the AppleEvent route from drifting
+    /// from the link decoders.
+    static func handoffRoute(for url: URL) -> HandoffRoute? {
+        guard url.scheme?.lowercased() == SnapshotShareLink.scheme else { return nil }
+        switch url.host?.lowercased() {
+        case EditorHandoff.editHost: return .edit
+        case SnapshotShareLink.host: return .sharedSnapshot
+        default: return nil
+        }
+    }
+
+    /// Routes an incoming `vitrine://…` URL by host. Any unrecognized URL is ignored.
+    func openHandoff(_ url: URL) {
+        switch Self.handoffRoute(for: url) {
+        case .edit: openEditHandoff(url)
+        case .sharedSnapshot: openSharedSnapshot(url)
+        case nil: break
+        }
+    }
+
     /// Seeds the editor from a `vitrine://edit` handoff (the CLI's `--edit`): reads the
     /// staged content and optional language hint, then loads it into the primary editor
-    /// — replacing that window's document like quick capture and the Open-Code App Intent
-    /// do (CS-027/034), seeded on the user's current style. A no-op for any other URL or
-    /// an empty payload, so a stray open can never blank the editor.
-    func openHandoff(_ url: URL) {
+    /// — replacing that window's document like quick capture and the Open-Code App
+    /// Intent do, seeded on the user's current style. A no-op for an empty payload.
+    private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
         var config = AppSettings.shared.config
         config.code = handoff.content
@@ -93,6 +118,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         EditorWindowController.shared.loadIntoPrimary(config)
         NSApp.activate(ignoringOtherApps: true)
         Log.app.notice("Opened a CLI --edit handoff in the editor")
+    }
+
+    /// Opens a shared-snapshot link (`vitrine://open`): decodes the untrusted
+    /// payload into a `SharedSnapshot`, applies it onto a fresh config so the receiver
+    /// sees exactly the sender's styled code (never a leftover foreground image), and
+    /// loads it into the primary editor. A malformed or unsupported link is a silent
+    /// no-op — the decoder already refused it — so a hostile URL can't disturb the
+    /// current document.
+    private func openSharedSnapshot(_ url: URL) {
+        guard let snapshot = try? SnapshotShareLink.snapshot(from: url) else { return }
+        var config = SnapshotConfig()
+        snapshot.apply(to: &config)
+        EditorWindowController.shared.loadIntoPrimary(config)
+        NSApp.activate(ignoringOtherApps: true)
+        Log.app.notice("Opened a shared snapshot link in the editor")
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -130,6 +170,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 WhatsNewWindowController.shared.presentIfNewVersion()
             }
         }
+
+        // Pay the syntax highlighter's one-time cold start now, off the render path, so
+        // a user whose first interaction is a ⇧⌘S quick capture doesn't eat the
+        // JavaScriptCore + theme-CSS warm-up inside the "instant" gesture. Low priority
+        // so it never contends with the menu bar coming up or a hotkey already firing.
+        Task(priority: .utility) { HighlightManager.shared.prewarm() }
     }
 
     /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
@@ -261,6 +307,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 freePosition: CGPoint(x: 0.72, y: 0.78))
         }
         if arguments.contains("--open-editor") {
+            EditorWindowController.shared.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--open-command-palette") {
+            // The editor reads this same argument in its own `.task` and opens the
+            // palette when it appears — robust to the window's bring-up timing (a
+            // one-shot notification posted here could arrive before the editor
+            // subscribed, which flaked on the slow CI runner).
+            EditorWindowController.shared.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--demo-beautify-image") {
+            // Load the app icon as a foreground image so the editor opens in image mode
+            // (the "beautify any image" panel), for the image-panel UI smoke tests.
+            if let data = NSApp.applicationIconImage.tiffRepresentation,
+                let reference = try? BackgroundImageStore.foregroundContainer.importImage(
+                    data: data, preferredExtension: "tiff")
+            {
+                AppSettings.shared.config.foregroundImage = reference
+            }
             EditorWindowController.shared.show()
             didOpenWindow = true
         }

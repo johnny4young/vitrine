@@ -285,16 +285,48 @@ enum ANSIRenderer {
         return attributes
     }
 
+    /// The key into the styled-font memo: the base font (identity + size) and the two
+    /// traits that select one of its four variants.
+    private struct StyledFontKey: Hashable {
+        let font: NSFont
+        let bold: Bool
+        let italic: Bool
+    }
+
+    /// Memoizes styled variants per base font. A colorful terminal frame
+    /// (`htop`, `eza`) is hundreds to thousands of styled runs, and each one used to
+    /// rebuild its variant through `NSFontManager.convert` plus the Nerd-Font cascade
+    /// descriptor — hundreds of font-descriptor allocations per render. There are only
+    /// four variants (plain / bold / italic / bold-italic) per base font, so this
+    /// collapses repeated work while a bounded FIFO prevents font changes across a long
+    /// editing session from retaining every variant forever.
+    private static let styledFontCacheLimit = 128
+    private static var styledFontCache: [StyledFontKey: NSFont] = [:]
+    private static var styledFontOrder: [StyledFontKey] = []
+
     /// Derives the bold / italic variant of the monospaced base font, keeping its
     /// size (falling back to the base font when a trait is unavailable), then appends
     /// the Nerd Font glyph cascade so Powerline / devicon / `eza` icons render when a
     /// Nerd Font is installed. The cascade is applied to every run — plain ones too,
     /// not just bold/italic — and is a no-op when no Nerd Font is present.
+    ///
+    /// Memoized per (base font, bold, italic): the same styled variant is reused
+    /// across every run that shares those traits instead of re-resolving the font.
     private static func styledFont(_ font: NSFont, bold: Bool, italic: Bool) -> NSFont {
+        let key = StyledFontKey(font: font, bold: bold, italic: italic)
+        if let cached = styledFontCache[key] { return cached }
         var traits: NSFontTraitMask = []
         if bold { traits.insert(.boldFontMask) }
         if italic { traits.insert(.italicFontMask) }
         let base = traits.isEmpty ? font : NSFontManager.shared.convert(font, toHaveTrait: traits)
-        return CodeFont.applyingNerdCascade(to: base)
+        let styled = CodeFont.applyingNerdCascade(to: base)
+        if styledFontCache[key] == nil {
+            styledFontOrder.append(key)
+            if styledFontOrder.count > styledFontCacheLimit {
+                styledFontCache.removeValue(forKey: styledFontOrder.removeFirst())
+            }
+        }
+        styledFontCache[key] = styled
+        return styled
     }
 }

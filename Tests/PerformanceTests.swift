@@ -62,6 +62,19 @@ struct PerformanceTests {
         /// bounded, proving the render path degrades gracefully rather than
         /// stalling the main actor unboundedly.
         static let largeHardCeiling: Duration = .milliseconds(6000)
+
+        /// Hard ceiling for the paths the default fixture does not exercise:
+        /// a terminal capture (the cell-buffer emulator + per-run styling), a
+        /// custom theme (which uses a separate renderer and cache), a blur-annotated
+        /// render (which composites the
+        /// whole canvas twice and blurs a full copy), and a 3× export.
+        ///
+        /// Deliberately the same generous ceiling as the default case: these are
+        /// all *ordinary* renders a user waits on, not the outsized large-snippet
+        /// case, so they get the ordinary budget. The soft target still reports a
+        /// `PERF WARN`, which is what makes a regression visible before it breaks
+        /// CI — the point of adding these fixtures is the trend line, not the gate.
+        static let secondaryHardCeiling: Duration = .milliseconds(3000)
     }
 
     /// How many timed renders each case samples (after the discarded warm-up).
@@ -107,6 +120,58 @@ struct PerformanceTests {
         config.code = (1...300)
             .map { "let value\($0) = compute(\($0)) + offset // line \($0)" }
             .joined(separator: "\n")
+        return config
+    }
+
+    /// A colorful terminal capture: SGR runs in every style the renderer supports,
+    /// which is what makes this fixture worth timing — each styled run resolves its
+    /// own font, so the cost scales with run count, not line count. Modeled on a
+    /// build/test log, the output developers screenshot most.
+    private static func terminalConfig() -> SnapshotConfig {
+        var config = SnapshotConfig()
+        config.language = .terminal
+        let rows = (1...40).map { index in
+            "\u{1B}[32m✓\u{1B}[0m \u{1B}[1mTest \(index)\u{1B}[0m "
+                + "\u{1B}[2mpassed\u{1B}[0m in \u{1B}[38;5;214m\(index * 3) ms\u{1B}[0m "
+                + "\u{1B}[3;36m(suite \(index % 7))\u{1B}[0m"
+        }
+        config.code = rows.joined(separator: "\n")
+        return config
+    }
+
+    /// The default snippet under a **custom** theme. Custom palettes take a
+    /// different highlight path from the built-in themes, so a budget on the
+    /// built-ins says nothing about what a custom-theme user experiences.
+    private static func customThemeConfig() -> SnapshotConfig {
+        var config = defaultConfig()
+        config.theme = Theme(
+            id: "custom.perf",
+            displayName: "Perf Sample",
+            palette: ThemePalette(
+                background: HexColor("#1E1E1E")!,
+                foreground: HexColor("#D4D4D4")!,
+                keyword: HexColor("#C586C0")!,
+                string: HexColor("#CE9178")!,
+                comment: HexColor("#6A9955")!,
+                number: HexColor("#B5CEA8")!,
+                type: HexColor("#4EC9B0")!,
+                function: HexColor("#DCDCAA")!,
+                variable: HexColor("#9CDCFE")!,
+                attribute: HexColor("#569CD6")!))
+        return config
+    }
+
+    /// The default snippet with a blur (redaction) box and a spotlight. Both are
+    /// compositing effects: the canvas is drawn again and a full copy is blurred,
+    /// so this fixture times roughly the worst-case annotated export.
+    private static func blurAnnotatedConfig() -> SnapshotConfig {
+        var config = defaultConfig()
+        config.annotations = [
+            Annotation(
+                kind: .blur, start: CGPoint(x: 0.1, y: 0.3), end: CGPoint(x: 0.6, y: 0.45)),
+            Annotation(
+                kind: .spotlight, start: CGPoint(x: 0.05, y: 0.2), end: CGPoint(x: 0.95, y: 0.7)),
+        ]
         return config
     }
 
@@ -208,12 +273,61 @@ struct PerformanceTests {
         #expect(stats.count == Self.sampleCount)
     }
 
+    // MARK: - Secondary paths
+    //
+    // The three cases above all time the same shape of render: plain code, a
+    // built-in theme, no annotations, scale 2. The paths below are the ones a real
+    // session actually hits that the default fixture cannot speak for — each is
+    // known (or suspected) to be materially more expensive, and none had a budget
+    // before. They exist to make a regression *visible in the log* on every CI run;
+    // the ceiling is the same generous one as the default case, so they gate only
+    // against an order-of-magnitude blow-up.
+
+    @Test func terminalRenderMeetsBudget() {
+        // The cell-buffer emulator plus per-run font resolution: cost scales with
+        // the number of styled runs, which no code fixture exercises.
+        measureRender(
+            Self.terminalConfig(), label: "terminal",
+            hardCeiling: PerfBudget.secondaryHardCeiling)
+    }
+
+    @Test func customThemeRenderMeetsBudget() {
+        // Custom palettes take a different highlight path from the built-ins, so
+        // the default budget says nothing about a custom-theme user's experience.
+        measureRender(
+            Self.customThemeConfig(), label: "custom-theme",
+            hardCeiling: PerfBudget.secondaryHardCeiling)
+    }
+
+    @Test func blurAnnotatedRenderMeetsBudget() {
+        // Blur and spotlight are compositing effects: the canvas is drawn twice and
+        // a full copy is blurred. This is the worst-case annotated export.
+        measureRender(
+            Self.blurAnnotatedConfig(), label: "blur-annotated",
+            hardCeiling: PerfBudget.secondaryHardCeiling)
+    }
+
+    @Test func retinaExportRenderMeetsBudget() {
+        // 3× is what the export path actually produces for a retina PNG; the other
+        // cases all time scale 2. Same fixture as `default`, so the two labels are
+        // directly comparable in the log — the delta IS the scale cost.
+        warmUp(Self.defaultConfig())
+        let stats = Statistics(samples(Self.defaultConfig(), scale: 3))
+        report(stats, label: "default@3x", target: PerfBudget.target)
+        #expect(
+            stats.p95 <= PerfBudget.secondaryHardCeiling,
+            "default@3x p95 over the secondary hard ceiling (CS-026)")
+    }
+
     @Test func budgetsAreOrdered() {
         // A guard on the documented thresholds themselves: the target must sit
         // below the hard ceiling, and the default ceiling below the large one, or
         // the two-tier warn/fail policy would be meaningless.
         #expect(PerfBudget.target < PerfBudget.hardCeiling)
         #expect(PerfBudget.hardCeiling <= PerfBudget.largeHardCeiling)
+        // The secondary paths are ordinary renders, so they share the ordinary
+        // ceiling — pinned here so raising one silently doesn't skip the other.
+        #expect(PerfBudget.secondaryHardCeiling == PerfBudget.hardCeiling)
     }
 }
 

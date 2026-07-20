@@ -44,6 +44,9 @@ final class VitrineUITests: XCTestCase {
         assertHittable(
             "copy-markdown-button", in: app,
             "Copy as Markdown must be exposed for source-based snapshots")
+        // The reproducible share link lives in the same menu. Its round trip is pinned
+        // by unit tests, so this smoke only proves the action is reachable.
+        assertExists(element("copy-share-link-button", in: app), in: app, timeout: 3)
 
         // Let the SwiftUI menu and syntax-highlighted preview finish their first
         // compositing pass so the retained visual evidence is not mid-transition.
@@ -53,6 +56,58 @@ final class VitrineUITests: XCTestCase {
         attachment.name = "copy-markdown-menu"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    @MainActor
+    func testImagePanelExposesRedactAndCopyTextActions() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        // A foreground image puts the editor in "beautify any image" mode, which
+        // replaces the code column with the image panel and its on-device actions.
+        let app = launch(arguments: ["--demo-beautify-image"])
+        defer { app.terminate() }
+
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        // Both on-device actions live in the image panel. Their behavior is pinned by
+        // unit tests, so this smoke only proves the panel surfaces them.
+        assertHittable(
+            "redact-image-secrets-button", in: app,
+            "The image panel must expose Redact secrets")
+        assertExists(element("copy-image-text-button", in: app), in: app, timeout: 3)
+        assertExists(element("remove-image-button", in: app), in: app, timeout: 3)
+    }
+
+    @MainActor
+    func testCommandPaletteOpensFiltersAndRunsACommand() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        // Open via the launch hook rather than a synthetic ⌘K, which does not reliably
+        // reach the zero-size shortcut button on a headless runner. The editor reads the
+        // argument after its view appears, then exercises the real filter and run path.
+        let app = launch(arguments: ["--open-command-palette"])
+        defer { app.terminate() }
+
+        let editor = element("editor-window", in: app)
+        assertExists(editor, in: app, timeout: 8)
+
+        // Give the field a generous window to appear after editor startup.
+        let field = element("command-palette-field", in: app)
+        assertExists(field, in: app, timeout: 5)
+
+        // Typing filters the list; "dracula" narrows to the Dracula theme command.
+        field.typeText("dracula")
+        Thread.sleep(forTimeInterval: 0.4)  // let the filtered list settle before the shot
+        let screenshot = editor.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "command-palette-filtered"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        // Return runs the top result and dismisses the palette.
+        field.typeText("\r")
+        XCTAssertTrue(
+            element("command-palette", in: app).waitForNonExistence(timeout: 3),
+            "Running a command must dismiss the palette")
     }
 
     @MainActor

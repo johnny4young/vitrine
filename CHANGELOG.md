@@ -12,6 +12,43 @@ can never drift.
 
 ## [Unreleased]
 
+### Performance
+
+- **The line-numbered / diff layout no longer re-splits the document every frame.** The
+  gutter and diff bands slice the highlighted code into one line per row — a
+  character-by-character walk that rebuilt on every preview frame. It's now cached on the
+  same key as the highlight itself, so an unchanged snapshot reuses the split.
+- **Custom themes are now cached like the built-ins.** A user-palette theme used to
+  re-run its (slow) HTML-importer highlight on every preview frame — an inspector tweak
+  or a keystroke re-tokenized the whole snippet each time. It's now cached on the palette
+  itself, so a re-render that didn't change the code, palette, or font is a cache hit
+  (measured: the custom-theme render's p95 dropped from ~88 ms to ~2 ms).
+- **The live preview no longer re-highlights the whole document on every keystroke.**
+  The editor's preview now renders a copy of the code that trails your typing by a short
+  debounce, so a burst of keystrokes coalesces into one re-highlight once it settles
+  instead of re-tokenizing the entire snippet on each character. Style edits (theme,
+  padding, background) still update the preview instantly.
+
+### Added
+
+- **Share a snapshot as a link.** The copy menu gains *Copy share link*: a
+  `vitrine://open` URL that reproduces the whole styled snapshot — code, theme,
+  background, annotations, header — so a teammate opens your exact image with one click.
+  Fully local (no server, no upload); the link carries no file references (an image
+  background degrades to the signature gradient) and the code travels in clear text, so
+  don't share a snapshot with a live secret. A snapshot too large to fit a link is
+  reported rather than copied.
+- **Redact secrets in a beautified image.** The one-click secret scan now works on
+  dropped/pasted images, not just code: Settings-free, it runs on-device OCR (Vision),
+  finds regions that look like API keys, tokens, or passwords, and covers them in the
+  image itself — so the secret is gone from the exported bytes, correct whatever frame
+  or padding is applied. Reuses the same detector as the code path, including its
+  multi-line private-key handling.
+- **Command palette (⌘K).** A fast, fuzzy-searched palette over the editor's actions —
+  apply any theme, toggle line numbers / shadow / window chrome / wrap / ligatures, run
+  Surprise Me, or copy/save/export — without hunting through the inspector. Type to
+  filter (a subsequence match, so "clr" finds "Clear"), ↑/↓ to move, Return to run.
+
 ## [0.21.0] - 2026-07-16
 
 From snapshot to post: split a long snippet into carousel slides, share to
