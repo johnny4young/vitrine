@@ -88,7 +88,7 @@ struct HomebrewCaskTests {
             cask.contains("desc \"Menu-bar app that turns code into beautiful images\""),
             "the cask must carry the product description")
         #expect(
-            cask.contains("homepage \"https://vitrineframe.app\""),
+            cask.contains("homepage \"https://vitrineframe.app/\""),
             "the cask homepage must point at the project site")
     }
 
@@ -133,6 +133,29 @@ struct HomebrewCaskTests {
                 "url \"https://github.com/johnny4young/vitrine/releases/download/v#{version}/Vitrine-#{version}.dmg\""
             ),
             "the cask URL must use the versioned GitHub release-asset pattern")
+    }
+
+    @Test func caskTemplateVersionMatchesTheProjectRelease() throws {
+        let cask = try Self.cask()
+        let project = try Self.projectYAML()
+        let versionLine = try #require(
+            cask.components(separatedBy: .newlines).first { $0.contains("version \"") },
+            "the cask must declare a version")
+        let caskVersion = try #require(
+            versionLine.split(separator: "\"").dropFirst().first.map(String.init),
+            "the cask version must be a quoted string")
+        let regex = try NSRegularExpression(
+            pattern: #"(?m)^\s*MARKETING_VERSION:\s*"?([0-9][0-9A-Za-z.\-]*)"?\s*$"#)
+        let match = try #require(
+            regex.firstMatch(
+                in: project, range: NSRange(project.startIndex..<project.endIndex, in: project)),
+            "project.yml must set MARKETING_VERSION")
+        let projectVersion = String(
+            project[try #require(Range(match.range(at: 1), in: project))])
+
+        #expect(
+            caskVersion == projectVersion,
+            "the cask template version must match MARKETING_VERSION before release")
     }
 
     @Test func caskInstallsTheVitrineApp() throws {

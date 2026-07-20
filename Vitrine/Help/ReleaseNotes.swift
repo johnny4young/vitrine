@@ -42,6 +42,20 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.22.0",
+            headline: "Faster previews, safer sharing",
+            highlights: [
+                "Find and run editor actions from the new Command Palette: press ⌘K, "
+                    + "type a few letters, and apply themes, change the preview, or export "
+                    + "without leaving the keyboard.",
+                "Copy a fully local share link that opens the same styled snapshot in "
+                    + "Vitrine — no server or upload. The link contains the snapshot's code, "
+                    + "so review it before sharing sensitive content.",
+                "Secret redaction now works on images with on-device OCR, while faster "
+                    + "bounded preview caches and stricter input validation keep editing "
+                    + "responsive and predictable.",
+            ]),
+        ReleaseNote(
             version: "0.21.0",
             headline: "From snapshot to post",
             highlights: [
