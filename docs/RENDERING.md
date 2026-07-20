@@ -24,8 +24,11 @@ Golden-image fixtures and performance tests protect that contract.
 A webpage is loaded locally in WebKit. Vitrine does not send the URL or rendered output
 to a screenshot service. Remote capture is available only in a build with the network
 client entitlement and after a first-use disclosure. The URL pipeline rejects malformed,
-non-HTTP, local, private, and unsafe redirect destinations; downloads and decoded data
-are bounded.
+non-HTTP, local, private, and unsafe redirect destinations. A default-off setting may
+allow only this Mac's loopback interface (`localhost`, IPv4 `127/8`, IPv6 `::1`, and
+mapped loopback) for development servers; multicast-DNS `.local`, LAN, link-local,
+metadata, and every other private/reserved destination remain blocked. The same policy
+is applied to the initial URL and redirects. Downloads and decoded data are bounded.
 
 Pasted HTML is different: it uses a non-persistent WebKit data store and a compiled
 content rule that blocks remote subresources, navigation, and script-initiated requests.

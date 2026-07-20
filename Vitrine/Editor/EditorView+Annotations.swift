@@ -65,6 +65,78 @@ extension EditorView {
         AnnotationTool.allCases.first { $0.kind == kind }
     }
 
+    // MARK: - Selection actions
+
+    /// Copies the selected mark and selects the copy, so an already styled mark can
+    /// be reused and placed precisely instead of being redrawn from scratch.
+    func duplicateSelection() {
+        guard let id = selectedAnnotationID,
+            let original = settings.config.annotations.first(where: { $0.id == id })
+        else { return }
+
+        beginAnnotationEdit()
+        let copy = original.duplicated(in: cardSize, counterNumber: nextCounterNumber)
+        settings.config.annotations.append(copy)
+        selectedAnnotationID = copy.id
+        endAnnotationEdit()
+    }
+
+    /// One past the highest badge placed, so duplicating a counter continues the
+    /// sequence instead of creating two badges with the same number.
+    var nextCounterNumber: Int {
+        (settings.config.annotations.filter { $0.kind == .counter }.map(\.number).max() ?? 0) + 1
+    }
+
+    /// Whether moving the selected mark to either edge of the visible draw order
+    /// would change the canvas.
+    var canBringSelectionToFront: Bool {
+        selectedAnnotationID.map { settings.config.annotations.frontmostMove(for: $0) != nil }
+            ?? false
+    }
+
+    var canSendSelectionToBack: Bool {
+        selectedAnnotationID.map { settings.config.annotations.backmostMove(for: $0) != nil }
+            ?? false
+    }
+
+    func bringSelectionToFront() { moveSelection(toFront: true) }
+    func sendSelectionToBack() { moveSelection(toFront: false) }
+
+    /// Guarded by the same conditions that enable the toolbar actions, so a no-op
+    /// cannot consume an undo step.
+    private func moveSelection(toFront front: Bool) {
+        guard let id = selectedAnnotationID,
+            front ? canBringSelectionToFront : canSendSelectionToBack
+        else { return }
+        beginAnnotationEdit()
+        settings.config.annotations.moveMark(id, toFront: front)
+        endAnnotationEdit()
+    }
+
+    /// Moves the selected mark by one arrow-key press: one canvas point normally or
+    /// ten with Shift. Auto-repeat records only the initial undo snapshot.
+    func nudgeSelection(_ key: KeyEquivalent, shift: Bool, isRepeat: Bool) -> Bool {
+        guard let id = selectedAnnotationID,
+            let index = settings.config.annotations.firstIndex(where: { $0.id == id })
+        else { return false }
+
+        let step = shift ? Annotation.coarseNudgeStep : Annotation.nudgeStep
+        let delta: CGSize? =
+            switch key {
+            case .leftArrow: CGSize(width: -step, height: 0)
+            case .rightArrow: CGSize(width: step, height: 0)
+            case .upArrow: CGSize(width: 0, height: -step)
+            case .downArrow: CGSize(width: 0, height: step)
+            default: nil
+            }
+        guard let delta else { return false }
+
+        if !isRepeat { beginAnnotationEdit() }
+        settings.config.annotations[index].nudge(by: delta, in: cardSize)
+        if !isRepeat { endAnnotationEdit() }
+        return true
+    }
+
     // MARK: - Annotation undo/redo
 
     /// Whether the user is in an annotation context (a draw tool is active or a mark
@@ -74,24 +146,27 @@ extension EditorView {
         activeTool != .select || selectedAnnotationID != nil
     }
 
-    /// Snapshots the current marks just before a discrete edit, so it can be undone.
-    func recordAnnotationUndo() {
-        annotationRedo.removeAll()
-        annotationUndo.append(settings.config.annotations)
-        if annotationUndo.count > 60 { annotationUndo.removeFirst() }
+    /// Opens and closes an annotation edit transaction. History is recorded only if
+    /// the marks actually changed, so no-op gestures preserve redo and cost no undo.
+    func beginAnnotationEdit() {
+        annotationHistory.beginEdit(settings.config.annotations)
+    }
+
+    func endAnnotationEdit() {
+        annotationHistory.endEdit(current: settings.config.annotations)
     }
 
     func undoAnnotations() {
-        guard !annotationUndo.isEmpty else { return }
-        annotationRedo.append(settings.config.annotations)
-        settings.config.annotations = annotationUndo.removeLast()
+        guard let previous = annotationHistory.undo(current: settings.config.annotations)
+        else { return }
+        settings.config.annotations = previous
         selectedAnnotationID = nil
     }
 
     func redoAnnotations() {
-        guard !annotationRedo.isEmpty else { return }
-        annotationUndo.append(settings.config.annotations)
-        settings.config.annotations = annotationRedo.removeLast()
+        guard let next = annotationHistory.redo(current: settings.config.annotations)
+        else { return }
+        settings.config.annotations = next
         selectedAnnotationID = nil
     }
 }

@@ -270,6 +270,22 @@ struct AppMenuTests {
         #expect(item?.target is EditorCommandResponder)
     }
 
+    @Test func annotationToolCommandsUseTheAppKitMenuShortcutPath() {
+        let edit = submenu(named: "Edit")
+        let tools = edit.items.first {
+            $0.accessibilityIdentifier() == "menu-annotation-tools"
+        }?.submenu
+        #expect(tools != nil, "Edit must expose the annotation tool submenu")
+
+        let arrow = tools?.items.first {
+            $0.accessibilityIdentifier() == "command-annotation-tool-arrow"
+        }
+        #expect(arrow?.keyEquivalent == "2")
+        #expect(arrow?.keyEquivalentModifierMask == [.command])
+        #expect(arrow?.target is EditorCommandResponder)
+        #expect(arrow?.representedObject as? String == AnnotationTool.arrow.rawValue)
+    }
+
     /// While the designed menu is the main menu, the displacement check must not
     /// rebuild it: `reinstallIfDisplaced()` runs on every event-loop pass via
     /// `applicationWillUpdate(_:)`, so a spurious rebuild there would churn the menu

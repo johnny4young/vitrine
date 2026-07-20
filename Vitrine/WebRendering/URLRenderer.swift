@@ -61,6 +61,10 @@ struct URLRenderer: Renderer {
     /// an explicit opt-in that enables cookies and persistent website data.
     var dataStoreMode: WebSnapshotConfig.DataStoreMode = .nonPersistent
 
+    /// Whether this capture may reach this Mac's loopback interface. Default-off and
+    /// deliberately narrower than access to local or private networks.
+    var allowsLoopbackCapture = false
+
     /// Whether the build is permitted to reach the network for a capture. Injectable
     /// so the gate is testable without an entitlement; defaults to the running app's
     /// real entitlement, so production behavior matches the build's capabilities.
@@ -79,7 +83,7 @@ struct URLRenderer: Renderer {
     /// Renders a `.url` input to a `RenderedAsset` by loading the page locally.
     ///
     /// Order of operations: confirm the network entitlement, validate the URL into a
-    /// `WebSnapshotConfig` (which can only hold an `http`/`https` non-localhost URL),
+    /// `WebSnapshotConfig` (which can only hold an approved `http`/`https` URL),
     /// load it offscreen with the chosen data-store mode, then normalize and tag the
     /// bitmap with `profile` so a URL snapshot flows through the same
     /// clipboard/save/share paths as a code snapshot. Any failure throws a typed
@@ -110,10 +114,16 @@ struct URLRenderer: Renderer {
                 safetyCaps: safetyCaps,
                 scale: scale,
                 profile: profile,
-                dataStoreMode: dataStoreMode)
+                dataStoreMode: dataStoreMode,
+                allowsLoopbackCapture: allowsLoopbackCapture)
         } catch let error as URLValidationError {
             Log.render.error(
                 "URL capture rejected the URL (\(error.diagnosticReason, privacy: .public))")
+            if error == .privateLocalhost, !allowsLoopbackCapture, let host = url.host,
+                WebSnapshotConfig.isLoopbackHost(host: host)
+            {
+                throw RenderError.loopbackCaptureDisabled
+            }
             throw RenderError.renderFailed
         }
 
@@ -150,7 +160,8 @@ extension URLRenderer {
             captureMode: settings.webCapture.captureMode,
             waitStrategy: settings.webCapture.waitStrategy,
             profile: settings.export.colorProfile,
-            dataStoreMode: settings.webCapture.dataStoreMode)
+            dataStoreMode: settings.webCapture.dataStoreMode,
+            allowsLoopbackCapture: settings.webCapture.allowsLoopbackCapture)
     }
 }
 
@@ -246,7 +257,7 @@ struct URLSnapshotEngine {
         // remote loads), a URL capture is a page the user explicitly asked to load,
         // so the page itself and its subresources are allowed; the engine still runs
         // entirely locally and never contacts a remote render service.
-        let coordinator = LoadCoordinator()
+        let coordinator = LoadCoordinator(allowsLoopbackCapture: config.allowsLoopbackCapture)
         webView.navigationDelegate = coordinator
         defer {
             webView.navigationDelegate = nil
@@ -482,6 +493,14 @@ struct URLSnapshotEngine {
 /// main actor, matching the module's default isolation.
 @MainActor
 private final class LoadCoordinator: NSObject, WKNavigationDelegate {
+    /// Frozen from the validated config so policy cannot change midway through a load.
+    private let allowsLoopbackCapture: Bool
+
+    init(allowsLoopbackCapture: Bool) {
+        self.allowsLoopbackCapture = allowsLoopbackCapture
+        super.init()
+    }
+
     /// The continuation resumed when the load finishes, fails, or times out.
     /// Resumed exactly once; cleared on resume so neither a late navigation callback
     /// nor the timeout can resume it twice.
@@ -581,7 +600,8 @@ private final class LoadCoordinator: NSObject, WKNavigationDelegate {
         decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
     ) {
         if let host = navigationAction.request.url?.host,
-            WebSnapshotConfig.isPrivateLocalhost(host: host)
+            WebSnapshotConfig.isRefusedHost(
+                host, allowLoopback: allowsLoopbackCapture)
         {
             decisionHandler(.cancel)
             if navigationAction.targetFrame?.isMainFrame ?? true {
@@ -599,7 +619,9 @@ private final class LoadCoordinator: NSObject, WKNavigationDelegate {
         _ webView: WKWebView,
         didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!
     ) {
-        if let host = webView.url?.host, WebSnapshotConfig.isPrivateLocalhost(host: host) {
+        if let host = webView.url?.host,
+            WebSnapshotConfig.isRefusedHost(host, allowLoopback: allowsLoopbackCapture)
+        {
             webView.stopLoading()
             Log.render.error("URL capture blocked a server redirect to a private host")
             resume(.failure(WebSnapshotError.loadFailed))

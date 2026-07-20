@@ -258,6 +258,27 @@ enum AppMenu {
             item(
                 for: .formatCode, action: #selector(EditorCommandResponder.formatCode(_:)),
                 target: EditorCommandResponder.shared))
+        menu.addItem(.separator())
+
+        // AppKit owns these shortcuts so they keep working when the responsive
+        // toolbar collapses its SwiftUI buttons into a lazy Menu.
+        let annotationToolsItem = NSMenuItem(
+            title: String(localized: "Annotation Tool"), action: nil, keyEquivalent: "")
+        annotationToolsItem.setAccessibilityIdentifier("menu-annotation-tools")
+        let annotationToolsMenu = NSMenu(title: String(localized: "Annotation Tool"))
+        for tool in AnnotationTool.allCases {
+            let item = NSMenuItem(
+                title: tool.localizedTitle,
+                action: #selector(EditorCommandResponder.selectAnnotationTool(_:)),
+                keyEquivalent: tool.shortcutCharacter.map(String.init) ?? "")
+            item.keyEquivalentModifierMask = tool.shortcutCharacter == nil ? [] : [.command]
+            item.representedObject = tool.rawValue
+            item.target = EditorCommandResponder.shared
+            item.setAccessibilityIdentifier("command-annotation-tool-\(tool.rawValue)")
+            annotationToolsMenu.addItem(item)
+        }
+        annotationToolsItem.submenu = annotationToolsMenu
+        menu.addItem(annotationToolsItem)
 
         editMenuItem.submenu = menu
         return editMenuItem

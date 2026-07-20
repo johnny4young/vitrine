@@ -89,6 +89,11 @@ struct WebSnapshotConfig: Equatable {
     /// with any other web view; cookies and persistent website data are opt-in only.
     var dataStoreMode: DataStoreMode = .nonPersistent
 
+    /// Whether this capture may reach the loopback interface on this Mac. The value
+    /// travels with the validated URL so every redirect uses the same policy as the
+    /// initial request. It never permits `.local`, LAN, or other private addresses.
+    var allowsLoopbackCapture = false
+
     /// The effective capture deadline: the configured `waitStrategy`'s total budget,
     /// clamped to the safety ceiling so no strategy can wait longer than
     /// `safetyCaps.maxTimeout`. The URL engine applies this as one absolute deadline
@@ -109,9 +114,12 @@ struct WebSnapshotConfig: Equatable {
         safetyCaps: SafetyCaps = .standard,
         scale: CGFloat = 2,
         profile: ColorProfile = .sRGB,
-        dataStoreMode: DataStoreMode = .nonPersistent
+        dataStoreMode: DataStoreMode = .nonPersistent,
+        allowsLoopbackCapture: Bool = false
     ) throws {
-        self.url = try WebSnapshotConfig.validate(captureURL: captureURL)
+        self.url = try WebSnapshotConfig.validate(
+            captureURL: captureURL, allowLoopback: allowsLoopbackCapture)
+        self.allowsLoopbackCapture = allowsLoopbackCapture
         self.viewportPreset = viewportPreset
         self.captureMode = captureMode
         self.waitStrategy = waitStrategy
@@ -158,6 +166,7 @@ extension WebSnapshotConfig {
         self.scale = scale
         self.profile = profile
         self.dataStoreMode = .nonPersistent
+        self.allowsLoopbackCapture = false
     }
 }
 

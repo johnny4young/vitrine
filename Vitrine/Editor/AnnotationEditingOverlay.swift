@@ -29,6 +29,9 @@ struct AnnotationEditingOverlay: View {
     /// Called once at the start of each discrete edit (draw, move, resize, delete) so
     /// the editor can snapshot the annotations for undo.
     let onBeginEdit: () -> Void
+    /// Closes the edit transaction after the mutation so unchanged interactions do
+    /// not create an undo entry or discard redo.
+    let onEndEdit: () -> Void
 
     var body: some View {
         ZStack {
@@ -42,6 +45,7 @@ struct AnnotationEditingOverlay: View {
                         nextCounterNumber: nextCounterNumber,
                         stickerGlyph: stickerGlyph,
                         onBeginDraw: onBeginEdit,
+                        onEndDraw: onEndEdit,
                         onCommit: { annotation in
                             settings.config.annotations.append(annotation)
                             selection = annotation.id
@@ -75,6 +79,7 @@ struct AnnotationEditingOverlay: View {
                         isSelected: isSelected,
                         canvasSize: canvasSize,
                         onBeginEdit: onBeginEdit,
+                        onEndEdit: onEndEdit,
                         onSelect: { selection = annotation.id },
                         onEdit: annotation.kind == .text
                             ? { beginTextEditing(annotation.id) } : nil,
@@ -130,6 +135,7 @@ struct AnnotationEditingOverlay: View {
             if selection == id { selection = nil }
         }
         editingAnnotationID = nil
+        onEndEdit()
     }
 
     private func delete(_ id: UUID) {
@@ -137,6 +143,7 @@ struct AnnotationEditingOverlay: View {
         settings.config.annotations.removeAll { $0.id == id }
         if selection == id { selection = nil }
         if editingAnnotationID == id { editingAnnotationID = nil }
+        onEndEdit()
     }
 }
 
@@ -150,6 +157,7 @@ private struct DrawingLayer: View {
     let nextCounterNumber: Int
     var stickerGlyph: String = ""
     let onBeginDraw: () -> Void
+    let onEndDraw: () -> Void
     let onCommit: (Annotation) -> Void
 
     /// The in-progress drag (canvas points), for the live preview.
@@ -184,6 +192,7 @@ private struct DrawingLayer: View {
                 if kind.isPointPlaced {
                     onBeginDraw()
                     onCommit(makeAnnotation(from: value.location, to: value.location))
+                    onEndDraw()
                 } else {
                     // Ignore an accidental click (no real drag) so a stray tap never
                     // leaves a zero-size shape behind.
@@ -193,6 +202,7 @@ private struct DrawingLayer: View {
                     guard distance > 6 else { return }
                     onBeginDraw()
                     onCommit(makeAnnotation(from: value.startLocation, to: value.location))
+                    onEndDraw()
                 }
             }
     }
@@ -218,6 +228,7 @@ private struct AnnotationHandle: View {
     let isSelected: Bool
     let canvasSize: CGSize
     let onBeginEdit: () -> Void
+    let onEndEdit: () -> Void
     let onSelect: () -> Void
     /// Re-opens a text callout's inline field on double-click; `nil` for kinds that
     /// have no editable text.
@@ -341,14 +352,14 @@ private struct AnnotationHandle: View {
                     onSelect()
                 }
                 guard let origin = dragOrigin else { return }
-                let dx = value.translation.width / max(canvasSize.width, 1)
-                let dy = value.translation.height / max(canvasSize.height, 1)
-                annotation.start = Annotation.clampNormalized(
-                    CGPoint(x: origin.start.x + dx, y: origin.start.y + dy))
-                annotation.end = Annotation.clampNormalized(
-                    CGPoint(x: origin.end.x + dx, y: origin.end.y + dy))
+                var moved = origin
+                moved.nudge(by: value.translation, in: canvasSize)
+                annotation = moved
             }
-            .onEnded { _ in dragOrigin = nil }
+            .onEnded { _ in
+                dragOrigin = nil
+                onEndEdit()
+            }
     }
 
     // MARK: Selection outline
@@ -410,7 +421,10 @@ private struct AnnotationHandle: View {
                         x: value.location.x / max(canvasSize.width, 1),
                         y: value.location.y / max(canvasSize.height, 1)))
             }
-            .onEnded { _ in isResizing = false }
+            .onEnded { _ in
+                isResizing = false
+                onEndEdit()
+            }
     }
 }
 
