@@ -1,11 +1,11 @@
-#!/usr/bin/env swift  // Generate the launch-gallery design-QA artifacts (CS-039).
+#!/usr/bin/env swift  // Generate the launch-gallery design-QA artifacts.
 //
 // A screenshot app should ship with evidence of its visual quality. This script is
 // the single command that (re)generates the representative code-screenshot samples
 // used in the README/release notes and committed under Tests/Fixtures/Samples/, all
 // rendered through the app's real export pipeline — never hand-made mockups.
 //
-// How it works (the same staging dance as scripts/record-goldens.sh, CS-025): the
+// How it works (the same staging dance as scripts/record-goldens.sh): the
 // unit-test host is sandboxed and cannot write into the source tree, so the
 // generator suite (`SampleGalleryGeneratorTests`, armed by VITRINE_GENERATE_GALLERY)
 // renders every catalog sample, stages the PNGs and manifest.json in its own
@@ -14,7 +14,7 @@
 // path, and copies the staged files into Tests/Fixtures/Samples/ from outside the
 // sandbox.
 //
-// It is written in Swift (not bash) to match the file named in the CS-039 ticket and
+// It is written in Swift (not bash) to match the documented file and
 // the repo's other standalone tool, scripts/compare-goldens.swift. It depends on
 // nothing but Foundation and shells out to the same `xcodebuild` the Makefile uses,
 // so `swift scripts/generate-launch-gallery.swift` (or `make gallery`) needs no build

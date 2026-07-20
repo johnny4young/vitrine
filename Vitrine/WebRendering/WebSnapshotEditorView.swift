@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The Web Snapshot composer (CS-042/CS-043): a live preview beside an inspector that
+/// The Web Snapshot composer: a live preview beside an inspector that
 /// switches between **URL** capture and **HTML** rendering, with copy / save / share
 /// export in a glass toolbar.
 ///
@@ -25,7 +25,7 @@ struct WebSnapshotEditorView: View {
     /// tile) in a multi-resolution batch.
     @State var previewedKind: WebSnapshotConfig.ViewportPreset.Kind?
     /// The in-flight capture task, held so the Cancel button can stop a long
-    /// multi-viewport batch (CS-044). `nil` when no capture is running.
+    /// multi-viewport batch. `nil` when no capture is running.
     @State var renderTask: Task<Void, Never>?
 
     var body: some View {
@@ -41,7 +41,7 @@ struct WebSnapshotEditorView: View {
             }
         }
         // Merge the toolbar into the title bar so the title sits in the traffic-light row
-        // (the editor pattern, CS-037): extending into the top safe area pulls the glass
+        // (the editor pattern): extending into the top safe area pulls the glass
         // toolbar to the window edge, with the traffic lights floating over its leading 86 pt.
         .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 900, minHeight: 580)
@@ -52,7 +52,7 @@ struct WebSnapshotEditorView: View {
         }
         // A prefilled URL (from quick capture) captures itself rather than stranding the
         // user on a static form: `onAppear` covers a freshly opened window, `onChange`
-        // covers a reused window prefilled while already on screen (UX audit).
+        // covers a reused window prefilled while already on screen.
         .onAppear { autoCaptureIfPending() }
         .onChange(of: model.pendingAutoCapture) { _, pending in
             if pending { autoCaptureIfPending() }

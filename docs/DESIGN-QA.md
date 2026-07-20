@@ -1,4 +1,4 @@
-# Design QA & the launch gallery (CS-039)
+# Design QA & the launch gallery
 
 > A screenshot app should ship with **evidence** of its visual quality, not rely on
 > subjective memory. Vitrine's design QA is a generated **launch gallery**: a set of
@@ -24,8 +24,8 @@ asserted to be represented):
 | --- | --- | --- |
 | **Languages** | Real highlighting per language, each on a complementary theme | Python, TypeScript, Go, Rust, SQL |
 | **Themes** | Every built-in theme over one snippet, isolating the syntax palette | One Dark, Dracula, Nord, Tokyo Night, GitHub, One Light, … |
-| **Social & export presets** | The framed output for each share surface (CS-020) | X/Twitter, LinkedIn, Keynote, Docs, Transparent Slide, OpenGraph 1200×630 |
-| **Transparent backgrounds** | Real alpha (CS-024) with a dark *and* a light code card | `transparent-dark`, `transparent-light` |
+| **Social & export presets** | The framed output for each share surface | X/Twitter, LinkedIn, Keynote, Docs, Transparent Slide, OpenGraph 1200×630 |
+| **Transparent backgrounds** | Real alpha with a dark *and* a light code card | `transparent-dark`, `transparent-light` |
 | **Accessibility / high contrast** | A **WCAG-AA-verified** high-contrast palette | `a11y-high-contrast` |
 
 ### Accessibility / high contrast
@@ -37,12 +37,12 @@ sample uses a curated high-contrast custom palette
 value-typed, the suite asserts the text-on-card contrast **statically**: the
 foreground and every syntax-token color must clear the WCAG AA normal-text threshold
 (4.5:1) against the card background, using the same `Brand.Contrast` utilities as the
-brand-palette checks (CS-036). A built-in theme can't be checked this way because its
+brand-palette checks. A built-in theme can't be checked this way because its
 syntax colors only exist inside Highlightr at render time.
 
 > The app *chrome* already adapts to the system **Increase Contrast** setting via the
 > brand color set (see [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md)); that is verified
-> separately by the CS-036 contrast tests. This gallery covers the **exported image**.
+> separately by the  contrast tests. This gallery covers the **exported image**.
 
 ## Regenerating the gallery
 
@@ -53,7 +53,7 @@ committed PNGs + manifest:
 make gallery
 ```
 
-Under the hood (the same staging dance as the golden fixtures, CS-025): the unit-test
+Under the hood (the same staging dance as the golden fixtures): the unit-test
 host is sandboxed and can't write into the source tree, so the opt-in generator suite
 (`SampleGalleryGeneratorTests`, armed by `VITRINE_GENERATE_GALLERY=1`) stages the
 files in its container temp and prints a `GALLERY OUTPUT <path>` line.
@@ -71,7 +71,7 @@ file to touch. Run `make gallery` to produce its PNG.
 ## How it's enforced
 
 Three suites read the one catalog, so a sample can never drift between them (mirroring
-the golden-image architecture, CS-025):
+the golden-image architecture):
 
 1. **Render regression — always on.** `SampleGalleryTests` renders every sample on any
    machine and fails if the pipeline stops producing an image, asserts each category

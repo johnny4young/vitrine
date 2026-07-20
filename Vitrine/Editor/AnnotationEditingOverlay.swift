@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The interactive editing layer drawn over the live preview (CS-083 / CS-085).
+/// The interactive editing layer drawn over the live preview.
 ///
 /// It does **not** draw the annotations themselves — `SnapshotCanvas` does, so the
 /// editor preview and the exported image always agree. It adds the editor-side
@@ -18,16 +18,16 @@ struct AnnotationEditingOverlay: View {
     @Bindable var settings: AppSettings
     @Binding var selection: UUID?
     /// The text callout being edited inline, if any — its handle is hidden and a
-    /// focused field is shown over it instead (CS-085 follow-up).
+    /// focused field is shown over it instead .
     @Binding var editingAnnotationID: UUID?
     let canvasSize: CGSize
     let activeTool: AnnotationTool
     let drawColor: Color
     let drawThickness: Double
-    /// The emoji the sticker tool places (feature #13); unused by every other tool.
+    /// The emoji the sticker tool places; unused by every other tool.
     var stickerGlyph: String = AnnotationTool.stickerChoices[0]
     /// Called once at the start of each discrete edit (draw, move, resize, delete) so
-    /// the editor can snapshot the annotations for undo (CS-086).
+    /// the editor can snapshot the annotations for undo.
     let onBeginEdit: () -> Void
 
     var body: some View {
@@ -62,7 +62,7 @@ struct AnnotationEditingOverlay: View {
             }
             // Handles: every mark in Select mode, and the selected mark even while a
             // draw tool is active — so you can move/resize/delete what you just drew
-            // without leaving the tool (CS-085, CleanShot-style). The mark being
+            // without leaving the tool (CleanShot-style). The mark being
             // text-edited shows only its field, so its handle is hidden.
             ForEach(settings.config.annotations) { annotation in
                 let isSelected = selection == annotation.id
@@ -141,7 +141,7 @@ struct AnnotationEditingOverlay: View {
 }
 
 /// The full-canvas drawing surface for a single active tool: a click-drag paints a
-/// shape (with a live preview), a click places a text/counter (CS-085).
+/// shape (with a live preview), a click places a text/counter.
 private struct DrawingLayer: View {
     let kind: Annotation.Kind
     let color: Color
@@ -236,8 +236,7 @@ private struct AnnotationHandle: View {
     /// selection outline follow the span, not a rect. The curved arrow's arc and the
     /// measure's shaft both live along (near) the start→end line, so line hit-testing
     /// serves them; leaving a kind out of both groups drops it into the point-placed
-    /// fallback — a small box at `start` — which broke select/move for the newer kinds
-    /// (deep-review finding).
+    /// fallback — a small box at `start` — which broke select/move for the newer kinds.
     private var isLineLike: Bool {
         annotation.kind == .arrow || annotation.kind == .line
             || annotation.kind == .curvedArrow || annotation.kind == .measure
@@ -259,7 +258,7 @@ private struct AnnotationHandle: View {
     }
 
     /// A small delete badge at the selection's top-right — the primary way to remove
-    /// a mark now that the inspector list is gone (CS-085).
+    /// a mark now that the inspector list is gone.
     private var deleteButton: some View {
         Button(action: onDelete) {
             Image(systemName: "xmark.circle.fill")
@@ -415,7 +414,7 @@ private struct AnnotationHandle: View {
     }
 }
 
-/// The focused inline field for editing a text callout in place (CS-085 follow-up).
+/// The focused inline field for editing a text callout in place .
 ///
 /// It mirrors `TextMark`'s font, color, pill, and center anchor so editing is WYSIWYG,
 /// and `SnapshotCanvas` blanks the same mark while this is up (see `previewConfig`), so

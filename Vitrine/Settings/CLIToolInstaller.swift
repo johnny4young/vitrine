@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 
 /// Installs the embedded `vitrine` command-line tool onto the user's PATH
-/// (CS-033) — the DMG-install counterpart of the Homebrew cask's `binary`
+/// the DMG-install counterpart of the Homebrew cask's `binary`
 /// stanza, surfaced as a Settings ▸ General row.
 ///
 /// The app is sandboxed, so it cannot write into PATH directories on its own:

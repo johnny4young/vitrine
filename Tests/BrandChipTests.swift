@@ -5,7 +5,7 @@ import Vision
 
 @testable import Vitrine
 
-/// Features #27/#28 — the Brand Kit's QR/link chip and the signature footer bar.
+/// the Brand Kit's QR/link chip and the signature footer bar.
 @Suite("Brand chips (QR + footer bar)")
 @MainActor
 struct BrandChipTests {
@@ -13,7 +13,7 @@ struct BrandChipTests {
         UserDefaults(suiteName: "VitrineBrandChip-\(UUID().uuidString)")!
     }
 
-    // MARK: - QR generation (#28)
+    // MARK: - QR generation
 
     /// The strongest possible check: the generated chip must scan back to the exact
     /// link, via the OS's own barcode detector — if this passes, any phone can read it.
@@ -74,7 +74,7 @@ struct BrandChipTests {
         #expect(try png(plain) != png(marked))
     }
 
-    // MARK: - Footer bar (#27)
+    // MARK: - Footer bar
 
     /// The footer bar renders (pixels change) and differs from the corner badge for
     /// the same mark content.
@@ -113,7 +113,7 @@ struct BrandChipTests {
     }
 }
 
-// MARK: - reload() cache invalidation (deep-review test gap)
+// MARK: - reload() cache invalidation
 
 extension BrandChipTests {
     /// `reload()` mirrors an external change into memory; the QR cache must rebuild

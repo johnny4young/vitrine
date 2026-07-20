@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// A single annotation drawn over the code snapshot (CS-083 / CS-085): an arrow,
+/// A single annotation drawn over the code snapshot: an arrow,
 /// line, rectangle, text callout, highlighter, blur/redaction box, or a numbered
 /// counter badge.
 ///
@@ -154,7 +154,7 @@ extension Annotation {
     }
 }
 
-/// A tool in the annotation toolbar (CS-085). `select` is the move/resize pointer;
+/// A tool in the annotation toolbar. `select` is the move/resize pointer;
 /// every other case draws its matching `Annotation.Kind`.
 enum AnnotationTool: String, CaseIterable, Identifiable {
     case select

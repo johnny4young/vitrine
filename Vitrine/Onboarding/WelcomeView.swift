@@ -2,7 +2,7 @@ import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
-/// The first-run quick-start (CS-035).
+/// The first-run quick-start.
 ///
 /// A single compact, skippable window that teaches the core loop — *copy code →
 /// press the hotkey → paste the image* — lets the user pick a starting style,
@@ -24,14 +24,14 @@ struct WelcomeView: View {
 
     /// The launch-at-login state is mirrored locally (like the General settings
     /// pane) so the toggle reflects the system registration without binding through
-    /// `AppSettings`. It is offered, never forced (CS-035).
+    /// `AppSettings`. It is offered, never forced.
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
 
     /// The sample capture's outcome, surfaced inline so the user sees that the loop
     /// worked without leaving the window. `nil` until the user runs it.
     @State private var sampleStatus: SampleStatus?
 
-    /// The chosen starting background (CS-035 "a style choice"). Mirrors the live
+    /// The chosen starting background ("a style choice"). Mirrors the live
     /// config so the swatch row reads the user's current preset; picking one
     /// applies it, and that change alone is what writes the user's style — a
     /// returning user's existing style is never overwritten just by opening the
@@ -44,7 +44,7 @@ struct WelcomeView: View {
         case rendered
         case failed
 
-        /// Localized through the String Catalog (CS-047).
+        /// Localized through the String Catalog.
         var message: String {
             switch self {
             case .copied:
@@ -98,7 +98,7 @@ struct WelcomeView: View {
 
     // MARK: - Sections
 
-    /// The hero: app icon + title over a soft accent radial wash (design/handoff).
+    /// The hero: app icon + title over a soft accent radial wash.
     private var hero: some View {
         HStack(alignment: .center, spacing: VitrineTokens.Spacing.md) {
             Image(nsImage: NSApp.applicationIconImage)
@@ -136,7 +136,7 @@ struct WelcomeView: View {
     }
 
     /// The three-step core loop as numbered glass tiles, so the user learns
-    /// "copy code → press hotkey → paste image" at a glance (CS-035).
+    /// "copy code → press hotkey → paste image" at a glance.
     private var stepRow: some View {
         HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
             stepTile(
@@ -152,7 +152,7 @@ struct WelcomeView: View {
     }
 
     /// One numbered step tile: a mono index in the corner, a gradient icon
-    /// badge, a semibold title, and a secondary caption (design/handoff).
+    /// badge, a semibold title, and a secondary caption.
     private func stepTile(
         index: Int, symbol: String, title: LocalizedStringKey, caption: LocalizedStringKey
     ) -> some View {
@@ -195,14 +195,14 @@ struct WelcomeView: View {
         }
         .accessibilityElement(children: .combine)
         // Built from localized `Text` pieces so the spoken label is localized too
-        // (a `LocalizedStringKey` can't be interpolated into another) (CS-047).
+        // (a `LocalizedStringKey` can't be interpolated into another).
         .accessibilityLabel(
             Text("Step \(index): ") + Text(title) + Text(verbatim: ", ") + Text(caption))
     }
 
     /// The live sample: a swatch row that restyles the rendered card on the
     /// spot, plus a one-click capture that needs **no clipboard content**
-    /// (CS-035 acceptance: "run a sample capture without needing external
+    /// ( "run a sample capture without needing external
     /// clipboard content").
     private var sampleCard: some View {
         VStack(alignment: .leading, spacing: VitrineTokens.Spacing.sm) {
@@ -303,14 +303,14 @@ struct WelcomeView: View {
         return ExportManager.renderNSImage(config, scale: 2, profile: .sRGB)
     }
 
-    /// The local-only privacy promise, shown before the first capture (CS-035). The
+    /// The local-only privacy promise, shown before the first capture. The
     /// wording matches the privacy posture in `docs/ARCHITECTURE.md` and the README.
     private var privacyLine: some View {
         HStack(spacing: 10) {
             Image(systemName: "lock.shield")
                 .font(.system(size: 12))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
-            // Long copy lives in the String Catalog under a stable key (CS-047) so
+            // Long copy lives in the String Catalog under a stable key so
             // it localizes and does not push the source past the line limit.
             Text("welcome.privacy.badge")
                 .font(.system(size: VitrineTokens.FontSize.subhead))
@@ -322,7 +322,7 @@ struct WelcomeView: View {
     }
 
     /// Optional setup: a hotkey recorder and launch-at-login. Both are offered, not
-    /// forced — the user can dismiss the quick-start without setting either (CS-035).
+    /// forced — the user can dismiss the quick-start without setting either.
     private var setupControls: some View {
         HStack(spacing: VitrineTokens.Spacing.md) {
             HStack(spacing: VitrineTokens.Spacing.xs) {
@@ -364,10 +364,10 @@ struct WelcomeView: View {
     }
 
     /// The recorded hotkey rendered as a short caption (e.g. "⌃⌘V"), or localized
-    /// guidance to set one when none is bound yet, so step 2 stays accurate per user
-    /// (CS-035). Returned as a `LocalizedStringKey`: the glyph string is interpolated
+    /// guidance to set one when none is bound yet, so step 2 stays accurate per user.
+    /// Returned as a `LocalizedStringKey`: the glyph string is interpolated
     /// (so it is shown verbatim, not looked up) while the fallback prose is localized
-    /// through the String Catalog (CS-047).
+    /// through the String Catalog.
     private var hotkeyCaption: LocalizedStringKey {
         if let shortcut = KeyboardShortcuts.getShortcut(for: .quickCapture) {
             return "\(shortcut.description)"
@@ -378,7 +378,7 @@ struct WelcomeView: View {
     // MARK: - Actions
 
     /// Runs a sample capture from a built-in snippet, bypassing the clipboard so the
-    /// user can see the full loop work immediately (CS-035). Uses the same exporter
+    /// user can see the full loop work immediately. Uses the same exporter
     /// path as a real capture (`QuickCapture.renderText`), so the result honors the
     /// user's chosen style and auto-copy preference.
     private func runSampleCapture() {
@@ -394,7 +394,7 @@ struct WelcomeView: View {
     }
 
     /// Records that the quick-start has been seen (so it never reappears for this
-    /// defaults suite) and closes the window (CS-035). Both "Skip" and "Get Started"
+    /// defaults suite) and closes the window. Both "Skip" and "Get Started"
     /// route here: skipping is a first-class outcome, not a penalty.
     private func finish() {
         settings.hasSeenWelcome = true
@@ -402,7 +402,7 @@ struct WelcomeView: View {
     }
 }
 
-/// Owns and presents the first-run quick-start window (CS-035).
+/// Owns and presents the first-run quick-start window.
 ///
 /// Mirrors the other on-demand window controllers (`EditorWindowController`,
 /// `RecentsGalleryWindowController`): an AppKit window hosting the SwiftUI view,
@@ -417,7 +417,7 @@ final class WelcomeWindowController {
     private init() {}
 
     /// Shows the quick-start only when it has not been seen for the active defaults
-    /// suite (CS-035). Returns whether it was presented, which the launch path uses
+    /// suite. Returns whether it was presented, which the launch path uses
     /// to decide whether to also open another window.
     @discardableResult
     func presentIfFirstRun(settings: AppSettings = .shared) -> Bool {
@@ -438,7 +438,7 @@ final class WelcomeWindowController {
             window.title = String(localized: "Welcome to Vitrine")
             // No resize/minimize: the quick-start is a fixed, compact first-run
             // surface, not a working window. The title bar merges into the
-            // hero so the card reads as one surface (design/handoff); the
+            // hero so the card reads as one surface; the
             // hero's 44 pt top padding clears the traffic lights.
             window.styleMask = [.titled, .closable, .fullSizeContentView]
             window.titlebarAppearsTransparent = true

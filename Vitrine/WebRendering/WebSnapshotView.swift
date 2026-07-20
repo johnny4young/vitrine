@@ -4,7 +4,7 @@ import OSLog
 import WebKit
 
 /// Renders a self-contained HTML string to a `CGImage` in an offscreen
-/// `WKWebView` (CS-042). This is the local, network-free engine behind
+/// `WKWebView`. This is the local, network-free engine behind
 /// `HTMLRenderer`: it owns the web view's lifecycle, pins a deterministic
 /// viewport, blocks remote loads for pasted HTML by default, and turns the loaded
 /// page into a bitmap via `WKWebView.takeSnapshot` — so no Screen Recording
@@ -14,7 +14,7 @@ import WebKit
 /// ## Privacy and isolation
 ///
 /// The engine is built for *controlled* HTML (clipboard or a user-selected file),
-/// not arbitrary web pages — those are CS-043's URL renderer with its own explicit
+/// not arbitrary web pages — those are 's URL renderer with its own explicit
 /// network mode. Two defaults keep a pasted fragment local:
 ///
 /// 1. **No base URL.** HTML loads with `baseURL: nil` (unless the caller opts into
@@ -27,8 +27,8 @@ import WebKit
 ///    remote top-level redirects. The rule list is the load-bearing layer: a
 ///    navigation delegate alone only sees *frame navigations*, never subresource
 ///    requests, so it could not keep an absolute `https://…` image off the wire on
-///    a build that carries the network entitlement (the direct-download channel,
-///    CS-064). If the rule list cannot be compiled the render fails closed with
+///    a build that carries the network entitlement (the direct-download channel).
+///    If the rule list cannot be compiled the render fails closed with
 ///    `.networkIsolationUnavailable` rather than rendering unisolated.
 ///
 /// The data store is always `WKWebsiteDataStore.nonPersistent()`, so nothing the
@@ -55,7 +55,7 @@ struct WebSnapshotView {
 
         /// The viewport the page is laid out and snapshotted in. Fixed so the same
         /// HTML always produces the same pixel size — the determinism the
-        /// acceptance criteria require.
+        /// documented contract require.
         var viewport: CGSize = CGSize(width: 1200, height: 630)
 
         /// Output scale (1 = device pixels equal points). The rendered image is
@@ -64,7 +64,7 @@ struct WebSnapshotView {
 
         /// Whether remote (network) loads are allowed. `false` (the default) blocks
         /// every request to a remote scheme/host, so pasted HTML stays local unless
-        /// the user explicitly opts in. CS-043 owns the real URL network mode; this
+        /// the user explicitly opts in. URL capture owns the real network mode; this
         /// flag exists so the engine has a single, testable allow switch.
         var allowsNetwork: Bool = false
 
@@ -123,7 +123,7 @@ struct WebSnapshotView {
             // network: it blocks remote subresources and script-initiated requests
             // inside the web process, which the navigation delegate below never
             // sees. Failing to obtain it fails the render (closed), preserving the
-            // CS-042 promise even on the network-entitled direct-download build.
+            // Keep the local-rendering promise even on the network-entitled direct-download build.
             configuration.userContentController.add(try await Self.remoteBlockList())
         }
 
@@ -176,7 +176,7 @@ struct WebSnapshotView {
 
     /// The exact device-pixel dimensions a snapshot of `sourceSize` points renders
     /// to at `scale`: each axis is `size × scale`, rounded to the nearest integer.
-    /// This is the determinism guarantee CS-042 requires, isolated as pure
+    /// This is the determinism guarantee the rendering contract requires, isolated as pure
     /// arithmetic so it is assertable without a web process. `(0, 0)` for a
     /// non-positive input signals "no drawable bitmap".
     static func pixelDimensions(
@@ -223,15 +223,15 @@ struct WebSnapshotView {
 }
 
 extension WebSnapshotView {
-    /// The content rules that keep pasted HTML off the network (CS-042).
+    /// The content rules that keep pasted HTML off the network.
     ///
     /// `WKNavigationDelegate` only decides *frame navigations*; subresource loads
     /// (`<img>`, `<script>`, stylesheets) and script-initiated requests
     /// (`fetch`/XHR/WebSocket) never reach it. This compiled rule list runs inside
     /// the web process and blocks every request to a network scheme, which is the
     /// only supported way to guarantee "pasted HTML cannot reach the network" on a
-    /// build that carries the network entitlement (the direct-download DMG,
-    /// CS-064). Local schemes (`file`, `data`, `blob`, `about`) are untouched, so
+    /// build that carries the network entitlement (the direct-download DMG).
+    /// Local schemes (`file`, `data`, `blob`, `about`) are untouched, so
     /// inline images and a user-selected local base URL keep working.
     enum RemoteBlockRules {
         /// The store identifier for the compiled rules. Versioned so a future rule
@@ -251,8 +251,7 @@ extension WebSnapshotView {
 
     /// The compiled remote-block rule list, compiled at most once per process. Explicitly
     /// `@MainActor` so the isolation of this shared mutable cache is stated, not merely
-    /// inferred from the module default — a future refactor can't silently make it racy
-    /// (audit P2-5).
+    /// inferred from the module default — a future refactor can't silently make it racy.
     @MainActor private static var cachedRemoteBlockList: WKContentRuleList?
 
     /// Returns the compiled remote-block rule list, compiling and caching it on
@@ -287,7 +286,7 @@ extension WebSnapshotView {
     /// proceed or be cancelled?
     ///
     /// Extracted from `NavigationCoordinator` so the privacy guarantee at the heart
-    /// of CS-042 — "pasted HTML cannot reach the network" — is a pure function that
+    /// of — "pasted HTML cannot reach the network" — is a pure function that
     /// tests assert directly, with no `WKWebView` and no web content process. The
     /// delegate is a thin adapter that pulls the scheme off the live navigation and
     /// defers to this.
@@ -324,7 +323,7 @@ extension WebSnapshotView {
 }
 
 /// Why an HTML snapshot did not produce an image, as a typed error rather than a
-/// blank picture (CS-042 acceptance: "Snapshot failure returns a typed error, not
+/// blank picture ( "Snapshot failure returns a typed error, not
 /// a blank image"). Each case names a distinct, non-PII failure mode so a caller
 /// can offer the right recovery and tests can assert the exact reason.
 enum WebSnapshotError: Error, Equatable {
@@ -347,7 +346,7 @@ enum WebSnapshotError: Error, Equatable {
     case snapshotFailed
 
     /// The remote-block content rule list could not be compiled, so the engine
-    /// refused to render pasted HTML without its network isolation (CS-042). The
+    /// refused to render pasted HTML without its network isolation. The
     /// render fails closed instead of loading the page unisolated.
     case networkIsolationUnavailable
 }

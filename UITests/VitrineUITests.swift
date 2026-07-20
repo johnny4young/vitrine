@@ -13,15 +13,15 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("language-picker", in: app), in: app)
         assertExists(element("format-button", in: app), in: app)
         // The editor's destination preset picker lives in the inspector's
-        // Output disclosure in the redesigned layout; open it first. It keeps
+        // Output disclosure in the current designed layout; open it first. It keeps
         // its own identifier so it never collides with the Settings panes'
-        // picker (CS-032).
+        // picker.
         element("inspector-disclosure-output", in: app).click()
         assertExists(element("editor-destination-preset-picker", in: app), in: app)
         assertExists(element("copy-button", in: app), in: app)
         assertExists(element("save-button", in: app), in: app)
         assertExists(element("share-button", in: app), in: app)
-        // The editor advertises a drop target for source files / text (CS-028).
+        // The editor advertises a drop target for source files / text.
         // Driving a real drag from outside the app is not reliably automatable, so
         // the smoke test asserts the target exists; the loading policy itself is
         // covered by FileInputLoaderTests.
@@ -155,13 +155,13 @@ final class VitrineUITests: XCTestCase {
         element("carousel-cancel", in: app).click()
     }
 
-    // MARK: - Multi-window editing and restoration (CS-053)
+    // MARK: - Multi-window editing and restoration
 
     @MainActor
     func testOpeningASecondEditorWindowKeepsBothOpen() {
         continueAfterFailure = false
         // `--open-second-editor` opens the primary editor plus an additional,
-        // independent editor window (CS-053 "users can open multiple editor windows").
+        // independent editor window ("users can open multiple editor windows").
         let app = launch(arguments: ["--demo", "--open-second-editor"])
         defer { app.terminate() }
 
@@ -180,7 +180,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testClosingOneEditorWindowLeavesTheOtherOpen() {
         continueAfterFailure = false
-        // Closing one window must not lose the other's state (CS-053). Close the second
+        // Closing one window must not lose the other's state. Close the second
         // window from the Window menu's window list and assert the primary survives.
         let app = launch(arguments: ["--demo", "--open-second-editor"])
         defer { app.terminate() }
@@ -208,7 +208,7 @@ final class VitrineUITests: XCTestCase {
         try skipUnlessADisplayFitsTheEditor()
         // `--force-offscreen-editor` opens the editor, shoves it far off the visible
         // screens, and runs the recovery pass, so a window saved on an unplugged
-        // monitor is pulled back on-screen rather than stranded (CS-053 "behaves
+        // monitor is pulled back on-screen rather than stranded ("behaves
         // correctly across display changes without off-screen windows").
         let app = launch(arguments: ["--demo", "--force-offscreen-editor"])
         defer { app.terminate() }
@@ -232,7 +232,7 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: ["--demo", "--open-editor", "--standard-activation"])
         defer { app.terminate() }
 
-        // The File menu carries the multi-window commands (CS-053): "New Editor
+        // The File menu carries the multi-window commands: "New Editor
         // Window" (always available) and "Make This Window the Default" (editor-scoped).
         let editor = element("editor-window", in: app)
         assertExists(editor, in: app, timeout: 8)
@@ -257,7 +257,7 @@ final class VitrineUITests: XCTestCase {
         try skipUnlessADisplayFitsTheEditor()
         // The editor surfaces an explicit "Make Default" affordance so promoting a
         // window's style to the app default is discoverable in the editor, not only in
-        // the menu (CS-053 "make default is explicit").
+        // the menu ("make default is explicit").
         let app = launch(arguments: ["--demo", "--open-editor"])
         defer { app.terminate() }
 
@@ -270,7 +270,7 @@ final class VitrineUITests: XCTestCase {
     func testEditorExposesFormatCodeToolbarAction() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        // Format Code is a primary editor affordance (CS-049) and should be reachable
+        // Format Code is a primary editor affordance and should be reachable
         // by mouse as well as the Edit-menu shortcut. The pure formatting behavior is
         // covered by CodeFormatterTests; this UI smoke pins the accessible toolbar route.
         let app = launch(arguments: ["--demo", "--open-editor"])
@@ -357,17 +357,17 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
 
         // The glass toolbar leads the editor: the style-preset star and the
-        // primary export actions live there (design/handoff).
+        // primary export actions live there.
         assertExists(element("editor-toolbar", in: app), in: app, timeout: 3)
         assertExists(element("editor-style-preset-picker", in: app), in: app)
 
         // The hero preview sits on its own ambient-lit stage so it reads as the
-        // focus of the window, not a small settings thumbnail (CS-037 "preview
+        // focus of the window, not a small settings thumbnail ("preview
         // gets visual priority").
         assertExists(element("editor-preview-stage", in: app), in: app)
 
         // The focused inspector is present with its primary style controls surfaced
-        // up front (CS-037).
+        // up front.
         assertExists(element("editor-inspector", in: app), in: app)
         assertExists(element("style-theme-picker", in: app), in: app)
         assertExists(element("style-font-picker", in: app), in: app)
@@ -383,8 +383,8 @@ final class VitrineUITests: XCTestCase {
         assertExists(inspector, in: app, timeout: 8)
 
         // Advanced controls live behind collapsible inspector disclosures that
-        // start closed (CS-037 "advanced controls remain available but are
-        // grouped behind an inspector section or disclosure"). The redesigned
+        // start closed ("advanced controls remain available but are
+        // grouped behind an inspector section or disclosure"). The current designed
         // disclosures carry stable identifiers; the Output one reveals the
         // destination presets, resolution, and format.
         let disclosure = element("inspector-disclosure-output", in: app)
@@ -406,7 +406,7 @@ final class VitrineUITests: XCTestCase {
 
         assertExists(element("editor-toolbar", in: app), in: app, timeout: 8)
 
-        // The annotation tool palette lives in the title bar (CS-085); every tool is
+        // The annotation tool palette lives in the title bar; every tool is
         // present and addressable.
         for tool in [
             "select", "arrow", "curvedArrow", "rectangle", "highlighter", "counter", "sticker",
@@ -425,7 +425,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("annotation-thickness-slider", in: app), in: app)
 
         // The sticker tool swaps the color swatch (an emoji has its own colors) for the
-        // sticker-glyph swatch, and keeps the size slider (feature #13).
+        // sticker-glyph swatch, and keeps the size slider.
         assertHittable("annotation-tool-sticker", in: app, "Sticker tool is not reachable")
         element("annotation-tool-sticker", in: app).click()
         assertExists(element("annotation-sticker-swatch", in: app), in: app, timeout: 3)
@@ -482,7 +482,7 @@ final class VitrineUITests: XCTestCase {
     func testCopyImageClosesTheEditorWhenEnabled() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        // Close-after-copy is on by default (CS-084), so clicking the primary CTA both
+        // Close-after-copy is on by default, so clicking the primary CTA both
         // copies the image and closes the window.
         let app = launch(arguments: ["--demo", "--open-editor"])
         defer { app.terminate() }
@@ -507,7 +507,7 @@ final class VitrineUITests: XCTestCase {
 
         // The toolbar's style star, the inspector, and the export CTA are all
         // standard focusable controls, so keyboard navigation can reach each
-        // region (CS-037). Asserting the elements are hittable is the
+        // region. Asserting the elements are hittable is the
         // automatable proxy for reachability without scripting Full Keyboard Access.
         assertExists(element("editor-style-preset-picker", in: app), in: app, timeout: 8)
         assertHittable(
@@ -549,7 +549,7 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: ["--open-settings"])
         defer { app.terminate() }
 
-        // The Style pane surfaces the destination preset picker (CS-020).
+        // The Style pane surfaces the destination preset picker.
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
         element("settings-nav-style", in: app).click()
         assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
@@ -586,7 +586,7 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         // Brand Kit (PRO) was promoted from a buried Style sub-tab to its own sidebar
-        // pane so the feature is discoverable (UX audit, #37). Navigating the sidebar
+        // pane so the capability is discoverable. Navigating the sidebar
         // row reveals the pane and its controls.
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
         element("settings-nav-brandKit", in: app).click()
@@ -600,7 +600,7 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: ["--open-settings"])
         defer { app.terminate() }
 
-        // The Input pane surfaces the paste re-indent preference (CS-049), the
+        // The Input pane surfaces the paste re-indent preference, the
         // switch behind the editor's tidy-on-paste behavior.
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
         element("settings-nav-input", in: app).click()
@@ -615,8 +615,8 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         // The Header section's metadata controls are present and carry stable
-        // accessibility identifiers/labels (CS-022 acceptance). They live under
-        // the Style pane's "Lines & header" sub-tab in the redesigned window.
+        // accessibility identifiers/labels . They live under
+        // the Style pane's "Lines & header" sub-tab in the current designed window.
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
         element("settings-nav-style", in: app).click()
         assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
@@ -634,7 +634,7 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         // The editor window makes the app active, so its agent-app main menu bar
-        // (CS-032) is shown. Assert the standard top-level menus exist.
+        // is shown. Assert the standard top-level menus exist.
         let editor = element("editor-window", in: app)
         assertExists(editor, in: app, timeout: 8)
         makeFrontmostForMenuBarAccess(app, clicking: editor)
@@ -647,7 +647,7 @@ final class VitrineUITests: XCTestCase {
         }
 
         // The File menu carries the capture/editor/export commands that mirror the
-        // editor toolbar — the heart of CS-032's "menu command parity".
+        // editor toolbar — the heart of 's "menu command parity".
         menuBar.menuBarItems["File"].click()
         let fileMenu = menuBar.menuBarItems["File"].menus.firstMatch
         XCTAssertTrue(fileMenu.waitForExistence(timeout: 3))
@@ -1043,7 +1043,7 @@ final class VitrineUITests: XCTestCase {
     func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() throws {
         continueAfterFailure = false
         // A fresh defaults suite is a first run, so the quick-start appears on
-        // launch with no extra hook (CS-035 "first launch shows the quick-start").
+        // launch with no extra hook ("first launch shows the quick-start").
         let app = launch(arguments: [])
         defer { app.terminate() }
 
@@ -1052,13 +1052,13 @@ final class VitrineUITests: XCTestCase {
         // hold the welcome window, so skip the interaction there rather than flaking.
         try skipUnlessADisplayFitsTheWelcomeWindow(app)
         assertExists(element("welcome-view", in: app), in: app, timeout: 3)
-        // Local-only privacy copy is visible before any capture (CS-035).
+        // Local-only privacy copy is visible before any capture.
         assertExists(element("welcome-privacy-badge", in: app), in: app)
         // The user can run a sample capture without external clipboard content,
-        // and the hotkey/launch-at-login setup is offered (CS-035).
+        // and the hotkey/launch-at-login setup is offered.
         assertExists(element("welcome-sample-capture-button", in: app), in: app)
         assertExists(element("welcome-launch-at-login-toggle", in: app), in: app)
-        // A clear way out is present (CS-035 "user can skip immediately").
+        // A clear way out is present ("user can skip immediately").
         assertExists(element("welcome-skip-button", in: app), in: app)
         assertExists(element("welcome-get-started-button", in: app), in: app)
 
@@ -1077,7 +1077,7 @@ final class VitrineUITests: XCTestCase {
     func testForcedQuickStartCanBeSkippedToReachTheEditor() throws {
         continueAfterFailure = false
         // Force the quick-start open and also open the editor: skipping the
-        // quick-start must not gate access to the rest of the app (CS-035 "user can
+        // quick-start must not gate access to the rest of the app ("user can
         // skip immediately and still access all features").
         let app = launch(arguments: ["--show-welcome", "--demo", "--open-editor"])
         defer { app.terminate() }
@@ -1112,7 +1112,7 @@ final class VitrineUITests: XCTestCase {
     func testSkippedOnboardingDoesNotReshowQuickStart() {
         continueAfterFailure = false
         // `--skip-onboarding` marks the quick-start as already seen, so a launch
-        // that opens the editor shows no welcome window (CS-035 "shows the
+        // that opens the editor shows no welcome window ("shows the
         // quick-start only once").
         let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor"])
         defer { app.terminate() }
@@ -1126,7 +1126,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testHelpWindowOpensWithOfflineContent() {
         continueAfterFailure = false
-        // `--show-help` force-opens the in-app Help window (CS-049). Its content is
+        // `--show-help` force-opens the in-app Help window. Its content is
         // bundled, so it renders with no network; the smoke test asserts the window
         // and its topic cards (hotkey, quick capture, editor, presets, privacy) are
         // present and that the offline help can be dismissed.
@@ -1150,7 +1150,7 @@ final class VitrineUITests: XCTestCase {
         continueAfterFailure = false
         // `--seen-old-version` records an older last-seen version (and marks
         // onboarding done), so the version gate auto-presents the bundled notes for
-        // the newer shipped version on launch (CS-049 "appears only when the bundled
+        // the newer shipped version on launch ("appears only when the bundled
         // notes version is newer than the last-seen version").
         let app = launch(arguments: ["--seen-old-version"])
         defer { app.terminate() }
@@ -1158,7 +1158,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("whats-new-window", in: app), in: app, timeout: 8)
         assertExists(element("whats-new-view", in: app), in: app, timeout: 3)
         assertExists(element("whats-new-highlights", in: app), in: app)
-        // It is skippable: a clear "Continue" dismisses it (CS-049 "skippable").
+        // It is skippable: a clear "Continue" dismisses it ("skippable").
         assertExists(element("whats-new-continue-button", in: app), in: app)
         element("whats-new-continue-button", in: app).click()
         XCTAssertTrue(
@@ -1170,7 +1170,7 @@ final class VitrineUITests: XCTestCase {
     func testWhatsNewDoesNotAppearOnCleanFirstRun() {
         continueAfterFailure = false
         // A clean first run shows the quick-start, never What's New — onboarding owns
-        // the first launch (CS-049 "never on a clean first run; onboarding owns that").
+        // the first launch ("never on a clean first run; onboarding owns that").
         let app = launch(arguments: [])
         defer { app.terminate() }
 
@@ -1187,7 +1187,7 @@ final class VitrineUITests: XCTestCase {
             arguments: ["--skip-onboarding", "--demo", "--open-editor", "--standard-activation"])
         defer { app.terminate() }
 
-        // The editor makes the app active, so its main menu bar (CS-032) is shown.
+        // The editor makes the app active, so its main menu bar is shown.
         let editor = element("editor-window", in: app)
         assertExists(editor, in: app, timeout: 8)
         makeFrontmostForMenuBarAccess(app, clicking: editor)
@@ -1233,7 +1233,7 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(avif.isSelected, "Selecting AVIF did not update the output format")
     }
 
-    // MARK: - Localization smoke (CS-047)
+    // MARK: - Localization smoke
 
     @MainActor
     func testSettingsPanesSurviveAccentedPseudolocale() {
@@ -1243,7 +1243,7 @@ final class VitrineUITests: XCTestCase {
         // accented text, its controls would no longer resolve. Walking the panes and
         // asserting each one's key controls exist *and* remain hittable is the
         // automatable proxy for "no truncation or clipping in Settings panes"
-        // (CS-047 acceptance).
+        // .
         let app = launch(arguments: ["--open-settings"], locale: .accentedPseudo)
         defer { app.terminate() }
 
@@ -1279,7 +1279,7 @@ final class VitrineUITests: XCTestCase {
         // still lay out and expose every primary control — mirrored, but never
         // dropped or stranded. Reachability of the toolbar, preview stage,
         // inspector, and export actions is the automatable proxy for "layout is sane
-        // under RTL, mirrored where appropriate" (CS-047 acceptance).
+        // under RTL, mirrored where appropriate" .
         let app = launch(arguments: ["--demo", "--open-editor"], locale: .rightToLeftPseudo)
         defer { app.terminate() }
 
@@ -1300,7 +1300,7 @@ final class VitrineUITests: XCTestCase {
         }
     }
 
-    /// A locale/text-direction override applied to a launch (CS-047). Passed through
+    /// A locale/text-direction override applied to a launch. Passed through
     /// the app's `NSArgumentDomain` (the standard `-AppleLanguages` / `-AppleLocale`
     /// / `-AppleTextDirection` overrides), so no app code is needed to force a
     /// pseudolocale or right-to-left layout under test.

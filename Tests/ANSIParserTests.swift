@@ -88,7 +88,7 @@ struct ANSIParserTests {
     }
 
     @Test func charsetDesignationLeavesNoStrayByte() {
-        // `tput sgr0` emits `ESC ( B` before its SGR reset; the designation's final
+        // `tput sgr0` emits `ESC (B` before its SGR reset; the designation's final
         // byte must be consumed with the sequence, not leak into the text.
         let runs = ANSIParser.parse("\(esc)(Bplain")
         #expect(runs == [ANSIRun(text: "plain", style: ANSIStyle())])

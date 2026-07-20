@@ -4,7 +4,7 @@ import OSLog
 
 /// Renders a `SnapshotRenderRequest` into image data or an `NSImage` through the
 /// **unchanged** app render path, for every automation surface (App Intents and the
-/// Services menu, CS-034).
+/// Services menu).
 ///
 /// Like the CLI's `CLIRenderer`, this is a thin shell around `ExportManager` over a
 /// `SnapshotCanvas`: it adds only the request → config resolution and the
@@ -12,7 +12,7 @@ import OSLog
 /// byte-for-byte the same pipeline the editor and quick capture use. Automation
 /// therefore inherits the same privacy and sandbox posture as the app — rendering is
 /// fully local, needs no network, screen recording, or Accessibility, and writes
-/// nothing to disk on its own (CS-034 "automation does not bypass the same privacy
+/// nothing to disk on its own ("automation does not bypass the same privacy
 /// and sandbox constraints as the app").
 ///
 /// `@MainActor` because `ImageRenderer` and Highlightr require AppKit on the main
@@ -20,7 +20,7 @@ import OSLog
 @MainActor
 enum SnapshotRenderService {
     /// A reason a request could not be turned into an image, mapped to clear,
-    /// user-facing copy for an App Intent error or a Services failure (CS-034).
+    /// user-facing copy for an App Intent error or a Services failure.
     enum RenderError: Error, Equatable, CustomStringConvertible {
         /// The request carried no usable (non-empty) code to render.
         case emptyCode

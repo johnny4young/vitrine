@@ -3,12 +3,12 @@ import Testing
 
 @testable import Vitrine
 
-/// Features #15/#25 — the publish band: the carousel multi-slide export and the
+/// the publish band: the carousel multi-slide export and the
 /// share-sheet compose targets.
 @Suite("Publish band (carousel + compose)")
 @MainActor
 struct PublishBandTests {
-    // MARK: - Carousel pagination (#15)
+    // MARK: - Carousel pagination
 
     @Test func balancedSplitNeverLeavesATinyLastSlide() {
         // 25 lines at a 12-line cap: 3 slides of 9/8/8 — never 12/12/1.
@@ -66,7 +66,7 @@ struct PublishBandTests {
         }
     }
 
-    // MARK: - Compose URLs (#25)
+    // MARK: - Compose URLs
 
     @Test func composeURLsEncodeTheTextPerNetwork() throws {
         let text = "Shipped! #swift & more"
@@ -86,7 +86,7 @@ struct PublishBandTests {
     }
 }
 
-// MARK: - Share-sheet compose targets (deep-review test gap)
+// MARK: - Share-sheet compose targets
 
 extension PublishBandTests {
     /// The picker only offers compose targets when the shared items carry an image;

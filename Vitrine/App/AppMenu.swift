@@ -3,7 +3,7 @@ import AppKit
 // MARK: - Main menu builder
 
 /// Builds the application main menu from `VitrineCommand` and installs it on
-/// `NSApp.mainMenu` (CS-032).
+/// `NSApp.mainMenu`.
 ///
 /// Because Vitrine is an agent app with no `WindowGroup`, AppKit shows no menu
 /// bar until one is provided. Assigning this menu gives the editor and settings
@@ -101,7 +101,7 @@ enum AppMenu {
                 target: AppCommandResponder.shared))
 
         // "Check for Updates…" sits in its conventional App-menu position, but only on
-        // the direct-download build that ships Sparkle (CS-064). The App Store build
+        // the direct-download build that ships Sparkle. The App Store build
         // excludes Sparkle, so `isSupported` is false and no update command appears.
         if SoftwareUpdater.isSupported {
             menu.addItem(.separator())
@@ -168,19 +168,19 @@ enum AppMenu {
             item(
                 for: .openEditor, action: #selector(AppCommandResponder.openEditor(_:)),
                 target: AppCommandResponder.shared))
-        // Open an additional, independent editor window (CS-053).
+        // Open an additional, independent editor window.
         menu.addItem(
             item(
                 for: .newEditorWindow,
                 action: #selector(AppCommandResponder.newEditorWindow(_:)),
                 target: AppCommandResponder.shared))
-        // Open the social-card editor — the local 1200×630 card composer (CS-041).
+        // Open the social-card editor — the local 1200×630 card composer.
         menu.addItem(
             item(
                 for: .newSocialCard,
                 action: #selector(AppCommandResponder.openSocialCardEditor(_:)),
                 target: AppCommandResponder.shared))
-        // Open the Web Snapshot editor — local HTML + gated URL capture (CS-042/043).
+        // Open the Web Snapshot editor — local HTML + gated URL capture.
         menu.addItem(
             item(
                 for: .newWebSnapshot,
@@ -205,7 +205,7 @@ enum AppMenu {
                 target: EditorCommandResponder.shared))
         menu.addItem(.separator())
 
-        // Promote the key editor window's style to the app-wide default (CS-053).
+        // Promote the key editor window's style to the app-wide default.
         // Editor-scoped but code-independent, so it is enabled whenever an editor is key.
         menu.addItem(
             item(
@@ -251,9 +251,9 @@ enum AppMenu {
             withTitle: String(localized: "Select All"), action: #selector(NSText.selectAll(_:)),
             keyEquivalent: "a")
         menu.addItem(.separator())
-        // Format Code (CS-049). Unlike the first-responder text actions above, this is an
+        // Format Code. Unlike the first-responder text actions above, this is an
         // editor command with an explicit target + validation; it mirrors the editor
-        // toolbar's Format button so the menu and toolbar stay in lockstep (CS-032).
+        // toolbar's Format button so the menu and toolbar stay in lockstep.
         menu.addItem(
             item(
                 for: .formatCode, action: #selector(EditorCommandResponder.formatCode(_:)),

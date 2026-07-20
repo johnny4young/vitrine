@@ -6,7 +6,7 @@ import SwiftUI
 /// let the render path resolve it from `@Environment` and let tests/previews inject an
 /// isolated store.
 extension EnvironmentValues {
-    /// The store used to resolve image backgrounds (CS-051).
+    /// The store used to resolve image backgrounds.
     ///
     /// Defaults to the real app-container store; injected with an isolated store in tests
     /// and previews so the render path can resolve fixture images without touching the

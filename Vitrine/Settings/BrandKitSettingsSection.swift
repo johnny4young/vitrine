@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Brand Kit controls for the Style pane (CS-092).
+/// Brand Kit controls for the Style pane.
 ///
 /// Keeping the PRO-gated Brand Kit flow in its own section keeps the main Style pane
 /// focused on layout and preview composition, while this view owns the paywall,
@@ -11,10 +11,10 @@ struct BrandKitSettingsSection: View {
     @Bindable var brandKit: BrandKitStore
     var entitlements: Entitlements
 
-    /// True while the Brand Kit upsell's paywall sheet is presented (CS-092).
+    /// True while the Brand Kit upsell's paywall sheet is presented.
     @State private var showingPaywall = false
 
-    /// True when the last brand-kit logo pick failed to import (audit P1-UX-3).
+    /// True when the last brand-kit logo pick failed to import.
     @State private var logoImportFailed = false
 
     var body: some View {
@@ -56,8 +56,7 @@ struct BrandKitSettingsSection: View {
             }
             TokenRow(label: Text("Accent"), caption: Text("Tints the mark's text")) {
                 HStack(spacing: 8) {
-                    // A way back to the legible default — the model's `nil` accent
-                    // (audit P1-UX-2).
+                    // A way back to the legible default — the model's `nil` accent.
                     if brandKit.brandKit.accent != nil {
                         Button("Reset") { brandKit.brandKit.accent = nil }
                             .buttonStyle(.plain)
@@ -116,7 +115,7 @@ struct BrandKitSettingsSection: View {
     }
 
     /// The locked state: a crown + PRO badge, the value blurb, and an unlock button
-    /// that presents the shared `PaywallSheet` for the brand-kit feature (CS-091/092).
+    /// that presents the shared `PaywallSheet` for the brand-kit feature.
     private var upsell: some View {
         TokenGroup(title: Text("Brand Kit")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -147,8 +146,8 @@ struct BrandKitSettingsSection: View {
         .accessibilityIdentifier("settings-brand-kit-upsell")
     }
 
-    /// Picks a logo image through an open panel and imports it into the container
-    /// (CS-092), reusing the same content-addressed image store the backgrounds use.
+    /// Picks a logo image through an open panel and imports it into the container,
+    /// reusing the same content-addressed image store the backgrounds use.
     private func pickLogo() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
@@ -162,7 +161,7 @@ struct BrandKitSettingsSection: View {
     }
 
     // Bindings into the app-global brand kit; mutating a field reassigns the whole
-    // value, so the store persists and the preview refreshes (CS-092).
+    // value, so the store persists and the preview refreshes.
     private var handle: Binding<String> {
         Binding(get: { brandKit.brandKit.handle }, set: { brandKit.brandKit.handle = $0 })
     }
@@ -186,9 +185,9 @@ struct BrandKitSettingsSection: View {
     }
 }
 
-/// The top-level Brand Kit settings pane (CS-092): the Brand Kit controls (or PRO upsell)
+/// The top-level Brand Kit settings pane: the Brand Kit controls (or PRO upsell)
 /// in the standard pane chrome, surfaced as its own sidebar row so the headline PRO
-/// feature is visible instead of buried inside a Style sub-tab (audit UX).
+/// capability is visible instead of buried inside a Style sub-tab.
 struct BrandKitSettingsView: View {
     private let brandKit = BrandKitStore.shared
     private let entitlements = Entitlements.shared

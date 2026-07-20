@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// A floating, always-on-top reference window for the current snapshot (feature #33):
+/// A floating, always-on-top reference window for the current snapshot:
 /// pin the rendered image and it stays over every app while you code against the
 /// error/design it shows — the CleanShot/Shottr "pin screenshot" workflow, minus a
 /// screen-recording permission because the pinned image is Vitrine's own render.

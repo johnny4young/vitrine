@@ -108,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Seeds the editor from a `vitrine://edit` handoff (the CLI's `--edit`): reads the
     /// staged content and optional language hint, then loads it into the primary editor
-    /// — replacing that window's document like quick capture and the Open-Code App
+    /// replacing that window's document like quick capture and the Open-Code App
     /// Intent do, seeded on the user's current style. A no-op for an empty payload.
     private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
@@ -140,7 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
         NSApp.setActivationPolicy(.accessory)
 
-        // Install the application main menu (CS-032). An agent app with only a
+        // Install the application main menu. An agent app with only a
         // `MenuBarExtra` scene gets no designed menu bar from SwiftUI; assigning one
         // here gives the editor and settings windows a complete, keyboard-accessible
         // menu bar (App ▸, File ▸, Edit ▸, View ▸, Window ▸, Help ▸). SwiftUI's scene
@@ -148,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // returns, so `applicationWillUpdate(_:)` below re-asserts it.
         AppMenu.install()
 
-        // Global hotkey (CS-002): consume the key-up event stream on the main actor
+        // Global hotkey: consume the key-up event stream on the main actor
         // and dispatch to the user-chosen action.
         hotkeyTask = Task {
             for await _ in KeyboardShortcuts.events(.keyUp, for: .quickCapture) {
@@ -158,10 +158,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Resolve the PRO entitlement at launch and — on the App Store build — observe
         // out-of-band StoreKit updates, so a refund or a purchase made on another device
-        // re-locks/unlocks PRO without a relaunch (CS-089).
+        // re-locks/unlocks PRO without a relaunch.
         Entitlements.shared.startLiveUpdates()
 
-        // First-run surfaces on a normal launch (CS-035/CS-049): onboarding owns the
+        // First-run surfaces on a normal launch: onboarding owns the
         // first launch; once it has been seen, What's New surfaces on a version
         // upgrade — never both. Skipped when a dev launch hook already opened a window
         // so the manual/UI-test surfaces above are not pre-empted or stacked over.
@@ -188,7 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `--seen-old-version` seeds an older last-seen version and then presents What's
     /// New through its real version gate; `--skip-onboarding` just marks the
     /// quick-start as seen; the multi-window hooks (`--open-second-editor`,
-    /// `--force-offscreen-editor`) drive the CS-053 UI smoke tests; `--demo-brand-kit-free`
+    /// `--force-offscreen-editor`) drive UI smoke tests; `--demo-brand-kit-free`
     /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests.
     ///
     /// - Returns: whether a hook opened a window, so the normal first-run surfaces
@@ -206,7 +206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.setActivationPolicy(.regular)
         }
         // Pin the app to one appearance regardless of the system setting, so
-        // design audits can capture light and dark deterministically.
+        // visual checks can capture light and dark deterministically.
         if arguments.contains("--appearance-dark") {
             NSApp.appearance = NSAppearance(named: .darkAqua)
         }
@@ -365,7 +365,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             didOpenWindow = true
         }
 
-        // Open two independent editor windows so the multi-window UI smoke (CS-053) can
+        // Open two independent editor windows so the multi-window UI smoke can
         // assert both exist and that closing one leaves the other.
         if arguments.contains("--open-second-editor") {
             EditorWindowController.shared.show()
@@ -374,7 +374,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Open the editor and force it off-screen so the off-screen-recovery UI smoke
-        // (CS-053) can verify the window is pulled back onto a visible display.
+        // can verify the window is pulled back onto a visible display.
         if arguments.contains("--force-offscreen-editor") {
             EditorWindowController.shared.show()
             EditorWindowController.shared.moveKeyEditorOffScreenForTesting()
@@ -491,7 +491,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for window in NSApp.windows {
             guard let button = Self.firstStatusBarButton(in: window.contentView) else { continue }
             // "Vitrine" is the verbatim brand wordmark, like the other brand strings
-            // that bypass the String Catalog (CS-047).
+            // that bypass the String Catalog.
             button.toolTip = "Vitrine"
             didInstallMenuBarTooltip = true
             return

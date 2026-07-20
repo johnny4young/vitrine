@@ -2,12 +2,12 @@ import CoreGraphics
 import CryptoKit
 import Foundation
 
-/// The value model behind a **local social-card render** (CS-041).
+/// The value model behind a **local social-card render**.
 ///
 /// A social card is a deterministic, text-and-layout template — a title, an
 /// optional subtitle, a short code excerpt, an author/project line, and an
 /// optional Vitrine logo — composed onto Vitrine's signature background and
-/// exported as a 1200×630 OpenGraph image. It is the easiest Phase 2 extension
+/// exported as a 1200×630 OpenGraph image. It is the easiest web capture extension
 /// precisely because it stays **100% local and deterministic**: there is no
 /// WebKit, no network, and no remote render service. The same model renders the
 /// same pixels on any Mac, so a card round-trips through `Codable` and through the
@@ -80,7 +80,7 @@ struct SocialCardModel: Equatable {
 
     // MARK: - Documented limits
 
-    /// The default exported size: a 1200×630 OpenGraph / social card (CS-041).
+    /// The default exported size: a 1200×630 OpenGraph / social card.
     static let defaultSize = CGSize(width: 1200, height: 630)
 
     /// The maximum number of code lines an excerpt keeps. Beyond this the excerpt
@@ -132,7 +132,7 @@ struct SocialCardModel: Equatable {
     // MARK: - Validation helpers
 
     /// Whether the card has anything the *chosen template* will actually draw, so
-    /// the renderer returns `nil` rather than producing a blank image (CS-041
+    /// the renderer returns `nil` rather than producing a blank image (
     /// "built-in templates render title, subtitle, code excerpt, …").
     ///
     /// Renderability is template-aware because the templates draw different fields:
@@ -190,7 +190,7 @@ struct SocialCardModel: Equatable {
     // MARK: - Determinism
 
     /// A stable, content-derived fingerprint of every field that affects pixels,
-    /// recorded alongside the golden fixture (CS-041 "golden image fixture for
+    /// recorded alongside the golden fixture ("golden image fixture for
     /// default template").
     ///
     /// It is a SHA-256 over the normalized copy, the excerpt and language, the
@@ -198,7 +198,7 @@ struct SocialCardModel: Equatable {
     /// change to any rendered input changes the fingerprint and a stale fixture is
     /// detectable from the manifest alone. The background contributes only its
     /// `diagnosticsKind` (never a file path or raw color), matching the privacy rule
-    /// the rest of the app follows (CS-048).
+    /// the rest of the app follows.
     var fingerprint: String {
         let descriptor = [
             "template=\(template.rawValue)",
@@ -220,7 +220,7 @@ struct SocialCardModel: Equatable {
 
 // MARK: - Built-in templates
 
-/// The built-in social-card layouts (CS-041).
+/// The built-in social-card layouts.
 ///
 /// Each template arranges the same content fields — title, subtitle, code
 /// excerpt, author/project, and the optional logo — into a different composition,
@@ -267,7 +267,7 @@ enum SocialCardTemplate: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 
     /// The value used when nothing is persisted or a stored string no longer maps
-    /// to a case (CS-050 documented fallback).
+    /// to a case (documented fallback).
     static let fallback: SocialCardTemplate = .standard
 
     /// Decodes a persisted raw value, tolerating `nil` or an unrecognized string by
@@ -288,7 +288,7 @@ extension SocialCardModel: Codable {
     /// Decodes tolerantly and re-validates every field, so a hand-edited or corrupt
     /// blob can never feed an unknown theme/language, an out-of-range font, or an
     /// over-long excerpt into the renderer — it degrades to the documented default
-    /// instead (CS-050 spirit). Text fields are re-normalized; the excerpt is
+    /// instead (defensive behavior). Text fields are re-normalized; the excerpt is
     /// re-truncated; the font size is re-clamped.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

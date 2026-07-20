@@ -11,7 +11,7 @@ xcuserdata/
 ## Build products
 build/
 DerivedData/
-# Packaged release artifacts (scripts/build-dmg.sh writes DMGs here; CS-061).
+# Packaged release artifacts (scripts/build-dmg.sh writes DMGs here).
 dist/
 # Session evidence from audit/validation runs (screenshots, reports) — local only.
 .audit/
@@ -27,11 +27,8 @@ dist/
 # ---------------------------------------------------------------------------
 # Swift Package Manager
 # ---------------------------------------------------------------------------
-# Ignore the SPM build/cache dirs. NOTE: no Package.resolved is committed today —
-# resolved package state lives inside the generated .xcodeproj (ignored below), so
-# `from:` ranges in project.yml re-resolve on every fresh clone/CI run. Pinning
-# (exactVersion in project.yml, or committing a lockfile) is tracked in
-# docs/DEEP-REVIEW-2026-07.md.
+# Ignore the SPM build/cache dirs. Dependencies are exact-pinned in `project.yml`;
+# the generated project's resolved state is not a repository input.
 .build/
 .swiftpm/
 Packages/
@@ -53,11 +50,22 @@ Vitrine.xcodeproj/
 Icon
 
 # ---------------------------------------------------------------------------
-# Working docs (kept local — detailed implementation spec, not tracked)
+# Maintainer-only planning, research, and review artifacts
 # ---------------------------------------------------------------------------
+docs/PLANNING.md
 docs/ROADMAP.md
-# Maintainer-only pre-launch runbook (credential setup + go-to-market notes).
-docs/PRE-LAUNCH.md
+docs/ROADMAP-*.md
+docs/ANALYSIS*.md
+docs/PRE-LAUNCH*.md
+docs/*BACKLOG*.md
+docs/*TICKET*.md
+docs/*FEATURE-IDEAS*.md
+docs/*HANDOFF*.md
+docs/*AUDIT*.md
+docs/*REVIEW*.md
+planning/
+backlog/
+tickets/
 
 # ---------------------------------------------------------------------------
 # Claude Code
@@ -66,11 +74,13 @@ docs/PRE-LAUNCH.md
 # (.claude/agents/), and the release skill (.claude/skills/release/) ARE
 # committed; machine-local overrides and per-session plugin installs are not.
 .claude/settings.local.json
+.claude/worktrees/
 # Plugin skills are fetched into .claude/skills/ per session — ignore them all
 # but keep the committed `release` skill tracked.
 .claude/skills/*
 !.claude/skills/release/
 .agents/
+.codex/
 skills-lock.json
 # ---------------------------------------------------------------------------
 # Tooling / misc

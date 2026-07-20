@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-013 / CS-029 — the recents store, its capped on-disk thumbnail cache, and
+/// the recents store, its capped on-disk thumbnail cache, and
 /// the thumbnail renderer that backs the visual gallery.
 ///
 /// The cache tests drive a temporary directory and inject a deterministic
@@ -47,7 +47,7 @@ struct RecentsStoreTests {
             isPinned: isPinned)
     }
 
-    // MARK: - List behavior (CS-013)
+    // MARK: - List behavior
 
     @Test func capsDedupesNewestFirst() {
         let (cache, cleanup) = tempCache()
@@ -167,7 +167,7 @@ struct RecentsStoreTests {
         #expect(!store.captures.contains(where: { $0.code == "regular 1" }))
     }
 
-    // MARK: - Cache lock-step with the list (CS-029)
+    // MARK: - Cache lock-step with the list
 
     @Test func addCachesThumbnailForEachCapture() {
         let (cache, cleanup) = tempCache()
@@ -291,7 +291,7 @@ struct RecentsStoreTests {
         // Re-adding identical code de-dupes the list entry but mints a *new* capture
         // id, so the previous id's thumbnail becomes an orphan. The store's lock-step
         // pruning must drop that orphan and leave exactly one cached thumbnail — under
-        // the new id — for the deduped code (CS-013/CS-029).
+        // the new id — for the deduped code.
         let (cache, cleanup) = tempCache()
         defer { cleanup() }
         let store = RecentsStore(
@@ -314,7 +314,7 @@ struct RecentsStoreTests {
         #expect(cache.url(for: readded.id) != nil)
     }
 
-    // MARK: - Cache caps in isolation (CS-029)
+    // MARK: - Cache caps in isolation
 
     @Test func cacheEvictsOldestPastCountCap() {
         let (cache, cleanup) = tempCache(maxEntries: 3)
@@ -383,7 +383,7 @@ struct RecentsStoreTests {
     @Test func strayNonThumbnailFilesAreIgnoredAndNeverEvicted() {
         // The cache only counts files named by a real capture UUID, so a foreign file
         // in the directory (a non-PNG, or a PNG whose name is not a UUID) must never
-        // be counted toward the caps, evicted, or pruned (CS-029). Otherwise an
+        // be counted toward the caps, evicted, or pruned. Otherwise an
         // unrelated file could be silently deleted, or could shadow a real thumbnail.
         let (cache, cleanup) = tempCache(maxEntries: 1)
         defer { cleanup() }
@@ -439,7 +439,7 @@ struct RecentsStoreTests {
         #expect(cache.image(for: id) != nil)
     }
 
-    // MARK: - Thumbnail generation smoke (CS-029)
+    // MARK: - Thumbnail generation smoke
 
     @Test func rendererProducesDecodablePNG() {
         // The default renderer runs the app's own export pipeline; a non-trivial
@@ -473,8 +473,8 @@ struct RecentsStoreTests {
 
     /// A pin is a promise: when EVERY slot is pinned, a new capture must never evict
     /// a favorite — the list runs one over `limit` instead, the next unpinned capture
-    /// is the one that rotates out, and a relaunch preserves the overflow (deep-review
-    /// finding: the old eviction fell back to sacrificing the oldest pin).
+    /// is the one that rotates out, and a relaunch preserves the overflow. The old
+    /// eviction behavior fell back to sacrificing the oldest pin.
     @Test func fullyPinnedListNeverSacrificesAPin() {
         let (cache, cleanup) = tempCache()
         defer { cleanup() }

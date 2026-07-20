@@ -1,6 +1,6 @@
 import Foundation
 
-/// Safe, formatter-free code tidying (CS-049).
+/// Safe, formatter-free code tidying.
 ///
 /// Vitrine is sandboxed, local, and ships no language toolchains, so it cannot run a
 /// real per-language formatter (swift-format, Prettier, gofmt, …). `CodeFormatter`
@@ -409,7 +409,7 @@ enum CodeFormatter {
             var j = index - 1
             while j >= 0, m[j] == " " || m[j] == "\t" { j -= 1 }
             if j < 0 { return true }
-            return "(,{[=>&|?:".contains(m[j])
+            return "({[=>&|?:".contains(m[j])
         }
 
         for raw in rawLines {
@@ -598,7 +598,7 @@ enum CodeFormatter {
 
 extension Language {
     /// How ``CodeFormatter/tidy(_:language:)`` should tidy this language, picked so each
-    /// gets the safe transform (CS-049). Brace/tag languages re-indent from nesting;
+    /// gets the safe transform. Brace/tag languages re-indent from nesting;
     /// JSON gets its exact re-indent; whitespace/keyword-significant languages are only
     /// dedented (re-indenting them from brackets would corrupt the block structure); and
     /// formats where leading whitespace is data are left untouched.

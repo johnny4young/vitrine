@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Captures the hosting `NSWindow` of a SwiftUI view, so AppKit-level actions (e.g.
-/// close-after-copy, CS-084) can target *this* window rather than guessing at
+/// close-after-copy) can target *this* window rather than guessing at
 /// `NSApp.keyWindow`. Resolves once the view joins the window, and again if it moves.
 struct WindowAccessor: NSViewRepresentable {
     let onResolve: (NSWindow?) -> Void

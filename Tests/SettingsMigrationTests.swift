@@ -40,7 +40,7 @@ struct SettingsSchemaVersioningTests {
 
     @Test func storeWithDataButNoVersionIsLegacy() {
         let defaults = freshDefaults()
-        // Simulate a pre-CS-050 install: real settings keys exist, no version.
+        // Simulate a pre- install: real settings keys exist, no version.
         defaults.set("dracula", forKey: "themeID")
         #expect(SettingsSchema.storedVersion(in: defaults) == SettingsSchema.legacyVersion)
     }
@@ -175,8 +175,7 @@ struct SettingsSchemaV1ToV2Tests {
         let defaults = freshDefaults()
         // A v1 store carrying both a known setting and a key this migration has
         // no rule for. Migration must leave both intact: it only normalizes the
-        // values it explicitly targets and never discards unrelated data
-        // (CS-050: "unknown future keys are preserved without data loss").
+        // values it explicitly targets and never discards unrelated data.
         defaults.set("dracula", forKey: "themeID")
         defaults.set("a-future-only-key", forKey: "someUnknownFutureKey")
 
@@ -243,7 +242,7 @@ struct AppSettingsMigrationTests {
         let baseline = defaults.writeCount
 
         // A code-only change (a keystroke) must not churn the persisted style block —
-        // `persistStyle` never writes `code` (audit Perf-7).
+        // `persistStyle` never writes `code`.
         settings.config.code = "let answer = 42"
         #expect(defaults.writeCount == baseline)
 
@@ -302,7 +301,7 @@ struct AppSettingsMigrationTests {
 
     @Test func migratesLegacyStoreOnInit() {
         let defaults = freshDefaults()
-        // Pre-CS-050 store: data present, no version, an out-of-range scale.
+        // Pre- store: data present, no version, an out-of-range scale.
         defaults.set(99, forKey: "exportScale")
         defaults.set("dracula", forKey: "themeID")
 
@@ -455,7 +454,7 @@ struct AppSettingsRoundTripTests {
     }
 
     /// The opt-in `fontLigatures` flag survives a persist→reload cycle, writing
-    /// through to the store and reading back unchanged (CS-052). It defaults to
+    /// through to the store and reading back unchanged. It defaults to
     /// `false`, so flipping it on is the only way to prove the new key is actually
     /// persisted and restored — a read that ignored the key would silently keep the
     /// default and slip past every other test, which never sets this flag.
@@ -474,8 +473,7 @@ struct AppSettingsRoundTripTests {
     }
 
     /// Disabling the flag again persists the `false` and a reload honors it, so the
-    /// read is genuinely value-driven rather than hard-wired to either constant
-    /// (CS-052).
+    /// read is genuinely value-driven rather than hard-wired to either constant.
     @Test func fontLigaturesRoundTripsWhenDisabledAfterEnabling() {
         let defaults = freshDefaults()
         let first = AppSettings(defaults: defaults)
@@ -490,13 +488,13 @@ struct AppSettingsRoundTripTests {
 
 // MARK: - App UI language persistence
 
-/// The Settings language switcher and its persistence (CS-047). macOS loads an app's
+/// The Settings language switcher and its persistence. macOS loads an app's
 /// localization at launch from `AppleLanguages` in its preferences domain, so the
 /// choice is stored both as the raw enum (to drive the picker) and as the
 /// `AppleLanguages` override (to take effect on the next launch). These tests use an
 /// isolated suite, so they never touch the real app's language.
 @MainActor
-@Suite("App UI language persistence · CS-047")
+@Suite("App UI language persistence")
 struct AppLanguagePersistenceTests {
     /// The raw key the choice is stored under and the system key macOS reads at launch.
     private static let languageKey = "appLanguage"
@@ -511,7 +509,7 @@ struct AppLanguagePersistenceTests {
 
     /// Reads only what this app stored in its own preferences suite. `array(forKey:)`
     /// also sees the test scheme's `AppleLanguages=(en)` argument-domain override, which
-    /// can mask whether CS-047 actually wrote or cleared the app-level override.
+    /// can mask whether a migration actually wrote or cleared the app-level override.
     private static func persistedAppleLanguages(
         in defaults: UserDefaults, suite: String
     )
@@ -590,7 +588,7 @@ struct AppLanguagePersistenceTests {
     }
 
     /// `resetToDefaults()` returns the language to `.system`, removes the override, and
-    /// the reset persists so a fresh instance also sees System (CS-047/CS-050).
+    /// the reset persists so a fresh instance also sees System.
     @Test func resetReturnsLanguageToSystem() {
         let (suite, defaults) = Self.freshLanguageDefaults()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -606,7 +604,7 @@ struct AppLanguagePersistenceTests {
     }
 
     /// `AppLanguage.resolve` defends against a missing or corrupt persisted value by
-    /// falling back to `.system`, and round-trips every valid raw value (CS-050).
+    /// falling back to `.system`, and round-trips every valid raw value.
     @Test func resolveIsDefensiveAndRoundTrips() {
         #expect(AppLanguage.resolve(nil) == .system)
         #expect(AppLanguage.resolve("not-a-language") == .system)

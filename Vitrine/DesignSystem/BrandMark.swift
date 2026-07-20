@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Vitrine's brand mark: the app's SF Symbol filled with the signature
-/// violet→azure brand gradient (CS-036). The menu-bar extra, the About pane, and
+/// violet→azure brand gradient. The menu-bar extra, the About pane, and
 /// empty states all use the same symbol so the identity is consistent.
 ///
 /// The underlying symbol (`Brand.symbolName`) is the single place that names the

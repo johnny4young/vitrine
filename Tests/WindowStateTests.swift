@@ -4,9 +4,9 @@ import Testing
 
 @testable import Vitrine
 
-// CS-053 — window restoration and multi-window editing.
+// — window restoration and multi-window editing.
 //
-// The acceptance bullets these tests pin:
+// The documented behaviors these tests pin:
 //   • the editor window remembers size/position across launches (frame-autosave
 //     identity is stable per window, and a restored frame is recovered onto a
 //     visible screen);
@@ -41,7 +41,7 @@ struct EditorWindowIdentityTests {
     @Test func windowTitleDisambiguatesAdditionalWindows() {
         // The primary window reads simply "Vitrine Editor"; additional windows append
         // their index so several open editors are distinguishable in the Window menu
-        // and Mission Control rather than all reading identically (CS-053). The index
+        // and Mission Control rather than all reading identically. The index
         // is the same suffix the autosave name and accessibility identifier use.
         #expect(EditorWindowIdentity.primary.windowTitle == "Vitrine Editor")
         #expect(EditorWindowIdentity(index: 2).windowTitle == "Vitrine Editor 2")
@@ -155,7 +155,7 @@ struct EditorWindowStateTests {
     @Test func aPartialPayloadDecodesToFieldDefaults() throws {
         // A truncated restoration blob (only `code` present) must still rebuild a
         // complete, valid draft: every absent field falls back to its `SnapshotConfig`
-        // default rather than failing the decode (CS-050 posture).
+        // default rather than failing the decode (defensive posture).
         let partial = #"{"code":"x = 1"}"#
         let state = try #require(EditorWindowState.decoded(from: Data(partial.utf8)))
         let config = state.config()
@@ -338,7 +338,7 @@ struct EditorSessionIndependenceTests {
     }
 
     @Test func editingASessionDoesNotClobberTheGlobalDefault() {
-        // The core CS-053 guarantee: a window's edits never touch the app-wide default
+        // The core isolation guarantee: a window's edits never touch the app-wide default
         // store — only its own volatile suite.
         let defaults = freshDefaults()
         let source = AppSettings(defaults: defaults)
@@ -434,7 +434,7 @@ struct EditorSessionIndependenceTests {
 @Suite("Secure state restoration")
 struct SecureRestorationTests {
     @Test func theAppDelegateOptsIntoSecureRestorableState() {
-        // CS-053 requires secure restoration to remain enabled. The delegate's opt-in
+        // Window restoration requires secure restoration to remain enabled. The delegate's opt-in
         // is asserted directly so a regression that disabled it would fail here.
         let delegate = AppDelegate()
         #expect(delegate.applicationSupportsSecureRestorableState(.shared))

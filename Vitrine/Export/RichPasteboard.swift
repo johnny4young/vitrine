@@ -4,7 +4,7 @@ import OSLog
 import UniformTypeIdentifiers
 
 /// Builds developer-grade clipboard payloads with *multiple representations* and
-/// produces the non-PNG copy targets the editor exposes (CS-054).
+/// produces the non-PNG copy targets the editor exposes.
 ///
 /// ## Why multiple representations
 ///
@@ -63,7 +63,7 @@ enum RichPasteboard {
 
     /// Encodes PNG `data` as an RFC 2397 `data:` URI string
     /// (`data:image/png;base64,…`), or `nil` if the encoded URI would exceed
-    /// `maxBytes` (CS-054).
+    /// `maxBytes`.
     ///
     /// Pure and synchronous so it is trivially unit-testable. `maxBytes` defaults
     /// to `maxRepresentationBytes`; it is a parameter only so the cap can be driven
@@ -71,7 +71,7 @@ enum RichPasteboard {
     /// fixed to `image/png` because the only raster the exporter emits to the
     /// clipboard is PNG.
     static func dataURI(forPNG data: Data, maxBytes: Int = maxRepresentationBytes) -> String? {
-        // Size-check before encoding (audit Perf-6): base64 (no line breaks) is a
+        // Size-check before encoding: base64 (no line breaks) is a
         // deterministic 4 chars per 3 input bytes, rounded up, and the prefix is ASCII —
         // so the final URI byte count is known without allocating the (possibly multi-MB)
         // encoded string only to discard it. The boundary is identical to measuring the
@@ -130,7 +130,7 @@ enum RichPasteboard {
     // MARK: - Rich text serialization
 
     /// Serializes a highlighted `NSAttributedString` to RTF data, preserving the
-    /// per-token foreground colors and the embedded font (CS-054), or `nil` if the
+    /// per-token foreground colors and the embedded font, or `nil` if the
     /// blob would exceed `maxBytes` or serialization fails.
     ///
     /// The whole range is exported so every color/font run survives. RTF is the
@@ -143,7 +143,7 @@ enum RichPasteboard {
     }
 
     /// Serializes a highlighted `NSAttributedString` to HTML data, preserving the
-    /// syntax colors and font as inline CSS (CS-054), or `nil` if the blob would
+    /// syntax colors and font as inline CSS, or `nil` if the blob would
     /// exceed `maxBytes` or serialization fails.
     static func htmlData(
         from attributed: NSAttributedString, maxBytes: Int = maxRepresentationBytes
@@ -182,7 +182,7 @@ enum RichPasteboard {
     // MARK: - Building a multi-representation payload
 
     /// A fully built clipboard payload: the PNG bytes plus any optional rich
-    /// representations that fit within the size cap (CS-054).
+    /// representations that fit within the size cap.
     ///
     /// Held as a value (rather than written straight to the pasteboard) so the
     /// builder is testable without a live `NSPasteboard` and so a caller can decide
@@ -205,7 +205,7 @@ enum RichPasteboard {
         var hasRichText: Bool { rtf != nil || html != nil }
     }
 
-    /// Builds the multi-representation payload for `config` (CS-054).
+    /// Builds the multi-representation payload for `config`.
     ///
     /// Always includes the PNG; when `includeRichText` is true it also renders the
     /// code's highlighted attributed string and attaches RTF and HTML built from
@@ -242,7 +242,7 @@ enum RichPasteboard {
             includePlainText: includePlainText)
     }
 
-    /// Builds the payload from an **already-rendered** `cgImage` (P5): the quick-capture
+    /// Builds the payload from an **already-rendered** `cgImage`: the quick-capture
     /// hotkey path renders the styled image once and feeds it to both the copy and the
     /// save, so the rich clipboard no longer re-renders the identical config. The rich
     /// text/HTML is still derived from `config`'s highlighted code.
@@ -273,7 +273,7 @@ enum RichPasteboard {
 
     /// The highlighted attributed string for `config`'s code, using the config's
     /// language, theme, and *selected font* so the copied rich text matches the
-    /// rendered image's typography (CS-054).
+    /// rendered image's typography.
     @MainActor
     static func highlightedCode(for config: SnapshotConfig) -> NSAttributedString {
         var exportConfig = config
@@ -290,7 +290,7 @@ enum RichPasteboard {
 
     /// Writes a built payload to the general pasteboard as a single multi-format
     /// item: PNG first (so an image well still receives the picture), then RTF and
-    /// HTML when present (CS-054). Returns whether the PNG was written.
+    /// HTML when present. Returns whether the PNG was written.
     ///
     /// All representations live on **one** pasteboard item so a destination reads
     /// whichever format it prefers from the same copy, rather than competing items.
@@ -319,7 +319,7 @@ enum RichPasteboard {
     }
 
     /// Renders `config` and copies the image plus, when `includeRichText` is on,
-    /// highlighted RTF/HTML to the clipboard (CS-054).
+    /// highlighted RTF/HTML to the clipboard.
     ///
     /// All of it is main-actor work: the render drives `ImageRenderer` and the highlight
     /// engine, and the styled-text serialization that follows is bounded by the size cap
@@ -348,7 +348,7 @@ enum RichPasteboard {
         return write(payload, to: pasteboard)
     }
 
-    /// Copies from an **already-rendered** `cgImage` (P5) — the quick-capture path passes
+    /// Copies from an **already-rendered** `cgImage` — the quick-capture path passes
     /// the single render shared with the file save, rather than re-rendering the config.
     @MainActor
     @discardableResult
@@ -367,10 +367,10 @@ enum RichPasteboard {
         return write(payload, to: pasteboard)
     }
 
-    // MARK: - Explicit single-representation copies (CS-054)
+    // MARK: - Explicit single-representation copies
 
-    /// Copies the rendered image as a `data:image/png;base64,…` URI string
-    /// (CS-054). Returns whether the string was placed on the pasteboard; `false`
+    /// Copies the rendered image as a `data:image/png;base64,…` URI string.
+    /// Returns whether the string was placed on the pasteboard; `false`
     /// if the image could not be rendered/encoded or the URI exceeded the cap.
     ///
     /// The base64 encoding is bounded by `maxRepresentationBytes` and is the only
@@ -428,7 +428,7 @@ enum RichPasteboard {
     }
 
     /// Copies the highlighted code as styled text (RTF and HTML), preserving the
-    /// syntax colors and the selected font (CS-054). Returns whether at least one
+    /// syntax colors and the selected font. Returns whether at least one
     /// styled representation was placed on the pasteboard.
     ///
     /// Both RTF and HTML are written so an RTF-preferring app (Pages, Mail) and an

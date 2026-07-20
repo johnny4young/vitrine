@@ -1,6 +1,6 @@
 import Foundation
 
-/// The app's composition root (audit A3/§8): the one place the long-lived data stores
+/// The app's composition root (/§8): the one place the long-lived data stores
 /// are constructed and wired together, instead of each owning a scattered
 /// `static let shared = X(defaults: AppDefaults.current)`.
 ///

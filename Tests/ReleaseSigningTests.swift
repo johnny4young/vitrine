@@ -1,21 +1,21 @@
 import Foundation
 import Testing
 
-/// CS-061 — Signing, notarization, and Gatekeeper validation.
+/// Signing, notarization, and Gatekeeper validation.
 ///
 /// These tests assert that the committed release tooling actually encodes every
-/// acceptance criterion of the ticket, so a future edit that drops Developer ID
+/// release requirement, so a future edit that drops Developer ID
 /// signing, the hardened runtime, notarization, stapling, the `codesign --verify`
 /// pass, the `spctl` Gatekeeper assessment, or the "unsigned is not production-ready"
 /// guarantee fails the unit suite rather than silently shipping an untrusted artifact.
 ///
-/// Like `WorkflowConfigurationTests` (CS-060) and `PrivacyManifestTests`, they read
+/// Like `WorkflowConfigurationTests` and `PrivacyManifestTests`, they read
 /// the committed files from the source tree (anchored to this file via `#filePath`)
 /// rather than any built bundle, because the signing pipeline itself cannot run in a
 /// hosted unit test without Developer ID secrets. CI runs an unsigned local dry run of
 /// `build-dmg.sh`; this suite is the structural guard that the *signed* path stays
 /// complete.
-@Suite("Release signing & notarization · CS-061")
+@Suite("Release signing & notarization")
 struct ReleaseSigningTests {
 
     // MARK: - Repository anchoring
@@ -63,7 +63,7 @@ struct ReleaseSigningTests {
         ] {
             #expect(
                 fileManager.fileExists(atPath: path.path),
-                "CS-061 expects \(path.lastPathComponent) to exist")
+                " expects \(path.lastPathComponent) to exist")
         }
     }
 
@@ -76,7 +76,7 @@ struct ReleaseSigningTests {
             "scripts/build-dmg.sh must be executable")
     }
 
-    // MARK: - Acceptance: sign with a Developer ID Application certificate when secrets exist
+    // MARK: - Contract: sign with a Developer ID Application certificate when secrets exist
 
     @Test func scriptSignsWithDeveloperIDWhenAnIdentityIsProvided() throws {
         let script = try Self.script()
@@ -84,7 +84,7 @@ struct ReleaseSigningTests {
         // other than the ad-hoc "-" sentinel.
         #expect(
             script.contains("CODE_SIGN_IDENTITY"),
-            "build-dmg.sh must read the signing identity from CODE_SIGN_IDENTITY (CS-061)")
+            "build-dmg.sh must read the signing identity from CODE_SIGN_IDENTITY")
         #expect(
             script.contains("CODE_SIGN_STYLE=Manual"),
             "build-dmg.sh must use manual signing so the Developer ID identity is honored")
@@ -103,7 +103,7 @@ struct ReleaseSigningTests {
             "release.yml must pass the Developer ID identity secret to the build")
         #expect(
             release.contains("security create-keychain") && release.contains("security import"),
-            "release.yml must import the signing certificate into a runner keychain (CS-061)")
+            "release.yml must import the signing certificate into a runner keychain")
         #expect(
             release.contains("security set-key-partition-list"),
             "release.yml must authorize codesign to use the imported key non-interactively")
@@ -115,23 +115,23 @@ struct ReleaseSigningTests {
         let stepRegion = String(release[importMarker.lowerBound...].prefix(400))
         #expect(
             stepRegion.contains(#"[ -z "${MACOS_CERTIFICATE_P12:-}" ]"#),
-            "the certificate-import step must be gated on the certificate secret (CS-061)")
+            "the certificate-import step must be gated on the certificate secret")
     }
 
-    // MARK: - Acceptance: hardened runtime remains enabled for distributable builds
+    // MARK: - Contract: hardened runtime remains enabled for distributable builds
 
     @Test func hardenedRuntimeStaysEnabledForSignedBuilds() throws {
         // The app target enables the hardened runtime in the source of truth…
         let project = try Self.projectYAML()
         #expect(
             project.contains("ENABLE_HARDENED_RUNTIME: YES"),
-            "project.yml must enable the hardened runtime on the app target (CS-061)")
+            "project.yml must enable the hardened runtime on the app target")
         // …and the signed build path re-asserts it so a Developer ID build can never
         // ship without it.
         let script = try Self.script()
         #expect(
             script.contains("ENABLE_HARDENED_RUNTIME=YES"),
-            "build-dmg.sh must pass ENABLE_HARDENED_RUNTIME=YES on the signed build (CS-061)")
+            "build-dmg.sh must pass ENABLE_HARDENED_RUNTIME=YES on the signed build")
     }
 
     /// Apple notarization requires a secure timestamp on Developer ID signatures.
@@ -144,7 +144,7 @@ struct ReleaseSigningTests {
         let script = try Self.script()
         #expect(
             script.contains("OTHER_CODE_SIGN_FLAGS=\"--timestamp\""),
-            "Developer ID release builds must request secure timestamps before notarization (CS-061)"
+            "Developer ID release builds must request secure timestamps before notarization"
         )
         #expect(
             script.localizedCaseInsensitiveContains("secure timestamp"),
@@ -160,7 +160,7 @@ struct ReleaseSigningTests {
         let script = try Self.script()
         #expect(
             script.contains("sign_embedded_cli_for_distribution"),
-            "build-dmg.sh must sign the embedded vitrine CLI for notarization (CS-033/CS-061)")
+            "build-dmg.sh must sign the embedded vitrine CLI for notarization")
         #expect(
             script.contains("Contents/MacOS/vitrine-cli"),
             "build-dmg.sh must sign the CLI at the path the embed build phase produces")
@@ -172,7 +172,7 @@ struct ReleaseSigningTests {
             "the signed path must invoke the Sparkle re-signing step")
         #expect(
             cliSign.lowerBound < sparkleReseal.lowerBound,
-            "the CLI must be signed before the Sparkle step's final app re-seal (CS-061)")
+            "the CLI must be signed before the Sparkle step's final app re-seal")
     }
 
     /// The tag workflow builds and packages directly instead of using Xcode's
@@ -213,13 +213,13 @@ struct ReleaseSigningTests {
         )
     }
 
-    // MARK: - Acceptance: notarization with notarytool or App Store Connect API credentials
+    // MARK: - Contract: notarization with notarytool or App Store Connect API credentials
 
     @Test func notarizationUsesNotarytoolWithEitherCredentialStyle() throws {
         let script = try Self.script()
         #expect(
             script.contains("notarytool submit"),
-            "build-dmg.sh must notarize with `notarytool submit` (CS-061)")
+            "build-dmg.sh must notarize with `notarytool submit`")
         #expect(
             script.contains("--wait"),
             "notarization must wait for the result before stapling")
@@ -239,7 +239,7 @@ struct ReleaseSigningTests {
         // The API key must be wired to notarytool's --key / --issuer flags.
         #expect(
             script.contains("--key ") && script.contains("--issuer"),
-            "build-dmg.sh must pass the App Store Connect API key to notarytool (CS-061)")
+            "build-dmg.sh must pass the App Store Connect API key to notarytool")
     }
 
     /// A rejected notary submission is not staplable; the script must parse the
@@ -250,7 +250,7 @@ struct ReleaseSigningTests {
         let script = try Self.script()
         #expect(
             script.contains("--output-format plist"),
-            "build-dmg.sh must capture structured notarytool output (CS-061)")
+            "build-dmg.sh must capture structured notarytool output")
         #expect(
             script.contains("notarytool log"),
             "build-dmg.sh must fetch the notary log when Apple rejects a submission")
@@ -273,7 +273,7 @@ struct ReleaseSigningTests {
         ] {
             #expect(
                 release.contains(secret),
-                "release.yml must forward the notarization secret \(secret) (CS-061)")
+                "release.yml must forward the notarization secret \(secret)")
         }
         // The .p8 staging step must be gated on its secret.
         let stageMarker = try #require(
@@ -282,16 +282,16 @@ struct ReleaseSigningTests {
         let stepRegion = String(release[stageMarker.lowerBound...].prefix(400))
         #expect(
             stepRegion.contains(#"[ -z "${MACOS_NOTARY_KEY_P8:-}" ]"#),
-            "the key-staging step must be gated on the .p8 secret (CS-061)")
+            "the key-staging step must be gated on the .p8 secret")
     }
 
-    // MARK: - Acceptance: stapling succeeds for the app and/or DMG
+    // MARK: - Contract: stapling succeeds for the app and/or DMG
 
     @Test func staplingRunsForTheAppAndDMG() throws {
         let script = try Self.script()
         #expect(
             script.contains("stapler staple"),
-            "build-dmg.sh must staple the notarization ticket (CS-061)")
+            "build-dmg.sh must staple the notarization ticket")
         // Stapling must target both the app and the DMG container.
         #expect(
             script.contains("stapler staple \"$APP\""),
@@ -301,23 +301,23 @@ struct ReleaseSigningTests {
             "build-dmg.sh must staple the DMG")
     }
 
-    // MARK: - Acceptance: codesign --verify --deep --strict --verbose=2 on the app
+    // MARK: - Contract: codesign --verify --deep --strict --verbose=2 on the app
 
     @Test func scriptVerifiesTheSignatureStrictly() throws {
         let script = try Self.script()
         #expect(
             script.contains("codesign --verify --deep --strict --verbose=2 \"$APP\""),
-            "build-dmg.sh must run `codesign --verify --deep --strict --verbose=2` on the app (CS-061)"
+            "build-dmg.sh must run `codesign --verify --deep --strict --verbose=2` on the app"
         )
     }
 
-    // MARK: - Acceptance: spctl -a -vv on the final artifact
+    // MARK: - Contract: spctl -a -vv on the final artifact
 
     @Test func scriptAssessesGatekeeperOnTheFinalArtifact() throws {
         let script = try Self.script()
         #expect(
             script.contains("spctl -a -vv"),
-            "build-dmg.sh must run a Gatekeeper assessment with `spctl -a -vv` (CS-061)")
+            "build-dmg.sh must run a Gatekeeper assessment with `spctl -a -vv`")
         // The assessment must cover the DMG (the downloaded artifact) and the app.
         #expect(
             script.contains("spctl -a -vv \"$APP\""),
@@ -327,7 +327,7 @@ struct ReleaseSigningTests {
             "build-dmg.sh must assess the final DMG artifact with spctl")
     }
 
-    // MARK: - Acceptance: unsigned local DMG path remains available but never production-ready
+    // MARK: - Contract: unsigned local DMG path remains available but never production-ready
 
     @Test func unsignedPathRemainsAvailableButIsNeverLabeledProductionReady() throws {
         let script = try Self.script()
@@ -335,12 +335,12 @@ struct ReleaseSigningTests {
         // hdiutil create step is unconditional.
         #expect(
             script.contains("hdiutil create"),
-            "build-dmg.sh must still build a DMG on the unsigned path (CS-061)")
+            "build-dmg.sh must still build a DMG on the unsigned path")
         // And the unsigned build must be explicitly flagged as not production-ready.
         #expect(
             script.localizedCaseInsensitiveContains("not production-ready")
                 || script.localizedCaseInsensitiveContains("NOT production-ready"),
-            "build-dmg.sh must label the unsigned build as not production-ready (CS-061)")
+            "build-dmg.sh must label the unsigned build as not production-ready")
         #expect(
             script.localizedCaseInsensitiveContains("unsigned"),
             "build-dmg.sh must describe the unsigned development path")
@@ -369,14 +369,14 @@ struct ReleaseSigningTests {
             "build-dmg.sh must contain the codesign verify command")
         #expect(
             commandLine.first == "\t" || commandLine.first == " ",
-            "the codesign verify command must be indented inside a guard block (CS-061)")
+            "the codesign verify command must be indented inside a guard block")
         let verifyMarker = try #require(script.range(of: verifyCommand))
         let beforeVerify = String(script[..<verifyMarker.lowerBound])
         let lastGuard = beforeVerify.range(
             of: "if [ \"$SIGNED\" -eq 1 ]", options: .backwards)
         #expect(
             lastGuard != nil,
-            "the strict codesign verification must be guarded by the SIGNED flag (CS-061)")
+            "the strict codesign verification must be guarded by the SIGNED flag")
     }
 
     /// Notarization and stapling must also live behind the SIGNED guard. Under
@@ -396,12 +396,12 @@ struct ReleaseSigningTests {
             let preceding = String(script[..<marker.lowerBound])
             #expect(
                 preceding.range(of: "if [ \"$SIGNED\" -eq 1 ]", options: .backwards) != nil,
-                "`\(command)` must be guarded by the SIGNED flag so unsigned builds skip it (CS-061)"
+                "`\(command)` must be guarded by the SIGNED flag so unsigned builds skip it"
             )
         }
     }
 
-    /// CS-061 (and both `build-dmg.sh`'s header and `RELEASING.md`) promise the App
+    /// The release script header and `RELEASING.md` promise the App
     /// Store Connect API key takes precedence over the Apple-ID credentials when both
     /// are configured. This asserts the credential selection is an ordered if/elif
     /// whose API-key branch is evaluated first, so a future reorder that silently
@@ -416,20 +416,17 @@ struct ReleaseSigningTests {
             "build-dmg.sh must test the App Store Connect key id first")
         let appleIDTest = try #require(
             script.range(of: "elif [ -n \"${MACOS_NOTARY_APPLE_ID:-}\" ]"),
-            "the Apple-ID branch must be an `elif`, making the API key win when both are set (CS-061)"
+            "the Apple-ID branch must be an `elif`, making the API key win when both are set"
         )
         #expect(
             apiKeyTest.lowerBound < appleIDTest.lowerBound,
-            "the App Store Connect API-key branch must precede the Apple-ID branch (CS-061)")
+            "the App Store Connect API-key branch must precede the Apple-ID branch")
     }
 
-    // MARK: - Acceptance: documentation
+    // MARK: - Contract: documentation
 
     @Test func releasingDocDocumentsSigningNotarizationAndGatekeeper() throws {
         let doc = try Self.releasingDoc()
-        #expect(
-            doc.contains("CS-061"),
-            "RELEASING.md must reference the signing/notarization ticket")
         #expect(
             doc.localizedCaseInsensitiveContains("Developer ID"),
             "RELEASING.md must document Developer ID signing")
@@ -448,16 +445,16 @@ struct ReleaseSigningTests {
         )
         #expect(
             doc.contains("codesign --verify --deep --strict --verbose=2"),
-            "RELEASING.md must document the codesign verification command (CS-061)")
+            "RELEASING.md must document the codesign verification command")
         #expect(
             doc.contains("spctl -a -vv"),
-            "RELEASING.md must document the Gatekeeper assessment command (CS-061)")
+            "RELEASING.md must document the Gatekeeper assessment command")
         #expect(
             doc.localizedCaseInsensitiveContains("not production-ready"),
-            "RELEASING.md must say the unsigned build is not production-ready (CS-061)")
+            "RELEASING.md must say the unsigned build is not production-ready")
         // Both notarization credential styles must be documented.
         #expect(
             doc.contains("MACOS_NOTARY_KEY_P8") && doc.contains("MACOS_NOTARY_APPLE_ID"),
-            "RELEASING.md must document both notarization credential styles (CS-061)")
+            "RELEASING.md must document both notarization credential styles")
     }
 }

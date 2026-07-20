@@ -6,11 +6,11 @@ import Testing
 
 @testable import Vitrine
 
-/// Snapshot annotations (CS-083): the model round-trips, persists in the config,
+/// Snapshot annotations: the model round-trips, persists in the config,
 /// and renders into the exported image. Pins that the default (no-annotation) path
 /// is unaffected and that each kind actually changes pixels.
 @MainActor
-@Suite("Annotations (CS-083)")
+@Suite("Annotations")
 struct AnnotationTests {
     // MARK: - Model
 
@@ -156,7 +156,7 @@ struct AnnotationTests {
         #expect(try png(plain) != png(texted), "a text callout must change the exported image")
     }
 
-    // MARK: - Spotlight (feature #7)
+    // MARK: - Spotlight
 
     @Test func spotlightDimsTheRenderedPixels() throws {
         var plain = SnapshotConfig()
@@ -224,7 +224,7 @@ struct AnnotationTests {
         #expect(try png(base) != png(both))
     }
 
-    // MARK: - Curved arrow (feature #11)
+    // MARK: - Curved arrow
 
     @Test func curvedArrowChangesTheRenderedPixelsAndDiffersFromStraight() throws {
         var plain = SnapshotConfig()
@@ -268,7 +268,7 @@ struct AnnotationTests {
         #expect(restored.first?.end == CGPoint(x: 0.8, y: 0.7))
     }
 
-    // MARK: - Sticker layer (feature #13)
+    // MARK: - Sticker layer
 
     @Test func stickerChangesTheRenderedPixels() throws {
         var plain = SnapshotConfig()

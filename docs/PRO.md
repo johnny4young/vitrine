@@ -1,4 +1,4 @@
-# Vitrine PRO — Monetization Architecture (CS-088 … CS-094)
+# Vitrine PRO — Monetization Architecture
 
 A guide to the open-core PRO subsystem for anyone working on it. The governing principle:
 **the entitlement gate lives at the edges (UI actions, CLI, Shortcuts, Services) and never
@@ -75,7 +75,7 @@ var exportConfig: SnapshotConfig {
 returns `nil` unless `isEnabled && isPro && hasContent`. **Every image export surface renders
 `exportConfig`, not the stored `config`** (editor save/copy/share/data-URI, QuickCapture's export
 path, Shortcuts, Services). The stored `config` is never watermarked, so persistence, the
-"diverged from preset" bookkeeping, per-window sessions (CS-053), and the golden suite are all
+"diverged from preset" bookkeeping, per-window sessions, and the golden suite are all
 unaffected.
 
 ## Gating UI
@@ -87,7 +87,7 @@ controls (the Brand Kit sub-tab) use an explicit locked→upsell / unlocked→co
 of the modifier. `PaywallSheet` reads its copy from the `ProFeature` and shows the per-build
 unlock path (StoreKit buy + Restore, or a license-key field).
 
-## Automation gating (CS-094)
+## Automation gating
 
 In-process surfaces gate on `Entitlements.shared.isUnlocked(.automation)`:
 `RenderCodeImageIntent.perform()` (→ `IntentRenderError`), `CodeImageService.process()`

@@ -11,7 +11,7 @@ options:
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
-  # Localization (CS-047): English is the development language and the source of
+  # Localization: English is the development language and the source of
   # the String Catalog (Vitrine/Resources/Localizable.xcstrings); Spanish ships as
   # a real second locale to prove the pipeline end to end. "Base" is listed so the
   # generated project carries a Base development region for the catalog's UI keys.
@@ -32,7 +32,7 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
-    # Direct-download channel marker (CS-064). Code guarded by
+    # Direct-download channel marker. Code guarded by
     # `#if VITRINE_DIRECT_DOWNLOAD` ships in the direct-download build (the default) and
     # is compiled out of the Mac App Store binary, which also strips the Sparkle
     # framework (see docs/APP-STORE.md, appstore.yml). ON by default so the DMG ships the
@@ -57,7 +57,7 @@ settings:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: VITRINE_DIRECT_DOWNLOAD DEBUG
 
 # Swift Package Manager dependencies.
-# Pinned to exact versions (D1): the generated .xcodeproj — and therefore the
+# Pinned to exact versions : the generated .xcodeproj — and therefore the
 # resolved dependency graph — is git-ignored, so a floating `from:` would let a
 # minor bump slip in on any fresh `make project`. Highlightr in particular embeds
 # Highlight.js, whose tokenization is what the golden-image baseline was recorded
@@ -83,7 +83,7 @@ targets:
         excludes:
           - "Resources/Info.plist"
           - "Resources/Vitrine.entitlements"
-          # Direct-download (Sparkle) entitlements superset (CS-064); used only by
+          # Direct-download (Sparkle) entitlements superset; used only by
           # the DMG build via CODE_SIGN_ENTITLEMENTS in scripts/build-dmg.sh, never
           # compiled as a source.
           - "Resources/Vitrine.DirectDownload.entitlements"
@@ -96,13 +96,13 @@ targets:
     dependencies:
       - package: Highlightr
       - package: KeyboardShortcuts
-      # Sparkle auto-update (CS-064): embedded as a LOCAL framework fetched by
+      # Sparkle auto-update: embedded as a LOCAL framework fetched by
       # scripts/fetch-sparkle.sh into Vendor/ (gitignored), NOT via the SPM binary
       # artifact — its resolution hung intermittently on headless CI runners. Every
       # call site is behind `#if VITRINE_DIRECT_DOWNLOAD`; the App Store build strips it.
       - framework: Vendor/Sparkle.framework
         embed: true
-      # App Intents (CS-034): linking the framework lets the build's
+      # App Intents: linking the framework lets the build's
       # appintentsmetadataprocessor extract the Shortcuts actions and enums so they
       # appear in Shortcuts/Spotlight/Siri.
       - sdk: AppIntents.framework
@@ -135,7 +135,7 @@ targets:
           cp -f "${BUILT_PRODUCTS_DIR}/vitrine-cli" \
             "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/vitrine-cli"
           chmod 755 "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/vitrine-cli"
-    # App Store distribution readiness (CS-062, see docs/APP-STORE.md). The metadata an
+    # App Store distribution readiness (see docs/APP-STORE.md). The metadata an
     # App Store submission needs is the app's existing identity, sourced here and in
     # Vitrine/Resources/Info.plist (no App Store-only settings are invented):
     #   - Bundle identifier: PRODUCT_BUNDLE_IDENTIFIER below (com.johnny4young.vitrine).
@@ -157,12 +157,12 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Vitrine/Resources/Info.plist
         # Injected at generate time via the VITRINE_ENTITLEMENTS_FILE env var (Makefile
-        # default = minimal App Store / Phase 1 set; scripts/build-dmg.sh exports the
-        # direct-download superset, CS-064). XcodeGen ${...} interpolation writes a literal
+        # default = minimal App Store / minimal set; scripts/build-dmg.sh exports the
+        # direct-download superset). XcodeGen ${...} interpolation writes a literal
         # path into the project, so the build resolves no xcodebuild-time variable (which
-        # stalled the CI runner) and nothing leaks onto the SPM resource bundles (CS-061).
+        # stalled the CI runner) and nothing leaks onto the SPM resource bundles.
         CODE_SIGN_ENTITLEMENTS: ${VITRINE_ENTITLEMENTS_FILE}
-        # The direct-download license-signing private key (CS-090, Architecture B): the same
+        # The direct-download license-signing private key (embedded-key activation model): the same
         # env-var → literal pattern as the entitlements above. Resolved at generate time and
         # written into the Info.plist's VitrineLicenseSigningKey via $(...). Empty by default
         # (Makefile) → from-source/CI/App-Store builds can't mint a token and stay free; only
@@ -173,7 +173,7 @@ targets:
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_PREVIEWS: YES
 
-  # Command-line renderer (CS-033). `vitrine render input.swift --out image.png`.
+  # Command-line renderer. `vitrine render input.swift --out image.png`.
   #
   # The CLI reuses the app's *render half* unchanged so its output is pixel-identical
   # to the GUI: it compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
@@ -190,19 +190,19 @@ targets:
         excludes:
           - "Resources/Info.plist"
           - "Resources/Vitrine.entitlements"
-          # Direct-download (Sparkle) entitlements superset (CS-064); the CLI ships no
+          # Direct-download (Sparkle) entitlements superset; the CLI ships no
           # updater, so this is never compiled or ingested here.
           - "Resources/Vitrine.DirectDownload.entitlements"
           - "Resources/Fonts"
           # The GUI's @main App scene; the CLI provides its own main.swift entry.
           - "App/VitrineApp.swift"
-          # The automation surfaces (CS-034) target the GUI app only: App Intents
+          # The automation surfaces target the GUI app only: App Intents
           # need the AppIntents framework (not linked into this headless tool) and
           # the Services menu is a windowed-app concept. The CLI is the scriptable
           # path itself, so it neither links nor compiles these.
           - "AppIntents"
           - "Services"
-          # Local HTML rendering (CS-042) drives an offscreen WKWebView, which needs
+          # Local HTML rendering drives an offscreen WKWebView, which needs
           # a window-server connection at runtime that this headless tool does not
           # have. The CLI renders code, not web content, so it neither links WebKit
           # nor compiles the WebKit renderers. Three value-only files are included
@@ -220,7 +220,7 @@ targets:
       - package: KeyboardShortcuts
     # A command-line tool has no Contents/Resources, so a "Copy Bundle Resources"
     # phase cannot stage the bundled fonts. Copy the Fonts folder next to the binary
-    # instead, where CLIEnvironment locates and registers it at launch (CS-033). This
+    # instead, where CLIEnvironment locates and registers it at launch. This
     # is what keeps a default CLI render in JetBrains Mono pixel-identical to the app
     # rather than falling back to the system monospaced font.
     postCompileScripts:
@@ -245,17 +245,17 @@ targets:
         PRODUCT_NAME: vitrine-cli
         PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.cli
         # A tool is not a sandboxed .app: render is fully local and needs no
-        # entitlements, network, screen recording, or Accessibility (CS-033). The
+        # entitlements, network, screen recording, or Accessibility. The
         # font-staging build phase writes next to the binary, so user-script sandboxing
         # (on for the shipping app) is off — but the Hardened Runtime stays ON: the CLI
         # verifies the PRO license token, so its runtime integrity (resisting dylib
-        # injection / debugger attach on the verification path) matters most here
-        # (audit P1-Security-2). The two settings are independent.
+        # injection / debugger attach on the verification path) matters most here.
+        # The two settings are independent.
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         CODE_SIGN_STYLE: Automatic
         # The CLI is neither the direct-download app nor an App Store build — it is a
-        # headless dev tool that ships no updater and does not link Sparkle (CS-064).
+        # headless dev tool that ships no updater and does not link Sparkle.
         # Drop the VITRINE_DIRECT_DOWNLOAD flag the project base sets so the shared
         # SoftwareUpdater compiles to its no-op form here and never tries to import
         # Sparkle (which this target does not depend on). Overriding without
@@ -274,7 +274,7 @@ targets:
     deploymentTarget: "14.0"
     sources:
       - path: Tests
-        # The golden-image fixtures (CS-025) are read from the source tree via
+        # The golden-image fixtures are read from the source tree via
         # #filePath, not from the test bundle, so they must not be ingested as
         # bundle resources (which would also run them through copypng on every
         # build). Exclude the whole fixtures tree from the test target sources.
@@ -294,7 +294,7 @@ targets:
         # locally-fetched framework (scripts/fetch-sparkle.sh → Vendor/) so it can
         # resolve that module dependency. The symbols come from the host app, which
         # embeds Sparkle (TEST_HOST/BUNDLE_LOADER), so this target neither links nor
-        # embeds the framework itself — only the search path is needed (CS-064).
+        # embeds the framework itself — only the search path is needed.
         FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/Vendor
 
   VitrineUITests:
@@ -328,7 +328,7 @@ schemes:
       gatherCoverageData: true
       # Pin the unit-test host to English so the suite is deterministic regardless of the
       # developer's app-language preference. The app persists its UI language in
-      # `AppleLanguages` under its own domain (CS-047 language switcher) and the XCTest
+      # `AppleLanguages` under its own domain ( language switcher) and the XCTest
       # host (Vitrine.app) inherits it — so running the app in Spanish would make every
       # English-string assertion (Notifier, Privacy, Localization) fail locally while CI
       # stays green. This writes `AppleLanguages=(en)` into the host's NSArgumentDomain;
@@ -344,9 +344,9 @@ schemes:
       # value is a build-setting macro that expands from the value supplied on the
       # corresponding `make` command line. Unset (a normal `make test`) they expand
       # to empty and the matching opt-in suite stays skipped.
-      #   - VITRINE_RECORD_GOLDENS  → golden-image recorder (CS-025, `make record-goldens`)
-      #   - VITRINE_GENERATE_GALLERY → launch-gallery generator (CS-039, `make gallery`)
-      #   - VITRINE_RECORD_SOCIAL_CARD → social-card golden recorder (CS-041)
+      #   - VITRINE_RECORD_GOLDENS  → golden-image recorder (`make record-goldens`)
+      #   - VITRINE_GENERATE_GALLERY → launch-gallery generator (`make gallery`)
+      #   - VITRINE_RECORD_SOCIAL_CARD → social-card golden recorder
       environmentVariables:
         - variable: VITRINE_RECORD_GOLDENS
           value: $(VITRINE_RECORD_GOLDENS)

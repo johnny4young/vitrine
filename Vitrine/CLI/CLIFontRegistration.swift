@@ -3,7 +3,7 @@ import Foundation
 import OSLog
 
 /// Registers the app's bundled monospaced fonts with Core Text at runtime so a
-/// command-line render can use them (CS-033).
+/// command-line render can use them.
 ///
 /// The GUI registers these families through `ATSApplicationFontsPath` in its
 /// `Info.plist`, but a command-line tool has no app bundle and so gets no automatic
@@ -12,7 +12,7 @@ import OSLog
 /// executable calls `registerBundledFonts(in:)` at startup, pointing at the `Fonts`
 /// resource directory copied next to the binary, so the default and every bundled
 /// font resolve to the exact same glyphs the GUI uses — keeping CLI output
-/// pixel-identical (CS-033 acceptance).
+/// pixel-identical .
 ///
 /// Registration is process-scoped (`.process`) and best-effort: a font that is
 /// already registered or a missing file is skipped without failing the render, so a

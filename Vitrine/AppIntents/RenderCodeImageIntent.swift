@@ -3,7 +3,7 @@ import Foundation
 import OSLog
 import UniformTypeIdentifiers
 
-/// A Shortcuts action that renders code text to an image (CS-034).
+/// A Shortcuts action that renders code text to an image.
 ///
 /// This is the headline automation surface: it takes a snippet of code plus optional
 /// presentation choices and returns the rendered image as a file the next Shortcut
@@ -16,7 +16,7 @@ import UniformTypeIdentifiers
 /// Parameter names are deliberately plain and task-oriented ("Code", "Language",
 /// "Theme", "Destination", "Format", "Transparent Background", "Resolution") so the
 /// action reads as a sentence in the Shortcuts editor and returns useful output
-/// (CS-034 acceptance "clear parameter names and return useful output").
+/// (contract "clear parameter names and return useful output").
 struct RenderCodeImageIntent: AppIntent {
     static let title: LocalizedStringResource = "Render Code to Image"
 
@@ -93,7 +93,7 @@ struct RenderCodeImageIntent: AppIntent {
     /// the Shortcut receives a real image it can save, share, or copy.
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<IntentFile> {
-        // Automation requires PRO (CS-094): fail with a clear Shortcuts message before
+        // Automation requires PRO: fail with a clear Shortcuts message before
         // building or rendering anything.
         guard Entitlements.shared.isUnlocked(.automation) else {
             throw IntentRenderError(message: ProFeature.automation.paywallBlurb)
@@ -106,12 +106,12 @@ struct RenderCodeImageIntent: AppIntent {
             scale: resolution,
             format: format.format,
             // The picker forces a deliberate sRGB output for automation; the
-            // advanced P3 profile stays an in-app choice (CS-024).
+            // advanced P3 profile stays an in-app choice.
             profile: .sRGB,
             transparent: transparentBackground,
             // Start from the user's live style so the action honors their saved look
             // unless a parameter overrides it — and from `exportConfig`, so a PRO user's
-            // enabled Brand Kit watermark marks the Shortcuts output too (CS-092), exactly
+            // enabled Brand Kit watermark marks the Shortcuts output too, exactly
             // as it does an editor or quick-capture export. Free/disabled → no watermark.
             baseStyle: AppSettings.shared.exportConfig)
 
@@ -134,8 +134,8 @@ struct RenderCodeImageIntent: AppIntent {
 }
 
 /// A small, localized error type for the automation surfaces, so a render failure
-/// reads as a sentence in the Shortcuts error sheet rather than a generic failure
-/// (CS-034). It is a concrete type thrown directly from `perform()`.
+/// reads as a sentence in the Shortcuts error sheet rather than a generic failure.
+/// It is a concrete type thrown directly from `perform()`.
 struct IntentRenderError: Error, CustomLocalizedStringResourceConvertible {
     let message: String
 

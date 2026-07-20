@@ -1,12 +1,12 @@
 import Foundation
 
-/// Best-effort content/language detection from clipboard text (CS-004).
+/// Best-effort content/language detection from clipboard text.
 ///
 /// `detect(_:)` uses additive weighted keyword scoring and returns the highest
 /// scoring language (or `.plaintext` when there is no signal), which is more
 /// robust than ordered `if/else` for overlapping tokens (e.g. Swift vs Go `func`).
 ///
-/// CS-027 layers two structural hints on top of that scoring so quick capture
+/// The detector layers two structural hints on top of that scoring so quick capture
 /// understands common developer clipboard formats: Markdown code fences (which
 /// often carry an explicit language in their info string) and file paths /
 /// drop metadata (whose extension names the language). `interpret(_:)` combines
@@ -26,7 +26,7 @@ enum LanguageDetector {
     static func detect(_ raw: String) -> Language {
         // A bare http(s) URL is not source code: render it as plain text rather than
         // letting keyword scoring color it like a program (e.g. the digits in
-        // `…/v0.1.0` highlighted as numeric literals). CS-004.
+        // `…/v0.1.0` highlighted as numeric literals). .
         if isURL(raw) { return .plaintext }
         // Terminal output carries ANSI escape codes; render it through the ANSI path
         // (colored by its own escapes) rather than scoring it as source code.
@@ -95,7 +95,7 @@ enum LanguageDetector {
         return best.key
     }
 
-    // MARK: - File extensions (CS-027)
+    // MARK: - File extensions
 
     /// Reverse extension → language table. Each language's canonical extension is
     /// derived from `Language.fileExtension`; this dictionary additionally lists
@@ -138,7 +138,7 @@ enum LanguageDetector {
     }()
 
     /// Maps a filename extension (with or without a leading dot, any case) to a
-    /// language, or `nil` when it is empty or unrecognized (CS-027).
+    /// language, or `nil` when it is empty or unrecognized.
     static func language(forFileExtension rawExtension: String) -> Language? {
         let key =
             rawExtension
@@ -149,8 +149,8 @@ enum LanguageDetector {
         return extensionMap[String(key)]
     }
 
-    /// Derives a language hint from a file path or URL string by its extension
-    /// (CS-027). Handles plain paths (`~/src/main.go`), `file://` URLs, and a
+    /// Derives a language hint from a file path or URL string by its extension.
+    /// Handles plain paths (`~/src/main.go`), `file://` URLs, and a
     /// special case for the extensionless `Dockerfile`. Returns `nil` when the
     /// text is not a single path-like token or its extension is unknown.
     static func language(forPath rawPath: String) -> Language? {
@@ -182,7 +182,7 @@ enum LanguageDetector {
         return language(forFileExtension: ext)
     }
 
-    // MARK: - Clipboard interpretation (CS-027)
+    // MARK: - Clipboard interpretation
 
     /// A normalized view of clipboard text: the code to render, the best language
     /// hint, and how many distinct fenced code blocks were found. `blockCount`
@@ -199,7 +199,7 @@ enum LanguageDetector {
     }
 
     /// Interprets raw clipboard text into the code + language the capture path
-    /// should use (CS-027), applying this hint precedence:
+    /// should use, applying this hint precedence:
     ///
     /// 1. A bare URL remains plain text.
     /// 2. A Markdown fence's explicit info-string language (```swift) or stripped body.
@@ -215,7 +215,7 @@ enum LanguageDetector {
     static func interpret(_ raw: String) -> Interpretation {
         // A bare http(s) URL is plain text, not source — return it before any fence,
         // path, or keyword hint runs so a trailing extension in the URL path
-        // (`…/styles.css`, `…/v0.1.0`) is never mistaken for a source language (CS-004).
+        // (`…/styles.css`, `…/v0.1.0`) is never mistaken for a source language.
         if isURL(raw) {
             return Interpretation(code: raw, language: .plaintext, blockCount: 0)
         }
@@ -248,7 +248,7 @@ enum LanguageDetector {
     }
 }
 
-/// Parser for GitHub-flavored Markdown fenced code blocks (CS-027).
+/// Parser for GitHub-flavored Markdown fenced code blocks.
 ///
 /// Recognizes both backtick (```) and tilde (~~~) fences, requires the closing
 /// fence to use the same character and be at least as long as the opening one,

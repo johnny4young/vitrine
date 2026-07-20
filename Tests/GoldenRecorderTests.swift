@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-/// The golden-fixture **recorder** (CS-025).
+/// The golden-fixture **recorder**.
 ///
 /// This suite is the "single command" that regenerates the visual baseline:
 /// `make record-goldens` runs only this suite with `VITRINE_RECORD_GOLDENS=1`. It
@@ -38,7 +38,7 @@ enum GoldenRecording {
 
 @MainActor
 @Suite(
-    "Golden recorder (CS-025)",
+    "Golden recorder",
     .enabled(
         if: GoldenRecording.isActive,
         "set VITRINE_RECORD_GOLDENS=1 (make record-goldens) to (re)generate fixtures"))

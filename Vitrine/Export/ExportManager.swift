@@ -5,11 +5,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Renders a `SnapshotConfig` to PNG/PDF/HEIC/AVIF and exports it to the clipboard or a
-/// file (CS-007/010). Raster encoding goes through ImageIO directly from the
+/// file. Raster encoding goes through ImageIO directly from the
 /// rendered `CGImage`; PDF uses `ImageRenderer.render` into a `CGContext` — no legacy
 /// `NSBitmapImageRep`/TIFF round-trip.
 ///
-/// Color management (CS-024): a render is always normalized into an explicit ICC
+/// Color management: a render is always normalized into an explicit ICC
 /// color space before PNG encoding — sRGB by default, Display P3 only as an
 /// advanced opt-in. `ImageRenderer` happens to default to sRGB today, but the
 /// exporter tags the output deliberately rather than trusting that default, so
@@ -32,11 +32,11 @@ enum ExportManager {
     }
 
     /// Renders the canvas for `config` to a `CGImage` at the given scale (1/2/3),
-    /// normalized into `profile`'s color space (sRGB by default, CS-024).
+    /// normalized into `profile`'s color space (sRGB by default).
     ///
-    /// The render is wrapped in an `os_signpost` interval (CS-048) so render
+    /// The render is wrapped in an `os_signpost` interval so render
     /// latency can be measured in Instruments/the unified log without timing code
-    /// in the hot path — this is the signal CS-026's performance budget consumes.
+    /// in the hot path — this is the signal 's performance budget consumes.
     /// Only non-PII measures are attached to the signpost and the log (the code
     /// length and scale), never the code itself.
     static func renderCGImage(
@@ -56,7 +56,7 @@ enum ExportManager {
                 .environment(\.foregroundImageStore, foregroundImageStore))
         renderer.scale = scale
         // Pin the layout size for fixed-size presets so the rendered pixel size
-        // is exactly `fixedSize × scale` (e.g. OpenGraph 1200×630 at 1×, CS-020).
+        // is exactly `fixedSize × scale` (e.g. OpenGraph 1200×630 at 1×).
         if let fixedSize { renderer.proposedSize = ProposedViewSize(fixedSize) }
         guard let cgImage = renderer.cgImage else {
             Log.render.error(
@@ -72,7 +72,7 @@ enum ExportManager {
 
     /// Converts a rendered `CGImage` into `profile`'s color space, redrawing it
     /// through a Core Graphics context so the result is both *converted* (the
-    /// sRGB↔P3 matrix is applied) and *tagged* with that ICC profile (CS-024).
+    /// sRGB↔P3 matrix is applied) and *tagged* with that ICC profile.
     ///
     /// The destination context keeps an alpha channel (`premultipliedLast`) and
     /// is initialized fully transparent, so a transparent-background render keeps
@@ -87,8 +87,8 @@ enum ExportManager {
         }
         // Skip the full-bitmap allocate+draw+copy when the render is already in the exact
         // output format (same color space, 8 bpc, premultiplied-last alpha) — the common
-        // default-sRGB path otherwise pays a no-op conversion on every export and thumbnail
-        // (audit P1-Perf-2). The redraw still runs for a real sRGB↔P3 conversion or any other
+        // default-sRGB path otherwise pays a no-op conversion on every export and thumbnail.
+        // The redraw still runs for a real sRGB↔P3 conversion or any other
         // pixel format, so the produced bytes are unchanged.
         if let space = cgImage.colorSpace, space.name == colorSpace.name,
             cgImage.bitsPerComponent == 8,
@@ -144,7 +144,7 @@ enum ExportManager {
         return context.makeImage() ?? cgImage
     }
 
-    /// Renders the canvas to an `NSImage` (used by the share sheet, CS-008).
+    /// Renders the canvas to an `NSImage` (used by the share sheet).
     static func renderNSImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB,
@@ -164,7 +164,7 @@ enum ExportManager {
 
     /// PNG-encodes a `CGImage` via ImageIO. `nonisolated` because it is a pure
     /// function of a `Sendable` `CGImage` over thread-safe ImageIO, so the multi-size
-    /// export can encode off the main actor (C3).
+    /// export can encode off the main actor.
     nonisolated static func pngData(from cgImage: CGImage) -> Data? {
         let data = NSMutableData()
         guard
@@ -233,8 +233,8 @@ enum ExportManager {
 
     /// Renders any SwiftUI `content` to single-page PDF data, pinning the page to
     /// `proposedSize` when given. The single-page `CGDataConsumer`/`CGContext` dance
-    /// lives here once and is shared by both the snapshot and social-card PDF exports
-    /// (CS-007/041). Returns nil if the page context cannot be created.
+    /// lives here once and is shared by both the snapshot and social-card PDF exports.
+    /// Returns nil if the page context cannot be created.
     static func pdfData<Content: View>(
         _ content: Content, proposedSize: CGSize?, opaqueMatte: CGColor? = nil
     ) -> Data? {
@@ -277,8 +277,8 @@ enum ExportManager {
         return data as Data
     }
 
-    /// The single PNG/PDF/HEIC/AVIF format ladder shared by every save/encode path
-    /// (CS-007/041). Given a render strategy for each branch — a `png` producer of a
+    /// The single PNG/PDF/HEIC/AVIF format ladder shared by every save/encode path.
+    /// Given a render strategy for each branch — a `png` producer of a
     /// `CGImage` and a `pdf` producer of finished `Data` — it picks the branch for
     /// `format`, encodes PNG through the shared color-managed ImageIO path, and pairs
     /// the bytes with the matching content type and file extension. Returns nil if the
@@ -299,7 +299,7 @@ enum ExportManager {
         return (data, metadata.type, metadata.ext)
     }
 
-    /// The single raster format→bytes mapping (deep-review finding): every save/batch
+    /// The single raster format→bytes mapping: every save/batch
     /// path used to carry its own PNG/HEIC/AVIF switch, three copies that had to stay
     /// in sync by hand. `nonisolated` — a pure function of a `Sendable` `CGImage` —
     /// so the main-actor payload ladder and the off-main batch writer share it.
@@ -336,7 +336,7 @@ enum ExportManager {
     ///
     /// By default this places a single PNG representation — the unchanged
     /// one-shortcut copy. When `richText` is true (the user opted into the rich
-    /// clipboard, CS-054), it instead places a multi-representation item: the same
+    /// clipboard), it instead places a multi-representation item: the same
     /// PNG plus the highlighted code as RTF and HTML, so a paste into a rich-text
     /// editor keeps the syntax colors and font while an image well still receives
     /// the picture. The PNG round-trip is identical in both modes — `richText`
@@ -391,11 +391,11 @@ enum ExportManager {
 
     /// Presents an `NSSavePanel` and writes the image as PNG, PDF, HEIC, or AVIF.
     ///
-    /// `profile` applies to raster export only (CS-024); PDF is a color-managed
+    /// `profile` applies to raster export only; PDF is a color-managed
     /// vector document and is unaffected by the raster color-profile choice.
     ///
-    /// Returns the outcome so a caller can give the user precise feedback
-    /// (CS-038): `.saved` when a file was written, `.cancelled` when the user
+    /// Returns the outcome so a caller can give the user precise feedback:
+    /// `.saved` when a file was written, `.cancelled` when the user
     /// dismissed the panel, and `.failed` when rendering, encoding, or the write
     /// itself failed. The result is discardable for callers that do not care.
     @discardableResult
@@ -415,11 +415,11 @@ enum ExportManager {
             payload: payload, suggestedName: SuggestedFilename.basename(for: config))
     }
 
-    /// Saves an **already-rendered** raster `cgImage` as PNG, HEIC, or AVIF (P5): the
+    /// Saves an **already-rendered** raster `cgImage` as PNG, HEIC, or AVIF: the
     /// quick-capture path renders the styled image once and reuses it for both the
     /// clipboard copy and this file save instead of re-rendering the identical config.
     /// PDF is a vector document and must render its own page, so it is not accepted here
-    /// — callers save PDF through the `config`-based `saveToFile` above.
+    /// callers save PDF through the `config`-based `saveToFile` above.
     @discardableResult
     static func saveToFile(
         cgImage: CGImage, format: ExportFormat, suggestedName: String
@@ -436,7 +436,7 @@ enum ExportManager {
 
     /// Presents the save panel for an already-encoded payload and writes it — the
     /// shared panel/write/log dance behind every save flow (the config path above,
-    /// the social-card renderer, and the web editor), so the CS-048 logging rule
+    /// the social-card renderer, and the web editor), so the logging policy
     /// lives in exactly one place.
     @discardableResult
     static func saveToFile(
@@ -451,13 +451,13 @@ enum ExportManager {
         }
         do {
             // The destination is a user-chosen path; we log only the format, never
-            // the path itself (CS-048 privacy rule).
+            // the path itself (privacy policy).
             try payload.data.write(to: url)
             Log.export.notice("Saved image to file (\(payload.ext, privacy: .public))")
             return .saved
         } catch {
             // Log only the error domain/code — never `localizedDescription`, which
-            // can embed the (user-chosen) filename (CS-048 privacy rule).
+            // can embed the (user-chosen) filename (privacy policy).
             let nsError = error as NSError
             Log.export.error(
                 "Saving image to file failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
@@ -467,7 +467,7 @@ enum ExportManager {
     }
 
     /// Renders `baseConfig` once per preset and writes one file per preset into
-    /// `directory` — the PRO multi-size one-pass export (CS-093).
+    /// `directory` — the PRO multi-size one-pass export.
     ///
     /// This is the single-export ladder fanned out, not a new encoder: for each
     /// preset it applies that preset's presentation (`apply(to:)` writes padding +
@@ -476,8 +476,8 @@ enum ExportManager {
     /// `encodedPayload` path. So each written file is byte-for-byte what a single
     /// export with THAT preset selected (at its pinned scale) produces. Files are
     /// named `vitrine-<preset id>.<ext>`. Returns how many were written and how many
-    /// presets failed, so the caller can give precise feedback (CS-038). Only the
-    /// format/counts are logged, never the chosen folder path (CS-048).
+    /// presets failed, so the caller can give precise feedback. Only the
+    /// format/counts are logged, never the chosen folder path.
     @discardableResult
     static func exportPresetSizes(
         _ baseConfig: SnapshotConfig, presets: [ExportPreset], to directory: URL,
@@ -491,7 +491,7 @@ enum ExportManager {
         // requires it), then its CPU-bound encode + disk write run off-main as a child
         // task while the main actor immediately moves on to render the next preset. So
         // a batch of large presets at 2–3× scale neither beachballs the app nor waits
-        // for one preset's encode before starting the next (C3). Each writes a distinct
+        // for one preset's encode before starting the next. Each writes a distinct
         // `vitrine-<preset id>` file, so the concurrent writes never collide.
         var completed = 0
         await withTaskGroup(of: Bool.self) { group in
@@ -540,7 +540,7 @@ enum ExportManager {
 
     /// Encodes (for raster formats) and writes one multi-size preset off the main
     /// actor — the CPU-bound ImageIO encode plus the disk write for a single preset,
-    /// hopped off main via `@concurrent` so the UI stays live during a batch (C3). The
+    /// hopped off main via `@concurrent` so the UI stays live during a batch. The
     /// render itself stays on main; only `Sendable` finished pixels (`CGImage`) or
     /// bytes (`Data`) cross the hop. Returns whether the image file was written; a
     /// sidecar failure is best-effort and never fails the image.
@@ -574,7 +574,7 @@ enum ExportManager {
     }
 
     /// The carousel slide frame: 1080×1350 (4:5), the portrait card LinkedIn and
-    /// Instagram carousels share (feature #15).
+    /// Instagram carousels share.
     static let carouselSlideSize = CGSize(width: 1080, height: 1350)
 
     /// The minimum font size a carousel slide renders at. The editor's default (~13 pt)
@@ -583,14 +583,14 @@ enum ExportManager {
     static let carouselMinimumFontSize: Double = 22
 
     /// Renders one slide per page into `directory` as `carousel-01.png` … — the
-    /// carousel export (feature #15). Each slide is `baseConfig` with only its `code`
+    /// carousel export. Each slide is `baseConfig` with only its `code`
     /// replaced by that page's lines, rendered at the fixed 4:5 slide frame through
     /// the standard pipeline; content marks that belong to the whole document
     /// (annotations, highlighted/redacted lines) are cleared so a page never carries a
     /// mark positioned against different lines. Pipelined like `exportPresetSizes`:
     /// render on the main actor, PNG-encode + write off it, results drain in
     /// completion order with count-based progress. Two-digit numbering keeps the
-    /// files sorted everywhere; only counts are logged (CS-048).
+    /// files sorted everywhere; only counts are logged.
     @discardableResult
     static func exportCarousel(
         _ baseConfig: SnapshotConfig, pages: [String], to directory: URL,
@@ -630,7 +630,7 @@ enum ExportManager {
     }
 
     /// The outcome of a save-to-file attempt, so callers can tell apart a written
-    /// file, a user cancel, and a genuine failure for feedback (CS-038).
+    /// file, a user cancel, and a genuine failure for feedback.
     enum SaveOutcome: Equatable {
         case saved
         case cancelled

@@ -7,10 +7,10 @@ import Testing
 
 @testable import Vitrine
 
-// CS-052 — coverage matrix for the advertised languages and built-in themes,
+// — coverage matrix for the advertised languages and built-in themes,
 // plus the opt-in font-ligature toggle and ligature-font availability.
 //
-// The acceptance bullets this file pins:
+// The documented behaviors this file pins:
 //   • every advertised language highlights without falling back to plain text;
 //   • every built-in theme renders real syntax colors over a *derived* (not
 //     arbitrary) background;
@@ -43,7 +43,7 @@ private enum Fixture {
         .scala: "object Main {\n  def main(args: Array[String]): Unit = { val x = 42 }\n}",
         .dart: "void main() {\n  var x = 42;\n  print('hi $x');\n}",
         .elixir: "defmodule Greeter do\n  def hi(name), do: \"Hello #{name}\"\nend",
-        .haskell: "main :: IO ()\nmain = do\n  let x = 42\n  putStrLn \"hi\"",
+        .haskell: "main :: IO\nmain = do\n  let x = 42\n  putStrLn \"hi\"",
         .lua: "local x = 42\nfunction greet(name)\n  return \"hi \" .. name\nend",
         .r: "greet <- function(name) {\n  x <- 42\n  paste(\"hi\", name)\n}",
         .perl: "my $x = 42;\nsub greet {\n  return \"hi \" . shift;\n}",
@@ -109,7 +109,7 @@ struct LanguageCoverageTests {
     /// Every advertised language (everything except the intentional `plaintext`
     /// escape hatch) must produce multi-color highlighting. One distinct color or
     /// fewer means the engine fell back to plain text — the exact regression this
-    /// guards (CS-052 acceptance).
+    /// guards .
     @Test(arguments: Language.allCases.filter { $0 != .plaintext && $0 != .terminal })
     func languageHighlightsWithoutFallingBackToPlaintext(_ language: Language) {
         let colors = highlight(language, theme: .oneDark).distinctForegroundColors()
@@ -189,7 +189,7 @@ struct ThemeCoverageTests {
 
     /// A light theme's card is brighter than a dark theme's, proving the
     /// background really comes from each theme's own palette rather than a shared
-    /// constant (CS-052: "a derived, not arbitrary, background").
+    /// constant, which keeps the background derived rather than arbitrary.
     @Test func lightThemeBackgroundIsBrighterThanDarkThemeBackground() {
         func luminance(_ theme: Theme) -> Double {
             let c = RGBAColor(HighlightManager.shared.backgroundColor(for: theme))
@@ -231,7 +231,7 @@ struct ThemeCoverageTests {
 @Suite("Language × theme render matrix")
 struct LanguageThemeMatrixTests {
     /// The full cross product of advertised languages and built-in themes: every
-    /// combination renders a real, non-empty image. This is the headline CS-052
+    /// combination renders a real, non-empty image. This is the headline
     /// deliverable — breadth that is actually exercised end to end (every language
     /// drawn on every theme), not merely declared.
     ///
@@ -328,7 +328,7 @@ struct FontLigatureTests {
     }
 
     @Test func capabilitySetCoversTheSpecFonts() {
-        // The three ligature fonts the ticket names must all be recognized.
+        // The three ligature fonts the supported set contains must all be recognized.
         #expect(CodeFont.hasLigatures("Fira Code"))
         #expect(CodeFont.hasLigatures("JetBrains Mono"))
         #expect(CodeFont.hasLigatures("Cascadia Code"))
@@ -340,7 +340,7 @@ struct FontLigatureTests {
     }
 
     /// Turning ligatures on for a ligature-capable font swaps the glyphs that get
-    /// drawn. This is the "measurably changes glyph rendering" acceptance, checked
+    /// drawn. This is the "measurably changes glyph rendering" contract, checked
     /// at the font layer by shaping the string and comparing the resulting glyph
     /// ids — *not* the width: a monospace ligature font keeps each ligature the
     /// width of the glyphs it replaces, so width is identical on purpose and only
@@ -361,7 +361,7 @@ struct FontLigatureTests {
 
     /// Toggling ligatures on must change the *rendered pixels* end to end, not just
     /// the font object: the same code exported with ligatures off vs on differs
-    /// beyond the golden-image pixel tolerance (CS-052 acceptance), while the
+    /// beyond the golden-image pixel tolerance , while the
     /// canvas size is unchanged because a ligature is a glyph swap, not a reflow.
     @Test func ligaturesChangeRenderedPixelsButNotImageSize() throws {
         var off = SnapshotConfig()
@@ -403,12 +403,12 @@ struct FontLigatureTests {
     }
 }
 
-// MARK: - Ligature-font availability (extends CS-006)
+// MARK: - Ligature-font availability (extends )
 
 @Suite("Ligature font availability")
 struct LigatureFontAvailabilityTests {
-    /// The bundled ligature fonts the ticket names are registered and usable. This
-    /// extends the CS-006 bundled-font checks specifically for the ligature path:
+    /// The bundled ligature fonts the supported set contains are registered and usable. This
+    /// extends the bundled-font checks specifically for the ligature path:
     /// the ligature toggle is meaningless if the fonts are not present.
     @Test(arguments: ["Fira Code", "JetBrains Mono"])
     func bundledLigatureFontIsRegistered(_ family: String) {

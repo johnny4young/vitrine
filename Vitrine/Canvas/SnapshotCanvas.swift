@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The SwiftUI view that becomes the exported PNG (CS-005). WYSIWYG: what you see
+/// The SwiftUI view that becomes the exported PNG. WYSIWYG: what you see
 /// here is exactly what `ImageRenderer` exports.
 ///
 /// The card hugs its content (like ray.so) with a subtle border and an offset
@@ -13,11 +13,11 @@ struct SnapshotCanvas: View {
     /// When set, the canvas is rendered at this exact logical size instead of
     /// hugging its content. Fixed-size destination presets (e.g. OpenGraph
     /// 1200×630) use this so the exported image has guaranteed dimensions; the
-    /// card is centered and the background fills the frame (CS-020).
+    /// card is centered and the background fills the frame.
     var fixedSize: CGSize?
 
     var body: some View {
-        // The optional brand watermark composites onto the finished canvas (CS-092).
+        // The optional brand watermark composites onto the finished canvas.
         // `WatermarkOverlay` is a no-op when `config.watermark` is nil — it returns the
         // content unchanged — so the default render and every golden stay byte-for-byte
         // identical; only an explicitly resolved watermark adds the corner mark.
@@ -26,7 +26,7 @@ struct SnapshotCanvas: View {
 
     /// The canvas itself, before any watermark. The default (no annotations) path is
     /// left byte-for-byte unchanged so every golden render is unaffected; annotations
-    /// only restructure the canvas when the user has actually added one (CS-083).
+    /// only restructure the canvas when the user has actually added one.
     @ViewBuilder
     private var canvasContent: some View {
         if config.annotations.isEmpty {
@@ -37,7 +37,7 @@ struct SnapshotCanvas: View {
     }
 
     /// The original canvas: background filling the frame with the code card centered
-    /// (fixed-size) or hugging its content (CS-005/CS-020).
+    /// (fixed-size) or hugging its content.
     @ViewBuilder
     private var plainCanvas: some View {
         if let fixedSize {
@@ -106,7 +106,7 @@ struct SnapshotCanvas: View {
         }
     }
 
-    /// The canvas with annotations composited on top (CS-083): the sharp canvas, a
+    /// The canvas with annotations composited on top: the sharp canvas, a
     /// blurred copy of it masked to the blur boxes (so each redaction box shows the
     /// content beneath it softened), and the arrow/text marks last. The blurred copy
     /// is the same view value, so it lays out identically and aligns exactly.
@@ -176,10 +176,10 @@ struct SnapshotCanvas: View {
         config.annotations.contains { $0.kind == .spotlight }
     }
 
-    /// The scrim a spotlight leaves over everything else (feature #7).
+    /// The scrim a spotlight leaves over everything else.
     private static let spotlightDimOpacity: Double = 0.55
 
-    /// Darkens the whole canvas except the spotlight regions (feature #7): one
+    /// Darkens the whole canvas except the spotlight regions: one
     /// even-odd-filled path — the full canvas rect minus every spotlight's rounded
     /// rect — so multiple spotlights punch multiple holes in a single scrim rather
     /// than stacking scrims. Sits above the content and any blur, below the marks,
@@ -217,7 +217,7 @@ struct SnapshotCanvas: View {
 
     /// The per-line vertical gap, shared by the single-`Text` path
     /// (`.lineSpacing`) and the row-based path (`VStack` spacing) so toggling line
-    /// numbers or a highlight never reflows the code (CS-021).
+    /// numbers or a highlight never reflows the code.
     private static let codeLineSpacing: CGFloat = 4
 
     private var codeCard: some View {
@@ -228,8 +228,8 @@ struct SnapshotCanvas: View {
                     titleColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
             }
             // Optional metadata header (filename/title/caption/language badge),
-            // shown only when configured so the default render is unchanged
-            // (CS-022). A hairline divider separates it from the code so the
+            // shown only when configured so the default render is unchanged.
+            // A hairline divider separates it from the code so the
             // header frames the body without crowding it.
             if !config.metadata.isEmpty {
                 SnapshotHeader(
@@ -275,7 +275,7 @@ struct SnapshotCanvas: View {
     }
 
     /// The code itself: a single `Text` for the default look, or a row-by-row layout
-    /// when a line-number gutter or a selected-line highlight is enabled (CS-021).
+    /// when a line-number gutter or a selected-line highlight is enabled.
     /// Keeping the plain path untouched means the signature render is unchanged
     /// unless the user opts into the new chrome.
     @ViewBuilder
@@ -318,9 +318,8 @@ struct SnapshotCanvas: View {
 
     /// The resolved code font (the named font, or a monospaced system fallback),
     /// shared by highlighting and the line-number gutter so the gutter column is
-    /// measured from the exact font the code is drawn in (CS-021). The opt-in
-    /// ligature setting is baked into the font here so the export and editor agree
-    /// (CS-052).
+    /// measured from the exact font the code is drawn in. The opt-in
+    /// ligature setting is baked into the font here so the export and editor agree.
     private var codeFont: NSFont {
         CodeFont.resolved(
             family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)

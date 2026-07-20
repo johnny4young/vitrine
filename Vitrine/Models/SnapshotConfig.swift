@@ -10,7 +10,7 @@ struct SnapshotConfig: Equatable {
     var fontSize: Double = 14
 
     /// Render programming ligatures (e.g. `->`, `=>`, `!=`) for ligature-capable
-    /// fonts such as Fira Code or JetBrains Mono (CS-052). Off by default so the
+    /// fonts such as Fira Code or JetBrains Mono. Off by default so the
     /// signature look shows discrete glyphs; flipping it on is purely a glyph-level
     /// change and never reflows the code.
     var fontLigatures: Bool = false
@@ -30,12 +30,12 @@ struct SnapshotConfig: Equatable {
     var cornerRadius: Double = 8
     var shadowRadius: Double = 20
 
-    /// Draw a line-number gutter beside the code, in both preview and export
-    /// (CS-021). Off by default so the signature look is unchanged.
+    /// Draw a line-number gutter beside the code, in both preview and export.
+    /// Off by default so the signature look is unchanged.
     var showLineNumbers: Bool = false
 
-    /// Selected 1-based, inclusive line ranges to highlight, e.g. `[3...3, 7...9]`
-    /// (CS-021). Empty by default (no highlight). Kept normalized (sorted, merged)
+    /// Selected 1-based, inclusive line ranges to highlight, e.g. `[3...3, 7...9]`.
+    /// Empty by default (no highlight). Kept normalized (sorted, merged)
     /// by the settings control via `LineHighlight`, but the renderer tolerates any
     /// ordering.
     var highlightedLineRanges: [ClosedRange<Int>] = []
@@ -47,7 +47,7 @@ struct SnapshotConfig: Equatable {
     var redactedLineRanges: [ClosedRange<Int>] = []
 
     /// Dim the non-highlighted lines so the highlighted ones stand out — the "focus"
-    /// mode (CS-021). Off by default, and has no effect without a highlight, so the
+    /// mode. Off by default, and has no effect without a highlight, so the
     /// default render is unchanged.
     var focusHighlightedLines: Bool = false
 
@@ -57,18 +57,18 @@ struct SnapshotConfig: Equatable {
     var diffDecorations: Bool = false
 
     /// Freeform marks drawn over the snapshot — arrows, text callouts, and
-    /// blur/redaction boxes (CS-083). Empty by default, so the default render and
+    /// blur/redaction boxes. Empty by default, so the default render and
     /// every golden are unchanged until the user adds one. Stored in normalized
     /// canvas coordinates so a mark maps identically across every canvas size.
     var annotations: [Annotation] = []
 
-    /// Optional header context — filename, title, caption, and a language badge
-    /// (CS-022). Empty by default, so the header is omitted and the signature look
+    /// Optional header context — filename, title, caption, and a language badge.
+    /// Empty by default, so the header is omitted and the signature look
     /// is unchanged until the user adds context.
     var metadata = SnapshotMetadata()
 
     /// An optional brand watermark composited onto the exported image — the PRO
-    /// Brand Kit (CS-092). `nil` by default, so the default render and every golden
+    /// Brand Kit. `nil` by default, so the default render and every golden
     /// are byte-for-byte unchanged; the canvas only adds the overlay when a
     /// watermark is present. It is *derived* presentation, never part of the saved
     /// style: it is resolved from the app-global brand kit at the export/preview
@@ -95,7 +95,7 @@ struct SnapshotConfig: Equatable {
     var imageFrameAppearance: FrameAppearance = .auto
 
     /// An explicit width (columns) to reconstruct `.terminal` output at, or `nil` to
-    /// infer it from the captured stream (CS-070). Set only by `vitrine render
+    /// infer it from the captured stream. Set only by `vitrine render
     /// --terminal-width` (which `vgrab -w` passes), so a known-width capture wraps
     /// exactly as it did live. Invocation-only: it is not a persisted document style and
     /// stays `nil` on the default path, so non-terminal renders and the goldens are
@@ -115,7 +115,7 @@ struct SnapshotConfig: Equatable {
     /// two can never drift if "off" stops meaning `nil`.
     var wrapsLongLines: Bool { wrapColumns != nil }
 
-    /// The shadow radius to draw, honoring the `showShadow` toggle (CS-006).
+    /// The shadow radius to draw, honoring the `showShadow` toggle.
     var effectiveShadowRadius: Double { showShadow ? shadowRadius : 0 }
 
     /// Whether the canvas renders a beautified image (the "beautify any image" path)
@@ -129,7 +129,7 @@ struct SnapshotConfig: Equatable {
 
     /// Whether the row-by-row code layout (gutter, highlight bands, and/or diff
     /// bands) is active. When none of these are on, the canvas keeps drawing the code
-    /// as a single `Text`, so the default render is byte-for-byte unchanged (CS-021).
+    /// as a single `Text`, so the default render is byte-for-byte unchanged.
     var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
             || diffDecorations
@@ -185,7 +185,7 @@ struct SnapshotConfig: Equatable {
 }
 
 /// A brand watermark composited onto an exported snapshot — the render-ready form
-/// of the PRO Brand Kit (CS-092).
+/// of the PRO Brand Kit.
 ///
 /// It is deliberately **self-contained**: it carries the resolved logo bytes plus
 /// an optional predecoded image (not a store reference) and a plain tint, so
@@ -210,7 +210,7 @@ struct Watermark: Equatable {
 
     /// A cheap, stable identity for the logo (its content-addressed file name) used by
     /// `==` so a SwiftUI diff of `SnapshotConfig` doesn't byte-compare the whole logo `Data`
-    /// on every render (audit P1-Perf-4). `nil` for a text-only or hand-built mark, where
+    /// on every render. `nil` for a text-only or hand-built mark, where
     /// `==` falls back to the bytes.
     var logoIdentity: String?
 
@@ -225,8 +225,8 @@ struct Watermark: Equatable {
     /// bottom-right region, so switching to Free starts where the default corner sat.
     var freePosition: CGPoint = CGPoint(x: 0.84, y: 0.9)
 
-    /// The pregenerated QR chip for the kit's link, or `nil` for no chip (feature
-    /// #28). Carried as a finished bitmap so the render path never runs Core Image.
+    /// The pregenerated QR chip for the kit's link, or `nil` for no chip. It is carried
+    /// as a finished bitmap so the render path never runs Core Image.
     var qrImage: NSImage?
 
     /// A cheap, stable identity for the QR (the encoded link) used by `==`, mirroring
@@ -262,7 +262,7 @@ struct Watermark: Equatable {
     var hasContent: Bool { logoImageData != nil || !text.isEmpty || qrImage != nil }
 
     /// Equality compares the logo by its cheap content identity rather than its bytes, so a
-    /// SwiftUI diff of `SnapshotConfig` stays O(1) on every render (audit P1-Perf-4). When
+    /// SwiftUI diff of `SnapshotConfig` stays O(1) on every render. When
     /// neither side has an identity (a text-only or hand-built mark) it falls back to the
     /// bytes, so correctness is unchanged.
     static func == (lhs: Watermark, rhs: Watermark) -> Bool {
@@ -284,7 +284,7 @@ struct Watermark: Equatable {
 extension SnapshotConfig {
     /// Applies the shared CLI/Shortcuts presentation precedence on top of this base
     /// configuration, so every automation surface frames an image the same way the
-    /// GUI does (CS-020/CS-034). This is the single resolver behind both
+    /// GUI does. This is the single resolver behind both
     /// `CLIOptions.makeConfig` and `SnapshotRenderRequest.makeConfig`, which used to
     /// carry byte-for-byte identical copies of these steps.
     ///
@@ -296,8 +296,8 @@ extension SnapshotConfig {
     ///   4. The transparent-background override (wins over a preset's background).
     ///
     /// `code` and `language` are deliberately left untouched: they describe *what* is
-    /// rendered, not *how* it is styled, and a preset is presentation/output only
-    /// (CS-020). The caller sets them after styling.
+    /// rendered, not *how* it is styled, and a preset is presentation/output only.
+    /// The caller sets them after styling.
     func styled(presetID: String?, themeID: String?, transparent: Bool) -> SnapshotConfig {
         var config = self
         // 2. Preset guidance (padding/background) layered onto the base.
@@ -306,12 +306,12 @@ extension SnapshotConfig {
         }
         // 3. Theme override — resolved through the custom-theme store so a custom-theme
         // id works and an unknown/built-in id falls back to the built-in catalog,
-        // matching the GUI (CS-031).
+        // matching the GUI.
         if let themeID {
             config.theme = CustomThemeStore.shared.theme(withID: themeID)
         }
         // 4. Transparency is the last word on the background, layering cleanly onto any
-        // preset (the caller asked for real alpha regardless, CS-024).
+        // preset (the caller asked for real alpha regardless).
         if transparent {
             config.background = .transparent
         }

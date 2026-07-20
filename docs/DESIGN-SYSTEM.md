@@ -1,4 +1,4 @@
-# Vitrine — Visual Design System (CS-036)
+# Vitrine — Visual Design System
 
 > Vitrine should feel like a polished **display case**, not a generic settings app. The
 > app chrome and the exported images share one recognizable identity. This document is

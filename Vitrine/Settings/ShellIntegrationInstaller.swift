@@ -3,7 +3,7 @@ import Foundation
 
 /// Adds the `vgrab` shell helper to the user's shell startup file
 /// (the one-click counterpart of pasting `eval "$(vitrine shell-init zsh)"` by
-/// hand), surfaced as a Settings ▸ General row beside the CLI installer (CS-033).
+/// hand), surfaced as a Settings ▸ General row beside the CLI installer.
 ///
 /// The app is sandboxed, so it cannot write `~/.zshrc` on its own: the user
 /// picks their startup file through the open panel (the powerbox grants

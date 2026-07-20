@@ -2,8 +2,8 @@
 import CryptoKit
 import Foundation
 
-// Generates the Ed25519 keypair for the direct-download PRO license signing (CS-090,
-// Architecture B). Run once, then follow docs/ACTIVATION.md:
+// Generates the Ed25519 keypair for the direct-download PRO license signing (
+// embedded-key activation model). Run once, then follow docs/ACTIVATION.md:
 //
 //   swift scripts/generate-license-keypair.swift
 //

@@ -9,7 +9,7 @@ struct PrivacyManifestTests {
     @Test func declaresNoTrackingAndOnlyUserDefaults() throws {
         let url = try #require(
             Bundle.main.url(forResource: "PrivacyInfo", withExtension: "xcprivacy"),
-            "PrivacyInfo.xcprivacy must be bundled with the app (CS-011)")
+            "PrivacyInfo.xcprivacy must be bundled with the app")
         let data = try Data(contentsOf: url)
         let plist = try #require(
             try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
@@ -22,11 +22,11 @@ struct PrivacyManifestTests {
         #expect(categories == ["NSPrivacyAccessedAPICategoryUserDefaults"])
     }
 
-    /// The manifest must stay minimal even though Product Phase 2 URL capture exists in
-    /// the codebase (CS-043/CS-045): loading a user-requested page in a local
+    /// The manifest must stay minimal even though web capture URL capture exists in
+    /// the codebase: loading a user-requested page in a local
     /// `WKWebView` and rasterizing it on-device introduces no required-reason API beyond
     /// UserDefaults and collects no data. This asserts the "updated only if new
-    /// required-reason APIs or data collection appear" acceptance — the manifest still
+    /// required-reason APIs or data collection appear" contract — the manifest still
     /// declares no tracking, no tracking domains, and no collected data.
     @Test func urlCaptureAddsNoTrackingOrCollectionToTheManifest() throws {
         let url = try #require(
@@ -48,19 +48,19 @@ struct PrivacyManifestTests {
     }
 }
 
-/// CS-045 — web snapshot privacy and permission UX.
+/// web snapshot privacy and permission UX.
 ///
-/// These suites prove the acceptance criteria that are verifiable headlessly:
+/// These suites prove the documented contract that are verifiable headlessly:
 ///
-/// 1. The Phase 1 promise ("code never leaves the Mac") still appears in the user-facing
+/// 1. The local-rendering promise ("code never leaves the Mac") still appears in the user-facing
 ///    copy and docs.
-/// 2. The Product Phase 2 copy says URL capture loads the requested webpage **locally**
+/// 2. The web capture copy says URL capture loads the requested webpage **locally**
 ///    in WebKit, with no remote screenshot service.
 /// 3. The App Store privacy posture (no tracking, no collected data, no analytics) is
 ///    asserted both in the manifest and across the shipping web-rendering sources.
 /// 4. The first-use disclosure view reuses the single, reviewable copy from
 ///    `WebSnapshotConfig.firstUseDisclosure`, and reflects the network-capability gate.
-@Suite("Web snapshot privacy and permission UX · CS-045")
+@Suite("Web snapshot privacy and permission UX")
 struct WebSnapshotPrivacyUXTests {
 
     // MARK: - Repository anchoring
@@ -94,14 +94,14 @@ struct WebSnapshotPrivacyUXTests {
         let source = try Self.text("Vitrine", "WebRendering", "WebPrivacyDisclosureView.swift")
         #expect(
             source.contains("WebSnapshotConfig.firstUseDisclosure"),
-            "WebPrivacyDisclosureView must source its copy from the single firstUseDisclosure (CS-045)."
+            "WebPrivacyDisclosureView must source its copy from the single firstUseDisclosure."
         )
-        // It must restate the Phase 1 promise the first time the network is ever used.
+        // It must restate the local-rendering promise the first time the network is ever used.
         #expect(source.localizedCaseInsensitiveContains("never leaves your Mac"))
     }
 
     /// The disclosure view defaults its enabled state to the real network-capability
-    /// gate, so a Phase 1 build (no network entitlement) shows the action disabled and a
+    /// gate, so a network-free build (no network entitlement) shows the action disabled and a
     /// capable build shows it enabled — the UI never implies a capability the build lacks.
     ///
     /// This asserts the *wiring* as a value, not as source text: a default-constructed
@@ -149,9 +149,9 @@ struct WebSnapshotPrivacyUXTests {
         #expect(disclosure.message.localizedCaseInsensitiveContains("remote"))
     }
 
-    // MARK: - Phase 1 promise remains in the shipping copy
+    // MARK: - local-rendering promise remains in the shipping copy
 
-    @Test func infoPlistKeepsThePhase1PromiseAndNamesLocalWebKitCapture() throws {
+    @Test func infoPlistKeepsTheLocalPromiseAndNamesLocalWebKitCapture() throws {
         let url = Self.file("Vitrine", "Resources", "Info.plist")
         let data = try Data(contentsOf: url)
         let plist = try #require(
@@ -160,31 +160,32 @@ struct WebSnapshotPrivacyUXTests {
             plist["NSPasteboardUsageDescription"] as? String,
             "Info.plist must carry a clipboard usage description")
 
-        // Phase 1 promise: code never leaves the Mac.
+        // local-rendering promise: code never leaves the Mac.
         #expect(usage.localizedCaseInsensitiveContains("never leaves your Mac"))
-        // Phase 2 copy: a URL is captured by loading the webpage locally in WebKit.
+        // web capture copy: a URL is captured by loading the webpage locally in WebKit.
         #expect(usage.localizedCaseInsensitiveContains("locally in WebKit"))
     }
 
-    @Test func readmeStatesBothThePhase1PromiseAndLocalURLCapture() throws {
+    @Test func readmeStatesBothTheLocalPromiseAndLocalURLCapture() throws {
         let readme = try Self.text("README.md")
-        // Phase 1 promise.
+        // local-rendering promise.
         #expect(readme.localizedCaseInsensitiveContains("never leaves your Mac"))
-        // Phase 2: the requested webpage loads locally in WebKit, with no remote service.
+        // web capture: the requested webpage loads locally in WebKit, with no remote service.
         #expect(readme.localizedCaseInsensitiveContains("locally in WebKit"))
         #expect(readme.localizedCaseInsensitiveContains("no remote screenshot service"))
         // No analytics/telemetry is promised.
         #expect(readme.localizedCaseInsensitiveContains("no telemetry"))
     }
 
-    @Test func projectDocStatesBothPhasesAndAppStorePrivacyLabels() throws {
+    @Test func projectDocStatesTheLocalAndAppStorePrivacyPosture() throws {
         let project = try Self.text("docs", "PROJECT.md")
-        // Phase 1 promise + Phase 2 local-WebKit posture.
-        #expect(project.localizedCaseInsensitiveContains("never leaves your Mac"))
-        #expect(project.localizedCaseInsensitiveContains("locally in WebKit"))
-        #expect(project.localizedCaseInsensitiveContains("no remote screenshot service"))
+        let prose = project.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        // local-rendering promise + web capture local-WebKit posture.
+        #expect(prose.localizedCaseInsensitiveContains("never leaves the Mac"))
+        #expect(prose.localizedCaseInsensitiveContains("locally in WebKit"))
+        #expect(prose.localizedCaseInsensitiveContains("no remote screenshot service"))
         // App Store privacy labels match actual behavior: Data Not Collected.
-        #expect(project.localizedCaseInsensitiveContains("Data Not Collected"))
+        #expect(prose.localizedCaseInsensitiveContains("Data Not Collected"))
         // No analytics or telemetry is introduced by URL capture.
         #expect(project.localizedCaseInsensitiveContains("telemetry"))
         // The README anchors to this section; keep the heading stable.
@@ -193,19 +194,17 @@ struct WebSnapshotPrivacyUXTests {
 
     // MARK: - Entitlement / docs consistency
 
-    /// The app target still ships **without** the network client entitlement in Phase 1,
-    /// which is exactly what the docs and disclosure describe ("gated until the
-    /// entitlement is added"). This keeps the shipped entitlement and the documented
-    /// posture consistent — if the entitlement is ever added, this test forces the
-    /// privacy copy and App Store posture to be revisited (CS-045/CS-062).
-    @Test func entitlementsAndDocsAgreeThatPhase1HasNoNetworkAccess() throws {
+    /// The App Store target ships without the network client entitlement. This keeps
+    /// the built entitlement and documented posture consistent and turns any drift into
+    /// an explicit privacy review.
+    @Test func entitlementsAndDocsAgreeThatTheAppStoreBuildHasNoNetworkAccess() throws {
         let data = try Data(contentsOf: Self.file("Vitrine", "Resources", "Vitrine.entitlements"))
         let plist = try #require(
             try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
         #expect(
             plist[NetworkCapability.networkClientEntitlement] == nil,
-            "Phase 1 must not request the network client entitlement; docs/disclosure gate on it (CS-045)."
+            "The App Store build must not request the network client entitlement."
         )
         #expect(plist["com.apple.security.app-sandbox"] as? Bool == true)
 
@@ -217,9 +216,9 @@ struct WebSnapshotPrivacyUXTests {
     // MARK: - No analytics or telemetry introduced by URL capture
 
     /// URL capture must introduce no analytics or telemetry. Scan the **code** of the
-    /// web-rendering sources (the entire Phase 2 surface) for analytics/telemetry SDK
+    /// web-rendering sources (the entire web-rendering surface) for analytics/telemetry SDK
     /// integrations — an `import` of such a module, or a reference to one of its symbols
-    /// — and fail on any. This is the source-level counterpart to the manifest's "no
+    /// and fail on any. This is the source-level counterpart to the manifest's "no
     /// collected data" declaration.
     ///
     /// The scan strips line comments before matching, so privacy prose that *promises*
@@ -270,7 +269,7 @@ struct WebSnapshotPrivacyUXTests {
         }
         #expect(
             offenders.isEmpty,
-            "URL capture must add no analytics or telemetry (CS-045). Found: \(offenders.joined(separator: ", "))"
+            "URL capture must add no analytics or telemetry. Found: \(offenders.joined(separator: ", "))"
         )
     }
 
@@ -286,7 +285,7 @@ struct WebSnapshotPrivacyUXTests {
     }
 }
 
-/// CS-045 — the disclosure view's runtime contract, exercised as values rather than
+/// the disclosure view's runtime contract, exercised as values rather than
 /// scanned as source text.
 ///
 /// The view's user-facing promise is twofold: confirming proceeds with the capture,
@@ -297,7 +296,7 @@ struct WebSnapshotPrivacyUXTests {
 /// swapped or collapsed onto one. This is the behavioral counterpart to the
 /// source-level reuse and gate checks in `WebSnapshotPrivacyUXTests`; it never
 /// renders `body`, so it stays clear of CoreText under the parallel runner.
-@Suite("Web privacy disclosure action wiring · CS-045")
+@Suite("Web privacy disclosure action wiring")
 struct WebPrivacyDisclosureActionTests {
     /// A reference box that records how many times each disclosure action fired, so a
     /// stored escaping closure can report back into the test.

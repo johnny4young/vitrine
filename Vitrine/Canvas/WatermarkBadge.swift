@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Composites the PRO Brand Kit watermark onto a snapshot canvas (CS-092).
+/// Composites the PRO Brand Kit watermark onto a snapshot canvas.
 ///
 /// Applied by `SnapshotCanvas` to its finished output. When `watermark` is `nil`
 /// it returns the content **unchanged** — the exact same view tree — so the
@@ -14,7 +14,7 @@ struct WatermarkOverlay: ViewModifier {
     func body(content: Content) -> some View {
         if let watermark, watermark.hasContent {
             if watermark.placement == .footerBar {
-                // Signature footer (feature #27): a full-width attribution bar pinned
+                // Signature footer: a full-width attribution bar pinned
                 // to the bottom edge — logo + handle line left, QR chip right — instead
                 // of a floating corner chip.
                 content.overlay(alignment: .bottom) {
@@ -54,7 +54,7 @@ struct WatermarkOverlay: ViewModifier {
     private static let inset: CGFloat = 18
 }
 
-/// The brand mark drawn in a snapshot's corner (CS-092): the optional logo and the
+/// The brand mark drawn in a snapshot's corner: the optional logo and the
 /// handle/project line on a subtle scrim that keeps it legible over any background.
 ///
 /// It draws only solid colors and a system font (no materials/blurs), so it renders
@@ -106,7 +106,7 @@ struct WatermarkBadge: View {
     private static let qrSide: CGFloat = 34
 }
 
-/// The QR chip (feature #28): the pregenerated code on a white quiet-zone tile —
+/// The QR chip: the pregenerated code on a white quiet-zone tile —
 /// scanners need the light margin — drawn with **no interpolation smoothing** so the
 /// integer-scaled modules stay hard-edged and scannable at any export scale.
 struct QRChip: View {
@@ -124,7 +124,7 @@ struct QRChip: View {
     }
 }
 
-/// The signature footer bar (feature #27): a full-width, edge-to-edge attribution
+/// The signature footer bar: a full-width, edge-to-edge attribution
 /// strip — logo and handle line on the left, the QR chip on the right — on the same
 /// deterministic scrim treatment as the corner badge (solid colors, no materials).
 struct WatermarkFooterBar: View {

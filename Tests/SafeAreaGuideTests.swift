@@ -3,7 +3,7 @@ import Testing
 
 @testable import Vitrine
 
-/// Feature #20 — the editor-only safe-area guide: the crop-margin rect and the live
+/// the editor-only safe-area guide: the crop-margin rect and the live
 /// line/column budget are pure math, pinned here; the overlay never touches the export
 /// (`SnapshotCanvas` has no knowledge of it, so no render test is needed or wanted).
 @Suite("Safe-area guide")
@@ -43,7 +43,7 @@ struct SafeAreaGuideTests {
 extension SafeAreaGuideTests {
     /// The inspector toggle and the stage overlay observe the same defaults key via
     /// one shared constant; this pins the constant's value so a rename can't silently
-    /// disconnect persisted toggles (deep-review test gap).
+    /// disconnect persisted toggles.
     @Test func guideToggleStorageKeyIsStable() {
         #expect(SafeAreaGuide.storageKey == "editorShowsSafeAreaGuides")
     }

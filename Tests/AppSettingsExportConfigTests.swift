@@ -3,13 +3,13 @@ import Testing
 
 @testable import Vitrine
 
-// A1 — `AppSettings.exportConfig` resolves the Brand Kit watermark from injected
+// `AppSettings.exportConfig` resolves the Brand Kit watermark from injected
 // dependencies (the shared instances by default) rather than reaching for the app-global
 // singletons, so the export-config derivation is unit-testable. Previously it hard-wired
 // `BrandKitStore.shared`/`Entitlements.shared`, which no test could vary.
 
 @MainActor
-@Suite("AppSettings.exportConfig uses the injected Brand Kit + entitlement · A1")
+@Suite("AppSettings.exportConfig uses the injected Brand Kit and entitlement")
 struct AppSettingsExportConfigTests {
     /// An entitlement provider pinned to PRO, so the test doesn't depend on the build's
     /// real StoreKit/license state.

@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Library pane (CS-010): the reusable save-and-manage surfaces split out of the Style
-/// pane so neither grows an exaggerated height — saved **style presets** (CS-030) and
-/// user **custom themes** (CS-031). Each renders its own section(s), hosted in one Form.
+/// Library pane: the reusable save-and-manage surfaces split out of the Style
+/// pane so neither grows an exaggerated height — saved **style presets** and
+/// user **custom themes**. Each renders its own section(s), hosted in one Form.
 struct LibrarySettingsView: View {
     @Bindable var settings: AppSettings
     var presets: PresetStore
@@ -17,7 +17,7 @@ struct LibrarySettingsView: View {
     }
 }
 
-/// The save/apply/import/export controls for named style presets (CS-030).
+/// The save/apply/import/export controls for named style presets.
 ///
 /// Built-ins lead the picker and are immutable: the contextual action for a
 /// built-in is "Duplicate", never rename or delete. A user preset can be renamed
@@ -221,7 +221,7 @@ struct StylePresetsSection: View {
             if count > 0 {
                 // Count-aware and localized: the String Catalog carries singular
                 // and plural variants per locale, and the count is formatted for the
-                // user's locale (CS-047).
+                // user's locale.
                 importSuccessMessage = String(localized: "Added \(count) presets")
             }
         } catch let error as StylePresetDocument.ImportError {
@@ -232,7 +232,7 @@ struct StylePresetsSection: View {
     }
 }
 
-/// The create/apply/rename/delete/import/export controls for custom themes (CS-031).
+/// The create/apply/rename/delete/import/export controls for custom themes.
 ///
 /// A custom theme is a user-defined syntax palette (the documented schema in
 /// `ThemePalette`). New and Edit open `CustomThemeEditor`, which shows a live preview
@@ -423,7 +423,7 @@ struct CustomThemesSection: View {
         do {
             let count = try CustomThemeFileExchange.importWithOpenPanel(store: store)
             if count > 0 {
-                // Count-aware, localized, locale-formatted number (CS-047).
+                // Count-aware, localized, locale-formatted number.
                 importSuccessMessage = String(localized: "Added \(count) themes")
             }
         } catch let error as CustomThemeDocument.ImportError {

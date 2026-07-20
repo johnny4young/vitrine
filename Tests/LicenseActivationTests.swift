@@ -5,11 +5,11 @@ import Testing
 @testable import Vitrine
 
 #if VITRINE_DIRECT_DOWNLOAD
-    /// Direct-download license activation (CS-090, Architecture B): the Lemon Squeezy response
+    /// Direct-download license activation (embedded-key activation model): the Lemon Squeezy response
     /// parser, the activation service's local minting, and the end-to-end handoff from the app's
     /// activation to the `vitrine` CLI's offline check — all driven by a throwaway **development**
     /// keypair, never the network or the production key.
-    @Suite("License activation · CS-090")
+    @Suite("License activation")
     @MainActor
     struct LicenseActivationTests {
         /// A canned validator so the service is tested without the Lemon Squeezy network.

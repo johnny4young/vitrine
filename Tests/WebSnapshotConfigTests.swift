@@ -5,9 +5,9 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-044 — web viewport presets, capture modes, wait strategies, and safety caps.
+/// web viewport presets, capture modes, wait strategies, and safety caps.
 ///
-/// These suites prove the acceptance criteria the ticket asks for, as values the
+/// These suites prove the documented behavior, as values the
 /// tests drive directly without a web view:
 ///
 /// 1. **Viewport presets** — 1200×630, 1440×900, 1920×1080, a mobile size, and a
@@ -33,10 +33,10 @@ import Testing
 
 // MARK: - Viewport presets
 
-@Suite("Web viewport presets · CS-044")
+@Suite("Web viewport presets")
 struct WebViewportPresetTests {
     @Test func theFixedPresetsCoverTheRequiredSizes() {
-        // The acceptance set: OpenGraph, two desktop sizes, and a mobile size, each
+        // The contract set: OpenGraph, two desktop sizes, and a mobile size, each
         // mapping to its exact documented pixel size.
         #expect(WebSnapshotConfig.ViewportPreset.openGraph.size == CGSize(width: 1200, height: 630))
         #expect(WebSnapshotConfig.ViewportPreset.desktop.size == CGSize(width: 1440, height: 900))
@@ -106,7 +106,7 @@ struct WebViewportPresetTests {
 
 // MARK: - Capture mode
 
-@Suite("Web capture mode · CS-044")
+@Suite("Web capture mode")
 struct WebCaptureModeTests {
     @Test func bothModesAreOffered() {
         #expect(WebSnapshotConfig.CaptureMode.allCases == [.visibleViewport, .fullPage])
@@ -127,7 +127,7 @@ struct WebCaptureModeTests {
 
 // MARK: - Wait strategies
 
-@Suite("Web wait strategies · CS-044")
+@Suite("Web wait strategies")
 struct WebWaitStrategyTests {
     @Test func theThreeStrategiesAreAvailable() {
         // DOM loaded, a fixed delay, and a best-effort network-quiet settle.
@@ -174,7 +174,7 @@ struct WebWaitStrategyTests {
 
     @Test func resolvingClampsANegativeWaitToZero() {
         // A corrupt/hand-edited negative seconds can never produce a negative
-        // `Duration`: it clamps to zero (CS-050 defensive posture).
+        // `Duration`: it clamps to zero (defensive posture).
         #expect(
             WebSnapshotConfig.WaitStrategy.resolve(kind: .fixedDelay, extraWaitSeconds: -10)
                 == .fixedDelay(.zero))
@@ -195,7 +195,7 @@ struct WebWaitStrategyTests {
 
 // MARK: - Safety caps and the effective timeout
 
-@Suite("Web capture safety caps · CS-044")
+@Suite("Web capture safety caps")
 struct WebSafetyCapsTests {
     @Test func theStandardCapsBoundHeightAndTime() {
         let caps = WebSnapshotConfig.SafetyCaps.standard
@@ -269,7 +269,7 @@ struct WebSafetyCapsTests {
 
 // MARK: - Config composition and defaults
 
-@Suite("Web capture config composition · CS-044")
+@Suite("Web capture config composition")
 struct WebCaptureConfigCompositionTests {
     @Test func theDefaultConfigIsTheDeterministicSocialCardVisibleCapture() throws {
         let url = try #require(URL(string: "https://example.com"))
@@ -364,7 +364,7 @@ struct WebCaptureConfigCompositionTests {
 
 // MARK: - Persistence round-trip
 
-@Suite("Web capture settings persist and reset · CS-044")
+@Suite("Web capture settings persist and reset")
 struct WebCaptureSettingsPersistenceTests {
     @Test func theWebCaptureChoicesSurviveAReload() {
         // The user's viewport/mode/wait choices round-trip through `UserDefaults`, so
@@ -409,7 +409,7 @@ struct WebCaptureSettingsPersistenceTests {
     }
 
     @Test func aGarbagePersistedValueFallsBackToTheDocumentedDefault() {
-        // The defensive-read posture (CS-050): an unrecognized raw value resolves to
+        // The defensive-read posture: an unrecognized raw value resolves to
         // the default rather than trapping or producing an invalid setting.
         let suite = "com.johnny4young.vitrine.web-garbage-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -466,7 +466,7 @@ struct WebCaptureSettingsPersistenceTests {
     }
 
     @Test func theNewSettingsAdvanceTheSchemaWithoutLosingExistingValues() {
-        // CS-044 adds additive keys with documented defaults: a store written by the
+        // The schema adds keys with documented defaults: a store written by the
         // current build reads back at the current schema version, and the new web
         // keys do not disturb an unrelated existing value.
         let suite = "com.johnny4young.vitrine.web-schema-tests.\(UUID().uuidString)"
@@ -486,7 +486,7 @@ struct WebCaptureSettingsPersistenceTests {
 
 // MARK: - Bounded lazy-load policy
 
-@Suite("Web full-page lazy-load is bounded · CS-044")
+@Suite("Web full-page lazy-load is bounded")
 struct WebLazyLoadBoundTests {
     @Test func theLazyLoadScrollPassIsStrictlyBounded() {
         // The documented, bounded lazy-load behavior: the scroll pass performs a
@@ -510,7 +510,7 @@ struct WebLazyLoadBoundTests {
 /// and is reported skipped otherwise.
 @MainActor
 @Suite(
-    "URLSnapshotEngine full-page capture · CS-044",
+    "URLSnapshotEngine full-page capture · ",
     .enabled("requires a launchable WKWebView web process (unavailable in a sandboxed test host)") {
         await WebKitAvailability.canRenderOffscreen()
     })
@@ -542,7 +542,7 @@ struct WebFullPageCaptureRenderTests {
             captureMode: .visibleViewport, scale: 1)
         let image = try await engine.snapshot(of: config)
         // The visible-viewport mode ignores the tall content: the bitmap is exactly
-        // viewport × scale, the determinism the acceptance criteria require.
+        // viewport × scale, the determinism the documented contract require.
         #expect(image.width == 600)
         #expect(image.height == 400)
     }

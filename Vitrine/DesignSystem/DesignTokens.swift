@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Vitrine's centralized visual design tokens (CS-036).
+/// Vitrine's centralized visual design tokens.
 ///
 /// `Brand` is the single source of truth for the values that repeat across the
 /// app chrome and the exported image: spacing, corner radii, shadow recipes,

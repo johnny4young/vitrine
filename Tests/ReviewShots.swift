@@ -6,7 +6,7 @@ import Testing
 @testable import Vitrine
 
 /// Whether the review-shot generator is armed. Opt-in via `VITRINE_REVIEW_SHOTS=1`
-/// so a routine test run never renders these. Mirrors `GalleryGeneration` (CS-039).
+/// so a routine test run never renders these. Mirrors `GalleryGeneration`.
 enum ReviewShotGeneration {
     nonisolated static var isActive: Bool {
         guard let value = ProcessInfo.processInfo.environment["VITRINE_REVIEW_SHOTS"] else {

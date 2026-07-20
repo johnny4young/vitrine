@@ -3,7 +3,7 @@ import CryptoKit
 import ImageIO
 import UniformTypeIdentifiers
 
-/// Stores and resolves image-background files inside the app container (CS-051).
+/// Stores and resolves image-background files inside the app container.
 ///
 /// Vitrine never uploads a background and never asks for a broad file
 /// entitlement. The user picks an image through an `NSOpenPanel` (covered by the
@@ -76,7 +76,7 @@ struct BackgroundImageStore {
     }
 
     /// Copies the user-selected image at `sourceURL` into the container and
-    /// returns a stable reference to the copy (CS-051).
+    /// returns a stable reference to the copy.
     ///
     /// `sourceURL` is a user-chosen file: access is bracketed by
     /// `startAccessingSecurityScopedResource()` so the read works under the
@@ -116,7 +116,7 @@ struct BackgroundImageStore {
     }
 
     /// Downloads the image at a remote `url` and imports it into the container,
-    /// returning a stable reference to the copy (CS-082, Phase 4 polish).
+    /// returning a stable reference to the copy (image-input polish).
     ///
     /// This is the network sibling of `importImage(from:)`: the user types an image
     /// URL into the background editor and Vitrine fetches it **directly from that
@@ -273,7 +273,7 @@ struct BackgroundImageStore {
 
     /// Resolves a reference to the on-disk image URL, or `nil` when the file is
     /// missing or the name is unsafe — the signal callers use to fall back to a
-    /// safe default background (CS-051 graceful degradation).
+    /// safe default background (graceful degradation).
     func url(for reference: ImageReference) -> URL? {
         // Reject any name that is not a plain, visible file component — path separators
         // (`/` and `\`) and any dot-prefixed name (`.`, `..`, hidden files) — so a
@@ -294,8 +294,8 @@ struct BackgroundImageStore {
     /// every store instance and both the background and foreground directories. This
     /// is what keeps a photo background/foreground from being re-read and re-decoded
     /// on every SwiftUI `body` pass (a keystroke or a slider tick re-runs the canvas
-    /// body); it mirrors the decoded-thumbnail cache `RecentsStore` already has
-    /// (audit Perf-1). Touched only from the main actor, like every `image(for:)`
+    /// body); it mirrors the decoded-thumbnail cache `RecentsStore` already has.
+    /// Touched only from the main actor, like every `image(for:)`
     /// caller (the canvas/editor views).
     /// The cache's memory ceiling, in bytes of decoded bitmap.
     ///

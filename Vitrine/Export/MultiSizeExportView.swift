@@ -1,12 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// The PRO multi-size one-pass export sheet (CS-093): multi-select the platform
+/// The PRO multi-size one-pass export sheet: multi-select the platform
 /// presets, choose a folder, and write one correctly-sized file per preset in a
 /// single action.
 ///
 /// This is the code/card export ladder fanned out over `ExportPreset` sizes (a
-/// publishing convenience) — distinct from CS-044's free multi-_viewport_ web
+/// publishing convenience) — distinct from 's free multi-_viewport_ web
 /// capture. Each file equals what a single export with that preset selected would
 /// produce; the rendering itself lives in `ExportManager.exportPresetSizes`.
 struct MultiSizeExportView: View {
@@ -31,7 +31,7 @@ struct MultiSizeExportView: View {
 
     /// Live "completed/total" while the (off-main) batch runs; `nil` when idle. Drives
     /// the inline progress indicator so a multi-preset export at 2–3× scale shows work
-    /// instead of a frozen sheet (C3).
+    /// instead of a frozen sheet.
     @State private var progress: (completed: Int, total: Int)?
 
     /// Whether an export is in flight — disables the buttons so the batch can't be
@@ -125,7 +125,7 @@ struct MultiSizeExportView: View {
         let total = presets.count
         progress = (0, total)
         // Render each preset on the main actor, but encode+write off-main with a yield
-        // between presets (C3), so the sheet stays responsive and shows live progress.
+        // between presets, so the sheet stays responsive and shows live progress.
         Task {
             let result = await ExportManager.exportPresetSizes(
                 baseConfig, presets: presets, to: directory, format: format, profile: profile,
@@ -134,7 +134,7 @@ struct MultiSizeExportView: View {
             progress = nil
             if result.failed == 0 {
                 // Confirm and reveal the folder so the export doesn't finish silently — the
-                // feedback convention every other export follows (audit P1-UX-1).
+                // feedback convention every other export follows.
                 CaptureHUDController.shared.present(
                     Notifier.confirmation(String(localized: "Images exported")))
                 NSWorkspace.shared.activateFileViewerSelecting([directory])

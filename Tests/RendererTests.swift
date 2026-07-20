@@ -3,13 +3,13 @@ import Testing
 
 @testable import Vitrine
 
-/// CS-040 — the renderer abstraction for phased inputs.
+/// the renderer abstraction for typed inputs.
 ///
-/// These suites prove the three properties the ticket asks for:
+/// These suites prove three routing and isolation properties:
 ///
 /// 1. **Routing** — a `RenderCoordinator` picks the first renderer that accepts an
-///    input, and `CodeRenderer` handles the Phase 1 code case only.
-/// 2. **Phase 2 rendering** — HTML routes to the local `HTMLRenderer` and URL to
+///    input, and `CodeRenderer` handles the local rendering code case only.
+/// 2. **web rendering** — HTML routes to the local `HTMLRenderer` and URL to
 ///    the `URLRenderer`; URL capture is gated on the network entitlement, and a
 ///    gated capture throws a *typed* error, never a blank image.
 /// 3. **No-network code path** — code rendering produces a real asset without any
@@ -17,7 +17,7 @@ import Testing
 
 // MARK: - Input classification
 
-@Suite("CaptureInput · CS-040")
+@Suite("CaptureInput")
 struct CaptureInputTests {
     @Test func diagnosticKindIsAStableNonPIILabel() throws {
         // The label names the *kind*, never the user's content.
@@ -32,7 +32,7 @@ struct CaptureInputTests {
 // MARK: - Routing
 
 @MainActor
-@Suite("RenderCoordinator routing · CS-040")
+@Suite("RenderCoordinator routing")
 struct RenderCoordinatorRoutingTests {
     @Test func codeRendererAcceptsOnlyCode() throws {
         let renderer = CodeRenderer()
@@ -42,7 +42,7 @@ struct RenderCoordinatorRoutingTests {
     }
 
     @Test func standardCoordinatorRoutesEachInputToTheRightRenderer() throws {
-        // Phase 2 is wired: HTML routes to the local HTMLRenderer and URL to the
+        // web capture is wired: HTML routes to the local HTMLRenderer and URL to the
         // URLRenderer (the latter still gated on the network entitlement at render
         // time).
         let coordinator = RenderCoordinator.standard
@@ -72,11 +72,11 @@ struct RenderCoordinatorRoutingTests {
     }
 }
 
-// MARK: - Phase 2 rendering (HTML local, URL gated)
+// MARK: - web rendering (HTML local, URL gated)
 
 @MainActor
-@Suite("Phase 2 rendering · CS-040")
-struct Phase2RenderingTests {
+@Suite("web rendering")
+struct WebRenderingTests {
     @Test func htmlRoutesToTheLocalRenderer() throws {
         // HTML renders locally; the standard coordinator routes it to the real
         // HTMLRenderer.
@@ -95,7 +95,7 @@ struct Phase2RenderingTests {
     @Test func urlCaptureWithoutTheEntitlementThrowsTypedNotABlankImage() async throws {
         // The "never a blank image" contract covers the entitlement gate: on a build
         // without the network entitlement, a URL render throws a typed
-        // urlCaptureDisabled before touching WebKit — never an empty asset (CS-038).
+        // urlCaptureDisabled before touching WebKit — never an empty asset.
         let renderer = URLRenderer(isNetworkCaptureEnabled: false)
         let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
         await #expect(throws: RenderError.urlCaptureDisabled) {
@@ -123,7 +123,7 @@ struct Phase2RenderingTests {
 // MARK: - No-network code path
 
 @MainActor
-@Suite("Code rendering needs no network or URL config · CS-040")
+@Suite("Code rendering needs no network or URL config")
 struct CodeRenderingNoNetworkTests {
     @Test func codeRendererProducesAnAssetWithoutURLConfig() async throws {
         // Rendering code goes through the abstraction and yields a real image with
@@ -156,7 +156,7 @@ struct CodeRenderingNoNetworkTests {
     }
 
     /// The app target ships **without** `com.apple.security.network.client`, so the
-    /// Phase 1 render path provably cannot reach the network (CS-011/CS-040). The
+    /// local rendering render path provably cannot reach the network. The
     /// entitlements file is excluded from the app's compiled sources and is not a
     /// bundle resource, so it is read from the source tree via `#filePath` — the
     /// same anchoring the golden fixtures use.
@@ -169,7 +169,7 @@ struct CodeRenderingNoNetworkTests {
 
         #expect(
             plist["com.apple.security.network.client"] == nil,
-            "Phase 1 must not request the network client entitlement (CS-011/CS-040)")
+            "local rendering must not request the network client entitlement")
         // The sandbox is on and file access is the only granted capability, so the
         // guard fails loudly if a network key is ever added alongside it.
         #expect(plist["com.apple.security.app-sandbox"] as? Bool == true)
@@ -190,10 +190,10 @@ struct CodeRenderingNoNetworkTests {
 // MARK: - Quick capture wiring
 
 @MainActor
-@Suite("QuickCapture classification · CS-040", .serialized)
+@Suite("QuickCapture classification · ", .serialized)
 struct QuickCaptureClassificationTests {
     private func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineCS040-\(UUID().uuidString)")!
+        UserDefaults(suiteName: "VitrineRenderer-\(UUID().uuidString)")!
     }
 
     @Test func clipboardCodeClassifiesAsCodeWithDetectedLanguage() {
@@ -264,7 +264,7 @@ struct QuickCaptureClassificationTests {
     @Test func classifyFallsBackToCodeCarryingTheOriginalTextWhenURLOptInIsOff() {
         // With the opt-in off, even a bare URL string takes the code path and the
         // input carries the text verbatim (it is framed as a snippet, unchanged
-        // Phase 1 behavior) — proving the URL branch is gated, not the code path.
+        // local rendering behavior) — proving the URL branch is gated, not the code path.
         let input = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: false)
         guard case .code(let code, _) = input else {
             Issue.record("Expected a code input, got \(input)")
@@ -287,7 +287,7 @@ struct QuickCaptureClassificationTests {
 
     @Test func quickCaptureStillRendersURLTextWhenOptInIsOff() {
         // The URL branch is gated on the opt-in; without it, the URL text is framed
-        // as a normal code capture (unchanged Phase 1 behavior).
+        // as a normal code capture (unchanged local rendering behavior).
         let settings = AppSettings(defaults: freshDefaults())
         settings.treatURLsAsScreenshot = false
         let recents = RecentsStore(defaults: freshDefaults())
@@ -298,7 +298,7 @@ struct QuickCaptureClassificationTests {
     }
 }
 
-// MARK: - Code line wrap (#16)
+// MARK: - Code line wrap
 
 @MainActor
 @Suite("Code line wrap")

@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The version-aware "What's New" surface (CS-049).
+/// The version-aware "What's New" surface.
 ///
 /// It shows the newest bundled release note (`ReleaseNotes.latest`) — a headline
 /// and a short list of highlights — entirely offline. Like onboarding, it is
@@ -134,7 +134,7 @@ struct WhatsNewView: View {
     // MARK: - Actions
 
     /// Records that the user has seen the notes for this bundled version so the
-    /// surface does not reappear until the next upgrade (CS-049). Both "Continue"
+    /// surface does not reappear until the next upgrade. Both "Continue"
     /// and "Open Help" mark it seen — being skippable means dismissing is a
     /// first-class outcome, not a penalty.
     private func markSeen() {
@@ -147,7 +147,7 @@ struct WhatsNewView: View {
     }
 }
 
-/// Owns and presents the version-gated "What's New" window (CS-049).
+/// Owns and presents the version-gated "What's New" window.
 ///
 /// Mirrors `WelcomeWindowController`: the gate ("only when the bundled version is
 /// newer than the last seen, and never on a clean first run") lives in one place,
@@ -170,7 +170,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     private override init() {}
 
     /// Shows "What's New" only when the newest bundled notes are newer than what
-    /// the user last saw (CS-049). On a clean first run it shows nothing and
+    /// the user last saw. On a clean first run it shows nothing and
     /// instead records the current version as seen, so onboarding owns the first
     /// launch and the *next* upgrade is what surfaces notes.
     ///
@@ -234,7 +234,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
 
     /// Records the presented version as seen on *any* dismissal — the title-bar
     /// close button, Cmd-W, or a programmatic `close()` — so closing the window is
-    /// equivalent to "Continue" and the same notes never re-present (CS-049). The
+    /// equivalent to "Continue" and the same notes never re-present. The
     /// "Continue"/"Open Help" buttons also call `markSeen`; stamping here makes the
     /// outcome consistent regardless of how the user dismisses.
     func windowWillClose(_ notification: Notification) {

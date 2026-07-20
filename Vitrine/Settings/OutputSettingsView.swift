@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Output pane: clipboard/save behavior, resolution, format (CS-010).
+/// Output pane: clipboard/save behavior, resolution, format.
 struct OutputSettingsView: View {
     @Bindable var settings: AppSettings
 
@@ -42,7 +42,7 @@ struct OutputSettingsView: View {
                     .accessibilityIdentifier("output-resolution-picker")
                 }
                 // The caption states honestly which output is vector: PDF is the
-                // supported scalable format; PNG is raster (CS-023).
+                // supported scalable format; PNG is raster.
                 TokenRow(label: Text("Format"), caption: Text(settings.export.format.summary)) {
                     TokenSegmentedPicker(
                         options: ExportFormat.allCases.map {
@@ -60,7 +60,7 @@ struct OutputSettingsView: View {
 
             // Rich clipboard is opt-in so the default copy stays a plain image; the
             // explicit "Copy as Data URI" and "Copy Highlighted Code" actions in the
-            // editor remain available regardless of this toggle (CS-054).
+            // editor remain available regardless of this toggle.
             TokenGroup(title: Text("Clipboard")) {
                 TokenRow(
                     label: Text("Rich-text code on copy"),
@@ -85,7 +85,7 @@ struct OutputSettingsView: View {
 
             // Color management lives in its own "Advanced" group so the default
             // (sRGB) stays the obvious choice and Display P3 reads as a deliberate
-            // opt-in (CS-024).
+            // opt-in.
             TokenGroup(title: Text("Advanced")) {
                 TokenRow(
                     label: Text("Color profile"),

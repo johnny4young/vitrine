@@ -45,7 +45,7 @@ extension DiagnosticsSettingsSnapshot {
 
 @Suite("Diagnostics redaction")
 struct DiagnosticsRedactionTests {
-    /// The single most important guarantee (CS-048): a generated bundle never
+    /// The single most important guarantee: a generated bundle never
     /// contains the code the user was editing, no matter what that code was.
     @Test func bundleNeverContainsUserCode() {
         // A deliberately distinctive secret that would be unmistakable if it leaked.
@@ -152,8 +152,7 @@ struct DiagnosticsSchemaTests {
         let bundle = DiagnosticsBundle.build(environment: .fixture, settings: .fixture)
         let text = bundle.text(generatedAt: Date(timeIntervalSince1970: 0))
 
-        // Self-describing header and sections (CS-048: "documents exactly what it
-        // contains").
+        // The header and sections make the bundle self-describing.
         #expect(text.contains("# Vitrine diagnostics"))
         #expect(text.contains("schema: \(DiagnosticsBundle.schemaVersion)"))
         #expect(text.contains("## Environment"))
@@ -216,7 +215,7 @@ struct DiagnosticsSchemaTests {
 
 @Suite("Logging hygiene")
 struct LoggingHygieneTests {
-    /// CS-048: shipping targets must contain no stray `print(` (or `NSLog`) — all
+    /// Shipping targets must contain no stray `print(` (or `NSLog`) — all
     /// diagnostics go through `os.Logger`. We scan the real `Vitrine/` source tree,
     /// ignoring occurrences that live *inside string literals* (e.g. sample code in
     /// the Style preview, or the language-detection heuristics), which are data, not

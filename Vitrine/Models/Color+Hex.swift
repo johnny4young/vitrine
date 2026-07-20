@@ -3,8 +3,8 @@ import SwiftUI
 extension Color {
     /// The color's straight (non-premultiplied) sRGB components, in `0...1`.
     ///
-    /// `Color` is not directly `Codable`, so background persistence (CS-050) and
-    /// the custom-gradient/solid editors (CS-051) round-trip through this fixed
+    /// `Color` is not directly `Codable`, so background persistence and
+    /// the custom-gradient/solid editors round-trip through this fixed
     /// sRGB representation. Resolving through `NSColor(...).usingColorSpace(.sRGB)`
     /// pins a single, display-independent color space so an encoded color decodes
     /// to the same value on any screen. If conversion ever fails (not expected for
@@ -42,7 +42,7 @@ extension Color {
         self = rgba.color
     }
 
-    /// Captures this color as a validated `HexColor` (CS-031), resolved through the
+    /// Captures this color as a validated `HexColor`, resolved through the
     /// same fixed sRGB representation as `sRGBComponents` so a color saved from the
     /// custom-theme editor round-trips to the exact value the theme file stores.
     var hexColor: HexColor {

@@ -49,7 +49,7 @@ optional [**PRO**](#vitrine-pro) tier for people who publish professionally.
    - **Code** → format + syntax highlight → a beautiful image, using the theme and
      style you preset in **Settings** (no questions asked).
    - **URL** → snapshot the page **locally** with `WKWebView` on the direct-download
-     build, with a first-use privacy disclosure (see [Render phases](docs/RENDER-PHASES.md)).
+     build, with a first-use privacy disclosure (see [Rendering architecture](docs/RENDERING.md)).
 4. **The screenshot lands on your clipboard**, ready to paste anywhere — or save to a file.
 
 Two modes, one engine:
@@ -301,9 +301,9 @@ Vitrine is private by design, and that promise does not soften as the product gr
   collect, track, and transmit **no** usage data. The bundled privacy manifest declares no
   tracking and no collected data, so the App Store privacy label is **Data Not Collected**.
 
-The permission and privacy posture per phase is documented in
+The permission and privacy posture is documented in
 [**docs/PROJECT.md**](docs/PROJECT.md#privacy-and-permissions); the full
-entitlement-by-entitlement audit table (per phase and per distribution channel) is in
+entitlement-by-entitlement audit table for each distribution channel is in
 [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md).
 
 ## Tech stack
@@ -634,31 +634,28 @@ vitrine/
 ├── VitrineCLI/            # the `vitrine` command-line renderer target
 ├── Tests/                 # Swift Testing unit suite + golden/gallery fixtures
 ├── UITests/               # XCTest UI smokes + opt-in screenshot tour
-└── docs/                  # full project documentation (mirrors the original spec)
+└── docs/                  # current product, architecture, privacy, and release docs
 ```
 
 ## Documentation
 
-Everything from the original product spec lives in [`docs/`](docs/) so you never need
-to leave the repo:
+The repository keeps current product, architecture, privacy, and release documentation
+in [`docs/`](docs/):
 
 - [**CHANGELOG.md**](CHANGELOG.md) — the complete, versioned change history ([Keep a Changelog](https://keepachangelog.com)).
 - [**docs/PROJECT.md**](docs/PROJECT.md) — vision, positioning, naming, distribution, risks.
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
 - [**docs/PRO.md**](docs/PRO.md) — the PRO subsystem: the open-core gate, per-build providers, Brand Kit, multi-size export, and automation.
 - [**docs/ACTIVATION.md**](docs/ACTIVATION.md) — direct-download PRO activation runbook: keypair generation, build-time key injection, and the Lemon Squeezy product.
-- [**docs/RENDER-PHASES.md**](docs/RENDER-PHASES.md) — "beyond code": OG cards, HTML/URL snapshots, and the optional web render service.
-- [**docs/SCREEN-CAPTURE-DISCOVERY.md**](docs/SCREEN-CAPTURE-DISCOVERY.md) — why arbitrary screen/window capture is parked (Screen Recording trade-offs).
-- [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md) — the permission and entitlement matrix: every entitlement with its reason, user-facing behavior, and App Store impact, per phase and channel.
+- [**docs/RENDERING.md**](docs/RENDERING.md) — how every supported input reaches the local render and export pipeline.
+- [**docs/SCREEN-CAPTURE.md**](docs/SCREEN-CAPTURE.md) — why arbitrary screen/window capture is outside the product boundary.
+- [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md) — every entitlement with its reason, user-facing behavior, and App Store impact by channel.
 - [**docs/DESIGN-QA.md**](docs/DESIGN-QA.md) — the generated launch gallery and the design-QA process.
 - [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized DMG, Homebrew cask, release workflow.
 
-> The detailed implementation spec (`docs/ROADMAP.md`, ticket-by-ticket acceptance
-> criteria) is kept as a local working document and is intentionally git-ignored.
-
 ## Status
 
-🟢 **v0.21.0 — shipped and stable.** Everything under [Features](#features) is built and
+🟢 **v0.21.0 is the latest published release.** Everything under [Features](#features) is built and
 driven by one design-token system ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in
 light and dark. It is covered by a Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
@@ -666,10 +663,14 @@ runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS
 The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release
 also ships an in-app **What's New**.
 
-What's deliberately parked — arbitrary screen/window capture (Screen Recording
-trade-offs) and a hosted web-render service — is written up in
-[docs/SCREEN-CAPTURE-DISCOVERY.md](docs/SCREEN-CAPTURE-DISCOVERY.md) and
-[docs/RENDER-PHASES.md](docs/RENDER-PHASES.md).
+The main branch also contains the work listed under **Unreleased** in the changelog. It
+is implemented and tested but is not a published version until the release workflow
+produces a tagged artifact.
+
+Two explicit product boundaries — no arbitrary screen/window capture and no dependency
+on a hosted web-render service — are documented in
+[docs/SCREEN-CAPTURE.md](docs/SCREEN-CAPTURE.md) and
+[docs/RENDERING.md](docs/RENDERING.md).
 
 ## Contributing
 

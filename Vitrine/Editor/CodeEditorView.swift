@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Code text editor backed by `NSTextView` with live syntax highlighting (CS-003):
+/// Code text editor backed by `NSTextView` with live syntax highlighting:
 /// debounced recolor (~100 ms), monospaced font, Tab = 4 spaces, no autocorrect.
 struct CodeEditorView: NSViewRepresentable {
     @Binding var text: String
@@ -26,7 +26,7 @@ struct CodeEditorView: NSViewRepresentable {
         scrollView.drawsBackground = false
 
         // A `CodeTextView` (an `NSTextView` subclass) so a native ⌘V paste can be
-        // intercepted for auto re-indent (CS-049); the rest mirrors the standard
+        // intercepted for auto re-indent; the rest mirrors the standard
         // `NSTextView.scrollableTextView()` setup.
         let textView = CodeTextView(frame: NSRect(origin: .zero, size: scrollView.contentSize))
         textView.minSize = NSSize(width: 0, height: 0)
@@ -48,7 +48,7 @@ struct CodeEditorView: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isGrammarCheckingEnabled = false
         textView.allowsUndo = true
-        // Transparent over the code panel's glass (design/handoff): the panel
+        // Transparent over the code panel's glass: the panel
         // material shows through behind the highlighted text.
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 14, height: 12)
@@ -57,7 +57,7 @@ struct CodeEditorView: NSViewRepresentable {
         textView.setAccessibilityLabel("Code editor")
         scrollView.setAccessibilityIdentifier("code-editor-scroll-view")
 
-        // After a native ⌘V paste, re-indent through the coordinator (CS-049); the
+        // After a native ⌘V paste, re-indent through the coordinator; the
         // coordinator checks the user's preference and uses the undo-aware edit cycle.
         textView.onPaste = { [weak textView] replacedEntireDocument in
             guard let textView else { return }
@@ -137,7 +137,7 @@ struct CodeEditorView: NSViewRepresentable {
         /// whole string. A full `setAttributedString` re-seats every character and forces
         /// the layout manager to regenerate all glyphs, which is what spiked on a 1–2k-line
         /// document; an attribute-only pass (`beginEditing`/`endEditing`) reuses the glyphs
-        /// and only re-processes the changed attributes (P4). The rare case where the
+        /// and only re-processes the changed attributes . The rare case where the
         /// rendered text differs (e.g. a custom theme trims a trailing newline) falls back
         /// to the selection-preserving full replace.
         func applyHighlight(to textView: NSTextView) {
@@ -191,7 +191,7 @@ struct CodeEditorView: NSViewRepresentable {
 
         /// Re-indents the whole document after a paste, when the user's preference is on,
         /// through the text view's native edit cycle so the change lands on the undo stack
-        /// (⌘Z reverts it) and `textDidChange` writes it back to the binding (CS-049). A
+        /// (⌘Z reverts it) and `textDidChange` writes it back to the binding. A
         /// no-op (already tidy, or a `.leaveAlone` language) registers no edit.
         ///
         /// `isEnabled` defaults to the live global preference; tests pass it explicitly
@@ -221,7 +221,7 @@ struct CodeEditorView: NSViewRepresentable {
 }
 
 /// `NSTextView` subclass that notifies after a paste so the editor can re-indent the
-/// result (CS-049). Paste is the one mutation with no `NSTextViewDelegate` hook, so it
+/// result. Paste is the one mutation with no `NSTextViewDelegate` hook, so it
 /// is overridden here; every other edit flows through the coordinator's delegate
 /// callbacks. `super.paste` honors `isRichText = false`, so it inserts plain text.
 final class CodeTextView: NSTextView {

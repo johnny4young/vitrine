@@ -3,7 +3,7 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-/// The pixel-diff engine behind the golden-image suite (CS-025).
+/// The pixel-diff engine behind the golden-image suite.
 ///
 /// Both the in-process comparison suite (`GoldenImageTests`) and the standalone
 /// CLI comparator (`scripts/compare-goldens.swift`) compare two PNGs the same way,

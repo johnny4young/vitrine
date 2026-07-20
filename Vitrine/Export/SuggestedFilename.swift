@@ -60,7 +60,7 @@ enum SuggestedFilename {
         return String(result.prefix(64))
     }
 
-    /// A human-readable header-title suggestion for `config` (feature #39), or `nil`
+    /// A human-readable header-title suggestion for `config`, or `nil`
     /// when nothing meaningful can be inferred — the seam behind the inspector's
     /// "suggest title" affordance.
     ///

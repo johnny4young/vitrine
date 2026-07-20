@@ -3,7 +3,7 @@ import Testing
 
 @testable import Vitrine
 
-/// In-app Help, documentation, and version-aware "What's New" (CS-049).
+/// In-app Help, documentation, and version-aware "What's New".
 ///
 /// The user-visible surfaces (Help window, What's New window) are SwiftUI/AppKit
 /// and smoke-tested in the UI suite; here we unit-test the *pure* pieces the spec
@@ -74,14 +74,14 @@ struct WhatsNewGateTests {
 
     @Test func neverPresentsOnACleanFirstRun() {
         // A clean install (no last-seen version) is owned by onboarding, so What's
-        // New must not appear even though there are notes (CS-049 acceptance: "never
+        // New must not appear even though there are notes ( "never
         // on a clean first run").
         #expect(ReleaseNotes.shouldPresent(latest: note("1.0.0"), lastSeenVersion: nil) == false)
     }
 
     @Test func presentsWhenBundledVersionIsNewerThanLastSeen() {
         // The core case: notes newer than what the user last saw should appear once
-        // (CS-049 acceptance: "appears only when the bundled notes version is newer").
+        // ( "appears only when the bundled notes version is newer").
         #expect(
             ReleaseNotes.shouldPresent(latest: note("1.1.0"), lastSeenVersion: "1.0.0") == true)
         #expect(
@@ -104,7 +104,7 @@ struct WhatsNewGateTests {
     @Test func toleratesACorruptLastSeenValueButStillRequiresPastFirstRun() {
         // An unparseable persisted value, once past the first-run guard, is treated
         // as the zero floor — so a real, newer bundled version still surfaces once
-        // rather than the gate trapping (CS-050 documented-fallback posture).
+        // rather than the gate trapping (documented fallback).
         #expect(
             ReleaseNotes.shouldPresent(latest: note("1.0.0"), lastSeenVersion: "garbage") == true)
     }
@@ -169,7 +169,7 @@ struct WhatsNewVersionPersistenceTests {
     @Test func toleratesAWronglyTypedValue() {
         let defaults = freshDefaults()
         // A hand-edited or corrupt store could hold a non-string under the key; the
-        // read must fall back to nil rather than trapping (CS-050 posture).
+        // read must fall back to nil rather than trapping (defensive posture).
         defaults.set(["not", "a", "string"], forKey: "lastSeenWhatsNewVersion")
         let settings = AppSettings(defaults: defaults)
         #expect(settings.lastSeenWhatsNewVersion == nil)
@@ -188,7 +188,7 @@ struct WhatsNewVersionPersistenceTests {
 struct WhatsNewLaunchGateTests {
     // `ReleaseNotes.shouldPresent` is the pure predicate; these cover the launch-path
     // wrapper `WhatsNewWindowController.presentIfNewVersion`, which adds two behaviors
-    // the predicate does not model and that the app relies on at startup (CS-049):
+    // the predicate does not model and that the app relies on at startup:
     //   1. its Bool return value (the launch path uses it to avoid stacking the window
     //      over onboarding), and
     //   2. the clean-first-run *stamp* side effect — on a fresh install it records the
@@ -243,7 +243,7 @@ struct WhatsNewLaunchGateTests {
 struct WhatsNewSchemaMigrationTests {
     @Test func v6StoreMigratesToCurrentWithoutInventingTheKey() {
         let defaults = freshDefaults()
-        // A store written by the build just before CS-049 (schema 6) carrying a real
+        // A store written just before the What's New key existed (schema 6), carrying a real
         // setting. Migrating forward must advance the version but never back-fill the
         // new key — an upgrading user is treated like a clean install for one cycle
         // (the key appears only once a launch stamps it).
@@ -260,7 +260,7 @@ struct WhatsNewSchemaMigrationTests {
     }
 
     @Test func currentSchemaIncludesTheWhatsNewStep() {
-        // Guards against bumping `current` for this ticket but forgetting the
+        // Guards against bumping `current` for this change but forgetting the
         // matching migration step (the chain must reach `current` without a gap).
         #expect(SettingsSchema.current >= 7)
         let defaults = freshDefaults()
@@ -290,7 +290,7 @@ struct HelpCommandTests {
     }
 
     @Test func helpMenuExposesHelpAndWhatsNew() {
-        // The Help menu surfaces both the Help and What's New commands (CS-049).
+        // The Help menu surfaces both the Help and What's New commands.
         let help = AppMenu.make().items.compactMap(\.submenu).first { $0.title == "Help" }
         let identifiers = help?.items.map { $0.accessibilityIdentifier() } ?? []
         #expect(identifiers.contains(VitrineCommand.help.accessibilityIdentifier))

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A branded empty-state placeholder built entirely from design tokens (CS-036).
+/// A branded empty-state placeholder built entirely from design tokens.
 ///
 /// Used where a surface has no content yet (e.g. the editor before any code is
 /// pasted). It pairs the Vitrine brand mark with a title, a short message, and an
@@ -9,14 +9,14 @@ import SwiftUI
 /// blank rectangle.
 struct EmptyStateView: View {
     // `LocalizedStringKey`-typed so callers pass plain string literals that flow
-    // through the String Catalog automatically (CS-047), and `Text`/`Button` below
+    // through the String Catalog automatically, and `Text`/`Button` below
     // render them localized.
     let title: LocalizedStringKey
     let message: LocalizedStringKey
     var actionTitle: LocalizedStringKey?
     var action: (() -> Void)?
     /// The editor's narrow code column uses the compact metrics; full windows
-    /// (the recents gallery) use the regular ones (design/handoff).
+    /// (the recents gallery) use the regular ones.
     var compact = false
 
     var body: some View {

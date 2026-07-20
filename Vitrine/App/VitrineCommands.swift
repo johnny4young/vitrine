@@ -1,7 +1,7 @@
 import AppKit
 
 /// The app's command surface: every important action, its title, SF Symbol,
-/// keyboard shortcut, and accessibility identifier in one place (CS-032).
+/// keyboard shortcut, and accessibility identifier in one place.
 ///
 /// Vitrine is a menu-bar agent (`LSUIElement`) whose only SwiftUI scene is the
 /// `MenuBarExtra`; it has no `WindowGroup`, so SwiftUI's `.commands` modifier has
@@ -22,16 +22,16 @@ enum VitrineCommand: String, CaseIterable {
     case openEditor
     case newEditorWindow
     // Opens the social-card editor — a local, deterministic 1200×630 card composed
-    // from the same theme/background/font vocabulary as a snapshot (CS-041).
+    // from the same theme/background/font vocabulary as a snapshot.
     case newSocialCard
     // Opens the Web Snapshot editor — local HTML rendering and (on a build with the
-    // network entitlement) URL capture (CS-042/CS-043).
+    // network entitlement) URL capture.
     case newWebSnapshot
     case settings
     case help
     case about
     case whatsNew
-    // Direct-download auto-update (CS-064). Surfaced only on the direct-download
+    // Direct-download auto-update. Surfaced only on the direct-download
     // build, which ships Sparkle; the App Store build excludes Sparkle and hides
     // this command (see SoftwareUpdater).
     case checkForUpdates
@@ -42,12 +42,12 @@ enum VitrineCommand: String, CaseIterable {
     case saveImage
     case shareImage
     case makeDefault
-    // Tidy the editor's code — re-indent JSON / strip the common leading indentation
-    // (CS-049). Editor-scoped and code-requiring; mirrors the editor toolbar's Format
-    // button so the menu command and the button stay in lockstep (CS-032).
+    // Tidy the editor's code — re-indent JSON / strip the common leading indentation.
+    // Editor-scoped and code-requiring; mirrors the editor toolbar's Format
+    // button so the menu command and the button stay in lockstep.
     case formatCode
 
-    // Editor copy-submenu options (CS-054 rich export): reached from the editor's
+    // Editor copy-submenu options (rich export): reached from the editor's
     // copy-options menu; no global key equivalent.
     case copyDataURI
     case copyMarkdown
@@ -57,7 +57,7 @@ enum VitrineCommand: String, CaseIterable {
     /// UI before completing (a save panel, the share sheet, a window), matching
     /// macOS Human Interface Guidelines.
     ///
-    /// The title is resolved through the String Catalog (CS-047): it is shown both
+    /// The title is resolved through the String Catalog: it is shown both
     /// in an AppKit `NSMenuItem` (which needs a plain `String`) and, via `Label`,
     /// in SwiftUI surfaces, so it is localized here rather than relying on SwiftUI's
     /// implicit `LocalizedStringKey` at only one of those call sites.
@@ -87,7 +87,7 @@ enum VitrineCommand: String, CaseIterable {
     }
 
     /// The SF Symbol shared with the equivalent toolbar item, so a command reads
-    /// the same in the menu and the toolbar (CS-032 "toolbar items have
+    /// the same in the menu and the toolbar ("toolbar items have
     /// equivalent menu commands").
     var systemImageName: String {
         switch self {
@@ -151,13 +151,13 @@ enum VitrineCommand: String, CaseIterable {
     }
 
     /// A stable accessibility identifier for the menu item, used by UI tests and
-    /// VoiceOver navigation. Never localized (CS-032 / CS-047).
+    /// VoiceOver navigation. Never localized.
     var accessibilityIdentifier: String { "command-\(rawValue)" }
 
     /// A concise VoiceOver description. Kept short and action-first so VoiceOver
-    /// reads usefully without repeating the menu hierarchy (CS-032 "VoiceOver
-    /// labels are concise and useful"). Localized through the String Catalog
-    /// (CS-047); the accessibility *identifier* above stays non-localized.
+    /// reads usefully without repeating the menu hierarchy ("VoiceOver
+    /// labels are concise and useful"). Localized through the String Catalog;
+    /// the accessibility *identifier* above stays non-localized.
     var accessibilityLabel: String {
         switch self {
         case .newCapture: String(localized: "New capture from clipboard")
@@ -190,13 +190,13 @@ extension VitrineCommand {
     static let editorRenderCommands: [VitrineCommand] = [.copyImage, .saveImage, .shareImage]
 
     /// Editor commands that need source text present to act. Format Code has nothing to
-    /// tidy on an empty buffer (CS-049), and it stays code-only even when the editor is
+    /// tidy on an empty buffer, and it stays code-only even when the editor is
     /// showing a beautified foreground image.
     static let codeRequiringCommands: [VitrineCommand] = [.formatCode]
 
     /// All editor/document-scoped commands, enabled only when an editor window is key.
     /// "Make Default" is editor-scoped but code-independent: adopting a window's style
-    /// as the app default is meaningful even before any code is typed (CS-053).
+    /// as the app default is meaningful even before any code is typed.
     static let editorCommands: [VitrineCommand] =
         editorRenderCommands + codeRequiringCommands + [.makeDefault]
 
@@ -217,7 +217,7 @@ extension VitrineCommand {
 
 /// Performs and validates the editor/document commands (Copy / Save / Share
 /// Image) so they exist as real menu commands with keyboard shortcuts, not just
-/// toolbar buttons (CS-032). These mirror the editor toolbar exactly: both reach
+/// toolbar buttons. These mirror the editor toolbar exactly: both reach
 /// the shared `AppSettings` and `ExportManager`, so the menu command and the
 /// toolbar button always produce the same image.
 ///
@@ -227,7 +227,7 @@ extension VitrineCommand {
 /// window is key — and, for the render commands, only when that window holds
 /// code — which `canPerform(_:)` decides.
 ///
-/// ## Multi-window (CS-053)
+/// ## Multi-window
 ///
 /// With more than one editor open, a menu command must act on whichever editor is
 /// *key*, not on a fixed instance. The responder therefore resolves the key window's
@@ -301,8 +301,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     @objc func copyRenderedImage(_ sender: Any?) {
         guard canPerform(.copyImage) else { return }
         let settings = activeSettings
-        // Surface the outcome so a render/encode failure from the menu isn't silent
-        // (CS-038), mirroring the quick-capture HUD path.
+        // Surface the outcome so a render/encode failure from the menu isn't silent,
+        // mirroring the quick-capture HUD path.
         let copied = ExportManager.copyToPasteboard(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
@@ -343,7 +343,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         ShareManager.share(image, relativeTo: view)
     }
 
-    /// Promotes the key editor window's current style to the app-wide default (CS-053).
+    /// Promotes the key editor window's current style to the app-wide default.
     /// A no-op when no editor window is key, so it cannot adopt a phantom configuration.
     @objc func makeWindowDefault(_ sender: Any?) {
         guard canPerform(.makeDefault),
@@ -352,7 +352,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         session.makeDefault()
     }
 
-    /// Tidies the key editor's code in place (CS-049): JSON is pretty-printed, brace and
+    /// Tidies the key editor's code in place: JSON is pretty-printed, brace and
     /// JSX/tag languages are re-indented by structure, indentation-significant languages
     /// are dedented, and diff/plain text is left alone (see `CodeFormatter.tidy`). The
     /// edit goes through the text view's native edit cycle
@@ -435,18 +435,18 @@ final class AppCommandResponder: NSObject {
         EditorWindowController.shared.show()
     }
 
-    /// Opens an additional, independent editor window (CS-053).
+    /// Opens an additional, independent editor window.
     @objc func newEditorWindow(_ sender: Any?) {
         EditorWindowController.shared.openNewWindow()
     }
 
-    /// Opens the social-card editor — the local 1200×630 card composer (CS-041).
+    /// Opens the social-card editor — the local 1200×630 card composer.
     @objc func openSocialCardEditor(_ sender: Any?) {
         SocialCardWindowController.shared.show()
     }
 
-    /// Opens the Web Snapshot editor — local HTML rendering and gated URL capture
-    /// (CS-042/CS-043). Routed through `WebSnapshotPresenter` so this command surface
+    /// Opens the Web Snapshot editor — local HTML rendering and gated URL capture.
+    /// Routed through `WebSnapshotPresenter` so this command surface
     /// carries no dependency on the WebKit-backed window (which the CLI excludes).
     @objc func openWebSnapshotEditor(_ sender: Any?) {
         WebSnapshotPresenter.show()
@@ -479,7 +479,7 @@ final class AppCommandResponder: NSObject {
         target.config.theme = theme
     }
 
-    /// Starts a user-initiated update check on the direct-download build (CS-064). The
+    /// Starts a user-initiated update check on the direct-download build. The
     /// menu item that targets this is only added on a build that ships Sparkle, so on the
     /// App Store build (which excludes Sparkle) there is no item and `checkForUpdates()`
     /// degrades to a no-op.
