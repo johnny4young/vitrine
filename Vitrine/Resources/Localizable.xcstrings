@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Annotation Tool" : {
+      "comment" : "Edit-menu submenu containing annotation tool choices and shortcuts.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramienta de anotación"
+          }
+        }
+      }
+    },
     "Annotation tool" : {
       "comment" : "Accessibility label for the compact annotation tool picker.",
       "localizations" : {

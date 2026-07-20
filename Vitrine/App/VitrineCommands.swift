@@ -293,6 +293,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
         case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
         case #selector(formatCode(_:)): canPerform(.formatCode)
+        case #selector(selectAnnotationTool(_:)): isEditorKey
         default: true
         }
     }
@@ -349,6 +350,21 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             let session = EditorWindowController.shared.keyWindowSession
         else { return }
         session.makeDefault()
+    }
+
+    /// Routes a tool command to the key editor window. The window is the
+    /// notification object so other open editors ignore the selection.
+    @objc func selectAnnotationTool(_ sender: Any?) {
+        guard isEditorKey,
+            let item = sender as? NSMenuItem,
+            let rawValue = item.representedObject as? String,
+            AnnotationTool(rawValue: rawValue) != nil,
+            let window = NSApp.keyWindow ?? NSApp.mainWindow
+        else { return }
+        NotificationCenter.default.post(
+            name: .vitrineSelectAnnotationTool,
+            object: window,
+            userInfo: ["tool": rawValue])
     }
 
     /// Tidies the key editor's code in place: JSON is pretty-printed, brace and

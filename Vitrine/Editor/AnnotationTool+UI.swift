@@ -6,6 +6,23 @@ import SwiftUI
 /// behavior flags; this adapter supplies only the `LocalizedStringKey`/`KeyEquivalent`
 /// the toolbar needs.
 extension AnnotationTool {
+    var localizedTitle: String {
+        switch self {
+        case .select: String(localized: "Select")
+        case .arrow: String(localized: "Arrow")
+        case .curvedArrow: String(localized: "Curved Arrow")
+        case .line: String(localized: "Line")
+        case .rectangle: String(localized: "Rectangle")
+        case .text: String(localized: "Text")
+        case .highlighter: String(localized: "Highlighter")
+        case .blur: String(localized: "Blur")
+        case .counter: String(localized: "Counter")
+        case .sticker: String(localized: "Sticker")
+        case .spotlight: String(localized: "Spotlight")
+        case .measure: String(localized: "Measure")
+        }
+    }
+
     var label: LocalizedStringKey {
         switch self {
         case .select: "Select"
@@ -30,6 +47,12 @@ extension AnnotationTool {
     /// added past ten stays click-selected rather than borrowing a letter that could
     /// shadow an editing shortcut.
     var keyEquivalent: KeyEquivalent? {
+        shortcutCharacter.map { KeyEquivalent($0) }
+    }
+
+    /// The platform-neutral shortcut representation shared by SwiftUI toolbar
+    /// labels and the AppKit main menu that owns global command routing.
+    var shortcutCharacter: Character? {
         switch self {
         case .select: "1"
         case .arrow: "2"
