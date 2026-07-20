@@ -243,8 +243,9 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           DMG="dist/Vitrine-${VERSION}.dmg"
           SHA256="$(shasum -a 256 "$DMG" | awk '{print $1}')"
-          # Standard sidecar (same format as `shasum -a 256`), uploaded with the DMG.
-          shasum -a 256 "$DMG" > "${DMG}.sha256"
+          # Keep only the artifact basename in the sidecar so a user can download the
+          # DMG and checksum into any directory and run `shasum -a 256 -c` directly.
+          printf '%s  %s\n' "${SHA256}" "$(basename "${DMG}")" > "${DMG}.sha256"
           # Ready-to-paste cask stanza values for the tap update.
           {
             echo "version \"${VERSION}\""
@@ -444,7 +445,7 @@ jobs:
         if: ${{ steps.appcast.outputs.generated == 'true' }}
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5.0.0
 
-  # Post-publish QA ( posture): download the DMG users will actually get and
+  # Post-publish distribution QA: download the DMG users will actually get and
   # run the scripted half of the release QA checklist against it — Gatekeeper's own
   # codesign/spctl/stapler assessment, version/identity recording, and the
   # app-vs-signing failure classification qa-release.sh already encodes. Runs after
@@ -460,14 +461,20 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      - name: Download the published DMG
+      - name: Download the published DMG and checksum
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p dist
-          gh release download "${GITHUB_REF_NAME}" --pattern '*.dmg' --dir dist
+          gh release download "${GITHUB_REF_NAME}" \
+            --pattern '*.dmg' \
+            --pattern '*.dmg.sha256' \
+            --dir dist
           ls -l dist
+
+      - name: Verify the published DMG checksum
+        run: (cd dist && shasum -a 256 -c ./*.dmg.sha256)
 
       # No argument: the script auto-detects dist/*.dmg. Exit codes distinguish an
       # app failure (3) from a signing/notarization failure (2) in the job log.

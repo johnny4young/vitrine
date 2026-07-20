@@ -254,7 +254,9 @@ built. It:
 - computes the DMG SHA-256 and **prints** it to the run's job summary (visible from the
   Actions run page, no download needed);
 - **stores** it as a `Vitrine-<version>.dmg.sha256` sidecar, attached to the GitHub
-  release alongside the DMG; and
+  release alongside the DMG; the sidecar names only the DMG basename, so downloading
+  both files into one directory and running `shasum -a 256 -c *.dmg.sha256` works
+  without recreating the workflow's `dist/` path; and
 - writes a ready-to-paste `vitrine-cask-update.txt` (the exact `version "…"` and
   `sha256 "…"` lines), also attached to the release.
 
