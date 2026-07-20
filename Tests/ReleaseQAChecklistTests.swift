@@ -277,10 +277,32 @@ struct ReleaseQAChecklistTests {
             script.contains("exit 2"),
             "qa-release.sh must exit with a distinct code for a signing/notarization failure"
         )
-        // The unsigned dev artifact is a warning, never a production-ready pass.
+        // The unsigned dev artifact must fail release QA, never produce a green run.
         #expect(
             script.localizedCaseInsensitiveContains("not production-ready"),
             "qa-release.sh must flag an unsigned artifact as not production-ready")
+        #expect(
+            script.contains(#"fail_signing "App is UNSIGNED or ad-hoc"#),
+            "qa-release.sh must classify an unsigned artifact as a signing failure")
+    }
+
+    /// Under strict pipefail mode, piping a verbose producer into `grep -q` can
+    /// report failure when grep exits after its first match and the producer receives
+    /// SIGPIPE. Signature and Gatekeeper classification must inspect captured output
+    /// instead, or a valid published artifact can be reported as unsigned.
+    @Test func scriptDoesNotShortCircuitSecurityToolOutputThroughGrep() throws {
+        let script = try Self.script()
+        for producer in ["codesign --display", "spctl -a"] {
+            let unsafeLines = script.components(separatedBy: .newlines).filter {
+                $0.contains(producer) && $0.contains("| grep -q")
+            }
+            #expect(
+                unsafeLines.isEmpty,
+                "qa-release.sh must capture \(producer) output before matching it under pipefail")
+        }
+        #expect(
+            script.contains("CODESIGN_DETAILS=") && script.contains("SPCTL_APP="),
+            "qa-release.sh must capture security-tool output before classifying it")
     }
 
     /// The documentation must explain the same app-bug-vs-signing distinction so a
