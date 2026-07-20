@@ -542,9 +542,10 @@ which class** it is, because the two have completely different owners and fixes:
 - exit `0` — every automated check passed; now walk the manual checklist.
 - exit `1` — the artifact could not be found or mounted (usage/environment error).
 
-An **unsigned local dev DMG** is reported as a warning, not a failure: it is expected to
-be rejected by Gatekeeper and is **never production-ready** (the same posture
-`build-dmg.sh` takes).
+An **unsigned local dev DMG** exits with signing status `2`: it is expected to be
+rejected by Gatekeeper and is **never production-ready**. `build-dmg.sh` still permits
+unsigned local packaging, but release QA deliberately cannot report that artifact as a
+successful distribution candidate.
 
 **The manual checklist** (the script prints it; no headless check can prove these
 interactive behaviors — walk each on the clean Mac and record pass/fail per release):
