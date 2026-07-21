@@ -37,6 +37,14 @@ Guidance for AI agents and contributors. Keep it short; only non-obvious rules l
   messages, UI strings. No Spanglish (do not mix languages in committed text). This
   applies only to committed content, not to chat.
 
+## Website
+
+- The public website lives in **`site/`** as a standalone Astro package. Keep it
+  statically rendered and framework-free in the browser: Astro components, semantic
+  HTML, vanilla CSS, and small vanilla JavaScript modules only — no React runtime.
+- Website assets belong in `site/public/`, not `docs/`. Run `cd site && npm test` after
+  any website, metadata, translation, asset, or deployment change.
+
 ## Commits
 
 - **Never add AI co-authorship or "generated-by" trailers** to commits or PRs

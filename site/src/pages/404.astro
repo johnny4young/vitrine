@@ -1,0 +1,20 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { content } from '~/i18n/content';
+---
+
+<BaseLayout copy={content.en} path="/404" noindex>
+  <main class="not-found">
+    <a class="brand" href="/">
+      <img src="/vitrine-icon.png" alt="" width="42" height="42" />
+      <span>Vitrine</span>
+    </a>
+    <p class="error-code">404</p>
+    <h1>This frame is empty.</h1>
+    <p>The page you requested does not exist. / La página solicitada no existe.</p>
+    <div class="button-row centered-buttons">
+      <a class="button" href="/">English home</a>
+      <a class="button button-secondary" href="/es">Inicio en español</a>
+    </div>
+  </main>
+</BaseLayout>

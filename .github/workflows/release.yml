@@ -389,8 +389,8 @@ jobs:
             --sha256 "${CASK_SHA256}" \
             --template packaging/Casks/vitrine.rb
 
-      # The marketing landing now lives on Cloudflare Pages (deployed below). GitHub
-      # Pages keeps serving ONLY the signed appcast — the SUFeedURL the installed base
+      # The marketing site lives on Cloudflare Pages and deploys independently through
+      # deploy-site.yml. GitHub Pages keeps serving ONLY the signed appcast — the SUFeedURL the installed base
       # polls — plus this tiny redirect stub at the old site root, so anyone who hits
       # the legacy github.io URL is forwarded to the canonical domain.
       - name: Stage a redirect stub for the legacy Pages site
@@ -406,31 +406,6 @@ jobs:
             '<script>location.replace("https://vitrineframe.app/" + location.hash)</script>' \
             '<p>Vitrine has moved to <a href="https://vitrineframe.app/">vitrineframe.app</a>.</p>' \
             > _site/index.html
-
-      # Deploy the landing to Cloudflare Pages (project: vitrine-web) at the canonical
-      # domain vitrineframe.app. Guarded by the Cloudflare secrets the same way the
-      # appcast is guarded by the EdDSA key, so the release never fails for lack of
-      # them. The Sparkle appcast deliberately STAYS on GitHub Pages (below): every
-      # installed app polls the SUFeedURL there, so that URL must keep resolving — that
-      # is now all GitHub Pages serves (plus the redirect stub above). The Pages
-      # project is created once from the terminal:
-      #   npx wrangler pages project create vitrine-web --production-branch=main
-      - name: Deploy landing to Cloudflare Pages
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-            echo "Cloudflare Pages secrets not configured; skipping landing deploy."
-            exit 0
-          fi
-          mkdir -p dist-web/screenshots
-          cp docs/index.html docs/vitrine-icon.png dist-web/
-          cp docs/screenshots/editor.png docs/screenshots/annotated.png docs/screenshots/diff.png \
-             docs/screenshots/terminal-htop.png docs/screenshots/terminal-lazygit.png docs/screenshots/terminal-nvim.png \
-             dist-web/screenshots/
-          npx --yes wrangler@4 pages deploy dist-web --project-name=vitrine-web --branch=main
 
       # Deploy the signed appcast to GitHub Pages so the SUFeedURL in Info.plist resolves.
       # Skipped when no appcast was produced (no EdDSA key secret), so the release still

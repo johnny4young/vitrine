@@ -1,0 +1,29 @@
+---
+import type { SiteCopy } from '~/i18n/content';
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Commercial from './Commercial.astro';
+import FeatureSections from './FeatureSections.astro';
+import Header from './Header.astro';
+import Hero from './Hero.astro';
+import InstallFooter from './InstallFooter.astro';
+import SiteFooter from './SiteFooter.astro';
+import StyleBench from './StyleBench.astro';
+
+interface Props {
+  copy: SiteCopy;
+}
+
+const { copy } = Astro.props;
+---
+
+<BaseLayout copy={copy}>
+  <Header />
+  <main>
+    <Hero />
+    <StyleBench />
+    <FeatureSections />
+    <Commercial />
+    <InstallFooter />
+  </main>
+  <SiteFooter />
+</BaseLayout>

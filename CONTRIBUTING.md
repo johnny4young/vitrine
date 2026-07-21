@@ -8,6 +8,7 @@ Thanks for your interest! Vitrine is MIT-licensed and contributions are welcome 
 
 - macOS 14+ and **Xcode 16+**
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
+- Node.js 22.12+ for changes under `site/`
 
 ## Setup
 
@@ -35,6 +36,7 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make cli`      | build the `vitrine` command-line renderer                    |
 | `make gallery`  | regenerate the launch-gallery design-QA samples              |
 | `make record-goldens` | regenerate the golden-image baseline (deliberate visual changes only) |
+| `make site-test` | type-check, build, and validate the Astro website             |
 | `make format`   | format Swift sources in place (Apple `swift-format`)         |
 | `make lint`     | lint Swift sources (fails on issues); run in CI              |
 | `make clean`    | remove the generated project and build artifacts             |
@@ -59,6 +61,8 @@ See [AGENTS.md](AGENTS.md). In short:
   (`LocalizationTests` enforces it).
 - App-chrome styling reads the token layer in
   [`Vitrine/DesignSystem/`](Vitrine/DesignSystem) — never hard-code a hex in a view.
+- The public website lives in [`site/`](site/) and uses Astro with semantic HTML,
+  vanilla CSS, and vanilla JavaScript — no React runtime.
 - Conventional, imperative commit subjects without private planning identifiers.
 - **No AI co-authorship / "generated-by" trailers** in commits or PRs.
 
