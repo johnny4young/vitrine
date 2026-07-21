@@ -7,9 +7,15 @@ interface Props {
   copy: SiteCopy;
   path?: string;
   noindex?: boolean;
+  includeMarketingInteractions?: boolean;
 }
 
-const { copy, path = copy.locale === 'es' ? '/es' : '/', noindex = false } = Astro.props;
+const {
+  copy,
+  path = copy.locale === 'es' ? '/es' : '/',
+  noindex = false,
+  includeMarketingInteractions = false,
+} = Astro.props;
 const canonical = new URL(path, Astro.site);
 const alternateEnglish = new URL('/', Astro.site);
 const alternateSpanish = new URL('/es', Astro.site);
@@ -90,6 +96,6 @@ const productSchema = {
   </head>
   <body>
     <slot />
-    <script is:inline src="/scripts/site.js" defer></script>
+    {includeMarketingInteractions && <script is:inline src="/scripts/site.js" defer></script>}
   </body>
 </html>

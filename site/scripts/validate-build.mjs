@@ -13,8 +13,15 @@ function requireText(source, expected, label) {
   }
 }
 
+function requireAbsent(source, unexpected, label) {
+  if (source.includes(unexpected)) {
+    throw new Error(`${label}: must not include ${unexpected}`);
+  }
+}
+
 const english = await read('index.html');
 const spanish = await read('es/index.html');
+const download = await read('download/index.html');
 const notFound = await read('404.html');
 const robots = await read('robots.txt');
 const siteScript = await readFile(new URL('../public/scripts/site.js', import.meta.url), 'utf8');
@@ -36,6 +43,10 @@ requireText(english, 'id="bench"', 'Style bench');
 requireText(english, 'class="salon"', 'Gallery hero');
 requireText(english, 'id="responsive"', 'Responsive board');
 requireText(english, 'id="whats-new"', 'Changelog section');
+requireText(english, 'src="/scripts/site.js"', 'English interactions');
+requireText(spanish, 'src="/scripts/site.js"', 'Spanish interactions');
+requireAbsent(download, 'src="/scripts/site.js"', 'Download route');
+requireAbsent(notFound, 'src="/scripts/site.js"', '404 route');
 requireText(notFound, 'noindex', '404 crawl policy');
 requireText(robots, 'sitemap-index.xml', 'robots sitemap');
 
