@@ -1,4 +1,4 @@
-# Keep GitHub Actions dependencies current ( posture: the release workflow
+# Keep GitHub Actions dependencies current. The release workflow
 # holds the signing, notarization, Sparkle, and license secrets, so the actions
 # it runs are supply-chain-sensitive). Dependabot proposes bumps as PRs that run
 # the full CI gate before merging; it also keeps commit-SHA pins fresh once the
