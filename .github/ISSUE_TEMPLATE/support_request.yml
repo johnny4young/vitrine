@@ -1,0 +1,49 @@
+name: 💬 Question or support
+description: Get help using Vitrine or building it from source.
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out. Search existing issues first, then provide enough
+        context for someone else to reproduce your setup. Never attach private code,
+        credentials, or clipboard contents.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: Describe the outcome you want, not only the command or control you used.
+    validations:
+      required: true
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+      description: Include relevant steps, commands, and privacy-safe error messages.
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Vitrine version
+      placeholder: "0.23.0 or current main commit"
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "macOS 15.5 (Sequoia)"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-channel
+    attributes:
+      label: Installation method
+      options:
+        - DMG from GitHub Releases
+        - Homebrew cask
+        - Built from source
+    validations:
+      required: true

@@ -29,6 +29,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # The release gate validates that the pushed ref is an annotated tag.
+          # Fetch the tag object rather than only its peeled commit.
+          fetch-depth: 0
 
       # Version guard: Sparkle decides "is this newer?" from the bundle's
       # CFBundleVersion, so tagging a release without bumping project.yml publishes
@@ -40,6 +44,15 @@ jobs:
       - name: Verify tag matches project version
         run: |
           set -euo pipefail
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Release tag ${GITHUB_REF_NAME} is not a stable v-prefixed SemVer tag."
+            exit 1
+          fi
+          TAG_OBJECT_TYPE="$(git cat-file -t "${GITHUB_REF_NAME}")"
+          if [ "${TAG_OBJECT_TYPE}" != "tag" ]; then
+            echo "::error::Release tag ${GITHUB_REF_NAME} is lightweight; create it with git tag -a so the release has durable tag metadata."
+            exit 1
+          fi
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           MARKETING_VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9][0-9A-Za-z.\-]*)"?[[:space:]]*$/\1/p' project.yml | head -n1)"
           if [ "${TAG_VERSION}" != "${MARKETING_VERSION}" ]; then

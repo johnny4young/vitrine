@@ -12,6 +12,16 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- **Repository contributions now have an explicit lifecycle.** The public support and
+  conduct policies, ownership rules, issue forms, squash-only merge policy, automatic
+  merged-branch cleanup, and required CI checks make contribution and maintenance
+  expectations discoverable and consistent.
+- **Published releases are immutable and originate from annotated stable SemVer tags.**
+  The release gate rejects lightweight or malformed tags before packaging starts, so a
+  published version keeps durable metadata and cannot be rewritten in place.
+
 ## [0.23.0] - 2026-07-20
 
 ### Added

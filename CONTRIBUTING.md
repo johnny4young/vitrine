@@ -3,6 +3,8 @@
 Thanks for your interest! Vitrine is MIT-licensed and contributions are welcome —
 **themes and language tweaks especially.** Security issues go through
 [SECURITY.md](SECURITY.md) (privately), never a public issue.
+Participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and usage
+questions are routed through [SUPPORT.md](SUPPORT.md).
 
 ## Prerequisites
 
@@ -66,10 +68,41 @@ See [AGENTS.md](AGENTS.md). In short:
 - Conventional, imperative commit subjects without private planning identifiers.
 - **No AI co-authorship / "generated-by" trailers** in commits or PRs.
 
+## Branch and pull request workflow
+
+Start each change from an up-to-date `main` and keep the branch focused:
+
+```bash
+git switch main
+git pull --ff-only
+git switch -c <type>/<short-description>
+```
+
+Open a pull request early enough for CI and review to shape the change. The repository
+uses squash merges so `main` stays linear, requires all repository-owned CI jobs, and
+requires review conversations to be resolved before merge. Pull request titles become
+the final commit subjects, so keep them conventional, imperative, and free of private
+planning identifiers.
+
+GitHub automatically deletes the remote head branch after merge. Clean the local copy
+only after GitHub shows the pull request as merged:
+
+```bash
+git switch main
+git pull --ff-only
+git fetch --prune
+git branch -D <type>/<short-description>
+```
+
+Squash merging creates a new commit on `main`, so Git cannot prove the original local
+branch tip is an ancestor; that is why the last command uses `-D`. Verify the pull
+request's merged state before running it. Never reuse a merged branch for unrelated
+work.
+
 ## Adding a theme
 
-Themes live in `Vitrine/Models/Theme.swift` (metadata + Highlight.js theme name) and
-`Vitrine/Models/Theme.swift`. Add the `Theme` value, include it in
+Themes live in `Vitrine/Models/Theme.swift` (metadata and Highlight.js theme name).
+Add the `Theme` value, include it in
 `Theme.builtIns` (kept alphabetical by display name), and make sure the `hlJsTheme`
 matches a bundled Highlight.js theme name.
 

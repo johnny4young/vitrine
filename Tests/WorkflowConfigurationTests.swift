@@ -221,6 +221,32 @@ struct WorkflowConfigurationTests {
             "the verify gate must be declared before the publish job")
     }
 
+    // MARK: - Contract: releases originate from durable version tags
+
+    @Test func releaseRequiresAnnotatedStableSemverTags() throws {
+        let release = try Self.release()
+        let doc = try Self.releasingDoc()
+
+        #expect(
+            release.contains("fetch-depth: 0"),
+            "the release checkout must fetch the tag object, not only its peeled commit")
+        #expect(
+            release.contains("git cat-file -t"),
+            "the release gate must distinguish annotated tags from lightweight tags")
+        #expect(
+            release.contains("TAG_OBJECT_TYPE") && release.contains("!= \"tag\""),
+            "the release gate must reject lightweight tags")
+        #expect(
+            release.contains("not a stable v-prefixed SemVer tag"),
+            "the release gate must reject malformed or prerelease tag names")
+        #expect(
+            doc.contains("git tag -a"),
+            "the release runbook must create annotated tags")
+        #expect(
+            doc.localizedCaseInsensitiveContains("immutable releases"),
+            "the release runbook must explain immutable release history")
+    }
+
     // MARK: - Contract: the release gate logs the exact toolchain before building
 
     /// The release `verify` job runs on the same moving `macos-latest` image as CI, so

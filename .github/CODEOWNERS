@@ -1,0 +1,4 @@
+# Default ownership keeps review requests and responsibility explicit as the
+# contributor base grows. More specific ownership rules can be added below this
+# fallback when another maintainer takes responsibility for an area.
+* @johnny4young
