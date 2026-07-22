@@ -679,7 +679,9 @@ on a hosted web-render service — are documented in
 ## Contributing
 
 Themes and language tweaks are especially welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
-and the conventions in [AGENTS.md](AGENTS.md). Security issues go privately through
+and the conventions in [AGENTS.md](AGENTS.md). Usage questions follow
+[SUPPORT.md](SUPPORT.md), community participation follows
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and security issues go privately through
 [SECURITY.md](SECURITY.md).
 
 ## License

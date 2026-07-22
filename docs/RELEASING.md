@@ -24,9 +24,18 @@ VERSION=0.1.0 ./scripts/build-dmg.sh
 Pushing a tag triggers `.github/workflows/release.yml`:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+VERSION=0.1.0
+git switch main
+git pull --ff-only
+git tag -a "v${VERSION}" -m "Vitrine v${VERSION}"
+git push origin "v${VERSION}"
 ```
+
+Release tags must be annotated and use stable SemVer with a `v` prefix. The workflow
+rejects lightweight, prerelease, or malformed tags before spending macOS build minutes.
+GitHub immutable releases are enabled: after publication, the tag, release notes, and
+attached artifacts cannot be altered or replaced. If a published artifact is wrong,
+fix the source and publish a new patch version instead of rewriting release history.
 
 The workflow builds the Release app, signs + notarizes it when the signing secrets
 are configured, verifies the signature and runs a Gatekeeper assessment,

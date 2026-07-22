@@ -6,3 +6,6 @@ contact_links:
   - name: 📚 Project documentation
     url: https://github.com/johnny4young/vitrine/tree/main/docs
     about: Architecture, permissions, releasing, and the design-QA process.
+  - name: 🤝 Support guide
+    url: https://github.com/johnny4young/vitrine/blob/main/SUPPORT.md
+    about: Choose the right public or private channel before sharing details.
