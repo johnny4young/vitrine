@@ -19,9 +19,19 @@ function requireAbsent(source, unexpected, label) {
   }
 }
 
+async function requireMissing(relative) {
+  try {
+    await stat(join(root.pathname, relative));
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  throw new Error(`Static output must not contain ${relative}`);
+}
+
 const english = await read('index.html');
-const spanish = await read('es/index.html');
-const download = await read('download/index.html');
+const spanish = await read('es.html');
+const download = await read('download.html');
 const notFound = await read('404.html');
 const robots = await read('robots.txt');
 const siteScript = await readFile(new URL('../public/scripts/site.js', import.meta.url), 'utf8');
@@ -75,15 +85,17 @@ if (width !== 1200 || height !== 630) {
   throw new Error(`og-card.png must be 1200x630, found ${width}x${height}.`);
 }
 
-for (const required of ['sitemap-index.xml', 'sitemap-0.xml', 'download/index.html']) {
+for (const required of ['sitemap-index.xml', 'sitemap-0.xml', 'es.html', 'download.html']) {
   await stat(join(root.pathname, required));
 }
+await requireMissing('es/index.html');
+await requireMissing('download/index.html');
 
 const internalLinks = [...english.matchAll(/href="(\/[^"]*)"/g)].map((match) => match[1]);
 for (const href of internalLinks) {
   if (href.startsWith('/#') || href === '/') continue;
   const pathname = href.split('#')[0].replace(/^\//, '');
-  const target = pathname.includes('.') ? pathname : `${pathname}/index.html`;
+  const target = pathname.includes('.') ? pathname : `${pathname}.html`;
   await stat(join(root.pathname, target));
 }
 
