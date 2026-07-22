@@ -1,0 +1,56 @@
+<a id="top"></a>
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker"><span class="dot"></span> <span data-i18n="hero.kicker">The menu-bar app for sharing code</span></span>
+    <h1 data-i18n="hero.h1">Put your code <span class="em">behind glass.</span></h1>
+    <div class="sub">
+      <p class="tag" data-i18n="hero.tag">Vitrine turns code, URLs, and HTML into gorgeous, share-ready images — copy, press <b>⇧⌘S</b>, paste. Instant, and fully local.</p>
+      <div>
+        <div class="cta">
+          <a class="btn btn-primary" data-download href="/download"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 12.6c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.6-1.3-.1-2.5.8-3.1.8-.6 0-1.6-.7-2.7-.7-1.4 0-2.7.8-3.4 2.1-1.4 2.5-.4 6.2 1 8.2.7 1 1.5 2.1 2.5 2.1 1 0 1.4-.6 2.6-.6 1.2 0 1.5.6 2.6.6 1.1 0 1.8-1 2.4-2 .8-1.1 1.1-2.2 1.1-2.3-.1 0-2.3-.9-2.3-3.4ZM14.7 6.5c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.5.6-1 1.6-.9 2.6 1 0 1.9-.5 2.5-1.2Z"></path></svg><span data-i18n="hero.cta1">Download for macOS</span></a>
+          <a class="btn btn-ghost" href="https://github.com/johnny4young/vitrine"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2A9.8 9.8 0 0 0 8.9 21.3c.5.1.7-.2.7-.5v-1.8c-2.7.6-3.3-1.3-3.3-1.3-.5-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.4-2.2-.2-4.5-1.1-4.5-4.9 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 4.9 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.8-2.3 4.7-4.5 4.9.3.3.7 1 .7 2v2.9c0 .3.2.6.7.5A9.8 9.8 0 0 0 12 2.2Z"></path></svg><span data-i18n="hero.cta2">View on GitHub</span></a>
+        </div>
+        <p class="meta" data-i18n="hero.meta">Latest <b data-version>release</b> · macOS 14+ · free &amp; open source · your code never leaves your Mac</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- the salon hang: three exported works on the wall -->
+  <div class="salon" aria-hidden="true">
+    <div class="wallstrip"></div>
+    <div class="wrap">
+      <div class="hang">
+        <div class="frame work work-a" style="background:var(--grad-sunset)">
+          <div class="win">
+            <div class="titlebar"><span class="tl" style="background:var(--tl-red)"></span><span class="tl" style="background:var(--tl-yellow)"></span><span class="tl" style="background:var(--tl-green)"></span><span class="fname">api.ts</span></div>
+<pre class="code"><span class="k">export const</span> <span class="f">getUser</span> = <span class="k">async</span> (id) =&gt; &#123;
+  <span class="k">const</span> r = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">`/u/$&#123;id&#125;`</span>)
+  <span class="k">return</span> r.<span class="f">json</span>()
+&#125;</pre>
+          </div>
+        </div>
+        <div class="frame work work-b" style="background:var(--grad-aurora)">
+          <div class="win">
+            <div class="titlebar"><span class="tl" style="background:var(--tl-red)"></span><span class="tl" style="background:var(--tl-yellow)"></span><span class="tl" style="background:var(--tl-green)"></span><span class="fname">Counter.swift</span></div>
+<pre class="code"><span class="k">struct</span> <span class="t">Counter</span> &#123;
+  <span class="k">private(set) var</span> value = <span class="n">0</span>
+
+  <span class="k">mutating func</span> <span class="f">increment</span>(by step: <span class="t">Int</span> = <span class="n">1</span>) &#123;
+    value += step
+  &#125;
+&#125;</pre>
+          </div>
+        </div>
+        <div class="frame work work-c" style="background:var(--grad-forest)">
+          <div class="win">
+            <div class="titlebar"><span class="tl" style="background:var(--tl-red)"></span><span class="tl" style="background:var(--tl-yellow)"></span><span class="tl" style="background:var(--tl-green)"></span><span class="fname">main.py</span></div>
+<pre class="code"><span class="k">def</span> <span class="f">greet</span>(name: <span class="t">str</span>) -&gt; <span class="t">str</span>:
+    <span class="k">return</span> <span class="s">f"Hello, &#123;name&#125;!"</span>
+
+<span class="f">print</span>(<span class="f">greet</span>(<span class="s">"world"</span>))</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>

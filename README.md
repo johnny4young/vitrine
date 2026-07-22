@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/vitrine-icon.png" alt="" width="116" height="116">
+<img src="site/public/vitrine-icon.png" alt="" width="116" height="116">
 
 # Vitrine
 
@@ -108,11 +108,11 @@ light and dark.
 
 <div align="center">
 
-<img src="docs/screenshots/editor.png" alt="The editor: glass toolbar with the gradient Copy image action, code pane, the preview floating in ambient light cast by its background, and the style inspector" width="760">
+<img src="site/public/screenshots/editor.png" alt="The editor: glass toolbar with the gradient Copy image action, code pane, the preview floating in ambient light cast by its background, and the style inspector" width="760">
 
 | First-run quick-start | Settings | Menu-bar panel |
 | --- | --- | --- |
-| <img src="docs/screenshots/welcome.png" alt="Onboarding quick-start: numbered steps, a live sample card you can restyle, and the privacy promise" width="250"> | <img src="docs/screenshots/settings.png" alt="Settings — Style pane with the pinned live preview, sub-tabs, and theme and font chip pickers" width="250"> | <img src="docs/screenshots/menu-bar.png" alt="The menu-bar panel: gradient capture action, recent captures, theme chips, and explicit command rows" width="250"> |
+| <img src="site/public/screenshots/welcome.png" alt="Onboarding quick-start: numbered steps, a live sample card you can restyle, and the privacy promise" width="250"> | <img src="site/public/screenshots/settings.png" alt="Settings — Style pane with the pinned live preview, sub-tabs, and theme and font chip pickers" width="250"> | <img src="site/public/screenshots/menu-bar.png" alt="The menu-bar panel: gradient capture action, recent captures, theme chips, and explicit command rows" width="250"> |
 
 </div>
 
@@ -136,13 +136,13 @@ on every release.
 
 | Annotated markup (counter, box, blur, arrow) | GitHub-style diff coloring |
 | --- | --- |
-| <img src="docs/screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur/redaction box over a secret, an arrow, and a text callout" width="380"> | <img src="docs/screenshots/diff.png" alt="A unified diff with + lines banded green and − lines banded red, GitHub-style, with line numbers" width="380"> |
+| <img src="site/public/screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur/redaction box over a secret, an arrow, and a text callout" width="380"> | <img src="site/public/screenshots/diff.png" alt="A unified diff with + lines banded green and − lines banded red, GitHub-style, with line numbers" width="380"> |
 
 **Full-screen TUIs** — Vitrine reconstructs the final screen (cursor moves, colors, and all), not just scrolling output. Real captures of `htop`, `lazygit`, and Neovim:
 
 | `htop` · One Dark | `lazygit` · Dracula | `nvim` · Nord |
 | --- | --- | --- |
-| <img src="docs/screenshots/terminal-htop.png" alt="htop's system monitor reconstructed as an image — CPU and memory meters, the process table, and the function-key bar" width="250"> | <img src="docs/screenshots/terminal-lazygit.png" alt="The lazygit multi-panel git dashboard reconstructed — status, files, branches, commits, and a diff pane" width="250"> | <img src="docs/screenshots/terminal-nvim.png" alt="A Neovim editing session reconstructed with syntax highlighting and the status line" width="250"> |
+| <img src="site/public/screenshots/terminal-htop.png" alt="htop's system monitor reconstructed as an image — CPU and memory meters, the process table, and the function-key bar" width="250"> | <img src="site/public/screenshots/terminal-lazygit.png" alt="The lazygit multi-panel git dashboard reconstructed — status, files, branches, commits, and a diff pane" width="250"> | <img src="site/public/screenshots/terminal-nvim.png" alt="A Neovim editing session reconstructed with syntax highlighting and the status line" width="250"> |
 
 </div>
 
@@ -637,6 +637,7 @@ vitrine/
 ├── VitrineCLI/            # the `vitrine` command-line renderer target
 ├── Tests/                 # Swift Testing unit suite + golden/gallery fixtures
 ├── UITests/               # XCTest UI smokes + opt-in screenshot tour
+├── site/                  # Astro static website (semantic HTML + vanilla CSS/JS)
 └── docs/                  # current product, architecture, privacy, and release docs
 ```
 

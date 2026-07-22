@@ -1,0 +1,50 @@
+<!-- ============ STYLE BENCH (interactive) ============ -->
+<section id="bench">
+  <div class="wrap">
+    <span class="eyebrow" data-i18n="bench.eyebrow">The style bench</span>
+    <h2 class="title" data-i18n="bench.title">One snippet. Every look.</h2>
+    <p class="lead" data-i18n="bench.lead">Pick a gradient and a theme — the same code, restyled live. In the app these are saved presets, applied the instant you press the hotkey.</p>
+    <div class="bench">
+      <div class="bench-grid">
+        <div class="bench-stage" id="stage" style="background:var(--grad-aurora)">
+          <div class="bench-card" id="benchCard" style="background:#1c1d24">
+            <div class="titlebar"><span class="tl" style="background:var(--tl-red)"></span><span class="tl" style="background:var(--tl-yellow)"></span><span class="tl" style="background:var(--tl-green)"></span><span class="fname" id="benchName">Counter.swift</span></div>
+<pre class="code" id="benchCode"><span class="k">import</span> SwiftUI
+
+<span class="k">struct</span> <span class="t">Counter</span> &#123;
+  <span class="k">private(set) var</span> value = <span class="n">0</span>
+
+  <span class="k">mutating func</span> <span class="f">increment</span>(by step: <span class="t">Int</span> = <span class="n">1</span>) &#123;
+    value += step
+  &#125;
+&#125;</pre>
+          </div>
+        </div>
+        <div class="bench-controls">
+          <p class="ctl-label" data-i18n="bench.bg">Background preset</p>
+          <div class="swatches" id="swatches">
+            <button class="swatch" data-grad="var(--grad-aurora)" aria-pressed="true" title="Aurora" style="background:var(--grad-aurora)"></button>
+            <button class="swatch" data-grad="var(--grad-ocean)" aria-pressed="false" title="Ocean" style="background:var(--grad-ocean)"></button>
+            <button class="swatch" data-grad="var(--grad-sunset)" aria-pressed="false" title="Sunset" style="background:var(--grad-sunset)"></button>
+            <button class="swatch" data-grad="var(--grad-forest)" aria-pressed="false" title="Forest" style="background:var(--grad-forest)"></button>
+            <button class="swatch" data-grad="var(--grad-night)" aria-pressed="false" title="Night" style="background:var(--grad-night)"></button>
+            <button class="swatch" data-grad="var(--grad-carbon)" aria-pressed="false" title="Carbon" style="background:var(--grad-carbon)"></button>
+          </div>
+          <p class="ctl-label" data-i18n="bench.theme">Theme</p>
+          <div class="chips" id="themes">
+            <button class="chip" data-theme="one-dark" aria-pressed="true">One Dark</button>
+            <button class="chip" data-theme="one-light" aria-pressed="false">One Light</button>
+            <button class="chip" data-theme="dracula" aria-pressed="false">Dracula</button>
+          </div>
+          <p class="ctl-label" data-i18n="bench.lang">Language</p>
+          <div class="chips" id="langs">
+            <button class="chip" data-lang="swift" aria-pressed="true">Swift</button>
+            <button class="chip" data-lang="ts" aria-pressed="false">TypeScript</button>
+            <button class="chip" data-lang="py" aria-pressed="false">Python</button>
+          </div>
+          <p class="bench-note" data-i18n="bench.note">13 themes, 160+ languages, gradient &amp; image backgrounds, focus mode, and diff coloring ship in the app.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -15,6 +15,8 @@ DerivedData/
 dist/
 # Session evidence from audit/validation runs (screenshots, reports) — local only.
 .audit/
+.playwright-cli/
+output/playwright/
 *.moved-aside
 *.hmap
 *.ipa

@@ -1,0 +1,101 @@
+---
+import type { SiteCopy } from '~/i18n/content';
+import { currentVersion } from '~/lib/project';
+import '~/styles/global.css';
+
+interface Props {
+  copy: SiteCopy;
+  path?: string;
+  noindex?: boolean;
+  includeMarketingInteractions?: boolean;
+}
+
+const {
+  copy,
+  path = copy.locale === 'es' ? '/es' : '/',
+  noindex = false,
+  includeMarketingInteractions = false,
+} = Astro.props;
+const canonical = new URL(path, Astro.site);
+const alternateEnglish = new URL('/', Astro.site);
+const alternateSpanish = new URL('/es', Astro.site);
+
+const productSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Vitrine',
+  operatingSystem: 'macOS 14 or later',
+  applicationCategory: 'DeveloperApplication',
+  description: copy.meta.description,
+  url: canonical.href,
+  downloadUrl: 'https://vitrineframe.app/download',
+  softwareVersion: currentVersion,
+  offers: [
+    {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+      category: 'Free',
+    },
+    {
+      '@type': 'Offer',
+      price: '19.99',
+      priceCurrency: 'USD',
+      category: 'PRO',
+      url: 'https://johnny4young.lemonsqueezy.com/checkout/buy/314e7d43-efa1-41be-a319-7474628e5185',
+    },
+  ],
+  author: {
+    '@type': 'Person',
+    name: 'johnny4young',
+    url: 'https://github.com/johnny4young',
+  },
+  codeRepository: 'https://github.com/johnny4young/vitrine',
+  license: 'https://github.com/johnny4young/vitrine/blob/main/LICENSE',
+};
+
+---
+
+<!doctype html>
+<html lang={copy.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11121a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)" />
+    <title>{copy.meta.title}</title>
+    <meta name="description" content={copy.meta.description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="en" href={alternateEnglish} />
+    <link rel="alternate" hreflang="es" href={alternateSpanish} />
+    <link rel="alternate" hreflang="x-default" href={alternateEnglish} />
+    <link rel="icon" href="/vitrine-icon.png" type="image/png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Vitrine" />
+    <meta property="og:title" content={copy.meta.title} />
+    <meta property="og:description" content={copy.meta.description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content="https://vitrineframe.app/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={copy.meta.imageAlt} />
+    <meta property="og:locale" content={copy.locale === 'es' ? 'es_ES' : 'en_US'} />
+    <meta
+      property="og:locale:alternate"
+      content={copy.locale === 'es' ? 'en_US' : 'es_ES'}
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={copy.meta.title} />
+    <meta name="twitter:description" content={copy.meta.description} />
+    <meta name="twitter:image" content="https://vitrineframe.app/og-card.png" />
+
+    {!noindex && <script is:inline type="application/ld+json" set:html={JSON.stringify(productSchema)} />}
+  </head>
+  <body>
+    <slot />
+    {includeMarketingInteractions && <script is:inline src="/scripts/site.js" defer></script>}
+  </body>
+</html>
