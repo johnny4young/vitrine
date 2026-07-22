@@ -48,6 +48,18 @@ jobs:
       - name: Check repository hygiene
         run: make hygiene
 
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Validate static website
+        working-directory: site
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+
       # Validate every workflow's YAML syntax. This is the CI counterpart to
       # WorkflowConfigurationTests, which asserts the required structure; this step
       # guards against a malformed YAML edit that the

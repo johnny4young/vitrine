@@ -40,7 +40,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens gallery format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -151,6 +151,10 @@ record-goldens: project
 gallery: project
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" PROJECT="$(PROJECT)" SCHEME="$(SCHEME)" \
 		swift scripts/generate-launch-gallery.swift
+
+## site-test: type-check, build, and validate the static Astro website
+site-test:
+	cd site && npm test
 
 ## format: format Swift sources in place (Apple swift-format)
 format:

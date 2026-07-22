@@ -1,0 +1,29 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { content } from '~/i18n/content';
+
+const copy = content.en;
+---
+
+<BaseLayout copy={copy} path="/download" noindex>
+  <main class="redirect-page">
+    <img src="/vitrine-icon.png" alt="" width="72" height="72" />
+    <p class="eyebrow">Vitrine for macOS</p>
+    <h1>Preparing the latest signed download…</h1>
+    <p>
+      If the download does not start, open the
+      <a href="https://github.com/johnny4young/vitrine/releases/latest">latest GitHub release</a>.
+    </p>
+  </main>
+  <script is:inline>
+    fetch('https://api.github.com/repos/johnny4young/vitrine/releases/latest', {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('release'))))
+      .then((release) => {
+        const asset = release.assets?.find((candidate) => /\.dmg$/i.test(candidate.name));
+        location.replace(asset?.browser_download_url ?? release.html_url);
+      })
+      .catch(() => location.replace('https://github.com/johnny4young/vitrine/releases/latest'));
+  </script>
+</BaseLayout>
