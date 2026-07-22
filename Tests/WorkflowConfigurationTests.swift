@@ -49,6 +49,10 @@ struct WorkflowConfigurationTests {
         try text(".github", "workflows", "appstore.yml")
     }
 
+    private static func freshness() throws -> String {
+        try text(".github", "workflows", "dependency-freshness.yml")
+    }
+
     private static func makefile() throws -> String {
         try text("Makefile")
     }
@@ -64,7 +68,11 @@ struct WorkflowConfigurationTests {
     /// fast. (Structural correctness beyond this is covered by the targeted reads below
     /// and by the CI parse step.)
     @Test func workflowYAMLUsesNoTabIndentation() throws {
-        for (name, body) in try [("ci.yml", Self.ci()), ("release.yml", Self.release())] {
+        for (name, body) in try [
+            ("ci.yml", Self.ci()),
+            ("release.yml", Self.release()),
+            ("dependency-freshness.yml", Self.freshness()),
+        ] {
             for (index, line) in body.components(separatedBy: .newlines).enumerated() {
                 let indentation = line.prefix { $0 == " " || $0 == "\t" }
                 #expect(
@@ -107,6 +115,27 @@ struct WorkflowConfigurationTests {
         #expect(
             ci.contains("hashFiles('project.yml')"),
             "The SPM cache key must be bound to project.yml")
+    }
+
+    @Test func workflowsVerifyPinnedXcodeGenAndWatchExternalPins() throws {
+        let version = try Self.text("scripts", "xcodegen-version.env")
+        let verifier = try Self.text("scripts", "verify-xcodegen-version.sh")
+        #expect(version.contains("XCODEGEN_VERSION=\""))
+        #expect(verifier.contains("xcodegen-version.env"))
+        #expect(verifier.contains(#"[ "$actual" != "$XCODEGEN_VERSION" ]"#))
+        for workflow in try [Self.ci(), Self.release(), Self.appstore()] {
+            #expect(workflow.contains("./scripts/verify-xcodegen-version.sh"))
+        }
+        let freshness = try Self.freshness()
+        #expect(freshness.contains("schedule:"))
+        #expect(freshness.contains("./scripts/check-dependency-freshness.sh"))
+    }
+
+    @Test func releasePublishesPinnedSpdxInventory() throws {
+        let release = try Self.release()
+        #expect(release.contains("anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610"))
+        #expect(release.contains("syft-version: v1.49.0"))
+        #expect(release.contains("dist/*.spdx.json"))
     }
 
     // MARK: - Contract: upload .xcresult bundles / test logs on failure

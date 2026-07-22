@@ -412,10 +412,10 @@ struct AppStoreReadinessTests {
         #expect(doc.contains("CA92.1"))
     }
 
-    // MARK: - Contract: TestFlight upload path documented (Organizer / Transporter / altool)
+    // MARK: - Contract: supported TestFlight delivery paths are documented
 
     /// The TestFlight upload path must be documented through Xcode Organizer, Transporter,
-    /// **or** `xcrun altool`/Transporter CLI. Assert all three are present so the
+    /// or authenticated `xcodebuild`. Assert all three are present so the
     /// "any of these" contract is genuinely covered, not just one path.
     @Test func documentsTheTestFlightUploadPaths() throws {
         let doc = try Self.doc()
@@ -428,10 +428,11 @@ struct AppStoreReadinessTests {
         #expect(
             doc.contains("Transporter"),
             "APP-STORE.md must document the Transporter upload path")
-        // altool / command-line path.
+        // Supported command-line path.
         #expect(
-            doc.contains("altool"),
-            "APP-STORE.md must document the xcrun altool upload path")
+            doc.contains("xcodebuild -exportArchive"),
+            "APP-STORE.md must document the Xcode command-line delivery path")
+        #expect(!doc.contains("xcrun altool"), "APP-STORE.md must not recommend deprecated altool")
         // The upload step itself is named.
         #expect(doc.localizedCaseInsensitiveContains("upload"))
     }
@@ -526,7 +527,7 @@ struct AppStoreReadinessTests {
 
     /// The optional workflow is a **dry run**: manually triggered, it archives and validates
     /// but **never** auto-submits or auto-uploads a build. Assert it is `workflow_dispatch`,
-    /// runs `validate-app`, and contains **no** `upload-app` step — the property that keeps
+    /// uses Xcode's validation export and contains no upload destination — the property that keeps
     /// it safe to merge on a repo without an Apple account.
     @Test func workflowIsAManualDryRunThatNeverAutoSubmits() throws {
         let workflow = try Self.workflow()
@@ -534,11 +535,11 @@ struct AppStoreReadinessTests {
             workflow.contains("workflow_dispatch"),
             "appstore.yml must be manually triggered (workflow_dispatch)")
         #expect(
-            workflow.contains("--validate-app"),
-            "appstore.yml must run App Store validation as a dry run")
+            workflow.contains("<string>validation</string>"),
+            "appstore.yml must run Xcode validation export as a dry run")
         // The critical safety property: it must never upload/submit a build automatically.
         #expect(
-            !workflow.contains("--upload-app"),
+            !workflow.contains("<string>upload</string>"),
             "appstore.yml must NOT upload/submit a build automatically (it is a dry run only)"
         )
         #expect(
@@ -565,14 +566,18 @@ struct AppStoreReadinessTests {
             workflow.contains("MACOS_NOTARY_KEY_P8"),
             "appstore.yml must gate validation on the App Store Connect API key")
         _ = try #require(
-            workflow.range(of: "--validate-app"),
-            "appstore.yml must contain the validate-app step")
+            workflow.range(of: "<string>validation</string>"),
+            "appstore.yml must contain the Xcode validation export")
         #expect(
             workflow.contains(#"[ -z "${MACOS_NOTARY_KEY_ID:-}" ]"#),
-            "the validate-app step must be gated on the App Store Connect API-key secrets")
+            "the validation export must be gated on the App Store Connect API-key secrets")
         #expect(
-            workflow.contains(#"--p8-file-path "${APPSTORE_KEY_P8}""#),
-            "the validate-app step must pass altool the staged App Store Connect private key file")
+            workflow.contains(#"[ -z "${MACOS_SIGN_TEAM_ID:-}" ]"#),
+            "the validation export must be gated on the signing Team ID")
+        #expect(
+            workflow.contains(#"-authenticationKeyPath "${APPSTORE_KEY_P8}""#),
+            "the validation export must pass Xcode the staged App Store Connect private key file")
+        #expect(!workflow.contains("altool"), "the workflow must not use deprecated altool")
     }
 
     /// The doc must point at the optional workflow and describe it as a credential-gated dry

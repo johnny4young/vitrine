@@ -191,8 +191,10 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install and verify XcodeGen
+        run: |
+          brew install xcodegen
+          ./scripts/verify-xcodegen-version.sh
 
       # Cache the global Swift Package Manager download/clone cache. This
       # directory is a content-addressed checkout cache, safe to restore across
@@ -424,8 +426,10 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install and verify XcodeGen
+        run: |
+          brew install xcodegen
+          ./scripts/verify-xcodegen-version.sh
 
       - name: Cache Swift Package Manager
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0

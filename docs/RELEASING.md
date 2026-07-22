@@ -63,6 +63,10 @@ CI is a release gate, not just a compile check.
   GitHub rolls that image and the bundled Xcode/SDK on its own cadence, which can
   break the build with no code change; the scheduled run surfaces that drift on a
   predictable day instead of on the next unrelated PR.
+- **Pinned release tooling and dependency inventory.** CI verifies XcodeGen against
+  `scripts/xcodegen-version.env`, a weekly workflow compares XcodeGen and Sparkle pins
+  with their official releases, and each GitHub release includes a versioned SPDX JSON
+  SBOM alongside the DMG and checksum.
 - **The release workflow refuses to publish a broken build.** `release.yml` runs a
   `verify` job (lint, build, UI-test build, unit tests) that the `publish` job
   `needs:`. A tag therefore cannot publish a DMG unless lint, build, the unit
