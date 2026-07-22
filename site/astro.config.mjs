@@ -20,6 +20,7 @@ export default defineConfig({
   ],
   build: {
     assets: 'static',
+    format: 'file',
     inlineStylesheets: 'auto',
   },
 });
