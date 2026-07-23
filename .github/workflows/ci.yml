@@ -191,8 +191,8 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install pinned XcodeGen
+        run: ./scripts/install-xcodegen.sh
 
       # Cache the global Swift Package Manager download/clone cache. This
       # directory is a content-addressed checkout cache, safe to restore across
@@ -260,7 +260,7 @@ jobs:
       # from a log. The generator stages PNGs + manifest in the sandboxed host's
       # container temp and prints one `GALLERY OUTPUT <path>` line; copy that out.
       - name: Render gallery for design review
-        if: failure()
+        if: failure() && hashFiles('Vitrine.xcodeproj/project.pbxproj') != ''
         run: |
           set -o pipefail
           xcodebuild -project Vitrine.xcodeproj -scheme Vitrine -configuration Debug \
@@ -273,7 +273,8 @@ jobs:
           if [ -n "${staging}" ] && [ -d "${staging}" ]; then
             cp "${staging}"/*.png "${dest}/" 2>/dev/null || true
             cp "${staging}/manifest.json" "${dest}/" 2>/dev/null || true
-            echo "Collected $(ls "${dest}"/*.png 2>/dev/null | wc -l | tr -d ' ') gallery images for review."
+            count="$(find "${dest}" -maxdepth 1 -type f -name '*.png' | wc -l | tr -d ' ')"
+            echo "Collected ${count} gallery images for review."
           else
             echo "::warning title=Gallery render::could not locate the generator staging directory."
           fi
@@ -349,7 +350,8 @@ jobs:
       - name: Golden comparator smoke
         run: |
           set -euo pipefail
-          golden=$(ls Tests/Fixtures/Golden/*.png 2>/dev/null | head -n 1 || true)
+          golden="$(find Tests/Fixtures/Golden -maxdepth 1 -type f -name '*.png' \
+            | LC_ALL=C sort | sed -n '1p')"
           if [ -z "${golden}" ]; then
             echo "No golden fixtures committed yet; skipping comparator smoke."
             exit 0
@@ -357,7 +359,8 @@ jobs:
           cp "${golden}" "${RUNNER_TEMP}/copy.png"
           echo "Identical comparison (expect MATCH, exit 0):"
           swift scripts/compare-goldens.swift "${golden}" "${RUNNER_TEMP}/copy.png"
-          other=$(ls Tests/Fixtures/Golden/*.png | tail -n 1)
+          other="$(find Tests/Fixtures/Golden -maxdepth 1 -type f -name '*.png' \
+            | LC_ALL=C sort | tail -n 1)"
           if [ "${other}" != "${golden}" ]; then
             echo "Different-image comparison (expect DIFFER, exit 1):"
             if swift scripts/compare-goldens.swift "${golden}" "${other}"; then
@@ -367,7 +370,7 @@ jobs:
             echo "Comparator correctly reported a mismatch."
           fi
 
-  # Full XCUITest execution ( follow-up). Compile-only `build-ui-tests`
+  # Full XCUITest execution. Compile-only `build-ui-tests`
   # kept UI-test failures invisible on main; this job actually runs the suite on
   # every PR/push. Driving the menu-bar app through XCUIAutomation needs the
   # macOS automation authorization, which is interactive on a dev machine — but
@@ -424,8 +427,8 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install pinned XcodeGen
+        run: ./scripts/install-xcodegen.sh
 
       - name: Cache Swift Package Manager
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0

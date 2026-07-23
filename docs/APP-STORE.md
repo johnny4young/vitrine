@@ -99,7 +99,7 @@ and testing an update from N to N+1) is documented in
 `project.yml` keeps `DEVELOPMENT_TEAM` empty and `CODE_SIGN_STYLE: Automatic` by default so
 the repo builds and tests without an Apple account; a real submission supplies the Team ID
 and the App Store provisioning profile at archive/export time (manually in Xcode Organizer
-or via the `ExportOptions.plist` `method: app-store` flow described below). No account
+or via the `ExportOptions.plist` `method: app-store-connect` flow described below). No account
 credentials are committed.
 
 ### Embedded CLI — App Store archive must address it
@@ -188,42 +188,29 @@ credential committed to the repo.
    `xcrun iTMSTransporter` / Transporter CLI to upload it. Useful when archiving and
    uploading happen on different machines.
 
-3. **`xcrun altool` / `notarytool`-adjacent command line.** Export, then upload the `.pkg`
-   non-interactively:
+3. **Xcode command line (supported automation path).** Use `xcodebuild -exportArchive`
+   with `method: validation` for a no-upload preflight, or `method: app-store-connect`
+   with `destination: upload` for delivery. Authenticate with
+   `-authenticationKeyPath`, `-authenticationKeyID`, and
+   `-authenticationKeyIssuerID`; no legacy `altool` step is required.
 
-   ```bash
-   # 1. Export the archive for the App Store (ExportOptions.plist has method: app-store).
-   xcodebuild -exportArchive \
-     -archivePath Vitrine.xcarchive \
-     -exportPath build/appstore \
-     -exportOptionsPlist ExportOptions.plist
-
-   # 2. Validate, then upload to App Store Connect / TestFlight.
-   #    Authenticate with an App Store Connect API key (preferred) — the same key
-   #    style used for notarization: MACOS_NOTARY_KEY_ID / _ISSUER_ID / _P8.
-   xcrun altool --validate-app -f build/appstore/Vitrine.pkg -t macos \
-     --apiKey "$MACOS_NOTARY_KEY_ID" --apiIssuer "$MACOS_NOTARY_KEY_ISSUER_ID"
-   xcrun altool --upload-app   -f build/appstore/Vitrine.pkg -t macos \
-     --apiKey "$MACOS_NOTARY_KEY_ID" --apiIssuer "$MACOS_NOTARY_KEY_ISSUER_ID"
-   ```
-
-   A minimal `ExportOptions.plist` for the App Store method:
+   A minimal dry-run `ExportOptions.plist` uses:
 
    ```xml
-   <?xml version="1.0" encoding="UTF-8"?>
-   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-   <plist version="1.0">
-   <dict>
-     <key>method</key>            <string>app-store</string>
-     <key>teamID</key>            <string>YOUR_TEAM_ID</string>
-     <key>signingStyle</key>      <string>automatic</string>
-     <key>uploadSymbols</key>     <true/>
-   </dict>
-   </plist>
+   <plist version="1.0"><dict>
+     <key>method</key><string>validation</string>
+     <key>teamID</key><string>YOUR_TEAM_ID</string>
+     <key>signingStyle</key><string>automatic</string>
+   </dict></plist>
    ```
 
+   Run the validation export with `-allowProvisioningUpdates` and the App Store
+   Connect authentication-key arguments. To upload later, change the method to
+   `app-store-connect`, add `<key>destination</key><string>upload</string>`, and use
+   the same authenticated `xcodebuild -exportArchive` command.
+
 The optional [`.github/workflows/appstore.yml`](../.github/workflows/appstore.yml) is a
-**manually-triggered dry run** of the archive + `validate-app` steps, gated on the same App
+**manually-triggered dry run** of the archive + Xcode validation-export steps, gated on the same App
 Store Connect API-key secrets. It never auto-submits and skips itself cleanly when the
 secrets are absent, so it is safe to keep on a repo without an Apple account. See "CI dry
 run" below.
@@ -273,11 +260,11 @@ reviewer understands the menu-bar, local-rendering, no-telemetry design before t
 - [ ] Entitlements match the documented App Store-compatible set and the permission matrix.
 - [ ] App icon up to date (`make icon`).
 - [ ] Archived on the `Vitrine` scheme; **Validate App** passes in Xcode Organizer (or
-      `xcrun altool --validate-app`).
+      Xcode validation export).
 - [ ] App Store privacy labels in App Store Connect set to **Data Not Collected**, matching
       `PrivacyInfo.xcprivacy`.
 - [ ] App Review notes (above) pasted into App Store Connect.
-- [ ] Uploaded to TestFlight via Organizer, Transporter, or `xcrun altool` and the build
+- [ ] Uploaded to TestFlight via Organizer, Transporter, or authenticated `xcodebuild` and the build
       appears in App Store Connect.
 
 ## CI dry run (optional, no account required)

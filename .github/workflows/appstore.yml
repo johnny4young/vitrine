@@ -39,7 +39,7 @@ jobs:
       - name: Export DEVELOPER_DIR
         run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
 
-      # Record the exact toolchain this archive was built against ( posture),
+      # Record the exact toolchain this archive was built against for traceability,
       # so a validation result is always tied to a known macOS image, Xcode, and SDK.
       - name: Toolchain versions
         run: |
@@ -54,8 +54,8 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install pinned XcodeGen
+        run: ./scripts/install-xcodegen.sh
 
       - name: Cache Swift Package Manager
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
@@ -110,7 +110,7 @@ jobs:
           echo "Verified: the App Store archive contains no Sparkle."
 
       # Stage the App Store Connect API private key (.p8) from a secret, if present.
-      # This is the credential `altool` uses to talk to App Store Connect for the
+      # This credential lets Xcode authenticate with App Store Connect for the
       # validation dry run. Skipped (and the validation step below skipped with it)
       # when the secret is absent.
       - name: Stage App Store Connect API key
@@ -123,16 +123,14 @@ jobs:
             exit 0
           fi
           KEY_PATH="${RUNNER_TEMP}/appstore-key.p8"
-          echo "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
+          umask 077
+          printf '%s' "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
           echo "APPSTORE_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
 
-      # App Store validation as a DRY RUN: export the archive for the App Store and run
-      # altool's validate step (Apple's pre-submission checks) only — it never runs the
-      # upload/submit step. Gated on the API-key secrets so a repo without an Apple
-      # account skips this entirely and the workflow still passes. This is the closest a
-      # hosted runner can get to the Organizer "Validate App" step without submitting
-      # anything.
-      - name: Validate for App Store (dry run, no upload)
+      # Use Xcode's supported validation export. The `validation` method performs the
+      # same distribution checks as Organizer without uploading a build. App Store
+      # Connect API credentials permit automatic signing through Xcode itself.
+      - name: Validate for App Store with Xcode (dry run, no upload)
         env:
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
@@ -143,8 +141,9 @@ jobs:
           if [ -z "${MACOS_NOTARY_KEY_ID:-}" ] \
             || [ -z "${MACOS_NOTARY_KEY_ISSUER_ID:-}" ] \
             || [ -z "${MACOS_NOTARY_KEY_P8:-}" ] \
+            || [ -z "${MACOS_SIGN_TEAM_ID:-}" ] \
             || [ -z "${APPSTORE_KEY_P8:-}" ]; then
-            echo "App Store Connect API key secrets not configured; skipping validate-app dry run."
+            echo "App Store Connect API key secrets not configured; skipping Xcode validation export."
             exit 0
           fi
           cat > "${RUNNER_TEMP}/ExportOptions.plist" <<PLIST
@@ -152,7 +151,7 @@ jobs:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>method</key><string>app-store</string>
+            <key>method</key><string>validation</string>
             <key>teamID</key><string>${MACOS_SIGN_TEAM_ID}</string>
             <key>signingStyle</key><string>automatic</string>
             <key>uploadSymbols</key><true/>
@@ -161,14 +160,12 @@ jobs:
           PLIST
           xcodebuild -exportArchive \
             -archivePath "${RUNNER_TEMP}/Vitrine.xcarchive" \
-            -exportPath "${RUNNER_TEMP}/appstore-export" \
-            -exportOptionsPlist "${RUNNER_TEMP}/ExportOptions.plist"
-          PKG="$(ls "${RUNNER_TEMP}/appstore-export"/*.pkg | head -n 1)"
-          echo "Validating ${PKG} (dry run — no upload)…"
-          xcrun altool --validate-app -f "${PKG}" -t macos \
-            --apiKey "${MACOS_NOTARY_KEY_ID}" \
-            --apiIssuer "${MACOS_NOTARY_KEY_ISSUER_ID}" \
-            --p8-file-path "${APPSTORE_KEY_P8}"
+            -exportPath "${RUNNER_TEMP}/appstore-validation" \
+            -exportOptionsPlist "${RUNNER_TEMP}/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${APPSTORE_KEY_P8}" \
+            -authenticationKeyID "${MACOS_NOTARY_KEY_ID}" \
+            -authenticationKeyIssuerID "${MACOS_NOTARY_KEY_ISSUER_ID}"
 
       - name: Dry-run summary
         if: always()
@@ -176,12 +173,12 @@ jobs:
           # Read the secret through env (never interpolated into the shell body), so
           # the test below is a plain string check and there is no shell-injection
           # surface. The value is a presence flag only; the key itself is not logged.
-          HAS_APPSTORE_KEY: ${{ secrets.MACOS_NOTARY_KEY_ID != '' }}
+          HAS_APPSTORE_CREDENTIALS: ${{ secrets.MACOS_NOTARY_KEY_ID != '' && secrets.MACOS_NOTARY_KEY_ISSUER_ID != '' && secrets.MACOS_NOTARY_KEY_P8 != '' && secrets.MACOS_NOTARY_TEAM_ID != '' }}
         run: |
           {
             echo "### App Store dry run"
-            if [ "${HAS_APPSTORE_KEY}" = "true" ]; then
-              echo "App Store Connect API key present — archive + validate-app dry run ran (no upload)."
+            if [ "${HAS_APPSTORE_CREDENTIALS}" = "true" ]; then
+              echo "App Store Connect credentials present — the Xcode validation-export step was attempted (no upload)."
             else
               echo "No App Store Connect API key configured — archive built; validation skipped (expected on forks / pre-account)."
             fi

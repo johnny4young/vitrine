@@ -149,7 +149,7 @@ targets:
     # the App Sandbox stays on (required by the App Store). DEVELOPMENT_TEAM stays empty
     # and CODE_SIGN_STYLE Automatic so the repo builds without an Apple account; a real
     # App Store archive supplies the Team ID and the App Store provisioning profile at
-    # archive/export time (Xcode Organizer or an `app-store` ExportOptions.plist).
+    # archive/export time (Xcode Organizer or an `app-store-connect` ExportOptions.plist).
     settings:
       base:
         PRODUCT_NAME: Vitrine
