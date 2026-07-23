@@ -15,8 +15,9 @@ colored output is recognized too).
 Three ways in, easiest first:
 
 1. **`vgrab <command>`** — about to run something? Prefix it. The command runs with
-   color on and a styled image of its output lands on your clipboard; paste anywhere
-   (⌘V).
+   color on and a styled image lands on your clipboard; a compact header identifies
+   the Git project and command, so the image still makes sense after it leaves your
+   terminal. Paste it anywhere (⌘V).
    ```sh
    vgrab npm test
    vgrab git log --oneline --graph -10
@@ -28,6 +29,9 @@ Three ways in, easiest first:
 
 Add **`-e`** (`vgrab -e <command>`) to open the output in Vitrine's editor — to annotate
 or restyle before exporting — instead of copying an image.
+
+Add **`--no-context`** when you want the original output-only image or the command line
+contains sensitive arguments.
 
 `vgrab` needs the one-time shell hook (`eval "$(vitrine shell-init zsh)"`, below).
 Paste / drop and the `--stdin` pipe need no setup.
@@ -89,15 +93,22 @@ vgrab git status        # run it and copy a terminal image of its (colored) outp
 vgrab pytest            # no --color, no unbuffer, no pbcopy
 vgrab cargo test
 vgrab !!                # capture a command you already ran (re-runs the last one)
+vgrab --no-context date # omit the project and command header
 ```
 
 - **`vgrab <command>`** runs the command inside a pseudo-terminal (via the system
   `script`), so the program emits its colors automatically, captures the output, and
-  copies the rendered image to the clipboard. Use it when you're *about to* run
-  something. It returns the command's own exit status, so it composes
-  (`vgrab make && …`), and **`vgrab -w 100 <command>`** pins the capture width: it exports
-  `COLUMNS` for the program (best effort — tools that query the tty directly ignore it) and
-  passes `--terminal-width` so Vitrine reconstructs wraps at exactly that width.
+  copies the rendered image to the clipboard. The image header uses the Git root's
+  directory name as the project label (falling back to the current directory) and
+  shows the executed command. It deliberately omits branch names and repository status.
+  Use it when you're *about to* run something. It returns the command's own exit
+  status, so it composes (`vgrab make && …`), and **`vgrab -w 100 <command>`** pins
+  the capture width: it exports `COLUMNS` for the program (best effort — tools that
+  query the tty directly ignore it) and passes `--terminal-width` so Vitrine
+  reconstructs wraps at exactly that width.
+- **`--no-context`** omits the project and command header. Use it for a deliberately
+  minimal image or whenever command arguments contain tokens, passwords, private paths,
+  or other information that should not be shared.
 - **Already ran something?** Recall it and prepend `vgrab` — `vgrab !!` (zsh/bash)
   expands to your last command and captures it; in any shell, press ↑ and add `vgrab`
   plus a space to the front. This re-runs the command, so it's ideal for read-only output (a
