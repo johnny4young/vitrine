@@ -126,6 +126,11 @@ targets:
         basedOnDependencyAnalysis: true
         inputFiles:
           - "$(BUILT_PRODUCTS_DIR)/vitrine-cli"
+          # During an archive, BUILT_PRODUCTS_DIR/vitrine-cli is a symlink into
+          # the installed-products tree. Xcode's script sandbox grants access
+          # to literal inputs rather than following a declared symlink, so its
+          # destination must also be declared.
+          - "$(DSTROOT)/usr/local/bin/vitrine-cli"
         outputFiles:
           - "$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/vitrine-cli"
         script: |
@@ -188,12 +193,11 @@ targets:
     sources:
       - path: Vitrine
         excludes:
-          - "Resources/Info.plist"
-          - "Resources/Vitrine.entitlements"
-          # Direct-download (Sparkle) entitlements superset; the CLI ships no
-          # updater, so this is never compiled or ingested here.
-          - "Resources/Vitrine.DirectDownload.entitlements"
-          - "Resources/Fonts"
+          # App bundle resources do not belong to a command-line tool. In
+          # particular, an asset catalog has no valid bundle destination when
+          # Xcode installs the tool into usr/local/bin during an archive. Fonts
+          # are staged as raw files by the build script below instead.
+          - "Resources"
           # The GUI's @main App scene; the CLI provides its own main.swift entry.
           - "App/VitrineApp.swift"
           # The automation surfaces target the GUI app only: App Intents
