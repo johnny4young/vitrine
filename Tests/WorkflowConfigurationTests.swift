@@ -119,16 +119,30 @@ struct WorkflowConfigurationTests {
 
     @Test func workflowsVerifyPinnedXcodeGenAndWatchExternalPins() throws {
         let version = try Self.text("scripts", "xcodegen-version.env")
+        let installer = try Self.text("scripts", "install-xcodegen.sh")
         let verifier = try Self.text("scripts", "verify-xcodegen-version.sh")
         #expect(version.contains("XCODEGEN_VERSION=\""))
+        #expect(version.contains("XCODEGEN_ARCHIVE_SHA256=\""))
+        #expect(installer.contains("releases/download/${XCODEGEN_VERSION}/xcodegen.zip"))
+        #expect(installer.contains("XCODEGEN_ARCHIVE_SHA256"))
+        #expect(installer.contains("GITHUB_PATH"))
         #expect(verifier.contains("xcodegen-version.env"))
         #expect(verifier.contains(#"[ "$actual" != "$XCODEGEN_VERSION" ]"#))
+        #expect(try Self.makefile().contains(#"verify-xcodegen-version.sh "$(XCODEGEN)""#))
         for workflow in try [Self.ci(), Self.release(), Self.appstore()] {
-            #expect(workflow.contains("./scripts/verify-xcodegen-version.sh"))
+            #expect(workflow.contains("./scripts/install-xcodegen.sh"))
+            #expect(!workflow.contains("brew install xcodegen"))
         }
         let freshness = try Self.freshness()
         #expect(freshness.contains("schedule:"))
         #expect(freshness.contains("./scripts/check-dependency-freshness.sh"))
+    }
+
+    @Test func failureDiagnosticsRequireGeneratedProject() throws {
+        let ci = try Self.ci()
+        #expect(
+            ci.contains(
+                "if: failure() && hashFiles('Vitrine.xcodeproj/project.pbxproj') != ''"))
     }
 
     @Test func releasePublishesPinnedSpdxInventory() throws {
@@ -136,6 +150,11 @@ struct WorkflowConfigurationTests {
         #expect(release.contains("anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610"))
         #expect(release.contains("syft-version: v1.49.0"))
         #expect(release.contains("dist/*.spdx.json"))
+    }
+
+    @Test func releaseStagesPrivateMaterialWithRestrictivePermissions() throws {
+        let release = try Self.release()
+        #expect(release.components(separatedBy: "umask 077").count - 1 >= 2)
     }
 
     // MARK: - Contract: upload .xcresult bundles / test logs on failure

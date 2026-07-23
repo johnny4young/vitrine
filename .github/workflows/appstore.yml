@@ -54,10 +54,8 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install and verify XcodeGen
-        run: |
-          brew install xcodegen
-          ./scripts/verify-xcodegen-version.sh
+      - name: Install pinned XcodeGen
+        run: ./scripts/install-xcodegen.sh
 
       - name: Cache Swift Package Manager
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
@@ -125,7 +123,8 @@ jobs:
             exit 0
           fi
           KEY_PATH="${RUNNER_TEMP}/appstore-key.p8"
-          echo "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
+          umask 077
+          printf '%s' "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
           echo "APPSTORE_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
 
       # Use Xcode's supported validation export. The `validation` method performs the
@@ -174,12 +173,12 @@ jobs:
           # Read the secret through env (never interpolated into the shell body), so
           # the test below is a plain string check and there is no shell-injection
           # surface. The value is a presence flag only; the key itself is not logged.
-          HAS_APPSTORE_KEY: ${{ secrets.MACOS_NOTARY_KEY_ID != '' }}
+          HAS_APPSTORE_CREDENTIALS: ${{ secrets.MACOS_NOTARY_KEY_ID != '' && secrets.MACOS_NOTARY_KEY_ISSUER_ID != '' && secrets.MACOS_NOTARY_KEY_P8 != '' && secrets.MACOS_NOTARY_TEAM_ID != '' }}
         run: |
           {
             echo "### App Store dry run"
-            if [ "${HAS_APPSTORE_KEY}" = "true" ]; then
-              echo "App Store Connect API key present — the Xcode validation-export step was attempted (no upload)."
+            if [ "${HAS_APPSTORE_CREDENTIALS}" = "true" ]; then
+              echo "App Store Connect credentials present — the Xcode validation-export step was attempted (no upload)."
             else
               echo "No App Store Connect API key configured — archive built; validation skipped (expected on forks / pre-account)."
             fi

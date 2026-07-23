@@ -9,7 +9,8 @@ questions are routed through [SUPPORT.md](SUPPORT.md).
 ## Prerequisites
 
 - macOS 14+ and **Xcode 16+**
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen), installed from the verified
+  release asset with `./scripts/install-xcodegen.sh`
 - Node.js 22.12+ for changes under `site/`
 
 ## Setup
@@ -17,6 +18,8 @@ questions are routed through [SUPPORT.md](SUPPORT.md).
 ```bash
 git clone https://github.com/johnny4young/vitrine.git
 cd vitrine
+./scripts/install-xcodegen.sh
+export PATH="$HOME/.local/bin:$PATH"
 make            # generates Vitrine.xcodeproj and opens it in Xcode
 ```
 

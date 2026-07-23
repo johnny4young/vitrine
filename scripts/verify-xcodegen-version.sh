@@ -5,14 +5,17 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/xcodegen-version.env"
 
-if ! command -v xcodegen >/dev/null 2>&1; then
-	echo "error: xcodegen $XCODEGEN_VERSION is required; install it with Homebrew" >&2
+binary="${1:-${XCODEGEN:-xcodegen}}"
+if ! command -v "$binary" >/dev/null 2>&1; then
+	echo "error: XcodeGen $XCODEGEN_VERSION is required" >&2
+	echo "Install the verified release with ./scripts/install-xcodegen.sh." >&2
 	exit 1
 fi
 
-actual="$(xcodegen --version | sed -E 's/^Version:[[:space:]]*//')"
+actual="$("$binary" --version | sed -E 's/^Version:[[:space:]]*//')"
 if [ "$actual" != "$XCODEGEN_VERSION" ]; then
-	echo "error: xcodegen $XCODEGEN_VERSION is required, found $actual" >&2
+	echo "error: XcodeGen $XCODEGEN_VERSION is required, found ${actual:-unknown}" >&2
+	echo "Install the verified release with ./scripts/install-xcodegen.sh." >&2
 	exit 1
 fi
 

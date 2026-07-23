@@ -86,10 +86,8 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Install and verify XcodeGen
-        run: |
-          brew install xcodegen
-          ./scripts/verify-xcodegen-version.sh
+      - name: Install pinned XcodeGen
+        run: ./scripts/install-xcodegen.sh
 
       - name: Cache Swift Package Manager
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
@@ -152,10 +150,8 @@ jobs:
       - name: Export DEVELOPER_DIR
         run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
 
-      - name: Install and verify XcodeGen
-        run: |
-          brew install xcodegen
-          ./scripts/verify-xcodegen-version.sh
+      - name: Install pinned XcodeGen
+        run: ./scripts/install-xcodegen.sh
 
       # Import the Developer ID Application certificate into a temporary keychain
       # so `codesign` can find it during the build. Gated on the cert
@@ -176,7 +172,8 @@ jobs:
           KEYCHAIN="${RUNNER_TEMP}/vitrine-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
           CERT_PATH="${RUNNER_TEMP}/developer-id.p12"
-          echo "${MACOS_CERTIFICATE_P12}" | base64 --decode > "${CERT_PATH}"
+          umask 077
+          printf '%s' "${MACOS_CERTIFICATE_P12}" | base64 --decode > "${CERT_PATH}"
           security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
           security set-keychain-settings -lut 21600 "${KEYCHAIN}"
           security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
@@ -204,7 +201,8 @@ jobs:
             exit 0
           fi
           KEY_PATH="${RUNNER_TEMP}/notary-key.p8"
-          echo "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
+          umask 077
+          printf '%s' "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
           echo "MACOS_NOTARY_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
 
       # Signing + notarization are gated inside build-dmg.sh on these env vars; the

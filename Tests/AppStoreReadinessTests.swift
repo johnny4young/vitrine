@@ -577,6 +577,10 @@ struct AppStoreReadinessTests {
         #expect(
             workflow.contains(#"-authenticationKeyPath "${APPSTORE_KEY_P8}""#),
             "the validation export must pass Xcode the staged App Store Connect private key file")
+        #expect(workflow.contains("umask 077"), "the staged private key must not be world-readable")
+        #expect(
+            workflow.contains("HAS_APPSTORE_CREDENTIALS"),
+            "the workflow summary must reflect the complete credential set")
         #expect(!workflow.contains("altool"), "the workflow must not use deprecated altool")
     }
 

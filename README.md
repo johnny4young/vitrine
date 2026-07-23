@@ -325,14 +325,17 @@ entitlement-by-entitlement audit table for each distribution channel is in
 
 - macOS **14.0+** (Sonoma or later)
 - **Xcode 16+**
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) — the
-  `.xcodeproj` is generated, not committed.
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen), installed from the verified
+  release asset with `./scripts/install-xcodegen.sh` — the `.xcodeproj` is generated,
+  not committed.
 
 ## Getting started
 
 ```bash
 git clone https://github.com/johnny4young/vitrine.git
 cd vitrine
+./scripts/install-xcodegen.sh
+export PATH="$HOME/.local/bin:$PATH"
 
 # Generate Vitrine.xcodeproj from project.yml and open it
 make            # == make bootstrap → xcodegen generate → open

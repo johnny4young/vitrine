@@ -47,7 +47,7 @@ all: open
 
 ## bootstrap: verify required tooling is installed
 bootstrap:
-	@./scripts/verify-xcodegen-version.sh
+	@./scripts/verify-xcodegen-version.sh "$(XCODEGEN)"
 
 ## project: generate Vitrine.xcodeproj from project.yml
 project: bootstrap
