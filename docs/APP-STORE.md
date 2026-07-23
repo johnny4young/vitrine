@@ -215,9 +215,11 @@ credential committed to the repo.
 
 The optional [`.github/workflows/appstore.yml`](../.github/workflows/appstore.yml) is a
 **manually-triggered dry run** of the archive + local App Store export steps, gated on the same App
-Store Connect API-key secrets. It never auto-submits. With a complete credential set it creates an
-automatically signed archive before export; without credentials it builds an unsigned structural
-archive and skips distribution export cleanly. See "CI dry run" below.
+Store Connect API-key secrets and the `APPSTORE_CLOUD_SIGNING_ENABLED=true` repository variable.
+It never auto-submits. Once cloud signing, the distribution certificate, and the provisioning
+profile are ready, the opt-in creates an automatically signed archive before export; otherwise it
+builds an unsigned structural archive and skips distribution export cleanly. See "CI dry run"
+below.
 
 ## App Review notes
 
@@ -276,10 +278,10 @@ reviewer understands the menu-bar, local-rendering, no-telemetry design before t
 [`.github/workflows/appstore.yml`](../.github/workflows/appstore.yml) is a
 `workflow_dispatch`-only job that archives the app and runs an **App Store distribution export as a
 dry run** when the App Store Connect API-key secrets (`MACOS_NOTARY_KEY_ID`,
-`MACOS_NOTARY_KEY_ISSUER_ID`, `MACOS_NOTARY_KEY_P8`) are configured. It **never auto-submits
-or auto-uploads** a build. A complete credential set creates an automatically signed archive,
-because Xcode cannot export an unsigned archive for App Store distribution. When the secrets are
-absent (a fork, or before an Apple account exists), an unsigned structural archive still builds and
-the distribution-export step is skipped, so the workflow stays green without credentials. This
-matches the graceful-degradation posture of the signed DMG pipeline: the secret-gated stages skip
-cleanly rather than failing the run.
+`MACOS_NOTARY_KEY_ISSUER_ID`, `MACOS_NOTARY_KEY_P8`) are configured **and** the repository variable
+`APPSTORE_CLOUD_SIGNING_ENABLED` is exactly `true`. It **never auto-submits or auto-uploads** a
+build. The explicit opt-in must only be enabled after the App Store distribution certificate,
+provisioning profile, and cloud-signing permissions are ready; notarization credentials by
+themselves are insufficient. When export access is not ready, an unsigned structural archive still
+builds and the distribution-export step is skipped, so the workflow stays green. Once enabled, any
+signing or export failure remains a hard failure instead of being hidden.

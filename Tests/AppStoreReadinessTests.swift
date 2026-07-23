@@ -574,8 +574,11 @@ struct AppStoreReadinessTests {
             workflow.contains("CODE_SIGNING_ALLOWED=NO"),
             "the dry-run archive must retain a credential-free unsigned fallback")
         #expect(
-            workflow.contains(#"if [ "${HAS_APPSTORE_CREDENTIALS}" = "true" ]"#),
-            "the dry run must create a signed archive when App Store credentials are complete")
+            workflow.contains(#"if [ "${HAS_APPSTORE_EXPORT_ACCESS}" = "true" ]"#),
+            "the dry run must create a signed archive when App Store export access is ready")
+        #expect(
+            workflow.contains("APPSTORE_CLOUD_SIGNING_ENABLED"),
+            "cloud signing must be an explicit repository opt-in, not inferred from notary secrets")
         #expect(
             workflow.contains(#"DEVELOPMENT_TEAM="${MACOS_SIGN_TEAM_ID}""#),
             "the signed archive must use the configured App Store team")
@@ -590,8 +593,8 @@ struct AppStoreReadinessTests {
             workflow.range(of: "<string>app-store-connect</string>"),
             "appstore.yml must contain the Xcode App Store Connect export")
         #expect(
-            workflow.contains(#"[ "${HAS_APPSTORE_CREDENTIALS}" != "true" ]"#),
-            "the distribution export must be gated on the complete App Store credential set")
+            workflow.contains(#"[ "${HAS_APPSTORE_EXPORT_ACCESS}" != "true" ]"#),
+            "the distribution export must be gated on explicit App Store export readiness")
         #expect(
             workflow.contains(#"[ -z "${MACOS_SIGN_TEAM_ID:-}" ]"#),
             "credential preparation must require the signing Team ID")
@@ -600,8 +603,8 @@ struct AppStoreReadinessTests {
             "the distribution export must pass Xcode the staged App Store Connect private key file")
         #expect(workflow.contains("umask 077"), "the staged private key must not be world-readable")
         #expect(
-            workflow.contains("HAS_APPSTORE_CREDENTIALS"),
-            "the workflow summary must reflect the complete credential set")
+            workflow.contains("HAS_APPSTORE_EXPORT_ACCESS"),
+            "the workflow summary must reflect App Store export readiness")
         #expect(
             workflow.contains(#"rm -f "${APP}/Contents/MacOS/vitrine-cli""#),
             "the App Store archive must remove the direct-download embedded CLI")

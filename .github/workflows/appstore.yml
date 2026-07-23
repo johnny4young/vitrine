@@ -74,30 +74,37 @@ jobs:
       - name: Generate project
         run: xcodegen generate
 
-      # Stage the App Store Connect API private key (.p8) before archiving. A complete
-      # credential set enables an automatically signed, distributable archive; otherwise
-      # the workflow deliberately falls back to an unsigned structural archive.
-      - name: Prepare App Store credentials
+      # Stage the App Store Connect API private key (.p8) before archiving. Notarization
+      # credentials alone do not imply App Store cloud-signing access. The repository owner
+      # must explicitly enable that channel after its distribution certificate and profile
+      # are ready; otherwise the workflow falls back to an unsigned structural archive.
+      - name: Prepare App Store export access
         env:
+          APPSTORE_CLOUD_SIGNING_ENABLED: ${{ vars.APPSTORE_CLOUD_SIGNING_ENABLED }}
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
           MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
           MACOS_SIGN_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
         run: |
           set -euo pipefail
+          if [ "${APPSTORE_CLOUD_SIGNING_ENABLED:-false}" != "true" ]; then
+            echo "HAS_APPSTORE_EXPORT_ACCESS=false" >> "$GITHUB_ENV"
+            echo "App Store cloud signing is not enabled; using an unsigned structural archive."
+            exit 0
+          fi
           if [ -z "${MACOS_NOTARY_KEY_ID:-}" ] \
             || [ -z "${MACOS_NOTARY_KEY_ISSUER_ID:-}" ] \
             || [ -z "${MACOS_NOTARY_KEY_P8:-}" ] \
             || [ -z "${MACOS_SIGN_TEAM_ID:-}" ]; then
-            echo "HAS_APPSTORE_CREDENTIALS=false" >> "$GITHUB_ENV"
-            echo "App Store credentials are incomplete; using an unsigned structural archive."
+            echo "HAS_APPSTORE_EXPORT_ACCESS=false" >> "$GITHUB_ENV"
+            echo "App Store export credentials are incomplete; using an unsigned structural archive."
             exit 0
           fi
           KEY_PATH="${RUNNER_TEMP}/appstore-key.p8"
           umask 077
           printf '%s' "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
           echo "APPSTORE_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
-          echo "HAS_APPSTORE_CREDENTIALS=true" >> "$GITHUB_ENV"
+          echo "HAS_APPSTORE_EXPORT_ACCESS=true" >> "$GITHUB_ENV"
 
       # A distribution export requires a distributable archive. Build with automatic
       # signing when complete credentials exist; CODE_SIGNING_ALLOWED=NO is only the
@@ -126,7 +133,7 @@ jobs:
             -archivePath "${RUNNER_TEMP}/Vitrine.xcarchive"
             'SWIFT_ACTIVE_COMPILATION_CONDITIONS='
           )
-          if [ "${HAS_APPSTORE_CREDENTIALS}" = "true" ]; then
+          if [ "${HAS_APPSTORE_EXPORT_ACCESS}" = "true" ]; then
             xcodebuild "${common_args[@]}" \
               DEVELOPMENT_TEAM="${MACOS_SIGN_TEAM_ID}" \
               CODE_SIGN_STYLE=Automatic \
@@ -173,8 +180,8 @@ jobs:
           MACOS_SIGN_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
         run: |
           set -euo pipefail
-          if [ "${HAS_APPSTORE_CREDENTIALS}" != "true" ]; then
-            echo "App Store Connect API key secrets not configured; skipping Xcode distribution export."
+          if [ "${HAS_APPSTORE_EXPORT_ACCESS}" != "true" ]; then
+            echo "App Store export access is not enabled; skipping Xcode distribution export."
             exit 0
           fi
           cat > "${RUNNER_TEMP}/ExportOptions.plist" <<PLIST
@@ -205,14 +212,14 @@ jobs:
           # Read the secret through env (never interpolated into the shell body), so
           # the test below is a plain string check and there is no shell-injection
           # surface. The value is a presence flag only; the key itself is not logged.
-          HAS_APPSTORE_CREDENTIALS: ${{ secrets.MACOS_NOTARY_KEY_ID != '' && secrets.MACOS_NOTARY_KEY_ISSUER_ID != '' && secrets.MACOS_NOTARY_KEY_P8 != '' && secrets.MACOS_NOTARY_TEAM_ID != '' }}
+          HAS_APPSTORE_EXPORT_ACCESS: ${{ vars.APPSTORE_CLOUD_SIGNING_ENABLED == 'true' && secrets.MACOS_NOTARY_KEY_ID != '' && secrets.MACOS_NOTARY_KEY_ISSUER_ID != '' && secrets.MACOS_NOTARY_KEY_P8 != '' && secrets.MACOS_NOTARY_TEAM_ID != '' }}
         run: |
           {
             echo "### App Store dry run"
-            if [ "${HAS_APPSTORE_CREDENTIALS}" = "true" ]; then
+            if [ "${HAS_APPSTORE_EXPORT_ACCESS}" = "true" ]; then
               echo "App Store Connect credentials present — the local Xcode distribution export was attempted."
             else
-              echo "No App Store Connect API key configured — archive built; distribution export skipped."
+              echo "App Store export access is not enabled — structural archive built; distribution export skipped."
             fi
             echo "This workflow never submits or uploads a build. See docs/APP-STORE.md."
           } | tee -a "$GITHUB_STEP_SUMMARY"
