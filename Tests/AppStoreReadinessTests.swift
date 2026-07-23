@@ -554,6 +554,15 @@ struct AppStoreReadinessTests {
     /// archive step and the secret gate are both present.
     @Test func workflowGatesValidationOnSecretsAndStillArchivesWithout() throws {
         let workflow = try Self.workflow()
+        let fetchSparkle = try #require(
+            workflow.range(of: "./scripts/fetch-sparkle.sh"),
+            "the clean App Store runner must stage the local Sparkle framework before linking")
+        let archive = try #require(
+            workflow.range(of: "Archive (App Store, unsigned dry run)"),
+            "appstore.yml must contain the unsigned archive step")
+        #expect(
+            fetchSparkle.lowerBound < archive.lowerBound,
+            "the local Sparkle framework must be staged before the App Store archive links")
         // The archive always runs (buildable without an Apple Distribution identity).
         #expect(
             workflow.contains("archive"),

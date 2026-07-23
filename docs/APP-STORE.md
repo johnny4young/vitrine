@@ -87,6 +87,8 @@ not just intended:
   `VITRINE_DIRECT_DOWNLOAD`, so every `#if VITRINE_DIRECT_DOWNLOAD` block (the whole Sparkle
   integration and the **Check for Updates…** menu item) compiles out — `SoftwareUpdater.isSupported`
   is `false`.
+- Because `project.yml` declares the checksum-pinned local framework as a link dependency, a clean
+  runner stages it before linking; this is a build input only and does not change the channel.
 - The archive then **strips the Sparkle framework** from the app bundle and fails the job if any
   Sparkle payload remains (see `.github/workflows/appstore.yml`).
 - The App Store build keeps the minimal `Vitrine.entitlements` (no network, no Sparkle XPC

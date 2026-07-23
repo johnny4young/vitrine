@@ -65,6 +65,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
+      # project.yml links the checksum-pinned local framework even when the App Store
+      # compilation condition removes every Sparkle call site. Stage it so the linker can
+      # complete on a clean runner; the archive step below removes it from the submitted app.
+      - name: Fetch pinned Sparkle framework
+        run: ./scripts/fetch-sparkle.sh
+
       - name: Generate project
         run: xcodegen generate
 
