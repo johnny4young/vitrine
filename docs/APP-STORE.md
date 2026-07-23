@@ -213,9 +213,9 @@ credential committed to the repo.
 
 The optional [`.github/workflows/appstore.yml`](../.github/workflows/appstore.yml) is a
 **manually-triggered dry run** of the archive + Xcode validation-export steps, gated on the same App
-Store Connect API-key secrets. It never auto-submits and skips itself cleanly when the
-secrets are absent, so it is safe to keep on a repo without an Apple account. See "CI dry
-run" below.
+Store Connect API-key secrets. It never auto-submits. With a complete credential set it creates an
+automatically signed archive before validation; without credentials it builds an unsigned structural
+archive and skips validation cleanly. See "CI dry run" below.
 
 ## App Review notes
 
@@ -275,7 +275,8 @@ reviewer understands the menu-bar, local-rendering, no-telemetry design before t
 `workflow_dispatch`-only job that archives the app and runs **App Store validation as a dry
 run** when the App Store Connect API-key secrets (`MACOS_NOTARY_KEY_ID`,
 `MACOS_NOTARY_KEY_ISSUER_ID`, `MACOS_NOTARY_KEY_P8`) are configured. It **never auto-submits
-or auto-uploads** a build. When the secrets are absent (a fork, or before an Apple account
-exists) the archive still builds and the validation step is skipped, so the workflow stays
-green without credentials. This matches the graceful-degradation posture of the signed DMG
-pipeline: the secret-gated stages skip cleanly rather than failing the run.
+or auto-uploads** a build. A complete credential set creates an automatically signed archive,
+because Xcode cannot validate an unsigned archive. When the secrets are absent (a fork, or before an
+Apple account exists), an unsigned structural archive still builds and the validation step is
+skipped, so the workflow stays green without credentials. This matches the graceful-degradation
+posture of the signed DMG pipeline: the secret-gated stages skip cleanly rather than failing the run.

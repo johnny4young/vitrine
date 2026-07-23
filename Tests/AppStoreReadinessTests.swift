@@ -558,8 +558,8 @@ struct AppStoreReadinessTests {
             workflow.range(of: "./scripts/fetch-sparkle.sh"),
             "the clean App Store runner must stage the local Sparkle framework before linking")
         let archive = try #require(
-            workflow.range(of: "Archive (App Store, unsigned dry run)"),
-            "appstore.yml must contain the unsigned archive step")
+            workflow.range(of: "Archive (App Store dry run)"),
+            "appstore.yml must contain the App Store archive step")
         #expect(
             fetchSparkle.lowerBound < archive.lowerBound,
             "the local Sparkle framework must be staged before the App Store archive links")
@@ -569,7 +569,16 @@ struct AppStoreReadinessTests {
             "appstore.yml must archive the app")
         #expect(
             workflow.contains("CODE_SIGNING_ALLOWED=NO"),
-            "the dry-run archive must build without a signing identity")
+            "the dry-run archive must retain a credential-free unsigned fallback")
+        #expect(
+            workflow.contains(#"if [ "${HAS_APPSTORE_CREDENTIALS}" = "true" ]"#),
+            "the dry run must create a signed archive when App Store credentials are complete")
+        #expect(
+            workflow.contains(#"DEVELOPMENT_TEAM="${MACOS_SIGN_TEAM_ID}""#),
+            "the signed archive must use the configured App Store team")
+        #expect(
+            workflow.contains("-allowProvisioningUpdates"),
+            "the signed archive must allow Xcode to provision through App Store credentials")
         // Validation is gated on the App Store Connect API-key secret.
         #expect(
             workflow.contains("MACOS_NOTARY_KEY_P8"),
@@ -578,11 +587,11 @@ struct AppStoreReadinessTests {
             workflow.range(of: "<string>validation</string>"),
             "appstore.yml must contain the Xcode validation export")
         #expect(
-            workflow.contains(#"[ -z "${MACOS_NOTARY_KEY_ID:-}" ]"#),
-            "the validation export must be gated on the App Store Connect API-key secrets")
+            workflow.contains(#"[ "${HAS_APPSTORE_CREDENTIALS}" != "true" ]"#),
+            "the validation export must be gated on the complete App Store credential set")
         #expect(
             workflow.contains(#"[ -z "${MACOS_SIGN_TEAM_ID:-}" ]"#),
-            "the validation export must be gated on the signing Team ID")
+            "credential preparation must require the signing Team ID")
         #expect(
             workflow.contains(#"-authenticationKeyPath "${APPSTORE_KEY_P8}""#),
             "the validation export must pass Xcode the staged App Store Connect private key file")

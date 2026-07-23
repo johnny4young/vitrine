@@ -74,11 +74,34 @@ jobs:
       - name: Generate project
         run: xcodegen generate
 
-      # Archive the app. CODE_SIGNING_ALLOWED=NO keeps this buildable on a runner
-      # without an Apple Distribution identity: the dry run proves the archive
-      # *builds* and is *structurally valid* for the App Store, not that it is
-      # signed for submission (signing happens at a real archive/export with the
-      # Team's App Store provisioning profile — see docs/APP-STORE.md).
+      # Stage the App Store Connect API private key (.p8) before archiving. A complete
+      # credential set enables an automatically signed, distributable archive; otherwise
+      # the workflow deliberately falls back to an unsigned structural archive.
+      - name: Prepare App Store credentials
+        env:
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
+          MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
+          MACOS_SIGN_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MACOS_NOTARY_KEY_ID:-}" ] \
+            || [ -z "${MACOS_NOTARY_KEY_ISSUER_ID:-}" ] \
+            || [ -z "${MACOS_NOTARY_KEY_P8:-}" ] \
+            || [ -z "${MACOS_SIGN_TEAM_ID:-}" ]; then
+            echo "HAS_APPSTORE_CREDENTIALS=false" >> "$GITHUB_ENV"
+            echo "App Store credentials are incomplete; using an unsigned structural archive."
+            exit 0
+          fi
+          KEY_PATH="${RUNNER_TEMP}/appstore-key.p8"
+          umask 077
+          printf '%s' "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
+          echo "APPSTORE_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
+          echo "HAS_APPSTORE_CREDENTIALS=true" >> "$GITHUB_ENV"
+
+      # A validation export requires a distributable archive. Build with automatic
+      # signing when complete credentials exist; CODE_SIGNING_ALLOWED=NO is only the
+      # credential-free fallback that proves the archive is structurally buildable.
       # The App Store build EXCLUDES Sparkle: the App Store provides its own
       # update mechanism and disallows a third-party updater. This is enforced two ways:
       #   1. SWIFT_ACTIVE_COMPILATION_CONDITIONS is overridden to empty, so the
@@ -88,15 +111,33 @@ jobs:
       #      not added, and no Sparkle code runs.
       #   2. The Sparkle framework is stripped from the archived app bundle below, so the
       #      submitted binary carries no Sparkle at all.
-      - name: Archive (App Store, unsigned dry run)
+      - name: Archive (App Store dry run)
+        env:
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
+          MACOS_SIGN_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
         run: |
           set -euo pipefail
-          xcodebuild -project Vitrine.xcodeproj -scheme Vitrine -configuration Release \
-            -destination 'generic/platform=macOS' \
-            -archivePath "${RUNNER_TEMP}/Vitrine.xcarchive" \
-            CODE_SIGNING_ALLOWED=NO \
-            SWIFT_ACTIVE_COMPILATION_CONDITIONS="" \
-            archive
+          common_args=(
+            -project Vitrine.xcodeproj
+            -scheme Vitrine
+            -configuration Release
+            -destination 'generic/platform=macOS'
+            -archivePath "${RUNNER_TEMP}/Vitrine.xcarchive"
+            'SWIFT_ACTIVE_COMPILATION_CONDITIONS='
+          )
+          if [ "${HAS_APPSTORE_CREDENTIALS}" = "true" ]; then
+            xcodebuild "${common_args[@]}" \
+              DEVELOPMENT_TEAM="${MACOS_SIGN_TEAM_ID}" \
+              CODE_SIGN_STYLE=Automatic \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "${APPSTORE_KEY_P8}" \
+              -authenticationKeyID "${MACOS_NOTARY_KEY_ID}" \
+              -authenticationKeyIssuerID "${MACOS_NOTARY_KEY_ISSUER_ID}" \
+              archive
+          else
+            xcodebuild "${common_args[@]}" CODE_SIGNING_ALLOWED=NO archive
+          fi
           echo "Archived to ${RUNNER_TEMP}/Vitrine.xcarchive"
 
       # Strip Sparkle from the App Store archive and prove it is gone. The framework must
@@ -115,24 +156,6 @@ jobs:
           fi
           echo "Verified: the App Store archive contains no Sparkle."
 
-      # Stage the App Store Connect API private key (.p8) from a secret, if present.
-      # This credential lets Xcode authenticate with App Store Connect for the
-      # validation dry run. Skipped (and the validation step below skipped with it)
-      # when the secret is absent.
-      - name: Stage App Store Connect API key
-        env:
-          MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
-        run: |
-          set -euo pipefail
-          if [ -z "${MACOS_NOTARY_KEY_P8:-}" ]; then
-            echo "App Store Connect API key secret not configured; skipping key staging."
-            exit 0
-          fi
-          KEY_PATH="${RUNNER_TEMP}/appstore-key.p8"
-          umask 077
-          printf '%s' "${MACOS_NOTARY_KEY_P8}" | base64 --decode > "${KEY_PATH}"
-          echo "APPSTORE_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
-
       # Use Xcode's supported validation export. The `validation` method performs the
       # same distribution checks as Organizer without uploading a build. App Store
       # Connect API credentials permit automatic signing through Xcode itself.
@@ -144,11 +167,7 @@ jobs:
           MACOS_SIGN_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
         run: |
           set -euo pipefail
-          if [ -z "${MACOS_NOTARY_KEY_ID:-}" ] \
-            || [ -z "${MACOS_NOTARY_KEY_ISSUER_ID:-}" ] \
-            || [ -z "${MACOS_NOTARY_KEY_P8:-}" ] \
-            || [ -z "${MACOS_SIGN_TEAM_ID:-}" ] \
-            || [ -z "${APPSTORE_KEY_P8:-}" ]; then
+          if [ "${HAS_APPSTORE_CREDENTIALS}" != "true" ]; then
             echo "App Store Connect API key secrets not configured; skipping Xcode validation export."
             exit 0
           fi
