@@ -47,9 +47,7 @@ all: open
 
 ## bootstrap: verify required tooling is installed
 bootstrap:
-	@command -v $(XCODEGEN) >/dev/null 2>&1 || { \
-		echo "✗ xcodegen not found — install with: brew install xcodegen"; exit 1; }
-	@echo "✓ xcodegen $$($(XCODEGEN) --version)"
+	@./scripts/verify-xcodegen-version.sh "$(XCODEGEN)"
 
 ## project: generate Vitrine.xcodeproj from project.yml
 project: bootstrap

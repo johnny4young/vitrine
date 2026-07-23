@@ -14,6 +14,10 @@ can never drift.
 
 ### Changed
 
+- **Release tooling is reproducible and auditable.** CI installs the checksum-verified
+  XcodeGen release, watches pinned external tools and artifact digests for upstream
+  changes, validates App Store archives through Xcode instead of deprecated delivery
+  tooling, and publishes an SPDX dependency inventory with every GitHub release.
 - **Repository contributions now have an explicit lifecycle.** The public support and
   conduct policies, ownership rules, issue forms, squash-only merge policy, automatic
   merged-branch cleanup, and required CI checks make contribution and maintenance

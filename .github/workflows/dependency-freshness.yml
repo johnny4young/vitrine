@@ -1,0 +1,21 @@
+name: Dependency freshness
+
+on:
+  schedule:
+    - cron: "23 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-tools:
+    name: Verify pinned tool releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Compare pins with official releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/check-dependency-freshness.sh
