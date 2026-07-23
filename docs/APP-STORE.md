@@ -108,13 +108,13 @@ credentials are committed.
 
 The app bundle embeds the `vitrine` command-line renderer at
 `Contents/MacOS/vitrine-cli` (for the Homebrew cask's `binary` stanza). App Store
-review requires **every** executable in the bundle to opt into the App Sandbox,
-and the CLI is signed without sandbox entitlements on the direct-download
-channel. Before an actual App Store submission, the archive step must either
-**strip `Contents/MacOS/vitrine-cli`** (the App Store install has no PATH
-integration, so the CLI adds no value there — mirroring how Sparkle is
-stripped), or re-sign it with `com.apple.security.app-sandbox` +
-`com.apple.security.inherit`. The DMG channel is unaffected.
+review requires **every** executable in the bundle to opt into the App Sandbox.
+The App Store workflow strips `Contents/MacOS/vitrine-cli` before validation,
+because an App Store install has no PATH integration and the CLI adds no value
+there. The CLI target also uses `SKIP_INSTALL=YES`: it remains available for the
+app's embed phase without becoming a second top-level archive product, which
+would make Xcode classify the result as a generic, non-distributable archive.
+The DMG channel is unaffected.
 
 ## App Sandbox and entitlements (App Store-compatible)
 

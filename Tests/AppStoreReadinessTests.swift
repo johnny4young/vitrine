@@ -599,6 +599,9 @@ struct AppStoreReadinessTests {
         #expect(
             workflow.contains("HAS_APPSTORE_CREDENTIALS"),
             "the workflow summary must reflect the complete credential set")
+        #expect(
+            workflow.contains(#"rm -f "${APP}/Contents/MacOS/vitrine-cli""#),
+            "the App Store archive must remove the direct-download embedded CLI")
         #expect(!workflow.contains("altool"), "the workflow must not use deprecated altool")
     }
 

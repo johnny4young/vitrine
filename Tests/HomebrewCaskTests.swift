@@ -203,8 +203,11 @@ struct HomebrewCaskTests {
             project.contains("$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/vitrine-cli"),
             "project.yml must embed the CLI at the path the cask's binary stanza points to")
         #expect(
-            project.contains("$(DSTROOT)/usr/local/bin/vitrine-cli"),
-            "the sandboxed embed phase must be able to follow Xcode's archived CLI symlink")
+            project.contains("SKIP_INSTALL: YES"),
+            "the embedded CLI must not become a second top-level archive product")
+        #expect(
+            project.contains("$(UNINSTALLED_PRODUCTS_DIR)/macosx/vitrine-cli"),
+            "the sandboxed archive embed phase must be able to follow the skipped-install symlink")
     }
 
     /// The cask must carry a real 64-hex-digit `sha256`, not `:no_check`. `:no_check`

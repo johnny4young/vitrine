@@ -140,21 +140,26 @@ jobs:
           fi
           echo "Archived to ${RUNNER_TEMP}/Vitrine.xcarchive"
 
-      # Strip Sparkle from the App Store archive and prove it is gone. The framework must
-      # not appear in an App Store submission. This removes Sparkle.framework
-      # from the archived app and fails the job if any Sparkle payload remains, so a
-      # future change that accidentally bundles Sparkle into the App Store build is caught.
-      - name: Strip Sparkle from the App Store archive
+      # Remove direct-download-only payloads and prove they are gone. The App Store owns
+      # updates and does not expose command-line tools on PATH, so neither Sparkle nor the
+      # embedded CLI belongs in this channel.
+      - name: Remove direct-download payloads from the App Store archive
         run: |
           set -euo pipefail
           APP="${RUNNER_TEMP}/Vitrine.xcarchive/Products/Applications/Vitrine.app"
           rm -rf "${APP}/Contents/Frameworks/Sparkle.framework"
+          rm -f "${APP}/Contents/MacOS/vitrine-cli"
           if /usr/bin/find "${APP}" -iname '*sparkle*' -print -quit | grep -q .; then
             echo "error: Sparkle payload found in the App Store archive — it must be excluded" >&2
             /usr/bin/find "${APP}" -iname '*sparkle*' >&2
             exit 1
           fi
+          if [ -e "${APP}/Contents/MacOS/vitrine-cli" ]; then
+            echo "error: embedded CLI found in the App Store archive" >&2
+            exit 1
+          fi
           echo "Verified: the App Store archive contains no Sparkle."
+          echo "Verified: the App Store archive contains no embedded CLI."
 
       # Use Xcode's supported validation export. The `validation` method performs the
       # same distribution checks as Organizer without uploading a build. App Store
