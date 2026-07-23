@@ -2,7 +2,6 @@ import Foundation
 
 /// Mutable state for one CLI invocation. It owns token consumption and records
 /// syntactically valid flag values; semantic compatibility is resolved separately.
-@MainActor
 struct CLIArgumentParser {
     var remaining: ArraySlice<String>
     let mode: CLIOptions.Command

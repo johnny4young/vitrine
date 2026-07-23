@@ -94,8 +94,9 @@ enum ShellInit {
         # vgrab [-w cols] [-e] [--no-context] <cmd…> — run a command under a
         # pseudo-terminal (so it emits color) and copy a terminal image of its output
         # to the clipboard. The image identifies the Git project (or current directory)
-        # and command; --no-context produces an output-only image. Returns the command's
-        # own exit status (script -e). -w/--width sets the capture width: it exports
+        # and command, plus the current branch when Git reports one; --no-context
+        # produces an output-only image. Returns the command's own exit status (script -e).
+        # -w/--width sets the capture width: it exports
         # COLUMNS for the command (best effort — tools that query the tty directly ignore
         # it) and passes --terminal-width so Vitrine reconstructs wraps at exactly that
         # width. -e/--edit opens the captured output in Vitrine's editor instead.
@@ -124,11 +125,15 @@ enum ShellInit {
             print -ru2 -- "usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]"
             return 2
           fi
-          local _vroot _vproject _vcmd
+          local _vroot _vproject _vbranch _vlabel _vcmd
           _vroot="$(command git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" ||
             _vroot="$PWD"
           _vproject="${_vroot:t}"
           [[ -n "$_vproject" ]] || _vproject="/"
+          _vbranch="$(command git -C "$PWD" branch --show-current 2>/dev/null)" ||
+            _vbranch=""
+          _vlabel="$_vproject"
+          [[ -n "$_vbranch" ]] && _vlabel+=" · $_vbranch"
           _vcmd="${(j: :)${(q)@}}"
           local _vf
           _vf="$(mktemp -t vitrine-grab)" || return 1
@@ -141,7 +146,7 @@ enum ShellInit {
           local -a _vwarg _vcontextarg
           [[ -n "$_vw" ]] && _vwarg=(--terminal-width "$_vw")
           if (( _vcontext )) && [[ "$_vshare" != "--edit" ]]; then
-            _vcontextarg=(--filename "$_vproject" --title "$ $_vcmd")
+            _vcontextarg=(--filename "$_vlabel" --title "$ $_vcmd")
           fi
           command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "${_vcontextarg[@]}" "$_vshare"
           rm -f -- "$_vf"
@@ -186,8 +191,9 @@ enum ShellInit {
 
         # vgrab [-w cols] [-e] [--no-context] <cmd…> — run a command under a
         # pseudo-terminal (so it emits color) and copy a terminal image of its output.
-        # The image identifies the Git project (or current directory) and command;
-        # --no-context produces an output-only image. -w/--width sets the capture width
+        # The image identifies the Git project (or current directory), command, and
+        # current branch when Git reports one; --no-context produces an output-only image.
+        # -w/--width sets the capture width
         # (exports COLUMNS for the command + passes --terminal-width so Vitrine
         # reconstructs wraps at that width); -e/--edit opens the output in Vitrine's editor.
         #
@@ -214,11 +220,15 @@ enum ShellInit {
             printf 'usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]\\n' >&2
             return 2
           fi
-          local _vroot _vproject _vcmd
+          local _vroot _vproject _vbranch _vlabel _vcmd
           _vroot="$(command git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" ||
             _vroot="$PWD"
           _vproject="${_vroot##*/}"
           [ -n "$_vproject" ] || _vproject="/"
+          _vbranch="$(command git -C "$PWD" branch --show-current 2>/dev/null)" ||
+            _vbranch=""
+          _vlabel="$_vproject"
+          [ -n "$_vbranch" ] && _vlabel="$_vproject · $_vbranch"
           printf -v _vcmd '%q ' "$@"
           _vcmd="${_vcmd% }"
           local _vf
@@ -232,7 +242,7 @@ enum ShellInit {
           local _vwarg=() _vcontextarg=()
           [ -n "$_vw" ] && _vwarg=(--terminal-width "$_vw")
           if [ "$_vcontext" -eq 1 ] && [ "$_vshare" != "--edit" ]; then
-            _vcontextarg=(--filename "$_vproject" --title "$ $_vcmd")
+            _vcontextarg=(--filename "$_vlabel" --title "$ $_vcmd")
           fi
           command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "${_vcontextarg[@]}" "$_vshare"
           rm -f -- "$_vf"
@@ -276,8 +286,9 @@ enum ShellInit {
 
         # vgrab [-w cols] [-e] [--no-context] <cmd…> — run a command under a
         # pseudo-terminal (so it emits color) and copy a terminal image of its output.
-        # The image identifies the Git project (or current directory) and command;
-        # --no-context produces an output-only image. -w/--width sets the capture width
+        # The image identifies the Git project (or current directory), command, and
+        # current branch when Git reports one; --no-context produces an output-only image.
+        # -w/--width sets the capture width
         # (exports COLUMNS for the command + passes --terminal-width so Vitrine
         # reconstructs wraps at that width); -e/--edit opens the output in Vitrine's editor.
         #
@@ -325,6 +336,11 @@ enum ShellInit {
             or set _vroot "$PWD"
             set -l _vproject (string replace -r '^.*/' '' -- "$_vroot")
             test -n "$_vproject"; or set _vproject /
+            set -l _vbranch (command git -C "$PWD" branch --show-current 2>/dev/null)
+            set -l _vlabel "$_vproject"
+            if test -n "$_vbranch"
+                set _vlabel "$_vproject · $_vbranch"
+            end
             set -l _vcmd (string escape -- $argv | string join ' ')
             set -l _vf (mktemp -t vitrine-grab); or return 1
             if test -n "$_vw"
@@ -339,7 +355,7 @@ enum ShellInit {
             end
             set -l _vcontextarg
             if test $_vcontext -eq 1; and test "$_vshare" != '--edit'
-                set _vcontextarg --filename "$_vproject" --title "$ $_vcmd"
+                set _vcontextarg --filename "$_vlabel" --title "$ $_vcmd"
             end
             command vitrine render $_vf --language terminal $_vwarg $_vcontextarg $_vshare
             rm -f -- $_vf

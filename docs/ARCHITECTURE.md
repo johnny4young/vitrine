@@ -234,11 +234,11 @@ without touching user files or rendering images.
 **Shell capture context.** `vitrine shell-init` emits opt-in `vgrab` and `vpane`
 functions for zsh, bash, and fish without installing prompt hooks or background
 processes. A normal `vgrab` resolves the local Git root (falling back to the current
-directory) and sends its directory name plus the shell-escaped command through the
-existing `--filename` and `--title` metadata options. Context therefore stays outside
-the ANSI transcript and works for both scrolling output and reconstructed full-screen
-frames. It never reads branch or status data, and `--no-context` omits the header for
-minimal or sensitive captures.
+directory), resolves the current attached branch when available, and sends a combined
+project/branch label plus the shell-escaped command through the existing `--filename`
+and `--title` metadata options. Context therefore stays outside the ANSI transcript and
+works for both scrolling output and reconstructed full-screen frames. It never reads
+repository status, and `--no-context` omits the header for minimal or sensitive captures.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the PRO render

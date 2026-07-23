@@ -15,8 +15,9 @@ can never drift.
 ### Changed
 
 - **Shared terminal captures now explain themselves.** `vgrab` adds a compact header
-  with the local project and executed command while deliberately omitting branch and
-  status details; `--no-context` keeps output-only and sensitive-command captures clean.
+  with the local project, current Git branch when available, and executed command;
+  repository status stays private, while `--no-context` keeps output-only and
+  sensitive-command captures clean.
 - **CLI maintenance is now split along explicit boundaries.** Argument tokenization,
   cross-option validation, value conversion, help, and error contracts live in focused
   files, with parsing, validation, configuration, rendering, and output tests organized

@@ -154,14 +154,15 @@ struct ANSIRenderTests {
         #expect(fish.contains("numeric column count (1-1000)"))
         #expect(fish.contains("function vpane"))
 
-        // A normal capture identifies the project and command through Vitrine's
-        // metadata header. It resolves the Git root locally, falls back to the current
-        // directory, and never reads branch or status information into the image.
+        // A normal capture identifies the project, command, and current Git branch
+        // through Vitrine's metadata header. It falls back to the current directory
+        // outside Git and never reads repository status into the image.
         for snippet in [zsh, bash, fish] {
             #expect(snippet.contains("git -C \"$PWD\" rev-parse --show-toplevel"))
-            #expect(snippet.contains("--filename"))
-            #expect(snippet.contains("--title"))
-            #expect(!snippet.contains("symbolic-ref"))
+            #expect(snippet.contains("git -C \"$PWD\" branch --show-current"))
+            #expect(snippet.contains(" · "))
+            #expect(snippet.contains(#"--filename "$_vlabel" --title "$ $_vcmd""#))
+            #expect(!snippet.contains(#"--filename "$_vproject""#))
             #expect(!snippet.contains("status --"))
         }
 
