@@ -14,6 +14,13 @@ can never drift.
 
 ### Changed
 
+- **CLI maintenance is now split along explicit boundaries.** Argument tokenization,
+  cross-option validation, value conversion, help, and error contracts live in focused
+  files, with parsing, validation, configuration, rendering, and output tests organized
+  into matching suites.
+- **App Store dry-run archives no longer treat app resources as CLI resources.** The
+  command-line target excludes the app-only resource tree, and the sandboxed embed phase
+  can follow Xcode's archived tool-product symlink without weakening script sandboxing.
 - **Release tooling is reproducible and auditable.** CI installs the checksum-verified
   XcodeGen release, watches pinned external tools and artifact digests for upstream
   changes, validates App Store archives through Xcode instead of deprecated delivery
