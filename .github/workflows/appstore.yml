@@ -1,12 +1,12 @@
 name: App Store dry run
 
 # App Store distribution readiness. This workflow is a *manual* dry run of
-# the archive + App Store validation path documented in docs/APP-STORE.md. It is
+# the archive + App Store distribution-export path documented in docs/APP-STORE.md. It is
 # NOT a release workflow: it never submits or uploads a build to App Store Connect.
 #
 # It is workflow_dispatch-only (run from the Actions tab) because the Mac App Store
 # channel is optional, and a real archive needs an Apple Distribution
-# identity that the repo does not carry by default. The validation step is gated on
+# identity that the repo does not carry by default. The distribution-export step is gated on
 # the App Store Connect API-key secrets and is skipped cleanly when they are absent,
 # so a fork — or this repo before an Apple account exists — still gets a green
 # archive build with no credentials, mirroring the graceful degradation of the
@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   archive:
-    name: Archive & validate (dry run)
+    name: Archive & export (dry run)
     runs-on: macos-latest
     # Cap well under the 6-hour default so a wedged SPM resolve or hung
     # xcodebuild surfaces in minutes.
@@ -40,7 +40,7 @@ jobs:
         run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
 
       # Record the exact toolchain this archive was built against for traceability,
-      # so a validation result is always tied to a known macOS image, Xcode, and SDK.
+      # so an export result is always tied to a known macOS image, Xcode, and SDK.
       - name: Toolchain versions
         run: |
           {
@@ -99,7 +99,7 @@ jobs:
           echo "APPSTORE_KEY_P8=${KEY_PATH}" >> "$GITHUB_ENV"
           echo "HAS_APPSTORE_CREDENTIALS=true" >> "$GITHUB_ENV"
 
-      # A validation export requires a distributable archive. Build with automatic
+      # A distribution export requires a distributable archive. Build with automatic
       # signing when complete credentials exist; CODE_SIGNING_ALLOWED=NO is only the
       # credential-free fallback that proves the archive is structurally buildable.
       # The App Store build EXCLUDES Sparkle: the App Store provides its own
@@ -161,10 +161,11 @@ jobs:
           echo "Verified: the App Store archive contains no Sparkle."
           echo "Verified: the App Store archive contains no embedded CLI."
 
-      # Use Xcode's supported validation export. The `validation` method performs the
-      # same distribution checks as Organizer without uploading a build. App Store
-      # Connect API credentials permit automatic signing through Xcode itself.
-      - name: Validate for App Store with Xcode (dry run, no upload)
+      # Export through Xcode's App Store Connect distribution path without delivery.
+      # Xcode 26 requires destination=upload for method=validation, which violates this
+      # workflow's no-upload contract; app-store-connect + export exercises the signed
+      # distribution pipeline while keeping the package local to the runner.
+      - name: Export for App Store with Xcode (dry run, no upload)
         env:
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
@@ -173,7 +174,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${HAS_APPSTORE_CREDENTIALS}" != "true" ]; then
-            echo "App Store Connect API key secrets not configured; skipping Xcode validation export."
+            echo "App Store Connect API key secrets not configured; skipping Xcode distribution export."
             exit 0
           fi
           cat > "${RUNNER_TEMP}/ExportOptions.plist" <<PLIST
@@ -181,7 +182,8 @@ jobs:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>method</key><string>validation</string>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
             <key>teamID</key><string>${MACOS_SIGN_TEAM_ID}</string>
             <key>signingStyle</key><string>automatic</string>
             <key>uploadSymbols</key><true/>
@@ -190,7 +192,7 @@ jobs:
           PLIST
           xcodebuild -exportArchive \
             -archivePath "${RUNNER_TEMP}/Vitrine.xcarchive" \
-            -exportPath "${RUNNER_TEMP}/appstore-validation" \
+            -exportPath "${RUNNER_TEMP}/appstore-export" \
             -exportOptionsPlist "${RUNNER_TEMP}/ExportOptions.plist" \
             -allowProvisioningUpdates \
             -authenticationKeyPath "${APPSTORE_KEY_P8}" \
@@ -208,9 +210,9 @@ jobs:
           {
             echo "### App Store dry run"
             if [ "${HAS_APPSTORE_CREDENTIALS}" = "true" ]; then
-              echo "App Store Connect credentials present — the Xcode validation-export step was attempted (no upload)."
+              echo "App Store Connect credentials present — the local Xcode distribution export was attempted."
             else
-              echo "No App Store Connect API key configured — archive built; validation skipped (expected on forks / pre-account)."
+              echo "No App Store Connect API key configured — archive built; distribution export skipped."
             fi
             echo "This workflow never submits or uploads a build. See docs/APP-STORE.md."
           } | tee -a "$GITHUB_STEP_SUMMARY"
