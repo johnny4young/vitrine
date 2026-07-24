@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Security
+
+- **The website now permits only active runtime connections.** Its content security
+  policy keeps the GitHub release API required for current downloads while removing the
+  obsolete raw-content origin used by the former runtime changelog.
+
 ## [0.24.0] - 2026-07-23
 
 Terminal captures that carry their own context, a faster static website, and a
