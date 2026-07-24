@@ -28,6 +28,17 @@ enum CLITestFixtures {
 protocol CLITestSupport {}
 
 extension CLITestSupport {
+    /// Resolves a tracked file relative to the repository root.
+    func repoFile(_ components: String...) -> URL {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        return components.reduce(root) { url, component in
+            url.appendingPathComponent(component)
+        }
+    }
+
     /// Creates a unique temporary directory for one test and returns its URL.
     /// The directory (and everything written into it) is the test's scratch space;
     /// callers clean it up in a `defer`.
