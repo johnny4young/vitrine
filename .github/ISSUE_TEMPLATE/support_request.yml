@@ -27,7 +27,7 @@ body:
     id: app-version
     attributes:
       label: Vitrine version
-      placeholder: "0.23.0 or current main commit"
+      placeholder: "0.24.0 or current main commit"
     validations:
       required: true
   - type: input
