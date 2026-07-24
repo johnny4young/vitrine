@@ -12,6 +12,8 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-07-23
+
 ### Changed
 
 - **Shared terminal captures now explain themselves.** `vgrab` adds a compact header
@@ -660,7 +662,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/johnny4young/vitrine/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/johnny4young/vitrine/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/johnny4young/vitrine/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/johnny4young/vitrine/compare/v0.20.0...v0.21.0
