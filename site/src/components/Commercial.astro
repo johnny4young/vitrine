@@ -1,10 +1,23 @@
+---
+import { currentVersion } from '~/lib/project';
+---
+
 <!-- ============ CHANGELOG ============ -->
 <section id="whats-new" style="padding-top:0">
   <div class="wrap">
     <span class="eyebrow" data-i18n="cl.eyebrow">Changelog</span>
     <h2 class="title" data-i18n="cl.title">What's new</h2>
-    <p class="lead" data-i18n="cl.lead">Pulled live from the project's <code>CHANGELOG.md</code> — always current, nothing to maintain.</p>
-    <div class="changelog" id="changelog-body"><p class="muted">Loading the latest release notes…</p></div>
+    <p class="lead" data-i18n="cl.lead">The highlights from the newest Vitrine release, available without waiting for a network request.</p>
+    <article class="changelog" data-release-version={currentVersion}>
+      <p class="ver"><span data-i18n="cl.version">Version</span> {currentVersion}</p>
+      <h3 data-i18n="cl.headline">Terminal context, sturdier releases</h3>
+      <ul>
+        <li data-i18n="cl.h1"><strong>Terminal captures now explain themselves.</strong> <code>vgrab</code> can include the project, current Git branch, and exact command above the result, while <code>--no-context</code> keeps sensitive captures clean.</li>
+        <li data-i18n="cl.h2"><strong>The website is faster and easier to maintain.</strong> It now ships from <code>site/</code> as a validated, static Astro build with English and Spanish routes and no browser framework runtime.</li>
+        <li data-i18n="cl.h3"><strong>Releases are more reproducible.</strong> Checksum-verified tooling, safer App Store archives, immutable tags, and an SPDX dependency inventory strengthen the path from source to download.</li>
+      </ul>
+      <a class="more" href="https://github.com/johnny4young/vitrine/blob/main/CHANGELOG.md" data-i18n="cl.more">Read the full changelog →</a>
+    </article>
   </div>
 </section>
 

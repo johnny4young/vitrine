@@ -39,7 +39,12 @@
       "vp.lead": "Apunta Vitrine a una URL o a HTML pegado y renderiza la página en varios viewports de una sola pasada — social, escritorio, Full HD, móvil — y los compone en un <em>tablero responsive</em> listo para compartir. La forma más rápida de mostrar un diseño adaptándose a cada pantalla. Todo local, en WebKit.",
       "term.eyebrow": "Terminal", "term.title": "Hasta TUIs de pantalla completa.",
       "term.lead": "Pega o usa <code>vgrab</code> con salida de terminal a color — y ahora también apps de pantalla completa como <code>htop</code>, <code>lazygit</code> y Neovim. Vitrine reconstruye la pantalla final — cada movimiento del cursor y su color, con caracteres anchos (CJK y emoji) incluidos — en tu tema.",
-      "cl.eyebrow": "Cambios", "cl.title": "Novedades", "cl.lead": "Se cargan en vivo desde el <code>CHANGELOG.md</code> del proyecto — siempre al día, nada que mantener.",
+      "cl.eyebrow": "Cambios", "cl.title": "Novedades", "cl.lead": "Los puntos destacados de la versión más reciente de Vitrine, disponibles sin esperar una solicitud de red.",
+      "cl.version": "Versión", "cl.headline": "Contexto en la terminal, versiones más sólidas",
+      "cl.h1": "<strong>Las capturas de terminal ahora se explican solas.</strong> <code>vgrab</code> puede incluir el proyecto, la rama actual de Git y el comando exacto sobre el resultado, mientras <code>--no-context</code> mantiene limpias las capturas sensibles.",
+      "cl.h2": "<strong>El sitio web es más rápido y fácil de mantener.</strong> Ahora se publica desde <code>site/</code> como una compilación estática y validada de Astro, con rutas en inglés y español y sin un framework en el navegador.",
+      "cl.h3": "<strong>Las versiones son más reproducibles.</strong> Las herramientas verificadas por checksum, los archivos más seguros para App Store, los tags inmutables y un inventario SPDX refuerzan el camino desde el código hasta la descarga.",
+      "cl.more": "Leer el changelog completo →",
       "pro.title": "Pásate a PRO cuando lo necesites.",
       "pro.lead": "Libre y de código abierto, para siempre. PRO es una licencia opcional <strong>de pago único</strong> — sin suscripción. La versión gratis no pierde nada: sin marca de agua, sin límite de resolución, sin molestias.",
       "pro.badge": "Lanzamiento · solo 2026",
@@ -150,34 +155,13 @@
     paintTheme("one-dark");
   })();
 
-  /* live release + changelog */
+  /* live release download */
   var REPO = "johnny4young/vitrine";
-  function renderChangelog(section) {
-    function inline(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>"); }
-    var out = [], inList = false;
-    section.split("\n").forEach(function (raw) {
-      var line = raw.replace(/\s+$/, "");
-      if (/^##\s+/.test(line)) { if (inList){out.push("</ul>");inList=false;} out.push('<div class="ver">'+inline(line.replace(/^##\s+/,""))+"</div>"); }
-      else if (/^###\s+/.test(line)) { if (inList){out.push("</ul>");inList=false;} out.push('<div class="cat">'+inline(line.replace(/^###\s+/,""))+"</div>"); }
-      else if (/^\s*-\s+/.test(line)) { if (!inList){out.push("<ul>");inList=true;} out.push("<li>"+inline(line.replace(/^\s*-\s+/,""))+"</li>"); }
-      else if (inList && /^\s+\S/.test(line)) { out[out.length-1]=out[out.length-1].replace(/<\/li>$/," "+inline(line.trim())+"</li>"); }
-      else if (line.trim()!=="") { if (inList){out.push("</ul>");inList=false;} out.push("<p>"+inline(line)+"</p>"); }
-    });
-    if (inList) out.push("</ul>");
-    return out.join("");
-  }
   fetch("https://api.github.com/repos/"+REPO+"/releases/latest").then(function(r){return r.ok?r.json():Promise.reject();}).then(function(rel){
     var tag = rel.tag_name||""; window.__vtag = tag; document.querySelectorAll("[data-version]").forEach(function(el){ if(tag) el.textContent=tag; });
     var dmg=(rel.assets||[]).find(function(a){return /\.dmg$/i.test(a.name);}); var url=dmg?dmg.browser_download_url:rel.html_url;
     document.querySelectorAll("[data-download]").forEach(function(el){el.href=url;});
   }).catch(function(){});
-  fetch("https://raw.githubusercontent.com/"+REPO+"/main/CHANGELOG.md").then(function(r){return r.ok?r.text():Promise.reject();}).then(function(md){
-    var lines=md.split("\n"); var start=lines.findIndex(function(l){return /^##\s*\[?[0-9v]/.test(l);}); if(start<0) throw 0;
-    var end=-1; for(var i=start+1;i<lines.length;i++){ if(/^##\s*\[?[0-9v]/.test(lines[i])){end=i;break;} } if(end<0) end=lines.length;
-    document.getElementById("changelog-body").innerHTML = renderChangelog(lines.slice(start,end).join("\n")) + '<a class="more" href="https://github.com/'+REPO+'/blob/main/CHANGELOG.md">Full changelog →</a>';
-  }).catch(function(){
-    document.getElementById("changelog-body").innerHTML = '<div class="ver">Latest release</div><p class="muted">Release notes load live from the repository when this page is online.</p><a class="more" href="https://github.com/'+REPO+'/blob/main/CHANGELOG.md">Read the changelog on GitHub →</a>';
-  });
   document.getElementById("copy-brew").addEventListener("click", function(){
     var btn=this; navigator.clipboard.writeText("brew install --cask johnny4young/tap/vitrine").then(function(){
       btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg> Copied';

@@ -42,6 +42,16 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.24.0",
+            headline: "Terminal context, sturdier releases",
+            highlights: [
+                "Share terminal output that explains itself: vgrab now adds the project, "
+                    + "current Git branch when available, and exact command above the result. "
+                    + "Use --no-context whenever the command or branch should stay private.",
+                "Release builds now use checksum-verified tooling, carry a dependency "
+                    + "inventory, and exercise a safer App Store archive path before shipping.",
+            ]),
+        ReleaseNote(
             version: "0.23.0",
             headline: "Precise annotations, local previews",
             highlights: [
