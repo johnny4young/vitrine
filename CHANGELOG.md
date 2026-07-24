@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Captures of commands with a progress bar no longer keep the spinner.** Terminal
+  images of `npm audit` and anything else that animates a progress bar used to open with
+  a line of leftover spinner frames run together before the real output. Only the
+  finished line is drawn now, exactly as the terminal showed it.
+
 ### Security
 
 - **The website now permits only active runtime connections.** Its content security
