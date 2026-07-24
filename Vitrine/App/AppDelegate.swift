@@ -15,19 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var hotkeyTask: Task<Void, Never>?
 
-    /// Whether the menu-bar icon's hover tooltip has been installed yet, so the
-    /// idempotent installer in `applicationWillUpdate(_:)` stops searching once
-    /// it has found the status-bar button.
-    private var didInstallMenuBarTooltip = false
-
-    /// Remaining attempts to locate the status-bar button before the installer gives
-    /// up. `applicationWillUpdate(_:)` fires on every event-loop pass, so without a
-    /// bound a failure to find the button (e.g. a future SwiftUI hosting change) would
-    /// re-run a full window-tree DFS forever, per event. The button appears within the
-    /// first few update passes on a normal launch; the tooltip is cosmetic, so
-    /// exhausting the budget quietly drops it rather than taxing every event.
-    private var menuBarTooltipAttemptsRemaining = 240
-
     /// Enforce a single running instance. A menu-bar agent must never stack a second
     /// status item, but launching the same bundle id from a different path — several
     /// Xcode DerivedData copies, or `open`-ing more than one built `.app` — starts a
@@ -139,6 +126,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.app.notice("Vitrine launched")
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
         NSApp.setActivationPolicy(.accessory)
+
+        // The menu-bar item, owned by AppKit rather than vended by a `MenuBarExtra`
+        // scene. This is the app's only affordance, so install it before anything that
+        // can fail or present a window.
+        StatusItemController.shared.attach()
 
         // Install the application main menu. An agent app with only a
         // `MenuBarExtra` scene gets no designed menu bar from SwiftUI; assigning one
@@ -467,46 +459,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// SwiftUI's `MenuBarExtra` scene bring-up installs its default main menu shortly
-    /// after `applicationDidFinishLaunching` — by replacing the installed menu's items
-    /// in place — wiping the designed menu installed above (File and Edit vanish from
-    /// the menu bar, and main-menu key equivalents like ⌘E and ⌘S go dead). Re-assert
-    /// the AppKit menu whenever it has been taken over; the pointer checks inside keep
-    /// this effectively free on this hot every-event path.
+    /// SwiftUI's scene bring-up installs its default main menu shortly after
+    /// `applicationDidFinishLaunching` — by replacing the installed menu's items in
+    /// place — wiping the designed menu installed above (File and Edit vanish from the
+    /// menu bar, and main-menu key equivalents like ⌘E and ⌘S go dead). Re-assert the
+    /// AppKit menu whenever it has been taken over; the pointer checks inside keep this
+    /// effectively free on this hot every-event path.
     func applicationWillUpdate(_ notification: Notification) {
         AppMenu.reinstallIfDisplaced()
-        ensureMenuBarTooltip()
-    }
-
-    /// Give the menu-bar icon a hover tooltip ("Vitrine"). SwiftUI's `MenuBarExtra`
-    /// owns the `NSStatusItem` and exposes no API for its tooltip, so reach the
-    /// underlying status-bar button through the window hierarchy and set it directly.
-    /// Driven from `applicationWillUpdate(_:)` because the status item is created
-    /// during SwiftUI's scene bring-up, after `applicationDidFinishLaunching`; the
-    /// flag makes it a no-op once the button has been found, so this hot path stays
-    /// cheap.
-    private func ensureMenuBarTooltip() {
-        guard !didInstallMenuBarTooltip, menuBarTooltipAttemptsRemaining > 0 else { return }
-        menuBarTooltipAttemptsRemaining -= 1
-        for window in NSApp.windows {
-            guard let button = Self.firstStatusBarButton(in: window.contentView) else { continue }
-            // "Vitrine" is the verbatim brand wordmark, like the other brand strings
-            // that bypass the String Catalog.
-            button.toolTip = "Vitrine"
-            didInstallMenuBarTooltip = true
-            return
-        }
-    }
-
-    /// Depth-first search for the `NSStatusBarButton` in a view subtree (the status
-    /// item's button is hosted inside the status-bar window's content view).
-    private static func firstStatusBarButton(in view: NSView?) -> NSStatusBarButton? {
-        guard let view else { return nil }
-        if let button = view as? NSStatusBarButton { return button }
-        for subview in view.subviews {
-            if let found = firstStatusBarButton(in: subview) { return found }
-        }
-        return nil
     }
 
     func applicationWillTerminate(_ notification: Notification) {
