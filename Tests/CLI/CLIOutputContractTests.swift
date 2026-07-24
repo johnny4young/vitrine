@@ -229,7 +229,7 @@ struct CLIOutputContractTests: CLITestSupport {
         var config = SnapshotConfig()
         config.language = .swift
         config.code = "let fence = \"```\"\n"
-        let contents = CLIRenderer.markdownSidecarContents(for: config, imageName: "snip.png")
+        let contents = CLIOutputWriter.markdownSidecarContents(for: config, imageName: "snip.png")
         #expect(contents.contains("````swift\n"))
         #expect(contents.hasSuffix("````\n"))
         #expect(contents.hasPrefix("![Code rendered with Vitrine](snip.png)\n\n"))
@@ -241,7 +241,7 @@ struct CLIOutputContractTests: CLITestSupport {
         config.code = "print(\"hi\")\n"
         config.metadata = SnapshotMetadata(filename: "evil] name [draft")
 
-        let contents = CLIRenderer.markdownSidecarContents(
+        let contents = CLIOutputWriter.markdownSidecarContents(
             for: config, imageName: "card v1)<final>.png")
 
         #expect(contents.hasPrefix("![evil\\] name \\[draft](<card v1)\\<final\\>.png>)\n\n"))
@@ -279,7 +279,7 @@ struct CLIOutputContractTests: CLITestSupport {
             filename: "evil\" <script>",
             title: "Docs <Embed> & \"copy\"")
 
-        let contents = CLIRenderer.htmlSidecarContents(
+        let contents = CLIOutputWriter.htmlSidecarContents(
             for: config, imageName: "card \"x\" & <final>.png")
 
         #expect(contents.contains("<title>Docs &lt;Embed&gt; &amp; \"copy\"</title>"))
@@ -497,6 +497,25 @@ struct CLIOutputContractTests: CLITestSupport {
             !FileManager.default.fileExists(
                 atPath: output.appendingPathComponent("vitrine-twitter.png").path))
         #expect(try Data(contentsOf: existing) == Data("existing".utf8))
+    }
+
+    @Test func multiSizeWriteFailureNamesTheArtifactThatFailed() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let output = directory.appendingPathComponent("cards", isDirectory: true)
+        let blockedArtifact = output.appendingPathComponent(
+            "vitrine-twitter.png", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: blockedArtifact, withIntermediateDirectories: true)
+        let options = try CLIArguments.parse([
+            "multi-size", input, "--out", output.path, "--presets", "twitter",
+        ])
+
+        #expect(throws: CLIError.writeFailed(path: blockedArtifact.path)) {
+            try CLIRenderer.runMultiSize(options)
+        }
     }
 
     // MARK: - Rendering: transparent background keeps real alpha
