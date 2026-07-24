@@ -119,9 +119,10 @@ struct TerminalScreen {
     /// (`?1049h`/`?47h`/`?1047h`), an erase-display (`ED`), absolute cursor positioning
     /// (`CUP` to a non-home cell, or `VPA`), or a scroll region (`DECSTBM`). Plain colored
     /// output (`git`, `ls`, a test run) carries only SGR — and a progress bar only
-    /// `\r`/`EL` — so none of them trip this and they stay in line mode. `EL` (erase
-    /// *line*) is deliberately not a trigger: it is the progress-bar idiom line mode
-    /// already handles.
+    /// `\r`/`EL`/`CHA` — so none of them trip this and they stay in line mode. `EL` (erase
+    /// *line*) and `CHA` (cursor to a column) are deliberately not triggers: they are the
+    /// progress-bar idiom, which line mode collapses itself in `ANSIPalette.normalize`
+    /// alongside `\r`.
     static func usesScreenAddressing(_ text: String) -> Bool {
         guard ANSIParser.containsANSI(text) else { return false }
         let scalars = Array(text.unicodeScalars)
