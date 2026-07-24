@@ -129,11 +129,14 @@ the app's exact pipeline.
 target compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
 `ExportManager`, `HighlightManager`, …) and supplies its own `main.swift`, excluding
 only the SwiftUI `@main` app (`VitrineApp.swift`) so there is a single entry point. The
-thin CLI layer lives in `Vitrine/CLI/`: `CLIArguments` (a dependency-free parser),
-`CLIOptions` (which builds a `SnapshotConfig` with the **same** preset/theme precedence
-the GUI uses), and `CLIRenderer` (which calls the unchanged `ExportManager`). Because
-the inputs and the pipeline are identical, a CLI render is byte-for-byte identical to
-the app's export for the same options — a unit test asserts exactly that.
+thin CLI layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
+facade; `CLIArgumentParser` owns token consumption and mutable invocation state;
+`CLIArgumentValidation` checks cross-option semantics and materializes `CLIOptions`;
+and `CLIArgumentValues` handles catalog and range conversion. `CLIOptions` then builds
+a `SnapshotConfig` with the **same** preset/theme precedence the GUI uses, while
+`CLIRenderer` calls the unchanged `ExportManager`. Because the inputs and pipeline are
+identical, a CLI render is byte-for-byte identical to the app's export for the same
+options — a focused output-contract test asserts exactly that.
 
 **Defaults** match the app: a bare `vitrine render input.swift --out image.png` uses
 `SnapshotConfig()`'s defaults (One Dark, JetBrains Mono, aurora background) at the
@@ -227,6 +230,15 @@ input extension, so non-colliding legacy output names stay unchanged.
 metadata call. It runs before AppKit initialization and before the PRO render gate
 because it reads only bundled metadata, so scripts can cheaply discover valid options
 without touching user files or rendering images.
+
+**Shell capture context.** `vitrine shell-init` emits opt-in `vgrab` and `vpane`
+functions for zsh, bash, and fish without installing prompt hooks or background
+processes. A normal `vgrab` resolves the local Git root (falling back to the current
+directory), resolves the current attached branch when available, and sends a combined
+project/branch label plus the shell-escaped command through the existing `--filename`
+and `--title` metadata options. Context therefore stays outside the ANSI transcript and
+works for both scrolling output and reconstructed full-screen frames. It never reads
+repository status, and `--no-context` omits the header for minimal or sensitive captures.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the PRO render
@@ -436,7 +448,11 @@ Vitrine/
 │   ├── Notifier.swift         # quick-capture outcome banners
 │   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…"
 ├── CLI/                       # `vitrine render` core, shared with VitrineCLI
-│   ├── CLIArguments.swift     # dependency-free arg parser + CLIError/CLIUsage
+│   ├── CLIArguments.swift     # stable dependency-free parser facade
+│   ├── CLIArgumentParser.swift # command selection, tokens, and invocation state
+│   ├── CLIArgumentValidation.swift # cross-option rules → immutable CLIOptions
+│   ├── CLIArgumentValues.swift # catalog, range, color, and geometry conversion
+│   ├── CLIError.swift / CLIUsage.swift # process errors and help contract
 │   ├── CLICatalog.swift       # local theme/language/preset discovery for automation
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
 │   ├── CLIRenderer.swift      # load input → ExportManager (unchanged) → write file

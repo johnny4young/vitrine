@@ -126,6 +126,10 @@ targets:
         basedOnDependencyAnalysis: true
         inputFiles:
           - "$(BUILT_PRODUCTS_DIR)/vitrine-cli"
+          # With SKIP_INSTALL=YES, the archive product above is a symlink into
+          # UninstalledProducts. Script sandboxing authorizes literal paths, so
+          # declare the symlink destination as a readable input as well.
+          - "$(UNINSTALLED_PRODUCTS_DIR)/macosx/vitrine-cli"
         outputFiles:
           - "$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/vitrine-cli"
         script: |
@@ -188,12 +192,11 @@ targets:
     sources:
       - path: Vitrine
         excludes:
-          - "Resources/Info.plist"
-          - "Resources/Vitrine.entitlements"
-          # Direct-download (Sparkle) entitlements superset; the CLI ships no
-          # updater, so this is never compiled or ingested here.
-          - "Resources/Vitrine.DirectDownload.entitlements"
-          - "Resources/Fonts"
+          # App bundle resources do not belong to a command-line tool. In
+          # particular, an asset catalog has no valid bundle destination when
+          # Xcode installs the tool into usr/local/bin during an archive. Fonts
+          # are staged as raw files by the build script below instead.
+          - "Resources"
           # The GUI's @main App scene; the CLI provides its own main.swift entry.
           - "App/VitrineApp.swift"
           # The automation surfaces target the GUI app only: App Intents
@@ -254,6 +257,11 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         CODE_SIGN_STYLE: Automatic
+        # The CLI is embedded into Vitrine.app by the app target's post-build
+        # phase. Do not also install it as a top-level /usr/local archive product:
+        # multiple installed products turn Vitrine.xcarchive into a generic archive
+        # that Xcode cannot validate or export for distribution.
+        SKIP_INSTALL: YES
         # The CLI is neither the direct-download app nor an App Store build — it is a
         # headless dev tool that ships no updater and does not link Sparkle.
         # Drop the VITRINE_DIRECT_DOWNLOAD flag the project base sets so the shared

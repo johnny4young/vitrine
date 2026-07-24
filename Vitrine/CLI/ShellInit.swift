@@ -77,8 +77,9 @@ enum ShellInit {
           eval "$(vitrine shell-init zsh)"
 
         Then, in a new shell:
-          vgrab <command>   run a command and copy a terminal image of its output
-          vpane [pane]      copy a terminal image of a tmux pane's visible contents
+          vgrab <command>       run a command and copy a contextual terminal image
+          vgrab --no-context …  omit the project and command header
+          vpane [pane]          copy a terminal image of a tmux pane's visible contents
 
         To capture a command you already ran, recall it (↑ or !!) and prepend
         vgrab — e.g. `vgrab !!`. Inside tmux, `vpane` captures what is already on
@@ -90,36 +91,50 @@ enum ShellInit {
         # >>> vitrine shell integration (zsh) >>>
         # Turn terminal output into a Vitrine image. Docs: vitrine shell-init --help
 
-        # vgrab [-w cols] [-e] <cmd…> — run a command under a pseudo-terminal (so it
-        # emits color) and copy a terminal image of its output to the clipboard. Returns
-        # the command's own exit status (script -e). -w/--width sets the capture width: it
-        # exports COLUMNS for the command (best effort — tools that query the tty directly
-        # ignore it) and passes --terminal-width so Vitrine reconstructs wraps at exactly
-        # that width. -e/--edit opens the captured output in Vitrine's editor instead.
+        # vgrab [-w cols] [-e] [--no-context] <cmd…> — run a command under a
+        # pseudo-terminal (so it emits color) and copy a terminal image of its output
+        # to the clipboard. The image identifies the Git project (or current directory)
+        # and command, plus the current branch when Git reports one; --no-context
+        # produces an output-only image. Returns the command's own exit status (script -e).
+        # -w/--width sets the capture width: it exports
+        # COLUMNS for the command (best effort — tools that query the tty directly ignore
+        # it) and passes --terminal-width so Vitrine reconstructs wraps at exactly that
+        # width. -e/--edit opens the captured output in Vitrine's editor instead.
         #
         # To capture a command you already ran, recall it (↑ or !!) and prepend vgrab,
         # e.g. `vgrab !!`.
         vgrab() {
           emulate -L zsh
-          local _vw="" _vshare="--copy"
+          local _vw="" _vshare="--copy" _vcontext=1
           while [[ "$1" == -* ]]; do
             case "$1" in
               -w|--width)
                 if (( $# < 2 )) || [[ "$2" != <-> ]] || (( $2 < 1 || $2 > 1000 )); then
-                  print -ru2 -- "usage: vgrab [-w cols] [-e] <command> [args…]"
+                  print -ru2 -- "usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]"
                   print -ru2 -- "vgrab: -w/--width needs a numeric column count (1-1000)"
                   return 2
                 fi
                 _vw="$2"; shift 2 ;;
               -e|--edit) _vshare="--edit"; shift ;;
+              --no-context) _vcontext=0; shift ;;
               --) shift; break ;;
               *) break ;;
             esac
           done
           if (( $# == 0 )); then
-            print -ru2 -- "usage: vgrab [-w cols] [-e] <command> [args…]"
+            print -ru2 -- "usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]"
             return 2
           fi
+          local _vroot _vproject _vbranch _vlabel _vcmd
+          _vroot="$(command git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" ||
+            _vroot="$PWD"
+          _vproject="${_vroot:t}"
+          [[ -n "$_vproject" ]] || _vproject="/"
+          _vbranch="$(command git -C "$PWD" branch --show-current 2>/dev/null)" ||
+            _vbranch=""
+          _vlabel="$_vproject"
+          [[ -n "$_vbranch" ]] && _vlabel+=" · $_vbranch"
+          _vcmd="${(j: :)${(q)@}}"
           local _vf
           _vf="$(mktemp -t vitrine-grab)" || return 1
           if [[ -n "$_vw" ]]; then
@@ -128,9 +143,12 @@ enum ShellInit {
             script -qe "$_vf" "$@"
           fi
           local _vc=$?
-          local -a _vwarg
+          local -a _vwarg _vcontextarg
           [[ -n "$_vw" ]] && _vwarg=(--terminal-width "$_vw")
-          command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "$_vshare"
+          if (( _vcontext )) && [[ "$_vshare" != "--edit" ]]; then
+            _vcontextarg=(--filename "$_vlabel" --title "$ $_vcmd")
+          fi
+          command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "${_vcontextarg[@]}" "$_vshare"
           rm -f -- "$_vf"
           return $_vc
         }
@@ -171,33 +189,48 @@ enum ShellInit {
         # >>> vitrine shell integration (bash) >>>
         # Turn terminal output into a Vitrine image. Docs: vitrine shell-init --help
 
-        # vgrab [-w cols] [-e] <cmd…> — run a command under a pseudo-terminal (so it
-        # emits color) and copy a terminal image of its output. -w/--width sets the capture
-        # width (exports COLUMNS for the command + passes --terminal-width so Vitrine
+        # vgrab [-w cols] [-e] [--no-context] <cmd…> — run a command under a
+        # pseudo-terminal (so it emits color) and copy a terminal image of its output.
+        # The image identifies the Git project (or current directory), command, and
+        # current branch when Git reports one; --no-context produces an output-only image.
+        # -w/--width sets the capture width
+        # (exports COLUMNS for the command + passes --terminal-width so Vitrine
         # reconstructs wraps at that width); -e/--edit opens the output in Vitrine's editor.
         #
         # To capture a command you already ran, recall it (↑ or !!) and prepend vgrab,
         # e.g. `vgrab !!`.
         vgrab() {
-          local _vw="" _vshare="--copy"
+          local _vw="" _vshare="--copy" _vcontext=1
           while [ "${1:0:1}" = "-" ]; do
             case "$1" in
               -w|--width)
                 if [ "$#" -lt 2 ] || ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt 1 ] || [ "$2" -gt 1000 ]; then
-                  printf 'usage: vgrab [-w cols] [-e] <command> [args…]\n' >&2
+                  printf 'usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]\n' >&2
                   printf 'vgrab: -w/--width needs a numeric column count (1-1000)\n' >&2
                   return 2
                 fi
                 _vw="$2"; shift 2 ;;
               -e|--edit) _vshare="--edit"; shift ;;
+              --no-context) _vcontext=0; shift ;;
               --) shift; break ;;
               *) break ;;
             esac
           done
           if [ "$#" -eq 0 ]; then
-            printf 'usage: vgrab [-w cols] [-e] <command> [args…]\\n' >&2
+            printf 'usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]\\n' >&2
             return 2
           fi
+          local _vroot _vproject _vbranch _vlabel _vcmd
+          _vroot="$(command git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" ||
+            _vroot="$PWD"
+          _vproject="${_vroot##*/}"
+          [ -n "$_vproject" ] || _vproject="/"
+          _vbranch="$(command git -C "$PWD" branch --show-current 2>/dev/null)" ||
+            _vbranch=""
+          _vlabel="$_vproject"
+          [ -n "$_vbranch" ] && _vlabel="$_vproject · $_vbranch"
+          printf -v _vcmd '%q ' "$@"
+          _vcmd="${_vcmd% }"
           local _vf
           _vf="$(mktemp -t vitrine-grab)" || return 1
           if [ -n "$_vw" ]; then
@@ -206,9 +239,12 @@ enum ShellInit {
             script -qe "$_vf" "$@"
           fi
           local _vc=$?
-          local _vwarg=()
+          local _vwarg=() _vcontextarg=()
           [ -n "$_vw" ] && _vwarg=(--terminal-width "$_vw")
-          command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "$_vshare"
+          if [ "$_vcontext" -eq 1 ] && [ "$_vshare" != "--edit" ]; then
+            _vcontextarg=(--filename "$_vlabel" --title "$ $_vcmd")
+          fi
+          command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "${_vcontextarg[@]}" "$_vshare"
           rm -f -- "$_vf"
           return $_vc
         }
@@ -248,28 +284,32 @@ enum ShellInit {
         # >>> vitrine shell integration (fish) >>>
         # Turn terminal output into a Vitrine image. Docs: vitrine shell-init --help
 
-        # vgrab [-w cols] [-e] <cmd…> — run a command under a pseudo-terminal (so it
-        # emits color) and copy a terminal image of its output. -w/--width sets the capture
-        # width (exports COLUMNS for the command + passes --terminal-width so Vitrine
+        # vgrab [-w cols] [-e] [--no-context] <cmd…> — run a command under a
+        # pseudo-terminal (so it emits color) and copy a terminal image of its output.
+        # The image identifies the Git project (or current directory), command, and
+        # current branch when Git reports one; --no-context produces an output-only image.
+        # -w/--width sets the capture width
+        # (exports COLUMNS for the command + passes --terminal-width so Vitrine
         # reconstructs wraps at that width); -e/--edit opens the output in Vitrine's editor.
         #
         # To capture a command you already ran, recall it (↑) and prepend vgrab.
         function vgrab --description 'run a command and copy a terminal image of its output'
             set -l _vw ''
             set -l _vshare '--copy'
+            set -l _vcontext 1
             while set -q argv[1]; and string match -qr -- '^-' $argv[1]
                 switch $argv[1]
                     case -w --width
                         if test (count $argv) -lt 2
-                            echo "usage: vgrab [-w cols] [-e] <command> [args…]" >&2
+                            echo "usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]" >&2
                             echo "vgrab: -w/--width needs a numeric column count (1-1000)" >&2
                             return 2
                         else if not string match -qr '^[0-9]+$' -- $argv[2]
-                            echo "usage: vgrab [-w cols] [-e] <command> [args…]" >&2
+                            echo "usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]" >&2
                             echo "vgrab: -w/--width needs a numeric column count (1-1000)" >&2
                             return 2
                         else if test $argv[2] -lt 1; or test $argv[2] -gt 1000
-                            echo "usage: vgrab [-w cols] [-e] <command> [args…]" >&2
+                            echo "usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]" >&2
                             echo "vgrab: -w/--width needs a numeric column count (1-1000)" >&2
                             return 2
                         end
@@ -277,6 +317,9 @@ enum ShellInit {
                         set -e argv[1 2]
                     case -e --edit
                         set _vshare '--edit'
+                        set -e argv[1]
+                    case --no-context
+                        set _vcontext 0
                         set -e argv[1]
                     case --
                         set -e argv[1]
@@ -286,9 +329,19 @@ enum ShellInit {
                 end
             end
             if test (count $argv) -eq 0
-                echo "usage: vgrab [-w cols] [-e] <command> [args…]" >&2
+                echo "usage: vgrab [-w cols] [-e] [--no-context] <command> [args…]" >&2
                 return 2
             end
+            set -l _vroot (command git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)
+            or set _vroot "$PWD"
+            set -l _vproject (string replace -r '^.*/' '' -- "$_vroot")
+            test -n "$_vproject"; or set _vproject /
+            set -l _vbranch (command git -C "$PWD" branch --show-current 2>/dev/null)
+            set -l _vlabel "$_vproject"
+            if test -n "$_vbranch"
+                set _vlabel "$_vproject · $_vbranch"
+            end
+            set -l _vcmd (string escape -- $argv | string join ' ')
             set -l _vf (mktemp -t vitrine-grab); or return 1
             if test -n "$_vw"
                 env COLUMNS=$_vw script -qe $_vf $argv
@@ -300,7 +353,11 @@ enum ShellInit {
             if test -n "$_vw"
                 set _vwarg --terminal-width $_vw
             end
-            command vitrine render $_vf --language terminal $_vwarg $_vshare
+            set -l _vcontextarg
+            if test $_vcontext -eq 1; and test "$_vshare" != '--edit'
+                set _vcontextarg --filename "$_vlabel" --title "$ $_vcmd"
+            end
+            command vitrine render $_vf --language terminal $_vwarg $_vcontextarg $_vshare
             rm -f -- $_vf
             return $_vc
         end

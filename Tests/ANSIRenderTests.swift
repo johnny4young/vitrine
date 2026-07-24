@@ -138,18 +138,33 @@ struct ANSIRenderTests {
         #expect(zsh.contains("vgrab()"))
         #expect(zsh.contains("script -qe") && zsh.contains("--copy"))
         #expect(zsh.contains("--terminal-width"))
+        #expect(zsh.contains("--no-context"))
         #expect(zsh.contains("numeric column count (1-1000)"))
         #expect(zsh.contains("vpane()"))
         let bash = ShellInit.snippet(for: .bash)
         #expect(bash.contains("vgrab()"))
         #expect(bash.contains("--terminal-width"))
+        #expect(bash.contains("--no-context"))
         #expect(bash.contains("numeric column count (1-1000)"))
         #expect(bash.contains("vpane()"))
         let fish = ShellInit.snippet(for: .fish)
         #expect(fish.contains("function vgrab"))
         #expect(fish.contains("--terminal-width"))
+        #expect(fish.contains("--no-context"))
         #expect(fish.contains("numeric column count (1-1000)"))
         #expect(fish.contains("function vpane"))
+
+        // A normal capture identifies the project, command, and current Git branch
+        // through Vitrine's metadata header. It falls back to the current directory
+        // outside Git and never reads repository status into the image.
+        for snippet in [zsh, bash, fish] {
+            #expect(snippet.contains("git -C \"$PWD\" rev-parse --show-toplevel"))
+            #expect(snippet.contains("git -C \"$PWD\" branch --show-current"))
+            #expect(snippet.contains(" · "))
+            #expect(snippet.contains(#"--filename "$_vlabel" --title "$ $_vcmd""#))
+            #expect(!snippet.contains(#"--filename "$_vproject""#))
+            #expect(!snippet.contains("status --"))
+        }
 
         // vpane captures the pane's already-on-screen contents with colors and never
         // re-runs anything: it must read via `tmux capture-pane -ep` in every shell.

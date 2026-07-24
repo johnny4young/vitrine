@@ -277,7 +277,7 @@ struct SoftwareUpdateChannelTests {
         // The App Store dry-run workflow removes the flag and strips the framework.
         let appStore = try Self.appStoreWorkflow()
         #expect(
-            appStore.contains("SWIFT_ACTIVE_COMPILATION_CONDITIONS=\"\""),
+            appStore.contains("'SWIFT_ACTIVE_COMPILATION_CONDITIONS='"),
             "the App Store archive must remove VITRINE_DIRECT_DOWNLOAD so Sparkle compiles out"
         )
         #expect(
