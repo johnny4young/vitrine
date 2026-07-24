@@ -20,6 +20,9 @@ can never drift.
 
 ### Changed
 
+- **CLI automation coverage is grouped by responsibility.** Entitlement,
+  version and catalog contracts, batch argument validation, and filesystem rendering
+  now live in focused suites that share repository, scratch-directory, and image fixtures.
 - **CLI rendering now has explicit operation and output boundaries.** The stable renderer
   facade delegates temporary image resources, batch discovery and reporting, and
   artifact encoding and sidecars to focused components while retaining the same shared
