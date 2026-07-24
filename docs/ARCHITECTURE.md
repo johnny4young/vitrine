@@ -114,16 +114,15 @@ export choice for the arbitrary code canvas; it exists for the template path onl
 command line, for docs pipelines and automation. It is a separate **`VitrineCLI`**
 target (product name `vitrine`); the GUI app is unchanged.
 
-**Hosting strategy (the decision the  design note asked for).** `ImageRenderer`
-and Highlightr require AppKit on the **main actor**, so a plain SwiftPM executable
-that never starts AppKit cannot render. Two options were on the table: (a) bundle a
-headless helper the CLI drives over IPC, or (b) make the CLI itself a minimal AppKit
-host. We chose (b): `VitrineCLI/main.swift` brings up the shared `NSApplication`, sets
-the **accessory** activation policy (no Dock icon, no app-switcher entry, no menu
-bar), renders synchronously on the main actor, and exits — it never shows a window and
-never calls `app.run()`, so there is no UI and no event loop to get stuck in. Option
-(b) is simpler, has no IPC surface, and keeps the render in-process where it can reuse
-the app's exact pipeline.
+**Hosting strategy.** `ImageRenderer` and Highlightr require AppKit on the **main
+actor**, so a plain SwiftPM executable that never starts AppKit cannot render. Two
+options were evaluated: (a) bundle a headless helper the CLI drives over IPC, or (b)
+make the CLI itself a minimal AppKit host. Vitrine uses (b):
+`VitrineCLI/main.swift` brings up the shared `NSApplication`, sets the **accessory**
+activation policy (no Dock icon, no app-switcher entry, no menu bar), renders
+synchronously on the main actor, and exits — it never shows a window and never calls
+`app.run()`, so there is no UI and no event loop to get stuck in. This approach has no
+IPC surface and keeps the render in-process where it can reuse the app's exact pipeline.
 
 **Pixel-identical output.** The CLI does not re-implement rendering. The `VitrineCLI`
 target compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
@@ -141,6 +140,14 @@ sidecars. The output component still calls the unchanged `ExportManager`; none o
 boundaries introduces a second render implementation. Because the inputs and pipeline
 are identical, a CLI render is byte-for-byte identical to the app's export for the same
 options — a focused output-contract test asserts exactly that.
+
+**Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
+suites cover entitlement, version and catalog contracts, argument parsing and
+validation, configuration, rendering, and output behavior. Batch argument contracts
+and filesystem rendering have separate suites because one is pure option validation
+while the other creates real artifacts. `CLITestSupport` centralizes repository paths,
+isolated scratch directories, and generated image fixtures without hiding assertions or
+renderer calls.
 
 **Defaults** match the app: a bare `vitrine render input.swift --out image.png` uses
 `SnapshotConfig()`'s defaults (One Dark, JetBrains Mono, aurora background) at the
