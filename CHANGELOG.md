@@ -18,6 +18,13 @@ can never drift.
   policy keeps the GitHub release API required for current downloads while removing the
   obsolete raw-content origin used by the former runtime changelog.
 
+### Changed
+
+- **CLI rendering now has explicit operation and output boundaries.** The stable renderer
+  facade delegates temporary image resources, batch discovery and reporting, and
+  artifact encoding and sidecars to focused components while retaining the same shared
+  app render pipeline and output contracts.
+
 ## [0.24.0] - 2026-07-23
 
 Terminal captures that carry their own context, a faster static website, and a

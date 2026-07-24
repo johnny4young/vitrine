@@ -133,9 +133,13 @@ thin CLI layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-
 facade; `CLIArgumentParser` owns token consumption and mutable invocation state;
 `CLIArgumentValidation` checks cross-option semantics and materializes `CLIOptions`;
 and `CLIArgumentValues` handles catalog and range conversion. `CLIOptions` then builds
-a `SnapshotConfig` with the **same** preset/theme precedence the GUI uses, while
-`CLIRenderer` calls the unchanged `ExportManager`. Because the inputs and pipeline are
-identical, a CLI render is byte-for-byte identical to the app's export for the same
+a `SnapshotConfig` with the **same** preset/theme precedence the GUI uses.
+`CLIRenderer` is the stable operation facade, `CLIRenderResources` owns temporary
+background and watermark preparation, `CLIBatchRenderer` owns folder discovery and
+batch reporting, and `CLIOutputWriter` owns artifact preflight, shared encoding, and
+sidecars. The output component still calls the unchanged `ExportManager`; none of these
+boundaries introduces a second render implementation. Because the inputs and pipeline
+are identical, a CLI render is byte-for-byte identical to the app's export for the same
 options — a focused output-contract test asserts exactly that.
 
 **Defaults** match the app: a bare `vitrine render input.swift --out image.png` uses
@@ -455,7 +459,10 @@ Vitrine/
 │   ├── CLIError.swift / CLIUsage.swift # process errors and help contract
 │   ├── CLICatalog.swift       # local theme/language/preset discovery for automation
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
-│   ├── CLIRenderer.swift      # load input → ExportManager (unchanged) → write file
+│   ├── CLIRenderer.swift      # stable render/multi-size/edit/batch operation facade
+│   ├── CLIRenderResources.swift # invocation-scoped backgrounds and watermark logos
+│   ├── CLIBatchRenderer.swift # folder discovery, output planning, manifests, reports
+│   ├── CLIOutputWriter.swift  # ExportManager encoding, artifact preflight, sidecars
 │   └── CLIFontRegistration.swift # register bundled fonts with Core Text at launch
 ├── AppIntents/                # Shortcuts/Siri actions, app-only
 │   ├── SnapshotRenderRequest.swift   # pure request → SnapshotConfig (app precedence)
