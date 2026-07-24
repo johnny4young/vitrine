@@ -20,6 +20,9 @@ can never drift.
 
 ### Changed
 
+- **Editor batch exports now use one stable presentation route.** Expanded toolbar
+  buttons and the compact actions menu share the same mutually exclusive destination
+  for multi-size export, carousel export, and their PRO paywalls.
 - **CLI automation coverage is grouped by responsibility.** Entitlement,
   version and catalog contracts, batch argument validation, and filesystem rendering
   now live in focused suites that share repository, scratch-directory, and image fixtures.
