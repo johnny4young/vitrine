@@ -14,6 +14,16 @@ can never drift.
 
 ## [0.24.0] - 2026-07-23
 
+Terminal captures that carry their own context, a faster static website, and a
+more reproducible path from source to release.
+
+### Added
+
+- **The public website is now a standalone Astro application.** English and Spanish
+  routes, canonical and alternate-language metadata, structured data, crawl files,
+  release-aware downloads, and build-time validation now ship as static, framework-free
+  pages from `site/`.
+
 ### Changed
 
 - **Shared terminal captures now explain themselves.** `vgrab` adds a compact header
