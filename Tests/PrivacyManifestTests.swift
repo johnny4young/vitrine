@@ -458,6 +458,20 @@ struct CLIPermissionPostureTests {
         }
     }
 
+    /// A tool has no app bundle in which Xcode can install an asset catalog, string catalog,
+    /// privacy manifest, or property list. The raw font files are staged separately by the
+    /// CLI build phase, so the entire app-only resource tree must stay out of its source list.
+    /// This also keeps archive builds from treating `usr/local/bin` as an asset-catalog output.
+    @Test func cliTargetExcludesAppBundleResources() throws {
+        let cli = try PermissionMatrix.cliTargetBlock()
+        #expect(cli.contains("type: tool"), "Did not locate the VitrineCLI target in project.yml")
+        #expect(
+            cli.split(separator: "\n").contains {
+                $0.trimmingCharacters(in: .whitespaces) == #"- "Resources""#
+            },
+            "The VitrineCLI target must exclude the app-only Resources tree from its sources")
+    }
+
     /// The matrix's CLI row documents the same posture in prose: no `CODE_SIGN_ENTITLEMENTS`
     /// and the specific excluded surfaces. Pinning the doc text (not just the build config)
     /// stops the row from being silently gutted while the build still happens to comply, so

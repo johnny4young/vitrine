@@ -525,18 +525,21 @@ struct AppStoreReadinessTests {
         }
     }
 
-    /// The optional workflow is a **dry run**: manually triggered, it archives and validates
+    /// The optional workflow is a **dry run**: manually triggered, it archives and exports
     /// but **never** auto-submits or auto-uploads a build. Assert it is `workflow_dispatch`,
-    /// uses Xcode's validation export and contains no upload destination — the property that keeps
-    /// it safe to merge on a repo without an Apple account.
+    /// uses Xcode's App Store Connect export path and contains no upload destination — the
+    /// property that keeps it safe to merge on a repo without an Apple account.
     @Test func workflowIsAManualDryRunThatNeverAutoSubmits() throws {
         let workflow = try Self.workflow()
         #expect(
             workflow.contains("workflow_dispatch"),
             "appstore.yml must be manually triggered (workflow_dispatch)")
         #expect(
-            workflow.contains("<string>validation</string>"),
-            "appstore.yml must run Xcode validation export as a dry run")
+            workflow.contains("<string>app-store-connect</string>"),
+            "appstore.yml must run Xcode's App Store Connect distribution export")
+        #expect(
+            workflow.contains("<string>export</string>"),
+            "the App Store dry run must keep the exported package local to the runner")
         // The critical safety property: it must never upload/submit a build automatically.
         #expect(
             !workflow.contains("<string>upload</string>"),
@@ -548,39 +551,63 @@ struct AppStoreReadinessTests {
             "appstore.yml must document that it never submits a build")
     }
 
-    /// The dry-run validation is gated on the App Store Connect API-key secrets so the
+    /// The dry-run distribution export is gated on the App Store Connect API-key secrets so the
     /// workflow degrades gracefully: with no credentials the archive still builds and the
-    /// validation step is skipped, mirroring the signed DMG pipeline. Assert the
+    /// export step is skipped, mirroring the signed DMG pipeline. Assert the
     /// archive step and the secret gate are both present.
     @Test func workflowGatesValidationOnSecretsAndStillArchivesWithout() throws {
         let workflow = try Self.workflow()
+        let fetchSparkle = try #require(
+            workflow.range(of: "./scripts/fetch-sparkle.sh"),
+            "the clean App Store runner must stage the local Sparkle framework before linking")
+        let archive = try #require(
+            workflow.range(of: "Archive (App Store dry run)"),
+            "appstore.yml must contain the App Store archive step")
+        #expect(
+            fetchSparkle.lowerBound < archive.lowerBound,
+            "the local Sparkle framework must be staged before the App Store archive links")
         // The archive always runs (buildable without an Apple Distribution identity).
         #expect(
             workflow.contains("archive"),
             "appstore.yml must archive the app")
         #expect(
             workflow.contains("CODE_SIGNING_ALLOWED=NO"),
-            "the dry-run archive must build without a signing identity")
+            "the dry-run archive must retain a credential-free unsigned fallback")
+        #expect(
+            workflow.contains(#"if [ "${HAS_APPSTORE_EXPORT_ACCESS}" = "true" ]"#),
+            "the dry run must create a signed archive when App Store export access is ready")
+        #expect(
+            workflow.contains("APPSTORE_CLOUD_SIGNING_ENABLED"),
+            "cloud signing must be an explicit repository opt-in, not inferred from notary secrets")
+        #expect(
+            workflow.contains(#"DEVELOPMENT_TEAM="${MACOS_SIGN_TEAM_ID}""#),
+            "the signed archive must use the configured App Store team")
+        #expect(
+            workflow.contains("-allowProvisioningUpdates"),
+            "the signed archive must allow Xcode to provision through App Store credentials")
         // Validation is gated on the App Store Connect API-key secret.
         #expect(
             workflow.contains("MACOS_NOTARY_KEY_P8"),
-            "appstore.yml must gate validation on the App Store Connect API key")
+            "appstore.yml must gate distribution export on the App Store Connect API key")
         _ = try #require(
-            workflow.range(of: "<string>validation</string>"),
-            "appstore.yml must contain the Xcode validation export")
+            workflow.range(of: "<string>app-store-connect</string>"),
+            "appstore.yml must contain the Xcode App Store Connect export")
         #expect(
-            workflow.contains(#"[ -z "${MACOS_NOTARY_KEY_ID:-}" ]"#),
-            "the validation export must be gated on the App Store Connect API-key secrets")
+            workflow.contains(#"[ "${HAS_APPSTORE_EXPORT_ACCESS}" != "true" ]"#),
+            "the distribution export must be gated on explicit App Store export readiness")
         #expect(
             workflow.contains(#"[ -z "${MACOS_SIGN_TEAM_ID:-}" ]"#),
-            "the validation export must be gated on the signing Team ID")
+            "credential preparation must require the signing Team ID")
         #expect(
             workflow.contains(#"-authenticationKeyPath "${APPSTORE_KEY_P8}""#),
-            "the validation export must pass Xcode the staged App Store Connect private key file")
+            "the distribution export must pass Xcode the staged App Store Connect private key file")
         #expect(workflow.contains("umask 077"), "the staged private key must not be world-readable")
         #expect(
-            workflow.contains("HAS_APPSTORE_CREDENTIALS"),
-            "the workflow summary must reflect the complete credential set")
+            workflow.contains("HAS_APPSTORE_EXPORT_ACCESS"),
+            "the workflow summary must reflect App Store export readiness")
+        #expect(
+            workflow.contains(#"rm -f "${APP}/Contents/MacOS/vitrine-cli""#),
+            "the App Store archive must remove the direct-download embedded CLI")
         #expect(!workflow.contains("altool"), "the workflow must not use deprecated altool")
     }
 

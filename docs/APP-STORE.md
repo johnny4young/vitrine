@@ -87,6 +87,8 @@ not just intended:
   `VITRINE_DIRECT_DOWNLOAD`, so every `#if VITRINE_DIRECT_DOWNLOAD` block (the whole Sparkle
   integration and the **Check for Updates…** menu item) compiles out — `SoftwareUpdater.isSupported`
   is `false`.
+- Because `project.yml` declares the checksum-pinned local framework as a link dependency, a clean
+  runner stages it before linking; this is a build input only and does not change the channel.
 - The archive then **strips the Sparkle framework** from the app bundle and fails the job if any
   Sparkle payload remains (see `.github/workflows/appstore.yml`).
 - The App Store build keeps the minimal `Vitrine.entitlements` (no network, no Sparkle XPC
@@ -106,13 +108,13 @@ credentials are committed.
 
 The app bundle embeds the `vitrine` command-line renderer at
 `Contents/MacOS/vitrine-cli` (for the Homebrew cask's `binary` stanza). App Store
-review requires **every** executable in the bundle to opt into the App Sandbox,
-and the CLI is signed without sandbox entitlements on the direct-download
-channel. Before an actual App Store submission, the archive step must either
-**strip `Contents/MacOS/vitrine-cli`** (the App Store install has no PATH
-integration, so the CLI adds no value there — mirroring how Sparkle is
-stripped), or re-sign it with `com.apple.security.app-sandbox` +
-`com.apple.security.inherit`. The DMG channel is unaffected.
+review requires **every** executable in the bundle to opt into the App Sandbox.
+The App Store workflow strips `Contents/MacOS/vitrine-cli` before distribution export,
+because an App Store install has no PATH integration and the CLI adds no value
+there. The CLI target also uses `SKIP_INSTALL=YES`: it remains available for the
+app's embed phase without becoming a second top-level archive product, which
+would make Xcode classify the result as a generic, non-distributable archive.
+The DMG channel is unaffected.
 
 ## App Sandbox and entitlements (App Store-compatible)
 
@@ -189,8 +191,8 @@ credential committed to the repo.
    uploading happen on different machines.
 
 3. **Xcode command line (supported automation path).** Use `xcodebuild -exportArchive`
-   with `method: validation` for a no-upload preflight, or `method: app-store-connect`
-   with `destination: upload` for delivery. Authenticate with
+   with `method: app-store-connect` and `destination: export` for a no-upload distribution
+   preflight, or change the destination to `upload` for delivery. Authenticate with
    `-authenticationKeyPath`, `-authenticationKeyID`, and
    `-authenticationKeyIssuerID`; no legacy `altool` step is required.
 
@@ -198,22 +200,26 @@ credential committed to the repo.
 
    ```xml
    <plist version="1.0"><dict>
-     <key>method</key><string>validation</string>
+     <key>method</key><string>app-store-connect</string>
+     <key>destination</key><string>export</string>
      <key>teamID</key><string>YOUR_TEAM_ID</string>
      <key>signingStyle</key><string>automatic</string>
    </dict></plist>
    ```
 
-   Run the validation export with `-allowProvisioningUpdates` and the App Store
-   Connect authentication-key arguments. To upload later, change the method to
-   `app-store-connect`, add `<key>destination</key><string>upload</string>`, and use
+   Run the export with `-allowProvisioningUpdates` and the App Store Connect
+   authentication-key arguments. Xcode 26 requires `destination: upload` for its
+   `validation` method, so the no-upload CI preflight deliberately uses a local App Store
+   Connect export instead. To deliver later, change the destination to `upload` and use
    the same authenticated `xcodebuild -exportArchive` command.
 
 The optional [`.github/workflows/appstore.yml`](../.github/workflows/appstore.yml) is a
-**manually-triggered dry run** of the archive + Xcode validation-export steps, gated on the same App
-Store Connect API-key secrets. It never auto-submits and skips itself cleanly when the
-secrets are absent, so it is safe to keep on a repo without an Apple account. See "CI dry
-run" below.
+**manually-triggered dry run** of the archive + local App Store export steps, gated on the same App
+Store Connect API-key secrets and the `APPSTORE_CLOUD_SIGNING_ENABLED=true` repository variable.
+It never auto-submits. Once cloud signing, the distribution certificate, and the provisioning
+profile are ready, the opt-in creates an automatically signed archive before export; otherwise it
+builds an unsigned structural archive and skips distribution export cleanly. See "CI dry run"
+below.
 
 ## App Review notes
 
@@ -259,8 +265,8 @@ reviewer understands the menu-bar, local-rendering, no-telemetry design before t
       permission/privacy drift guards).
 - [ ] Entitlements match the documented App Store-compatible set and the permission matrix.
 - [ ] App icon up to date (`make icon`).
-- [ ] Archived on the `Vitrine` scheme; **Validate App** passes in Xcode Organizer (or
-      Xcode validation export).
+- [ ] Archived on the `Vitrine` scheme; **Validate App** passes in Xcode Organizer (or the
+      no-upload App Store distribution export succeeds).
 - [ ] App Store privacy labels in App Store Connect set to **Data Not Collected**, matching
       `PrivacyInfo.xcprivacy`.
 - [ ] App Review notes (above) pasted into App Store Connect.
@@ -270,10 +276,12 @@ reviewer understands the menu-bar, local-rendering, no-telemetry design before t
 ## CI dry run (optional, no account required)
 
 [`.github/workflows/appstore.yml`](../.github/workflows/appstore.yml) is a
-`workflow_dispatch`-only job that archives the app and runs **App Store validation as a dry
-run** when the App Store Connect API-key secrets (`MACOS_NOTARY_KEY_ID`,
-`MACOS_NOTARY_KEY_ISSUER_ID`, `MACOS_NOTARY_KEY_P8`) are configured. It **never auto-submits
-or auto-uploads** a build. When the secrets are absent (a fork, or before an Apple account
-exists) the archive still builds and the validation step is skipped, so the workflow stays
-green without credentials. This matches the graceful-degradation posture of the signed DMG
-pipeline: the secret-gated stages skip cleanly rather than failing the run.
+`workflow_dispatch`-only job that archives the app and runs an **App Store distribution export as a
+dry run** when the App Store Connect API-key secrets (`MACOS_NOTARY_KEY_ID`,
+`MACOS_NOTARY_KEY_ISSUER_ID`, `MACOS_NOTARY_KEY_P8`) are configured **and** the repository variable
+`APPSTORE_CLOUD_SIGNING_ENABLED` is exactly `true`. It **never auto-submits or auto-uploads** a
+build. The explicit opt-in must only be enabled after the App Store distribution certificate,
+provisioning profile, and cloud-signing permissions are ready; notarization credentials by
+themselves are insufficient. When export access is not ready, an unsigned structural archive still
+builds and the distribution-export step is skipped, so the workflow stays green. Once enabled, any
+signing or export failure remains a hard failure instead of being hidden.
