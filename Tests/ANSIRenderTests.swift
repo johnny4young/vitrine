@@ -133,6 +133,50 @@ struct ANSIRenderTests {
             ANSIRenderer.normalize("a\(esc)]8;;u\(esc)\\b") == "a\(esc)]8;;u\(esc)\\b")
     }
 
+    /// A progress bar redraws with `EL`/`CHA` as readily as with `\r` — `npm audit`,
+    /// `ora`, and anything on `gauge` emit `ESC[2K ESC[1G` per frame. Stripping those as
+    /// decoration concatenated every recorded frame, so a `vgrab npm audit` capture
+    /// opened with a line of mangled spinner glyphs before its real first line.
+    @Test func normalizeCollapsesProgressBarRedraws() {
+        // The captured shape: two spinner frames, then the real output.
+        #expect(
+            ANSIRenderer.normalize(
+                "\(esc)[2K\(esc)[1G⠋ a\(esc)[2K\(esc)[1G⠙ a\(esc)[2K\(esc)[1G# report\n")
+                == "# report\n")
+        // `EL 2` erases the whole line and `EL 1` erases start-to-cursor; everything
+        // emitted since the line began is exactly that span, so both discard it.
+        #expect(ANSIRenderer.normalize("10%\(esc)[2KDone") == "Done")
+        #expect(ANSIRenderer.normalize("10%\(esc)[1KDone") == "Done")
+        // `CHA` to column 1, explicitly or by default, is `\r`.
+        #expect(ANSIRenderer.normalize("10%\(esc)[1GDone") == "Done")
+        #expect(ANSIRenderer.normalize("10%\(esc)[GDone") == "Done")
+        // Only the current line: earlier lines are already committed.
+        #expect(ANSIRenderer.normalize("keep\n10%\(esc)[2KDone") == "keep\nDone")
+    }
+
+    /// The unmapped neighbours must keep flowing to the parser, or this fix would eat
+    /// styling and alignment instead of just spinner frames.
+    @Test func normalizeLeavesNonRedrawSequencesToTheParser() {
+        // `EL 0` erases forward from the cursor, which sits at the end of the emitted
+        // text: nothing to remove, and the text must survive.
+        #expect(ANSIRenderer.normalize("10%\(esc)[0KDone") == "10%\(esc)[0KDone")
+        #expect(ANSIRenderer.normalize("10%\(esc)[KDone") == "10%\(esc)[KDone")
+        // `CHA` to another column would have to pad or truncate; truncating would delete
+        // text a program aligned, so it is left alone.
+        #expect(ANSIRenderer.normalize("10%\(esc)[12GDone") == "10%\(esc)[12GDone")
+        // SGR is untouched — the parser is what turns it into styled runs.
+        #expect(ANSIRenderer.normalize("\(esc)[31mred\(esc)[0m") == "\(esc)[31mred\(esc)[0m")
+    }
+
+    /// End to end: the styled runs a spinner capture renders to carry no frame residue.
+    @Test func progressBarCaptureRendersOnlyItsFinalLine() {
+        let capture = "\(esc)[2K\(esc)[1G⠋ auditing\(esc)[2K\(esc)[1G9 vulnerabilities\n"
+        let text = ANSIRenderer.plainText(capture)
+        #expect(text == "9 vulnerabilities\n")
+        #expect(!text.contains("auditing"))
+        #expect(!text.contains("⠋"))
+    }
+
     @Test func shellInitEmitsTheHelpers() {
         let zsh = ShellInit.snippet(for: .zsh)
         #expect(zsh.contains("vgrab()"))

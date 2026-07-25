@@ -28,6 +28,10 @@ can never drift.
   ended with it: no icon, no window, and no way to bring it back. The menu bar is now
   owned directly by the app, so the icon always appears and can no longer be dragged
   away.
+- **Captures of commands with a progress bar no longer keep the spinner.** Terminal
+  images of `npm audit` and anything else that animates a progress bar used to open with
+  a line of leftover spinner frames run together before the real output. Only the
+  finished line is drawn now, exactly as the terminal showed it.
 - **The signed-in capture setting now does what it says.** It previously described using
   your existing cookies, which Vitrine has no way to reach, and switched to a session
   store that nothing could ever fill.

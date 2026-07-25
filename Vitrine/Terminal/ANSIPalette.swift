@@ -173,6 +173,41 @@ enum ANSIRenderer {
         return ANSIParser.parse(normalize(text))
     }
 
+    /// What a redraw escape does to the text ``normalize(_:)`` has emitted for the
+    /// current line. Only one outcome is expressible in that model — the line renderer
+    /// tracks where the line started, not where a cursor sits — and it is the only one
+    /// the progress-bar idiom needs.
+    private enum LineEdit {
+        /// Discard the current line, so what follows replaces it. This is what `\r`
+        /// already does.
+        case clearLine
+    }
+
+    /// Maps a CSI to its effect on the current line, or `nil` to leave the sequence for
+    /// the parser.
+    ///
+    /// Both mapped cases are exact rather than approximations, because everything emitted
+    /// since `lineStart` is precisely the span from the start of the line to the cursor:
+    /// `EL 1` erases start-to-cursor and `EL 2` erases the whole line, so both discard
+    /// exactly that span, and `CHA` to column 1 returns the cursor to the start of the
+    /// line, which is `\r`.
+    ///
+    /// Deliberately unmapped: `EL 0` erases from the cursor *forward*, and the cursor is
+    /// already at the end of the emitted text, so it changes nothing. `CHA` to any other
+    /// column is left alone too — without a real cursor the honest options are to pad or
+    /// to truncate, and truncating would delete text a program had aligned rather than
+    /// merely fail to align it.
+    private static func lineEdit(finalByte: Unicode.Scalar, params: String) -> LineEdit? {
+        switch finalByte {
+        case "K":  // EL — erase in line
+            return params == "1" || params == "2" ? .clearLine : nil
+        case "G":  // CHA — cursor to an absolute column (empty parameter means column 1)
+            return params.isEmpty || params == "1" ? .clearLine : nil
+        default:
+            return nil
+        }
+    }
+
     /// Cleans control bytes a pseudo-terminal capture leaves behind so the static
     /// image shows clean lines. A terminal turns `\\n` into `\\r\\n` on output, a lone
     /// `\\r` redraws the current line (progress bars/spinners), and `\\b` backs up one
@@ -209,6 +244,26 @@ enum ANSIRenderer {
                 if output.count > lineStart { output.removeLast() }
                 index += 1
             case "\u{1B}":
+                // A progress bar redraws its line with `EL`/`CHA` at least as often as
+                // with `\r` (npm, ora, and anything built on gauge emit `ESC[2K ESC[1G`),
+                // so those redraws are applied here, beside `\r`. Left to the parser they
+                // are stripped as decoration, which concatenates every spinner frame the
+                // capture recorded into one unreadable line.
+                if index + 1 < scalars.count, scalars[index + 1] == "[" {
+                    let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
+                    if let finalByte, let edit = Self.lineEdit(finalByte: finalByte, params: params)
+                    {
+                        changed = true
+                        switch edit {
+                        case .clearLine:
+                            output.removeSubrange(lineStart..<output.count)
+                        }
+                        index = end
+                        break  // consumed: never re-emitted as text
+                    }
+                    // Every other CSI (SGR above all) falls through untouched — its bytes
+                    // are all ≥ 0x20, so the parser still receives and interprets it.
+                }
                 // Preserve an OSC sequence intact so the stray-control stripping below
                 // never eats its BEL/ST terminator — without this, an OSC 8 hyperlink
                 // (and the rest of its line) is swallowed as an unterminated OSC, since
