@@ -243,6 +243,17 @@
         }
       }
     },
+    "Sign in to %@…" : {
+      "comment" : "Button that opens the sign-in window for a named site.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sesión en %@…"
+          }
+        }
+      }
+    },
     "Sign In for Web Capture" : {
       "comment" : "Title of the window where the user signs in to a site before capturing it.",
       "localizations" : {

@@ -64,6 +64,6 @@ enum WebSessionAvailability {
             let url = try? WebSnapshotConfig.validate(
                 captureURLString: urlText, allowLoopback: allowsLoopback)
         else { return nil }
-        return url.host()
+        return url.host
     }
 }
