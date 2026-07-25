@@ -3,8 +3,9 @@ import AppKit
 /// The app's command surface: every important action, its title, SF Symbol,
 /// keyboard shortcut, and accessibility identifier in one place.
 ///
-/// Vitrine is a menu-bar agent (`LSUIElement`) whose only SwiftUI scene is the
-/// `MenuBarExtra`; it has no `WindowGroup`, so SwiftUI's `.commands` modifier has
+/// Vitrine is a menu-bar agent (`LSUIElement`) whose menu bar is an AppKit
+/// `NSStatusItem` (`StatusItemController`); it has no `WindowGroup`, so SwiftUI's
+/// `.commands` modifier has
 /// no main menu to populate. Instead `AppMenu` builds a real `NSMenu` main menu
 /// from these commands and installs it on `NSApp.mainMenu`, so that whenever the
 /// editor or settings window is key the full menu bar — App ▸, File ▸, Edit ▸,

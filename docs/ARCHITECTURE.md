@@ -423,6 +423,7 @@ Vitrine/
 │   └── WelcomeView.swift      # first-run quick-start + window controller
 ├── Editor/
 │   ├── EditorView.swift       # scene shell + window-level state
+│   ├── EditorExportSheet.swift # one export/paywall presentation destination
 │   ├── EditorView+Toolbar/Stage/Annotations/DragDrop.swift
 │   │                         # focused editor regions and interactions
 │   ├── CodeEditorView.swift   # NSViewRepresentable over NSTextView
@@ -508,6 +509,13 @@ VitrineCLI/                    # the `vitrine` executable target
 ├── main.swift                 # minimal accessory NSApplication host → CLIRenderer
 └── CLIEnvironment.swift       # locates the Fonts/ folder staged next to the binary
 ```
+
+The editor owns batch-export presentation at the toolbar root rather than at an
+individual density-specific control. Expanded buttons and the compact actions menu
+select one `EditorExportSheet` destination, and one `.sheet(item:)` host presents the
+multi-size exporter, carousel exporter, or the corresponding paywall. This keeps
+window-level presentation mutually exclusive while the toolbar adapts to available
+width.
 
 ## Libraries
 

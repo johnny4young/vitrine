@@ -130,20 +130,10 @@ struct EditorView: View {
     /// close-after-copy target it directly instead of guessing at `keyWindow`.
     @State var editorWindow: NSWindow?
 
-    /// Which PRO multi-size sheet is up — the size picker when unlocked, the paywall
-    /// when locked — or nil. A single `.sheet(item:)` drives both so they can never
-    /// collide: two sibling `.sheet(isPresented:)` on one view can silently drop one.
-    @State var multiSizeSheet: MultiSizeSheet?
-
-    /// The two mutually-exclusive multi-size sheets.
-    enum MultiSizeSheet: String, Identifiable {
-        case export, paywall
-        var id: String { rawValue }
-    }
-
-    /// The carousel export sheet, or the paywall when PRO is locked.
-    /// Same single-`.sheet(item:)` discipline as `multiSizeSheet`.
-    @State var carouselSheet: MultiSizeSheet?
+    /// The export surface currently presented from either toolbar density. One optional
+    /// destination owns multi-size, carousel, and their paywalls so separate toolbar
+    /// branches cannot compete to present sibling sheets.
+    @State var exportSheet: EditorExportSheet?
 
     /// A loaded drop awaiting the user's replace-vs-append choice, kept so the
     /// confirmation dialog can apply exactly what was dropped.

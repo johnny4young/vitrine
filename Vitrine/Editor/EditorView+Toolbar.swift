@@ -134,6 +134,9 @@ extension EditorView {
         }
         .accessibilityContainerIdentifier("editor-toolbar")
         .accessibilityLabel("Toolbar")
+        .sheet(item: $exportSheet) { sheet in
+            editorExportSheet(sheet)
+        }
     }
 
     /// The gradient "Copy image" capsule — the window's primary action. Bound
@@ -185,17 +188,13 @@ extension EditorView {
             .disabled(!settings.config.hasRenderableContent)
             .accessibilityIdentifier("pin-snapshot-button")
 
-            Button {
-                multiSizeSheet = entitlements.isUnlocked(.multiSizeExport) ? .export : .paywall
-            } label: {
+            Button(action: presentMultiSizeExport) {
                 Label("Export sizes", systemImage: "square.grid.2x2")
             }
             .disabled(!settings.config.hasRenderableContent)
             .accessibilityIdentifier("export-sizes-button")
 
-            Button {
-                carouselSheet = entitlements.isUnlocked(.carouselExport) ? .export : .paywall
-            } label: {
+            Button(action: presentCarouselExport) {
                 Label("Export carousel", systemImage: "rectangle.stack")
             }
             .disabled(!settings.config.hasRenderableContent || settings.config.usesImageContent)
@@ -226,26 +225,6 @@ extension EditorView {
         .help("More editor actions")
         .accessibilityLabel("More editor actions")
         .accessibilityIdentifier("editor-actions-menu")
-        .sheet(item: $multiSizeSheet) { sheet in
-            switch sheet {
-            case .export:
-                MultiSizeExportView(
-                    baseConfig: settings.exportConfig, format: settings.export.format,
-                    profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar)
-            case .paywall:
-                PaywallSheet(feature: .multiSizeExport)
-            }
-        }
-        .sheet(item: $carouselSheet) { sheet in
-            switch sheet {
-            case .export:
-                CarouselExportView(
-                    baseConfig: settings.exportConfig,
-                    profile: settings.export.colorProfile)
-            case .paywall:
-                PaywallSheet(feature: .carouselExport)
-            }
-        }
     }
 
     /// Renders and copies the image, then — by default — closes the editor window so
@@ -346,58 +325,64 @@ extension EditorView {
         .disabled(!settings.config.hasRenderableContent)
     }
 
-    /// The PRO multi-size export entry: when unlocked it opens the size
-    /// picker; when locked it shows a discreet "PRO" badge and opens the paywall
-    /// instead. Both sheets are anchored here; disabled with the rest of the toolbar
-    /// when there is no code to render.
+    /// The PRO multi-size export entry: when unlocked it opens the size picker; when
+    /// locked it shows a discreet "PRO" badge and routes to the feature paywall.
+    /// Disabled with the rest of the toolbar when there is no code to render.
     var multiSizeExportButton: some View {
-        GlassIconButton(systemImage: "square.grid.2x2") {
-            multiSizeSheet = entitlements.isUnlocked(.multiSizeExport) ? .export : .paywall
-        }
-        .overlay(alignment: .topTrailing) {
-            if !entitlements.isUnlocked(.multiSizeExport) { ProBadge().accessibilityHidden(true) }
-        }
-        .help("Export this snapshot to several platform sizes at once")
-        .disabled(!settings.config.hasRenderableContent)
-        .accessibilityLabel(Text("Export sizes"))
-        .accessibilityIdentifier("export-sizes-button")
-        .sheet(item: $multiSizeSheet) { sheet in
-            switch sheet {
-            case .export:
-                MultiSizeExportView(
-                    baseConfig: settings.exportConfig, format: settings.export.format,
-                    profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar)
-            case .paywall:
-                PaywallSheet(feature: .multiSizeExport)
+        GlassIconButton(systemImage: "square.grid.2x2", action: presentMultiSizeExport)
+            .overlay(alignment: .topTrailing) {
+                if !entitlements.isUnlocked(.multiSizeExport) {
+                    ProBadge().accessibilityHidden(true)
+                }
             }
-        }
+            .help("Export this snapshot to several platform sizes at once")
+            .disabled(!settings.config.hasRenderableContent)
+            .accessibilityLabel(Text("Export sizes"))
+            .accessibilityIdentifier("export-sizes-button")
     }
 
     /// The carousel export entry: split a long snippet into numbered
     /// 4:5 slides for a LinkedIn/Instagram carousel. Same PRO gate as multi-size —
     /// it is the same batch-export family.
     var carouselExportButton: some View {
-        GlassIconButton(systemImage: "rectangle.stack") {
-            carouselSheet = entitlements.isUnlocked(.carouselExport) ? .export : .paywall
-        }
-        .overlay(alignment: .topTrailing) {
-            if !entitlements.isUnlocked(.carouselExport) { ProBadge().accessibilityHidden(true) }
-        }
-        .help("Split the snippet into numbered carousel slides (4:5)")
-        .disabled(
-            !settings.config.hasRenderableContent || settings.config.usesImageContent
-        )
-        .accessibilityLabel(Text("Export carousel"))
-        .accessibilityIdentifier("export-carousel-button")
-        .sheet(item: $carouselSheet) { sheet in
-            switch sheet {
-            case .export:
-                CarouselExportView(
-                    baseConfig: settings.exportConfig,
-                    profile: settings.export.colorProfile)
-            case .paywall:
-                PaywallSheet(feature: .carouselExport)
+        GlassIconButton(systemImage: "rectangle.stack", action: presentCarouselExport)
+            .overlay(alignment: .topTrailing) {
+                if !entitlements.isUnlocked(.carouselExport) {
+                    ProBadge().accessibilityHidden(true)
+                }
             }
+            .help("Split the snippet into numbered carousel slides (4:5)")
+            .disabled(
+                !settings.config.hasRenderableContent || settings.config.usesImageContent
+            )
+            .accessibilityLabel(Text("Export carousel"))
+            .accessibilityIdentifier("export-carousel-button")
+    }
+
+    /// Routes both toolbar densities through one presentation state and one sheet host.
+    func presentMultiSizeExport() {
+        exportSheet = .multiSize(isUnlocked: entitlements.isUnlocked(.multiSizeExport))
+    }
+
+    func presentCarouselExport() {
+        exportSheet = .carousel(isUnlocked: entitlements.isUnlocked(.carouselExport))
+    }
+
+    @ViewBuilder
+    func editorExportSheet(_ sheet: EditorExportSheet) -> some View {
+        switch sheet {
+        case .multiSizeExport:
+            MultiSizeExportView(
+                baseConfig: settings.exportConfig, format: settings.export.format,
+                profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar)
+        case .multiSizePaywall:
+            PaywallSheet(feature: .multiSizeExport)
+        case .carouselExport:
+            CarouselExportView(
+                baseConfig: settings.exportConfig,
+                profile: settings.export.colorProfile)
+        case .carouselPaywall:
+            PaywallSheet(feature: .carouselExport)
         }
     }
 
