@@ -19,8 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// status item, but launching the same bundle id from a different path — several
     /// Xcode DerivedData copies, or `open`-ing more than one built `.app` — starts a
     /// second process with the same identifier. If another Vitrine is already running
-    /// when this one launches, hand activation back to it and exit *before* the SwiftUI
-    /// scene installs a duplicate `MenuBarExtra` icon. UI tests are unaffected:
+    /// when this one launches, hand activation back to it and exit *before*
+    /// `StatusItemController` installs a duplicate icon. UI tests are unaffected:
     /// `XCUIApplication.launch()` terminates any prior instance before launching, so no
     /// other instance is ever present here under test.
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -132,8 +132,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // can fail or present a window.
         StatusItemController.shared.attach()
 
-        // Install the application main menu. An agent app with only a
-        // `MenuBarExtra` scene gets no designed menu bar from SwiftUI; assigning one
+        // Install the application main menu. An agent app with no `WindowGroup` gets no
+        // designed menu bar from SwiftUI; assigning one
         // here gives the editor and settings windows a complete, keyboard-accessible
         // menu bar (App ▸, File ▸, Edit ▸, View ▸, Window ▸, Help ▸). SwiftUI's scene
         // bring-up overwrites this menu with its own default after this method

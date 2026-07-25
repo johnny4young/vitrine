@@ -2,10 +2,12 @@ import SwiftUI
 
 /// Vitrine — a menu-bar app that turns code into images.
 ///
-/// The app lives entirely in the menu bar (`LSUIElement`, see Info.plist). The
-/// `MenuBarExtra` presents the current designed panel (`.window` style, per
-/// shared design system); the editor and preferences are AppKit-hosted windows
-/// opened on demand (see `EditorWindowController` / `SettingsWindowManager`).
+/// The app lives entirely in the menu bar (`LSUIElement`, see Info.plist). The status
+/// item and the panel it presents are owned by `StatusItemController` rather than vended
+/// by a SwiftUI `MenuBarExtra` scene — see that type for the macOS 26 behaviour that made
+/// the scene terminate this agent shortly after launch. The editor and preferences are
+/// AppKit-hosted windows opened on demand (see `EditorWindowController` /
+/// `SettingsWindowManager`).
 @main
 struct VitrineApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
