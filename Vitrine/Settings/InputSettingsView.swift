@@ -94,6 +94,11 @@ struct WebCaptureControls: View {
     var collapsesAdvanced = false
     @State private var showAdvanced = false
 
+    /// The sites Vitrine currently holds a session for. Read from the web data store
+    /// rather than tracked in settings, so it reflects what is actually stored — including
+    /// sessions a site expired on its own.
+    @State private var signedInHosts: [String] = []
+
     var body: some View {
         viewportsRow
         if settings.webCapture.viewports.contains(.custom) {
@@ -109,6 +114,7 @@ struct WebCaptureControls: View {
                 waitRow
                 if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
                 loggedInSessionRow
+                signedInSitesRow
                 loopbackCaptureRow
             }
         } else {
@@ -116,6 +122,7 @@ struct WebCaptureControls: View {
             waitRow
             if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
             loggedInSessionRow
+            signedInSitesRow
             loopbackCaptureRow
         }
     }
@@ -138,20 +145,51 @@ struct WebCaptureControls: View {
         }
     }
 
-    /// Opt-in to capturing with your existing cookies/logged-in session, for
-    /// pages behind a login. Off by default — the private per-render store sends no
-    /// cookies — so this is a deliberate, privacy-widening choice the caption spells out.
+    /// Opt-in to keeping a signed-in session for web capture, for pages behind a login.
+    /// Off by default — the private per-render store sends no cookies — so this is a
+    /// deliberate, privacy-widening choice the caption spells out.
+    ///
+    /// The caption used to say "your existing cookies", which read as though Vitrine
+    /// borrowed the session from Safari or Chrome. It cannot: WebKit isolates website
+    /// data per app, so the session is one the user signs into from the Web Snapshot
+    /// window, and it is stored by Vitrine alone.
     private var loggedInSessionRow: some View {
         TokenRow(
             label: Text("Use my logged-in session"),
             caption: Text(
-                "Capture pages behind a login by sending your existing cookies. Off by default; your code and captures still stay on your Mac."
+                "Keep a signed-in session so captures can include pages behind a login. Sign in from the Web Snapshot window; the session is Vitrine's own, never taken from another browser. Off by default; your code and captures still stay on your Mac."
             )
         ) {
             Toggle("Use my logged-in session", isOn: $settings.webCapture.usesLoggedInSession)
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .accessibilityIdentifier("web-logged-in-session-toggle")
+        }
+        // Read the stored sessions here rather than on the row that lists them: that row
+        // is hidden while the list is empty, so it could never populate itself. This row
+        // is always present in both layouts.
+        .task { signedInHosts = await WebSessionPresenter.signedInHosts() }
+    }
+
+    /// Throwing away every stored session.
+    ///
+    /// A feature that keeps cookies on disk has to offer the way back out, and it has to
+    /// say what it holds: the row names the sites rather than asking the user to trust an
+    /// opaque "clear" button. Shown only while there is something to clear.
+    @ViewBuilder private var signedInSitesRow: some View {
+        if !signedInHosts.isEmpty {
+            TokenRow(
+                label: Text("Signed-in sites"),
+                caption: Text(verbatim: signedInHosts.joined(separator: ", "))
+            ) {
+                Button("Sign Out of All") {
+                    Task {
+                        await WebSessionPresenter.clear()
+                        signedInHosts = await WebSessionPresenter.signedInHosts()
+                    }
+                }
+                .accessibilityIdentifier("web-clear-sessions-button")
+            }
         }
     }
 
