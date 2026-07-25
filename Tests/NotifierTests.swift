@@ -171,6 +171,20 @@ struct CaptureHUDBehaviorTests {
         // the lingering, action-bearing duration and not an alert-length hold.
         #expect(CaptureHUD.displayDuration(hasActions: false) <= .seconds(2))
     }
+
+    /// The HUD panel is sized exactly once, from the content's fitting size; the
+    /// hosting controller must never also drive the window. Its default sizing
+    /// options feed the content's *minimum* size — the message wrapped to its
+    /// narrowest column — back into the panel as constraints, and on macOS 26 that
+    /// feedback loop ends in AppKit's "more Update Constraints passes than views"
+    /// `NSGenericException`: an uncaught exception that killed the whole app moments
+    /// after a copy confirmation.
+    @Test @MainActor func theHostingControllerNeverDrivesThePanelSize() {
+        let feedback = Notifier.feedback(for: .copied)
+        let view = CaptureHUDView(feedback: feedback, animate: false) { _ in }
+        let hosting = CaptureHUDController.makeHostingController(rootView: view)
+        #expect(hosting.sizingOptions.isEmpty)
+    }
 }
 
 /// The save-outcome plumbing that lets feedback name a real save vs. a cancel or

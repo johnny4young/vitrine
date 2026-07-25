@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Copying no longer risks quitting the app.** The "Copied" confirmation toast could
+  enter a layout feedback loop on macOS 26 and bring the whole app down moments after a
+  copy, depending on which screen showed it. The toast's size is now set exactly once,
+  so the loop cannot start.
+
 ## [0.25.0] - 2026-07-25
 
 ### Added
