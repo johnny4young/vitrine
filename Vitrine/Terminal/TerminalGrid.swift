@@ -121,7 +121,7 @@ struct TerminalScreen {
     /// output (`git`, `ls`, a test run) carries only SGR — and a progress bar only
     /// `\r`/`EL`/`CHA` — so none of them trip this and they stay in line mode. `EL` (erase
     /// *line*) and `CHA` (cursor to a column) are deliberately not triggers: they are the
-    /// progress-bar idiom, which line mode collapses itself in `ANSIPalette.normalize`
+    /// progress-bar idiom, which line mode collapses itself in `ANSIRenderer.normalize`
     /// alongside `\r`.
     static func usesScreenAddressing(_ text: String) -> Bool {
         guard ANSIParser.containsANSI(text) else { return false }
