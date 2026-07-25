@@ -12,6 +12,20 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- **Capture pages that are behind a login.** Turn on "Use my logged-in session" and the
+  Web Snapshot window offers to sign you in to the site first, in a real browser window;
+  the capture that follows sees the signed-in page. The session belongs to Vitrine alone
+  — nothing is read from Safari or Chrome — and Settings lists the sites you are signed
+  in to, with one button to sign out of all of them.
+
+### Fixed
+
+- **The signed-in capture setting now does what it says.** It previously described using
+  your existing cookies, which Vitrine has no way to reach, and switched to a session
+  store that nothing could ever fill.
+
 ### Security
 
 - **The website now permits only active runtime connections.** Its content security
