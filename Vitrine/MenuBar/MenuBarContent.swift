@@ -2,8 +2,8 @@ import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
-/// The menu-bar panel, redesigned with the shared design system as a
-/// `MenuBarExtra(.window)` surface: header with the live hotkey, the gradient
+/// The menu-bar panel, built with the shared design system as the window-style
+/// surface behind the status item: header with the live hotkey, the gradient
 /// "New Capture from Clipboard" CTA, recent captures as thumbnail rows, the
 /// theme chip strip, and the explicit command rows with their shortcuts.
 ///
@@ -15,8 +15,10 @@ struct MenuBarContent: View {
     @Environment(CaptureFeedbackPresenter.self) private var feedback
 
     /// Closes the panel after an action, mirroring how a native menu dismisses
-    /// on selection.
-    @Environment(\.dismiss) private var dismiss
+    /// on selection. Injected by `StatusItemController`, which owns the popover this
+    /// panel is presented in; it defaults to doing nothing so previews and tests can
+    /// build the panel standalone.
+    var dismiss = MenuBarDismissAction()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {

@@ -22,6 +22,12 @@ can never drift.
 
 ### Fixed
 
+- **Vitrine no longer quits moments after launch when its menu-bar icon has been
+  hidden.** Hiding the icon — by dragging it out of the menu bar, or through a menu-bar
+  manager — used to make macOS remove Vitrine's status item on every launch, and the app
+  ended with it: no icon, no window, and no way to bring it back. The menu bar is now
+  owned directly by the app, so the icon always appears and can no longer be dragged
+  away.
 - **The signed-in capture setting now does what it says.** It previously described using
   your existing cookies, which Vitrine has no way to reach, and switched to a session
   store that nothing could ever fill.
@@ -34,6 +40,9 @@ can never drift.
 
 ### Changed
 
+- **Editor batch exports now use one stable presentation route.** Expanded toolbar
+  buttons and the compact actions menu share the same mutually exclusive destination
+  for multi-size export, carousel export, and their PRO paywalls.
 - **CLI automation coverage is grouped by responsibility.** Entitlement,
   version and catalog contracts, batch argument validation, and filesystem rendering
   now live in focused suites that share repository, scratch-directory, and image fixtures.
