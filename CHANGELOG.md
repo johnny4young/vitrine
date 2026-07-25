@@ -12,6 +12,8 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-07-25
+
 ### Added
 
 - **Capture pages that are behind a login.** Turn on "Use my logged-in session" and the
@@ -715,7 +717,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/johnny4young/vitrine/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/johnny4young/vitrine/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/johnny4young/vitrine/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/johnny4young/vitrine/compare/v0.21.0...v0.22.0

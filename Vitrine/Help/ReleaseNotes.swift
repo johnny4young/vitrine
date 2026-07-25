@@ -42,6 +42,20 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.25.0",
+            headline: "Sign in to capture, steadier menu bar",
+            highlights: [
+                "Capture pages behind a login: turn on \"Use my logged-in session\", "
+                    + "sign in to the site in a real browser window, and the capture sees "
+                    + "the signed-in page. The session is Vitrine's own — nothing is read "
+                    + "from Safari or Chrome — and Settings can sign out of every site.",
+                "The menu-bar icon can no longer disappear and take the app with it: "
+                    + "Vitrine now owns its status item, so a hidden icon never again "
+                    + "quits the app at launch with no way back.",
+                "Terminal captures of npm audit and other progress bars now show only "
+                    + "the finished line — no more spinner frames mashed together.",
+            ]),
+        ReleaseNote(
             version: "0.24.0",
             headline: "Terminal context, sturdier releases",
             highlights: [
