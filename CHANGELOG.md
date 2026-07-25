@@ -12,6 +12,14 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- **Capture pages that are behind a login.** Turn on "Use my logged-in session" and the
+  Web Snapshot window offers to sign you in to the site first, in a real browser window;
+  the capture that follows sees the signed-in page. The session belongs to Vitrine alone
+  — nothing is read from Safari or Chrome — and Settings lists the sites you are signed
+  in to, with one button to sign out of all of them.
+
 ### Fixed
 
 - **Vitrine no longer quits moments after launch when its menu-bar icon has been
@@ -24,6 +32,9 @@ can never drift.
   images of `npm audit` and anything else that animates a progress bar used to open with
   a line of leftover spinner frames run together before the real output. Only the
   finished line is drawn now, exactly as the terminal showed it.
+- **The signed-in capture setting now does what it says.** It previously described using
+  your existing cookies, which Vitrine has no way to reach, and switched to a session
+  store that nothing could ever fill.
 
 ### Security
 

@@ -20,6 +20,10 @@ struct VitrineApp: App {
         // `App.init()` is already main-actor-isolated under the module's default
         // isolation, so this needs no actor hop.
         WebSnapshotWindowController.registerPresenter()
+        // Same seam for the stored web sessions the Input settings pane lists and clears:
+        // that pane is compiled into the WebKit-free CLI, so it reaches the data store
+        // through `WebSessionPresenter` rather than importing WebKit.
+        WebSessionStore.registerPresenter()
     }
 
     var body: some Scene {

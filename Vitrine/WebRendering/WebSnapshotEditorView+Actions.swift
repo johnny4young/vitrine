@@ -31,6 +31,22 @@ extension WebSnapshotEditorView {
         renderTask = Task { await capture() }
     }
 
+    /// Opens the interactive sign-in window on the URL being captured.
+    ///
+    /// The window shares the capture's persistent data store, so the session the user
+    /// establishes there is the one the next capture sends. Silently does nothing for an
+    /// address that does not validate — the button that calls this is only offered once
+    /// `WebSessionAvailability` says the URL is usable, so reaching here with a bad one
+    /// means the field changed under the click.
+    func signInToCaptureSite() {
+        guard
+            let url = try? WebSnapshotConfig.validate(
+                captureURLString: model.urlText,
+                allowLoopback: settings.webCapture.allowsLoopbackCapture)
+        else { return }
+        WebSessionWindowController.shared.show(url: url)
+    }
+
     func capture() async {
         defer {
             renderTask = nil
