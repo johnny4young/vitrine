@@ -35,7 +35,7 @@ enum AppMenu {
 
     /// Puts the designed menu back when SwiftUI has taken `NSApp.mainMenu` over.
     ///
-    /// SwiftUI's `MenuBarExtra` scene bring-up installs its own default main menu
+    /// SwiftUI's scene bring-up installs its own default main menu
     /// *after* `applicationDidFinishLaunching` — and it does so by replacing the
     /// items of the currently installed menu in place, not by assigning a new
     /// `NSMenu`. That silently drops the designed File and Edit menus and kills the
