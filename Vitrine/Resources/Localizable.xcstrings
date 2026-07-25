@@ -232,6 +232,72 @@
         }
       }
     },
+    "Keep a signed-in session so captures can include pages behind a login. Sign in from the Web Snapshot window; the session is Vitrine's own, never taken from another browser. Off by default; your code and captures still stay on your Mac." : {
+      "comment" : "Caption for the default-off signed-in session toggle.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén una sesión iniciada para que las capturas incluyan páginas detrás de un inicio de sesión. Inicia sesión desde la ventana de captura web; la sesión es propia de Vitrine y nunca se toma de otro navegador. Desactivado de forma predeterminada; tu código y tus capturas siguen en tu Mac."
+          }
+        }
+      }
+    },
+    "Sign In for Web Capture" : {
+      "comment" : "Title of the window where the user signs in to a site before capturing it.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sesión para la captura web"
+          }
+        }
+      }
+    },
+    "Sign Out of All" : {
+      "comment" : "Button that clears every stored web session.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar todas las sesiones"
+          }
+        }
+      }
+    },
+    "Sign in…" : {
+      "comment" : "Button that opens the sign-in window when the site name is unavailable.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sesión…"
+          }
+        }
+      }
+    },
+    "Signed-in sites" : {
+      "comment" : "Label listing the sites Vitrine holds a web session for.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sitios con sesión iniciada"
+          }
+        }
+      }
+    },
+    "To capture a page behind a login, turn on “Use my logged-in session” in Settings ▸ Input." : {
+      "comment" : "Hint shown when the signed-in session opt-in is off.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para capturar una página detrás de un inicio de sesión, activa «Usar mi sesión iniciada» en Ajustes ▸ Entrada."
+          }
+        }
+      }
+    },
     "Allow localhost capture" : {
       "comment" : "URL-capture toggle: allow this Mac's loopback interface only.",
       "localizations" : {
