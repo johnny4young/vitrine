@@ -62,6 +62,7 @@ extension WebSnapshotEditorView {
                     .foregroundStyle(VitrineTokens.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
                 }
+                signInRow
             }
         case .html:
             InspectorSection(title: Text(verbatim: "HTML")) {
@@ -70,6 +71,56 @@ extension WebSnapshotEditorView {
                 )
                 .accessibilityIdentifier("web-snapshot-html-editor")
             }
+        }
+    }
+
+    /// Signing in to the site before capturing it.
+    ///
+    /// A page behind a login is the one case the offscreen capture cannot solve on its
+    /// own: it rasterizes, it never types. This opens a real browser window on the same
+    /// data store the capture reads, so a session established here is the session the
+    /// capture sends. Shown only once the requirements are met, and otherwise replaced by
+    /// the single thing the user has to fix — see `WebSessionAvailability`.
+    @ViewBuilder private var signInRow: some View {
+        let blocker = WebSessionAvailability.blocker(
+            isCaptureEnabled: NetworkCapability.isURLCaptureEnabled,
+            usesLoggedInSession: settings.webCapture.usesLoggedInSession,
+            urlText: model.urlText,
+            allowsLoopback: settings.webCapture.allowsLoopbackCapture)
+
+        switch blocker {
+        case .none:
+            Button {
+                signInToCaptureSite()
+            } label: {
+                if let site = WebSessionAvailability.siteLabel(
+                    for: model.urlText,
+                    allowsLoopback: settings.webCapture.allowsLoopbackCapture)
+                {
+                    Text("Sign in to \(site)…")
+                } else {
+                    Text("Sign in…")
+                }
+            }
+            .buttonStyle(.link)
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .accessibilityHint(
+                "Opens a browser window so this capture can include a signed-in page"
+            )
+            .accessibilityIdentifier("web-snapshot-sign-in-button")
+        case .sessionNotEnabled:
+            // Actionable, so say where the switch is rather than only that it is off.
+            Text(
+                "To capture a page behind a login, turn on “Use my logged-in session” in Settings ▸ Input."
+            )
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("web-snapshot-sign-in-hint")
+        case .captureUnavailable, .noValidURL:
+            // Both are already explained where they arise: the build note above, and the
+            // empty/invalid field the user is still typing into.
+            EmptyView()
         }
     }
 
