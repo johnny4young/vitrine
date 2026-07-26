@@ -6,11 +6,10 @@ import Testing
 
 /// Guards the menu-bar affordance the whole app hangs off.
 ///
-/// The regression these cover is severe and silent: with a SwiftUI `MenuBarExtra`
-/// scene, a persisted "hidden" state for its Control Center-hosted status item made
-/// macOS 26 remove the item moments after launch, and AppKit terminated the agent on
-/// that removal — the app exited 0 with no icon, no window, and no crash report, and the
-/// unit-test host (this same bundle) died before XCTest could connect.
+/// The regressions these cover are severe and silent. A SwiftUI `MenuBarExtra` could
+/// terminate the windowless app when its item was hidden; an in-process `NSStatusItem`
+/// kept the process alive but could still remain unpainted. Production now gives the
+/// painted item a fresh helper-process identity while the main app retains the panel.
 @MainActor
 @Suite("Menu-bar status item")
 struct MenuBarStatusItemTests {
@@ -48,25 +47,110 @@ struct MenuBarStatusItemTests {
         }
     }
 
-    /// `Item-0` is what SwiftUI's scene actually named its item, so it is the one name
-    /// the repair can never drop.
-    @Test func repairIncludesTheNameTheSwiftUISceneUsed() {
+    /// Both the deterministic AppKit identity and the former SwiftUI identity must stay
+    /// covered so an upgrade can repair either persistence shape.
+    @Test func repairIncludesCurrentAndHistoricalNames() {
+        #expect(
+            StatusItemController.repairedAutosaveNames.contains(StatusItemController.autosaveName))
         #expect(StatusItemController.repairedAutosaveNames.contains("Item-0"))
     }
 
-    @Test func attachInstallsExactlyOneItemAndIsIdempotent() {
+    @Test func attachInstallsOneVisibleFixedItemAndIsIdempotent() throws {
         let controller = StatusItemController()
         #expect(!controller.isAttached)
 
         controller.attach()
         #expect(controller.isAttached)
+        let item = try #require(controller.statusItem)
+        #expect(item.autosaveName == StatusItemController.autosaveName)
+        #expect(item.length == NSStatusItem.squareLength)
+        #expect(item.behavior.isEmpty)
+        #expect(item.isVisible)
+        #expect(item.button?.image != nil)
+        #expect(item.button?.bounds.width ?? 0 > 0)
 
         // A second call must not stack a duplicate icon.
         controller.attach()
+        #expect(controller.statusItem === item)
         #expect(controller.isAttached)
 
         controller.detach()
         #expect(!controller.isAttached)
+    }
+
+    /// Control Center finishes hosting the button after `attach()` returns. Simulate
+    /// that asynchronous transition overwriting the live state and prove the bounded
+    /// post-materialization pass repairs it.
+    @Test func delayedRepairRestoresVisibilityAfterHosting() async throws {
+        let controller = StatusItemController(visibilityRepairDelays: [.milliseconds(10)])
+        controller.attach()
+        let item = try #require(controller.statusItem)
+        item.isVisible = false
+
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(item.isVisible)
+        #expect(
+            UserDefaults.standard.bool(
+                forKey: "NSStatusItem VisibleCC \(StatusItemController.autosaveName)"))
+        controller.detach()
+    }
+
+    @Test func productionUsesTheHelperWithoutLeakingItIntoTests() {
+        #expect(AppDelegate.menuBarOwner(for: [:]) == .helper)
+        #expect(
+            AppDelegate.menuBarOwner(
+                for: ["XCTestConfigurationFilePath": "/tmp/VitrineTests.xctestconfiguration"])
+                == .disabled)
+        #expect(
+            AppDelegate.menuBarOwner(for: ["VITRINE_USER_DEFAULTS_SUITE": "ui-tests"])
+                == .inProcess)
+        #expect(
+            AppDelegate.menuBarOwner(
+                for: [
+                    "VITRINE_USER_DEFAULTS_SUITE": "manual-review",
+                    "VITRINE_FORCE_MENU_BAR_HELPER": "1",
+                ]) == .helper)
+    }
+
+    @Test func helperAnchorRoundTripsAcrossDisplayCoordinates() throws {
+        let original = MenuBarAnchor(
+            appProcessID: 123,
+            helperProcessID: 456,
+            sessionToken: "88B0A8F4-1BDD-4555-9C18-0AD8014CE55A",
+            clickLocation: CGPoint(x: -1_248.5, y: 1_067.25))
+
+        let decoded = try #require(MenuBarAnchor(encoded: original.encoded))
+
+        #expect(decoded == original)
+    }
+
+    @Test func helperAnchorRejectsMalformedOrUnboundedValues() {
+        #expect(MenuBarAnchor(encoded: "123|456||10|20") == nil)
+        #expect(MenuBarAnchor(encoded: "0|456|token|10|20") == nil)
+        #expect(MenuBarAnchor(encoded: "123|-1|token|10|20") == nil)
+        #expect(MenuBarAnchor(encoded: "123|456|token|nan|20") == nil)
+        #expect(MenuBarAnchor(encoded: "123|456|token|10|inf") == nil)
+    }
+
+    @Test func panelAnchorMustBelongToACurrentDisplay() {
+        let frames = [
+            CGRect(x: 0, y: 0, width: 1_920, height: 1_080),
+            CGRect(x: -1_280, y: 0, width: 1_280, height: 1_024),
+        ]
+
+        #expect(
+            StatusItemController.isValidAnchorLocation(
+                CGPoint(x: 1_000, y: 1_000), screenFrames: frames))
+        #expect(
+            StatusItemController.isValidAnchorLocation(
+                CGPoint(x: -640, y: 1_000), screenFrames: frames))
+        #expect(
+            !StatusItemController.isValidAnchorLocation(
+                CGPoint(x: 4_000, y: 1_000), screenFrames: frames))
+        #expect(
+            !StatusItemController.isValidAnchorLocation(
+                CGPoint(x: CGFloat.infinity, y: 10), screenFrames: frames))
     }
 
     /// The panel's rows call `dismiss()`; with the popover behind it that must run the
@@ -108,7 +192,7 @@ struct MenuBarStatusItemTests {
         // Mentions in prose explain the history; a scene declaration would reintroduce it.
         #expect(
             !source.contains("MenuBarExtra(\""),
-            "the menu bar must stay owned by StatusItemController, not a MenuBarExtra scene")
+            "the menu bar must stay owned by the AppKit helper/fallback path")
         #expect(!source.contains(".menuBarExtraStyle"))
     }
 }

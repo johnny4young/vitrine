@@ -54,6 +54,18 @@ enum PermissionMatrix {
             "Vitrine.entitlements must be a property list")
     }
 
+    /// The embedded status-item owner's inheritance-only sandbox contract.
+    static func menuBarHelperEntitlements() throws -> [String: Any] {
+        let data = try Data(
+            contentsOf: file(
+                "VitrineMenuBarHelper",
+                "VitrineMenuBarHelper.entitlements"))
+        return try #require(
+            try PropertyListSerialization.propertyList(from: data, format: nil)
+                as? [String: Any],
+            "VitrineMenuBarHelper.entitlements must be a property list")
+    }
+
     /// The committed app-target `Info.plist`, parsed as a property list.
     static func infoPlist() throws -> [String: Any] {
         let data = try Data(contentsOf: file("Vitrine", "Resources", "Info.plist"))
@@ -135,6 +147,33 @@ enum PermissionMatrix {
         "com.apple.security.app-sandbox",
         "com.apple.security.files.user-selected.read-write",
     ]
+}
+
+/// The paint-only helper must inherit the app sandbox without gaining an independent
+/// capability surface.
+@Suite("Menu-bar helper permission posture")
+struct MenuBarHelperPermissionPostureTests {
+    @Test func helperInheritsExactlyTheAppSandbox() throws {
+        let entitlements = try PermissionMatrix.menuBarHelperEntitlements()
+
+        #expect(
+            Set(entitlements.keys)
+                == [
+                    "com.apple.security.app-sandbox",
+                    "com.apple.security.inherit",
+                ])
+        #expect(entitlements["com.apple.security.app-sandbox"] as? Bool == true)
+        #expect(entitlements["com.apple.security.inherit"] as? Bool == true)
+    }
+
+    @Test func matrixDocumentsTheHelperBoundary() throws {
+        let matrix = try PermissionMatrix.matrix()
+
+        #expect(matrix.contains("VitrineMenuBarHelper"))
+        #expect(matrix.contains("com.apple.security.inherit"))
+        #expect(matrix.localizedCaseInsensitiveContains("paint-only"))
+        #expect(matrix.localizedCaseInsensitiveContains("not a login item"))
+    }
 }
 
 // MARK: - Entitlement plist tests

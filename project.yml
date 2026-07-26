@@ -113,6 +113,11 @@ targets:
       # no XcodeGen-embeddable container).
       - target: VitrineCLI
         embed: false
+      # The main bundle's status-item owner can remain blocked by Control Center even
+      # while AppKit reports it visible. This sandbox-inheriting child supplies a fresh
+      # paintable process identity; the main app still owns every model and panel.
+      - target: VitrineMenuBarHelper
+        embed: false
     # Copies the built CLI next to the app executable as `vitrine-cli`. The name
     # differs from the tool's own on purpose: the default APFS volume is
     # case-insensitive, so `Contents/MacOS/vitrine` would collide with (and
@@ -139,6 +144,20 @@ targets:
           cp -f "${BUILT_PRODUCTS_DIR}/vitrine-cli" \
             "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/vitrine-cli"
           chmod 755 "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/vitrine-cli"
+      - name: Embed the menu-bar helper in the app bundle
+        # Always refresh this small signed child so the outer app never seals an
+        # outdated helper after a signing-setting-only rebuild.
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - "$(BUILT_PRODUCTS_DIR)/VitrineMenuBarHelper"
+          - "$(UNINSTALLED_PRODUCTS_DIR)/macosx/VitrineMenuBarHelper"
+        outputFiles:
+          - "$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/VitrineMenuBarHelper"
+        script: |
+          set -euo pipefail
+          cp -f "${BUILT_PRODUCTS_DIR}/VitrineMenuBarHelper" \
+            "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/VitrineMenuBarHelper"
+          chmod 755 "${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/VitrineMenuBarHelper"
     # App Store distribution readiness (see docs/APP-STORE.md). The metadata an
     # App Store submission needs is the app's existing identity, sourced here and in
     # Vitrine/Resources/Info.plist (no App Store-only settings are invented):
@@ -275,6 +294,28 @@ targets:
         # stays bare, so a shipped `vitrine` unlocks only via a signature-valid token.
         Debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+
+  # Paint-only status-item owner. It inherits the containing app's sandbox and sends
+  # only a content-free click anchor back to Vitrine over distributed notifications.
+  VitrineMenuBarHelper:
+    type: tool
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: VitrineMenuBarHelper
+        excludes:
+          - "VitrineMenuBarHelper.entitlements"
+      - path: Vitrine/MenuBar/MenuBarAnchor.swift
+    settings:
+      base:
+        PRODUCT_NAME: VitrineMenuBarHelper
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.menubar-helper
+        CODE_SIGN_ENTITLEMENTS: VitrineMenuBarHelper/VitrineMenuBarHelper.entitlements
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        SKIP_INSTALL: YES
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
 
   VitrineTests:
     type: bundle.unit-test

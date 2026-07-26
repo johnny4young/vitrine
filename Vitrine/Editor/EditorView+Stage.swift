@@ -322,7 +322,7 @@ extension EditorView {
         .clipped()
         .background(stageBackground)
         .overlay(alignment: .bottom) { statusCapsule }
-        .layoutPriority(2)
+        .layoutPriority(EditorLayout.stageLayoutPriority)
         .accessibilityIdentifier("editor-preview-stage")
         // Debounce the preview's code so a keystroke doesn't re-tokenize the whole
         // document in the body pass. `.task(id:)` cancels its prior run when

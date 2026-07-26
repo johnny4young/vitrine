@@ -175,6 +175,24 @@ struct ReleaseSigningTests {
             "the CLI must be signed before the Sparkle step's final app re-seal")
     }
 
+    @Test func signedBuildSignsTheMenuBarHelperWithoutReplacingItsEntitlements() throws {
+        let script = try Self.script()
+
+        #expect(script.contains("sign_menu_bar_helper_for_distribution"))
+        #expect(script.contains("Contents/MacOS/VitrineMenuBarHelper"))
+        #expect(script.contains("--preserve-metadata=entitlements"))
+
+        let helperSign = try #require(
+            script.range(of: "sign_menu_bar_helper_for_distribution\n"),
+            "the signed path must invoke the menu-bar helper signing step")
+        let sparkleReseal = try #require(
+            script.range(of: "resign_sparkle_for_distribution\n"),
+            "the signed path must invoke the Sparkle re-signing step")
+        #expect(
+            helperSign.lowerBound < sparkleReseal.lowerBound,
+            "the helper must be signed before the outer app is re-sealed")
+    }
+
     /// The tag workflow builds and packages directly instead of using Xcode's
     /// Archive/Export path. In that mode Xcode can leak development entitlements
     /// into the signed app and can leave Sparkle's nested helpers ad-hoc signed, so

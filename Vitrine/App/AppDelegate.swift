@@ -14,6 +14,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var hotkeyTask: Task<Void, Never>?
+    private var menuBarPresenceTask: Task<Void, Never>?
+
+    enum MenuBarOwner: Equatable {
+        case disabled
+        case inProcess
+        case helper
+    }
 
     /// Enforce a single running instance. A menu-bar agent must never stack a second
     /// status item, but launching the same bundle id from a different path — several
@@ -42,7 +49,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard Self.shouldEnforceSingleInstance(ProcessInfo.processInfo.environment) else { return }
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-            .filter { $0 != .current }
+            .filter {
+                $0 != .current
+                    && $0.executableURL?.lastPathComponent
+                        != MenuBarHelperLauncher.executableName
+            }
         if let existing = others.first {
             existing.activate()
             exit(0)
@@ -57,6 +68,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static func shouldEnforceSingleInstance(_ environment: [String: String]) -> Bool {
         environment["VITRINE_USER_DEFAULTS_SUITE"] == nil
             && environment["XCTestConfigurationFilePath"] == nil
+    }
+
+    /// Chooses the status-item owner without leaking helper processes into tests.
+    /// Unit tests exercise `StatusItemController` explicitly, while UI tests keep the
+    /// item in-process so XCUIAutomation can reach it through the launched app.
+    static func menuBarOwner(for environment: [String: String]) -> MenuBarOwner {
+        if environment["XCTestConfigurationFilePath"] != nil { return .disabled }
+        // Manual runtime QA can combine an isolated defaults suite with the real helper
+        // boundary, producing review evidence without reading a developer's recents.
+        if environment["VITRINE_FORCE_MENU_BAR_HELPER"] == "1" { return .helper }
+        if environment["VITRINE_USER_DEFAULTS_SUITE"] != nil { return .inProcess }
+        return .helper
     }
 
     /// GetURL AppleEvent entry point: pulls the `vitrine://…` string out of the event
@@ -127,10 +150,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
         NSApp.setActivationPolicy(.accessory)
 
-        // The menu-bar item, owned by AppKit rather than vended by a `MenuBarExtra`
-        // scene. This is the app's only affordance, so install it before anything that
-        // can fail or present a window.
-        StatusItemController.shared.attach()
+        // This is the app's only persistent affordance. A minimal child process owns the
+        // icon in production because Control Center can block the main bundle's status
+        // items while leaving the app alive. The main app still owns the real panel and
+        // every command; the helper sends only a click location back here.
+        establishMenuBarPresence()
 
         // Install the application main menu. An agent app with no `WindowGroup` gets no
         // designed menu bar from SwiftUI; assigning one
@@ -459,6 +483,77 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Menu-bar presence
+
+    private func establishMenuBarPresence() {
+        switch Self.menuBarOwner(for: ProcessInfo.processInfo.environment) {
+        case .disabled:
+            return
+        case .inProcess:
+            StatusItemController.shared.attach()
+        case .helper:
+            startMenuBarCommandChannel()
+            menuBarPresenceTask?.cancel()
+            menuBarPresenceTask = Task {
+                while !Task.isCancelled {
+                    if !MenuBarHelperLauncher.isHelperRunning() {
+                        guard MenuBarHelperLauncher.launch() else {
+                            StatusItemController.shared.attach()
+                            do {
+                                try await Task.sleep(for: .seconds(2))
+                            } catch {
+                                return
+                            }
+                            continue
+                        }
+
+                        // Process.run() returns before NSWorkspace registers the child.
+                        // Give that registration a bounded window before retaining the
+                        // in-process fallback.
+                        for _ in 0..<20 where !MenuBarHelperLauncher.isHelperRunning() {
+                            do {
+                                try await Task.sleep(for: .milliseconds(100))
+                            } catch {
+                                return
+                            }
+                        }
+                    }
+
+                    if MenuBarHelperLauncher.isHelperRunning() {
+                        StatusItemController.shared.detach()
+                    } else {
+                        StatusItemController.shared.attach()
+                    }
+
+                    do {
+                        try await Task.sleep(for: .seconds(2))
+                    } catch {
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    private func startMenuBarCommandChannel() {
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(receiveMenuBarToggle(_:)),
+            name: MenuBarAnchor.notificationName,
+            object: nil,
+            suspensionBehavior: .deliverImmediately)
+    }
+
+    @objc private func receiveMenuBarToggle(_ notification: Notification) {
+        guard
+            let encoded = notification.object as? String,
+            let anchor = MenuBarAnchor(encoded: encoded),
+            MenuBarHelperLauncher.validates(anchor)
+        else { return }
+
+        StatusItemController.shared.togglePanel(at: anchor.clickLocation)
+    }
+
     /// SwiftUI's scene bring-up installs its default main menu shortly after
     /// `applicationDidFinishLaunching` — by replacing the installed menu's items in
     /// place — wiping the designed menu installed above (File and Edit vanish from the
@@ -467,11 +562,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// effectively free on this hot every-event path.
     func applicationWillUpdate(_ notification: Notification) {
         AppMenu.reinstallIfDisplaced()
+        StatusItemController.shared.restoreVisibilityIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         Log.app.notice("Vitrine terminating")
         hotkeyTask?.cancel()
+        menuBarPresenceTask?.cancel()
+        DistributedNotificationCenter.default().removeObserver(
+            self, name: MenuBarAnchor.notificationName, object: nil)
+        MenuBarHelperLauncher.stop()
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }

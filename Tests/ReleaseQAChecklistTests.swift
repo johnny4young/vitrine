@@ -235,6 +235,15 @@ struct ReleaseQAChecklistTests {
             "qa-release.sh must check the notarization staple (stapler validate)")
     }
 
+    @Test func scriptRequiresTheSandboxedMenuBarHelper() throws {
+        let script = try Self.script()
+
+        #expect(script.contains("Contents/MacOS/VitrineMenuBarHelper"))
+        #expect(script.contains("com.apple.security.app-sandbox"))
+        #expect(script.contains("com.apple.security.inherit"))
+        #expect(script.contains("Menu-bar helper present and executable"))
+    }
+
     /// The checks must cover the DMG container the user actually downloads, not only
     /// the app inside it.
     @Test func scriptAssessesTheDMGContainerToo() throws {

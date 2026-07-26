@@ -122,9 +122,13 @@ fi
 # directly. MOUNT_POINT is cleaned up on exit.
 MOUNT_POINT=""
 DMG=""
+HELPER_ENTITLEMENTS_FILE=""
 # Invoked indirectly via `trap … EXIT` below, so shellcheck cannot see the call.
 # shellcheck disable=SC2329
 cleanup() {
+	if [ -n "$HELPER_ENTITLEMENTS_FILE" ]; then
+		rm -f "$HELPER_ENTITLEMENTS_FILE"
+	fi
 	if [ -n "$MOUNT_POINT" ] && [ -d "$MOUNT_POINT" ]; then
 		hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
 		rmdir "$MOUNT_POINT" 2>/dev/null || true
@@ -232,6 +236,26 @@ if [ -n "$EXECUTABLE" ] && [ -x "$APP/Contents/MacOS/$EXECUTABLE" ]; then
 	pass "Main executable present and executable: $EXECUTABLE"
 else
 	fail_app "main executable missing or not executable (Contents/MacOS/$EXECUTABLE)"
+fi
+
+MENU_BAR_HELPER="$APP/Contents/MacOS/VitrineMenuBarHelper"
+if [ -x "$MENU_BAR_HELPER" ]; then
+	pass "Menu-bar helper present and executable"
+	HELPER_ENTITLEMENTS_FILE="$(mktemp /tmp/vitrine-helper-entitlements.XXXXXX)"
+	if codesign -d --entitlements :- "$MENU_BAR_HELPER" \
+		> "$HELPER_ENTITLEMENTS_FILE" 2>/dev/null \
+		&& [ "$(/usr/libexec/PlistBuddy -c \
+			'Print :com.apple.security.app-sandbox' \
+			"$HELPER_ENTITLEMENTS_FILE" 2>/dev/null || true)" = "true" ] \
+		&& [ "$(/usr/libexec/PlistBuddy -c \
+			'Print :com.apple.security.inherit' \
+			"$HELPER_ENTITLEMENTS_FILE" 2>/dev/null || true)" = "true" ]; then
+		pass "Menu-bar helper inherits the app sandbox"
+	else
+		fail_app "menu-bar helper is missing app-sandbox + inherit entitlements"
+	fi
+else
+	fail_app "menu-bar helper missing or not executable (Contents/MacOS/VitrineMenuBarHelper)"
 fi
 
 # --- Automated signing / notarization checks (signing failures) -------------

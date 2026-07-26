@@ -121,16 +121,41 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
     var optionIdentifiers: [String]? = nil
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(Array(options.enumerated()), id: \.element.value) { index, option in
-                segment(option.value, label: option.label)
-                    .accessibilityIdentifier(identifier(at: index))
-            }
+        track
+            .padding(3)
+            .background(
+                RoundedRectangle(cornerRadius: 999, style: .continuous)
+                    .fill(VitrineTokens.Chrome.segmentTrack)
+            )
+            .accessibilityElement(children: .contain)
+            .accessibilityValue(selectedLabel)
+    }
+
+    /// The segments, laid out so they can never overflow the control's column.
+    ///
+    /// A hugging control's segments are `fixedSize`, so they refuse to compress: an
+    /// `HStack` that runs out of width does not shrink them, it overflows, and the window
+    /// clips the last segment mid-word — a five-option picker in the editor's inspector did
+    /// exactly that. Flowing them wraps to a second line instead, which is why the track is
+    /// a rounded rectangle rather than a capsule: a capsule around two lines reads as a
+    /// lozenge. At a width that fits, the flow lays out on one line and the shape is
+    /// indistinguishable from the capsule it replaces.
+    ///
+    /// A filling control keeps the `HStack`: its segments share the width equally and
+    /// shrink with it, so they have nothing to overflow.
+    @ViewBuilder private var track: some View {
+        if fillsWidth {
+            HStack(spacing: 2) { segments }
+        } else {
+            FlowLayout(spacing: 2, lineSpacing: 2) { segments }
         }
-        .padding(3)
-        .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.segmentTrack))
-        .accessibilityElement(children: .contain)
-        .accessibilityValue(selectedLabel)
+    }
+
+    @ViewBuilder private var segments: some View {
+        ForEach(Array(options.enumerated()), id: \.element.value) { index, option in
+            segment(option.value, label: option.label)
+                .accessibilityIdentifier(identifier(at: index))
+        }
     }
 
     /// The selected option's label, surfaced as the control's accessibility value so
