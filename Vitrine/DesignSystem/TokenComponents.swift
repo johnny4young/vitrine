@@ -240,12 +240,31 @@ struct KeyChip: View {
     }
 }
 
-/// A horizontally scrolling chip strip (`.hscroll`): 7 pt gaps, hidden
-/// scroller, and a 26 pt fade-out mask on the trailing edge hinting at more.
+/// A horizontally scrolling chip strip (`.hscroll`): 7 pt gaps, hidden scroller, and a
+/// 26 pt fade-out on the trailing edge hinting at more.
+///
+/// The fade is applied **only when the chips actually overflow**, and the strip reserves
+/// the fade's width as trailing content inset so the last chip clears it when scrolled to
+/// the end. Without those two rules a strip that fits looked clipped anyway — its final
+/// chip permanently dimmed and cut mid-word against the panel edge — which reads as a
+/// layout bug rather than "there is more this way", and left the last theme or font
+/// unreadable no matter how far the user scrolled.
 struct ChipScroll<Content: View>: View {
     var topPadding: CGFloat = 12
     var bottomPadding: CGFloat = 12
     @ViewBuilder var content: Content
+
+    /// The trailing fade's width; also the inset reserved for it, so the two can never
+    /// drift apart and re-clip the last chip.
+    private static var fadeWidth: CGFloat { 26 }
+
+    @State private var contentWidth: CGFloat = 0
+    @State private var viewportWidth: CGFloat = 0
+
+    /// Whether the chips are wider than the space they are shown in. The 0.5 pt slack
+    /// absorbs fractional layout rounding, so a strip that exactly fits is not treated as
+    /// overflowing and faded for a sub-pixel.
+    private var overflows: Bool { contentWidth > viewportWidth + 0.5 }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -254,21 +273,60 @@ struct ChipScroll<Content: View>: View {
             }
             .padding(.top, topPadding)
             .padding(.bottom, bottomPadding)
-            .padding(.horizontal, 2)
+            .padding(.leading, 2)
+            // Always reserved, never conditional: making the inset depend on the
+            // measurement would let the measurement depend on the inset, and a
+            // measure-then-resize cycle in SwiftUI is exactly what took the capture HUD
+            // down. A constant inset keeps `contentWidth` a pure function of the chips.
+            .padding(.trailing, Self.fadeWidth)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: ChipStripWidthKey.self, value: proxy.size.width)
+                }
+            )
         }
-        .mask(
+        .onPreferenceChange(ChipStripWidthKey.self) { contentWidth = $0 }
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ChipStripViewportKey.self, value: proxy.size.width)
+            }
+        )
+        .onPreferenceChange(ChipStripViewportKey.self) { viewportWidth = $0 }
+        .mask(fade)
+    }
+
+    /// Opaque across the strip, fading out over the trailing `fadeWidth` — and fully
+    /// opaque when nothing is hidden, so a complete strip is never dimmed.
+    @ViewBuilder private var fade: some View {
+        if overflows {
             GeometryReader { proxy in
                 LinearGradient(
                     stops: [
                         .init(color: .black, location: 0),
                         .init(
                             color: .black,
-                            location: max(0, (proxy.size.width - 26) / max(proxy.size.width, 1))),
+                            location: max(
+                                0,
+                                (proxy.size.width - Self.fadeWidth) / max(proxy.size.width, 1))),
                         .init(color: .black.opacity(0), location: 1),
                     ],
                     startPoint: .leading, endPoint: .trailing
                 )
             }
-        )
+        } else {
+            Color.black
+        }
     }
+}
+
+/// The measured width of a chip strip's content (the chips plus their padding).
+private struct ChipStripWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// The measured width of the space a chip strip is shown in.
+private struct ChipStripViewportKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
