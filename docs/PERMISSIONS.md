@@ -10,6 +10,8 @@ explains why they exist and the tests prevent silent drift.
   App Store-compatible entitlement set.
 - [`Vitrine.DirectDownload.entitlements`](../Vitrine/Resources/Vitrine.DirectDownload.entitlements)
   adds the narrowly scoped capabilities used by the signed direct-download channel.
+- [`VitrineMenuBarHelper.entitlements`](../VitrineMenuBarHelper/VitrineMenuBarHelper.entitlements)
+  makes the paint-only status-item child inherit the containing app's sandbox.
 - [`Info.plist`](../Vitrine/Resources/Info.plist) contains user-facing usage text.
 - [`PrivacyInfo.xcprivacy`](../Vitrine/Resources/PrivacyInfo.xcprivacy) declares no
   tracking and no collected data.
@@ -35,6 +37,21 @@ The privacy manifest declares `NSPrivacyTracking = false`, an empty
 `NSPrivacyCollectedDataTypes`, and only the UserDefaults required-reason category
 (`CA92.1`) for the app's own settings. The App Store privacy label is **Data Not
 Collected**.
+
+## Menu-bar helper
+
+`VitrineMenuBarHelper` is a raw executable embedded in `Contents/MacOS`. It exists only
+to give the visible `NSStatusItem` a fresh process identity when Control Center keeps the
+main process's status items unpainted. It is not a login item, daemon, XPC service, or
+independently persistent background component: the app launches it, monitors it, and
+terminates it on shutdown; the helper also exits when its exact containing app process
+disappears.
+
+| Entitlement | Status | Reason and guard |
+| --- | --- | --- |
+| `com.apple.security.app-sandbox` | Required | The child remains inside the App Sandbox. |
+| `com.apple.security.inherit` | Required | It inherits the containing app's sandbox instead of declaring independent capabilities. |
+| File, network, Screen Recording, Accessibility | Absent | The helper paints one template image and sends only process identifiers, a per-launch token, and the click location. It never reads product or user content. |
 
 ## Webpage capture
 

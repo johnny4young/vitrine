@@ -159,17 +159,21 @@ struct EditorView: View {
                     .frame(width: EditorLayout.codeColumnWidth)
                 previewStage
                 inspectorColumn
-                    // Grows with the window, up to a cap. Pinned at 302 pt the inspector
-                    // stayed cramped on any display — its theme and font strips clipped a
-                    // chip mid-word no matter how wide the window got, because every extra
-                    // point went to the preview. Letting it take a share up to
-                    // `inspectorMaxWidth` lets those strips finish a chip on a large
-                    // screen, while the cap keeps the preview the widest column and stops
-                    // the controls from stretching into empty space.
+                    // Grows with the window, up to a cap, so the chip strips can finish a
+                    // chip on a large screen instead of clipping one mid-word.
                     .frame(
                         minWidth: EditorLayout.inspectorMinWidth,
-                        idealWidth: EditorLayout.inspectorMinWidth,
-                        maxWidth: EditorLayout.inspectorMaxWidth)
+                        maxWidth: EditorLayout.inspectorMaxWidth
+                    )
+                    // The priority is what makes that frame mean anything, and it has to
+                    // beat `EditorLayout.stageLayoutPriority`. The stage is unboundedly
+                    // flexible, so whichever of the two is sized first takes everything:
+                    // at a lower priority the inspector was handed only its minimum and
+                    // measured 302 pt even in a 2400 pt window, which is why the frame
+                    // alone changed nothing. Sizing the bounded column first lets it
+                    // reach the cap and leaves the unbounded one to absorb the rest — the
+                    // order those two constraints require.
+                    .layoutPriority(EditorLayout.inspectorLayoutPriority)
             }
         }
         // Merge the toolbar into the title bar: the window is `fullSizeContentView`

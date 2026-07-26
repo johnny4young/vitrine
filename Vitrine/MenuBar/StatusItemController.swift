@@ -1,36 +1,49 @@
 import AppKit
 import SwiftUI
 
-/// Owns Vitrine's menu-bar status item and the panel it presents.
+/// Owns Vitrine's menu-bar panel and the in-process status-item fallback.
 ///
-/// SwiftUI's `MenuBarExtra` is deliberately **not** used for this. On macOS 26 the item
-/// that scene vends is hosted by Control Center, and a *persisted* hidden state for it
-/// (`NSStatusItem VisibleCC <autosave>` = `0`, written when the icon is Command-dragged
-/// out of the menu bar or hidden by a menu-bar manager) is re-applied while AppKit
-/// materializes the button. AppKit then removes the item, logging
-/// `StatusBar: 0 terminating on removal` — and because the `MenuBarExtra` scene was this
-/// agent's only scene, that removal terminated the whole process about 60 ms after
-/// launch. The symptom is brutal to diagnose and impossible to recover from in the UI:
-/// the app exits 0 with no crash report, and there is no icon left to un-hide. It also
-/// killed the unit-test host, which launches this same bundle.
+/// SwiftUI's `MenuBarExtra` is deliberately **not** used. On macOS 26 its Control
+/// Center-hosted item can be removed from the bar and terminate a windowless agent. A
+/// plain in-process `NSStatusItem` fixed that termination path, but Control Center can
+/// also keep every status item owned by the main bundle in its blocked list: AppKit
+/// reports the item visible while no window is painted and the app remains unreachable.
 ///
-/// Owning a plain `NSStatusItem` fixes it three ways: the item is created with **no
-/// autosave name**, so no menu-bar customization state is persisted for it to be trapped
-/// by; `behavior` is left at its default, so it cannot be dragged out of the menu bar at
-/// all; and any state a previous build already persisted is repaired before the item is
-/// created and re-asserted after its button materializes.
+/// Production therefore lets `VitrineMenuBarHelper` own the painted icon with a fresh
+/// process identity. A click carries only process identifiers and the mouse location
+/// back here; this controller anchors the real, model-backed SwiftUI panel at that point.
+/// The in-process item remains for UI tests and as a launch fallback. It has a stable
+/// identity, fixed width, no removal behavior, repaired defaults, and a bounded
+/// post-materialization visibility repair.
 @MainActor
-final class StatusItemController: NSObject {
+final class StatusItemController: NSObject, NSPopoverDelegate {
     /// The app's single status item. A second one would stack a duplicate icon.
     static let shared = StatusItemController()
 
-    /// Autosave names to repair. SwiftUI named its item automatically, and `Item-0` is
-    /// what it picked in practice; the neighbours cover a different pick by an older or
-    /// newer build, since a stale `0` under any of them re-creates the trap.
-    static let repairedAutosaveNames = ["Item-0", "Item-1", "Item-2"]
+    /// A deterministic identity lets the app repair the exact persistence keys AppKit
+    /// applies while Control Center hosts the item. The historical names cover builds
+    /// that let AppKit or SwiftUI choose an identity.
+    static let autosaveName = "VitrinePrimaryStatusItem"
+    static let repairedAutosaveNames = [autosaveName, "Item-0", "Item-1", "Item-2"]
 
-    private var statusItem: NSStatusItem?
+    /// The initial host transition completes asynchronously. Keep the repair bounded:
+    /// the later pass lands after the transition without turning visibility into a
+    /// permanent polling loop.
+    private static let defaultVisibilityRepairDelays: [Duration] = [
+        .milliseconds(100),
+        .milliseconds(500),
+    ]
+
+    private(set) var statusItem: NSStatusItem?
     private var popover: NSPopover?
+    private var externalAnchorWindow: NSWindow?
+    private var visibilityRepairTask: Task<Void, Never>?
+    private let visibilityRepairDelays: [Duration]
+
+    init(visibilityRepairDelays: [Duration] = defaultVisibilityRepairDelays) {
+        self.visibilityRepairDelays = visibilityRepairDelays
+        super.init()
+    }
 
     /// Whether the item is currently installed in the menu bar.
     var isAttached: Bool { statusItem != nil }
@@ -42,31 +55,70 @@ final class StatusItemController: NSObject {
 
         Self.repairVisibilityDefaults()
 
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        // `behavior` stays at its default (no `.removalAllowed`): removing this item is
-        // exactly what used to end the process, so it must not be removable by a drag.
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        item.autosaveName = Self.autosaveName
+        // Removing this item used to end the process, so make the no-removal contract
+        // explicit instead of depending on AppKit's default option set.
+        item.behavior = []
         item.button?.image = Self.menuBarImage()
+        item.button?.imagePosition = .imageOnly
         // "Vitrine" is the verbatim brand wordmark, like the other brand strings that
         // bypass the String Catalog.
         item.button?.toolTip = "Vitrine"
         item.button?.setAccessibilityIdentifier("menubar-status-item")
         item.button?.target = self
-        item.button?.action = #selector(togglePanel)
+        item.button?.action = #selector(toggleStatusItemPanel)
         statusItem = item
 
-        // AppKit can apply its own chosen visibility autosave state while materializing
-        // the button, so assert visibility once *after* that first setup rather than
-        // trusting the pre-creation repair alone.
-        item.isVisible = true
+        restoreVisibility()
+        scheduleVisibilityRepair()
     }
 
-    /// Removes the item. Used by tests; production keeps it for the process's lifetime.
+    /// Removes the in-process fallback once the external owner is confirmed.
     func detach() {
+        visibilityRepairTask?.cancel()
+        visibilityRepairTask = nil
         popover?.performClose(nil)
         popover = nil
+        discardExternalAnchor()
         guard let statusItem else { return }
         NSStatusBar.system.removeStatusItem(statusItem)
         self.statusItem = nil
+    }
+
+    /// Reasserts the item when a lifecycle update observes AppKit hiding it. The method
+    /// is intentionally idempotent so launch-time repair and application updates share
+    /// one path without creating another item.
+    func restoreVisibilityIfNeeded() {
+        guard let statusItem, !statusItem.isVisible else { return }
+        restoreVisibility()
+    }
+
+    /// Restores both the persisted and live state. Reapplying the fixed width nudges the
+    /// host to publish a non-zero presentation even when visibility already reads true.
+    private func restoreVisibility() {
+        guard let statusItem else { return }
+        Self.repairVisibilityDefaults()
+        statusItem.length = NSStatusItem.squareLength
+        statusItem.isVisible = true
+    }
+
+    /// Runs only during attachment. A synchronous `isVisible = true` is too early:
+    /// Control Center can apply its hosted scene state after `attach()` returns.
+    private func scheduleVisibilityRepair() {
+        visibilityRepairTask?.cancel()
+        visibilityRepairTask = Task { [weak self] in
+            guard let self else { return }
+            for delay in visibilityRepairDelays {
+                do {
+                    try await Task.sleep(for: delay)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled, statusItem != nil else { return }
+                restoreVisibility()
+            }
+        }
     }
 
     /// The status-bar glyph: the real Vitrine logo (viewfinder + code chevrons), shipped
@@ -91,27 +143,85 @@ final class StatusItemController: NSObject {
             defaults.set(true, forKey: "NSStatusItem VisibleCC \(autosaveName)")
             defaults.set(true, forKey: "NSStatusItem Visible \(autosaveName)")
         }
+        // AppKit reads these keys while attaching the out-of-process Control Center
+        // host, so flush the repair before that host finishes materializing the item.
+        defaults.synchronize()
     }
 
     // MARK: - Panel
 
     /// Toggles the panel, so clicking the icon while it is open closes it — the same
     /// behaviour a native menu has.
-    @objc private func togglePanel() {
+    @objc private func toggleStatusItemPanel() {
+        guard let button = statusItem?.button else { return }
+        togglePanel(relativeTo: button)
+    }
+
+    /// Presents the main app's panel under a click received by the external icon owner.
+    /// The invisible anchor is process-local and contains no user content.
+    func togglePanel(at clickLocation: CGPoint) {
+        guard Self.isValidAnchorLocation(clickLocation) else { return }
         if let popover, popover.isShown {
             popover.performClose(nil)
             return
         }
-        showPanel()
+
+        let side: CGFloat = 24
+        let frame = NSRect(
+            x: clickLocation.x - side / 2,
+            y: clickLocation.y - side / 2,
+            width: side,
+            height: side)
+        let window = NSPanel(
+            contentRect: frame,
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false)
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = false
+        window.ignoresMouseEvents = true
+        window.level = .statusBar
+        window.collectionBehavior = [
+            .canJoinAllSpaces,
+            .fullScreenAuxiliary,
+            .ignoresCycle,
+            .stationary,
+        ]
+        let anchor = NSView(frame: NSRect(origin: .zero, size: frame.size))
+        window.contentView = anchor
+        window.orderFrontRegardless()
+        externalAnchorWindow = window
+
+        togglePanel(relativeTo: anchor)
     }
 
-    private func showPanel() {
-        guard let button = statusItem?.button else { return }
+    /// Rejects malformed or spoofed positions before creating a process-local panel.
+    /// Real helper clicks always land inside one of the current display frames.
+    static func isValidAnchorLocation(
+        _ location: CGPoint,
+        screenFrames: [CGRect] = NSScreen.screens.map(\.frame)
+    ) -> Bool {
+        location.x.isFinite
+            && location.y.isFinite
+            && screenFrames.contains(where: { $0.contains(location) })
+    }
+
+    private func togglePanel(relativeTo anchor: NSView) {
+        if let popover, popover.isShown {
+            popover.performClose(nil)
+            return
+        }
+        showPanel(relativeTo: anchor)
+    }
+
+    private func showPanel(relativeTo anchor: NSView) {
         let popover = popover ?? makePopover()
         self.popover = popover
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         // The panel takes keyboard focus so its controls are reachable without a click;
-        // the app is an accessory, so it gets no activation from the click alone.
+        // an external-helper click activates that process rather than the main app.
+        NSApp.activate(ignoringOtherApps: true)
         popover.contentViewController?.view.window?.makeKey()
     }
 
@@ -120,6 +230,7 @@ final class StatusItemController: NSObject {
         // Transient: clicking outside or switching apps closes the panel, matching how a
         // menu behaves and how the `MenuBarExtra(.window)` surface used to.
         popover.behavior = .transient
+        popover.delegate = self
         let content = MenuBarContent(
             dismiss: MenuBarDismissAction { [weak self] in
                 self?.popover?.performClose(nil)
@@ -130,5 +241,14 @@ final class StatusItemController: NSObject {
         .environment(CaptureFeedbackPresenter.shared)
         popover.contentViewController = NSHostingController(rootView: content)
         return popover
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        discardExternalAnchor()
+    }
+
+    private func discardExternalAnchor() {
+        externalAnchorWindow?.orderOut(nil)
+        externalAnchorWindow = nil
     }
 }

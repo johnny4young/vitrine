@@ -224,7 +224,7 @@ Shortcuts and App Intents.
 <details>
 <summary>Everything, in detail</summary>
 
-- 🍫 Native **menu-bar app** (`MenuBarExtra`, `LSUIElement` — no Dock icon, no app switcher).
+- 🍫 Native **menu-bar app** (`NSStatusItem`, `LSUIElement` — no Dock icon, no app switcher).
 - ⌨️ Configurable **global hotkey** (`⇧⌘S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
 - 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact and adds a compact project, current Git branch when available, and command header so the image keeps its context when shared (`--no-context` restores an output-only capture). It also supports **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included — and a copyable-text sidecar can ship the output as text alongside the image. `vpane` *(PRO)* images a tmux pane's visible contents without re-running anything, and dropping an **asciinema** recording (`.cast`) replays it into the same renderer. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
@@ -314,7 +314,7 @@ entitlement-by-entitlement audit table for each distribution channel is in
 | Layer            | Choice                                                        |
 | ---------------- | ------------------------------------------------------------- |
 | Language          | **Swift 6**                                                  |
-| UI                | **SwiftUI** + AppKit (`MenuBarExtra`, `NSTextView`, `NSPasteboard`) |
+| UI                | **SwiftUI** + AppKit (`NSStatusItem`, `NSPopover`, `NSTextView`, `NSPasteboard`) |
 | Highlighting      | [Highlightr](https://github.com/raspu/Highlightr)            |
 | Global hotkey     | [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) |
 | Auto-updates      | [Sparkle](https://sparkle-project.org) (direct-download channel) |
@@ -616,8 +616,8 @@ vitrine/
 ├── project.yml            # XcodeGen spec — source of truth for the Xcode project
 ├── Makefile               # bootstrap / project / build / test / gallery helpers
 ├── Vitrine/               # app source (see docs/ARCHITECTURE.md)
-│   ├── App/               # @main, MenuBarExtra scene, AppDelegate, main menu, window controllers
-│   ├── MenuBar/           # status-item menu + quick capture (no-UI mode)
+│   ├── App/               # @main, AppDelegate, main menu, window controllers
+│   ├── MenuBar/           # helper coordination, AppKit popover + quick capture
 │   ├── Onboarding/        # first-run quick-start
 │   ├── Editor/            # code editor, ambient-light stage, inspector, language detection
 │   ├── Canvas/            # the SwiftUI views that become the exported image
@@ -638,6 +638,7 @@ vitrine/
 │   ├── Models/, State/, Support/   # config, themes, persistence, logging
 │   └── Resources/         # assets, Info.plist, entitlements, String Catalog
 ├── VitrineCLI/            # the `vitrine` command-line renderer target
+├── VitrineMenuBarHelper/  # sandbox-inheriting, paint-only status-item owner
 ├── Tests/                 # Swift Testing unit suite + golden/gallery fixtures
 ├── UITests/               # XCTest UI smokes + opt-in screenshot tour
 ├── site/                  # Astro static website (semantic HTML + vanilla CSS/JS)
