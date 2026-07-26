@@ -42,6 +42,17 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.25.2",
+            headline: "Room to work in the editor",
+            highlights: [
+                "The editor's style inspector now widens with the window instead of "
+                    + "staying one fixed width, so a larger display gives the theme and "
+                    + "font pickers real room rather than only stretching the preview.",
+                "Those pickers no longer look cut off: the fade that hints at more "
+                    + "chips appears only when there really are more, and the last theme "
+                    + "or font stays fully readable.",
+            ]),
+        ReleaseNote(
             version: "0.25.1",
             headline: "A copy no longer risks quitting the app",
             highlights: [

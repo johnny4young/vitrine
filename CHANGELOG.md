@@ -12,6 +12,8 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.25.2] - 2026-07-25
+
 ### Changed
 
 - **The editor's style inspector widens along with the window.** It was pinned to one
@@ -737,7 +739,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.1...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.2...HEAD
+[0.25.2]: https://github.com/johnny4young/vitrine/compare/v0.25.1...v0.25.2
 [0.25.1]: https://github.com/johnny4young/vitrine/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/johnny4young/vitrine/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/johnny4young/vitrine/compare/v0.23.0...v0.24.0
