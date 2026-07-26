@@ -22,6 +22,10 @@ can never drift.
   window; it did not. The preview stage was sized first and took every spare point, so the
   inspector stayed at its old width no matter how large the window was. The inspector is
   now sized first and reaches its full width, with the stage absorbing the rest.
+- **The menu-bar icon no longer disappears after Vitrine has launched.** Control Center
+  could keep every status item owned by the main process unpainted while Vitrine remained
+  running. A minimal sandboxed child now owns only the icon with a fresh process identity;
+  the main app still owns the panel, settings, recents, and every command.
 
 ## [0.25.2] - 2026-07-25
 

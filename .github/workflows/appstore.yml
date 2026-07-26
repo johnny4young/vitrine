@@ -165,8 +165,13 @@ jobs:
             echo "error: embedded CLI found in the App Store archive" >&2
             exit 1
           fi
+          if [ ! -x "${APP}/Contents/MacOS/VitrineMenuBarHelper" ]; then
+            echo "error: sandboxed menu-bar helper is missing from the App Store archive" >&2
+            exit 1
+          fi
           echo "Verified: the App Store archive contains no Sparkle."
           echo "Verified: the App Store archive contains no embedded CLI."
+          echo "Verified: the sandboxed menu-bar helper remains embedded."
 
       # Export through Xcode's App Store Connect distribution path without delivery.
       # Xcode 26 requires destination=upload for method=validation, which violates this

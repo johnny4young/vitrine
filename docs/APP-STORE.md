@@ -116,6 +116,18 @@ app's embed phase without becoming a second top-level archive product, which
 would make Xcode classify the result as a generic, non-distributable archive.
 The DMG channel is unaffected.
 
+### Menu-bar helper — sandboxed and retained
+
+The archive retains `Contents/MacOS/VitrineMenuBarHelper`, the paint-only child that
+owns the visible status item. Unlike the CLI, this executable is required for the agent
+app to remain reachable. Its entitlement file contains exactly
+`com.apple.security.app-sandbox` and `com.apple.security.inherit`, so it inherits the
+containing app's sandbox and requests no independent file, network, Screen Recording, or
+Accessibility capability. It is not a login item or persistent background service and
+exits when the exact containing app process is gone. The App Store dry run verifies that
+the helper remains embedded while removing the direct-download-only CLI and Sparkle
+payloads.
+
 ## App Sandbox and entitlements (App Store-compatible)
 
 **The App Sandbox stays enabled and the entitlement set is minimal and justified.** The Mac

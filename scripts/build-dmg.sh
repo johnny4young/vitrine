@@ -163,6 +163,22 @@ sign_embedded_cli_for_distribution() {
 	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime "$cli"
 }
 
+sign_menu_bar_helper_for_distribution() {
+	local helper="$APP/Contents/MacOS/VitrineMenuBarHelper"
+
+	if [ ! -f "$helper" ]; then
+		echo "error: menu-bar helper not found at Contents/MacOS/VitrineMenuBarHelper" >&2
+		return 1
+	fi
+
+	# The child must retain app-sandbox + inherit so the sandboxed outer app can
+	# spawn it without granting a separate file, network, or privacy capability.
+	# Re-sign inside-out before Sparkle's final outer-app seal.
+	echo "==> Signing the menu-bar helper for Developer ID notarization"
+	codesign --force --sign "$SIGN_IDENTITY" --timestamp --options runtime \
+		--preserve-metadata=entitlements "$helper"
+}
+
 assert_distribution_entitlements() {
 	local entitlements="$DERIVED/Vitrine-app-entitlements.plist"
 	local get_task_allow
@@ -178,10 +194,12 @@ assert_distribution_entitlements() {
 
 # This script uses Xcode's build action instead of Archive/Export so the CI job can
 # produce a signed DMG directly from the tag. Compensate for the distribution work
-# Archive/Export normally performs: sign the embedded CLI, re-sign Sparkle's nested
-# helpers, and reject any leaked development entitlements before submitting to Apple.
+# Archive/Export normally performs: sign the embedded CLI and menu-bar helper,
+# re-sign Sparkle's nested helpers, and reject any leaked development entitlements
+# before submitting to Apple.
 if [ "$SIGNED" -eq 1 ]; then
 	sign_embedded_cli_for_distribution
+	sign_menu_bar_helper_for_distribution
 	resign_sparkle_for_distribution
 	assert_distribution_entitlements
 fi

@@ -15,6 +15,19 @@ import Testing
 @MainActor
 @Suite("Editor column layout")
 struct EditorLayoutTests {
+    /// An AppKit-backed probe whose frame is assigned by SwiftUI during the host's
+    /// synchronous layout pass. Reading this view avoids depending on `onAppear`, which
+    /// is scheduled by SwiftUI and is not guaranteed to run before
+    /// `layoutSubtreeIfNeeded()` returns.
+    private final class WidthProbeView: NSView {}
+
+    private struct WidthProbe: NSViewRepresentable {
+        let view: WidthProbeView
+
+        func makeNSView(context: Context) -> WidthProbeView { view }
+        func updateNSView(_ nsView: WidthProbeView, context: Context) {}
+    }
+
     /// Lays out the editor's three-column arrangement at `windowWidth` and returns the
     /// inspector's resolved width.
     ///
@@ -23,8 +36,7 @@ struct EditorLayoutTests {
     /// are the values `EditorView` applies, read from `EditorLayout` rather than repeated
     /// here, so the test cannot drift from the window on the numbers that matter.
     private func inspectorWidth(atWindowWidth windowWidth: CGFloat) -> CGFloat {
-        final class Box: @unchecked Sendable { var width: CGFloat = 0 }
-        let box = Box()
+        let probe = WidthProbeView()
 
         let columns = HStack(spacing: 0) {
             Color.clear
@@ -38,17 +50,13 @@ struct EditorLayoutTests {
                     maxWidth: EditorLayout.inspectorMaxWidth
                 )
                 .layoutPriority(EditorLayout.inspectorLayoutPriority)
-                .background(
-                    GeometryReader { proxy in
-                        Color.clear.onAppear { box.width = proxy.size.width }
-                    }
-                )
+                .background(WidthProbe(view: probe))
         }
 
         let host = NSHostingView(rootView: columns)
         host.frame = NSRect(x: 0, y: 0, width: windowWidth, height: 800)
         host.layoutSubtreeIfNeeded()
-        return box.width
+        return probe.frame.width
     }
 
     /// The regression: spare width has to reach the inspector at all.

@@ -145,8 +145,10 @@ What the script does for a signed build:
    verification and still be rejected by the notary service.
 4. **Repairs distribution-only signing gaps** from the direct build path: disables
    Xcode's base entitlement injection (`CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO`) so
-   `com.apple.security.get-task-allow` cannot leak into the app, then explicitly
-   re-signs Sparkle's nested helpers (`Installer.xpc`, `Downloader.xpc`,
+   `com.apple.security.get-task-allow` cannot leak into the app, explicitly signs the
+   embedded CLI and the paint-only menu-bar helper (preserving the helper's sandbox
+   inheritance entitlements), then re-signs Sparkle's nested helpers (`Installer.xpc`,
+   `Downloader.xpc`,
    `Autoupdate`, and `Updater.app`) with Developer ID + timestamp before re-sealing
    the outer app. This mirrors the work Xcode Archive/Export normally does; do not
    use `--deep` for this Sparkle repair because the helpers have different
@@ -550,6 +552,9 @@ Gatekeeper runs at first launch, plus a bundle sanity check — on both the DMG 
 app inside it: `codesign --verify --deep --strict`, the hardened-runtime flag, `spctl
 -a` (Gatekeeper validation), `stapler validate` (so first launch works offline), and
 `plutil` Info.plist validation (including `LSUIElement`, the no-Dock-icon marker).
+It also requires the embedded `VitrineMenuBarHelper` executable and proves that its
+signature retains `com.apple.security.app-sandbox` plus
+`com.apple.security.inherit`.
 
 **App bug vs. signing failure.** A failed check is classified and the **exit code says
 which class** it is, because the two have completely different owners and fixes:

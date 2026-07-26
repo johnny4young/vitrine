@@ -3,24 +3,21 @@
 This document mirrors the shipping module layout in [`Vitrine/`](../Vitrine) and the
 runtime boundaries enforced by the test suite.
 
-## Experience: menu bar + submenu
+## Experience: menu-bar status item + panel
 
-The app lives in `NSStatusItem` / `MenuBarExtra`. Clicking the icon opens a **native
-menu with submenus** (not just a popover):
+The app lives behind an AppKit `NSStatusItem`. Clicking the icon opens a transient
+`NSPopover` whose SwiftUI content provides the capture action, recent captures, theme
+shortcuts, and explicit command rows:
 
 ```
 📸  [menu-bar icon]
 ├── 📋 New capture from clipboard            ⌘⇧S
+├── 🖼️  Render clipboard as…                 ▸
+├── 🕘 Recent captures
+├── 🎨 Theme shortcuts
 ├── ✏️  Open editor…
-├── 🕘 Recents                               ▸
-│        ├── func hello() { … }
-│        ├── SELECT * FROM users …
-│        └── (last 10 captures, reopenable)
-├── 🎨 Theme                                 ▸
-│        ├── One Dark                ✓
-│        ├── GitHub
-│        ├── Dracula
-│        └── …
+├── 🌐 New web snapshot…
+├── 🪪 New social card…
 ├── ───────────────
 ├── ⚙️  Preferences…                          ⌘,
 ├── ℹ️  About
@@ -35,12 +32,25 @@ menu with submenus** (not just a popover):
   with `WKWebView` after the first-use privacy disclosure.
 - **"Open editor…"** opens the window with live preview and controls (theme, padding,
   font, background) to tweak before exporting.
-- **"Recents" submenu** lists the last captures; choosing one reopens it in the editor.
-- **"Theme" submenu** changes the default theme with a check on the active one.
+- **Recent rows** reopen or re-copy the latest captures; the history link opens the full
+  gallery.
+- **Theme chips** change the saved default theme without opening the editor.
 
-**Technical decision:** `MenuBarExtra` with `.menuBarExtraStyle(.menu)` for the native
-submenu, plus a separate `Window` / `NSPanel` for the editor (large preview). The
-global hotkey triggers quick mode or the editor depending on the user's preference.
+**Technical decision:** production uses a minimal `VitrineMenuBarHelper` child process
+as the painted `NSStatusItem` owner. Control Center can retain every item associated with
+the main process in an unpainted state even while AppKit reports it visible; a fresh
+process identity avoids that host state. The helper inherits the app sandbox, contains no
+product model, and reads no clipboard, settings, recents, or rendered content. A click
+sends only both process identifiers, a per-launch token, and the pointer location over a
+distributed notification. The main process validates all of them and
+`StatusItemController` anchors its existing model-backed SwiftUI popover at that point.
+
+The helper watches the exact containing app process and exits with it. The main app
+monitors the helper and relaunches it if needed, retaining a stable in-process
+`NSStatusItem` only as a launch fallback and for UI automation. This keeps one source of
+truth for every command and prevents a second menu implementation from drifting. The
+large editor remains a separate AppKit-hosted window. The global hotkey triggers quick
+mode or the editor depending on the user's preference.
 
 ## Clipboard integration
 
@@ -390,17 +400,22 @@ gate lives in one place.
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  NSStatusBar — menu-bar icon                          │
+│  Helper process — painted NSStatusItem                │
 └────────────────────────┬─────────────────────────────┘
-                         │ Click → menu with submenus  (or ⌘⇧S)
-        ┌────────────────┴───────────────┐
-        ▼                                 ▼
-┌───────────────┐              ┌──────────────────────────┐
-│ Quick mode    │              │ Editor (Window/NSPanel)  │
-│ clipboard→PNG │              │  Editor + Preview + ctrl │
-│ no UI         │              └────────────┬─────────────┘
-└───────┬───────┘                           │
-        └───────────────┬───────────────────┘
+                         │ Authenticated click anchor
+                         ▼
+             ┌────────────────────────────┐
+             │ Main app — SwiftUI popover │
+             └─────────────┬──────────────┘
+                           │ Commands or global hotkey (⌘⇧S)
+             ┌─────────────┴──────────────┐
+             ▼                            ▼
+   ┌─────────────────┐          ┌──────────────────────────┐
+   │ Quick mode      │          │ Editor (Window/NSPanel)  │
+   │ clipboard → PNG │          │ Editor + Preview + ctrl  │
+   │ no window       │          └────────────┬─────────────┘
+   └────────┬────────┘                       │
+            └──────────────┬─────────────────┘
                         ▼
             ┌──────────────────────────┐
             │  ExportManager            │
@@ -414,10 +429,13 @@ gate lives in one place.
 ```
 Vitrine/
 ├── App/
-│   ├── VitrineApp.swift       # @main, MenuBarExtra scene graph
+│   ├── VitrineApp.swift       # @main + inert Settings scene
 │   └── AppDelegate.swift      # NSApp config, lifecycle, windows
 ├── MenuBar/
-│   ├── MenuBarContent.swift   # the menu + submenus (SwiftUI)
+│   ├── MenuBarAnchor.swift    # content-free helper/main message
+│   ├── MenuBarHelperLauncher.swift # helper lifecycle + identity validation
+│   ├── StatusItemController.swift # NSPopover + in-process fallback
+│   ├── MenuBarContent.swift   # the popover panel (SwiftUI)
 │   └── QuickCapture.swift     # no-UI quick mode: clipboard → PNG
 ├── Onboarding/
 │   └── WelcomeView.swift      # first-run quick-start + window controller
@@ -504,6 +522,10 @@ Vitrine/
     ├── Assets.xcassets
     ├── Info.plist
     └── Vitrine.entitlements
+
+VitrineMenuBarHelper/          # sandbox-inheriting status-item helper target
+├── main.swift                 # paint-only NSStatusItem owner
+└── VitrineMenuBarHelper.entitlements
 
 VitrineCLI/                    # the `vitrine` executable target
 ├── main.swift                 # minimal accessory NSApplication host → CLIRenderer

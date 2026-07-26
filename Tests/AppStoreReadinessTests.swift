@@ -608,6 +608,10 @@ struct AppStoreReadinessTests {
         #expect(
             workflow.contains(#"rm -f "${APP}/Contents/MacOS/vitrine-cli""#),
             "the App Store archive must remove the direct-download embedded CLI")
+        #expect(
+            workflow.contains(
+                #"[ ! -x "${APP}/Contents/MacOS/VitrineMenuBarHelper" ]"#),
+            "the App Store archive must retain the sandboxed menu-bar helper")
         #expect(!workflow.contains("altool"), "the workflow must not use deprecated altool")
     }
 

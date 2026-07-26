@@ -166,13 +166,13 @@ struct EditorView: View {
                         maxWidth: EditorLayout.inspectorMaxWidth
                     )
                     // The priority is what makes that frame mean anything, and it has to
-                    // beat `previewStage`'s own `.layoutPriority(2)`. The stage is
-                    // unboundedly flexible, so whichever of the two is sized first takes
-                    // everything: at a lower priority the inspector was handed only its
-                    // minimum and measured 302 pt even in a 2400 pt window, which is why
-                    // the frame alone changed nothing. Sizing the bounded column first
-                    // lets it reach the cap and leaves the unbounded one to absorb the
-                    // rest — the order those two constraints require.
+                    // beat `EditorLayout.stageLayoutPriority`. The stage is unboundedly
+                    // flexible, so whichever of the two is sized first takes everything:
+                    // at a lower priority the inspector was handed only its minimum and
+                    // measured 302 pt even in a 2400 pt window, which is why the frame
+                    // alone changed nothing. Sizing the bounded column first lets it
+                    // reach the cap and leaves the unbounded one to absorb the rest — the
+                    // order those two constraints require.
                     .layoutPriority(EditorLayout.inspectorLayoutPriority)
             }
         }
