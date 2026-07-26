@@ -146,7 +146,7 @@ final class CaptureHUDController {
             onAction(action)
             self?.dismiss()
         }
-        let hosting = NSHostingController(rootView: root)
+        let hosting = Self.makeHostingController(rootView: root)
         hosting.view.layout()
 
         let panel = reusablePanel()
@@ -162,6 +162,29 @@ final class CaptureHUDController {
         dismissTask?.cancel()
         dismissTask = nil
         panel?.orderOut(nil)
+    }
+
+    /// The hosting controller for the HUD content, configured so it can never fight
+    /// the panel over sizing.
+    ///
+    /// The panel is sized exactly once, in `position(_:fitting:)`, from the content's
+    /// fitting size. The hosting controller's *default* sizing options would also feed
+    /// the content's minimum and maximum sizes into the window as constraints — and the
+    /// HUD's minimum is its message wrapped to the narrowest possible column (observed
+    /// as 72×374 for a one-line confirmation). On macOS 26 that feedback loop — panel
+    /// sized, minimum re-imposed, SwiftUI re-measured, repeat — ends in AppKit's
+    /// "more Update Constraints passes than views" `NSGenericException`, an uncaught
+    /// exception that killed the app moments after a copy confirmation. Empty sizing
+    /// options make the panel's one-shot size authoritative, so no constraint is ever
+    /// posted back. Factored out (and internal) so a regression test can hold this.
+    static func makeHostingController(
+        rootView: CaptureHUDView
+    ) -> NSHostingController<
+        CaptureHUDView
+    > {
+        let hosting = NSHostingController(rootView: rootView)
+        hosting.sizingOptions = []
+        return hosting
     }
 
     /// Lazily builds (and reuses) the floating panel. It is non-activating and
