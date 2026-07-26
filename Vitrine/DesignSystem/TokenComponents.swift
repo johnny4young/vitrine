@@ -254,36 +254,45 @@ struct ChipScroll<Content: View>: View {
     var bottomPadding: CGFloat = 12
     @ViewBuilder var content: Content
 
-    /// The trailing fade's width; also the inset reserved for it, so the two can never
-    /// drift apart and re-clip the last chip.
+    /// The trailing fade's width; also the inset reserved for it while it is drawn, so the
+    /// two can never drift apart and re-clip the last chip.
     private static var fadeWidth: CGFloat { 26 }
+
+    /// The strip's normal breathing room at each end.
+    private static var edgeInset: CGFloat { 2 }
 
     @State private var contentWidth: CGFloat = 0
     @State private var viewportWidth: CGFloat = 0
 
-    /// Whether the chips are wider than the space they are shown in. The 0.5 pt slack
-    /// absorbs fractional layout rounding, so a strip that exactly fits is not treated as
-    /// overflowing and faded for a sub-pixel.
-    private var overflows: Bool { contentWidth > viewportWidth + 0.5 }
+    /// Whether any chip is actually hidden.
+    ///
+    /// Compares the chips plus the leading inset — the content that has to be visible —
+    /// against the viewport. The reserved trailing inset is deliberately excluded: it is
+    /// blank space held for the fade, and counting it would report overflow for a strip
+    /// that fits exactly and fade its last chip for nothing. The 0.5 pt slack absorbs
+    /// fractional layout rounding.
+    private var overflows: Bool { contentWidth + Self.edgeInset > viewportWidth + 0.5 }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 7) {
                 content
             }
-            .padding(.top, topPadding)
-            .padding(.bottom, bottomPadding)
-            .padding(.leading, 2)
-            // Always reserved, never conditional: making the inset depend on the
-            // measurement would let the measurement depend on the inset, and a
-            // measure-then-resize cycle in SwiftUI is exactly what took the capture HUD
-            // down. A constant inset keeps `contentWidth` a pure function of the chips.
-            .padding(.trailing, Self.fadeWidth)
+            // Measured bare, before any inset, so `contentWidth` is the chips alone. That
+            // is what keeps it independent of the padding below — and therefore what makes
+            // varying that padding safe, rather than the measure-then-resize cycle that
+            // took the capture HUD down.
             .background(
                 GeometryReader { proxy in
                     Color.clear.preference(key: ChipStripWidthKey.self, value: proxy.size.width)
                 }
             )
+            .padding(.top, topPadding)
+            .padding(.bottom, bottomPadding)
+            .padding(.leading, Self.edgeInset)
+            // Room for the fade only while the fade is drawn; otherwise the strip would be
+            // scrollable into 26 pt of nothing.
+            .padding(.trailing, overflows ? Self.fadeWidth : Self.edgeInset)
         }
         .onPreferenceChange(ChipStripWidthKey.self) { contentWidth = $0 }
         .background(
