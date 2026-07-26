@@ -42,6 +42,15 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.25.1",
+            headline: "A copy no longer risks quitting the app",
+            highlights: [
+                "Fixes a crash where the \"Copied\" confirmation could bring the whole "
+                    + "app down moments after copying an image. Whether it happened "
+                    + "depended on which screen showed the confirmation, so it could look "
+                    + "random — it is fixed for every screen."
+            ]),
+        ReleaseNote(
             version: "0.25.0",
             headline: "Sign in to capture, steadier menu bar",
             highlights: [
