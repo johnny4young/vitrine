@@ -12,6 +12,8 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.25.3] - 2026-07-26
+
 ### Fixed
 
 - **Controls no longer run off the inspector's right edge.** A picker whose options did
@@ -754,7 +756,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.2...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.3...HEAD
+[0.25.3]: https://github.com/johnny4young/vitrine/compare/v0.25.2...v0.25.3
 [0.25.2]: https://github.com/johnny4young/vitrine/compare/v0.25.1...v0.25.2
 [0.25.1]: https://github.com/johnny4young/vitrine/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/johnny4young/vitrine/compare/v0.24.0...v0.25.0

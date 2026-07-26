@@ -42,6 +42,19 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.25.3",
+            headline: "The menu-bar icon stays put",
+            highlights: [
+                "Fixes the icon vanishing from the menu bar while Vitrine kept "
+                    + "running, which left the app reachable only by its hotkey. A small "
+                    + "companion process now owns the icon so macOS cannot hide it; "
+                    + "everything else — the panel, your settings, your recents — still "
+                    + "lives in Vitrine itself.",
+                "The editor's style inspector really does widen with the window now, "
+                    + "and controls that do not fit wrap instead of running off its right "
+                    + "edge.",
+            ]),
+        ReleaseNote(
             version: "0.25.2",
             headline: "Room to work in the editor",
             highlights: [
