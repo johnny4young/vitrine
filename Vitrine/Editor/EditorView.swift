@@ -156,10 +156,20 @@ struct EditorView: View {
             editorToolbar
             HStack(spacing: 0) {
                 codeColumn
-                    .frame(width: 280)
+                    .frame(width: EditorLayout.codeColumnWidth)
                 previewStage
                 inspectorColumn
-                    .frame(width: 302)
+                    // Grows with the window, up to a cap. Pinned at 302 pt the inspector
+                    // stayed cramped on any display — its theme and font strips clipped a
+                    // chip mid-word no matter how wide the window got, because every extra
+                    // point went to the preview. Letting it take a share up to
+                    // `inspectorMaxWidth` lets those strips finish a chip on a large
+                    // screen, while the cap keeps the preview the widest column and stops
+                    // the controls from stretching into empty space.
+                    .frame(
+                        minWidth: EditorLayout.inspectorMinWidth,
+                        idealWidth: EditorLayout.inspectorMinWidth,
+                        maxWidth: EditorLayout.inspectorMaxWidth)
             }
         }
         // Merge the toolbar into the title bar: the window is `fullSizeContentView`

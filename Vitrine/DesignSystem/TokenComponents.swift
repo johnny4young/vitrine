@@ -240,35 +240,102 @@ struct KeyChip: View {
     }
 }
 
-/// A horizontally scrolling chip strip (`.hscroll`): 7 pt gaps, hidden
-/// scroller, and a 26 pt fade-out mask on the trailing edge hinting at more.
+/// A horizontally scrolling chip strip (`.hscroll`): 7 pt gaps, hidden scroller, and a
+/// 26 pt fade-out on the trailing edge hinting at more.
+///
+/// The fade is applied **only when the chips actually overflow**, and the strip reserves
+/// the fade's width as trailing content inset so the last chip clears it when scrolled to
+/// the end. Without those two rules a strip that fits looked clipped anyway — its final
+/// chip permanently dimmed and cut mid-word against the panel edge — which reads as a
+/// layout bug rather than "there is more this way", and left the last theme or font
+/// unreadable no matter how far the user scrolled.
 struct ChipScroll<Content: View>: View {
     var topPadding: CGFloat = 12
     var bottomPadding: CGFloat = 12
     @ViewBuilder var content: Content
+
+    /// The trailing fade's width; also the inset reserved for it while it is drawn, so the
+    /// two can never drift apart and re-clip the last chip.
+    private static var fadeWidth: CGFloat { 26 }
+
+    /// The strip's normal breathing room at each end.
+    private static var edgeInset: CGFloat { 2 }
+
+    @State private var contentWidth: CGFloat = 0
+    @State private var viewportWidth: CGFloat = 0
+
+    /// Whether any chip is actually hidden.
+    ///
+    /// Compares the chips plus the leading inset — the content that has to be visible —
+    /// against the viewport. The reserved trailing inset is deliberately excluded: it is
+    /// blank space held for the fade, and counting it would report overflow for a strip
+    /// that fits exactly and fade its last chip for nothing. The 0.5 pt slack absorbs
+    /// fractional layout rounding.
+    private var overflows: Bool { contentWidth + Self.edgeInset > viewportWidth + 0.5 }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 7) {
                 content
             }
+            // Measured bare, before any inset, so `contentWidth` is the chips alone. That
+            // is what keeps it independent of the padding below — and therefore what makes
+            // varying that padding safe, rather than the measure-then-resize cycle that
+            // took the capture HUD down.
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: ChipStripWidthKey.self, value: proxy.size.width)
+                }
+            )
             .padding(.top, topPadding)
             .padding(.bottom, bottomPadding)
-            .padding(.horizontal, 2)
+            .padding(.leading, Self.edgeInset)
+            // Room for the fade only while the fade is drawn; otherwise the strip would be
+            // scrollable into 26 pt of nothing.
+            .padding(.trailing, overflows ? Self.fadeWidth : Self.edgeInset)
         }
-        .mask(
+        .onPreferenceChange(ChipStripWidthKey.self) { contentWidth = $0 }
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ChipStripViewportKey.self, value: proxy.size.width)
+            }
+        )
+        .onPreferenceChange(ChipStripViewportKey.self) { viewportWidth = $0 }
+        .mask(fade)
+    }
+
+    /// Opaque across the strip, fading out over the trailing `fadeWidth` — and fully
+    /// opaque when nothing is hidden, so a complete strip is never dimmed.
+    @ViewBuilder private var fade: some View {
+        if overflows {
             GeometryReader { proxy in
                 LinearGradient(
                     stops: [
                         .init(color: .black, location: 0),
                         .init(
                             color: .black,
-                            location: max(0, (proxy.size.width - 26) / max(proxy.size.width, 1))),
+                            location: max(
+                                0,
+                                (proxy.size.width - Self.fadeWidth) / max(proxy.size.width, 1))),
                         .init(color: .black.opacity(0), location: 1),
                     ],
                     startPoint: .leading, endPoint: .trailing
                 )
             }
-        )
+        } else {
+            Color.black
+        }
     }
+}
+
+/// The measured width of a chip strip's content (the chips plus their padding).
+private struct ChipStripWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// The measured width of the space a chip strip is shown in.
+private struct ChipStripViewportKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
