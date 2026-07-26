@@ -12,6 +12,17 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- **The editor's style inspector widens along with the window.** It was pinned to one
+  width, so enlarging the editor only ever grew the preview — the theme and font strips
+  clipped a chip mid-word on a 27-inch screen exactly as on a laptop. The inspector column
+  now takes a share of the extra space, up to a cap that keeps the preview the widest
+  column.
+- **Chip strips no longer look clipped when everything fits.** The trailing fade that hints
+  at more chips is drawn only when there actually are more, and the strips reserve room for
+  it, so the last theme or font is fully readable once scrolled to the end.
+
 ## [0.25.1] - 2026-07-25
 
 ### Fixed
