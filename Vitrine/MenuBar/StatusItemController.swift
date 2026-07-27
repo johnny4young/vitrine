@@ -25,6 +25,10 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     /// that let AppKit or SwiftUI choose an identity.
     static let autosaveName = "VitrinePrimaryStatusItem"
     static let repairedAutosaveNames = [autosaveName, "Item-0", "Item-1", "Item-2"]
+    /// Vitrine owns dismissal because the helper's opening click comes from another
+    /// process. Explicit event monitors reproduce native outside-interaction behavior
+    /// without treating that cross-process handoff as an immediate dismissal.
+    static let popoverBehavior: NSPopover.Behavior = .applicationDefined
 
     /// The initial host transition completes asynchronously. Keep the repair bounded:
     /// the later pass lands after the transition without turning visibility into a
@@ -37,6 +41,11 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private(set) var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var externalAnchorWindow: NSWindow?
+    private var localPointerMonitor: Any?
+    private var localKeyMonitor: Any?
+    private var globalPointerMonitor: Any?
+    private var appActivationObserver: NSObjectProtocol?
+    private var helperProcessID: pid_t?
     private var visibilityRepairTask: Task<Void, Never>?
     private let visibilityRepairDelays: [Duration]
 
@@ -47,6 +56,17 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
     /// Whether the item is currently installed in the menu bar.
     var isAttached: Bool { statusItem != nil }
+
+    /// Whether the model-backed panel is currently presented. Kept independent from
+    /// fallback-item ownership because the helper monitor may remove that item while
+    /// the external helper's panel remains open.
+    var isPanelShown: Bool { popover?.isShown == true }
+
+    /// Whether the helper-owned anchor is configured to survive the main app becoming
+    /// inactive during the cross-process click handoff.
+    var externalAnchorSurvivesDeactivation: Bool {
+        externalAnchorWindow?.hidesOnDeactivate == false
+    }
 
     /// Installs the status item. Idempotent: a second call is a no-op, so a repeated
     /// launch hook can never stack two icons.
@@ -78,9 +98,6 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     func detach() {
         visibilityRepairTask?.cancel()
         visibilityRepairTask = nil
-        popover?.performClose(nil)
-        popover = nil
-        discardExternalAnchor()
         guard let statusItem else { return }
         NSStatusBar.system.removeStatusItem(statusItem)
         self.statusItem = nil
@@ -159,12 +176,13 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
     /// Presents the main app's panel under a click received by the external icon owner.
     /// The invisible anchor is process-local and contains no user content.
-    func togglePanel(at clickLocation: CGPoint) {
+    func togglePanel(at clickLocation: CGPoint, helperProcessID: pid_t? = nil) {
         guard Self.isValidAnchorLocation(clickLocation) else { return }
         if let popover, popover.isShown {
-            popover.performClose(nil)
+            dismissPanel()
             return
         }
+        self.helperProcessID = helperProcessID
 
         let side: CGFloat = 24
         let frame = NSRect(
@@ -180,6 +198,10 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         window.backgroundColor = .clear
         window.isOpaque = false
         window.hasShadow = false
+        // NSPanel hides on app deactivation by default. The status-item click starts in
+        // the helper process, so an activation transition must not hide the positioning
+        // window and take its attached popover with it.
+        window.hidesOnDeactivate = false
         window.ignoresMouseEvents = true
         window.level = .statusBar
         window.collectionBehavior = [
@@ -193,7 +215,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         window.orderFrontRegardless()
         externalAnchorWindow = window
 
-        togglePanel(relativeTo: anchor)
+        showPanel(relativeTo: anchor)
     }
 
     /// Rejects malformed or spoofed positions before creating a process-local panel.
@@ -207,33 +229,61 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             && screenFrames.contains(where: { $0.contains(location) })
     }
 
+    /// Workspace notifications include the activated process. The main app and its icon
+    /// helper are part of one interaction surface; every other process represents a
+    /// genuine focus change.
+    static func shouldDismissForActivatedProcess(
+        _ processID: pid_t,
+        appProcessID: pid_t = ProcessInfo.processInfo.processIdentifier,
+        helperProcessID: pid_t?
+    ) -> Bool {
+        processID != appProcessID && processID != helperProcessID
+    }
+
+    /// A second click on the helper icon is handled by the regular toggle command. Every
+    /// other global pointer event is an outside click and dismisses the panel.
+    static func shouldDismissForGlobalPointer(
+        at location: CGPoint,
+        anchorFrame: CGRect?
+    ) -> Bool {
+        guard let anchorFrame else { return true }
+        return !anchorFrame.insetBy(dx: -4, dy: -4).contains(location)
+    }
+
+    /// Escape is the system cancel command. Monitor its hardware-independent AppKit
+    /// key code as a fallback for panels whose hosted SwiftUI view has no focused
+    /// control to receive `onExitCommand`.
+    static func shouldDismissForKeyCode(_ keyCode: UInt16) -> Bool {
+        keyCode == 53
+    }
+
     private func togglePanel(relativeTo anchor: NSView) {
         if let popover, popover.isShown {
-            popover.performClose(nil)
+            dismissPanel()
             return
         }
+        helperProcessID = nil
         showPanel(relativeTo: anchor)
     }
 
     private func showPanel(relativeTo anchor: NSView) {
         let popover = popover ?? makePopover()
         self.popover = popover
-        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
-        // The panel takes keyboard focus so its controls are reachable without a click;
-        // an external-helper click activates that process rather than the main app.
+        // The external click activates the helper. Complete the activation handoff before
+        // presentation so AppKit cannot treat it as a reason to close the new panel.
         NSApp.activate(ignoringOtherApps: true)
+        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
+        // The panel takes keyboard focus so its controls are reachable without a click.
         popover.contentViewController?.view.window?.makeKey()
     }
 
     private func makePopover() -> NSPopover {
         let popover = NSPopover()
-        // Transient: clicking outside or switching apps closes the panel, matching how a
-        // menu behaves and how the `MenuBarExtra(.window)` surface used to.
-        popover.behavior = .transient
+        popover.behavior = Self.popoverBehavior
         popover.delegate = self
         let content = MenuBarContent(
             dismiss: MenuBarDismissAction { [weak self] in
-                self?.popover?.performClose(nil)
+                self?.dismissPanel()
             }
         )
         .environment(AppSettings.shared)
@@ -243,8 +293,100 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         return popover
     }
 
+    func popoverDidShow(_ notification: Notification) {
+        installDismissalObservers()
+    }
+
     func popoverDidClose(_ notification: Notification) {
+        removeDismissalObservers()
+        helperProcessID = nil
         discardExternalAnchor()
+    }
+
+    private func installDismissalObservers() {
+        removeDismissalObservers()
+
+        localPointerMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] event in
+            guard let self else { return event }
+            let eventWindow = event.window
+            let popoverWindow = popover?.contentViewController?.view.window
+            let statusItemWindow = statusItem?.button?.window
+            if eventWindow !== popoverWindow && eventWindow !== statusItemWindow {
+                dismissPanel()
+            }
+            return event
+        }
+
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) {
+            [weak self] event in
+            guard let self, Self.shouldDismissForKeyCode(event.keyCode) else {
+                return event
+            }
+            dismissPanel()
+            return nil
+        }
+
+        globalPointerMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            let location = NSEvent.mouseLocation
+            Task { @MainActor [weak self] in
+                guard
+                    let self,
+                    Self.shouldDismissForGlobalPointer(
+                        at: location,
+                        anchorFrame: externalAnchorWindow?.frame)
+                else { return }
+                dismissPanel()
+            }
+        }
+
+        appActivationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard
+                let processID =
+                    (notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                    as? NSRunningApplication)?.processIdentifier
+            else { return }
+            Task { @MainActor [weak self] in
+                guard
+                    let self,
+                    Self.shouldDismissForActivatedProcess(
+                        processID, helperProcessID: helperProcessID)
+                else { return }
+                dismissPanel()
+            }
+        }
+    }
+
+    /// All close paths converge here so SwiftUI commands, pointer monitors, workspace
+    /// activation, and icon toggles receive the same delegate-driven cleanup.
+    private func dismissPanel() {
+        popover?.close()
+    }
+
+    private func removeDismissalObservers() {
+        if let localPointerMonitor {
+            NSEvent.removeMonitor(localPointerMonitor)
+            self.localPointerMonitor = nil
+        }
+        if let localKeyMonitor {
+            NSEvent.removeMonitor(localKeyMonitor)
+            self.localKeyMonitor = nil
+        }
+        if let globalPointerMonitor {
+            NSEvent.removeMonitor(globalPointerMonitor)
+            self.globalPointerMonitor = nil
+        }
+        if let appActivationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(appActivationObserver)
+            self.appActivationObserver = nil
+        }
     }
 
     private func discardExternalAnchor() {
