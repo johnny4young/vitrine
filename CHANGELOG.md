@@ -12,6 +12,15 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The menu-bar panel now stays open while you choose an action.** The click that opens
+  it comes from Vitrine's icon helper. The helper monitor could tear down the shared
+  panel, while the invisible positioning window could hide during the cross-process
+  activation handoff. Fallback ownership and panel lifetime are now independent, and the
+  panel remains open while idle. It still closes naturally when you click elsewhere,
+  change focus, press Escape, click the icon again, or choose an action that dismisses it.
+
 ## [0.25.3] - 2026-07-26
 
 ### Fixed

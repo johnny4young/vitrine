@@ -5,9 +5,9 @@ runtime boundaries enforced by the test suite.
 
 ## Experience: menu-bar status item + panel
 
-The app lives behind an AppKit `NSStatusItem`. Clicking the icon opens a transient
-`NSPopover` whose SwiftUI content provides the capture action, recent captures, theme
-shortcuts, and explicit command rows:
+The app lives behind an AppKit `NSStatusItem`. Clicking the icon opens an
+application-defined `NSPopover` whose SwiftUI content provides the capture action,
+recent captures, theme shortcuts, and explicit command rows:
 
 ```
 📸  [menu-bar icon]
@@ -48,9 +48,19 @@ distributed notification. The main process validates all of them and
 The helper watches the exact containing app process and exits with it. The main app
 monitors the helper and relaunches it if needed, retaining a stable in-process
 `NSStatusItem` only as a launch fallback and for UI automation. This keeps one source of
-truth for every command and prevents a second menu implementation from drifting. The
-large editor remains a separate AppKit-hosted window. The global hotkey triggers quick
-mode or the editor depending on the user's preference.
+truth for every command and prevents a second menu implementation from drifting.
+Fallback-item teardown does not own the shared panel lifecycle. The external positioning
+window also remains visible while the main app is inactive because the initiating click
+belongs to the helper process. Vitrine therefore owns popover dismissal and monitors
+pointer events plus workspace activation explicitly: events from the main app and its
+helper stay inside the same interaction surface, while another process closes the panel.
+The panel remains open while idle, then follows native menu behavior after an outside
+interaction, focus change, Escape key, icon toggle, or explicit command action. SwiftUI
+handles the cancel command, backed by a local AppKit key monitor when no control owns
+focus. All close paths converge on the popover delegate lifecycle so monitor and anchor
+cleanup cannot drift between input mechanisms. The large editor remains a separate
+AppKit-hosted window. The global hotkey triggers quick mode or the editor depending on
+the user's preference.
 
 ## Clipboard integration
 

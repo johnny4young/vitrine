@@ -1084,6 +1084,28 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarPanelClosesWithEscape() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--skip-onboarding"])
+        defer { app.terminate() }
+
+        let statusItem = app.statusItems.firstMatch
+        try XCTSkipUnless(
+            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
+            "The status item is not reachable on this display arrangement")
+        statusItem.click()
+
+        let panel = element("menubar-panel", in: app)
+        XCTAssertTrue(panel.waitForExistence(timeout: 3))
+
+        app.typeKey(.escape, modifierFlags: [])
+
+        XCTAssertTrue(
+            panel.waitForNonExistence(timeout: 3),
+            "Escape should close the menu-bar panel")
+    }
+
+    @MainActor
     func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() throws {
         continueAfterFailure = false
         // A fresh defaults suite is a first run, so the quick-start appears on
