@@ -210,6 +210,11 @@ struct MenuBarStatusItemTests {
         let screen = try #require(NSScreen.screens.first)
         let anchor = CGPoint(x: screen.frame.midX, y: screen.frame.maxY - 12)
         let controller = StatusItemController()
+        defer {
+            if controller.isPanelShown {
+                controller.togglePanel(at: anchor)
+            }
+        }
 
         controller.togglePanel(at: anchor)
         #expect(controller.isPanelShown)
