@@ -36,6 +36,9 @@ struct MenuBarContent: View {
         // brand asset in this repo, so force the AppKit system token.
         .tint(VitrineTokens.Accent.system)
         .accessibilityContainerIdentifier("menubar-panel")
+        .onExitCommand {
+            dismiss()
+        }
     }
 
     /// A one-off destination choice for the clipboard. This does not replace the

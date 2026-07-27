@@ -551,7 +551,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MenuBarHelperLauncher.validates(anchor)
         else { return }
 
-        StatusItemController.shared.togglePanel(at: anchor.clickLocation)
+        StatusItemController.shared.togglePanel(
+            at: anchor.clickLocation,
+            helperProcessID: anchor.helperProcessID)
     }
 
     /// SwiftUI's scene bring-up installs its default main menu shortly after
