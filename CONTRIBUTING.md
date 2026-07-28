@@ -12,6 +12,7 @@ questions are routed through [SUPPORT.md](SUPPORT.md).
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen), installed from the verified
   release asset with `./scripts/install-xcodegen.sh`
 - Node.js 22.12+ for changes under `site/`
+- Python 3.10+ for build-boundary metrics and their tooling check
 
 ## Setup
 
@@ -39,6 +40,7 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make build-ui-tests` | compile the UI tests (no automation permission needed) |
 | `make test-ui`  | run the XCUITest smokes (first run asks for UI automation)   |
 | `make cli`      | build the `vitrine` command-line renderer                    |
+| `make build-boundaries` | measure clean/incremental builds and focused test startup |
 | `make gallery`  | regenerate the launch-gallery design-QA samples              |
 | `make record-goldens` | regenerate the golden-image baseline (deliberate visual changes only) |
 | `make site-test` | type-check, build, and validate the Astro website             |

@@ -566,6 +566,26 @@ suite, while hashing the full document would add linear work to the typing path.
 Introduce another fingerprint only if a measured workload demonstrates a remaining
 cache-key bottleneck.
 
+### Build boundaries
+
+`make build-boundaries` measures architectural build costs before a new module or
+package boundary is introduced. It runs clean, no-op, and representative model-change
+builds in disposable DerivedData, then compares one focused app-hosted test with a
+temporary hostless package built from the Foundation-only terminal parser. Exact
+package downloads are resolved once into a shared cache so clean samples measure
+compilation rather than network variance.
+
+The command writes machine/toolchain provenance, every sample, median, p95, and complete
+logs beneath ignored `build/` paths. It restores the sampled source file's timestamp and
+never changes tracked content. Run at least three samples on the same idle machine before
+and after an architectural experiment; alternate baseline and candidate runs when thermal
+or background-load drift is plausible. Set `BUILD_BOUNDARY_BASELINE` to the earlier JSON
+report to include per-metric median deltas in the new report; comparison fails when the
+macOS, architecture, processor count, or Xcode version differs. A hostless micro-test
+result alone does not justify shipping another module: the candidate must also improve the
+real app build, preserve or improve incremental compilation, avoid duplicate model
+definitions, and pass the full unit, performance, golden, and UI gates.
+
 ## Libraries
 
 | Library             | How to add                                                   | For                                                   |
