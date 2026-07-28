@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- **Typing now waits for the preview debounce before rebuilding the rendered canvas.**
+  Document text is observed independently from the remaining render inputs, and
+  equivalent canvas updates are coalesced. Theme, layout, annotation, and other
+  presentation changes still appear immediately.
+
 ## [0.25.4] - 2026-07-27
 
 ### Fixed

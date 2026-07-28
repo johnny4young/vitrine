@@ -549,6 +549,23 @@ multi-size exporter, carousel exporter, or the corresponding paywall. This keeps
 window-level presentation mutually exclusive while the toolbar adapts to available
 width.
 
+The live editor keeps high-frequency document text in
+`AppSettings.documentCode`, separately observable from the normalized
+`renderConfiguration` that contains every other `SnapshotConfig` input.
+`AppSettings.config` remains the complete, atomic facade used by export, session,
+preset, and command paths: its getter merges both values and its setter splits them.
+This boundary lets `PreviewCodeSynchronizer` debounce only typing while presentation
+changes remain immediate. The preview receives the staged configuration through an
+equatable `SnapshotCanvas`, so parent view updates with the same render inputs do not
+re-run synchronous highlighting.
+
+This coalescing intentionally uses `SnapshotConfig` value equality rather than a
+second render fingerprint or shared hash cache. The existing highlight and export
+caches already make a default cached export approximately 1–2 ms in the performance
+suite, while hashing the full document would add linear work to the typing path.
+Introduce another fingerprint only if a measured workload demonstrates a remaining
+cache-key bottleneck.
+
 ## Libraries
 
 | Library             | How to add                                                   | For                                                   |
