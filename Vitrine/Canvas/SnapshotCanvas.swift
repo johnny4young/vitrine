@@ -7,7 +7,7 @@ import SwiftUI
 /// shadow. Highlighting is computed synchronously in `body` (not via `.task`)
 /// because `ImageRenderer` does not run async view lifecycle, so the exported
 /// image must be fully highlighted at render time.
-struct SnapshotCanvas: View {
+struct SnapshotCanvas: View, Equatable {
     let config: SnapshotConfig
 
     /// When set, the canvas is rendered at this exact logical size instead of

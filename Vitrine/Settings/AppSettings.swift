@@ -16,21 +16,45 @@ final class AppSettings {
     /// and reached here as a thin forwarder so existing call sites are unchanged.
     static var shared: AppSettings { AppEnvironment.shared.appSettings }
 
-    /// The current snapshot configuration (theme, font, padding, …).
-    var config: SnapshotConfig {
+    /// The high-frequency document text, observed independently from the remaining
+    /// render configuration.
+    ///
+    /// A code editor can change this value on every keystroke without invalidating
+    /// views that only read ``renderConfiguration``. The public ``config`` facade
+    /// below keeps callers that need an atomic `SnapshotConfig` unchanged.
+    var documentCode: String
+
+    /// Every render input except the high-frequency document text.
+    ///
+    /// `code` is always normalized to an empty string. Keeping this as a distinct
+    /// observable property lets the live preview subscribe to presentation and
+    /// content-mark changes without also subscribing to each raw keystroke.
+    private(set) var renderConfiguration: SnapshotConfig {
         didSet {
-            // Typing changes only `config.code`, which `persistStyle` never writes — so
-            // re-persisting the whole style block (~15 defaults writes + JSON encodes) and
-            // re-checking preset divergence on every keystroke is pure churn. Skip both
-            // when nothing but the code changed. Normalizing `code` before the comparison
-            // means the whole struct is checked, so no persisted style field can ever be
-            // missed — any real change (padding, theme, background, annotations, …) still
-            // persists.
-            var normalized = config
-            normalized.code = oldValue.code
-            guard normalized != oldValue else { return }
-            SettingsCodec.persistStyle(config, to: defaults)
+            guard renderConfiguration != oldValue else { return }
+            SettingsCodec.persistStyle(renderConfiguration, to: defaults)
             dropPresetIfStyleDiverged()
+        }
+    }
+
+    /// The complete render configuration used by exporters and compatibility call
+    /// sites. Reads merge the independently observed document text with the stable
+    /// render inputs; writes split them again.
+    var config: SnapshotConfig {
+        get {
+            var resolved = renderConfiguration
+            resolved.code = documentCode
+            return resolved
+        }
+        set {
+            if documentCode != newValue.code {
+                documentCode = newValue.code
+            }
+            var normalized = newValue
+            normalized.code = ""
+            if renderConfiguration != normalized {
+                renderConfiguration = normalized
+            }
         }
     }
 
@@ -215,7 +239,11 @@ final class AppSettings {
         // blob yields a fresh default card, and the model re-validates every field.
         socialCard = SettingsCodec.readSocialCard(from: defaults)
 
-        config = SettingsCodec.readConfig(from: defaults)
+        let loadedConfig = SettingsCodec.readConfig(from: defaults)
+        documentCode = loadedConfig.code
+        var normalizedConfig = loadedConfig
+        normalizedConfig.code = ""
+        renderConfiguration = normalizedConfig
     }
 
     // MARK: - Per-window editor sessions

@@ -12,8 +12,8 @@ extension EditorView {
     /// empty-state affordance and the drop target.
     var codeColumn: some View {
         // `settings` arrives via @Environment (an @Observable), which has no projected
-        // value; this local @Bindable provides the `$settings.config.code` write-binding
-        // the code editor needs.
+        // value; this local @Bindable provides the high-frequency document-text binding
+        // the code editor needs without routing each keystroke through the render config.
         @Bindable var settings = settings
         return VStack(spacing: 0) {
             HStack(spacing: 10) {
@@ -35,7 +35,7 @@ extension EditorView {
                 imagePanel
             } else {
                 CodeEditorView(
-                    text: $settings.config.code,
+                    text: $settings.documentCode,
                     language: settings.config.language,
                     theme: settings.config.theme,
                     fontName: settings.config.fontName,
@@ -44,7 +44,7 @@ extension EditorView {
                     onReplaceAllPaste: { settings.config.clearContentMarks() }
                 )
                 .overlay {
-                    if settings.config.code.isEmpty {
+                    if settings.documentCode.isEmpty {
                         // The overlay is non-interactive except for its "Paste Code" button
                         // (see EmptyStateView): a click anywhere else falls through to the
                         // text view so the caret can land and the user can start typing —
@@ -215,7 +215,7 @@ extension EditorView {
     /// The line count shown beside the CODE label, or an em dash when empty.
     /// One interpolated key whose plural variant the catalog chooses.
     var lineCountLabel: String {
-        let code = settings.config.code
+        let code = settings.documentCode
         guard !code.isEmpty else { return "—" }
         let count = code.split(separator: "\n", omittingEmptySubsequences: false).count
         return String(localized: "\(count) lines")
@@ -241,7 +241,7 @@ extension EditorView {
         .help("Tidy the code: re-indent JSON, or strip the indentation shared by every line.")
         .accessibilityLabel(VitrineCommand.formatCode.accessibilityLabel)
         .accessibilityIdentifier("format-button")
-        .disabled(settings.config.code.isEmpty)
+        .disabled(settings.documentCode.isEmpty)
     }
 
     // MARK: - Stage
@@ -262,6 +262,7 @@ extension EditorView {
             // annotation coordinates.
             ZStack {
                 SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
+                    .equatable()
                     .fixedSize()
                     .onGeometryChange(for: CGSize.self, of: \.size) { cardSize = $0 }
                     .compositingGroup()
@@ -288,7 +289,7 @@ extension EditorView {
                 if showsSafeAreaGuides {
                     SafeAreaGuideOverlay(
                         canvasSize: cardSize,
-                        code: settings.config.code,
+                        code: previewConfig.code,
                         showsGuideRect: settings.effectiveFixedSize != nil)
                 }
             }
@@ -324,19 +325,13 @@ extension EditorView {
         .overlay(alignment: .bottom) { statusCapsule }
         .layoutPriority(EditorLayout.stageLayoutPriority)
         .accessibilityIdentifier("editor-preview-stage")
-        // Debounce the preview's code so a keystroke doesn't re-tokenize the whole
-        // document in the body pass. `.task(id:)` cancels its prior run when
-        // the code changes, so a burst of typing coalesces into one re-highlight after
-        // a short quiet window. The first sync (window open, or code loaded before
-        // appear) is immediate so the preview is right from the first frame.
-        .task(id: settings.config.code) {
-            if stagedPreviewCode == nil {
-                stagedPreviewCode = settings.config.code
-                return
+        // Keep high-frequency text observation in a tiny sibling. The expensive
+        // SnapshotCanvas receives only the staged value and is equatable, so raw
+        // keystrokes can restart the debounce without rebuilding the render subtree.
+        .background {
+            PreviewCodeSynchronizer(settings: settings) { code in
+                stagedPreviewCode = code
             }
-            try? await Task.sleep(for: EditorPreview.previewCodeDebounce)
-            guard !Task.isCancelled else { return }
-            stagedPreviewCode = settings.config.code
         }
     }
 
@@ -438,7 +433,13 @@ extension EditorView {
     /// what a finished image looks like with the current presets. The substitution is preview-only and never
     /// mutates the live document (see ``EditorPreview``).
     var previewConfig: SnapshotConfig {
-        var config = EditorPreview.configForPreview(settings.config, stagedCode: stagedPreviewCode)
+        // Before the synchronizer's first immediate handoff, fall back to the live
+        // document so opening an existing draft never flashes the empty-state sample.
+        // Once staged, this expression stops reading `documentCode`; subsequent raw
+        // keystrokes are observed only by PreviewCodeSynchronizer.
+        let code = stagedPreviewCode ?? settings.documentCode
+        var config = EditorPreview.configForPreview(
+            settings.renderConfiguration, stagedCode: code)
         // WYSIWYG: the preview shows the same brand watermark the export will apply,
         // resolved from the observed brand kit + entitlement so it tracks
         // changes live. Off unless the user enabled it and PRO is unlocked.
@@ -492,7 +493,37 @@ extension EditorView {
         settings.config.clearContentMarks()
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
-        settings.config.code =
+        settings.documentCode =
             AppSettings.shared.reindentOnPaste ? CodeFormatter.tidy(text, language: language) : text
+    }
+}
+
+/// Observes only the editor's high-frequency document text and publishes a debounced
+/// value to the preview owner.
+///
+/// Keeping this observer outside `EditorView.previewStage` prevents every raw keystroke
+/// from becoming a dependency of the expensive `SnapshotCanvas` subtree. The initial
+/// value is immediate; later changes coalesce across the short preview debounce.
+private struct PreviewCodeSynchronizer: View {
+    let settings: AppSettings
+    let synchronize: (String) -> Void
+
+    @State private var hasSynchronized = false
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .task(id: settings.documentCode) {
+                let code = settings.documentCode
+                if !hasSynchronized {
+                    hasSynchronized = true
+                    synchronize(code)
+                    return
+                }
+                try? await Task.sleep(for: EditorPreview.previewCodeDebounce)
+                guard !Task.isCancelled else { return }
+                synchronize(code)
+            }
+            .accessibilityHidden(true)
     }
 }
