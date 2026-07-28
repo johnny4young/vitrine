@@ -40,7 +40,7 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make build-ui-tests` | compile the UI tests (no automation permission needed) |
 | `make test-ui`  | run the XCUITest smokes (first run asks for UI automation)   |
 | `make cli`      | build the `vitrine` command-line renderer                    |
-| `make build-boundaries` | measure clean/incremental builds and focused test startup |
+| `make build-boundaries` | sample clean/incremental builds and focused test build/startup |
 | `make gallery`  | regenerate the launch-gallery design-QA samples              |
 | `make record-goldens` | regenerate the golden-image baseline (deliberate visual changes only) |
 | `make site-test` | type-check, build, and validate the Astro website             |
