@@ -23,6 +23,9 @@ can never drift.
   builds alongside app-hosted and hostless focused-test build and startup costs. Both
   test paths execute the same assertions, enforce count parity, and report robust
   distribution statistics with hardware provenance and optional baseline comparisons.
+- **Code-formatting strategies now have focused source and test boundaries.** The stable
+  formatter facade still selects the same safe transform for each language, while JSON,
+  markup, SQL, brace/tag indentation, and language routing can evolve independently.
 
 ## [0.25.4] - 2026-07-27
 
