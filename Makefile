@@ -40,7 +40,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -126,6 +126,18 @@ perf: project
 		-destination 'platform=macOS' \
 		-only-testing:VitrineTests/PerformanceTests test
 
+## build-boundaries: measure clean/no-op/incremental builds and focused test startup
+## in disposable DerivedData. The JSON report and complete logs stay under ignored
+## build/ paths. Override sample count with BUILD_BOUNDARY_RUNS=<n>; set
+## BUILD_BOUNDARY_BASELINE=<report.json> to compare medians with an earlier run.
+build-boundaries: project
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/measure-build-boundaries.py \
+		--runs "$(or $(BUILD_BOUNDARY_RUNS),3)" $(if $(BUILD_BOUNDARY_BASELINE),--baseline "$(BUILD_BOUNDARY_BASELINE)",)
+
+## build-boundaries-check: validate the metric/statistics helpers without invoking Xcode
+build-boundaries-check:
+	python3 scripts/measure-build-boundaries.py --self-test
+
 ## record-goldens: (re)generate the golden-image fixtures + manifest
 ## The single command that refreshes the visual baseline. It runs only the
 ## opt-in recorder test (gated by VITRINE_RECORD_GOLDENS) through the same render
@@ -159,7 +171,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineCLI Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene
+lint: hygiene build-boundaries-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
