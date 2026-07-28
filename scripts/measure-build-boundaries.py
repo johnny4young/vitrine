@@ -20,11 +20,26 @@ from pathlib import Path
 from typing import Sequence
 
 
-DEFAULT_INCREMENTAL_FILE = Path("Vitrine/Models/SnapshotConfig.swift")
+SCHEMA_VERSION = 2
+SUPPORTED_BASELINE_SCHEMAS = {1, SCHEMA_VERSION}
+DEFAULT_RUNS = 7
+MINIMUM_P95_SAMPLES = 20
+DEFAULT_FOUNDATION_INCREMENTAL_FILE = Path("Vitrine/Terminal/CharacterWidth.swift")
+DEFAULT_MODEL_INCREMENTAL_FILE = Path("Vitrine/Models/SnapshotConfig.swift")
 DEFAULT_OUTPUT = Path("build/metrics/build-boundaries.json")
 DEFAULT_WORK_ROOT = Path("build/BuildBoundaryMetrics")
-HOST_BACKED_TEST = "VitrineTests/ModelTests"
-COMPARABLE_ENVIRONMENT_KEYS = ("macos", "architecture", "processor_count", "xcode")
+FOCUSED_TEST_SUITE = "BuildBoundaryProbeTests"
+HOST_BACKED_TEST = f"VitrineTests/{FOCUSED_TEST_SUITE}"
+COMPARABLE_ENVIRONMENT_KEYS = (
+    "macos",
+    "architecture",
+    "hardware_model",
+    "processor_name",
+    "processor_count",
+    "memory_bytes",
+    "power_source",
+    "xcode",
+)
 
 
 @dataclass(frozen=True)
@@ -32,7 +47,7 @@ class Measurement:
     label: str
     seconds: float
     command: list[str]
-    log: str
+    log: Path
 
 
 def percentile(values: Sequence[float], fraction: float) -> float:
@@ -45,14 +60,24 @@ def percentile(values: Sequence[float], fraction: float) -> float:
 
 
 def summary(values: Sequence[float]) -> dict[str, object]:
-    """Produce stable JSON-ready statistics for a metric."""
+    """Produce robust JSON-ready statistics for a metric."""
     if not values:
         raise ValueError("cannot summarize an empty sample")
-    return {
+    median = statistics.median(values)
+    result: dict[str, object] = {
         "samples_seconds": [round(value, 3) for value in values],
-        "median_seconds": round(statistics.median(values), 3),
-        "p95_seconds": round(percentile(values, 0.95), 3),
+        "sample_count": len(values),
+        "minimum_seconds": round(min(values), 3),
+        "median_seconds": round(median, 3),
+        "maximum_seconds": round(max(values), 3),
+        "median_absolute_deviation_seconds": round(
+            statistics.median(abs(value - median) for value in values), 3
+        ),
+        "p95_seconds": None,
     }
+    if len(values) >= MINIMUM_P95_SAMPLES:
+        result["p95_seconds"] = round(percentile(values, 0.95), 3)
+    return result
 
 
 def reduction_percent(baseline: float, candidate: float) -> float:
@@ -114,6 +139,14 @@ def checked_output(command: Sequence[str], cwd: Path, env: dict[str, str]) -> st
     return completed.stdout.strip()
 
 
+def optional_output(command: Sequence[str], cwd: Path, env: dict[str, str]) -> str | None:
+    """Return command output when metadata is available."""
+    try:
+        return checked_output(command, cwd, env)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def run_timed(
     *,
     label: str,
@@ -142,7 +175,7 @@ def run_timed(
             f"{label} failed with exit code {completed.returncode}; see {log_path}"
         )
     print(f"    {elapsed:.3f}s", flush=True)
-    return Measurement(label, elapsed, list(command), str(log_path))
+    return Measurement(label, elapsed, list(command), log_path)
 
 
 def executed_test_count(log: str) -> int:
@@ -154,9 +187,28 @@ def executed_test_count(log: str) -> int:
     return max(counts, default=0)
 
 
-def require_executed_tests(log_path: Path) -> None:
-    if executed_test_count(log_path.read_text(encoding="utf-8", errors="replace")) < 1:
+def require_executed_tests(log_path: Path) -> int:
+    count = executed_test_count(
+        log_path.read_text(encoding="utf-8", errors="replace")
+    )
+    if count < 1:
         raise RuntimeError(f"focused test filter executed no tests; see {log_path}")
+    return count
+
+
+def require_matching_test_counts(
+    host_backed_counts: Sequence[int], hostless_counts: Sequence[int]
+) -> int:
+    """Require every focused-test sample to execute the same nonzero workload."""
+    if not host_backed_counts or not hostless_counts:
+        raise ValueError("focused test counts cannot be empty")
+    distinct = set(host_backed_counts) | set(hostless_counts)
+    if len(distinct) != 1 or 0 in distinct:
+        raise RuntimeError(
+            "focused test workloads differ: "
+            f"app-hosted={list(host_backed_counts)}, hostless={list(hostless_counts)}"
+        )
+    return distinct.pop()
 
 
 def build_timing_summary(log: str) -> dict[str, dict[str, float | int]]:
@@ -246,36 +298,19 @@ let package = Package(
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "VitrineCoreProbe"),
-        .testTarget(name: "VitrineCoreProbeTests", dependencies: ["VitrineCoreProbe"]),
+        .testTarget(
+            name: "VitrineCoreProbeTests",
+            dependencies: ["VitrineCoreProbe"],
+            swiftSettings: [.define("VITRINE_HOSTLESS_PROBE")]
+        ),
     ]
 )
 """,
         encoding="utf-8",
     )
-    (tests / "HostlessProbeTests.swift").write_text(
-        """import XCTest
-
-@testable import VitrineCoreProbe
-
-final class HostlessProbeTests: XCTestCase {
-    func testDetectsANSI() {
-        XCTAssertTrue(ANSIParser.containsANSI("\\u{1B}[32mok"))
-    }
-
-    func testParsesStyledText() {
-        XCTAssertEqual(ANSIParser.parse("\\u{1B}[32mok\\u{1B}[0m").map(\\.text), ["ok"])
-    }
-
-    func testWideCharacterWidth() {
-        XCTAssertEqual(CharacterWidth.displayWidth("界".unicodeScalars.first!), 2)
-    }
-
-    func testCombiningCharacterWidth() {
-        XCTAssertEqual(CharacterWidth.displayWidth("\\u{0301}".unicodeScalars.first!), 0)
-    }
-}
-""",
-        encoding="utf-8",
+    shutil.copy2(
+        root / "Tests" / "BuildBoundaryProbeTests.swift",
+        tests / "BuildBoundaryProbeTests.swift",
     )
 
 
@@ -297,10 +332,18 @@ def run_self_test() -> int:
         summary([2.0, 1.0, 4.0])
         == {
             "samples_seconds": [2.0, 1.0, 4.0],
+            "sample_count": 3,
+            "minimum_seconds": 1.0,
             "median_seconds": 2.0,
-            "p95_seconds": 4.0,
+            "maximum_seconds": 4.0,
+            "median_absolute_deviation_seconds": 1.0,
+            "p95_seconds": None,
         },
         "metric summary",
+    )
+    require_self_test(
+        summary([float(value) for value in range(1, 21)])["p95_seconds"] == 19.0,
+        "p95 sample threshold",
     )
     require_self_test(
         reduction_percent(10.0, 7.5) == 25.0, "reduction percentage"
@@ -333,6 +376,10 @@ def run_self_test() -> int:
     )
     require_self_test(executed_test_count("unrelated output") == 0, "zero test count")
     require_self_test(
+        require_matching_test_counts([4, 4], [4, 4]) == 4,
+        "matching test counts",
+    )
+    require_self_test(
         build_timing_summary(
             "Build Timing Summary\n\nSwiftCompile (47 tasks) | 103.831 seconds\n"
         )
@@ -349,7 +396,15 @@ def run_self_test() -> int:
     except ValueError:
         pass
     else:
-        raise AssertionError("empty samples must fail")
+        raise RuntimeError("build-boundary self-test failed: empty samples must fail")
+    try:
+        require_matching_test_counts([4], [3])
+    except RuntimeError:
+        pass
+    else:
+        raise RuntimeError(
+            "build-boundary self-test failed: mismatched test counts must fail"
+        )
     print("Build-boundary metric helpers passed.")
     return 0
 
@@ -359,8 +414,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--runs",
         type=int,
-        default=3,
-        help="number of samples per measured operation (default: 3)",
+        default=DEFAULT_RUNS,
+        help=f"number of samples per measured operation (default: {DEFAULT_RUNS})",
     )
     parser.add_argument(
         "--output",
@@ -375,10 +430,16 @@ def parse_arguments() -> argparse.Namespace:
         help=f"ignored working directory (default: {DEFAULT_WORK_ROOT})",
     )
     parser.add_argument(
+        "--foundation-incremental-file",
+        type=Path,
+        default=DEFAULT_FOUNDATION_INCREMENTAL_FILE,
+        help="low-fan-out Foundation source used for incremental builds",
+    )
+    parser.add_argument(
         "--incremental-file",
         type=Path,
-        default=DEFAULT_INCREMENTAL_FILE,
-        help="source file whose timestamp triggers the representative incremental build",
+        default=DEFAULT_MODEL_INCREMENTAL_FILE,
+        help="high-fan-out model source used for incremental builds",
     )
     parser.add_argument(
         "--baseline",
@@ -389,6 +450,11 @@ def parse_arguments() -> argparse.Namespace:
         "--allow-environment-mismatch",
         action="store_true",
         help="compare a baseline from a different machine/toolchain despite timing drift",
+    )
+    parser.add_argument(
+        "--allow-ineligible-baseline",
+        action="store_true",
+        help="compare a dirty or undersampled report that is not baseline-eligible",
     )
     parser.add_argument(
         "--keep-derived-data",
@@ -406,13 +472,22 @@ def parse_arguments() -> argparse.Namespace:
 def validate_inputs(arguments: argparse.Namespace, root: Path) -> None:
     if arguments.runs < 1:
         raise ValueError("--runs must be at least 1")
-    incremental_file = (root / arguments.incremental_file).resolve()
-    try:
-        incremental_file.relative_to(root)
-    except ValueError as error:
-        raise ValueError("--incremental-file must stay inside the repository") from error
-    if not incremental_file.is_file() or incremental_file.suffix != ".swift":
-        raise ValueError("--incremental-file must name an existing Swift source")
+    incremental_paths = [
+        ("--foundation-incremental-file", arguments.foundation_incremental_file),
+        ("--incremental-file", arguments.incremental_file),
+    ]
+    resolved_paths: list[Path] = []
+    for label, configured_path in incremental_paths:
+        path = (root / configured_path).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError as error:
+            raise ValueError(f"{label} must stay inside the repository") from error
+        if not path.is_file() or path.suffix != ".swift":
+            raise ValueError(f"{label} must name an existing Swift source")
+        resolved_paths.append(path)
+    if len(set(resolved_paths)) != len(resolved_paths):
+        raise ValueError("incremental scenarios must use different source files")
 
 
 def validate_generated_paths(root: Path, output: Path, work_root: Path) -> None:
@@ -461,6 +536,9 @@ def prepare_packages(
 def machine_metadata(root: Path, env: dict[str, str]) -> dict[str, object]:
     status = git_output(root, "status", "--porcelain")
     xcode_version = checked_output(["xcodebuild", "-version"], root, env).splitlines()
+    memory = optional_output(["sysctl", "-n", "hw.memsize"], root, env)
+    power = optional_output(["pmset", "-g", "batt"], root, env)
+    power_match = re.search(r"Now drawing from '([^']+)'", power or "")
     return {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "commit": git_output(root, "rev-parse", "HEAD"),
@@ -468,7 +546,13 @@ def machine_metadata(root: Path, env: dict[str, str]) -> dict[str, object]:
         "working_tree_clean": not bool(status),
         "macos": platform.mac_ver()[0],
         "architecture": platform.machine(),
+        "hardware_model": optional_output(["sysctl", "-n", "hw.model"], root, env),
+        "processor_name": optional_output(
+            ["sysctl", "-n", "machdep.cpu.brand_string"], root, env
+        ),
         "processor_count": os.cpu_count(),
+        "memory_bytes": int(memory) if memory and memory.isdigit() else None,
+        "power_source": power_match.group(1) if power_match else None,
         "xcode": xcode_version,
         "python": platform.python_version(),
     }
@@ -480,9 +564,19 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
     env = developer_environment()
     output = (root / arguments.output).resolve()
     work_root = (root / arguments.work_root).resolve()
-    incremental_file = (root / arguments.incremental_file).resolve()
+    foundation_incremental_file = (
+        root / arguments.foundation_incremental_file
+    ).resolve()
+    model_incremental_file = (root / arguments.incremental_file).resolve()
+    incremental_scenarios = [
+        ("foundation", foundation_incremental_file),
+        ("model", model_incremental_file),
+    ]
     baseline_report: dict[str, object] | None = None
     environment = machine_metadata(root, env)
+    environment["baseline_eligible"] = bool(environment["working_tree_clean"]) and (
+        arguments.runs >= DEFAULT_RUNS
+    )
 
     validate_generated_paths(root, output, work_root)
     if arguments.baseline:
@@ -490,12 +584,29 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
         if not baseline_path.is_file():
             raise ValueError("--baseline must name an existing JSON report")
         loaded = json.loads(baseline_path.read_text(encoding="utf-8"))
-        if not isinstance(loaded, dict) or loaded.get("schema_version") != 1:
-            raise ValueError("--baseline must use build-boundary schema version 1")
+        if (
+            not isinstance(loaded, dict)
+            or loaded.get("schema_version") not in SUPPORTED_BASELINE_SCHEMAS
+        ):
+            versions = ", ".join(
+                str(version) for version in sorted(SUPPORTED_BASELINE_SCHEMAS)
+            )
+            raise ValueError(
+                f"--baseline must use build-boundary schema version {versions}"
+            )
         baseline_report = loaded
         baseline_environment = baseline_report.get("environment")
         if not isinstance(baseline_environment, dict):
             raise ValueError("--baseline report is missing environment provenance")
+        if (
+            baseline_environment.get("baseline_eligible") is not True
+            and not arguments.allow_ineligible_baseline
+        ):
+            raise ValueError(
+                "baseline report is dirty or undersampled; generate at least "
+                f"{DEFAULT_RUNS} samples from a clean commit or pass "
+                "--allow-ineligible-baseline"
+            )
         mismatches = environment_mismatches(baseline_environment, environment)
         if mismatches and not arguments.allow_environment_mismatch:
             fields = ", ".join(mismatches)
@@ -518,27 +629,43 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
         env=env,
         log_path=work_root / "logs" / "package-resolution.log",
     )
+    probe = work_root / "HostlessProbe"
+    create_hostless_probe(root, probe)
 
     samples: dict[str, list[Measurement]] = {
         "clean_build": [],
         "no_op_build": [],
-        "incremental_build": [],
+        "incremental_foundation_build": [],
+        "incremental_model_build": [],
+        "host_backed_test_build": [],
         "host_backed_test_startup": [],
+        "hostless_test_build": [],
         "hostless_test_startup": [],
     }
-    original_stat = incremental_file.stat()
+    original_stats = {
+        path: path.stat() for _, path in incremental_scenarios
+    }
+    host_backed_test_counts: list[int] = []
+    hostless_test_counts: list[int] = []
 
     try:
         for index in range(1, arguments.runs + 1):
-            derived_data = work_root / f"DerivedData-{index}"
-            shutil.rmtree(derived_data, ignore_errors=True)
+            app_derived_data = work_root / f"AppDerivedData-{index}"
+            host_backed_derived_data = work_root / f"HostedTestDerivedData-{index}"
+            hostless_scratch = work_root / f"HostlessScratch-{index}"
+            for disposable_path in [
+                app_derived_data,
+                host_backed_derived_data,
+                hostless_scratch,
+            ]:
+                shutil.rmtree(disposable_path, ignore_errors=True)
             log_dir = work_root / "logs" / f"run-{index}"
 
             samples["clean_build"].append(
                 run_timed(
                     label=f"Clean app build {index}/{arguments.runs}",
                     command=xcode_command(
-                        derived_data=derived_data,
+                        derived_data=app_derived_data,
                         package_cache=package_cache,
                         action="build",
                     ),
@@ -551,7 +678,7 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
                 run_timed(
                     label=f"No-op app build {index}/{arguments.runs}",
                     command=xcode_command(
-                        derived_data=derived_data,
+                        derived_data=app_derived_data,
                         package_cache=package_cache,
                         action="build",
                     ),
@@ -561,43 +688,55 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
                 )
             )
 
-            os.utime(incremental_file, None)
-            samples["incremental_build"].append(
+            ordered_scenarios = (
+                incremental_scenarios
+                if index % 2 == 1
+                else list(reversed(incremental_scenarios))
+            )
+            for scenario, incremental_file in ordered_scenarios:
+                os.utime(incremental_file, None)
+                samples[f"incremental_{scenario}_build"].append(
+                    run_timed(
+                        label=(
+                            f"Incremental {scenario} build "
+                            f"{index}/{arguments.runs}"
+                        ),
+                        command=xcode_command(
+                            derived_data=app_derived_data,
+                            package_cache=package_cache,
+                            action="build",
+                        ),
+                        cwd=root,
+                        env=env,
+                        log_path=log_dir / f"incremental-{scenario}-build.log",
+                    )
+                )
+                original_stat = original_stats[incremental_file]
+                os.utime(
+                    incremental_file,
+                    ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns),
+                )
+
+            samples["host_backed_test_build"].append(
                 run_timed(
-                    label=f"Incremental model build {index}/{arguments.runs}",
+                    label=f"Clean app-hosted test build {index}/{arguments.runs}",
                     command=xcode_command(
-                        derived_data=derived_data,
+                        derived_data=host_backed_derived_data,
                         package_cache=package_cache,
-                        action="build",
+                        action="build-for-testing",
+                        extra=[f"-only-testing:{HOST_BACKED_TEST}"],
                     ),
                     cwd=root,
                     env=env,
-                    log_path=log_dir / "incremental-build.log",
+                    log_path=log_dir / "host-backed-test-build.log",
                 )
             )
-            os.utime(
-                incremental_file,
-                ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns),
-            )
-
-            run_timed(
-                label=f"Prepare app-hosted test bundle {index}/{arguments.runs}",
-                command=xcode_command(
-                    derived_data=derived_data,
-                    package_cache=package_cache,
-                    action="build-for-testing",
-                    extra=[f"-only-testing:{HOST_BACKED_TEST}"],
-                ),
-                cwd=root,
-                env=env,
-                log_path=log_dir / "prepare-host-backed-test.log",
-            )
-            host_backed_log = log_dir / "host-backed-test.log"
+            host_backed_log = log_dir / "host-backed-test-startup.log"
             samples["host_backed_test_startup"].append(
                 run_timed(
                     label=f"App-hosted focused test {index}/{arguments.runs}",
                     command=xcode_command(
-                        derived_data=derived_data,
+                        derived_data=host_backed_derived_data,
                         package_cache=package_cache,
                         action="test-without-building",
                         extra=[f"-only-testing:{HOST_BACKED_TEST}"],
@@ -607,59 +746,66 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
                     log_path=host_backed_log,
                 )
             )
-            require_executed_tests(host_backed_log)
+            host_backed_test_counts.append(require_executed_tests(host_backed_log))
+
+            samples["hostless_test_build"].append(
+                run_timed(
+                    label=f"Clean hostless test build {index}/{arguments.runs}",
+                    command=[
+                        "xcrun",
+                        "swift",
+                        "build",
+                        "--package-path",
+                        str(probe),
+                        "--scratch-path",
+                        str(hostless_scratch),
+                        "--build-tests",
+                    ],
+                    cwd=root,
+                    env=env,
+                    log_path=log_dir / "hostless-test-build.log",
+                )
+            )
+            hostless_log = log_dir / "hostless-test-startup.log"
+            samples["hostless_test_startup"].append(
+                run_timed(
+                    label=f"Hostless focused test {index}/{arguments.runs}",
+                    command=[
+                        "xcrun",
+                        "swift",
+                        "test",
+                        "--package-path",
+                        str(probe),
+                        "--scratch-path",
+                        str(hostless_scratch),
+                        "--skip-build",
+                        "--filter",
+                        FOCUSED_TEST_SUITE,
+                    ],
+                    cwd=root,
+                    env=env,
+                    log_path=hostless_log,
+                )
+            )
+            hostless_test_counts.append(require_executed_tests(hostless_log))
 
             if not arguments.keep_derived_data:
-                shutil.rmtree(derived_data, ignore_errors=True)
+                for disposable_path in [
+                    app_derived_data,
+                    host_backed_derived_data,
+                    hostless_scratch,
+                ]:
+                    shutil.rmtree(disposable_path, ignore_errors=True)
     finally:
-        os.utime(
-            incremental_file,
-            ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns),
-        )
-
-    probe = work_root / "HostlessProbe"
-    create_hostless_probe(root, probe)
-    scratch = probe / ".build"
-    run_timed(
-        label="Prepare hostless focused test",
-        command=[
-            "xcrun",
-            "swift",
-            "test",
-            "--package-path",
-            str(probe),
-            "--scratch-path",
-            str(scratch),
-            "--filter",
-            "HostlessProbeTests",
-        ],
-        cwd=root,
-        env=env,
-        log_path=work_root / "logs" / "prepare-hostless-test.log",
-    )
-    for index in range(1, arguments.runs + 1):
-        hostless_log = work_root / "logs" / f"hostless-test-{index}.log"
-        samples["hostless_test_startup"].append(
-            run_timed(
-                label=f"Hostless focused test {index}/{arguments.runs}",
-                command=[
-                    "xcrun",
-                    "swift",
-                    "test",
-                    "--package-path",
-                    str(probe),
-                    "--scratch-path",
-                    str(scratch),
-                    "--skip-build",
-                    "--filter",
-                    "HostlessProbeTests",
-                ],
-                cwd=root,
-                env=env,
-                log_path=hostless_log,
+        for incremental_file, original_stat in original_stats.items():
+            os.utime(
+                incremental_file,
+                ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns),
             )
-        )
-        require_executed_tests(hostless_log)
+
+    focused_test_count = require_matching_test_counts(
+        host_backed_test_counts, hostless_test_counts
+    )
 
     metrics = {
         name: summary([measurement.seconds for measurement in measurements])
@@ -667,31 +813,47 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
     }
     clean_build_timings = [
         build_timing_summary(
-            Path(measurement.log).read_text(encoding="utf-8", errors="replace")
+            measurement.log.read_text(encoding="utf-8", errors="replace")
         )
         for measurement in samples["clean_build"]
     ]
-    host_backed = metrics["host_backed_test_startup"]["median_seconds"]
-    hostless = metrics["hostless_test_startup"]["median_seconds"]
+    host_backed_startup = metrics["host_backed_test_startup"]["median_seconds"]
+    hostless_startup = metrics["hostless_test_startup"]["median_seconds"]
+    host_backed_build = metrics["host_backed_test_build"]["median_seconds"]
+    hostless_build = metrics["hostless_test_build"]["median_seconds"]
     comparisons = {
+        "focused_test_count": focused_test_count,
+        "hostless_test_build_reduction_percent": reduction_percent(
+            float(host_backed_build), float(hostless_build)
+        ),
+        "hostless_test_build_saved_seconds": round(
+            float(host_backed_build) - float(hostless_build), 3
+        ),
         "hostless_test_startup_reduction_percent": reduction_percent(
-            float(host_backed), float(hostless)
+            float(host_backed_startup), float(hostless_startup)
         ),
         "hostless_test_startup_saved_seconds": round(
-            float(host_backed) - float(hostless), 3
+            float(host_backed_startup) - float(hostless_startup), 3
         ),
     }
     report: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "environment": environment,
         "configuration": {
             "runs": arguments.runs,
-            "incremental_file": str(arguments.incremental_file),
+            "minimum_p95_samples": MINIMUM_P95_SAMPLES,
+            "incremental_files": {
+                "foundation": str(arguments.foundation_incremental_file),
+                "model": str(arguments.incremental_file),
+            },
+            "incremental_order": "alternating",
             "project": "Vitrine.xcodeproj",
             "scheme": "Vitrine",
             "configuration": "Debug",
             "destination": "platform=macOS",
+            "focused_test_source": "Tests/BuildBoundaryProbeTests.swift",
             "host_backed_test": HOST_BACKED_TEST,
+            "hostless_test": FOCUSED_TEST_SUITE,
             "hostless_probe_sources": [
                 "Vitrine/Terminal/ANSIParser.swift",
                 "Vitrine/Terminal/CharacterWidth.swift",
@@ -700,12 +862,16 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
         },
         "preparation": {
             "package_resolution_seconds": round(preparation.seconds, 3),
-            "package_resolution_log": preparation.log,
+            "package_resolution_log": str(preparation.log.relative_to(root)),
         },
         "metrics": metrics,
         "clean_build_task_timings": clean_build_timings,
+        "test_counts": {
+            "app_hosted": host_backed_test_counts,
+            "hostless": hostless_test_counts,
+        },
         "comparisons": comparisons,
-        "logs_directory": str(work_root / "logs"),
+        "logs_directory": str((work_root / "logs").relative_to(root)),
     }
     if baseline_report is not None:
         baseline_metrics = baseline_report.get("metrics")

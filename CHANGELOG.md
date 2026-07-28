@@ -19,9 +19,10 @@ can never drift.
   equivalent canvas updates are coalesced. Theme, layout, annotation, and other
   presentation changes still appear immediately.
 - **Architecture changes can now be evaluated with repeatable build-boundary metrics.**
-  The contributor command records clean, incremental, and no-op builds alongside
-  app-hosted and hostless focused-test startup, including toolchain provenance,
-  aggregate task timings, and optional baseline comparisons.
+  The contributor command records clean, low- and high-fan-out incremental, and no-op
+  builds alongside app-hosted and hostless focused-test build and startup costs. Both
+  test paths execute the same assertions, enforce count parity, and report robust
+  distribution statistics with hardware provenance and optional baseline comparisons.
 
 ## [0.25.4] - 2026-07-27
 
