@@ -279,40 +279,71 @@ final class HostlessProbeTests: XCTestCase {
     )
 
 
+def require_self_test(condition: bool, label: str) -> None:
+    """Raise a runtime error when a helper invariant does not hold."""
+    if not condition:
+        raise RuntimeError(f"build-boundary self-test failed: {label}")
+
+
 def run_self_test() -> int:
-    assert percentile([1.0], 0.95) == 1.0
-    assert percentile([3.0, 1.0, 2.0], 0.5) == 2.0
-    assert percentile([3.0, 1.0, 2.0], 0.95) == 3.0
-    assert summary([2.0, 1.0, 4.0]) == {
-        "samples_seconds": [2.0, 1.0, 4.0],
-        "median_seconds": 2.0,
-        "p95_seconds": 4.0,
-    }
-    assert reduction_percent(10.0, 7.5) == 25.0
-    assert compare_metric_reports(
-        {"build": {"median_seconds": 10.0}},
-        {"build": {"median_seconds": 8.0}},
-    ) == {
-        "build": {
-            "baseline_median_seconds": 10.0,
-            "candidate_median_seconds": 8.0,
-            "reduction_percent": 20.0,
-        }
-    }
-    assert environment_mismatches(
-        {"macos": "26.5", "architecture": "arm64"},
-        {"macos": "26.6", "architecture": "arm64"},
-    ) == ["macos"]
-    assert executed_test_count("Executed 4 tests\nTest run with 0 tests") == 4
-    assert executed_test_count("unrelated output") == 0
-    assert build_timing_summary(
-        "Build Timing Summary\n\nSwiftCompile (47 tasks) | 103.831 seconds\n"
-    ) == {
-        "SwiftCompile": {
-            "task_count": 47,
-            "aggregate_seconds": 103.831,
-        }
-    }
+    require_self_test(percentile([1.0], 0.95) == 1.0, "single-value percentile")
+    require_self_test(
+        percentile([3.0, 1.0, 2.0], 0.5) == 2.0, "median percentile"
+    )
+    require_self_test(
+        percentile([3.0, 1.0, 2.0], 0.95) == 3.0, "nearest-rank percentile"
+    )
+    require_self_test(
+        summary([2.0, 1.0, 4.0])
+        == {
+            "samples_seconds": [2.0, 1.0, 4.0],
+            "median_seconds": 2.0,
+            "p95_seconds": 4.0,
+        },
+        "metric summary",
+    )
+    require_self_test(
+        reduction_percent(10.0, 7.5) == 25.0, "reduction percentage"
+    )
+    require_self_test(
+        compare_metric_reports(
+            {"build": {"median_seconds": 10.0}},
+            {"build": {"median_seconds": 8.0}},
+        )
+        == {
+            "build": {
+                "baseline_median_seconds": 10.0,
+                "candidate_median_seconds": 8.0,
+                "reduction_percent": 20.0,
+            }
+        },
+        "report comparison",
+    )
+    require_self_test(
+        environment_mismatches(
+            {"macos": "26.5", "architecture": "arm64"},
+            {"macos": "26.6", "architecture": "arm64"},
+        )
+        == ["macos"],
+        "environment mismatch",
+    )
+    require_self_test(
+        executed_test_count("Executed 4 tests\nTest run with 0 tests") == 4,
+        "nonzero test count",
+    )
+    require_self_test(executed_test_count("unrelated output") == 0, "zero test count")
+    require_self_test(
+        build_timing_summary(
+            "Build Timing Summary\n\nSwiftCompile (47 tasks) | 103.831 seconds\n"
+        )
+        == {
+            "SwiftCompile": {
+                "task_count": 47,
+                "aggregate_seconds": 103.831,
+            }
+        },
+        "build timing summary",
+    )
     try:
         summary([])
     except ValueError:
@@ -399,7 +430,12 @@ def validate_generated_paths(root: Path, output: Path, work_root: Path) -> None:
 
 
 def prepare_packages(
-    *, root: Path, cache: Path, env: dict[str, str], log_path: Path
+    *,
+    root: Path,
+    cache: Path,
+    derived_data: Path,
+    env: dict[str, str],
+    log_path: Path,
 ) -> Measurement:
     cache.mkdir(parents=True, exist_ok=True)
     return run_timed(
@@ -411,6 +447,8 @@ def prepare_packages(
             "Vitrine.xcodeproj",
             "-scheme",
             "Vitrine",
+            "-derivedDataPath",
+            str(derived_data),
             "-clonedSourcePackagesDirPath",
             str(cache),
         ],
@@ -472,9 +510,11 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
     output.parent.mkdir(parents=True, exist_ok=True)
 
     package_cache = work_root / "SourcePackages"
+    package_resolution_derived_data = work_root / "PackageResolutionDerivedData"
     preparation = prepare_packages(
         root=root,
         cache=package_cache,
+        derived_data=package_resolution_derived_data,
         env=env,
         log_path=work_root / "logs" / "package-resolution.log",
     )
@@ -683,9 +723,9 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
 
 def main() -> int:
     arguments = parse_arguments()
-    if arguments.self_test:
-        return run_self_test()
     try:
+        if arguments.self_test:
+            return run_self_test()
         measure(arguments)
     except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
         print(f"error: {error}", file=sys.stderr)
