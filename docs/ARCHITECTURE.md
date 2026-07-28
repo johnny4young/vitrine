@@ -569,21 +569,28 @@ cache-key bottleneck.
 ### Build boundaries
 
 `make build-boundaries` measures architectural build costs before a new module or
-package boundary is introduced. It runs clean, no-op, and representative model-change
-builds in disposable DerivedData, then compares one focused app-hosted test with a
-temporary hostless package built from the Foundation-only terminal parser. Exact
-package downloads are resolved once into a shared cache so clean samples measure
-compilation rather than network variance.
+package boundary is introduced. It runs clean and no-op builds plus low-fan-out
+Foundation and high-fan-out model changes in disposable DerivedData. It also compares
+clean focused-test builds and test-runner startup between the app target and a temporary
+hostless package built from the Foundation-only terminal parser. Both test paths compile
+and execute the same tracked Swift Testing suite, and the command rejects results when
+their executed-test counts differ. Exact package downloads are resolved once into a
+shared cache so clean samples measure compilation rather than network variance.
 
-The command writes machine/toolchain provenance, every sample, median, p95, and complete
-logs beneath ignored `build/` paths. It restores the sampled source file's timestamp and
-never changes tracked content. Run at least three samples on the same idle machine before
-and after an architectural experiment; alternate baseline and candidate runs when thermal
-or background-load drift is plausible. Set `BUILD_BOUNDARY_BASELINE` to the earlier JSON
-report to include per-metric median deltas in the new report; comparison fails when the
-macOS, architecture, processor count, or Xcode version differs. A hostless micro-test
-result alone does not justify shipping another module: the candidate must also improve the
-real app build, preserve or improve incremental compilation, avoid duplicate model
+The command defaults to seven samples and writes every sample, min/median/max, median
+absolute deviation, hardware/toolchain provenance, and complete relative-path logs beneath
+ignored `build/` paths. A p95 is emitted only with at least twenty samples. The command
+restores every sampled source timestamp and never changes tracked content. Run baseline
+and candidate measurements on the same idle machine and power source; alternate their
+order when thermal or background-load drift is plausible. Set `BUILD_BOUNDARY_BASELINE`
+to the earlier JSON report to include per-metric median deltas in the new report;
+comparison fails when the machine, memory, power source, macOS, architecture, or Xcode
+version differs. Only a report whose provenance says `baseline_eligible: true` came from
+a clean exact commit with at least the default seven samples; ineligible baselines are
+rejected unless the caller explicitly overrides that guard. The two incremental scenarios
+alternate order between samples to reduce systematic warming bias. A hostless micro-test
+result alone does not justify shipping another module: the candidate must also improve
+the real app build, preserve or improve incremental compilation, avoid duplicate model
 definitions, and pass the full unit, performance, golden, and UI gates.
 
 ## Libraries

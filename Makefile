@@ -128,11 +128,12 @@ perf: project
 
 ## build-boundaries: measure clean/no-op/incremental builds and focused test startup
 ## in disposable DerivedData. The JSON report and complete logs stay under ignored
-## build/ paths. Override sample count with BUILD_BOUNDARY_RUNS=<n>; set
+## build/ paths. The default is seven samples; override it with
+## BUILD_BOUNDARY_RUNS=<n>. Set
 ## BUILD_BOUNDARY_BASELINE=<report.json> to compare medians with an earlier run.
 build-boundaries: project
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/measure-build-boundaries.py \
-		--runs "$(or $(BUILD_BOUNDARY_RUNS),3)" $(if $(BUILD_BOUNDARY_BASELINE),--baseline "$(BUILD_BOUNDARY_BASELINE)",)
+		--runs "$(or $(BUILD_BOUNDARY_RUNS),7)" $(if $(BUILD_BOUNDARY_BASELINE),--baseline "$(BUILD_BOUNDARY_BASELINE)",)
 
 ## build-boundaries-check: validate the metric/statistics helpers without invoking Xcode
 build-boundaries-check:
