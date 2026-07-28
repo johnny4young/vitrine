@@ -42,6 +42,15 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.25.4",
+            headline: "The menu-bar panel waits for you",
+            highlights: [
+                "The menu-bar panel now stays open while idle, giving you time to choose "
+                    + "an action. It still closes naturally when you click elsewhere, "
+                    + "change focus, press Escape, click the icon again, or choose an "
+                    + "action that dismisses it."
+            ]),
+        ReleaseNote(
             version: "0.25.3",
             headline: "The menu-bar icon stays put",
             highlights: [
