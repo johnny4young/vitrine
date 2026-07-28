@@ -18,6 +18,10 @@ can never drift.
   Document text is observed independently from the remaining render inputs, and
   equivalent canvas updates are coalesced. Theme, layout, annotation, and other
   presentation changes still appear immediately.
+- **Architecture changes can now be evaluated with repeatable build-boundary metrics.**
+  The contributor command records clean, incremental, and no-op builds alongside
+  app-hosted and hostless focused-test startup, including toolchain provenance,
+  aggregate task timings, and optional baseline comparisons.
 
 ## [0.25.4] - 2026-07-27
 

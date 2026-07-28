@@ -88,6 +88,8 @@ skills-lock.json
 # Tooling / misc
 # ---------------------------------------------------------------------------
 *.log
+__pycache__/
+*.pyc
 .env
 .env.local
 
