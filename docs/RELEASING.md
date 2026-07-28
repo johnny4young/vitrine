@@ -468,10 +468,12 @@ still publishes a DMG, just without an update entry), it:
 The marketing site is **not** on GitHub Pages. Its Astro source lives in [`site/`](../site/)
 and deploys to **Cloudflare Pages** (project `vitrine-web`, canonical domain
 <https://vitrineframe.app>) through `deploy-site.yml`. That workflow validates and deploys
-the site when `site/` changes, when a GitHub release is published, or when a maintainer
-dispatches it manually. Its locked local Wrangler dependency consumes the
-`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets, so website deployments are
-reproducible and independent from DMG publication.
+the site when `site/` changes, when the release workflow calls it after publication, or
+when a maintainer dispatches it manually. The direct workflow call is deliberate: a
+release created with `GITHUB_TOKEN` does not emit another workflow run. Its locked local
+Wrangler dependency consumes the `CLOUDFLARE_API_TOKEN` /
+`CLOUDFLARE_ACCOUNT_ID` secrets, so website deployments are reproducible and remain
+separate from DMG packaging.
 
 GitHub Pages serves only the appcast plus a redirect stub from the legacy
 `johnny4young.github.io/vitrine/` URL to the custom domain. The Cloudflare Pages project is
@@ -603,6 +605,8 @@ interactive items above are the manual half.
       fresh `[Unreleased]`, refresh the compare links, then `make changelog-check`
 - [ ] Release note added to `Vitrine/Help/ReleaseNotes.swift` (newest first; version
       matches `MARKETING_VERSION`), and `docs/HELP.md` updated if Help content changed
+- [ ] Website release highlights updated in `site/` (English and Spanish); `cd site &&
+      npm test` confirms their version matches `MARKETING_VERSION`
 - [ ] **Visual review against the launch gallery** done (re-run `make gallery` if a
       visual change landed; review the `Tests/Fixtures/Samples/` diff) — see DESIGN-QA.md
 - [ ] `UI tests` CI job green on the release commit (or `make test-ui` run locally)

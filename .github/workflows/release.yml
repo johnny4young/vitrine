@@ -482,3 +482,9 @@ jobs:
       # app failure (3) from a signing/notarization failure (2) in the job log.
       - name: Run the release QA suite
         run: ./scripts/qa-release.sh
+
+  deploy-site:
+    name: Refresh the marketing site
+    needs: publish
+    uses: ./.github/workflows/deploy-site.yml
+    secrets: inherit
