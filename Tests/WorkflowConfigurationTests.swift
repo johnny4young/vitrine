@@ -49,6 +49,10 @@ struct WorkflowConfigurationTests {
         try text(".github", "workflows", "appstore.yml")
     }
 
+    private static func deploySite() throws -> String {
+        try text(".github", "workflows", "deploy-site.yml")
+    }
+
     private static func freshness() throws -> String {
         try text(".github", "workflows", "dependency-freshness.yml")
     }
@@ -71,6 +75,7 @@ struct WorkflowConfigurationTests {
         for (name, body) in try [
             ("ci.yml", Self.ci()),
             ("release.yml", Self.release()),
+            ("deploy-site.yml", Self.deploySite()),
             ("dependency-freshness.yml", Self.freshness()),
         ] {
             for (index, line) in body.components(separatedBy: .newlines).enumerated() {
@@ -267,6 +272,31 @@ struct WorkflowConfigurationTests {
         #expect(
             verifyMarker.lowerBound < publishMarker.lowerBound,
             "the verify gate must be declared before the publish job")
+    }
+
+    // MARK: - Contract: a published release refreshes the marketing site
+
+    @Test func releaseRefreshesTheMarketingSiteAfterPublishing() throws {
+        let release = try Self.release()
+        let deploySite = try Self.deploySite()
+        let doc = try Self.releasingDoc()
+
+        let jobMarker = try #require(
+            release.range(of: "\n  deploy-site:"),
+            "release.yml must declare a marketing-site deployment job")
+        let job = String(release[jobMarker.lowerBound...])
+        #expect(
+            job.contains("needs: publish"),
+            "the marketing site must refresh only after the GitHub release is published")
+        #expect(
+            job.contains("uses: ./.github/workflows/deploy-site.yml"),
+            "the release must call the validated Cloudflare deployment workflow directly")
+        #expect(
+            deploySite.contains("workflow_call:"),
+            "deploy-site.yml must remain reusable by the release workflow")
+        #expect(
+            doc.contains("GITHUB_TOKEN") && doc.contains("does not emit another workflow run"),
+            "the runbook must preserve why an explicit workflow call is required")
     }
 
     // MARK: - Contract: releases originate from durable version tags
@@ -470,6 +500,7 @@ struct WorkflowConfigurationTests {
             ("ci.yml", Self.ci()),
             ("release.yml", Self.release()),
             ("appstore.yml", Self.appstore()),
+            ("deploy-site.yml", Self.deploySite()),
         ] {
             for rawLine in yaml.components(separatedBy: .newlines) {
                 guard let usesRange = rawLine.range(of: "uses:") else { continue }
