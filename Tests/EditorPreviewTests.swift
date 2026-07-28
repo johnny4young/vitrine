@@ -1,3 +1,4 @@
+import CoreGraphics
 import Testing
 
 @testable import Vitrine
@@ -105,5 +106,21 @@ extension EditorPreviewTests {
     @Test func theDebounceWindowIsShortButNonZero() {
         #expect(EditorPreview.previewCodeDebounce > .zero)
         #expect(EditorPreview.previewCodeDebounce <= .milliseconds(150))
+    }
+
+    @Test func equivalentCanvasesCoalesceButRenderedInputsDoNot() {
+        var config = SnapshotConfig()
+        config.code = "let answer = 42"
+
+        let baseline = SnapshotCanvas(config: config, fixedSize: nil)
+        #expect(baseline == SnapshotCanvas(config: config, fixedSize: nil))
+
+        var restyled = config
+        restyled.padding += 4
+        #expect(baseline != SnapshotCanvas(config: restyled, fixedSize: nil))
+        #expect(
+            baseline
+                != SnapshotCanvas(
+                    config: config, fixedSize: CGSize(width: 1_200, height: 630)))
     }
 }
