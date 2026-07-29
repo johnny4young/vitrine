@@ -23,7 +23,7 @@ struct ScreenCaptureDecisionTests {
 
     /// The repository root, anchored to this file (`<repo>/Tests/…`), so the source- and
     /// docs-consistency checks read the committed files rather than the built bundle.
-    /// Mirrors `WebSnapshotPrivacyUXTests` and `URLRendererTests`, which anchor the same
+    /// Mirrors the web snapshot privacy and URL renderer tests, which anchor the same
     /// way.
     private static var repositoryRoot: URL {
         URL(fileURLWithPath: #filePath)
