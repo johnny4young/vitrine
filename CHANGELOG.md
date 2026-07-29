@@ -36,6 +36,9 @@ can never drift.
   guidance remains in `ExportPreset`, while portable style state, catalog entries, JSON
   exchange, persistence, and AppKit file panels can evolve independently with matching
   focused tests.
+- **Custom themes now have focused model, persistence, and file-exchange boundaries.**
+  Portable theme records and JSON validation remain independent from the observable
+  catalog, while AppKit panels and responsibility-aligned tests can evolve separately.
 
 ## [0.25.4] - 2026-07-27
 
