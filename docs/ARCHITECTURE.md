@@ -487,11 +487,17 @@ Vitrine/
 │   ├── General/Style/Output/Input/Library/AboutSettingsView.swift
 │   │                         # pane-level settings surfaces
 │   ├── BrandKitSettingsSection.swift / SettingsSharedControls.swift
-│   └── CustomThemeStore.swift # built-in + user theme catalog
+│   ├── CustomThemeStore.swift # built-in + user theme catalog
+│   ├── PresetStore.swift      # reusable-style catalog and persistence
+│   └── PresetFileExchange.swift # user-initiated JSON import/export panels
 ├── Models/
 │   ├── Theme.swift
 │   ├── Language.swift
 │   ├── SnapshotConfig.swift
+│   ├── ExportPreset.swift     # fixed destination sizing and presentation guidance
+│   ├── StyleSnapshot.swift / StylePreset.swift
+│   │                         # portable presentation state + reusable catalog entries
+│   ├── StylePresetDocument.swift # validated JSON exchange envelope
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
@@ -630,6 +636,15 @@ numbers, annotations, watermark, redacted ranges, wrap columns, terminal geometr
 foreground image, …). The struct has outgrown any snippet that could live here
 without rotting; **the source file and the doc comment on each field are
 normative.** The supporting enums below are stable and small enough to quote:
+
+Destination and reusable-style presets are deliberately separate. `ExportPreset`
+describes fixed output surfaces such as OpenGraph and presentation guidance for those
+surfaces. `StyleSnapshot` captures portable presentation state, `StylePreset` adds
+identity and the built-in catalog, and `StylePresetDocument` validates the JSON exchange
+envelope. `PresetStore` owns the in-memory/user-defaults catalog without importing AppKit;
+`PresetFileExchange` alone presents user-initiated open and save panels. Tests under
+`Tests/Presets/` mirror these boundaries so persistence, schema validation, catalog
+immutability, and settings application can evolve independently.
 
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }
