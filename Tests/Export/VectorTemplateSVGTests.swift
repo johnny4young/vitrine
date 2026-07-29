@@ -1,28 +1,8 @@
-import AppKit
-import CoreGraphics
 import Foundation
-import ImageIO
 import SwiftUI
 import Testing
 
 @testable import Vitrine
-
-@MainActor
-@Suite("Source text clipboard", .serialized)
-struct SourceTextClipboardTests {
-    @Test("Copying source replaces other representations and preserves exact text")
-    func copySource() throws {
-        let pasteboard = NSPasteboard(
-            name: NSPasteboard.Name("VitrineSourceCopyTests-\(UUID().uuidString)"))
-        pasteboard.clearContents()
-        #expect(pasteboard.setData(Data([0x89, 0x50, 0x4E, 0x47]), forType: .png))
-        let source = "let greeting = \"¡Hola!\"\nprint(greeting)"
-
-        #expect(ExportManager.copySourceToPasteboard(source, to: pasteboard))
-        #expect(pasteboard.string(forType: .string) == source)
-        #expect(pasteboard.data(forType: .png) == nil)
-    }
-}
 
 /// SVG export and the deterministic vector fallback.
 ///
@@ -32,193 +12,18 @@ struct SourceTextClipboardTests {
 /// (`VectorTemplateSVG`) — never the arbitrary code canvas, and never as a fake
 /// raster-in-SVG wrapper. These tests pin exactly those guarantees:
 ///
-/// - the export-format menu states honestly which output is vector (PDF), and the
-///   format value round-trips through persistence;
-/// - the supported vector exports carry the right signatures (PDF `%PDF`, SVG
-///   `<?xml …><svg …>`) and the SVG uses native primitives, with no `<image>`
-///   element or embedded raster payload anywhere;
-/// - a transparent background stays genuinely transparent in both vector outputs;
+/// - the supported vector exports carry the right signatures (SVG `<?xml …><svg …>`)
+///   and use native primitives, with no `<image>` element or embedded raster payload
+///   anywhere;
+/// - a transparent background stays genuinely transparent;
 /// - the template SVG is byte-for-byte deterministic for the same input.
+///
+/// The format catalog and the PDF side of the same promise live in `ExportFormatTests`
+/// and `ExportEncodingTests`; this suite is the serializer itself.
 @MainActor
 @Suite("Export · SVG and vector fallback")
-struct VectorExportTests {
-    // MARK: - Fixtures
-
-    private static func sampleConfig(
-        _ mutate: (inout SnapshotConfig) -> Void = { _ in }
-    ) -> SnapshotConfig {
-        var config = SnapshotConfig()
-        config.code = "let answer = 42"
-        mutate(&config)
-        return config
-    }
-
-    private static let cardSize = CGSize(width: 1200, height: 630)
-
-    // MARK: - Format menu accuracy
-
-    @Test("PNG, PDF, HEIC, and AVIF are offered; PDF is the only vector option")
-    func formatCasesAndVectorFlag() {
-        #expect(ExportFormat.allCases == [.png, .pdf, .heic, .avif])
-        #expect(ExportFormat.png.isVector == false)
-        #expect(ExportFormat.pdf.isVector == true)
-        #expect(ExportFormat.heic.isVector == false)
-        #expect(ExportFormat.avif.isVector == false)
-        // Exactly one supported vector format is advertised, and it is PDF.
-        let vectors = ExportFormat.allCases.filter(\.isVector)
-        #expect(vectors == [.pdf])
-    }
-
-    @Test("Each format has a non-empty display name and summary")
-    func formatLabelsArePresent() {
-        for format in ExportFormat.allCases {
-            #expect(!format.displayName.isEmpty)
-            #expect(!format.summary.isEmpty)
-        }
-        #expect(ExportFormat.png.displayName == "PNG")
-        #expect(ExportFormat.pdf.displayName == "PDF")
-        #expect(ExportFormat.heic.displayName == "HEIC")
-        #expect(ExportFormat.avif.displayName == "AVIF")
-        // The vector summary names the scalable nature so the menu reads honestly.
-        #expect(ExportFormat.pdf.summary.lowercased().contains("vector"))
-    }
-
-    // MARK: - Format round-trip (tests: "format round-trip")
-
-    @Test("Format round-trips through its persisted raw value")
-    func formatRoundTrip() {
-        for format in ExportFormat.allCases {
-            #expect(ExportFormat.resolve(format.rawValue) == format)
-            #expect(ExportFormat(rawValue: format.rawValue) == format)
-        }
-        // Raw values are the stable persistence contract; they must not
-        // drift, or stored preferences would silently change format.
-        #expect(ExportFormat.png.rawValue == "png")
-        #expect(ExportFormat.pdf.rawValue == "pdf")
-        #expect(ExportFormat.heic.rawValue == "heic")
-        #expect(ExportFormat.avif.rawValue == "avif")
-    }
-
-    @Test("Unknown or missing format falls back to PNG")
-    func formatFallback() {
-        #expect(ExportFormat.resolve(nil) == .png)
-        #expect(ExportFormat.resolve("") == .png)
-        #expect(ExportFormat.resolve("svg") == .png)
-        #expect(ExportFormat.fallback == .png)
-    }
-
-    // MARK: - HEIC encoding
-
-    @Test("HEIC export encodes the rendered image into a real HEIC container")
-    func heicEncodesTheRenderedImage() throws {
-        let payload = try #require(
-            ExportManager.encodedPayload(
-                .heic,
-                png: { ExportManager.renderCGImage(Self.sampleConfig(), scale: 1) },
-                pdf: { nil }))
-        #expect(payload.ext == "heic")
-        #expect(!payload.data.isEmpty)
-        // It decodes back to an image of the same pixel size as a PNG render.
-        let source = try #require(CGImageSourceCreateWithData(payload.data as CFData, nil))
-        let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        let reference = try #require(ExportManager.renderCGImage(Self.sampleConfig(), scale: 1))
-        #expect(decoded.width == reference.width)
-        #expect(decoded.height == reference.height)
-    }
-
-    @Test("AVIF export encodes a decodable alpha-capable AVIF container")
-    func avifEncodesTheRenderedImage() throws {
-        let payload = try #require(
-            ExportManager.encodedPayload(
-                .avif,
-                png: {
-                    ExportManager.renderCGImage(
-                        Self.sampleConfig { $0.background = .transparent }, scale: 1)
-                },
-                pdf: { nil }))
-        #expect(payload.ext == "avif")
-        #expect(payload.type.identifier == "public.avif")
-        #expect(!payload.data.isEmpty)
-        let source = try #require(CGImageSourceCreateWithData(payload.data as CFData, nil))
-        let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        let reference = try #require(
-            ExportManager.renderCGImage(
-                Self.sampleConfig { $0.background = .transparent }, scale: 1))
-        #expect(decoded.width == reference.width)
-        #expect(decoded.height == reference.height)
-        #expect(decoded.alphaInfo != .none)
-    }
-
-    // MARK: - Suggested filename
-
-    @Test("Save panel name derives from the metadata filename, then the code")
-    func suggestedFilenameDerivation() {
-        // 1. The metadata filename chip wins, extension dropped.
-        var named = Self.sampleConfig()
-        named.metadata.filename = "ContentView.swift"
-        #expect(SuggestedFilename.basename(for: named) == "ContentView")
-
-        // Path-ish or spaced chips are sanitized, never emitted verbatim.
-        named.metadata.filename = "Sources/App/My View.swift"
-        #expect(SuggestedFilename.basename(for: named) == "My-View")
-
-        // 2. Without a chip, the first declared identifier names the file.
-        var code = Self.sampleConfig()
-        code.code = "import Foundation\n\nfunc renderCard() -> Int { 42 }"
-        #expect(SuggestedFilename.basename(for: code) == "vitrine-renderCard")
-
-        // 3. Nothing derivable falls back to the plain app name.
-        var bare = Self.sampleConfig()
-        bare.code = "let answer = 42"
-        #expect(SuggestedFilename.basename(for: bare) == "vitrine")
-        var terminal = Self.sampleConfig()
-        terminal.language = .terminal
-        terminal.code = "$ def not-code\n"
-        #expect(SuggestedFilename.basename(for: terminal) == "vitrine")
-    }
-
-    // MARK: - PDF signature (tests: "exported PDF signature")
-
-    @Test("PDF export is a real PDF document (%PDF magic)")
-    func pdfSignature() throws {
-        let pdf = try #require(ExportManager.pdfData(Self.sampleConfig()))
-        // "%PDF" — a genuine vector PDF, the supported full-canvas vector format.
-        #expect(Array(pdf.prefix(4)) == Array("%PDF".utf8))
-    }
-
-    @Test("PDF export preserves a transparent background (no opaque matte)")
-    func pdfTransparentBackgroundHasAlpha() throws {
-        let pdf = try #require(
-            ExportManager.pdfData(Self.sampleConfig { $0.background = .transparent }))
-        let provider = try #require(CGDataProvider(data: pdf as CFData))
-        let document = try #require(CGPDFDocument(provider))
-        let page = try #require(document.page(at: 1))
-        let box = page.getBoxRect(.mediaBox)
-
-        // Rasterize the whole page into a fully transparent bitmap. The padding
-        // around the code card has a transparent background, so those regions must
-        // stay clear (alpha 0); an opaque matte would force every pixel to alpha
-        // 255. This is the same transparency the PNG path guarantees,
-        // exercised through the supported vector format.
-        let width = max(Int(box.width), 1)
-        let height = max(Int(box.height), 1)
-        let bytesPerRow = width * 4
-        var pixels = [UInt8](repeating: 0xFF, count: bytesPerRow * height)
-        let context = try #require(
-            CGContext(
-                data: &pixels, width: width, height: height, bitsPerComponent: 8,
-                bytesPerRow: bytesPerRow, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        // Start fully transparent so untouched regions report alpha 0, then draw.
-        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
-        context.drawPDFPage(page)
-
-        let clearPixels = stride(from: 3, to: pixels.count, by: 4).lazy
-            .filter { pixels[$0] == 0 }.count
-        // A meaningful fraction of the page is the transparent background; require
-        // it to be genuinely clear rather than matted onto an opaque color.
-        #expect(clearPixels > 0)
-    }
+struct VectorTemplateSVGTests {
+    private static let cardSize = ExportTestFixtures.cardSize
 
     // MARK: - Template SVG signature (tests: "exported SVG signature")
 
