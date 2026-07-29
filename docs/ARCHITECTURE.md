@@ -456,8 +456,10 @@ Vitrine/
 │   │                         # focused editor regions and interactions
 │   ├── CodeEditorView.swift   # NSViewRepresentable over NSTextView
 │   ├── CodeFormatter.swift    # stable tidy/trim/dedent facade
-│   ├── CodeFormatter+JSON/Markup/Reindent/SQL.swift
-│   │                         # dependency-free language-family transforms
+│   ├── CodeFormatter+JSON.swift
+│   ├── CodeFormatter+Markup.swift
+│   ├── CodeFormatter+Reindent.swift
+│   ├── CodeFormatter+SQL.swift # dependency-free language-family transforms
 │   ├── CodeFormatter+LanguageStrategy.swift # Language → safe formatter route
 │   ├── HighlightManager.swift # Highlightr wrapper
 │   └── LanguageDetector.swift # detection by extension / heuristic
