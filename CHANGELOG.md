@@ -26,6 +26,9 @@ can never drift.
 - **Code-formatting strategies now have focused source and test boundaries.** The stable
   formatter facade still selects the same safe transform for each language, while JSON,
   markup, SQL, brace/tag indentation, and language routing can evolve independently.
+- **Export delivery now has focused source boundaries.** `ExportManager` remains the
+  stable render-and-encode facade, while clipboard delivery, save-panel and file
+  delivery, and batch and carousel exports can evolve independently.
 
 ## [0.25.4] - 2026-07-27
 
