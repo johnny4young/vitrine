@@ -32,8 +32,8 @@ extension ExportManager {
     /// Saves an **already-rendered** raster `cgImage` as PNG, HEIC, or AVIF: the
     /// quick-capture path renders the styled image once and reuses it for both the
     /// clipboard copy and this file save instead of re-rendering the identical config.
-    /// PDF is a vector document and must render its own page, so it is not accepted here
-    /// callers save PDF through the `config`-based `saveToFile` above.
+    /// PDF is a vector document and must render its own page, so this overload does not
+    /// accept it; callers save PDF through the `config`-based `saveToFile` above.
     @discardableResult
     static func saveToFile(
         cgImage: CGImage, format: ExportFormat, suggestedName: String
