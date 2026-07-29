@@ -29,6 +29,9 @@ can never drift.
 - **Export delivery now has focused source boundaries.** `ExportManager` remains the
   stable render-and-encode facade, while clipboard delivery, save-panel and file
   delivery, and batch and carousel exports can evolve independently.
+- **URL capture now has focused WebKit boundaries.** `URLRenderer` remains the stable
+  render facade, while bounded snapshot orchestration and navigation/redirect policy
+  can evolve independently under their existing privacy and timeout contracts.
 
 ## [0.25.4] - 2026-07-27
 

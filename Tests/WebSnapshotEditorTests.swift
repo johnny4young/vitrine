@@ -5,7 +5,7 @@ import Testing
 @testable import Vitrine
 
 // — the Web Snapshot surface (app integration). The renderers and
-// validation are covered by HTMLRendererTests / URLRendererTests; these pin the seams
+// validation are covered by the HTML and URL renderer suites; these pin the seams
 // the window adds: the model's input logic, the consent flag's persistence, the
 // presenter bridge, and the File-menu command wiring.
 

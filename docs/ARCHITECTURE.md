@@ -523,7 +523,10 @@ Vitrine/
 │   ├── Entitlements.swift / StoreKitProvider.swift / LicenseKey.swift
 │   └── BrandKit.swift / ProGate.swift   # (CLI side: CLI/CLIEntitlement.swift)
 ├── WebRendering/              # URL/HTML capture via WKWebView, app-only
-│   ├── URLRenderer / HTMLRenderer / CodeRenderer / WebSnapshotView
+│   ├── URLRenderer.swift      # URL render facade, validation/error mapping
+│   ├── URLSnapshotEngine.swift # bounded offscreen WKWebView rasterization
+│   ├── URLLoadCoordinator.swift # navigation completion + redirect/host policy
+│   ├── HTMLRenderer / CodeRenderer / WebSnapshotView
 │   ├── WebSnapshot{WindowController,EditorView}.swift
 │   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode value type
 │   ├── WebURLValidation.swift        # http(s)-only + SSRF host blocklist (typed errors)

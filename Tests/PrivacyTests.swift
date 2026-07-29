@@ -67,7 +67,7 @@ struct WebSnapshotPrivacyUXTests {
 
     /// The repository root, anchored to this file (`<repo>/Tests/…`), so the docs- and
     /// source-consistency checks read the committed files rather than the built bundle.
-    /// Mirrors `URLRendererTests` and `LocalizationTests`, which anchor the same way.
+    /// Mirrors the URL renderer and localization tests, which anchor the same way.
     private static var repositoryRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()  // Tests/
