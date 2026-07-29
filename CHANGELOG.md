@@ -32,6 +32,10 @@ can never drift.
 - **URL capture now has focused WebKit boundaries.** `URLRenderer` remains the stable
   render facade, while bounded snapshot orchestration and navigation/redirect policy
   can evolve independently under their existing privacy and timeout contracts.
+- **Destination and reusable-style presets now have focused boundaries.** Fixed output
+  guidance remains in `ExportPreset`, while portable style state, catalog entries, JSON
+  exchange, persistence, and AppKit file panels can evolve independently with matching
+  focused tests.
 
 ## [0.25.4] - 2026-07-27
 
