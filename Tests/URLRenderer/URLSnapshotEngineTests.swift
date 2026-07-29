@@ -27,7 +27,7 @@ struct URLSnapshotEngineRenderTests {
         #expect(config.dataStoreMode == .nonPersistent)
         let image = try await engine.snapshot(of: config)
         // The viewport is fixed and the scale is applied, so the bitmap is exactly
-        // viewport × scale — the determinism the documented contract require.
+        // viewport × scale — the determinism the documented contract requires.
         #expect(image.width == 1200)
         #expect(image.height == 800)
     }

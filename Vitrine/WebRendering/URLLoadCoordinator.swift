@@ -11,7 +11,6 @@ import WebKit
 /// page and its subresources are permitted. `WKNavigationDelegate` is an
 /// `NSObjectProtocol`, so this is an `NSObject` subclass; its callbacks arrive on the
 /// main actor, matching the module's default isolation.
-@MainActor
 final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
     /// Frozen from the validated config so policy cannot change midway through a load.
     private let allowsLoopbackCapture: Bool

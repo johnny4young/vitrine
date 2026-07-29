@@ -40,7 +40,6 @@ import WebKit
 ///
 /// `WKWebView` is main-actor bound, so the whole type runs on the main actor (the
 /// module's default isolation).
-@MainActor
 struct URLSnapshotEngine {
     /// The maximum number of viewport-sized scroll steps the bounded lazy-load pass
     /// performs for a full-page capture. Caps the work for an infinite-scroll page:
