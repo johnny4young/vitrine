@@ -468,7 +468,10 @@ Vitrine/
 │   ├── WindowChrome.swift     # decorative traffic lights
 │   └── BackgroundView.swift   # solid or gradient background
 ├── Export/
-│   ├── ExportManager.swift    # PNG, PDF, clipboard
+│   ├── ExportManager.swift    # stable render-and-encode facade
+│   ├── ExportManager+Pasteboard.swift # source/image clipboard delivery
+│   ├── ExportManager+File.swift # save-panel and file delivery
+│   ├── ExportManager+Batch.swift # multi-size and carousel delivery
 │   ├── ShareManager.swift     # NSSharingService
 │   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
 │   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
