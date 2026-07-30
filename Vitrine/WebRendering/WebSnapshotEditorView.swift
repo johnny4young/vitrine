@@ -18,7 +18,9 @@ import SwiftUI
 /// `private`; nothing outside this type references them.
 struct WebSnapshotEditorView: View {
     @Bindable var model: WebSnapshotModel
-    @Environment(AppSettings.self) var settings
+    let environment: AppEnvironment
+
+    var settings: AppSettings { environment.appSettings }
 
     @State var showDisclosure = false
     /// Which captured viewport the big preview is showing (the highlighted filmstrip

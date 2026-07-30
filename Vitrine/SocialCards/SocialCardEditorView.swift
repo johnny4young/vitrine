@@ -11,15 +11,25 @@ import SwiftUI
 /// the multi-window code editor this surface edits the shared settings directly; its
 /// changes persist immediately through the settings' own observer.
 struct SocialCardEditorView: View {
-    @Environment(AppSettings.self) private var settings
+    let environment: AppEnvironment
+
+    var settings: AppSettings { environment.appSettings }
+    var themes: CustomThemeStore { environment.customThemes }
+    var brandKit: BrandKitStore { environment.brandKit }
+    var entitlements: Entitlements { environment.entitlements }
 
     var body: some View {
         VStack(spacing: 0) {
             toolbar
             HStack(spacing: 0) {
                 previewStage
-                SocialCardInspector(settings: settings)
-                    .frame(width: 320)
+                SocialCardInspector(
+                    settings: settings,
+                    themes: themes,
+                    brandKit: brandKit,
+                    entitlements: entitlements
+                )
+                .frame(width: 320)
             }
         }
         // Merge the toolbar into the title bar so the title sits in the traffic-light row
@@ -201,7 +211,9 @@ struct SocialCardEditorView: View {
 /// Content, Code, Footer, Theme, Typography, Background — bound to the working card.
 private struct SocialCardInspector: View {
     @Bindable var settings: AppSettings
-    private let themes = CustomThemeStore.shared
+    let themes: CustomThemeStore
+    let brandKit: BrandKitStore
+    let entitlements: Entitlements
     @State private var showTypography = false
     @State private var showBackground = false
 
@@ -295,10 +307,9 @@ private struct SocialCardInspector: View {
         }
     }
 
-    /// A PRO affordance that fills the footer from the app-global Brand Kit:
+    /// A PRO affordance that fills the footer from the supplied Brand Kit:
     /// the handle and project become the author/project lines and the logo is enabled.
-    /// Gated through the shared `proGated` modifier, so it runs when PRO is unlocked
-    /// and opens the paywall (with a "PRO" badge) when it is not.
+    /// The same entitlement graph drives both the gate and its paywall.
     private var brandKitRow: some View {
         // A tinted accent pill so the affordance clearly reads as a tappable action
         // (not a static label). `proGated` runs it when PRO is unlocked and opens the
@@ -323,7 +334,7 @@ private struct SocialCardInspector: View {
                     VitrineTokens.Accent.system.opacity(0.30), lineWidth: Brand.Stroke.hairline)
         )
         .contentShape(RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous))
-        .proGated(.brandKit) { applyBrandKit() }
+        .proGated(.brandKit, entitlements: entitlements) { applyBrandKit() }
         .help("Fill the footer from your Brand Kit")
         .accessibilityIdentifier("social-card-use-brand-kit")
     }
@@ -331,7 +342,7 @@ private struct SocialCardInspector: View {
     /// Copies the brand kit's handle/project into the footer and turns the logo on.
     /// Empty kit fields are left untouched, so a partial kit never blanks the footer.
     private func applyBrandKit() {
-        let kit = BrandKitStore.shared.brandKit
+        let kit = brandKit.brandKit
         if !kit.handle.isEmpty { settings.socialCard.author = kit.handle }
         if !kit.project.isEmpty { settings.socialCard.project = kit.project }
         settings.socialCard.showLogo = true

@@ -680,6 +680,14 @@ Reusable styles, custom-theme resolution, watermark previews, feature gates, and
 sheets therefore cannot fall back to a different process-global graph. Promoting a
 window's style also targets the environment that created that window.
 
+`SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
+the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that
+created it and supplies that graph to its SwiftUI root. Social Card resolves the working
+card, custom-theme catalog, Brand Kit action, and entitlement gate from those instances;
+Web Snapshot resolves capture consent, viewport preferences, and export settings from
+the same app settings. The windows remain reusable and app-global, but isolated tests no
+longer create roots that silently observe or mutate process-global stores.
+
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }
 
