@@ -671,6 +671,15 @@ the same instances in production, previews, and isolated tests. Live entitlement
 providers likewise refresh their owning `Entitlements` instance rather than escaping
 back to the shared graph.
 
+`EditorWindowController` is the equivalent composition boundary for editor windows. It
+passes one `AppEnvironment` to each `EditorSession` and `EditorView`. A session still
+owns volatile document/style settings — primary windows adopt the current working
+document, while additional windows seed only the default style — but those settings are
+constructed with the same Brand Kit and entitlement instances the view observes.
+Reusable styles, custom-theme resolution, watermark previews, feature gates, and upgrade
+sheets therefore cannot fall back to a different process-global graph. Promoting a
+window's style also targets the environment that created that window.
+
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }
 

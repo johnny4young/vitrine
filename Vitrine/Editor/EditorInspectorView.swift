@@ -19,6 +19,7 @@ struct EditorInspectorView: View {
     @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
     private var showsSafeAreaGuides = false
     var themes: CustomThemeStore
+    var entitlements: Entitlements
 
     /// Disclosure state for the advanced sections. All start collapsed so the
     /// inspector opens compact; the primary style cluster above them is always
@@ -174,7 +175,7 @@ struct EditorInspectorView: View {
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
         .sheet(isPresented: $showingFramePaywall) {
-            PaywallSheet(feature: .advancedFrames)
+            PaywallSheet(feature: .advancedFrames, entitlements: entitlements)
         }
     }
 
@@ -182,8 +183,8 @@ struct EditorInspectorView: View {
 
     /// Clarifies the scope distinction. The editor binds a *per-window*
     /// `EditorSession.settings` (see `EditorWindowController.makeWindow`), so these controls
-    /// style only the capture in this window. Settings ▸ Style edits `AppSettings.shared`,
-    /// the global default that new captures start from (`QuickCapture` copies it into the
+    /// style only the capture in this window. Settings ▸ Style edits the environment's
+    /// app-wide default that new captures start from (`QuickCapture` copies it into the
     /// primary window). Without this, an inspector tweak reads as "the default", or a
     /// Settings change reads as "should have changed my open image".
     private var scopeNote: some View {
@@ -256,7 +257,7 @@ struct EditorInspectorView: View {
                     selection: Binding(
                         get: { settings.config.imageFrame },
                         set: { newFrame in
-                            if newFrame.isPro, !Entitlements.shared.isUnlocked(.advancedFrames) {
+                            if newFrame.isPro, !entitlements.isUnlocked(.advancedFrames) {
                                 showingFramePaywall = true
                             } else {
                                 settings.config.imageFrame = newFrame

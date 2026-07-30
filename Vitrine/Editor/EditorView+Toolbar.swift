@@ -240,11 +240,12 @@ extension EditorView {
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
         ExportFeedback.presentCopy(copied)
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
-        // shared settings (what the Settings toggle edits) rather than this window's
-        // per-session copy. Close *this* window — captured via `WindowAccessor`, so it
+        // environment's app-wide settings (what the Settings toggle edits) rather than
+        // this window's per-session copy. Close *this* window — captured via
+        // `WindowAccessor`, so it
         // never depends on `keyWindow` being right — deferred past the button's action,
         // and `close()` (not `performClose`) so it is unconditional.
-        guard AppSettings.shared.export.closeAfterCopy else { return }
+        guard environment.appSettings.export.closeAfterCopy else { return }
         let target = editorWindow ?? NSApp.keyWindow
         DispatchQueue.main.async { target?.close() }
     }
@@ -376,13 +377,13 @@ extension EditorView {
                 baseConfig: settings.exportConfig, format: settings.export.format,
                 profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar)
         case .multiSizePaywall:
-            PaywallSheet(feature: .multiSizeExport)
+            PaywallSheet(feature: .multiSizeExport, entitlements: entitlements)
         case .carouselExport:
             CarouselExportView(
                 baseConfig: settings.exportConfig,
                 profile: settings.export.colorProfile)
         case .carouselPaywall:
-            PaywallSheet(feature: .carouselExport)
+            PaywallSheet(feature: .carouselExport, entitlements: entitlements)
         }
     }
 

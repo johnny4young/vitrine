@@ -31,7 +31,9 @@ private struct ProGateModifier: ViewModifier {
             }
         }
         .buttonStyle(.plain)
-        .sheet(isPresented: $showingPaywall) { PaywallSheet(feature: feature) }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallSheet(feature: feature, entitlements: entitlements)
+        }
     }
 }
 
@@ -54,7 +56,7 @@ struct ProBadge: View {
 /// it is only ever presented in response to a tap on a gated action, never on launch.
 struct PaywallSheet: View {
     let feature: ProFeature
-    private let entitlements = Entitlements.shared
+    let entitlements: Entitlements
     @Environment(\.dismiss) private var dismiss
     @State private var working = false
 

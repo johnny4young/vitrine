@@ -10,6 +10,7 @@ struct CodeEditorView: NSViewRepresentable {
     var fontName: String
     var fontSize: Double
     var fontLigatures: Bool
+    var reindentOnPaste: Bool
     /// Called when a paste replaced the *entire* document (a select-all paste or a
     /// paste into an empty editor) — i.e. a new capture — so the editor can clear
     /// content-bound marks that no longer apply. A mid-edit insert does not fire it.
@@ -194,12 +195,10 @@ struct CodeEditorView: NSViewRepresentable {
         /// (⌘Z reverts it) and `textDidChange` writes it back to the binding. A
         /// no-op (already tidy, or a `.leaveAlone` language) registers no edit.
         ///
-        /// `isEnabled` defaults to the live global preference; tests pass it explicitly
-        /// so the behavior is assertable without touching shared defaults.
-        func reindentAfterPaste(
-            _ textView: NSTextView, isEnabled: Bool = AppSettings.shared.reindentOnPaste
-        ) {
-            guard isEnabled else { return }
+        /// The parent view supplies the live app-wide preference from its composition
+        /// root; tests can override it explicitly without touching shared defaults.
+        func reindentAfterPaste(_ textView: NSTextView, isEnabled: Bool? = nil) {
+            guard isEnabled ?? parent.reindentOnPaste else { return }
             let original = textView.string
             let tidied = CodeFormatter.tidy(original, language: parent.language)
             guard tidied != original else { return }

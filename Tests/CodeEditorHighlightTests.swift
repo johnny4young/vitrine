@@ -4,7 +4,7 @@ import Testing
 
 @testable import Vitrine
 
-// P4 — the editor's syntax re-highlight applies attributes in place.
+// The editor's syntax re-highlight applies attributes in place.
 //
 // Highlighting only recolors; it never changes the characters. These pin that the
 // coordinator's `applyHighlight` recolors the document without disturbing the text or
@@ -12,7 +12,7 @@ import Testing
 // attribute pass (instead of a full `setAttributedString`) must preserve.
 
 @MainActor
-@Suite("Editor re-highlight applies attributes in place · P4")
+@Suite("Editor re-highlight applies attributes in place")
 struct CodeEditorHighlightTests {
     private func makeCoordinator(language: Language = .swift) -> CodeEditorView.Coordinator {
         CodeEditorView.Coordinator(
@@ -22,7 +22,8 @@ struct CodeEditorHighlightTests {
                 theme: .oneDark,
                 fontName: "SF Mono",
                 fontSize: 13,
-                fontLigatures: false))
+                fontLigatures: false,
+                reindentOnPaste: false))
     }
 
     private func makeHostedTextView(_ string: String) -> (NSWindow, NSTextView) {

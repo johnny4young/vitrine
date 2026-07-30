@@ -199,7 +199,7 @@ final class WebSnapshotModel {
     /// set or a typed error. Safe to call repeatedly; each call replaces the results.
     ///
     /// Multi-resolution capture overlaps the per-viewport loads with a small
-    /// concurrency cap (`maxConcurrentCaptures`, P6): each viewport builds its **own**
+    /// concurrency cap (`maxConcurrentCaptures`): each viewport builds its **own**
     /// `WKWebView` — a separate web-content process — so their loads run in parallel even
     /// though `WKWebView` is main-actor bound (the `await` on each load releases the main
     /// actor for the others). A re-entrant `render()` is still refused (`isRendering`), a
