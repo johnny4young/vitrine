@@ -41,6 +41,7 @@ extension EditorView {
                     fontName: settings.config.fontName,
                     fontSize: settings.config.fontSize,
                     fontLigatures: settings.config.fontLigatures,
+                    reindentOnPaste: environment.appSettings.reindentOnPaste,
                     onReplaceAllPaste: { settings.config.clearContentMarks() }
                 )
                 .overlay {
@@ -252,7 +253,8 @@ extension EditorView {
     /// card throws a matching tinted shadow, and a status capsule reports the
     /// destination, output size, format, and zoom.
     var previewStage: some View {
-        GeometryReader { proxy in
+        @Bindable var brandKit = brandKit
+        return GeometryReader { proxy in
             let scale = fitScale(in: proxy.size)
             // The preview mirrors the active preset's framing, so selecting a
             // fixed-size preset (e.g. OpenGraph 1200×630) updates the canvas
@@ -424,7 +426,8 @@ extension EditorView {
     /// The focused inspector column with progressive disclosure for advanced
     /// controls, on glass per the current design.
     var inspectorColumn: some View {
-        EditorInspectorView(settings: settings, themes: themes)
+        EditorInspectorView(
+            settings: settings, themes: themes, entitlements: entitlements)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a
@@ -494,7 +497,8 @@ extension EditorView {
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
         settings.documentCode =
-            AppSettings.shared.reindentOnPaste ? CodeFormatter.tidy(text, language: language) : text
+            environment.appSettings.reindentOnPaste
+            ? CodeFormatter.tidy(text, language: language) : text
     }
 }
 

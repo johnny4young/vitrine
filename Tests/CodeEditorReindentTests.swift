@@ -28,7 +28,8 @@ struct CodeEditorReindentTests {
                 theme: .oneDark,
                 fontName: "SF Mono",
                 fontSize: 13,
-                fontLigatures: false))
+                fontLigatures: false,
+                reindentOnPaste: false))
     }
 
     /// A text view hosted in a window so the responder chain supplies an undo
