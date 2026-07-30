@@ -62,6 +62,14 @@ cleanup cannot drift between input mechanisms. The large editor remains a separa
 AppKit-hosted window. The global hotkey triggers quick mode or the editor depending on
 the user's preference.
 
+`StatusItemController` is also the menu-bar composition boundary. It retains one
+`AppEnvironment` and supplies that graph, plus the explicitly owned feedback presenter,
+to `MenuBarContent`. Every quick-capture entry from the panel resolves settings, recents,
+Brand Kit watermark eligibility, and recovery actions from that same graph. The global
+hotkey and application-menu command enter the same operation with the app-wide
+environment. This keeps the render, history write, and any later recovery render aligned
+without making the UI lifecycle presenter part of the data-store graph.
+
 ## Clipboard integration
 
 - **Input:** on trigger (hotkey or menu) it auto-reads
