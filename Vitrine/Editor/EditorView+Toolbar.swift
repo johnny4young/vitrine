@@ -401,7 +401,7 @@ extension EditorView {
             Divider()
             Section("Built-in") {
                 ForEach(StylePreset.builtIns) { preset in
-                    Button(action: { settings.applyStylePreset(preset) }) {
+                    Button(action: { settings.applyStylePreset(preset, themes: themes) }) {
                         Text(preset.name)
                     }
                 }
@@ -409,7 +409,7 @@ extension EditorView {
             if !presets.userPresets.isEmpty {
                 Section("Saved") {
                     ForEach(presets.userPresets) { preset in
-                        Button(action: { settings.applyStylePreset(preset) }) {
+                        Button(action: { settings.applyStylePreset(preset, themes: themes) }) {
                             Text(preset.name)
                         }
                     }

@@ -32,10 +32,15 @@ final class CustomThemeStore {
 
     /// The user's custom themes, most-recently-added last. Persisted on change.
     private(set) var customThemes: [Theme] {
-        didSet { persist() }
+        didSet {
+            guard !isReloading else { return }
+            persist()
+        }
     }
 
     private let defaults: UserDefaults
+    /// Suppresses write-back while `reload()` mirrors an external reset into memory.
+    private var isReloading = false
 
     /// The single `UserDefaults` key holding the JSON-encoded user themes.
     static let storageKey = "userCustomThemes"
@@ -51,7 +56,10 @@ final class CustomThemeStore {
     /// empty list redundantly.
     func reload() {
         let reloaded = Self.readCustomThemes(from: defaults)
-        if reloaded != customThemes { customThemes = reloaded }
+        guard reloaded != customThemes else { return }
+        isReloading = true
+        defer { isReloading = false }
+        customThemes = reloaded
     }
 
     // MARK: - Catalog

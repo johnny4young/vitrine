@@ -7,6 +7,7 @@ import SwiftUI
 struct GeneralSettingsView: View {
     @Bindable var settings: AppSettings
     var presets: PresetStore
+    var themes: CustomThemeStore
     var brandKit: BrandKitStore = .shared
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var showResetConfirmation = false
@@ -180,17 +181,19 @@ struct GeneralSettingsView: View {
             titleVisibility: .visible
         ) {
             Button("Reset", role: .destructive) {
-                settings.resetToDefaults()
-                // `resetToDefaults()` clears the persisted preset blob too (its key
-                // is in `SettingsCodec.Keys.all`); reload stores with in-memory
-                // caches so the UI reflects the cleared state immediately.
-                presets.reload()
-                brandKit.reload()
+                SettingsResetCoordinator(
+                    settings: settings,
+                    presets: presets,
+                    themes: themes,
+                    brandKit: brandKit
+                ).reset()
                 launchAtLogin = LaunchAtLogin.isEnabled
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This cannot be undone. Your recent languages and saved presets are also cleared.")
+            Text(
+                "This cannot be undone. Your recent languages, saved presets, custom themes, and Brand Kit are also cleared."
+            )
         }
     }
 

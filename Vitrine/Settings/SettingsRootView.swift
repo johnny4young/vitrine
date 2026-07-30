@@ -13,6 +13,7 @@ struct SettingsRootView: View {
     @Bindable var settings: AppSettings
     var presets: PresetStore
     var themes: CustomThemeStore
+    var brandKit: BrandKitStore = .shared
 
     /// The selected pane, remembered across openings like the classic window.
     /// Persisted through `AppDefaults` so the UI tests' isolated suite applies.
@@ -69,11 +70,16 @@ struct SettingsRootView: View {
     @ViewBuilder private var detail: some View {
         switch selectedTab {
         case .general:
-            GeneralSettingsView(settings: settings, presets: presets)
+            GeneralSettingsView(
+                settings: settings,
+                presets: presets,
+                themes: themes,
+                brandKit: brandKit
+            )
         case .style:
             StyleSettingsView(settings: settings, themes: themes)
         case .brandKit:
-            BrandKitSettingsView()
+            BrandKitSettingsView(brandKit: brandKit)
         case .library:
             LibrarySettingsView(settings: settings, presets: presets, themes: themes)
         case .output:

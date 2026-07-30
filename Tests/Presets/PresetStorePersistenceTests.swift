@@ -61,5 +61,6 @@ struct PresetStorePersistenceTests {
         defaults.removeObject(forKey: PresetStore.storageKey)
         store.reload()
         #expect(store.userPresets.isEmpty)
+        #expect(defaults.data(forKey: PresetStore.storageKey) == nil)
     }
 }

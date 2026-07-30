@@ -63,6 +63,46 @@ struct AppSettingsStylePresetTests {
         #expect(settings.config.background == StylePreset.midnight.style.background)
     }
 
+    @Test func applyStylePresetRestoresAnExistingCustomTheme() throws {
+        let defaults = PresetTestFixtures.freshDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let themes = CustomThemeStore(defaults: defaults)
+        let customTheme = themes.addTheme(
+            named: "Studio",
+            palette: ThemePalette(
+                background: try #require(HexColor("#101820")),
+                foreground: try #require(HexColor("#F2AA4C"))
+            )
+        )
+        var source = settings.config
+        source.theme = customTheme
+        let preset = StylePreset.capturing(source, name: "Studio")
+
+        settings.config.theme = .oneDark
+        settings.applyStylePreset(preset, themes: themes)
+
+        #expect(settings.config.theme.id == customTheme.id)
+        #expect(settings.config.theme.palette == customTheme.palette)
+    }
+
+    @Test func applyStylePresetFallsBackWhenACustomThemeNoLongerExists() {
+        let defaults = PresetTestFixtures.freshDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let themes = CustomThemeStore(defaults: defaults)
+        let preset = StylePreset(
+            name: "Missing",
+            style: StyleSnapshot(
+                themeID: "custom.missing",
+                background: .gradient(.aurora)
+            )
+        )
+
+        settings.config.theme = .dracula
+        settings.applyStylePreset(preset, themes: themes)
+
+        #expect(settings.config.theme == .oneDark)
+    }
+
     @Test func stylePresetCapturesAndAppliesWrapColumns() {
         var source = SnapshotConfig()
         source.wrapColumns = 96

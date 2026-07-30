@@ -12,6 +12,15 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Saved style presets now restore their custom theme when it still exists.** Applying
+  a reusable style resolves the theme through the live user catalog instead of silently
+  falling back to One Dark.
+- **Reset All Settings now clears every live custom-theme entry immediately.** The reset
+  coordinates the preset, theme, and Brand Kit caches after removing their persisted
+  values, so an open Settings window cannot keep showing stale user data.
+
 ### Changed
 
 - **Typing now waits for the preview debounce before rebuilding the rendered canvas.**
