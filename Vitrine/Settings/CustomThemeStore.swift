@@ -84,7 +84,7 @@ final class CustomThemeStore {
     @discardableResult
     func addTheme(named name: String, palette: ThemePalette) -> Theme {
         let theme = Theme(
-            id: Self.freshID(), displayName: uniqueName(name), palette: palette)
+            id: StoredCustomTheme.freshID(), displayName: uniqueName(name), palette: palette)
         customThemes.append(theme)
         Log.settings.info("Added a custom theme")
         return theme
@@ -142,7 +142,7 @@ final class CustomThemeStore {
             // Re-key onto a fresh id and de-duplicate the name so the import is
             // purely additive and can never shadow an existing or built-in theme.
             Theme(
-                id: Self.freshID(), displayName: uniqueName(theme.displayName),
+                id: StoredCustomTheme.freshID(), displayName: uniqueName(theme.displayName),
                 palette: theme.palette ?? Self.fallbackPalette)
         }
         customThemes.append(contentsOf: added)
@@ -156,7 +156,7 @@ final class CustomThemeStore {
     /// `excluding` lets a rename keep its own current name without colliding with
     /// itself. Keeps the picker unambiguous without ever rejecting an import.
     private func uniqueName(_ proposed: String, excluding id: String? = nil) -> String {
-        let base = Self.sanitizedName(proposed)
+        let base = StoredCustomTheme.sanitizedName(proposed)
         let taken = Set(
             allThemes.filter { $0.id != id }.map { $0.displayName.lowercased() })
         guard taken.contains(base.lowercased()) else { return base }
@@ -164,17 +164,6 @@ final class CustomThemeStore {
         while taken.contains("\(base) \(suffix)".lowercased()) { suffix += 1 }
         return "\(base) \(suffix)"
     }
-
-    /// Trims a user-entered name and collapses an empty result to a friendly
-    /// default, so a custom theme always has a non-empty, tidy label.
-    static func sanitizedName(_ name: String) -> String {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Custom Theme" : trimmed
-    }
-
-    /// A fresh, collision-proof id for a custom theme. The `custom.` prefix keeps a
-    /// custom id visibly distinct from a built-in slug and out of the built-in id set.
-    static func freshID() -> String { "custom.\(UUID().uuidString)" }
 
     /// A neutral dark palette used only as a structural fallback when reconstructing
     /// a theme whose palette is somehow absent (it never is for a stored or imported

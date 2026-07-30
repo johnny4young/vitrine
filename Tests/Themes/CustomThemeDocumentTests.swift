@@ -5,6 +5,16 @@ import Testing
 
 @Suite("Custom theme file schema")
 struct CustomThemeDocumentTests {
+    @Test func storedRecordNormalizesMissingIdentityWithoutTheStore() {
+        let record = StoredCustomTheme(
+            id: "", name: " \n ", palette: ThemeTestFixtures.samplePalette())
+
+        let theme = record.theme
+        #expect(theme.id.hasPrefix("custom."))
+        #expect(theme.displayName == "Custom Theme")
+        #expect(theme.palette == ThemeTestFixtures.samplePalette())
+    }
+
     @Test func exportThenImportRoundTripsThePalette() throws {
         let theme = Theme(
             id: "custom.x", displayName: "Round Trip", palette: ThemeTestFixtures.samplePalette())

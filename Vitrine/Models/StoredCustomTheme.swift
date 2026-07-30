@@ -31,10 +31,21 @@ struct StoredCustomTheme: Codable, Equatable {
     /// The reconstructed `Theme`, with its id and name sanitized so a hand-edited
     /// record always yields a usable, addressable theme.
     var theme: Theme {
-        let resolvedID = id.isEmpty ? CustomThemeStore.freshID() : id
+        let resolvedID = id.isEmpty ? Self.freshID() : id
         return Theme(
-            id: resolvedID, displayName: CustomThemeStore.sanitizedName(name), palette: palette)
+            id: resolvedID, displayName: Self.sanitizedName(name), palette: palette)
     }
+
+    /// Trims a user-entered name and collapses an empty result to a friendly
+    /// default, so a custom theme always has a non-empty, tidy label.
+    static func sanitizedName(_ name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Custom Theme" : trimmed
+    }
+
+    /// A fresh, collision-proof id for a custom theme. The `custom.` prefix keeps a
+    /// custom id visibly distinct from a built-in slug and out of the built-in id set.
+    static func freshID() -> String { "custom.\(UUID().uuidString)" }
 
     private enum CodingKeys: String, CodingKey { case id, name, palette }
 
