@@ -18,7 +18,7 @@ import SwiftUI
 @MainActor
 final class StatusItemController: NSObject, NSPopoverDelegate {
     /// The app's single status item. A second one would stack a duplicate icon.
-    static let shared = StatusItemController()
+    static let shared = StatusItemController(environment: .shared, feedback: .shared)
 
     /// A deterministic identity lets the app repair the exact persistence keys AppKit
     /// applies while Control Center hosts the item. The historical names cover builds
@@ -47,9 +47,20 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private var appActivationObserver: NSObjectProtocol?
     private var helperProcessID: pid_t?
     private var visibilityRepairTask: Task<Void, Never>?
+    /// The data graph supplied to the panel and every quick-capture action it starts.
+    let environment: AppEnvironment
+    /// The UI lifecycle presenter retained alongside the panel so transient and inline
+    /// feedback share one state owner.
+    let feedback: CaptureFeedbackPresenter
     private let visibilityRepairDelays: [Duration]
 
-    init(visibilityRepairDelays: [Duration] = defaultVisibilityRepairDelays) {
+    init(
+        environment: AppEnvironment,
+        feedback: CaptureFeedbackPresenter,
+        visibilityRepairDelays: [Duration] = defaultVisibilityRepairDelays
+    ) {
+        self.environment = environment
+        self.feedback = feedback
         self.visibilityRepairDelays = visibilityRepairDelays
         super.init()
     }
@@ -282,13 +293,12 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.behavior = Self.popoverBehavior
         popover.delegate = self
         let content = MenuBarContent(
+            environment: environment,
+            feedback: feedback,
             dismiss: MenuBarDismissAction { [weak self] in
                 self?.dismissPanel()
             }
         )
-        .environment(AppSettings.shared)
-        .environment(RecentsStore.shared)
-        .environment(CaptureFeedbackPresenter.shared)
         popover.contentViewController = NSHostingController(rootView: content)
         return popover
     }

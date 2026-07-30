@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Menu-bar captures now stay inside one injected data-store graph.** The panel,
+  quick-capture renderer, Brand Kit watermark, recents history, and recovery actions
+  resolve through the environment retained by the status-item controller instead of
+  falling back to process-global stores.
 - **Social Card and Web Snapshot windows now keep the app's injected data-store graph.**
   Their working documents, custom themes, Brand Kit actions, entitlement gates, capture
   preferences, and export settings resolve from the environment retained by each window

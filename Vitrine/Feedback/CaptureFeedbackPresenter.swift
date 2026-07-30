@@ -26,23 +26,17 @@ final class CaptureFeedbackPresenter {
     private var pendingURLText: String?
 
     private let hud: CaptureHUDController
-    private let settingsProvider: () -> AppSettings
 
-    init(
-        hud: CaptureHUDController = .shared,
-        settings: @escaping @autoclosure () -> AppSettings = .shared
-    ) {
+    init(hud: CaptureHUDController = .shared) {
         self.hud = hud
-        self.settingsProvider = settings
     }
 
     /// Presents feedback for a completed capture `result`.
     ///
-    /// `settings` is the same settings instance the capture ran against, used to
-    /// re-render on a recovery action. Routine success shows the HUD only; dead
-    /// ends (empty clipboard or a URL fallback path) show the HUD with inline
-    /// recovery buttons.
-    func present(_ result: QuickCapture.Result, settings: AppSettings) {
+    /// `environment` is the same graph the capture ran against, used to re-render on a
+    /// recovery action and record the result in the same recents store. Routine success
+    /// shows the HUD only; dead ends show the HUD with inline recovery buttons.
+    func present(_ result: QuickCapture.Result, environment: AppEnvironment) {
         let feedback = Notifier.feedback(
             for: result.outcome,
             copiedToClipboard: result.copiedToClipboard,
@@ -57,18 +51,18 @@ final class CaptureFeedbackPresenter {
 
         lastFeedback = feedback
         hud.present(feedback) { [weak self] action in
-            self?.run(action, settings: settings)
+            self?.run(action, environment: environment)
         }
     }
 
     /// Runs a recovery action the user picked from the HUD or the menu.
-    func run(_ action: Notifier.RecoveryAction, settings: AppSettings? = nil) {
-        let settings = settings ?? settingsProvider()
+    func run(_ action: Notifier.RecoveryAction, environment: AppEnvironment) {
+        let settings = environment.appSettings
         switch action {
         case .openEditor:
             // The deferred capture's combined source lives in `settings.config`; load
             // it into the primary editor so the "Open Editor" recovery surfaces it even
-            // if the editor is already open (+ ).
+            // if the editor is already open.
             EditorWindowController.shared.loadIntoPrimary(settings.config)
         case .openWebSnapshot:
             if let text = pendingURLText {
@@ -78,20 +72,23 @@ final class CaptureFeedbackPresenter {
                 WebSnapshotPresenter.show()
             }
         case .renderAsText:
-            renderPendingURLAsText(settings: settings)
+            renderPendingURLAsText(environment: environment)
         }
     }
 
     /// Renders the previously-detected URL as plain text and confirms it.
     /// Falls back to opening the editor if there is no pending URL to render, so
     /// the action is never a no-op dead end.
-    private func renderPendingURLAsText(settings: AppSettings) {
+    private func renderPendingURLAsText(environment: AppEnvironment) {
         guard let text = pendingURLText else {
             EditorWindowController.shared.show()
             return
         }
         pendingURLText = nil
-        let result = QuickCapture.renderText(text, settings: settings)
+        let result = QuickCapture.renderText(
+            text,
+            settings: environment.appSettings,
+            recents: environment.recents)
         let feedback = Notifier.feedback(
             for: result.outcome,
             copiedToClipboard: result.copiedToClipboard,

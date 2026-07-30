@@ -45,7 +45,7 @@ enum QuickCapture {
     @discardableResult
     static func run(
         settings: AppSettings,
-        recents: RecentsStore = .shared,
+        recents: RecentsStore,
         destinationPreset: ExportPreset? = nil,
         clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) }
     ) -> Outcome {
@@ -60,7 +60,7 @@ enum QuickCapture {
     /// returning just the outcome.
     static func capture(
         settings: AppSettings,
-        recents: RecentsStore = .shared,
+        recents: RecentsStore,
         destinationPreset: ExportPreset? = nil,
         clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) }
     ) -> Result {
@@ -122,8 +122,7 @@ enum QuickCapture {
         // Apply the PRO brand-kit watermark to the rendered image. Set here,
         // on the export path only: the multi-block "load into editor" branch above
         // returns first, so the stored `settings.config` is never watermarked.
-        config.watermark = BrandKitStore.shared.resolvedWatermark(
-            isPro: Entitlements.shared.isPro)
+        config.watermark = settings.exportWatermark
 
         // Honor the active destination preset's framing (size/scale) so quick
         // capture produces the same image the editor would. Render once and
@@ -286,8 +285,7 @@ enum QuickCapture {
         config.language = language
         settings.noteLanguageUsed(language)
         // Apply the PRO brand-kit watermark to the rendered image.
-        config.watermark = BrandKitStore.shared.resolvedWatermark(
-            isPro: Entitlements.shared.isPro)
+        config.watermark = settings.exportWatermark
 
         // Render once and reuse the raster for both the copy and the save.
         var plan = renderPlan(for: config, settings: settings, destinationPreset: nil)
@@ -312,9 +310,12 @@ enum QuickCapture {
     /// actions for dead ends. The menu and the global hotkey both
     /// call this so behavior is consistent across entry points.
     static func perform(
-        settings: AppSettings = .shared,
+        environment: AppEnvironment,
+        feedback: CaptureFeedbackPresenter,
         destinationPreset: ExportPreset? = nil
     ) {
+        let settings = environment.appSettings
+        let recents = environment.recents
         // A copied image becomes a beautified capture (the "beautify any image" feature):
         // open the editor with it framed on the saved background, where the user picks a
         // frame and exports. Checked before the text path, since a screenshot carries image
@@ -330,7 +331,10 @@ enum QuickCapture {
             return
         }
 
-        let result = capture(settings: settings, destinationPreset: destinationPreset)
+        let result = capture(
+            settings: settings,
+            recents: recents,
+            destinationPreset: destinationPreset)
         switch result.outcome {
         case .deferredToEditor:
             // `capture` has already written the combined multi-block source into
@@ -338,7 +342,7 @@ enum QuickCapture {
             // sees it even if the editor was already open; a plain `show()` no longer
             // clobbers an open window's per-window document.
             EditorWindowController.shared.loadIntoPrimary(settings.config)
-            CaptureFeedbackPresenter.shared.present(result, settings: settings)
+            feedback.present(result, environment: environment)
         case .url(let text):
             // A clipboard URL opens the Web Snapshot window preloaded with it — where
             // the privacy disclosure and the local capture live — rather than
@@ -346,7 +350,7 @@ enum QuickCapture {
             // WebKit dependency, so the menu-bar path stays CLI-safe.
             WebSnapshotPresenter.show(prefillURL: text)
         default:
-            CaptureFeedbackPresenter.shared.present(result, settings: settings)
+            feedback.present(result, environment: environment)
         }
     }
 }

@@ -477,7 +477,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.app.info("Global hotkey fired (\(action.rawValue, privacy: .public))")
         switch action {
         case .quickCapture:
-            QuickCapture.perform(settings: .shared)
+            QuickCapture.perform(environment: .shared, feedback: .shared)
         case .openEditor:
             EditorWindowController.shared.show()
         }

@@ -396,6 +396,13 @@ final class AppSettings {
     /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content.
     var effectiveFixedSize: CGSize? { selectedPreset?.sizing.fixedSize }
 
+    /// The Brand Kit watermark resolved from this settings instance's injected stores.
+    /// Export paths that build a one-off config use this value instead of reaching back
+    /// into process-global Brand Kit or entitlement state.
+    var exportWatermark: Watermark? {
+        brandKit.resolvedWatermark(isPro: entitlements.isPro)
+    }
+
     /// The live `config` with the PRO Brand Kit watermark applied — what every image
     /// export surface renders.
     ///
@@ -408,7 +415,7 @@ final class AppSettings {
     /// identity, and it appears only when the user enabled it *and* PRO is unlocked.
     var exportConfig: SnapshotConfig {
         var resolved = config
-        resolved.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
+        resolved.watermark = exportWatermark
         return resolved
     }
 
