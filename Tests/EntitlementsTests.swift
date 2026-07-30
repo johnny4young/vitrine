@@ -21,6 +21,31 @@ struct EntitlementsTests {
         func currentIsPro() async -> Bool { liveIsPro }
     }
 
+    final class LiveFakeProvider: @MainActor LiveEntitlementProvider {
+        var cachedIsPro: Bool
+        var liveIsPro: Bool
+        private(set) var refreshCount = 0
+        private var onChange: (@MainActor () -> Void)?
+
+        init(cached: Bool, live: Bool? = nil) {
+            self.cachedIsPro = cached
+            self.liveIsPro = live ?? cached
+        }
+
+        func currentIsPro() async -> Bool {
+            refreshCount += 1
+            return liveIsPro
+        }
+
+        func startObservingUpdates(onChange: @escaping @MainActor () -> Void) {
+            self.onChange = onChange
+        }
+
+        func sendUpdate() {
+            onChange?()
+        }
+    }
+
     @Test func bootSeedsIsProFromTheCachedFlag() {
         #expect(Entitlements(provider: FakeProvider(cached: true)).isPro)
         #expect(!Entitlements(provider: FakeProvider(cached: false)).isPro)
@@ -40,6 +65,21 @@ struct EntitlementsTests {
         #expect(!entitlements.isPro)  // seeded from the cached flag at boot
         await entitlements.refresh()
         #expect(entitlements.isPro)  // updated to the live value
+    }
+
+    @Test func liveUpdatesRefreshTheOwningEntitlementGraph() async {
+        let provider = LiveFakeProvider(cached: false)
+        let entitlements = Entitlements(provider: provider)
+
+        entitlements.startLiveUpdates()
+        #expect(await eventually { provider.refreshCount == 1 })
+        #expect(!entitlements.isPro)
+
+        provider.liveIsPro = true
+        provider.sendUpdate()
+
+        #expect(await eventually { entitlements.isPro })
+        #expect(provider.refreshCount == 2)
     }
 
     @Test func theFreeProviderLocksEverything() async {
@@ -80,6 +120,14 @@ struct EntitlementsTests {
                 .deletingLastPathComponent()  // Tests/
                 .deletingLastPathComponent()  // repo root
         ) { $0.appendingPathComponent($1) }
+    }
+
+    private func eventually(_ predicate: () -> Bool) async -> Bool {
+        for _ in 0..<100 {
+            if predicate() { return true }
+            await Task.yield()
+        }
+        return predicate()
     }
 }
 

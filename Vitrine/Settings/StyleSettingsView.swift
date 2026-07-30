@@ -8,11 +8,10 @@ import SwiftUI
 struct StyleSettingsView: View {
     @Bindable var settings: AppSettings
     var themes: CustomThemeStore
-
-    /// The PRO brand kit + entitlement: observed so the live preview tracks
-    /// Brand Kit placement changes while the dedicated Brand Kit pane owns the controls.
-    @Bindable private var brandKit = BrandKitStore.shared
-    private let entitlements = Entitlements.shared
+    /// The injected PRO graph: observed so the live preview tracks Brand Kit placement
+    /// changes while the dedicated Brand Kit pane owns the controls.
+    @Bindable var brandKit: BrandKitStore
+    var entitlements: Entitlements
 
     /// The rendered preview thumbnail, recomputed debounced off the `body` pass :
     /// rasterizing a full `ImageRenderer` canvas inside `body` re-ran the slowest path

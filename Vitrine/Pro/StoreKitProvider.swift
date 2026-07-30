@@ -27,7 +27,7 @@ enum PurchaseOutcome: Equatable {
 /// it drops out of `currentEntitlements` and `isPro` flips to `false` on the next refresh —
 /// PRO re-locks, but nothing the user made (exports, presets, brand kit) is destroyed.
 @MainActor
-final class StoreKitProvider: EntitlementProvider {
+final class StoreKitProvider: LiveEntitlementProvider {
     /// The non-consumable product identifier; must match the IAP configured in App Store
     /// Connect ("Vitrine PRO", lifetime).
     static let productID = "com.johnny4young.vitrine.pro"

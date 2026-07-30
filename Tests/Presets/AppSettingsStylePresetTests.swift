@@ -49,13 +49,15 @@ struct AppSettingsStylePresetTests {
     }
 
     @Test func applyStylePresetWritesPresentationOnlyNeverCode() {
-        let settings = AppSettings(defaults: PresetTestFixtures.freshDefaults())
+        let defaults = PresetTestFixtures.freshDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let themes = CustomThemeStore(defaults: defaults)
         settings.config.code = "let mySecret = 1"
         settings.config.language = .python
         let originalCode = settings.config.code
         let originalLanguage = settings.config.language
 
-        settings.applyStylePreset(.midnight)
+        settings.applyStylePreset(.midnight, themes: themes)
 
         #expect(settings.config.code == originalCode)
         #expect(settings.config.language == originalLanguage)
@@ -120,11 +122,14 @@ struct AppSettingsStylePresetTests {
         // A style preset is independent of a destination preset; applying
         // one that changes a presentation field naturally drops the destination
         // selection to "Custom" through the existing divergence check.
-        let settings = AppSettings(defaults: PresetTestFixtures.freshDefaults())
+        let defaults = PresetTestFixtures.freshDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let themes = CustomThemeStore(defaults: defaults)
         settings.selectPreset(.openGraph)  // padding 56, aurora
         #expect(settings.selectedPresetID == "opengraph")
 
-        settings.applyStylePreset(.minimal)  // padding 32, solid white, no shadow
+        settings.applyStylePreset(
+            .minimal, themes: themes)  // padding 32, solid white, no shadow
 
         #expect(settings.selectedPresetID == nil)
         #expect(settings.config.background == .solid(RGBAColor(.white)))

@@ -8,7 +8,7 @@ struct GeneralSettingsView: View {
     @Bindable var settings: AppSettings
     var presets: PresetStore
     var themes: CustomThemeStore
-    var brandKit: BrandKitStore = .shared
+    var brandKit: BrandKitStore
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var showResetConfirmation = false
 

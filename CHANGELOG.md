@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Settings now keeps one explicit data-store graph from window to pane.** Style
+  previews, Brand Kit controls, reusable styles, and Reset All consume the same
+  injected stores instead of silently falling back to app-global instances. Live
+  entitlement updates also refresh the graph that started observation.
 - **Saved style presets now restore their custom theme when it still exists.** Applying
   a reusable style resolves the theme through the live user catalog instead of silently
   falling back to One Dark.

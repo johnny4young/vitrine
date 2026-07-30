@@ -34,8 +34,7 @@ final class SettingsWindowManager {
             defer: false
         )
         window.contentView = NSHostingView(
-            rootView: SettingsRootView(settings: .shared, presets: .shared, themes: .shared)
-                .ignoresSafeArea())
+            rootView: SettingsRootView(environment: .shared).ignoresSafeArea())
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         // The visible title is hidden; this names the window for the window

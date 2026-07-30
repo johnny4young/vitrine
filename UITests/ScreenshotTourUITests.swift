@@ -87,6 +87,7 @@ final class ScreenshotTourUITests: XCTestCase {
         let panes: [(nav: String, identifier: String, slug: String)] = [
             ("settings-nav-general", "settings-general-pane", "20-settings-general"),
             ("settings-nav-style", "settings-style-pane", "21-settings-style"),
+            ("settings-nav-brandKit", "settings-brandkit-pane", "21-settings-brand-kit"),
             ("settings-nav-library", "settings-library-pane", "22-settings-library"),
             ("settings-nav-output", "settings-output-pane", "23-settings-output"),
             ("settings-nav-input", "settings-input-pane", "24-settings-input"),

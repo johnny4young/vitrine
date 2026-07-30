@@ -10,10 +10,7 @@ import SwiftUI
 /// by their `settings-nav-*` identifiers and panes by their `settings-*-pane`
 /// ones.
 struct SettingsRootView: View {
-    @Bindable var settings: AppSettings
-    var presets: PresetStore
-    var themes: CustomThemeStore
-    var brandKit: BrandKitStore = .shared
+    let environment: AppEnvironment
 
     /// The selected pane, remembered across openings like the classic window.
     /// Persisted through `AppDefaults` so the UI tests' isolated suite applies.
@@ -71,23 +68,35 @@ struct SettingsRootView: View {
         switch selectedTab {
         case .general:
             GeneralSettingsView(
-                settings: settings,
-                presets: presets,
-                themes: themes,
-                brandKit: brandKit
+                settings: environment.appSettings,
+                presets: environment.presets,
+                themes: environment.customThemes,
+                brandKit: environment.brandKit
             )
         case .style:
-            StyleSettingsView(settings: settings, themes: themes)
+            StyleSettingsView(
+                settings: environment.appSettings,
+                themes: environment.customThemes,
+                brandKit: environment.brandKit,
+                entitlements: environment.entitlements
+            )
         case .brandKit:
-            BrandKitSettingsView(brandKit: brandKit)
+            BrandKitSettingsView(
+                brandKit: environment.brandKit,
+                entitlements: environment.entitlements
+            )
         case .library:
-            LibrarySettingsView(settings: settings, presets: presets, themes: themes)
+            LibrarySettingsView(
+                settings: environment.appSettings,
+                presets: environment.presets,
+                themes: environment.customThemes
+            )
         case .output:
-            OutputSettingsView(settings: settings)
+            OutputSettingsView(settings: environment.appSettings)
         case .input:
-            InputSettingsView(settings: settings)
+            InputSettingsView(settings: environment.appSettings)
         case .about:
-            AboutSettingsView(settings: settings)
+            AboutSettingsView(settings: environment.appSettings)
         }
     }
 }
