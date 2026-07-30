@@ -10,9 +10,14 @@ import SwiftUI
 /// Titles, SF Symbols, and shortcuts come from `VitrineCommand` so the panel
 /// and the application main menu never drift.
 struct MenuBarContent: View {
-    @Environment(AppSettings.self) private var settings
-    @Environment(RecentsStore.self) private var recents
-    @Environment(CaptureFeedbackPresenter.self) private var feedback
+    /// The long-lived stores retained by the status-item composition boundary.
+    let environment: AppEnvironment
+    /// The panel's transient feedback state is a UI lifecycle dependency, not a data
+    /// store, so the controller supplies it explicitly beside the environment.
+    let feedback: CaptureFeedbackPresenter
+
+    var settings: AppSettings { environment.appSettings }
+    var recents: RecentsStore { environment.recents }
 
     /// Closes the panel after an action, mirroring how a native menu dismisses
     /// on selection. Injected by `StatusItemController`, which owns the popover this
@@ -48,7 +53,10 @@ struct MenuBarContent: View {
         Menu {
             ForEach(ExportPreset.all) { preset in
                 Button {
-                    QuickCapture.perform(settings: settings, destinationPreset: preset)
+                    QuickCapture.perform(
+                        environment: environment,
+                        feedback: feedback,
+                        destinationPreset: preset)
                     dismiss()
                 } label: {
                     Text(verbatim: preset.displayName)
@@ -105,7 +113,7 @@ struct MenuBarContent: View {
     @ViewBuilder private var captureCTA: some View {
         let command = VitrineCommand.newCapture
         let button = Button {
-            QuickCapture.perform(settings: settings)
+            QuickCapture.perform(environment: environment, feedback: feedback)
             dismiss()
         } label: {
             HStack(spacing: VitrineTokens.Spacing.xs) {
@@ -145,7 +153,7 @@ struct MenuBarContent: View {
                     .accessibilityIdentifier("menu-last-capture-status")
                 ForEach(last.actions, id: \.self) { action in
                     Button(action.title) {
-                        feedback.run(action, settings: settings)
+                        feedback.run(action, environment: environment)
                         dismiss()
                     }
                     .buttonStyle(.link)

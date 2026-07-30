@@ -116,4 +116,24 @@ struct AppEnvironmentTests {
         #expect(webController.environment === env)
         #expect(webController.model === webModel)
     }
+
+    @Test func menuBarRootRetainsAndExposesTheProvidedGraph() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let env = AppEnvironment(
+            defaults: suite, entitlements: Entitlements(provider: ProProvider()))
+        env.brandKit.isEnabled = true
+        env.brandKit.brandKit = BrandKit(handle: "@menu-root")
+        let feedback = CaptureFeedbackPresenter()
+        let root = MenuBarContent(environment: env, feedback: feedback)
+        let controller = StatusItemController(environment: env, feedback: feedback)
+
+        #expect(root.environment === env)
+        #expect(root.settings === env.appSettings)
+        #expect(root.recents === env.recents)
+        #expect(root.settings.exportWatermark?.text == "@menu-root")
+        #expect(root.feedback === feedback)
+        #expect(controller.environment === env)
+        #expect(controller.feedback === feedback)
+    }
 }

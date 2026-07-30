@@ -56,7 +56,9 @@ struct MenuBarStatusItemTests {
     }
 
     @Test func attachInstallsOneVisibleFixedItemAndIsIdempotent() throws {
-        let controller = StatusItemController()
+        let controller = StatusItemController(
+            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            feedback: CaptureFeedbackPresenter())
         #expect(!controller.isAttached)
 
         controller.attach()
@@ -82,7 +84,10 @@ struct MenuBarStatusItemTests {
     /// that asynchronous transition overwriting the live state and prove the bounded
     /// post-materialization pass repairs it.
     @Test func delayedRepairRestoresVisibilityAfterHosting() async throws {
-        let controller = StatusItemController(visibilityRepairDelays: [.milliseconds(10)])
+        let controller = StatusItemController(
+            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            feedback: CaptureFeedbackPresenter(),
+            visibilityRepairDelays: [.milliseconds(10)])
         controller.attach()
         let item = try #require(controller.statusItem)
         item.isVisible = false
@@ -209,7 +214,9 @@ struct MenuBarStatusItemTests {
     @Test func detachingAnAbsentFallbackKeepsTheHelperPanelOpen() throws {
         let screen = try #require(NSScreen.screens.first)
         let anchor = CGPoint(x: screen.frame.midX, y: screen.frame.maxY - 12)
-        let controller = StatusItemController()
+        let controller = StatusItemController(
+            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            feedback: CaptureFeedbackPresenter())
         defer {
             if controller.isPanelShown {
                 controller.togglePanel(at: anchor)
@@ -243,9 +250,10 @@ struct MenuBarStatusItemTests {
     @Test func theDefaultDismissActionIsANoOp() {
         var sideEffects = 0
         let observed = MenuBarDismissAction { sideEffects += 1 }
+        let environment = AppEnvironment(defaults: isolatedDefaults(#function))
 
         MenuBarDismissAction()()
-        MenuBarContent().dismiss()
+        MenuBarContent(environment: environment, feedback: CaptureFeedbackPresenter()).dismiss()
 
         #expect(sideEffects == 0, "only the injected action may run")
         observed()

@@ -444,7 +444,7 @@ final class AppCommandResponder: NSObject {
     static let shared = AppCommandResponder()
 
     @objc func newCaptureFromClipboard(_ sender: Any?) {
-        QuickCapture.perform(settings: .shared)
+        QuickCapture.perform(environment: .shared, feedback: .shared)
     }
 
     @objc func openEditor(_ sender: Any?) {
