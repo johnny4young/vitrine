@@ -18,8 +18,8 @@ import Foundation
 /// or an out-of-range number into the renderer — it degrades to the documented
 /// default instead.
 struct StyleSnapshot: Hashable, Codable {
-    /// The syntax theme id (e.g. `"dracula"`); resolved through `Theme.theme(withID:)`
-    /// so an unknown id falls back to One Dark.
+    /// The syntax theme id (e.g. `"dracula"`); resolved when the snapshot is
+    /// applied so callers with a wider catalog can restore custom themes too.
     var themeID: String
     /// The code font family name; only honored if it is a known `CodeFont`.
     var fontName: String
@@ -96,12 +96,16 @@ struct StyleSnapshot: Hashable, Codable {
 
     /// Applies this style to `config` in place, touching only presentation fields.
     ///
-    /// The theme and font are resolved through the same catalog lookups the live
-    /// reads use, so an id/name that no longer exists degrades to the default
-    /// rather than producing a broken render. `code`, `language`, the metadata
-    /// header, and highlighted-line ranges are never read or written here.
-    func apply(to config: inout SnapshotConfig) {
-        config.theme = Theme.theme(withID: themeID)
+    /// The theme resolver defaults to the portable built-in catalog. App surfaces
+    /// with access to the user's custom catalog provide their broader resolver
+    /// explicitly. Either path must return a safe fallback for an unknown id.
+    /// `code`, `language`, the metadata header, and highlighted-line ranges are
+    /// never read or written here.
+    func apply(
+        to config: inout SnapshotConfig,
+        resolvingThemeWith resolveTheme: (String) -> Theme = Theme.theme(withID:)
+    ) {
+        config.theme = resolveTheme(themeID)
         config.fontName = CodeFont.all.contains(fontName) ? fontName : CodeFont.default
         config.fontSize = SettingsDefaults.clampFontSize(fontSize)
         config.fontLigatures = fontLigatures

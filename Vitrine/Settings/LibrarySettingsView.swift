@@ -10,7 +10,7 @@ struct LibrarySettingsView: View {
 
     var body: some View {
         SettingsPaneScroll {
-            StylePresetsSection(settings: settings, store: presets)
+            StylePresetsSection(settings: settings, store: presets, themes: themes)
             CustomThemesSection(settings: settings, store: themes)
         }
         .accessibilityIdentifier("settings-library-pane")
@@ -27,6 +27,7 @@ struct LibrarySettingsView: View {
 struct StylePresetsSection: View {
     @Bindable var settings: AppSettings
     var store: PresetStore
+    var themes: CustomThemeStore
 
     /// The preset id selected in the picker, or `nil` before the user picks one.
     /// This is a selection cursor for the row actions, not an applied-state mirror;
@@ -157,7 +158,7 @@ struct StylePresetsSection: View {
         return TokenRow {
             HStack(spacing: VitrineTokens.Spacing.xs) {
                 Button("Apply") {
-                    if let preset { settings.applyStylePreset(preset) }
+                    if let preset { settings.applyStylePreset(preset, themes: themes) }
                 }
                 .help("Apply this preset's style to the current snapshot.")
                 .disabled(preset == nil)

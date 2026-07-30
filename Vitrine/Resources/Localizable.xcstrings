@@ -5748,13 +5748,13 @@
         }
       }
     },
-    "This cannot be undone. Your recent languages and saved presets are also cleared." : {
+    "This cannot be undone. Your recent languages, saved presets, custom themes, and Brand Kit are also cleared." : {
       "comment" : "Reset confirmation message.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esto no se puede deshacer. También se borran tus lenguajes recientes y tus ajustes preestablecidos guardados."
+            "value" : "Esto no se puede deshacer. También se borran tus lenguajes recientes, ajustes preestablecidos guardados, temas personalizados y Brand Kit."
           }
         }
       }

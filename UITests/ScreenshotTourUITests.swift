@@ -122,6 +122,28 @@ final class ScreenshotTourUITests: XCTestCase {
         } else {
             miss("26-settings-custom-theme-editor", reason: "new-custom-theme-button not found")
         }
+
+        // Reset is the only action that clears every settings-backed catalog at
+        // once. Keep its full warning visible in the visual evidence so copy and
+        // destructive-action hierarchy changes are reviewable.
+        element("settings-nav-general", in: app).click()
+        _ = element("settings-general-pane", in: app).waitForExistence(timeout: 4)
+        let resetAll = element("reset-all-settings-button", in: app)
+        if resetAll.waitForExistence(timeout: 3), resetAll.isHittable {
+            resetAll.click()
+            let resetConfirmation = app.sheets.firstMatch.buttons["Reset"].firstMatch
+            if resetConfirmation.waitForExistence(timeout: 3) {
+                Thread.sleep(forTimeInterval: 0.4)
+                save(
+                    window.screenshot(), as: "27-settings-reset-confirmation",
+                    note: "Reset All confirmation naming every cleared user catalog")
+                app.sheets.firstMatch.buttons["Cancel"].firstMatch.click()
+            } else {
+                miss("27-settings-reset-confirmation", reason: "confirmation did not appear")
+            }
+        } else {
+            miss("27-settings-reset-confirmation", reason: "reset action was not hittable")
+        }
     }
 
     @MainActor
