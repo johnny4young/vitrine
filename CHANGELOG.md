@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Social Card and Web Snapshot windows now keep the app's injected data-store graph.**
+  Their working documents, custom themes, Brand Kit actions, entitlement gates, capture
+  preferences, and export settings resolve from the environment retained by each window
+  controller instead of falling back to process-global instances.
 - **Each editor window now stays inside one explicit data-store graph.** Its volatile
   document settings, reusable styles, custom themes, Brand Kit preview, entitlement
   gates, and upgrade sheets all resolve from the environment supplied by the window

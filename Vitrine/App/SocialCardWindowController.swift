@@ -4,10 +4,10 @@ import SwiftUI
 /// Owns the app's single social-card editor window.
 ///
 /// Unlike the multi-window code editor, the social card is an app-global
-/// document: there is one working card, persisted in `AppSettings.shared.socialCard`,
-/// so this controller keeps exactly one reusable window rather than a keyed set. The
-/// window hosts ``SocialCardEditorView``, which composes and exports the card entirely
-/// locally — `ImageRenderer`, never WebKit or the network.
+/// document: there is one working card, persisted in the supplied environment's
+/// `AppSettings`, so this controller keeps exactly one reusable window rather than a
+/// keyed set. The window hosts ``SocialCardEditorView``, which composes and exports the
+/// card entirely locally — `ImageRenderer`, never WebKit or the network.
 ///
 /// The window is reused across opens *and* closes (`isReleasedWhenClosed = false`), so
 /// reopening is instant and the frame the user dialed in survives within a launch and,
@@ -16,7 +16,10 @@ import SwiftUI
 /// secure state restoration.
 @MainActor
 final class SocialCardWindowController: NSObject {
-    static let shared = SocialCardWindowController()
+    static let shared = SocialCardWindowController(environment: .shared)
+
+    /// The data graph supplied to the window and its SwiftUI root.
+    let environment: AppEnvironment
 
     /// The single reused window, created on first show and kept alive across closes.
     private var window: NSWindow?
@@ -33,7 +36,10 @@ final class SocialCardWindowController: NSObject {
     /// commands (`EditorCommandResponder.isEditorKey` matches that prefix).
     static let windowIdentifier = "social-card-window"
 
-    private override init() { super.init() }
+    init(environment: AppEnvironment) {
+        self.environment = environment
+        super.init()
+    }
 
     /// Shows the social-card window, creating it the first time, and focuses it. This
     /// is the entry the File-menu "New Social Card" command uses, so it reuses the one
@@ -45,11 +51,12 @@ final class SocialCardWindowController: NSObject {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// Builds the AppKit window hosting a ``SocialCardEditorView`` bound to the shared
-    /// settings, so it edits the app-global working card.
+    /// Builds the AppKit window hosting a ``SocialCardEditorView`` bound to this
+    /// controller's environment, so it edits the app-global working card without
+    /// resolving another store graph.
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingController(
-            rootView: SocialCardEditorView().environment(AppSettings.shared))
+            rootView: SocialCardEditorView(environment: environment))
         let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = String(localized: "Social Card")
         window.styleMask = [

@@ -15,8 +15,9 @@ import Foundation
 ///
 /// Only the **data** stores live here. Window controllers and HUD presenters are UI
 /// lifecycle singletons (they manage AppKit window state, not injectable data) and keep
-/// their own `.shared`; `HighlightManager` is a stateless engine cache with a private init
-/// and stays a leaf singleton.
+/// their own `.shared`; controllers that host data-backed views receive this root when
+/// their shared instance is created. `HighlightManager` is a stateless engine cache with
+/// a private init and stays a leaf singleton.
 @MainActor
 final class AppEnvironment {
     /// The app-wide graph, built once over the standard defaults. `Store.shared`

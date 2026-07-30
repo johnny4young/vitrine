@@ -417,10 +417,13 @@ final class WebSnapshotModel {
 /// rather than naming this WebKit-backed controller directly.
 @MainActor
 final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
-    static let shared = WebSnapshotWindowController()
+    static let shared = WebSnapshotWindowController(environment: .shared)
 
     /// The window's working document, shared with the hosted SwiftUI view.
-    let model = WebSnapshotModel()
+    let model: WebSnapshotModel
+
+    /// The data graph supplied to the window and its SwiftUI root.
+    let environment: AppEnvironment
 
     private var window: NSWindow?
 
@@ -431,7 +434,14 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     /// editor-scoped export commands.
     static let windowIdentifier = "web-snapshot-window"
 
-    private override init() { super.init() }
+    init(
+        environment: AppEnvironment,
+        model: WebSnapshotModel = WebSnapshotModel()
+    ) {
+        self.environment = environment
+        self.model = model
+        super.init()
+    }
 
     /// Installs the window opener on `WebSnapshotPresenter`. Called once at launch from
     /// the app-only `VitrineApp`, so the CLI (which excludes this file) never links the
@@ -457,7 +467,7 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingController(
-            rootView: WebSnapshotEditorView(model: model).environment(AppSettings.shared))
+            rootView: WebSnapshotEditorView(model: model, environment: environment))
         let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = String(localized: "Web Snapshot")
         window.styleMask = [
