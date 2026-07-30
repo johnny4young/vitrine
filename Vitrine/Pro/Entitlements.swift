@@ -54,11 +54,9 @@ final class Entitlements {
     /// re-locks/unlocks without a relaunch. Call once at launch. Idempotent enough for the
     /// app-lifetime shared instance; the observation task is owned by the provider.
     func startLiveUpdates() {
-        #if !VITRINE_DIRECT_DOWNLOAD
-            (provider as? StoreKitProvider)?.startObservingUpdates {
-                Task { await Entitlements.shared.refresh() }
-            }
-        #endif
+        (provider as? any LiveEntitlementProvider)?.startObservingUpdates { [weak self] in
+            Task { await self?.refresh() }
+        }
         Task { await refresh() }
     }
 
@@ -193,6 +191,12 @@ protocol EntitlementProvider {
     func purchase() async -> PurchaseOutcome
     /// Restores prior purchases (the App Store requirement). Providers without one no-op.
     func restore() async -> Bool
+}
+
+/// An entitlement provider that can report out-of-band state changes, such as
+/// StoreKit transactions completed on another device or later revoked.
+protocol LiveEntitlementProvider: EntitlementProvider {
+    func startObservingUpdates(onChange: @escaping @MainActor () -> Void)
 }
 
 extension EntitlementProvider {

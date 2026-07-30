@@ -664,6 +664,13 @@ immutability, and settings application can evolve independently.
 state; the coordinator then reloads the independent preset, theme, and Brand Kit stores
 so their observable catalogs match the cleared defaults immediately.
 
+`SettingsRootView` accepts one `AppEnvironment` and passes that graph through every pane.
+Settings views do not default back to global stores: the Style preview, Brand Kit
+controls, reusable-style catalog, entitlement gates, and reset path therefore observe
+the same instances in production, previews, and isolated tests. Live entitlement
+providers likewise refresh their owning `Entitlements` instance rather than escaping
+back to the shared graph.
+
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }
 

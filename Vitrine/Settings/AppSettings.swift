@@ -357,7 +357,7 @@ final class AppSettings {
     /// one may move the style away from an active destination preset, in which case
     /// the existing "diverged from preset" check naturally drops that selection to
     /// "Custom". The user's source is untouched.
-    func applyStylePreset(_ preset: StylePreset, themes: CustomThemeStore = .shared) {
+    func applyStylePreset(_ preset: StylePreset, themes: CustomThemeStore) {
         preset.style.apply(to: &config, resolvingThemeWith: themes.theme(withID:))
         Log.settings.info("Applied a style preset")
     }
@@ -367,7 +367,10 @@ final class AppSettings {
     @discardableResult
     func applySurpriseStyle() -> StylePreset {
         let preset = StylePreset.surprise(after: config)
-        applyStylePreset(preset)
+        // Surprise always selects an immutable built-in style, so the portable
+        // resolver is sufficient and no user catalog dependency is needed.
+        preset.style.apply(to: &config)
+        Log.settings.info("Applied a style preset")
         return preset
     }
 

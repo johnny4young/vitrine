@@ -160,8 +160,8 @@ struct BrandKitSettingsSection: View {
         logoImportFailed = !brandKit.importLogo(from: url)
     }
 
-    // Bindings into the app-global brand kit; mutating a field reassigns the whole
-    // value, so the store persists and the preview refreshes.
+    // Bindings into the injected Brand Kit graph; mutating a field reassigns the
+    // whole value, so the store persists and every consumer refreshes.
     private var handle: Binding<String> {
         Binding(get: { brandKit.brandKit.handle }, set: { brandKit.brandKit.handle = $0 })
     }
@@ -189,8 +189,8 @@ struct BrandKitSettingsSection: View {
 /// in the standard pane chrome, surfaced as its own sidebar row so the headline PRO
 /// capability is visible instead of buried inside a Style sub-tab.
 struct BrandKitSettingsView: View {
-    var brandKit: BrandKitStore = .shared
-    private let entitlements = Entitlements.shared
+    var brandKit: BrandKitStore
+    var entitlements: Entitlements
 
     var body: some View {
         SettingsPaneScroll {

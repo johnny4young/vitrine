@@ -12,8 +12,9 @@ import Testing
 @MainActor
 @Suite("AppEnvironment composition root")
 struct AppEnvironmentTests {
-    @Test func buildsAGraphIsolatedFromTheSharedRoot() {
-        let suite = UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)")!
+    @Test func buildsAGraphIsolatedFromTheSharedRoot() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
         let env = AppEnvironment(defaults: suite)
 
         // Every store is a distinct instance from the app-wide shared graph…
@@ -25,13 +26,24 @@ struct AppEnvironmentTests {
         #expect(env.entitlements !== AppEnvironment.shared.entitlements)
     }
 
-    @Test func theGraphIsBackedByTheInjectedDefaults() {
-        let suite = UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)")!
+    @Test func theGraphIsBackedByTheInjectedDefaults() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
         let env = AppEnvironment(defaults: suite)
 
         // A write through the environment's settings lands in the injected suite, proving
         // the whole graph is wired to those defaults rather than the app-wide store.
         env.appSettings.export.scale = 3
         #expect(suite.integer(forKey: SettingsCodec.Keys.exportScale) == 3)
+    }
+
+    @Test func settingsRootRetainsTheProvidedGraph() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let env = AppEnvironment(defaults: suite)
+
+        let root = SettingsRootView(environment: env)
+
+        #expect(root.environment === env)
     }
 }
