@@ -12,6 +12,11 @@ import Testing
 @MainActor
 @Suite("AppEnvironment composition root")
 struct AppEnvironmentTests {
+    private struct ProProvider: EntitlementProvider {
+        var cachedIsPro: Bool { true }
+        func currentIsPro() async -> Bool { true }
+    }
+
     @Test func buildsAGraphIsolatedFromTheSharedRoot() throws {
         let suite = try #require(
             UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
@@ -45,5 +50,46 @@ struct AppEnvironmentTests {
         let root = SettingsRootView(environment: env)
 
         #expect(root.environment === env)
+    }
+
+    @Test func editorRootResolvesEveryLongLivedStoreFromTheProvidedGraph() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let env = AppEnvironment(defaults: suite)
+
+        let root = EditorView(environment: env)
+
+        #expect(root.environment === env)
+        #expect(root.presets === env.presets)
+        #expect(root.themes === env.customThemes)
+        #expect(root.brandKit === env.brandKit)
+        #expect(root.entitlements === env.entitlements)
+    }
+
+    @Test func editorSessionsSeedFromAndRetainTheProvidedGraph() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let env = AppEnvironment(
+            defaults: suite, entitlements: Entitlements(provider: ProProvider()))
+        env.appSettings.config.theme = .dracula
+        env.appSettings.config.code = "print(\"primary\")"
+        env.brandKit.isEnabled = true
+        env.brandKit.brandKit = BrandKit(handle: "@isolated")
+
+        let primary = EditorSession(identity: .primary, environment: env)
+        let secondary = EditorSession(
+            identity: EditorWindowIdentity(index: 2), environment: env)
+        defer {
+            primary.discard()
+            secondary.discard()
+        }
+
+        #expect(primary.environment === env)
+        #expect(secondary.environment === env)
+        #expect(primary.settings !== env.appSettings)
+        #expect(primary.settings.config.code == "print(\"primary\")")
+        #expect(secondary.settings.config.code.isEmpty)
+        #expect(secondary.settings.config.theme.id == Theme.dracula.id)
+        #expect(secondary.settings.exportConfig.watermark?.text == "@isolated")
     }
 }

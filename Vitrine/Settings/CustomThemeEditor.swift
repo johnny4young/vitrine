@@ -232,7 +232,7 @@ struct CustomThemeEditor: View {
     }
 
     /// Renders the preview thumbnail at scale 1 (the on-screen preview is a small
-    /// thumbnail, so scale 1 is ample and halves the pixel work versus the old 2×, P2).
+    /// thumbnail, so scale 1 is ample and halves the pixel work versus the old 2×).
     /// Called only from the debounced `.task(id:)`, never inside `body`.
     private func renderCurrentPreview() -> NSImage? {
         ExportManager.renderNSImage(previewConfig, scale: 1, profile: settings.export.colorProfile)

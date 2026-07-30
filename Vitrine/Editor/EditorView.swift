@@ -22,6 +22,7 @@ import SwiftUI
 struct EditorView: View {
     @Environment(AppSettings.self) var settings
     @Environment(\.foregroundImageStore) var foregroundImageStore
+    let environment: AppEnvironment
 
     /// This window's editor session. Each editor window has its own session
     /// (and therefore its own `settings` above), so a window can promote *its* style to
@@ -29,18 +30,14 @@ struct EditorView: View {
     /// `EditorWindowController` when the window is created.
     @Environment(EditorSession.self) var session
 
-    /// The saved-preset catalog and the custom-theme resolver, shared with the
-    /// Settings panes so the editor and Preferences operate on the same data.
-    /// Held as observed singletons so the strip and inspector update
-    /// live when presets or themes change anywhere in the app.
-    let presets = PresetStore.shared
-    let themes = CustomThemeStore.shared
-
-    /// The PRO brand kit and entitlement, observed so the live preview shows (or
-    /// drops) the watermark the moment the kit, the "apply to captures" switch, or
-    /// the PRO state changes anywhere in the app.
-    @Bindable var brandKit = BrandKitStore.shared
-    let entitlements = Entitlements.shared
+    /// Long-lived stores come from the same graph the AppKit window controller used
+    /// to create this window's session. Reading them through the root keeps the editor
+    /// reactive without silently mixing process-global instances into an isolated
+    /// preview or test.
+    var presets: PresetStore { environment.presets }
+    var themes: CustomThemeStore { environment.customThemes }
+    var brandKit: BrandKitStore { environment.brandKit }
+    var entitlements: Entitlements { environment.entitlements }
 
     /// True while a drag is hovering the editor, used to draw the drop affordance.
     @State var isDropTargeted = false

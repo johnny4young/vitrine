@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Each editor window now stays inside one explicit data-store graph.** Its volatile
+  document settings, reusable styles, custom themes, Brand Kit preview, entitlement
+  gates, and upgrade sheets all resolve from the environment supplied by the window
+  controller instead of mixing injected and process-global instances.
 - **Settings now keeps one explicit data-store graph from window to pane.** Style
   previews, Brand Kit controls, reusable styles, and Reset All consume the same
   injected stores instead of silently falling back to app-global instances. Live

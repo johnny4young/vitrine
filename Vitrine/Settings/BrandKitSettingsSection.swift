@@ -142,7 +142,9 @@ struct BrandKitSettingsSection: View {
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .sheet(isPresented: $showingPaywall) { PaywallSheet(feature: .brandKit) }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallSheet(feature: .brandKit, entitlements: entitlements)
+        }
         .accessibilityIdentifier("settings-brand-kit-upsell")
     }
 

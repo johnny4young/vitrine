@@ -258,18 +258,20 @@ final class AppSettings {
     /// from `source` into a fresh, uniquely-named suite, then loads through the normal
     /// defensive read path so the window starts from exactly what the user would see —
     /// same theme (built-in or custom), font, background, and output settings. The
-    /// preset/theme *catalogs* are not copied: those resolve through the shared
-    /// `PresetStore`/`CustomThemeStore`, so saved presets and custom themes are visible
-    /// in every window. Returns a standalone instance backed by `.standard` only if a
-    /// volatile suite cannot be created, which still keeps each window functional.
+    /// preset/theme *catalogs* are not copied: the editor resolves those through its
+    /// `AppEnvironment`, so saved presets and custom themes are visible in every window.
+    /// Creating the UUID-named suite is an isolation invariant; failure stops session
+    /// construction rather than silently writing editor changes into app-wide defaults.
     static func makeEditorSession(
-        seededFrom source: UserDefaults = AppDefaults.current
+        seededFrom source: UserDefaults,
+        brandKit: BrandKitStore,
+        entitlements: Entitlements
     )
         -> AppSettings
     {
         let suiteName = "com.johnny4young.vitrine.editor-session.\(UUID().uuidString)"
         guard let volatile = UserDefaults(suiteName: suiteName) else {
-            return AppSettings(defaults: .standard)
+            preconditionFailure("Unable to create an isolated editor settings store")
         }
         // Start from a clean slate so a reused suite name (it never is — the name is a
         // fresh UUID) cannot leak prior values, then copy the seed keys verbatim.
@@ -277,13 +279,20 @@ final class AppSettings {
         for key in Keys.editorSessionSeed {
             if let value = source.object(forKey: key) { volatile.set(value, forKey: key) }
         }
-        return AppSettings(defaults: volatile, volatileSuiteName: suiteName)
+        return AppSettings(
+            defaults: volatile, volatileSuiteName: suiteName,
+            brandKit: brandKit, entitlements: entitlements)
     }
 
     /// Convenience initializer for a volatile per-window session that records its
     /// throwaway suite name so it can be torn down when the window closes.
-    private convenience init(defaults: UserDefaults, volatileSuiteName: String) {
-        self.init(defaults: defaults)
+    private convenience init(
+        defaults: UserDefaults,
+        volatileSuiteName: String,
+        brandKit: BrandKitStore,
+        entitlements: Entitlements
+    ) {
+        self.init(defaults: defaults, brandKit: brandKit, entitlements: entitlements)
         self.volatileSuiteName = volatileSuiteName
     }
 

@@ -4,13 +4,13 @@ import UniformTypeIdentifiers
 
 @testable import Vitrine
 
-// P5 — quick capture renders the styled image once and feeds that single raster to
+// Quick capture renders the styled image once and feeds that single raster to
 // both the clipboard copy and the file save, instead of re-rendering the identical
 // config. These pin that the cgImage-based copy/payload produce byte-for-byte the same
 // output as the full-render path they replace, so the optimization is invisible.
 
 @MainActor
-@Suite("Render-once copy/save primitives · P5")
+@Suite("Render-once copy/save primitives")
 struct RenderOnceExportTests {
     private func sampleConfig() -> SnapshotConfig {
         var config = SnapshotConfig()

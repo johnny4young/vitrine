@@ -20,25 +20,32 @@ final class EditorSession {
     /// The window's independent settings, seeded from the app-wide defaults but backed
     /// by a throwaway store, so its edits never clobber the global default.
     let settings: AppSettings
+    let environment: AppEnvironment
 
     /// Creates a session for `identity` with its own volatile settings.
     ///
     /// The **primary** window adopts the app's live working document — the
-    /// `AppSettings.shared` config, including any code a quick capture, App Intent, or
+    /// environment's app-wide config, including any code a quick capture, App Intent, or
     /// `--demo` just loaded — so "Open Editor" always surfaces the current document,
     /// exactly as the single-window app did. **Additional** windows seed only
     /// the default *style* and open with an empty editor, so "New Editor Window" is a
-    /// fresh canvas in the user's default look. A test can inject `settings` directly.
-    init(identity: EditorWindowIdentity, settings: AppSettings? = nil) {
+    /// fresh canvas in the user's default look. A test can inject `settings` directly
+    /// while retaining an isolated environment for app-wide actions.
+    init(
+        identity: EditorWindowIdentity,
+        environment: AppEnvironment,
+        settings: AppSettings? = nil
+    ) {
         self.identity = identity
+        self.environment = environment
         if let settings {
             self.settings = settings
         } else {
-            let session = AppSettings.makeEditorSession()
+            let session = environment.makeEditorSessionSettings()
             if identity == .primary {
                 // Mirror the live working document into the primary window's session so
                 // the editor shows the current code/style, not just the persisted style.
-                session.config = AppSettings.shared.config
+                session.config = environment.appSettings.config
             }
             self.settings = session
         }
@@ -65,7 +72,7 @@ final class EditorSession {
     /// "Make This Window the Default" route through here, so a single call site
     /// covers both.
     func makeDefault() {
-        AppSettings.shared.makeDefault(from: settings)
+        environment.appSettings.makeDefault(from: settings)
         CaptureHUDController.shared.present(
             Notifier.confirmation(String(localized: "Set as the default style")))
     }
@@ -106,7 +113,11 @@ final class EditorSession {
 /// (to clean up on close) and observe screen-arrangement changes.
 @MainActor
 final class EditorWindowController: NSObject {
-    static let shared = EditorWindowController()
+    static let shared = EditorWindowController(environment: .shared)
+
+    /// The long-lived data graph supplied to every session and SwiftUI editor rooted
+    /// by this controller. Per-window document settings remain independent.
+    private let environment: AppEnvironment
 
     /// The live editor windows, keyed by their window-index. Reused, non-released
     /// windows keep reopening cheap and let the controller route the menu to the key
@@ -130,7 +141,8 @@ final class EditorWindowController: NSObject {
     /// restored from a saved frame overrides this.
     private static let defaultContentSize = NSSize(width: 1180, height: 680)
 
-    private override init() {
+    private init(environment: AppEnvironment) {
+        self.environment = environment
         super.init()
         // Recover any window that ends up off-screen after the display arrangement
         // changes (a monitor unplugged or rearranged), so a restored frame is never
@@ -184,7 +196,7 @@ final class EditorWindowController: NSObject {
     @discardableResult
     private func session(for identity: EditorWindowIdentity) -> EditorSession {
         if let existing = sessions[identity.index] { return existing }
-        let session = EditorSession(identity: identity)
+        let session = EditorSession(identity: identity, environment: environment)
         sessions[identity.index] = session
         return session
     }
@@ -203,7 +215,7 @@ final class EditorWindowController: NSObject {
     private func makeWindow(for identity: EditorWindowIdentity) -> NSWindow {
         let session = session(for: identity)
         let hosting = NSHostingController(
-            rootView: EditorView()
+            rootView: EditorView(environment: environment)
                 .environment(session.settings)
                 .environment(session))
         let window = TitleBarAlignedWindow(contentViewController: hosting)

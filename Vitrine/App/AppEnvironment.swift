@@ -1,6 +1,6 @@
 import Foundation
 
-/// The app's composition root (/§8): the one place the long-lived data stores
+/// The app's composition root: the one place the long-lived data stores
 /// are constructed and wired together, instead of each owning a scattered
 /// `static let shared = X(defaults: AppDefaults.current)`.
 ///
@@ -29,18 +29,32 @@ final class AppEnvironment {
     let recents: RecentsStore
     let customThemes: CustomThemeStore
     let presets: PresetStore
+    private let defaults: UserDefaults
 
     /// Builds the whole store graph over `defaults` in dependency order: the entitlement
     /// and Brand Kit first, then `AppSettings` (which takes them), then the independent
     /// catalog/recents stores. Nothing here reads a `.shared`, so constructing the root
     /// never re-enters itself.
-    init(defaults: UserDefaults = AppDefaults.current) {
-        entitlements = Entitlements(provider: Entitlements.defaultProvider())
+    init(
+        defaults: UserDefaults = AppDefaults.current,
+        entitlements: Entitlements? = nil
+    ) {
+        self.defaults = defaults
+        self.entitlements =
+            entitlements ?? Entitlements(provider: Entitlements.defaultProvider())
         brandKit = BrandKitStore(defaults: defaults)
         appSettings = AppSettings(
-            defaults: defaults, brandKit: brandKit, entitlements: entitlements)
+            defaults: defaults, brandKit: brandKit, entitlements: self.entitlements)
         recents = RecentsStore(defaults: defaults)
         customThemes = CustomThemeStore(defaults: defaults)
         presets = PresetStore(defaults: defaults)
+    }
+
+    /// Creates one editor window's volatile settings from this graph. The session keeps
+    /// its own document/style store, while Brand Kit and entitlement resolution stay
+    /// aligned with the long-lived instances the editor view observes.
+    func makeEditorSessionSettings() -> AppSettings {
+        AppSettings.makeEditorSession(
+            seededFrom: defaults, brandKit: brandKit, entitlements: entitlements)
     }
 }

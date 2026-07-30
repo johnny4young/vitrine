@@ -81,7 +81,7 @@ struct ReviewShotsGeneratorTests {
         // Each entry: (file id, config, fixedSize, scale).
         var shots: [(String, SnapshotConfig, CGSize?, CGFloat)] = []
 
-        // P1 — window title + corner radius + shadow.
+        // Window title, corner radius, and shadow.
         shots.append(("01-baseline", base(), nil, 2))
         var titled = base()
         titled.windowTitle = "Counter.swift"
@@ -97,14 +97,14 @@ struct ReviewShotsGeneratorTests {
         numbered.showLineNumbers = true
         shots.append(("04-line-numbers", numbered, nil, 2))
 
-        // P2 — focus mode (dim non-highlighted lines).
+        // Focus mode (dim non-highlighted lines).
         var focus = base()
         focus.showLineNumbers = true
         focus.highlightedLineRanges = [4...6]
         focus.focusHighlightedLines = true
         shots.append(("05-focus-mode", focus, nil, 2))
 
-        // P3 — diff bands.
+        // Diff bands.
         var diff = base()
         diff.code = Self.diffCode
         diff.language = .diff
@@ -113,7 +113,7 @@ struct ReviewShotsGeneratorTests {
         diff.windowTitle = "Counter.swift.diff"
         shots.append(("06-diff-bands", diff, nil, 2))
 
-        // P4 — social presets (new export shapes).
+        // Social presets (new export shapes).
         if let story = ExportPreset.preset(withID: "instagram-story") {
             var config = base()
             story.apply(to: &config)
@@ -127,7 +127,7 @@ struct ReviewShotsGeneratorTests {
                 ("08-preset-github-banner", config, banner.sizing.fixedSize, CGFloat(banner.scale)))
         }
 
-        // P5 — annotations.
+        // Annotations.
         var arrow = base()
         arrow.windowTitle = "Counter.swift"
         arrow.annotations = [
@@ -153,7 +153,7 @@ struct ReviewShotsGeneratorTests {
         ]
         shots.append(("11-annotation-blur", blur, nil, 2))
 
-        // P6 — new annotation kinds (CleanShot-style toolbar).
+        // Annotation kinds used by the visual toolbar.
         func rgba(_ hex: String) -> RGBAColor { RGBAColor(Color(hex: hex)) }
 
         var counter = base()

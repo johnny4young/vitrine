@@ -318,6 +318,10 @@ struct EditorSessionIndependenceTests {
         UserDefaults(suiteName: "EditorSessionTests-\(UUID().uuidString)")!
     }
 
+    private func makeEnvironment(defaults: UserDefaults) -> AppEnvironment {
+        AppEnvironment(defaults: defaults)
+    }
+
     @Test func aSessionSeedsTheDefaultStyleFromTheSource() {
         // Opening a window starts from the user's default look: the seeded session
         // reflects the source store's persisted style.
@@ -329,7 +333,7 @@ struct EditorSessionIndependenceTests {
         source.config.wrapColumns = 72
         source.export.scale = 3
 
-        let session = AppSettings.makeEditorSession(seededFrom: defaults)
+        let session = makeEnvironment(defaults: defaults).makeEditorSessionSettings()
         #expect(session.config.theme.id == "monokai")
         #expect(session.config.fontName == "Fira Code")
         #expect(session.config.padding == 56)
@@ -345,7 +349,7 @@ struct EditorSessionIndependenceTests {
         source.config.theme = .oneDark
         source.config.code = ""
 
-        let session = AppSettings.makeEditorSession(seededFrom: defaults)
+        let session = makeEnvironment(defaults: defaults).makeEditorSessionSettings()
         session.config.theme = .dracula
         session.config.code = "print('only in this window')"
         session.config.padding = 12
@@ -363,8 +367,9 @@ struct EditorSessionIndependenceTests {
         let defaults = freshDefaults()
         _ = AppSettings(defaults: defaults)
 
-        let a = AppSettings.makeEditorSession(seededFrom: defaults)
-        let b = AppSettings.makeEditorSession(seededFrom: defaults)
+        let environment = makeEnvironment(defaults: defaults)
+        let a = environment.makeEditorSessionSettings()
+        let b = environment.makeEditorSessionSettings()
         a.config.theme = .dracula
         a.config.code = "A"
         b.config.theme = .github
@@ -384,7 +389,7 @@ struct EditorSessionIndependenceTests {
         appDefault.config.theme = .oneDark
         appDefault.export.scale = 1
 
-        let session = AppSettings.makeEditorSession(seededFrom: defaults)
+        let session = makeEnvironment(defaults: defaults).makeEditorSessionSettings()
         session.config.theme = .dracula
         session.config.padding = 64
         session.export.scale = 3
@@ -410,7 +415,7 @@ struct EditorSessionIndependenceTests {
         let source = AppSettings(defaults: defaults)
         source.config.theme = .monokai
 
-        let session = AppSettings.makeEditorSession(seededFrom: defaults)
+        let session = makeEnvironment(defaults: defaults).makeEditorSessionSettings()
         session.config.code = "scratch"
         session.discardVolatileStore()
 
