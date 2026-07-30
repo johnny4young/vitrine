@@ -7,15 +7,24 @@ import SwiftUI
 extension View {
     /// Gates `action` behind `feature`. Tapping runs `action` when unlocked, or opens the
     /// paywall for `feature` when locked. A small "PRO" badge marks the locked state.
-    func proGated(_ feature: ProFeature, action: @escaping () -> Void) -> some View {
-        modifier(ProGateModifier(feature: feature, action: action))
+    func proGated(
+        _ feature: ProFeature,
+        entitlements: Entitlements,
+        action: @escaping () -> Void
+    ) -> some View {
+        modifier(
+            ProGateModifier(
+                feature: feature,
+                entitlements: entitlements,
+                action: action
+            ))
     }
 }
 
 private struct ProGateModifier: ViewModifier {
     let feature: ProFeature
+    let entitlements: Entitlements
     let action: () -> Void
-    private let entitlements = Entitlements.shared
     @State private var showingPaywall = false
 
     func body(content: Content) -> some View {

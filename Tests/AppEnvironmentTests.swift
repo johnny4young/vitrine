@@ -92,4 +92,28 @@ struct AppEnvironmentTests {
         #expect(secondary.settings.config.theme.id == Theme.dracula.id)
         #expect(secondary.settings.exportConfig.watermark?.text == "@isolated")
     }
+
+    @Test func auxiliaryWindowsRetainAndExposeTheProvidedGraph() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let env = AppEnvironment(defaults: suite)
+        let webModel = WebSnapshotModel()
+
+        let socialRoot = SocialCardEditorView(environment: env)
+        let webRoot = WebSnapshotEditorView(model: webModel, environment: env)
+        let socialController = SocialCardWindowController(environment: env)
+        let webController = WebSnapshotWindowController(
+            environment: env, model: webModel)
+
+        #expect(socialRoot.environment === env)
+        #expect(socialRoot.settings === env.appSettings)
+        #expect(socialRoot.themes === env.customThemes)
+        #expect(socialRoot.brandKit === env.brandKit)
+        #expect(socialRoot.entitlements === env.entitlements)
+        #expect(webRoot.environment === env)
+        #expect(webRoot.settings === env.appSettings)
+        #expect(socialController.environment === env)
+        #expect(webController.environment === env)
+        #expect(webController.model === webModel)
+    }
 }
