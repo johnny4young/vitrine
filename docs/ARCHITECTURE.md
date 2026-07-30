@@ -487,11 +487,14 @@ Vitrine/
 │   ├── General/Style/Output/Input/Library/AboutSettingsView.swift
 │   │                         # pane-level settings surfaces
 │   ├── BrandKitSettingsSection.swift / SettingsSharedControls.swift
-│   ├── CustomThemeStore.swift # built-in + user theme catalog
+│   ├── CustomThemeStore.swift # built-in + user theme catalog and persistence
+│   ├── CustomThemeFileExchange.swift # user-initiated theme JSON panels
 │   ├── PresetStore.swift      # reusable-style catalog and persistence
 │   └── PresetFileExchange.swift # user-initiated JSON import/export panels
 ├── Models/
 │   ├── Theme.swift
+│   ├── StoredCustomTheme.swift # validated portable theme record
+│   ├── CustomThemeDocument.swift # validated theme JSON exchange envelope
 │   ├── Language.swift
 │   ├── SnapshotConfig.swift
 │   ├── ExportPreset.swift     # fixed destination sizing and presentation guidance
@@ -636,6 +639,14 @@ numbers, annotations, watermark, redacted ranges, wrap columns, terminal geometr
 foreground image, …). The struct has outgrown any snippet that could live here
 without rotting; **the source file and the doc comment on each field are
 normative.** The supporting enums below are stable and small enough to quote:
+
+Custom themes follow the same separation as reusable style presets. `Theme` remains the
+render-facing value, `StoredCustomTheme` provides its portable record, and
+`CustomThemeDocument` validates the JSON exchange envelope. `CustomThemeStore` owns the
+built-in and user catalog plus user-defaults persistence without importing AppKit;
+`CustomThemeFileExchange` alone presents user-initiated open and save panels. Tests under
+`Tests/Themes/` mirror color parsing, palette validation, document, catalog, persistence,
+rendering, and editor-draft responsibilities.
 
 Destination and reusable-style presets are deliberately separate. `ExportPreset`
 describes fixed output surfaces such as OpenGraph and presentation guidance for those
