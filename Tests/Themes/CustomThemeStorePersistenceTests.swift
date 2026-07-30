@@ -61,5 +61,6 @@ struct CustomThemeStoreFallbackTests {
         defaults.removeObject(forKey: CustomThemeStore.storageKey)
         store.reload()
         #expect(store.customThemes.isEmpty)
+        #expect(defaults.data(forKey: CustomThemeStore.storageKey) == nil)
     }
 }

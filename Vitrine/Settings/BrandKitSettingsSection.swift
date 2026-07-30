@@ -189,7 +189,7 @@ struct BrandKitSettingsSection: View {
 /// in the standard pane chrome, surfaced as its own sidebar row so the headline PRO
 /// capability is visible instead of buried inside a Style sub-tab.
 struct BrandKitSettingsView: View {
-    private let brandKit = BrandKitStore.shared
+    var brandKit: BrandKitStore = .shared
     private let entitlements = Entitlements.shared
 
     var body: some View {

@@ -32,10 +32,15 @@ final class PresetStore {
 
     /// The user's saved presets, most-recently-saved last. Persisted on change.
     private(set) var userPresets: [StylePreset] {
-        didSet { persist() }
+        didSet {
+            guard !isReloading else { return }
+            persist()
+        }
     }
 
     private let defaults: UserDefaults
+    /// Suppresses write-back while `reload()` mirrors an external reset into memory.
+    private var isReloading = false
 
     /// The single `UserDefaults` key holding the JSON-encoded user presets.
     static let storageKey = "userStylePresets"
@@ -51,7 +56,10 @@ final class PresetStore {
     /// without re-persisting an empty list redundantly.
     func reload() {
         let reloaded = Self.readUserPresets(from: defaults)
-        if reloaded != userPresets { userPresets = reloaded }
+        guard reloaded != userPresets else { return }
+        isReloading = true
+        defer { isReloading = false }
+        userPresets = reloaded
     }
 
     // MARK: - Catalog

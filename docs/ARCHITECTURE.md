@@ -646,7 +646,9 @@ render-facing value, `StoredCustomTheme` provides its portable record, and
 built-in and user catalog plus user-defaults persistence without importing AppKit;
 `CustomThemeFileExchange` alone presents user-initiated open and save panels. Tests under
 `Tests/Themes/` mirror color parsing, palette validation, document, catalog, persistence,
-rendering, and editor-draft responsibilities.
+rendering, and editor-draft responsibilities. Portable style application accepts a theme
+resolver: standalone consumers retain the built-in fallback, while `AppSettings` supplies
+the live custom-theme catalog.
 
 Destination and reusable-style presets are deliberately separate. `ExportPreset`
 describes fixed output surfaces such as OpenGraph and presentation guidance for those
@@ -656,6 +658,11 @@ envelope. `PresetStore` owns the in-memory/user-defaults catalog without importi
 `PresetFileExchange` alone presents user-initiated open and save panels. Tests under
 `Tests/Presets/` mirror these boundaries so persistence, schema validation, catalog
 immutability, and settings application can evolve independently.
+
+`SettingsResetCoordinator` keeps global reset side effects out of the SwiftUI view.
+`AppSettings` remains the single owner that removes persisted values and resets its own
+state; the coordinator then reloads the independent preset, theme, and Brand Kit stores
+so their observable catalogs match the cleared defaults immediately.
 
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }

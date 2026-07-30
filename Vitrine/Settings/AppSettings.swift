@@ -357,8 +357,8 @@ final class AppSettings {
     /// one may move the style away from an active destination preset, in which case
     /// the existing "diverged from preset" check naturally drops that selection to
     /// "Custom". The user's source is untouched.
-    func applyStylePreset(_ preset: StylePreset) {
-        preset.style.apply(to: &config)
+    func applyStylePreset(_ preset: StylePreset, themes: CustomThemeStore = .shared) {
+        preset.style.apply(to: &config, resolvingThemeWith: themes.theme(withID:))
         Log.settings.info("Applied a style preset")
     }
 
