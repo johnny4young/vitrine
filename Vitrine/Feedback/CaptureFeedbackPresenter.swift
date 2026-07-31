@@ -11,6 +11,10 @@ import Observation
 /// HUD is available."). Notification Center remains a fallback for when the HUD
 /// cannot be shown. The most recent feedback is published so the menu-bar menu can
 /// echo the last outcome and offer the same recovery actions there.
+///
+/// HUD presentation and recovery navigation enter as small operation values. The live
+/// adapters bridge to the reusable AppKit window owners; this coordinator remains
+/// deterministic and can be exercised without constructing UI.
 @MainActor
 @Observable
 final class CaptureFeedbackPresenter {
@@ -25,10 +29,15 @@ final class CaptureFeedbackPresenter {
     /// Text" recovery acts on. Never logged (privacy policy).
     private var pendingURLText: String?
 
-    private let hud: CaptureHUDController
+    private let display: CaptureFeedbackDisplay
+    private let routing: CaptureRecoveryRouting
 
-    init(hud: CaptureHUDController = .shared) {
-        self.hud = hud
+    init(
+        display: CaptureFeedbackDisplay = .live,
+        routing: CaptureRecoveryRouting = .live
+    ) {
+        self.display = display
+        self.routing = routing
     }
 
     /// Presents feedback for a completed capture `result`.
@@ -50,7 +59,7 @@ final class CaptureFeedbackPresenter {
         }
 
         lastFeedback = feedback
-        hud.present(feedback) { [weak self] action in
+        display(feedback) { [weak self] action in
             self?.run(action, environment: environment)
         }
     }
@@ -63,13 +72,13 @@ final class CaptureFeedbackPresenter {
             // The deferred capture's combined source lives in `settings.config`; load
             // it into the primary editor so the "Open Editor" recovery surfaces it even
             // if the editor is already open.
-            EditorWindowController.shared.loadIntoPrimary(settings.config)
+            routing.loadIntoPrimaryEditor(settings.config)
         case .openWebSnapshot:
             if let text = pendingURLText {
                 pendingURLText = nil
-                WebSnapshotPresenter.show(prefillURL: text)
+                routing.showWebSnapshot(prefillURL: text)
             } else {
-                WebSnapshotPresenter.show()
+                routing.showWebSnapshot()
             }
         case .renderAsText:
             renderPendingURLAsText(environment: environment)
@@ -81,7 +90,7 @@ final class CaptureFeedbackPresenter {
     /// the action is never a no-op dead end.
     private func renderPendingURLAsText(environment: AppEnvironment) {
         guard let text = pendingURLText else {
-            EditorWindowController.shared.show()
+            routing.showEditor()
             return
         }
         pendingURLText = nil
@@ -94,6 +103,6 @@ final class CaptureFeedbackPresenter {
             copiedToClipboard: result.copiedToClipboard,
             savedToFile: result.savedToFile)
         lastFeedback = feedback
-        hud.present(feedback)
+        display(feedback)
     }
 }
