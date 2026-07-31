@@ -14,6 +14,9 @@ can never drift.
 
 ### Fixed
 
+- **Editor actions no longer discover the shared HUD from views or command responders.**
+  Editor sessions and application-menu commands receive one explicit feedback operation,
+  keeping confirmations and failures deterministic without constructing AppKit windows.
 - **Menu-bar commands no longer discover app-owned windows from the SwiftUI view.** The
   status-item composition boundary supplies explicit navigation operations for history,
   editors, settings, help, and supporting creation surfaces.
