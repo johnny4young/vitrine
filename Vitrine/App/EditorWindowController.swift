@@ -21,6 +21,7 @@ final class EditorSession {
     /// by a throwaway store, so its edits never clobber the global default.
     let settings: AppSettings
     let environment: AppEnvironment
+    let feedback: FeedbackDisplay
 
     /// Creates a session for `identity` with its own volatile settings.
     ///
@@ -34,10 +35,12 @@ final class EditorSession {
     init(
         identity: EditorWindowIdentity,
         environment: AppEnvironment,
+        feedback: FeedbackDisplay,
         settings: AppSettings? = nil
     ) {
         self.identity = identity
         self.environment = environment
+        self.feedback = feedback
         if let settings {
             self.settings = settings
         } else {
@@ -73,7 +76,7 @@ final class EditorSession {
     /// covers both.
     func makeDefault() {
         environment.appSettings.makeDefault(from: settings)
-        CaptureHUDController.shared.present(
+        feedback(
             Notifier.confirmation(String(localized: "Set as the default style")))
     }
 
@@ -113,11 +116,13 @@ final class EditorSession {
 /// (to clean up on close) and observe screen-arrangement changes.
 @MainActor
 final class EditorWindowController: NSObject {
-    static let shared = EditorWindowController(environment: .shared)
+    static let shared = EditorWindowController(environment: .shared, feedback: .live)
 
     /// The long-lived data graph supplied to every session and SwiftUI editor rooted
     /// by this controller. Per-window document settings remain independent.
     private let environment: AppEnvironment
+    /// The transient feedback operation shared by every editor session.
+    let feedback: FeedbackDisplay
 
     /// The live editor windows, keyed by their window-index. Reused, non-released
     /// windows keep reopening cheap and let the controller route the menu to the key
@@ -141,8 +146,9 @@ final class EditorWindowController: NSObject {
     /// restored from a saved frame overrides this.
     private static let defaultContentSize = NSSize(width: 1180, height: 680)
 
-    private init(environment: AppEnvironment) {
+    init(environment: AppEnvironment, feedback: FeedbackDisplay) {
         self.environment = environment
+        self.feedback = feedback
         super.init()
         // Recover any window that ends up off-screen after the display arrangement
         // changes (a monitor unplugged or rearranged), so a restored frame is never
@@ -196,7 +202,10 @@ final class EditorWindowController: NSObject {
     @discardableResult
     private func session(for identity: EditorWindowIdentity) -> EditorSession {
         if let existing = sessions[identity.index] { return existing }
-        let session = EditorSession(identity: identity, environment: environment)
+        let session = EditorSession(
+            identity: identity,
+            environment: environment,
+            feedback: feedback)
         sessions[identity.index] = session
         return session
     }

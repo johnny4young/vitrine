@@ -29,11 +29,11 @@ final class CaptureFeedbackPresenter {
     /// Text" recovery acts on. Never logged (privacy policy).
     private var pendingURLText: String?
 
-    private let display: CaptureFeedbackDisplay
+    let display: FeedbackDisplay
     private let routing: CaptureRecoveryRouting
 
     init(
-        display: CaptureFeedbackDisplay = .live,
+        display: FeedbackDisplay = .live,
         routing: CaptureRecoveryRouting = .live
     ) {
         self.display = display

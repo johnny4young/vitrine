@@ -10,8 +10,8 @@ struct CaptureFeedbackPresenterTests {
         var feedback: [Notifier.CaptureFeedback] = []
         var actionHandler: ((Notifier.RecoveryAction) -> Void)?
 
-        var port: CaptureFeedbackDisplay {
-            CaptureFeedbackDisplay { [weak self] feedback, onAction in
+        var port: FeedbackDisplay {
+            FeedbackDisplay { [weak self] feedback, onAction in
                 self?.feedback.append(feedback)
                 self?.actionHandler = onAction
             }
@@ -90,6 +90,7 @@ struct CaptureFeedbackPresenterTests {
             contentsOf: repositoryRoot.appendingPathComponent(
                 "Vitrine/Feedback/CaptureFeedbackPresenter.swift"),
             encoding: .utf8)
+        let code = sourceCodeWithoutLineComments(source)
 
         for forbiddenDependency in [
             "CaptureHUDController.shared",
@@ -97,7 +98,7 @@ struct CaptureFeedbackPresenterTests {
             "WebSnapshotPresenter.show",
         ] {
             #expect(
-                !source.contains(forbiddenDependency),
+                !code.contains(forbiddenDependency),
                 "CaptureFeedbackPresenter must receive \(forbiddenDependency) as an operation")
         }
     }

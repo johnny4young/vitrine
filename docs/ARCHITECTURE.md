@@ -719,13 +719,16 @@ providers likewise refresh their owning `Entitlements` instance rather than esca
 back to the shared graph.
 
 `EditorWindowController` is the equivalent composition boundary for editor windows. It
-passes one `AppEnvironment` to each `EditorSession` and `EditorView`. A session still
-owns volatile document/style settings — primary windows adopt the current working
-document, while additional windows seed only the default style — but those settings are
-constructed with the same Brand Kit and entitlement instances the view observes.
-Reusable styles, custom-theme resolution, watermark previews, feature gates, and upgrade
-sheets therefore cannot fall back to a different process-global graph. Promoting a
-window's style also targets the environment that created that window.
+passes one `AppEnvironment` and one transient-feedback operation to each `EditorSession`
+and `EditorView`. A session still owns volatile document/style settings — primary windows
+adopt the current working document, while additional windows seed only the default style
+— but those settings are constructed with the same Brand Kit and entitlement instances
+the view observes. Toolbar, stage, and session actions present outcomes through the
+injected operation rather than discovering the shared HUD. The application-menu editor
+responder receives that same operation from its retained capture-feedback presenter.
+Reusable styles, custom-theme resolution, watermark previews, feature gates, upgrade
+sheets, and feedback therefore cannot fall back to a different process-global graph.
+Promoting a window's style also targets the environment that created that window.
 
 `SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
 the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that

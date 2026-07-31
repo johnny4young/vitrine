@@ -539,14 +539,14 @@ extension EditorView {
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
             pasteboard.setString(url.absoluteString, forType: .string)
-            CaptureHUDController.shared.present(
+            session.feedback(
                 Notifier.confirmation(String(localized: "Share link copied")))
         } catch SnapshotShareLink.ShareLinkError.tooLarge {
-            CaptureHUDController.shared.present(
+            session.feedback(
                 Notifier.failure(
                     String(localized: "This snapshot is too large to share as a link")))
         } catch {
-            CaptureHUDController.shared.present(
+            session.feedback(
                 Notifier.failure(String(localized: "Couldn't copy the share link")))
         }
     }

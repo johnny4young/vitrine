@@ -76,9 +76,9 @@ struct AppEnvironmentTests {
         env.brandKit.isEnabled = true
         env.brandKit.brandKit = BrandKit(handle: "@isolated")
 
-        let primary = EditorSession(identity: .primary, environment: env)
+        let primary = EditorSession(identity: .primary, environment: env, feedback: .noOp)
         let secondary = EditorSession(
-            identity: EditorWindowIdentity(index: 2), environment: env)
+            identity: EditorWindowIdentity(index: 2), environment: env, feedback: .noOp)
         defer {
             primary.discard()
             secondary.discard()
