@@ -60,9 +60,9 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         return true
     }
 
-    /// True when the key (or, failing that, the main) window is an editor. The fallback
-    /// to `mainWindow` keeps the command usable when focus sits in a panel the editor
-    /// presented; `EditorWindowController` tags every editor window with an
+    /// True when the key window is an editor, or when no window is key and the main
+    /// window is an editor. A non-editor key window deliberately keeps editor commands
+    /// disabled; `EditorWindowController` tags every editor window with an
     /// `editor-window`-prefixed identifier, of which the primary is exactly
     /// `editor-window`.
     private var isEditorKey: Bool {
