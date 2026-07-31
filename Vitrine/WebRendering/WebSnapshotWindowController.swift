@@ -417,13 +417,20 @@ final class WebSnapshotModel {
 /// rather than naming this WebKit-backed controller directly.
 @MainActor
 final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
-    static let shared = WebSnapshotWindowController(environment: .shared)
+    static let shared = WebSnapshotWindowController(
+        environment: .shared,
+        feedback: .live,
+        presentation: .live)
 
     /// The window's working document, shared with the hosted SwiftUI view.
     let model: WebSnapshotModel
 
     /// The data graph supplied to the window and its SwiftUI root.
     let environment: AppEnvironment
+    /// The transient-feedback operation supplied to the SwiftUI root.
+    let feedback: FeedbackDisplay
+    /// The app-owned presentation routes supplied to the SwiftUI root.
+    let presentation: WebSnapshotPresentation
 
     private var window: NSWindow?
 
@@ -436,11 +443,24 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
 
     init(
         environment: AppEnvironment,
-        model: WebSnapshotModel = WebSnapshotModel()
+        model: WebSnapshotModel = WebSnapshotModel(),
+        feedback: FeedbackDisplay,
+        presentation: WebSnapshotPresentation
     ) {
         self.environment = environment
         self.model = model
+        self.feedback = feedback
+        self.presentation = presentation
         super.init()
+    }
+
+    /// Builds the SwiftUI root from the same dependencies retained by this controller.
+    func makeRootView() -> WebSnapshotEditorView {
+        WebSnapshotEditorView(
+            model: model,
+            environment: environment,
+            feedback: feedback,
+            presentation: presentation)
     }
 
     /// Installs the window opener on `WebSnapshotPresenter`. Called once at launch from
@@ -466,8 +486,7 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeWindow() -> NSWindow {
-        let hosting = NSHostingController(
-            rootView: WebSnapshotEditorView(model: model, environment: environment))
+        let hosting = NSHostingController(rootView: makeRootView())
         let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = String(localized: "Web Snapshot")
         window.styleMask = [
