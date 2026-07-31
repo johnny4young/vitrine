@@ -293,7 +293,7 @@ struct MenuBarStatusItemTests {
             contentsOf: repositoryRoot.appendingPathComponent(
                 "Vitrine/MenuBar/MenuBarContent.swift"),
             encoding: .utf8)
-        let code = codeWithoutLineComments(source)
+        let code = sourceCodeWithoutLineComments(source)
 
         for forbiddenDependency in [
             "RecentsGalleryWindowController.shared",
@@ -317,7 +317,7 @@ struct MenuBarStatusItemTests {
             navigation.show(.help) // HelpWindowController.shared.show()
             """
 
-        let code = codeWithoutLineComments(source)
+        let code = sourceCodeWithoutLineComments(source)
 
         #expect(code.contains("navigation.show(.editor)"))
         #expect(code.contains("navigation.show(.help)"))
@@ -339,17 +339,5 @@ struct MenuBarStatusItemTests {
             !source.contains("MenuBarExtra(\""),
             "the menu bar must stay owned by the AppKit helper/fallback path")
         #expect(!source.contains(".menuBarExtraStyle"))
-    }
-
-    /// Keeps source guards focused on executable references rather than documentation.
-    private func codeWithoutLineComments(_ source: String) -> String {
-        source.split(separator: "\n", omittingEmptySubsequences: false)
-            .map { line in
-                guard let commentStart = line.range(of: "//") else {
-                    return String(line)
-                }
-                return String(line[..<commentStart.lowerBound])
-            }
-            .joined(separator: "\n")
     }
 }

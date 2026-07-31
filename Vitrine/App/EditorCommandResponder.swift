@@ -22,6 +22,7 @@ import AppKit
 /// promotes that key window's style to the app-wide default.
 final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     let settings: AppSettings
+    let feedback: FeedbackDisplay
 
     /// Small snippets format synchronously so the menu command feels instant. Larger
     /// snippets do the pure string work off the main actor and only return to AppKit
@@ -30,8 +31,9 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     private static let asyncFormatThresholdBytes = 64 * 1024
     private static let maxInteractiveFormatBytes = 1 * 1024 * 1024
 
-    init(settings: AppSettings) {
+    init(settings: AppSettings, feedback: FeedbackDisplay) {
         self.settings = settings
+        self.feedback = feedback
         super.init()
     }
 
@@ -91,7 +93,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
-        CaptureHUDController.shared.present(
+        feedback(
             copied
                 ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
                 : Notifier.failure(String(localized: "Couldn't copy the image")))
@@ -106,10 +108,10 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             profile: settings.export.colorProfile)
         {
         case .saved:
-            CaptureHUDController.shared.present(
+            feedback(
                 Notifier.confirmation(String(localized: "Image saved")))
         case .failed:
-            CaptureHUDController.shared.present(
+            feedback(
                 Notifier.failure(String(localized: "Couldn't save the image")))
         case .cancelled:
             break  // the user dismissed the save panel — no feedback needed
@@ -166,7 +168,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         let original = textView.string
         let byteCount = original.utf8.count
         guard byteCount <= Self.maxInteractiveFormatBytes else {
-            CaptureHUDController.shared.present(
+            feedback(
                 Notifier.failure(String(localized: "Code is too large to format interactively")))
             return
         }

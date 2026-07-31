@@ -145,7 +145,7 @@ extension EditorView {
                 let text = try await ImageTextExtractor.recognizeText(in: cgImage)
                 guard settings.config.foregroundImage == reference else { return }
                 guard !text.isEmpty else {
-                    CaptureHUDController.shared.present(
+                    session.feedback(
                         Notifier.confirmation(String(localized: "No text found in the image")))
                     return
                 }
@@ -154,12 +154,12 @@ extension EditorView {
                 pasteboard.setString(text, forType: .string)
                 Log.export.notice(
                     "Copied recognized image text (\(text.count, privacy: .public) chars)")
-                CaptureHUDController.shared.present(
+                session.feedback(
                     Notifier.confirmation(String(localized: "Text copied from image")))
             } catch {
                 guard settings.config.foregroundImage == reference else { return }
                 Log.export.error("Image text recognition failed")
-                CaptureHUDController.shared.present(
+                session.feedback(
                     Notifier.failure(
                         String(localized: "Couldn't recognize text in the image")))
             }
@@ -188,7 +188,7 @@ extension EditorView {
                     let result = try ImageSecretRedactor.redactSecrets(
                         in: cgImage, recognizedLines: lines)
                 else {
-                    CaptureHUDController.shared.present(
+                    session.feedback(
                         Notifier.confirmation(String(localized: "No secrets found in the image")))
                     return
                 }
@@ -201,12 +201,12 @@ extension EditorView {
                 settings.config.foregroundImage = newReference
                 Log.export.notice(
                     "Redacted image secrets (\(result.regionCount, privacy: .public) regions)")
-                CaptureHUDController.shared.present(
+                session.feedback(
                     Notifier.confirmation(String(localized: "Secrets redacted")))
             } catch {
                 guard settings.config.foregroundImage == reference else { return }
                 Log.export.error("Image secret redaction failed")
-                CaptureHUDController.shared.present(
+                session.feedback(
                     Notifier.failure(
                         String(localized: "Couldn't redact secrets in the image")))
             }
@@ -226,7 +226,7 @@ extension EditorView {
     /// same undo-aware behavior as the ⌥⌘F command.
     var formatButton: some View {
         Button {
-            EditorCommandResponder(settings: settings).formatCode(nil)
+            EditorCommandResponder(settings: settings, feedback: session.feedback).formatCode(nil)
         } label: {
             Image(systemName: VitrineCommand.formatCode.systemImageName)
                 .font(.system(size: 11, weight: .medium))

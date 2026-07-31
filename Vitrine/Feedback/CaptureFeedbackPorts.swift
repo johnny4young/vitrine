@@ -1,38 +1,3 @@
-/// Presents capture feedback without exposing the window-owning HUD controller to the
-/// feedback coordinator.
-///
-/// The live adapter remains the only place this operation reaches the reusable AppKit
-/// HUD. Tests can substitute a recording closure and exercise feedback/action routing
-/// without creating a window.
-struct CaptureFeedbackDisplay {
-    private let perform:
-        (
-            Notifier.CaptureFeedback,
-            @escaping (Notifier.RecoveryAction) -> Void
-        ) -> Void
-
-    init(
-        _ perform:
-            @escaping (
-                Notifier.CaptureFeedback,
-                @escaping (Notifier.RecoveryAction) -> Void
-            ) -> Void
-    ) {
-        self.perform = perform
-    }
-
-    func callAsFunction(
-        _ feedback: Notifier.CaptureFeedback,
-        onAction: @escaping (Notifier.RecoveryAction) -> Void = { _ in }
-    ) {
-        perform(feedback, onAction)
-    }
-
-    static let live = CaptureFeedbackDisplay { feedback, onAction in
-        CaptureHUDController.shared.present(feedback, onAction: onAction)
-    }
-}
-
 /// Routes recovery actions to app-owned windows without coupling the feedback
 /// coordinator to their singleton lifecycles.
 ///
