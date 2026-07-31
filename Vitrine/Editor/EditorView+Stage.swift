@@ -223,10 +223,10 @@ extension EditorView {
     }
 
     /// The 26 pt format action in the code header — the mouse route to the
-    /// shared, undo-aware ⌥⌘F command.
+    /// same undo-aware behavior as the ⌥⌘F command.
     var formatButton: some View {
         Button {
-            EditorCommandResponder.shared.formatCode(nil)
+            EditorCommandResponder(settings: settings).formatCode(nil)
         } label: {
             Image(systemName: VitrineCommand.formatCode.systemImageName)
                 .font(.system(size: 11, weight: .medium))

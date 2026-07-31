@@ -690,6 +690,14 @@ seeding and window-capture support out of the production lifecycle delegate. App
 window controllers and the stateless highlighter cache remain UI lifecycle leaf
 singletons as documented above.
 
+`AppMenu` owns the AppKit command surface and retains one app-command responder plus one
+editor-command responder for its full lifetime. Both are created from the
+`AppEnvironment` and capture-feedback presenter supplied by `AppDelegate`; rebuilding a
+menu after SwiftUI displaces it therefore reuses the same command graph. Quick capture,
+theme resolution, fallback editor settings, and the What's New command cannot escape to
+independent global stores. Window controllers remain process-wide UI lifecycle leaves,
+while toolbar formatting constructs a responder over the current editor's own settings.
+
 `SettingsRootView` accepts one `AppEnvironment` and passes that graph through every pane.
 Settings views do not default back to global stores: the Style preview, Brand Kit
 controls, reusable-style catalog, entitlement gates, and reset path therefore observe

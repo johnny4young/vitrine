@@ -289,7 +289,9 @@ struct HelpCommandTests {
 
     @Test func helpMenuExposesHelpAndWhatsNew() {
         // The Help menu surfaces both the Help and What's New commands.
-        let help = AppMenu.make().items.compactMap(\.submenu).first { $0.title == "Help" }
+        let help = makeIsolatedAppMenu().make().items.compactMap(\.submenu).first {
+            $0.title == "Help"
+        }
         let identifiers = help?.items.map { $0.accessibilityIdentifier() } ?? []
         #expect(identifiers.contains(VitrineCommand.help.accessibilityIdentifier))
         #expect(identifiers.contains(VitrineCommand.whatsNew.accessibilityIdentifier))

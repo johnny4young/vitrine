@@ -147,6 +147,11 @@ struct AppEnvironmentTests {
         #expect(delegate.environment === env)
         #expect(delegate.feedback === feedback)
         #expect(delegate.launchArguments.environment === env)
+        #expect(delegate.mainMenu.environment === env)
+        #expect(delegate.mainMenu.feedback === feedback)
+        #expect(delegate.mainMenu.appCommands.environment === env)
+        #expect(delegate.mainMenu.appCommands.feedback === feedback)
+        #expect(delegate.mainMenu.editorCommands.settings === env.appSettings)
     }
 
     @Test func launchArgumentsSeedOnlyTheProvidedGraph() throws {
@@ -185,6 +190,9 @@ struct AppEnvironmentTests {
         for relativePath in [
             "Vitrine/App/AppDelegate.swift",
             "Vitrine/App/AppLaunchArgumentHandler.swift",
+            "Vitrine/App/AppMenu.swift",
+            "Vitrine/App/VitrineCommands.swift",
+            "Vitrine/Editor/EditorView+Stage.swift",
         ] {
             let source = try String(
                 contentsOf: repositoryRoot.appendingPathComponent(relativePath),
@@ -195,6 +203,8 @@ struct AppEnvironmentTests {
                 "RecentsStore.shared",
                 "BrandKitStore.shared",
                 "QuickCapture.perform(environment: .shared",
+                "AppCommandResponder.shared",
+                "EditorCommandResponder.shared",
             ] {
                 #expect(
                     !source.contains(forbiddenDependency),

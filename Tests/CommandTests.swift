@@ -199,8 +199,31 @@ struct VitrineCommandShortcutParityTests {
 @Suite("Application main menu assembly")
 @MainActor
 struct AppMenuTests {
+    private let menuController = makeIsolatedAppMenu()
+
+    @Test func retainsOneExplicitCommandGraph() {
+        let menu = menuController
+
+        #expect(menu.appCommands.environment === menu.environment)
+        #expect(menu.appCommands.feedback === menu.feedback)
+        #expect(menu.editorCommands.settings === menu.environment.appSettings)
+    }
+
+    @Test func rebuiltMenusReuseTheOwnedResponders() {
+        let menu = menuController
+        let firstTargets = menu.make().items.compactMap(\.submenu).flatMap(\.items).compactMap(
+            \.target)
+        let secondTargets = menu.make().items.compactMap(\.submenu).flatMap(\.items).compactMap(
+            \.target)
+
+        #expect(firstTargets.contains { $0 === menu.appCommands })
+        #expect(firstTargets.contains { $0 === menu.editorCommands })
+        #expect(secondTargets.contains { $0 === menu.appCommands })
+        #expect(secondTargets.contains { $0 === menu.editorCommands })
+    }
+
     @Test func topLevelMenusAreThePlatformStandardSet() {
-        let menu = AppMenu.make()
+        let menu = menuController.make()
         let titles = menu.items.compactMap { $0.submenu?.title }
         // The App menu's submenu title is empty (it shows the app name); the rest
         // follow the conventional order.
@@ -223,7 +246,7 @@ struct AppMenuTests {
 
     @Test func appMenuExposesSettingsAndAbout() {
         // The App menu is the first item; its submenu holds About and Settings.
-        let appSubmenu = AppMenu.make().items.first?.submenu
+        let appSubmenu = menuController.make().items.first?.submenu
         let identifiers = appSubmenu.map(menuItemIdentifiers) ?? []
         #expect(identifiers.contains(VitrineCommand.about.accessibilityIdentifier))
         #expect(identifiers.contains(VitrineCommand.settings.accessibilityIdentifier))
@@ -238,12 +261,14 @@ struct AppMenuTests {
         // Editor commands must dispatch to the editor command responder so they mirror the
         // toolbar; a wrong target would silently no-op. Copy/Save/Share/Make Default live in
         // the File menu and Format Code in the Edit menu, so search the whole main menu.
-        let items = AppMenu.make().items.compactMap(\.submenu).flatMap(\.items)
+        let items = menuController.make().items.compactMap(\.submenu).flatMap(\.items)
         for command in VitrineCommand.editorCommands {
             let item = items.first {
                 $0.accessibilityIdentifier() == command.accessibilityIdentifier
             }
-            #expect(item?.target is EditorCommandResponder, "\(command) is not editor-targeted")
+            #expect(
+                item?.target === menuController.editorCommands,
+                "\(command) is not editor-targeted")
         }
     }
 
@@ -267,7 +292,7 @@ struct AppMenuTests {
         #expect(item != nil, "Format Code must be in the Edit menu")
         #expect(item?.keyEquivalent == "f")
         #expect(item?.keyEquivalentModifierMask == [.command, .option])
-        #expect(item?.target is EditorCommandResponder)
+        #expect(item?.target === menuController.editorCommands)
     }
 
     @Test func annotationToolCommandsUseTheAppKitMenuShortcutPath() {
@@ -282,7 +307,7 @@ struct AppMenuTests {
         }
         #expect(arrow?.keyEquivalent == "2")
         #expect(arrow?.keyEquivalentModifierMask == [.command])
-        #expect(arrow?.target is EditorCommandResponder)
+        #expect(arrow?.target === menuController.editorCommands)
         #expect(arrow?.representedObject as? String == AnnotationTool.arrow.rawValue)
     }
 
@@ -291,9 +316,10 @@ struct AppMenuTests {
     /// `applicationWillUpdate(_:)`, so a spurious rebuild there would churn the menu
     /// bar (and re-run menu construction) continuously.
     @Test func reinstallIsANoOpWhileTheDesignedMenuIsStillInstalled() {
-        AppMenu.install()
+        let menuController = makeIsolatedAppMenu()
+        menuController.install()
         let installed = NSApp.mainMenu
-        AppMenu.reinstallIfDisplaced()
+        menuController.reinstallIfDisplaced()
         #expect(NSApp.mainMenu === installed)
     }
 
@@ -301,10 +327,11 @@ struct AppMenuTests {
     /// full designed menu back, or File/Edit (and their key equivalents) silently
     /// disappear from the running app.
     @Test func reinstallRestoresTheDesignedMenuAfterAMenuSwap() {
-        AppMenu.install()
+        let menuController = makeIsolatedAppMenu()
+        menuController.install()
         NSApp.mainMenu = NSMenu()
-        AppMenu.reinstallIfDisplaced()
-        #expect(NSApp.mainMenu === AppMenu.installed)
+        menuController.reinstallIfDisplaced()
+        #expect(NSApp.mainMenu === menuController.installed)
         let titles = NSApp.mainMenu?.items.compactMap(\.submenu?.title) ?? []
         #expect(titles.contains("File"))
         #expect(titles.contains("Edit"))
@@ -317,14 +344,15 @@ struct AppMenuTests {
     /// only a content-aware check catches it. This reproduces that takeover exactly
     /// and proves the designed menu comes back.
     @Test func reinstallRestoresTheDesignedMenuAfterAnInPlaceItemReplacement() {
-        AppMenu.install()
-        let menu = AppMenu.installed
+        let menuController = makeIsolatedAppMenu()
+        menuController.install()
+        let menu = menuController.installed
         menu?.removeAllItems()
         let swiftUIDefault = NSMenuItem()
         swiftUIDefault.submenu = NSMenu(title: "View")
         menu?.addItem(swiftUIDefault)
 
-        AppMenu.reinstallIfDisplaced()
+        menuController.reinstallIfDisplaced()
         let titles = NSApp.mainMenu?.items.compactMap(\.submenu?.title) ?? []
         #expect(titles.contains("File"))
         #expect(titles.contains("Edit"))
@@ -334,7 +362,9 @@ struct AppMenuTests {
     // MARK: Helpers
 
     private func submenu(named title: String) -> NSMenu {
-        let menu = AppMenu.make().items.compactMap(\.submenu).first { $0.title == title }
+        let menu = menuController.make().items.compactMap(\.submenu).first {
+            $0.title == title
+        }
         #expect(menu != nil, "Missing top-level menu: \(title)")
         return menu ?? NSMenu()
     }
