@@ -58,7 +58,8 @@ struct MenuBarStatusItemTests {
     @Test func attachInstallsOneVisibleFixedItemAndIsIdempotent() throws {
         let controller = StatusItemController(
             environment: AppEnvironment(defaults: isolatedDefaults(#function)),
-            feedback: CaptureFeedbackPresenter())
+            feedback: CaptureFeedbackPresenter(),
+            navigation: .noOp)
         #expect(!controller.isAttached)
 
         controller.attach()
@@ -87,6 +88,7 @@ struct MenuBarStatusItemTests {
         let controller = StatusItemController(
             environment: AppEnvironment(defaults: isolatedDefaults(#function)),
             feedback: CaptureFeedbackPresenter(),
+            navigation: .noOp,
             visibilityRepairDelays: [.milliseconds(10)])
         controller.attach()
         let item = try #require(controller.statusItem)
@@ -216,7 +218,8 @@ struct MenuBarStatusItemTests {
         let anchor = CGPoint(x: screen.frame.midX, y: screen.frame.maxY - 12)
         let controller = StatusItemController(
             environment: AppEnvironment(defaults: isolatedDefaults(#function)),
-            feedback: CaptureFeedbackPresenter())
+            feedback: CaptureFeedbackPresenter(),
+            navigation: .noOp)
         defer {
             if controller.isPanelShown {
                 controller.togglePanel(at: anchor)
@@ -253,11 +256,57 @@ struct MenuBarStatusItemTests {
         let environment = AppEnvironment(defaults: isolatedDefaults(#function))
 
         MenuBarDismissAction()()
-        MenuBarContent(environment: environment, feedback: CaptureFeedbackPresenter()).dismiss()
+        MenuBarContent(
+            environment: environment,
+            feedback: CaptureFeedbackPresenter(),
+            navigation: .noOp
+        ).dismiss()
 
         #expect(sideEffects == 0, "only the injected action may run")
         observed()
         #expect(sideEffects == 1)
+    }
+
+    @Test func navigationRoutesEveryDestinationAndEditorDocument() {
+        var destinations: [MenuBarNavigation.Destination] = []
+        var documents: [SnapshotConfig] = []
+        let navigation = MenuBarNavigation(
+            present: { destinations.append($0) },
+            loadPrimaryEditor: { documents.append($0) })
+        var config = SnapshotConfig()
+        config.code = "let routed = true"
+
+        for destination in MenuBarNavigation.Destination.allCases {
+            navigation.show(destination)
+        }
+        navigation.loadIntoPrimaryEditor(config)
+
+        #expect(destinations == MenuBarNavigation.Destination.allCases)
+        #expect(documents == [config])
+    }
+
+    @Test func panelContainsNoWindowGlobalLookups() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/MenuBar/MenuBarContent.swift"),
+            encoding: .utf8)
+
+        for forbiddenDependency in [
+            "RecentsGalleryWindowController.shared",
+            "EditorWindowController.shared",
+            "WebSnapshotPresenter.show",
+            "SocialCardWindowController.shared",
+            "SettingsWindowManager.shared",
+            "HelpWindowController.shared",
+            "AboutPanel.present",
+        ] {
+            #expect(
+                !source.contains(forbiddenDependency),
+                "MenuBarContent must receive \(forbiddenDependency) as navigation")
+        }
     }
 
     /// A source guard: the SwiftUI scene is what made a hidden icon fatal, so its return

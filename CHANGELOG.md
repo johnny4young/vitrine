@@ -14,6 +14,9 @@ can never drift.
 
 ### Fixed
 
+- **Menu-bar commands no longer discover app-owned windows from the SwiftUI view.** The
+  status-item composition boundary supplies explicit navigation operations for history,
+  editors, settings, help, and supporting creation surfaces.
 - **Quick-capture feedback recovery no longer hides window-global dependencies.** The
   lifecycle presenter receives HUD display and recovery navigation as explicit
   operations, keeping action routing deterministic and testable without creating AppKit

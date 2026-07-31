@@ -18,7 +18,10 @@ import SwiftUI
 @MainActor
 final class StatusItemController: NSObject, NSPopoverDelegate {
     /// The app's single status item. A second one would stack a duplicate icon.
-    static let shared = StatusItemController(environment: .shared, feedback: .shared)
+    static let shared = StatusItemController(
+        environment: .shared,
+        feedback: .shared,
+        navigation: .live)
 
     /// A deterministic identity lets the app repair the exact persistence keys AppKit
     /// applies while Control Center hosts the item. The historical names cover builds
@@ -52,15 +55,19 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     /// The UI lifecycle presenter retained alongside the panel so transient and inline
     /// feedback share one state owner.
     let feedback: CaptureFeedbackPresenter
+    /// The window-routing operations supplied to the panel.
+    let navigation: MenuBarNavigation
     private let visibilityRepairDelays: [Duration]
 
     init(
         environment: AppEnvironment,
         feedback: CaptureFeedbackPresenter,
+        navigation: MenuBarNavigation,
         visibilityRepairDelays: [Duration] = defaultVisibilityRepairDelays
     ) {
         self.environment = environment
         self.feedback = feedback
+        self.navigation = navigation
         self.visibilityRepairDelays = visibilityRepairDelays
         super.init()
     }
@@ -295,6 +302,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         let content = MenuBarContent(
             environment: environment,
             feedback: feedback,
+            navigation: navigation,
             dismiss: MenuBarDismissAction { [weak self] in
                 self?.dismissPanel()
             }
