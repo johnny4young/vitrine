@@ -43,6 +43,11 @@ can never drift.
 
 ### Changed
 
+- **The app lifecycle now resolves data through one explicit environment.** URL
+  handoffs, entitlement updates, onboarding gates, launch-time test fixtures, and the
+  global hotkey use the graph retained by `AppDelegate`. Development and UI-automation
+  launch arguments now live in a focused handler instead of expanding the production
+  lifecycle delegate.
 - **Typing now waits for the preview debounce before rebuilding the rendered canvas.**
   Document text is observed independently from the remaining render inputs, and
   equivalent canvas updates are coalesced. Theme, layout, annotation, and other
