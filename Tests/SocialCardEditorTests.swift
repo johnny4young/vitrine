@@ -98,12 +98,15 @@ struct SocialCardCommandTests {
     }
 
     @Test func fileMenuExposesNewSocialCardTargetingTheAppResponder() {
-        let file = AppMenu.make().items.compactMap(\.submenu).first { $0.title == "File" }
+        let menuController = makeIsolatedAppMenu()
+        let file = menuController.make().items.compactMap(\.submenu).first {
+            $0.title == "File"
+        }
         let item = file?.items.first {
             $0.accessibilityIdentifier() == VitrineCommand.newSocialCard.accessibilityIdentifier
         }
         #expect(item != nil, "New Social Card must be in the File menu")
-        #expect(item?.target is AppCommandResponder)
+        #expect(item?.target === menuController.appCommands)
         #expect(item?.action == #selector(AppCommandResponder.openSocialCardEditor(_:)))
         // App-scoped commands carry no key equivalent in the menu.
         #expect(item?.keyEquivalent == "")

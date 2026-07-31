@@ -218,14 +218,14 @@ extension VitrineCommand {
 /// Performs and validates the editor/document commands (Copy / Save / Share
 /// Image) so they exist as real menu commands with keyboard shortcuts, not just
 /// toolbar buttons. These mirror the editor toolbar exactly: both reach
-/// the shared `AppSettings` and `ExportManager`, so the menu command and the
+/// the active editor settings and `ExportManager`, so the menu command and the
 /// toolbar button always produce the same image.
 ///
-/// A single shared instance is the explicit target of the editor menu items.
-/// Targeting it directly (rather than the responder chain) keeps enablement
-/// deterministic and unit-testable: a command is enabled only when an editor
-/// window is key — and, for the render commands, only when that window holds
-/// code — which `canPerform(_:)` decides.
+/// One instance retained by the main-menu owner is the explicit target of the
+/// editor menu items. Targeting it directly (rather than the responder chain)
+/// keeps enablement deterministic and unit-testable: a command is enabled only
+/// when an editor window is key — and, for the render commands, only when that
+/// window holds code — which `canPerform(_:)` decides.
 ///
 /// ## Multi-window
 ///
@@ -236,9 +236,7 @@ extension VitrineCommand {
 /// is resolvable (the unit-test host, where no real window is key). "Make Default"
 /// promotes that key window's style to the app-wide default.
 final class EditorCommandResponder: NSObject, NSMenuItemValidation {
-    static let shared = EditorCommandResponder()
-
-    private let settings: AppSettings
+    let settings: AppSettings
 
     /// Small snippets format synchronously so the menu command feels instant. Larger
     /// snippets do the pure string work off the main actor and only return to AppKit
@@ -247,7 +245,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     private static let asyncFormatThresholdBytes = 64 * 1024
     private static let maxInteractiveFormatBytes = 1 * 1024 * 1024
 
-    init(settings: AppSettings = .shared) {
+    init(settings: AppSettings) {
         self.settings = settings
         super.init()
     }
@@ -441,10 +439,20 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
 /// About) from the main menu. A small `@objc` target rather than free functions
 /// so menu items can wire to selectors and AppKit's standard validation applies.
 final class AppCommandResponder: NSObject {
-    static let shared = AppCommandResponder()
+    let environment: AppEnvironment
+    let feedback: CaptureFeedbackPresenter
+
+    init(
+        environment: AppEnvironment,
+        feedback: CaptureFeedbackPresenter
+    ) {
+        self.environment = environment
+        self.feedback = feedback
+        super.init()
+    }
 
     @objc func newCaptureFromClipboard(_ sender: Any?) {
-        QuickCapture.perform(environment: .shared, feedback: .shared)
+        QuickCapture.perform(environment: environment, feedback: feedback)
     }
 
     @objc func openEditor(_ sender: Any?) {
@@ -477,7 +485,7 @@ final class AppCommandResponder: NSObject {
     }
 
     @objc func showWhatsNew(_ sender: Any?) {
-        WhatsNewWindowController.shared.show()
+        WhatsNewWindowController.shared.show(settings: environment.appSettings)
     }
 
     @objc func showAbout(_ sender: Any?) {
@@ -490,8 +498,9 @@ final class AppCommandResponder: NSObject {
     @objc func selectTheme(_ sender: Any?) {
         guard let item = sender as? NSMenuItem, let themeID = item.representedObject as? String
         else { return }
-        let theme = CustomThemeStore.shared.theme(withID: themeID)
-        let target = EditorWindowController.shared.keyWindowSession?.settings ?? .shared
+        let theme = environment.customThemes.theme(withID: themeID)
+        let target =
+            EditorWindowController.shared.keyWindowSession?.settings ?? environment.appSettings
         target.config.theme = theme
     }
 

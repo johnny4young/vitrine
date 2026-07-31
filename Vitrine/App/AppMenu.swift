@@ -10,23 +10,37 @@ import AppKit
 /// windows a complete, conventional menu bar — including the standard Edit menu
 /// (Undo/Cut/Copy/Paste/Select All) whose first-responder actions drive the code
 /// text view — so every important command is discoverable and keyboard-reachable.
-enum AppMenu {
+final class AppMenu {
+    let environment: AppEnvironment
+    let feedback: CaptureFeedbackPresenter
+    let appCommands: AppCommandResponder
+    let editorCommands: EditorCommandResponder
+
     /// The menu most recently assembled by `install()`, kept so
     /// `reinstallIfDisplaced()` can tell "still ours" from "replaced" on the hot
     /// `applicationWillUpdate(_:)` path.
-    private(set) static var installed: NSMenu?
+    private(set) var installed: NSMenu?
 
     /// The first top-level item of `installed`. SwiftUI's scene bring-up does not
     /// swap `NSApp.mainMenu` for its own instance — it replaces the *items* of
     /// whatever menu is installed (see `reinstallIfDisplaced()`), which an identity
     /// check on the menu alone cannot detect. When that happens this item is
     /// removed from the menu, so `sentinel?.menu !== installed` flags the takeover.
-    private static var sentinel: NSMenuItem?
+    private var sentinel: NSMenuItem?
+
+    init(
+        environment: AppEnvironment,
+        feedback: CaptureFeedbackPresenter
+    ) {
+        self.environment = environment
+        self.feedback = feedback
+        appCommands = AppCommandResponder(environment: environment, feedback: feedback)
+        editorCommands = EditorCommandResponder(settings: environment.appSettings)
+    }
 
     /// Assembles and assigns the main menu. Called at launch, and again by
     /// `reinstallIfDisplaced()` whenever something has taken the menu over.
-    @MainActor
-    static func install() {
+    func install() {
         let menu = make()
         installed = menu
         sentinel = menu.items.first
@@ -50,8 +64,7 @@ enum AppMenu {
     /// `install()` has run, so it cannot install a menu before the delegate meant
     /// to. Rebuilding (rather than re-adding the old items) also re-points
     /// `NSApp.servicesMenu`/`windowsMenu`/`helpMenu`, which SwiftUI re-claimed.
-    @MainActor
-    static func reinstallIfDisplaced() {
+    func reinstallIfDisplaced() {
         guard let installed else { return }
         if NSApp.mainMenu === installed, sentinel?.menu === installed { return }
         Log.app.notice("Main menu was taken over; reinstalling the designed menu")
@@ -60,8 +73,7 @@ enum AppMenu {
 
     /// Builds the menu tree. Separated from `install()` so its structure can be
     /// inspected in tests without a running app.
-    @MainActor
-    static func make() -> NSMenu {
+    func make() -> NSMenu {
         let mainMenu = NSMenu()
         mainMenu.addItem(appMenuItem())
         mainMenu.addItem(fileMenuItem())
@@ -75,7 +87,7 @@ enum AppMenu {
     /// A menu item wired to a `VitrineCommand`: title, shortcut, target, and a
     /// stable accessibility identifier all come from the command, so the menu and
     /// the equivalent toolbar item cannot drift.
-    private static func item(
+    private func item(
         for command: VitrineCommand, action: Selector, target: AnyObject
     ) -> NSMenuItem {
         let menuItem = NSMenuItem(
@@ -91,14 +103,14 @@ enum AppMenu {
 
     // MARK: App menu (bold, named after the app)
 
-    private static func appMenuItem() -> NSMenuItem {
+    private func appMenuItem() -> NSMenuItem {
         let appMenuItem = NSMenuItem()
         let menu = NSMenu()
 
         menu.addItem(
             item(
                 for: .about, action: #selector(AppCommandResponder.showAbout(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
 
         // "Check for Updates…" sits in its conventional App-menu position, but only on
         // the direct-download build that ships Sparkle. The App Store build
@@ -109,14 +121,14 @@ enum AppMenu {
                 item(
                     for: .checkForUpdates,
                     action: #selector(AppCommandResponder.checkForUpdates(_:)),
-                    target: AppCommandResponder.shared))
+                    target: appCommands))
         }
 
         menu.addItem(.separator())
         menu.addItem(
             item(
                 for: .settings, action: #selector(AppCommandResponder.openSettings(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
         menu.addItem(.separator())
 
         // Standard Services submenu, so system Services are available like any
@@ -155,7 +167,7 @@ enum AppMenu {
 
     // MARK: File menu (capture / editor / export)
 
-    private static func fileMenuItem() -> NSMenuItem {
+    private func fileMenuItem() -> NSMenuItem {
         let fileMenuItem = NSMenuItem()
         let menu = NSMenu(title: String(localized: "File"))
 
@@ -163,29 +175,29 @@ enum AppMenu {
             item(
                 for: .newCapture,
                 action: #selector(AppCommandResponder.newCaptureFromClipboard(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
         menu.addItem(
             item(
                 for: .openEditor, action: #selector(AppCommandResponder.openEditor(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
         // Open an additional, independent editor window.
         menu.addItem(
             item(
                 for: .newEditorWindow,
                 action: #selector(AppCommandResponder.newEditorWindow(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
         // Open the social-card editor — the local 1200×630 card composer.
         menu.addItem(
             item(
                 for: .newSocialCard,
                 action: #selector(AppCommandResponder.openSocialCardEditor(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
         // Open the Web Snapshot editor — local HTML + gated URL capture.
         menu.addItem(
             item(
                 for: .newWebSnapshot,
                 action: #selector(AppCommandResponder.openWebSnapshotEditor(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
         menu.addItem(.separator())
 
         // Editor-scoped export commands. They mirror the editor toolbar and are
@@ -194,15 +206,15 @@ enum AppMenu {
         menu.addItem(
             item(
                 for: .copyImage, action: #selector(EditorCommandResponder.copyRenderedImage(_:)),
-                target: EditorCommandResponder.shared))
+                target: editorCommands))
         menu.addItem(
             item(
                 for: .saveImage, action: #selector(EditorCommandResponder.saveRenderedImage(_:)),
-                target: EditorCommandResponder.shared))
+                target: editorCommands))
         menu.addItem(
             item(
                 for: .shareImage, action: #selector(EditorCommandResponder.shareRenderedImage(_:)),
-                target: EditorCommandResponder.shared))
+                target: editorCommands))
         menu.addItem(.separator())
 
         // Promote the key editor window's style to the app-wide default.
@@ -210,7 +222,7 @@ enum AppMenu {
         menu.addItem(
             item(
                 for: .makeDefault, action: #selector(EditorCommandResponder.makeWindowDefault(_:)),
-                target: EditorCommandResponder.shared))
+                target: editorCommands))
         menu.addItem(.separator())
 
         let close = NSMenuItem(
@@ -224,7 +236,7 @@ enum AppMenu {
 
     // MARK: Edit menu (standard first-responder text actions)
 
-    private static func editMenuItem() -> NSMenuItem {
+    private func editMenuItem() -> NSMenuItem {
         let editMenuItem = NSMenuItem()
         let menu = NSMenu(title: String(localized: "Edit"))
 
@@ -257,7 +269,7 @@ enum AppMenu {
         menu.addItem(
             item(
                 for: .formatCode, action: #selector(EditorCommandResponder.formatCode(_:)),
-                target: EditorCommandResponder.shared))
+                target: editorCommands))
         menu.addItem(.separator())
 
         // AppKit owns these shortcuts so they keep working when the responsive
@@ -273,7 +285,7 @@ enum AppMenu {
                 keyEquivalent: tool.shortcutCharacter.map(String.init) ?? "")
             item.keyEquivalentModifierMask = tool.shortcutCharacter == nil ? [] : [.command]
             item.representedObject = tool.rawValue
-            item.target = EditorCommandResponder.shared
+            item.target = editorCommands
             item.setAccessibilityIdentifier("command-annotation-tool-\(tool.rawValue)")
             annotationToolsMenu.addItem(item)
         }
@@ -286,7 +298,7 @@ enum AppMenu {
 
     // MARK: View menu (full-screen / standard window view commands)
 
-    private static func viewMenuItem() -> NSMenuItem {
+    private func viewMenuItem() -> NSMenuItem {
         let viewMenuItem = NSMenuItem()
         let menu = NSMenu(title: String(localized: "View"))
 
@@ -301,7 +313,7 @@ enum AppMenu {
                 title: theme.displayName,
                 action: #selector(AppCommandResponder.selectTheme(_:)), keyEquivalent: "")
             item.representedObject = theme.id
-            item.target = AppCommandResponder.shared
+            item.target = appCommands
             themeMenu.addItem(item)
         }
         themeItem.submenu = themeMenu
@@ -320,7 +332,7 @@ enum AppMenu {
 
     // MARK: Window menu (standard, AppKit-managed)
 
-    private static func windowMenuItem() -> NSMenuItem {
+    private func windowMenuItem() -> NSMenuItem {
         let windowMenuItem = NSMenuItem()
         let menu = NSMenu(title: String(localized: "Window"))
         menu.addItem(
@@ -342,17 +354,17 @@ enum AppMenu {
 
     // MARK: Help menu
 
-    private static func helpMenuItem() -> NSMenuItem {
+    private func helpMenuItem() -> NSMenuItem {
         let helpMenuItem = NSMenuItem()
         let menu = NSMenu(title: String(localized: "Help"))
         menu.addItem(
             item(
                 for: .help, action: #selector(AppCommandResponder.showHelp(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
         menu.addItem(
             item(
                 for: .whatsNew, action: #selector(AppCommandResponder.showWhatsNew(_:)),
-                target: AppCommandResponder.shared))
+                target: appCommands))
         helpMenuItem.submenu = menu
         // AppKit shows the searchable Help field at the top of this menu.
         NSApp.helpMenu = menu
