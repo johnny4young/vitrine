@@ -42,9 +42,12 @@ enum SnapshotRenderService {
     /// fixed size, and color profile); PDF uses `pdfData`. Throws
     /// `RenderError.emptyCode` for empty input and `RenderError.renderFailed` when
     /// the pipeline yields nothing, so a caller never has to interpret a bare `nil`.
-    static func renderData(_ request: SnapshotRenderRequest) throws -> Data {
+    static func renderData(
+        _ request: SnapshotRenderRequest,
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
+    ) throws -> Data {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
-        let config = request.makeConfig()
+        let config = request.makeConfig(themeResolver: themeResolver)
 
         let data = ExportManager.encodedPayload(
             request.format,
@@ -71,9 +74,12 @@ enum SnapshotRenderService {
     /// Returning the `CGImage` lets the caller PNG-encode through the color-managed
     /// ImageIO path (`ExportManager.pngData`) rather than a legacy TIFF/
     /// `NSBitmapImageRep` round-trip. Throws the same errors as `renderData`.
-    static func renderCGImage(_ request: SnapshotRenderRequest) throws -> CGImage {
+    static func renderCGImage(
+        _ request: SnapshotRenderRequest,
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
+    ) throws -> CGImage {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
-        let config = request.makeConfig()
+        let config = request.makeConfig(themeResolver: themeResolver)
         guard
             let cgImage = ExportManager.renderCGImage(
                 config, scale: request.effectiveScale, fixedSize: request.fixedSize,
@@ -88,8 +94,11 @@ enum SnapshotRenderService {
 
     /// Renders `request` to an `NSImage` — a convenience over `renderCGImage` for
     /// callers that want an image object. Throws the same errors as `renderData`.
-    static func renderImage(_ request: SnapshotRenderRequest) throws -> NSImage {
-        let cgImage = try renderCGImage(request)
+    static func renderImage(
+        _ request: SnapshotRenderRequest,
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
+    ) throws -> NSImage {
+        let cgImage = try renderCGImage(request, themeResolver: themeResolver)
         return NSImage(
             cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }

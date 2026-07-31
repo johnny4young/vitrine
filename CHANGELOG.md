@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Automation theme overrides no longer read app-global preferences from the render
+  core.** Portable callers resolve the built-in catalog deterministically, while
+  app-owned Shortcuts and Services adapters pass the custom-theme catalog from their
+  retained environment.
 - **Automation entry points now use one dependency graph per operation.** macOS
   Services retains the environment supplied at construction, and system-created App
   Intents bind once to the app-wide environment, keeping entitlement checks, exported
