@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Automation entry points now use one dependency graph per operation.** macOS
+  Services retains the environment supplied at construction, and system-created App
+  Intents bind once to the app-wide environment, keeping entitlement checks, exported
+  style, Brand Kit watermarking, and editor handoff aligned.
 - **Menu-bar captures now stay inside one injected data-store graph.** The panel,
   quick-capture renderer, Brand Kit watermark, recents history, and recovery actions
   resolve through the environment retained by the status-item controller instead of

@@ -47,11 +47,14 @@ struct OpenCodeInEditorIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        // The system constructs this adapter, so bind once to the app-wide graph before
+        // resolving the editor document and language history.
+        let environment = AppEnvironment.shared
         // Resolve the language the same way quick capture does when none is given,
         // so a snippet loads with correct highlighting out of the box.
         let resolved = language.language ?? LanguageDetector.interpret(code).language
 
-        let settings = AppSettings.shared
+        let settings = environment.appSettings
         settings.noteLanguageUsed(resolved)
 
         // Load the snippet into the primary editor window over the user's default

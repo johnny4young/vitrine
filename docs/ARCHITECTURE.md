@@ -317,6 +317,15 @@ capture, and the CLI, so their output is identical and they inherit the app's pr
 and sandbox posture unchanged — rendering is fully local, needs no network, screen
 recording, or Accessibility, and the actions write nothing to disk on their own.
 
+**Composition boundary.** The Services provider retains the `AppEnvironment` supplied
+when it is constructed, so its PRO gate and exported style resolve from the same graph.
+App Intents are constructed by the system rather than by an app-owned controller; each
+`perform()` adapter therefore binds once to `AppEnvironment.shared` and uses that graph
+for entitlement checks, Brand Kit watermarking, saved language history, and editor
+handoff. The pure render request remains store-free and receives its base style as a
+value, preserving deterministic tests and keeping process-global state out of the render
+core.
+
 **Shared core.** Like the CLI's `CLIOptions`/`CLIRenderer`, the automation surfaces
 share one pure value type and one render shell, both in `Vitrine/AppIntents/`:
 
