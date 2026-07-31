@@ -44,7 +44,7 @@ extension WebSnapshotEditorView {
                 captureURLString: model.urlText,
                 allowLoopback: settings.webCapture.allowsLoopbackCapture)
         else { return }
-        WebSessionWindowController.shared.show(url: url)
+        presentation.showSignIn(for: url)
     }
 
     func capture() async {
@@ -56,7 +56,7 @@ extension WebSnapshotEditorView {
         }
         await model.render(settings: settings)
         if let error = model.errorMessage {
-            CaptureHUDController.shared.present(Notifier.failure(error))
+            feedback(Notifier.failure(error))
         }
     }
 
@@ -83,7 +83,7 @@ extension WebSnapshotEditorView {
 
     func copyImage() {
         guard let asset = model.renderedAsset else { return }
-        ExportFeedback.presentCopy(ExportManager.copyPNGToPasteboard(asset.cgImage))
+        feedback(ExportFeedback.copyOutcome(ExportManager.copyPNGToPasteboard(asset.cgImage)))
     }
 
     func saveImage() {
@@ -97,11 +97,16 @@ extension WebSnapshotEditorView {
                 png: { asset.cgImage },
                 pdf: { ExportManager.pdfData(from: asset.cgImage) })
         else {
-            ExportFeedback.presentSave(.failed)
+            if let feedbackOutcome = ExportFeedback.saveOutcome(.failed) {
+                feedback(feedbackOutcome)
+            }
             return
         }
-        ExportFeedback.presentSave(
+        if let feedbackOutcome = ExportFeedback.saveOutcome(
             ExportManager.saveToFile(payload: payload, suggestedName: "vitrine-web"))
+        {
+            feedback(feedbackOutcome)
+        }
     }
 
     /// Exports every captured viewport plus the composite board as PNGs into a folder
@@ -133,16 +138,14 @@ extension WebSnapshotEditorView {
             }
         }
 
-        CaptureHUDController.shared.present(
+        feedback(
             written > 0
                 ? Notifier.confirmation(String(localized: "Images exported"))
                 : Notifier.failure(String(localized: "Couldn't export the images")))
     }
 
     func shareImage() {
-        guard let asset = model.renderedAsset, let view = NSApp.keyWindow?.contentView else {
-            return
-        }
-        ShareManager.share(nsImage(from: asset), relativeTo: view)
+        guard let asset = model.renderedAsset else { return }
+        presentation.share(nsImage(from: asset))
     }
 }

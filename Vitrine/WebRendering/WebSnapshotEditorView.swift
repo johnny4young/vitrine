@@ -19,6 +19,8 @@ import SwiftUI
 struct WebSnapshotEditorView: View {
     @Bindable var model: WebSnapshotModel
     let environment: AppEnvironment
+    let feedback: FeedbackDisplay
+    let presentation: WebSnapshotPresentation
 
     var settings: AppSettings { environment.appSettings }
 
