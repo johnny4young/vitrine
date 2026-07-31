@@ -81,5 +81,7 @@ struct RecentsGalleryCompositionTests {
                 !code.contains(forbiddenDependency),
                 "RecentsGalleryView must receive \(forbiddenDependency) from its controller")
         }
+        #expect(code.contains("UUID().uuidString"))
+        #expect(!code.contains("?? UserDefaults()"))
     }
 }

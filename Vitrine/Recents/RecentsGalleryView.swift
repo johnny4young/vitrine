@@ -456,11 +456,17 @@ private struct RecentsCard: View {
 }
 
 #if DEBUG
+    private func makeRecentsGalleryPreviewEnvironment() -> AppEnvironment {
+        let suiteName = "Vitrine.RecentsGalleryPreview.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            preconditionFailure("Unable to create isolated Recents preview defaults")
+        }
+        return AppEnvironment(defaults: defaults)
+    }
+
     #Preview("Gallery") {
-        let environment = AppEnvironment(
-            defaults: UserDefaults(suiteName: "Vitrine.RecentsGalleryPreview") ?? UserDefaults())
         RecentsGalleryView(
-            environment: environment,
+            environment: makeRecentsGalleryPreviewEnvironment(),
             feedback: .noOp,
             navigation: .noOp
         )
