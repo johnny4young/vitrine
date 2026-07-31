@@ -18,12 +18,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let environment: AppEnvironment
     let feedback: CaptureFeedbackPresenter
     let launchArguments: AppLaunchArgumentHandler
+    let mainMenu: AppMenu
 
     override init() {
         let environment = AppEnvironment.shared
+        let feedback = CaptureFeedbackPresenter.shared
         self.environment = environment
-        feedback = .shared
+        self.feedback = feedback
         launchArguments = AppLaunchArgumentHandler(environment: environment)
+        mainMenu = AppMenu(environment: environment, feedback: feedback)
         super.init()
     }
 
@@ -34,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.environment = environment
         self.feedback = feedback
         launchArguments = AppLaunchArgumentHandler(environment: environment)
+        mainMenu = AppMenu(environment: environment, feedback: feedback)
         super.init()
     }
 
@@ -183,7 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // menu bar (App ▸, File ▸, Edit ▸, View ▸, Window ▸, Help ▸). SwiftUI's scene
         // bring-up overwrites this menu with its own default after this method
         // returns, so `applicationWillUpdate(_:)` below re-asserts it.
-        AppMenu.install()
+        mainMenu.install()
 
         // Global hotkey: consume the key-up event stream on the main actor
         // and dispatch to the user-chosen action.
@@ -307,7 +311,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// AppKit menu whenever it has been taken over; the pointer checks inside keep this
     /// effectively free on this hot every-event path.
     func applicationWillUpdate(_ notification: Notification) {
-        AppMenu.reinstallIfDisplaced()
+        mainMenu.reinstallIfDisplaced()
         StatusItemController.shared.restoreVisibilityIfNeeded()
     }
 

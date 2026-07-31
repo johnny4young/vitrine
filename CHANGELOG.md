@@ -43,6 +43,10 @@ can never drift.
 
 ### Changed
 
+- **The AppKit command surface now owns one explicit dependency graph.** Rebuilt menus
+  retain the same app and editor responders, while quick capture, theme resolution,
+  fallback editor settings, and What's New use the environment supplied by the
+  application lifecycle.
 - **The app lifecycle now resolves data through one explicit environment.** URL
   handoffs, entitlement updates, onboarding gates, launch-time test fixtures, and the
   global hotkey use the graph retained by `AppDelegate`. Development and UI-automation
