@@ -6,6 +6,24 @@ import Testing
 
 @testable import Vitrine
 
+private struct AutomationProProvider: EntitlementProvider {
+    var cachedIsPro: Bool { true }
+    func currentIsPro() async -> Bool { true }
+}
+
+@MainActor
+private func makeAutomationEnvironment(isPro: Bool) throws -> AppEnvironment {
+    let defaults = try #require(
+        UserDefaults(suiteName: "VitrineAutomation-\(UUID().uuidString)"))
+    let entitlements: Entitlements
+    if isPro {
+        entitlements = Entitlements(provider: AutomationProProvider())
+    } else {
+        entitlements = Entitlements(provider: FreeProvider())
+    }
+    return AppEnvironment(defaults: defaults, entitlements: entitlements)
+}
+
 /// Shortcuts, Services, and App Intents.
 ///
 /// The automation surfaces share one pure core (`SnapshotRenderRequest` →
@@ -321,6 +339,47 @@ struct SnapshotRenderServiceTests {
 // MARK: - Services registration contract (matches the Info.plist NSServices)
 
 @MainActor
+@Suite("Automation composition root")
+struct AutomationCompositionTests {
+    @Test func servicesProviderRetainsTheProvidedEnvironment() throws {
+        let environment = try makeAutomationEnvironment(isPro: true)
+        environment.brandKit.isEnabled = true
+        environment.brandKit.brandKit = BrandKit(handle: "@automation")
+        environment.appSettings.config.theme = .dracula
+        let provider = CodeImageService(environment: environment)
+        let request = provider.makeRenderRequest(for: "let answer = 42")
+
+        #expect(provider.environment === environment)
+        #expect(request.baseStyle.watermark?.text == "@automation")
+        #expect(request.baseStyle.theme == .dracula)
+    }
+
+    @Test func systemIntentAdaptersBindThroughOneAppEnvironment() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for relativePath in [
+            "Vitrine/AppIntents/RenderCodeImageIntent.swift",
+            "Vitrine/AppIntents/OpenCodeInEditorIntent.swift",
+        ] {
+            let source = try String(
+                contentsOf: repositoryRoot.appendingPathComponent(relativePath),
+                encoding: .utf8)
+            #expect(
+                source.components(separatedBy: "AppEnvironment.shared").count == 2,
+                "\(relativePath) must bind to the app-wide graph exactly once")
+            for forbiddenStore in [
+                "AppSettings.shared",
+                "Entitlements.shared",
+                "BrandKitStore.shared",
+            ] {
+                #expect(!source.contains(forbiddenStore))
+            }
+        }
+    }
+}
+
+@MainActor
 @Suite("Services registration")
 struct ServiceRegistrationTests {
     @Test func acceptsPlainTextAndReturnsImageTypes() {
@@ -338,13 +397,14 @@ struct ServiceRegistrationTests {
         #expect(CodeImageService.shared.responds(to: selector))
     }
 
-    @Test func emptySelectionIsRejectedWithAMessageAndWritesNoImage() {
+    @Test func emptySelectionIsRejectedWithAMessageAndWritesNoImage() throws {
         // With no text on the pasteboard, the service fails with a user-facing
         // message and leaves no image behind — it never renders a blank picture.
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("VitrineServiceTest-empty"))
         pasteboard.clearContents()
 
-        let outcome = CodeImageService.shared.process(pasteboard: pasteboard, isProUnlocked: true)
+        let outcome = CodeImageService(environment: try makeAutomationEnvironment(isPro: true))
+            .process(pasteboard: pasteboard)
 
         guard case .failed(let message) = outcome else {
             Issue.record("expected a failure outcome for an empty selection")
@@ -354,28 +414,30 @@ struct ServiceRegistrationTests {
         #expect(pasteboard.data(forType: .png) == nil)
     }
 
-    @Test func selectedTextIsRenderedOntoThePasteboardAsAnImage() {
+    @Test func selectedTextIsRenderedOntoThePasteboardAsAnImage() throws {
         // The happy path: text on the pasteboard is replaced by a rendered PNG the
         // host app can paste, and the outcome reports success.
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("VitrineServiceTest-render"))
         pasteboard.clearContents()
         pasteboard.setString("let greeting = \"hello\"", forType: .string)
 
-        let outcome = CodeImageService.shared.process(pasteboard: pasteboard, isProUnlocked: true)
+        let outcome = CodeImageService(environment: try makeAutomationEnvironment(isPro: true))
+            .process(pasteboard: pasteboard)
 
         #expect(outcome == .rendered)
         // An image representation is now on the pasteboard.
         #expect(pasteboard.data(forType: .png) != nil)
     }
 
-    @Test func servicesMenuIsGatedByProAndNeverRendersWhenLocked() {
+    @Test func servicesMenuIsGatedByProAndNeverRendersWhenLocked() throws {
         // Without PRO the Services menu reports the requirement and writes no
         // image — automation never bypasses the gate.
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("VitrineServiceTest-locked"))
         pasteboard.clearContents()
         pasteboard.setString("let greeting = \"hello\"", forType: .string)
 
-        let outcome = CodeImageService.shared.process(pasteboard: pasteboard, isProUnlocked: false)
+        let outcome = CodeImageService(environment: try makeAutomationEnvironment(isPro: false))
+            .process(pasteboard: pasteboard)
 
         guard case .failed(let message) = outcome else {
             Issue.record("expected a PRO-locked failure outcome")
