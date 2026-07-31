@@ -44,7 +44,7 @@ enum SnapshotRenderService {
     /// the pipeline yields nothing, so a caller never has to interpret a bare `nil`.
     static func renderData(
         _ request: SnapshotRenderRequest,
-        themeResolver: (String) -> Theme = { Theme.theme(withID: $0) }
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
     ) throws -> Data {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig(themeResolver: themeResolver)
@@ -76,7 +76,7 @@ enum SnapshotRenderService {
     /// `NSBitmapImageRep` round-trip. Throws the same errors as `renderData`.
     static func renderCGImage(
         _ request: SnapshotRenderRequest,
-        themeResolver: (String) -> Theme = { Theme.theme(withID: $0) }
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
     ) throws -> CGImage {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig(themeResolver: themeResolver)
@@ -96,7 +96,7 @@ enum SnapshotRenderService {
     /// callers that want an image object. Throws the same errors as `renderData`.
     static func renderImage(
         _ request: SnapshotRenderRequest,
-        themeResolver: (String) -> Theme = { Theme.theme(withID: $0) }
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
     ) throws -> NSImage {
         let cgImage = try renderCGImage(request, themeResolver: themeResolver)
         return NSImage(

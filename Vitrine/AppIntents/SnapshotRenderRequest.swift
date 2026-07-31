@@ -81,7 +81,7 @@ struct SnapshotRenderRequest: Equatable {
     /// The code is set from `code` and the language from `resolvedLanguage`; neither
     /// is ever altered by a preset (a preset is presentation/output only).
     func makeConfig(
-        themeResolver: (String) -> Theme = { Theme.theme(withID: $0) }
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
     ) -> SnapshotConfig {
         var config = baseStyle.styled(
             presetID: presetID, themeID: themeID, transparent: transparent,

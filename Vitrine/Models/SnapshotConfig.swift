@@ -303,7 +303,7 @@ extension SnapshotConfig {
     /// The caller sets them after styling.
     func styled(
         presetID: String?, themeID: String?, transparent: Bool,
-        themeResolver: (String) -> Theme = { Theme.theme(withID: $0) }
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
     ) -> SnapshotConfig {
         var config = self
         // 2. Preset guidance (padding/background) layered onto the base.
