@@ -16,10 +16,17 @@ import SwiftUI
 /// secure state restoration.
 @MainActor
 final class SocialCardWindowController: NSObject {
-    static let shared = SocialCardWindowController(environment: .shared)
+    static let shared = SocialCardWindowController(
+        environment: .shared,
+        feedback: .live,
+        presentation: .live)
 
     /// The data graph supplied to the window and its SwiftUI root.
     let environment: AppEnvironment
+    /// The transient-feedback operation supplied to the SwiftUI root.
+    let feedback: FeedbackDisplay
+    /// The app-owned presentation route supplied to the SwiftUI root.
+    let presentation: SocialCardPresentation
 
     /// The single reused window, created on first show and kept alive across closes.
     private var window: NSWindow?
@@ -36,9 +43,23 @@ final class SocialCardWindowController: NSObject {
     /// commands (`EditorCommandResponder.isEditorKey` matches that prefix).
     static let windowIdentifier = "social-card-window"
 
-    init(environment: AppEnvironment) {
+    init(
+        environment: AppEnvironment,
+        feedback: FeedbackDisplay,
+        presentation: SocialCardPresentation
+    ) {
         self.environment = environment
+        self.feedback = feedback
+        self.presentation = presentation
         super.init()
+    }
+
+    /// Builds the SwiftUI root from the same dependencies retained by this controller.
+    func makeRootView() -> SocialCardEditorView {
+        SocialCardEditorView(
+            environment: environment,
+            feedback: feedback,
+            presentation: presentation)
     }
 
     /// Shows the social-card window, creating it the first time, and focuses it. This
@@ -51,12 +72,11 @@ final class SocialCardWindowController: NSObject {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// Builds the AppKit window hosting a ``SocialCardEditorView`` bound to this
-    /// controller's environment, so it edits the app-global working card without
-    /// resolving another store graph.
+    /// Builds the AppKit window hosting a ``SocialCardEditorView`` composed from this
+    /// controller's retained dependencies, so it neither resolves another store graph
+    /// nor discovers app-owned presenters.
     private func makeWindow() -> NSWindow {
-        let hosting = NSHostingController(
-            rootView: SocialCardEditorView(environment: environment))
+        let hosting = NSHostingController(rootView: makeRootView())
         let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = String(localized: "Social Card")
         window.styleMask = [

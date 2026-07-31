@@ -99,13 +99,19 @@ struct AppEnvironmentTests {
         let env = AppEnvironment(defaults: suite)
         let webModel = WebSnapshotModel()
 
-        let socialRoot = SocialCardEditorView(environment: env)
+        let socialRoot = SocialCardEditorView(
+            environment: env,
+            feedback: .noOp,
+            presentation: .noOp)
         let webRoot = WebSnapshotEditorView(
             model: webModel,
             environment: env,
             feedback: .noOp,
             presentation: .noOp)
-        let socialController = SocialCardWindowController(environment: env)
+        let socialController = SocialCardWindowController(
+            environment: env,
+            feedback: .noOp,
+            presentation: .noOp)
         let webController = WebSnapshotWindowController(
             environment: env,
             model: webModel,

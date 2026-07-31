@@ -735,11 +735,12 @@ the app's singleton auxiliary editors. Each controller retains the `AppEnvironme
 created it and supplies that graph to its SwiftUI root. Social Card resolves the working
 card, custom-theme catalog, Brand Kit action, and entitlement gate from those instances;
 Web Snapshot resolves capture consent, viewport preferences, and export settings from
-the same app settings. The Web Snapshot controller also supplies transient feedback and
-app-owned presentation operations: capture and export outcomes never discover the HUD,
-while authenticated-session and share-sheet routing stay behind a closure-backed adapter.
-The windows remain reusable and app-global, but isolated tests no longer create roots
-that silently observe or mutate process-global stores or construct presentation windows.
+the same app settings. Both controllers also supply transient feedback and app-owned
+presentation operations. Social Card rendering remains independent from the share sheet,
+while Web Snapshot keeps authenticated-session and sharing routes behind a closure-backed
+adapter. The windows remain reusable and app-global, but isolated tests no longer create
+roots that silently observe or mutate process-global stores or construct presentation
+windows.
 
 `RecentsGalleryWindowController` owns the equivalent boundary for capture history. Its
 SwiftUI root receives the retained `AppEnvironment`, an editor-navigation operation, and

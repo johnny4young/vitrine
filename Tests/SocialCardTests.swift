@@ -619,17 +619,14 @@ struct SocialCardClipboardTests {
     }
 }
 
-// MARK: - Save & share flow refusal
+// MARK: - Save flow refusal
 
-/// The save and share flows present modal AppKit UI on success, so a unit test
-/// cannot drive a real save panel or share picker headlessly. What it *can* pin —
-/// and what the behavior depends on — is that both flows refuse an unrenderable
-/// model *before* any UI is shown: `saveToFile` returns `.failed` and `share`
-/// returns `false` while never touching the panel or `ShareManager`. That keeps
-/// every entry point honest about an empty card without requiring a UI session.
+/// The save flow presents modal AppKit UI on success, so a unit test cannot drive a
+/// real save panel headlessly. What it *can* pin is that an unrenderable model returns
+/// `.failed` before any UI is shown.
 @MainActor
-@Suite("Social card save & share flows")
-struct SocialCardSaveShareTests {
+@Suite("Social card save flow")
+struct SocialCardSaveTests {
     @Test func saveRefusesAnEmptyModelBeforeShowingAPanel() {
         // `renderCGImage` returns nil for an empty model, so `saveToFile` short-
         // circuits to `.failed` before `NSSavePanel.runModal()` — no panel appears.
@@ -643,15 +640,6 @@ struct SocialCardSaveShareTests {
         let blankHeadline = SocialCardModel(codeExcerpt: "let x = 1", template: .headline)
         #expect(SocialCardRenderer.saveToFile(blankHeadline, format: .png) == .failed)
         #expect(SocialCardRenderer.saveToFile(blankHeadline, format: .pdf) == .failed)
-    }
-
-    @Test func shareRefusesAnEmptyModelBeforePresentingThePicker() {
-        // `share` returns false before reaching `ShareManager`, so a throwaway view is
-        // never used to anchor a picker. No share sheet is presented.
-        let anchor = NSView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
-        #expect(SocialCardRenderer.share(SocialCardModel(), relativeTo: anchor) == false)
-        let blankHeadline = SocialCardModel(codeExcerpt: "let x = 1", template: .headline)
-        #expect(SocialCardRenderer.share(blankHeadline, relativeTo: anchor) == false)
     }
 }
 
