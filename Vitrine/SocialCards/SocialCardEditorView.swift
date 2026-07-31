@@ -12,6 +12,8 @@ import SwiftUI
 /// changes persist immediately through the settings' own observer.
 struct SocialCardEditorView: View {
     let environment: AppEnvironment
+    let feedback: FeedbackDisplay
+    let presentation: SocialCardPresentation
 
     var settings: AppSettings { environment.appSettings }
     var themes: CustomThemeStore { environment.customThemes }
@@ -125,25 +127,31 @@ struct SocialCardEditorView: View {
     // MARK: - Export
 
     private func copyCard() {
-        ExportFeedback.presentCopy(
-            SocialCardRenderer.copyToPasteboard(
-                card, scale: exportScale, profile: settings.export.colorProfile))
+        feedback(
+            ExportFeedback.copyOutcome(
+                SocialCardRenderer.copyToPasteboard(
+                    card, scale: exportScale, profile: settings.export.colorProfile)))
     }
 
     private func saveCard() {
-        ExportFeedback.presentSave(
+        if let feedbackOutcome = ExportFeedback.saveOutcome(
             SocialCardRenderer.saveToFile(
                 card, scale: exportScale, format: settings.export.format,
                 profile: settings.export.colorProfile))
+        {
+            feedback(feedbackOutcome)
+        }
     }
 
-    private func shareCard() {
-        guard let view = NSApp.keyWindow?.contentView else { return }
-        if !SocialCardRenderer.share(
-            card, relativeTo: view, scale: exportScale, profile: settings.export.colorProfile)
-        {
-            ExportFeedback.presentShareFailure()
+    func shareCard() {
+        guard
+            let image = SocialCardRenderer.renderNSImage(
+                card, scale: exportScale, profile: settings.export.colorProfile)
+        else {
+            feedback(ExportFeedback.shareFailure)
+            return
         }
+        presentation.share(image)
     }
 
     /// The export scale: the user's chosen resolution multiplier, applied to the

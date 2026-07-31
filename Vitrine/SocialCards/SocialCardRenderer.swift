@@ -4,8 +4,7 @@ import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Renders a `SocialCardModel` to an image and exports it to the clipboard, a
-/// file, or the share sheet.
+/// Renders a `SocialCardModel` to an image and exports it to the clipboard or a file.
 ///
 /// This is the social-card counterpart to `ExportManager`: it composes
 /// `SocialCardCanvas` and rasterizes it through **`ImageRenderer`, not WebKit**
@@ -83,7 +82,7 @@ enum SocialCardRenderer {
         return ExportManager.pdfData(SocialCardCanvas(model: model, size: size), proposedSize: size)
     }
 
-    // MARK: - Clipboard / save / share flows
+    // MARK: - Clipboard / save flows
 
     /// Renders the card and writes a PNG to the general pasteboard. Returns success.
     ///
@@ -133,24 +132,5 @@ enum SocialCardRenderer {
         }
         // The shared panel/write path — one logging point for every save flow.
         return ExportManager.saveToFile(payload: payload, suggestedName: "vitrine-card")
-    }
-
-    /// Renders the card and presents the macOS share sheet anchored to `view`.
-    /// Returns `false` when the model is empty or the render fails, so
-    /// the caller never shows an empty picker.
-    @discardableResult
-    static func share(
-        _ model: SocialCardModel,
-        relativeTo view: NSView,
-        size: CGSize = SocialCardModel.defaultSize,
-        scale: CGFloat = 2,
-        profile: ColorProfile = .sRGB
-    ) -> Bool {
-        guard let image = renderNSImage(model, size: size, scale: scale, profile: profile) else {
-            Log.export.error("Social card share failed: render returned nil")
-            return false
-        }
-        ShareManager.share(image, relativeTo: view)
-        return true
     }
 }
