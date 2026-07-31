@@ -125,8 +125,18 @@ struct AppEnvironmentTests {
         env.brandKit.isEnabled = true
         env.brandKit.brandKit = BrandKit(handle: "@menu-root")
         let feedback = CaptureFeedbackPresenter()
-        let root = MenuBarContent(environment: env, feedback: feedback)
-        let controller = StatusItemController(environment: env, feedback: feedback)
+        var destinations: [MenuBarNavigation.Destination] = []
+        let navigation = MenuBarNavigation(
+            present: { destinations.append($0) },
+            loadPrimaryEditor: { _ in })
+        let root = MenuBarContent(
+            environment: env,
+            feedback: feedback,
+            navigation: navigation)
+        let controller = StatusItemController(
+            environment: env,
+            feedback: feedback,
+            navigation: navigation)
 
         #expect(root.environment === env)
         #expect(root.settings === env.appSettings)
@@ -135,6 +145,9 @@ struct AppEnvironmentTests {
         #expect(root.feedback === feedback)
         #expect(controller.environment === env)
         #expect(controller.feedback === feedback)
+        root.navigation.show(.help)
+        controller.navigation.show(.settings)
+        #expect(destinations == [.help, .settings])
     }
 
     @Test func appLifecycleRetainsTheProvidedGraphAndFeedbackPresenter() throws {

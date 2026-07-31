@@ -63,15 +63,16 @@ AppKit-hosted window. The global hotkey triggers quick mode or the editor depend
 the user's preference.
 
 `StatusItemController` is also the menu-bar composition boundary. It retains one
-`AppEnvironment` and supplies that graph, plus the explicitly owned feedback presenter,
-to `MenuBarContent`. Every quick-capture entry from the panel resolves settings, recents,
-Brand Kit watermark eligibility, and recovery actions from that same graph. The global
-hotkey and application-menu command enter the same operation with the app-wide
-environment. This keeps the render, history write, and any later recovery render aligned
-without making the UI lifecycle presenter part of the data-store graph. The feedback
-presenter receives HUD display and recovery navigation as operation values: live adapters
-bridge to the reusable AppKit window owners, while the coordinator itself contains no
-window-global lookup and can be tested without constructing UI.
+`AppEnvironment` and supplies that graph, plus the explicitly owned feedback presenter
+and window-navigation operations, to `MenuBarContent`. Every quick-capture entry from the
+panel resolves settings, recents, Brand Kit watermark eligibility, and recovery actions
+from that same graph. Panel rows route through the injected navigation value; only its
+live adapter reaches the reusable AppKit window owners. The global hotkey and
+application-menu command enter the same capture operation with the app-wide environment.
+This keeps the render, history write, and any later recovery render aligned without
+making the UI lifecycle presenter part of the data-store graph. The feedback presenter
+likewise receives HUD display and recovery navigation as operation values, so neither
+coordinator needs to construct UI during tests.
 
 ## Clipboard integration
 
