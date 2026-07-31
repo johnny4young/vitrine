@@ -70,8 +70,7 @@ enum SnapshotRenderService {
     /// through the pasteboard. Honors the chosen scale, fixed size, and sRGB profile.
     /// Returning the `CGImage` lets the caller PNG-encode through the color-managed
     /// ImageIO path (`ExportManager.pngData`) rather than a legacy TIFF/
-    /// `NSBitmapImageRep` round-trip (AGENTS.md, C1). Throws the same errors as
-    /// `renderData`.
+    /// `NSBitmapImageRep` round-trip. Throws the same errors as `renderData`.
     static func renderCGImage(_ request: SnapshotRenderRequest) throws -> CGImage {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig()

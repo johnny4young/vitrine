@@ -24,10 +24,10 @@ import Foundation
 /// - `transparent` forces a real transparent background, winning over a preset's
 ///   background, mirroring the CLI's `--transparent`.
 ///
-/// The `baseStyle` is the live `SnapshotConfig` an automation should start from
-/// (typically `AppSettings.shared.config`), so a Shortcuts action honors the user's
-/// saved look unless it overrides a field. It is injected rather than read here so
-/// the resolution stays a pure function of its inputs and tests can pin it.
+/// The `baseStyle` is the live exported `SnapshotConfig` supplied by the automation
+/// adapter, so a Shortcuts action honors the user's saved look and eligible watermark
+/// unless it overrides a field. It is injected rather than read here so the resolution
+/// stays a pure function of its inputs and tests can pin it.
 ///
 /// Main-actor isolated (the module default) so `makeConfig` can apply the
 /// main-actor `ExportPreset`/`Theme` model exactly as the GUI does.
@@ -62,9 +62,9 @@ struct SnapshotRenderRequest: Equatable {
     /// over any preset background. Off by default.
     var transparent: Bool = false
 
-    /// The live style an automation starts from before applying its overrides —
-    /// usually `AppSettings.shared.config`. Defaults to the factory configuration so
-    /// a request can be built and tested without the shared settings singleton.
+    /// The live exported style an automation starts from before applying its overrides.
+    /// Defaults to the factory configuration so a request can be built and tested
+    /// without any app-wide store.
     var baseStyle = SnapshotConfig()
 
     /// Builds the `SnapshotConfig` to render, applying the same precedence the GUI

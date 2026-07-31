@@ -19,8 +19,18 @@ import UniformTypeIdentifiers
 /// `NSServices` Info.plist declaration live in `ServiceRegistration` and the app's
 /// Info.plist; this type is only the provider object the runtime calls.
 final class CodeImageService: NSObject {
-    /// The shared provider instance the app registers with `NSApp.servicesProvider`.
-    static let shared = CodeImageService()
+    /// The shared provider instance the app registers with `NSApp.servicesProvider`,
+    /// composed over the app-wide data graph.
+    static let shared = CodeImageService(environment: .shared)
+
+    /// The graph that supplies the automation entitlement and the exported user style.
+    /// Retaining it here keeps the gate and the render request on the same dependencies.
+    let environment: AppEnvironment
+
+    init(environment: AppEnvironment) {
+        self.environment = environment
+        super.init()
+    }
 
     /// The result of handling a Services request, so the logic is testable without the
     /// runtime's out-pointer: either the image was placed on the pasteboard, or it
@@ -57,9 +67,9 @@ final class CodeImageService: NSObject {
     }
 
     /// Renders the pasteboard's selected text and, on success, writes the image back
-    /// onto the same pasteboard — the whole Services behavior as a pure function of the
-    /// pasteboard, returning an `Outcome` instead of mutating an out-pointer so it is
-    /// unit-testable without unsafe pointer handling.
+    /// onto the same pasteboard. The operation uses only the pasteboard and the retained
+    /// environment, returning an `Outcome` instead of mutating an out-pointer so it is
+    /// unit-testable without unsafe pointer handling or global-store overrides.
     ///
     /// The selected text is read, language-detected the same way quick capture does,
     /// and rendered from the user's live style. Failures (no selection, render error,
@@ -67,14 +77,10 @@ final class CodeImageService: NSObject {
     /// `.rendered` after both an `NSImage` (for image wells) and explicit PNG bytes
     /// (for apps that read raw PNG) are placed on the pasteboard.
     @discardableResult
-    func process(
-        pasteboard: NSPasteboard,
-        isProUnlocked: Bool = Entitlements.shared.isUnlocked(.automation)
-    ) -> Outcome {
+    func process(pasteboard: NSPasteboard) -> Outcome {
         // Automation requires PRO: the Services menu is an automation surface,
-        // so a free build reports the PRO requirement and renders nothing. The check is
-        // injectable so the gate is unit-testable; production calls use the default.
-        guard isProUnlocked else {
+        // so a free build reports the PRO requirement and renders nothing.
+        guard environment.entitlements.isUnlocked(.automation) else {
             Log.capture.info("Services: automation locked by the PRO gate")
             return .failed(message: ProFeature.automation.paywallBlurb)
         }
@@ -87,15 +93,7 @@ final class CodeImageService: NSObject {
             return .failed(message: "Select some code first, then run the service.")
         }
 
-        // Detect the language from the selection the same way quick capture does, and
-        // start from the user's live style so the service honors their saved look.
-        let interpreted = LanguageDetector.interpret(text)
-        let request = SnapshotRenderRequest(
-            code: interpreted.code,
-            language: interpreted.language,
-            // `exportConfig`, not `config`, so a PRO user's enabled Brand Kit watermark
-            // marks the Services output too. Free/disabled → no watermark.
-            baseStyle: AppSettings.shared.exportConfig)
+        let request = makeRenderRequest(for: text)
 
         let cgImage: CGImage
         do {
@@ -113,7 +111,7 @@ final class CodeImageService: NSObject {
         // bytes go through the color-managed ImageIO path (`ExportManager.pngData`),
         // not a legacy TIFF/`NSBitmapImageRep` round-trip — the latter double-encodes
         // on the main actor and can drop the deliberate sRGB tagging the exporter
-        // guarantees (AGENTS.md, C1).
+        // guarantees.
         let image = NSImage(
             cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
         pasteboard.clearContents()
@@ -128,5 +126,18 @@ final class CodeImageService: NSObject {
         }
         Log.capture.notice("Services rendered a code image onto the pasteboard")
         return .rendered
+    }
+
+    /// Resolves selected text against the retained graph before it reaches the shared
+    /// render shell. Keeping this step explicit makes language detection and exported
+    /// style resolution independently testable from the pasteboard write.
+    func makeRenderRequest(for text: String) -> SnapshotRenderRequest {
+        let interpreted = LanguageDetector.interpret(text)
+        return SnapshotRenderRequest(
+            code: interpreted.code,
+            language: interpreted.language,
+            // `exportConfig`, not `config`, so a PRO user's enabled Brand Kit watermark
+            // marks the Services output too. Free/disabled → no watermark.
+            baseStyle: environment.appSettings.exportConfig)
     }
 }
