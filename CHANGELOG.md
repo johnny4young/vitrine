@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Quick-capture feedback recovery no longer hides window-global dependencies.** The
+  lifecycle presenter receives HUD display and recovery navigation as explicit
+  operations, keeping action routing deterministic and testable without creating AppKit
+  windows.
 - **Automation theme overrides no longer read app-global preferences from the render
   core.** Portable callers resolve the built-in catalog deterministically, while
   app-owned Shortcuts and Services adapters pass the custom-theme catalog from their
