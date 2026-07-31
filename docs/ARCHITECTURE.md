@@ -323,8 +323,10 @@ App Intents are constructed by the system rather than by an app-owned controller
 `perform()` adapter therefore binds once to `AppEnvironment.shared` and uses that graph
 for entitlement checks, Brand Kit watermarking, saved language history, and editor
 handoff. The pure render request remains store-free and receives its base style as a
-value, preserving deterministic tests and keeping process-global state out of the render
-core.
+value. Theme lookup is also an operation dependency rather than a hidden store read:
+portable callers use the built-in catalog by default, while app-owned adapters pass the
+custom-theme resolver from their retained environment. This preserves deterministic
+tests and keeps process-global state out of the render core.
 
 **Shared core.** Like the CLI's `CLIOptions`/`CLIRenderer`, the automation surfaces
 share one pure value type and one render shell, both in `Vitrine/AppIntents/`:
@@ -332,8 +334,8 @@ share one pure value type and one render shell, both in `Vitrine/AppIntents/`:
 - `SnapshotRenderRequest` is the pure, value-typed request (code + optional language,
   theme, preset, scale, format, transparency, starting from a `baseStyle`). Its
   `makeConfig()` builds a `SnapshotConfig` with the **same precedence** the GUI uses
-  (base style → preset → theme → transparent override) and never lets a preset touch
-  the code. It is unit-tested off the render path.
+  (base style → preset → theme → transparent override), accepts theme lookup explicitly,
+  and never lets a preset touch the code. It is unit-tested off the render path.
 - `SnapshotRenderService` is the thin `@MainActor` shell that turns a request into
   PNG/PDF data or an `NSImage` through the **unchanged** `ExportManager`, adding only
   request resolution and an empty-input guard. A unit test asserts its bytes equal a

@@ -97,7 +97,8 @@ final class CodeImageService: NSObject {
 
         let cgImage: CGImage
         do {
-            cgImage = try SnapshotRenderService.renderCGImage(request)
+            cgImage = try SnapshotRenderService.renderCGImage(
+                request, themeResolver: environment.customThemes.theme(withID:))
         } catch let renderError as SnapshotRenderService.RenderError {
             Log.capture.error("Services render failed")
             return .failed(message: "\(renderError)")

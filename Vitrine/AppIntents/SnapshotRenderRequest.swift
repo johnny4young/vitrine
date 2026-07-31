@@ -9,7 +9,9 @@ import Foundation
 /// resolution without launching the App Intents or Services runtimes. Turning it into
 /// a `SnapshotConfig` (`makeConfig()`) on the main actor ties automation to the exact
 /// same render inputs the editor, quick capture, and the CLI use — the produced image
-/// is identical to what the app would make for the same inputs.
+/// is identical to what the app would make for the same inputs. Theme resolution is
+/// passed into that operation rather than stored on the request, preserving both its
+/// value semantics and its independence from app-wide preferences.
 ///
 /// Every optional field defaults to the app's own behavior:
 ///
@@ -78,9 +80,12 @@ struct SnapshotRenderRequest: Equatable {
     ///
     /// The code is set from `code` and the language from `resolvedLanguage`; neither
     /// is ever altered by a preset (a preset is presentation/output only).
-    func makeConfig() -> SnapshotConfig {
+    func makeConfig(
+        themeResolver: (String) -> Theme = Theme.theme(withID:)
+    ) -> SnapshotConfig {
         var config = baseStyle.styled(
-            presetID: presetID, themeID: themeID, transparent: transparent)
+            presetID: presetID, themeID: themeID, transparent: transparent,
+            themeResolver: themeResolver)
         config.code = code
         config.language = resolvedLanguage
         return config
