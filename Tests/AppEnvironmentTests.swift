@@ -191,6 +191,8 @@ struct AppEnvironmentTests {
             "Vitrine/App/AppDelegate.swift",
             "Vitrine/App/AppLaunchArgumentHandler.swift",
             "Vitrine/App/AppMenu.swift",
+            "Vitrine/App/AppCommandResponder.swift",
+            "Vitrine/App/EditorCommandResponder.swift",
             "Vitrine/App/VitrineCommands.swift",
             "Vitrine/Editor/EditorView+Stage.swift",
         ] {

@@ -43,6 +43,10 @@ can never drift.
 
 ### Changed
 
+- **Command metadata and command execution now have separate implementation boundaries.**
+  The stable title, shortcut, and accessibility catalog remains independent from the
+  app-scoped and key-editor responder implementations, keeping menu descriptions,
+  process navigation, and document actions easier to review and maintain.
 - **The AppKit command surface now owns one explicit dependency graph.** Rebuilt menus
   retain the same app and editor responders, while quick capture, theme resolution,
   fallback editor settings, and What's New use the environment supplied by the

@@ -207,9 +207,9 @@ struct SoftwareUpdateChannelTests {
 
         // The responder routes it to the updater, and the menu exposes it only on a build
         // that ships Sparkle.
-        let commands = try Self.text("Vitrine", "App", "VitrineCommands.swift")
+        let responder = try Self.text("Vitrine", "App", "AppCommandResponder.swift")
         #expect(
-            commands.contains("SoftwareUpdater.shared.checkForUpdates()"),
+            responder.contains("SoftwareUpdater.shared.checkForUpdates()"),
             "the Check for Updates command must invoke the updater")
         let menu = try Self.text("Vitrine", "App", "AppMenu.swift")
         #expect(

@@ -457,7 +457,11 @@ gate lives in one place.
 Vitrine/
 ├── App/
 │   ├── VitrineApp.swift       # @main + inert Settings scene
-│   └── AppDelegate.swift      # NSApp config, lifecycle, windows
+│   ├── AppDelegate.swift      # NSApp config, lifecycle, windows
+│   ├── AppMenu.swift          # AppKit main-menu assembly and ownership
+│   ├── VitrineCommands.swift  # command metadata and shortcut catalog
+│   ├── AppCommandResponder.swift # process-scoped command actions
+│   └── EditorCommandResponder.swift # key-editor command actions and validation
 ├── MenuBar/
 │   ├── MenuBarAnchor.swift    # content-free helper/main message
 │   ├── MenuBarHelperLauncher.swift # helper lifecycle + identity validation
@@ -697,6 +701,9 @@ menu after SwiftUI displaces it therefore reuses the same command graph. Quick c
 theme resolution, fallback editor settings, and the What's New command cannot escape to
 independent global stores. Window controllers remain process-wide UI lifecycle leaves,
 while toolbar formatting constructs a responder over the current editor's own settings.
+The command metadata remains in `VitrineCommands.swift`; app-scoped actions and
+key-editor actions live in separate responder files so menu descriptions, process
+navigation, and document mutation can evolve without sharing one implementation unit.
 
 `SettingsRootView` accepts one `AppEnvironment` and passes that graph through every pane.
 Settings views do not default back to global stores: the Style preview, Brand Kit

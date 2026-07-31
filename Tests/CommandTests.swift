@@ -201,6 +201,26 @@ struct VitrineCommandShortcutParityTests {
 struct AppMenuTests {
     private let menuController = makeIsolatedAppMenu()
 
+    @Test func commandMetadataAndExecutionStayInSeparateFiles() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source: (String) throws -> String = { fileName in
+            try String(
+                contentsOf: repositoryRoot.appendingPathComponent("Vitrine/App/\(fileName)"),
+                encoding: .utf8)
+        }
+        let catalog = try source("VitrineCommands.swift")
+        let appResponder = try source("AppCommandResponder.swift")
+        let editorResponder = try source("EditorCommandResponder.swift")
+
+        #expect(catalog.contains("enum VitrineCommand"))
+        #expect(!catalog.contains("final class AppCommandResponder"))
+        #expect(!catalog.contains("final class EditorCommandResponder"))
+        #expect(appResponder.contains("final class AppCommandResponder"))
+        #expect(editorResponder.contains("final class EditorCommandResponder"))
+    }
+
     @Test func retainsOneExplicitCommandGraph() {
         let menu = menuController
 
