@@ -15,6 +15,9 @@ struct MenuBarContent: View {
     /// The panel's transient feedback state is a UI lifecycle dependency, not a data
     /// store, so the controller supplies it explicitly beside the environment.
     let feedback: CaptureFeedbackPresenter
+    /// Routes panel commands through the status-item composition boundary rather than
+    /// letting this SwiftUI view discover app-owned windows.
+    let navigation: MenuBarNavigation
 
     var settings: AppSettings { environment.appSettings }
     var recents: RecentsStore { environment.recents }
@@ -172,7 +175,7 @@ struct MenuBarContent: View {
                 TokenGroupLabel(title: Text("Recents"))
                 Spacer(minLength: 0)
                 Button {
-                    RecentsGalleryWindowController.shared.show()
+                    navigation.show(.recents)
                     dismiss()
                 } label: {
                     Text("View history →")
@@ -281,22 +284,22 @@ struct MenuBarContent: View {
                 .overlay(VitrineTokens.Line.separator)
                 .padding(.bottom, VitrineTokens.Spacing.xs)
             commandRow(.openEditor) {
-                EditorWindowController.shared.show()
+                navigation.show(.editor)
             }
             commandRow(.newWebSnapshot) {
-                WebSnapshotPresenter.show()
+                navigation.show(.webSnapshot)
             }
             commandRow(.newSocialCard) {
-                SocialCardWindowController.shared.show()
+                navigation.show(.socialCard)
             }
             commandRow(.settings) {
-                SettingsWindowManager.shared.show()
+                navigation.show(.settings)
             }
             commandRow(.help) {
-                HelpWindowController.shared.show()
+                navigation.show(.help)
             }
             commandRow(.about) {
-                AboutPanel.present()
+                navigation.show(.about)
             }
             quitRow
         }
@@ -342,7 +345,7 @@ struct MenuBarContent: View {
     /// even if the editor is already open; a plain `show()` no longer clobbers an
     /// open window's per-window document.
     private func reopen(_ capture: Capture) {
-        EditorWindowController.shared.loadIntoPrimary(capture.applying(to: settings.config))
+        navigation.loadIntoPrimaryEditor(capture.applying(to: settings.config))
     }
 
     /// Re-renders a recent capture with the user's current output settings and
