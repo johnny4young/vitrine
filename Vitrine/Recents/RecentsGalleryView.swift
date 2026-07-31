@@ -18,8 +18,15 @@ import SwiftUI
 /// `RecentsThumbnailCache`). Nothing in this view is uploaded or shared — it is a
 /// local recognition aid only.
 struct RecentsGalleryView: View {
-    @Environment(RecentsStore.self) private var recents
-    @Environment(AppSettings.self) private var settings
+    /// The long-lived store graph retained by the gallery window controller.
+    let environment: AppEnvironment
+    /// Presents copy outcomes without coupling this view to the shared HUD window.
+    let feedback: FeedbackDisplay
+    /// Routes editor handoff through the gallery's composition boundary.
+    let navigation: RecentsGalleryNavigation
+
+    var recents: RecentsStore { environment.recents }
+    var settings: AppSettings { environment.appSettings }
 
     /// Drives the confirmation before clearing recents. Clearing is irreversible —
     /// it empties the capture list and deletes the on-disk thumbnail cache — so the
@@ -48,17 +55,6 @@ struct RecentsGalleryView: View {
     /// rather than only a Boolean, guarantees the confirmation removes the exact
     /// card whose menu initiated it even if the grid updates meanwhile.
     @State private var pendingDeletion: Capture?
-
-    /// Invoked when the empty state asks to open the editor. Injectable for previews/tests;
-    /// defaults to opening the editor window.
-    var onOpen: () -> Void = { EditorWindowController.shared.show() }
-
-    /// Invoked after a capture is chosen, so previews/tests can exercise the gallery without
-    /// touching the global editor window controller. Production loads the capture into the
-    /// primary editor window.
-    var onOpenCapture: (SnapshotConfig) -> Void = {
-        EditorWindowController.shared.loadIntoPrimary($0)
-    }
 
     /// A responsive grid: cards keep a comfortable minimum width and the row
     /// reflows as the window is resized.
@@ -254,7 +250,7 @@ struct RecentsGalleryView: View {
     /// *and* left the editor on its previous content; this matches the menu's semantics so
     /// the two recents surfaces behave identically.
     private func open(_ capture: Capture) {
-        onOpenCapture(capture.applying(to: settings.config))
+        navigation.loadIntoPrimaryEditor(capture.applying(to: settings.config))
     }
 
     /// Re-renders a past capture for one destination without changing the app's saved
@@ -272,16 +268,17 @@ struct RecentsGalleryView: View {
             profile: settings.export.colorProfile,
             richText: settings.export.richClipboard,
             plainText: settings.export.textSidecar)
-        ExportFeedback.presentCopy(copied)
+        feedback(ExportFeedback.copyOutcome(copied))
     }
 
     private func copySource(_ capture: Capture) {
-        ExportFeedback.presentSourceCopy(
-            ExportManager.copySourceToPasteboard(capture.code))
+        feedback(
+            ExportFeedback.sourceCopyOutcome(
+                ExportManager.copySourceToPasteboard(capture.code)))
     }
 
     private func open() {
-        onOpen()
+        navigation.showEditor()
     }
 }
 
@@ -458,49 +455,15 @@ private struct RecentsCard: View {
     }()
 }
 
-// MARK: - Window
-
-/// Owns the recents gallery window (hosted SwiftUI), mirroring
-/// `EditorWindowController` so the gallery can be opened from the menu without a
-/// SwiftUI `openWindow` environment.
-///
-/// A single reused, non-released window keeps the gallery cheap to reopen and lets
-/// the menu route to it with one call. The hosted view observes the shared
-/// `RecentsStore`, so the grid updates live as captures are added or cleared while
-/// the window is open.
-final class RecentsGalleryWindowController {
-    static let shared = RecentsGalleryWindowController()
-
-    private var window: NSWindow?
-
-    private init() {}
-
-    /// Shows (creating if needed) and focuses the recents gallery window.
-    func show() {
-        if window == nil {
-            let hosting = NSHostingController(
-                rootView: RecentsGalleryView()
-                    .environment(RecentsStore.shared)
-                    .environment(AppSettings.shared))
-            let window = NSWindow(contentViewController: hosting)
-            window.title = "Recents"
-            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-            window.setContentSize(NSSize(width: 760, height: 560))
-            window.isReleasedWhenClosed = false
-            window.setAccessibilityIdentifier("recents-window")
-            window.center()
-            self.window = window
-        }
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-}
-
 #if DEBUG
     #Preview("Gallery") {
-        RecentsGalleryView(onOpen: {})
-            .environment(RecentsStore.shared)
-            .environment(AppSettings.shared)
-            .frame(width: 720, height: 520)
+        let environment = AppEnvironment(
+            defaults: UserDefaults(suiteName: "Vitrine.RecentsGalleryPreview") ?? UserDefaults())
+        RecentsGalleryView(
+            environment: environment,
+            feedback: .noOp,
+            navigation: .noOp
+        )
+        .frame(width: 720, height: 520)
     }
 #endif
