@@ -68,7 +68,10 @@ to `MenuBarContent`. Every quick-capture entry from the panel resolves settings,
 Brand Kit watermark eligibility, and recovery actions from that same graph. The global
 hotkey and application-menu command enter the same operation with the app-wide
 environment. This keeps the render, history write, and any later recovery render aligned
-without making the UI lifecycle presenter part of the data-store graph.
+without making the UI lifecycle presenter part of the data-store graph. The feedback
+presenter receives HUD display and recovery navigation as operation values: live adapters
+bridge to the reusable AppKit window owners, while the coordinator itself contains no
+window-global lookup and can be tested without constructing UI.
 
 ## Clipboard integration
 
