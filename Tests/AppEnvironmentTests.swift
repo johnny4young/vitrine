@@ -136,4 +136,70 @@ struct AppEnvironmentTests {
         #expect(controller.environment === env)
         #expect(controller.feedback === feedback)
     }
+
+    @Test func appLifecycleRetainsTheProvidedGraphAndFeedbackPresenter() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let env = AppEnvironment(defaults: suite)
+        let feedback = CaptureFeedbackPresenter()
+        let delegate = AppDelegate(environment: env, feedback: feedback)
+
+        #expect(delegate.environment === env)
+        #expect(delegate.feedback === feedback)
+        #expect(delegate.launchArguments.environment === env)
+    }
+
+    @Test func launchArgumentsSeedOnlyTheProvidedGraph() throws {
+        let firstDefaults = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let secondDefaults = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let first = AppEnvironment(defaults: firstDefaults)
+        let second = AppEnvironment(defaults: secondDefaults)
+        let handler = AppLaunchArgumentHandler(environment: first)
+
+        let didOpenWindow = handler.handle([
+            "Vitrine",
+            "--skip-onboarding",
+            "--demo-html-format",
+            "--demo-brand-kit-free",
+        ])
+
+        #expect(!didOpenWindow)
+        #expect(first.appSettings.hasSeenWelcome)
+        #expect(first.appSettings.config.language == .html)
+        #expect(first.appSettings.config.code.contains("<!doctype html>"))
+        #expect(first.brandKit.isEnabled)
+        #expect(first.brandKit.brandKit.handle == "@vitrine")
+
+        #expect(!second.appSettings.hasSeenWelcome)
+        #expect(second.appSettings.config.language == .swift)
+        #expect(second.appSettings.config.code.isEmpty)
+        #expect(!second.brandKit.isEnabled)
+    }
+
+    @Test func lifecycleAdaptersDoNotEscapeToGlobalDataStores() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for relativePath in [
+            "Vitrine/App/AppDelegate.swift",
+            "Vitrine/App/AppLaunchArgumentHandler.swift",
+        ] {
+            let source = try String(
+                contentsOf: repositoryRoot.appendingPathComponent(relativePath),
+                encoding: .utf8)
+            for forbiddenDependency in [
+                "AppSettings.shared",
+                "Entitlements.shared",
+                "RecentsStore.shared",
+                "BrandKitStore.shared",
+                "QuickCapture.perform(environment: .shared",
+            ] {
+                #expect(
+                    !source.contains(forbiddenDependency),
+                    "\(relativePath) must resolve data through its retained environment")
+            }
+        }
+    }
 }

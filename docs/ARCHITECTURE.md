@@ -681,6 +681,15 @@ immutability, and settings application can evolve independently.
 state; the coordinator then reloads the independent preset, theme, and Brand Kit stores
 so their observable catalogs match the cleared defaults immediately.
 
+`AppDelegate` is the process-lifecycle composition boundary. It retains one
+`AppEnvironment` and one capture-feedback presenter, so URL handoffs, entitlement
+updates, onboarding gates, and global-hotkey captures cannot resolve data from different
+store graphs. Explicit development and UI-automation arguments are handled by
+`AppLaunchArgumentHandler`, which receives the same environment; this keeps fixture
+seeding and window-capture support out of the production lifecycle delegate. AppKit
+window controllers and the stateless highlighter cache remain UI lifecycle leaf
+singletons as documented above.
+
 `SettingsRootView` accepts one `AppEnvironment` and passes that graph through every pane.
 Settings views do not default back to global stores: the Style preview, Brand Kit
 controls, reusable-style catalog, entitlement gates, and reset path therefore observe
