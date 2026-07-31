@@ -14,6 +14,9 @@ can never drift.
 
 ### Fixed
 
+- **The Recents gallery now stays inside one explicit dependency graph.** Its window
+  controller supplies capture history, settings, editor navigation, and transient
+  feedback instead of letting the SwiftUI view discover process-global stores or windows.
 - **Editor actions no longer discover the shared HUD from views or command responders.**
   Editor sessions and application-menu commands receive one explicit feedback operation,
   keeping confirmations and failures deterministic without constructing AppKit windows.

@@ -738,6 +738,14 @@ Web Snapshot resolves capture consent, viewport preferences, and export settings
 the same app settings. The windows remain reusable and app-global, but isolated tests no
 longer create roots that silently observe or mutate process-global stores.
 
+`RecentsGalleryWindowController` owns the equivalent boundary for capture history. Its
+SwiftUI root receives the retained `AppEnvironment`, an editor-navigation operation, and
+a transient-feedback operation. Gallery filtering and mutation therefore observe the
+controller's Recents store and settings, while editor handoff and copy outcomes remain
+testable without discovering app-owned windows or the HUD. Window ownership lives in a
+separate source file so the gallery view stays a store-and-action surface rather than a
+second composition root.
+
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }
 
