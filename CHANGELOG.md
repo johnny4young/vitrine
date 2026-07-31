@@ -14,6 +14,9 @@ can never drift.
 
 ### Fixed
 
+- **Social Card exports no longer discover app-owned presenters from the SwiftUI
+  editor or renderer.** Its window controller now supplies transient feedback and
+  image sharing as explicit operations alongside the retained data-store graph.
 - **Web Snapshot actions no longer discover app-owned presenters from the SwiftUI
   editor.** Its window controller now supplies transient feedback, sign-in-window routing,
   and image sharing as explicit operations alongside the retained data-store graph.
