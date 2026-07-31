@@ -120,7 +120,8 @@ struct RenderCodeImageIntent: AppIntent {
 
         let data: Data
         do {
-            data = try SnapshotRenderService.renderData(request)
+            data = try SnapshotRenderService.renderData(
+                request, themeResolver: environment.customThemes.theme(withID:))
         } catch let error as SnapshotRenderService.RenderError {
             // Surface a clear, user-facing reason in the Shortcuts error sheet.
             throw IntentRenderError(message: "\(error)")

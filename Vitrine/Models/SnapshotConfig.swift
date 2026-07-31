@@ -286,7 +286,10 @@ extension SnapshotConfig {
     /// configuration, so every automation surface frames an image the same way the
     /// GUI does. This is the single resolver behind both
     /// `CLIOptions.makeConfig` and `SnapshotRenderRequest.makeConfig`, which used to
-    /// carry byte-for-byte identical copies of these steps.
+    /// carry byte-for-byte identical copies of these steps. Theme lookup is an
+    /// explicit dependency: automation defaults to the deterministic built-in
+    /// catalog, while an app-owned adapter can supply its retained custom-theme
+    /// catalog without this value layer reaching into global preferences.
     ///
     /// Order of application, lowest precedence first:
     ///   1. This base configuration (factory defaults for the CLI, the user's saved
@@ -298,17 +301,20 @@ extension SnapshotConfig {
     /// `code` and `language` are deliberately left untouched: they describe *what* is
     /// rendered, not *how* it is styled, and a preset is presentation/output only.
     /// The caller sets them after styling.
-    func styled(presetID: String?, themeID: String?, transparent: Bool) -> SnapshotConfig {
+    func styled(
+        presetID: String?, themeID: String?, transparent: Bool,
+        themeResolver: (String) -> Theme = { Theme.theme(withID: $0) }
+    ) -> SnapshotConfig {
         var config = self
         // 2. Preset guidance (padding/background) layered onto the base.
         if let preset = ExportPreset.preset(withID: presetID) {
             preset.apply(to: &config)
         }
-        // 3. Theme override — resolved through the custom-theme store so a custom-theme
-        // id works and an unknown/built-in id falls back to the built-in catalog,
-        // matching the GUI.
+        // 3. Theme override — resolved by the caller's catalog. The default is the
+        // built-in catalog used by portable automation; app adapters may inject their
+        // retained custom-theme store.
         if let themeID {
-            config.theme = CustomThemeStore.shared.theme(withID: themeID)
+            config.theme = themeResolver(themeID)
         }
         // 4. Transparency is the last word on the background, layering cleanly onto any
         // preset (the caller asked for real alpha regardless).

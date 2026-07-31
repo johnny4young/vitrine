@@ -143,11 +143,11 @@ struct Theme: Identifiable, Hashable, Sendable {
 
     /// Looks up a **built-in** theme by id, falling back to One Dark.
     ///
-    /// Custom themes live in `CustomThemeStore` and are resolved through
-    /// `CustomThemeStore.shared.theme(withID:)`, which falls back to this for a
-    /// built-in id or an unknown one. This function stays `nonisolated` and
-    /// pure so the `Codable`, off-main-actor call sites (`Capture`, `StyleSnapshot`)
-    /// keep resolving built-ins without touching the main-actor store.
+    /// Custom themes live in `CustomThemeStore` and are resolved through its
+    /// `theme(withID:)` catalog operation, which falls back to this for a built-in id
+    /// or an unknown one. This function stays `nonisolated` and pure so the
+    /// `Codable`, off-main-actor call sites (`Capture`, `StyleSnapshot`) keep
+    /// resolving built-ins without touching the main-actor store.
     nonisolated static func theme(withID id: String) -> Theme {
         builtIns.first { $0.id == id } ?? .oneDark
     }

@@ -95,6 +95,18 @@ struct SnapshotRenderRequestTests {
         #expect(request.makeConfig().theme == .dracula)
     }
 
+    @Test func customThemeResolutionIsExplicit() throws {
+        let environment = try makeAutomationEnvironment(isPro: true)
+        let custom = environment.customThemes.addTheme(
+            named: "Automation", palette: ThemeTestFixtures.samplePalette())
+        let request = SnapshotRenderRequest(code: "x", themeID: custom.id)
+
+        #expect(request.makeConfig().theme == .oneDark)
+        #expect(
+            request.makeConfig(themeResolver: environment.customThemes.theme(withID:)).theme
+                == custom)
+    }
+
     @Test func unknownThemeFallsBackToOneDark() {
         // A bad id degrades to One Dark rather than producing a broken render
         // (mirrors the catalog lookup the GUI uses).
@@ -269,6 +281,21 @@ struct SnapshotRenderServiceTests {
         #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
     }
 
+    @Test func forwardsTheThemeResolverToRequestResolution() throws {
+        var resolvedIDs: [String] = []
+        let request = SnapshotRenderRequest(code: "let x = 1", themeID: "custom.example")
+
+        let data = try SnapshotRenderService.renderData(
+            request,
+            themeResolver: { id in
+                resolvedIDs.append(id)
+                return .dracula
+            })
+
+        #expect(resolvedIDs == ["custom.example"])
+        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+    }
+
     @Test func rendersRealPDFBytes() throws {
         let request = SnapshotRenderRequest(code: "let x = 1", language: .swift, format: .pdf)
         let data = try SnapshotRenderService.renderData(request)
@@ -372,9 +399,28 @@ struct AutomationCompositionTests {
                 "AppSettings.shared",
                 "Entitlements.shared",
                 "BrandKitStore.shared",
+                "CustomThemeStore.shared",
             ] {
                 #expect(!source.contains(forbiddenStore))
             }
+        }
+    }
+
+    @Test func renderCoreDoesNotReadTheGlobalThemeStore() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for relativePath in [
+            "Vitrine/Models/SnapshotConfig.swift",
+            "Vitrine/AppIntents/SnapshotRenderRequest.swift",
+            "Vitrine/AppIntents/SnapshotRenderService.swift",
+        ] {
+            let source = try String(
+                contentsOf: repositoryRoot.appendingPathComponent(relativePath),
+                encoding: .utf8)
+            #expect(
+                !source.contains("CustomThemeStore.shared"),
+                "\(relativePath) must receive theme resolution explicitly")
         }
     }
 }
