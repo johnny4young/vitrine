@@ -5,11 +5,11 @@ import Foundation
 /// shared by every automation surface (App Intents and the Services menu).
 ///
 /// `SnapshotRenderRequest` is the automation counterpart to the CLI's `CLIOptions`:
-/// it carries no AppKit state and does no rendering, so it can be unit-tested off
-/// the main actor, and turning it into a `SnapshotConfig` (`makeConfig()`) is what
-/// ties automation to the exact same render inputs the editor, quick capture, and
-/// the CLI use — the produced image is identical to what the app would make for the
-/// same inputs.
+/// it carries no AppKit state and does no rendering, so unit tests can pin request
+/// resolution without launching the App Intents or Services runtimes. Turning it into
+/// a `SnapshotConfig` (`makeConfig()`) on the main actor ties automation to the exact
+/// same render inputs the editor, quick capture, and the CLI use — the produced image
+/// is identical to what the app would make for the same inputs.
 ///
 /// Every optional field defaults to the app's own behavior:
 ///
