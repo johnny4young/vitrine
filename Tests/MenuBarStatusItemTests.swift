@@ -293,6 +293,7 @@ struct MenuBarStatusItemTests {
             contentsOf: repositoryRoot.appendingPathComponent(
                 "Vitrine/MenuBar/MenuBarContent.swift"),
             encoding: .utf8)
+        let code = codeWithoutLineComments(source)
 
         for forbiddenDependency in [
             "RecentsGalleryWindowController.shared",
@@ -304,9 +305,24 @@ struct MenuBarStatusItemTests {
             "AboutPanel.present",
         ] {
             #expect(
-                !source.contains(forbiddenDependency),
+                !code.contains(forbiddenDependency),
                 "MenuBarContent must receive \(forbiddenDependency) as navigation")
         }
+    }
+
+    @Test func sourceGuardIgnoresLineComments() {
+        let source = """
+            navigation.show(.editor)
+            // EditorWindowController.shared.show()
+            navigation.show(.help) // HelpWindowController.shared.show()
+            """
+
+        let code = codeWithoutLineComments(source)
+
+        #expect(code.contains("navigation.show(.editor)"))
+        #expect(code.contains("navigation.show(.help)"))
+        #expect(!code.contains("EditorWindowController.shared"))
+        #expect(!code.contains("HelpWindowController.shared"))
     }
 
     /// A source guard: the SwiftUI scene is what made a hidden icon fatal, so its return
@@ -323,5 +339,17 @@ struct MenuBarStatusItemTests {
             !source.contains("MenuBarExtra(\""),
             "the menu bar must stay owned by the AppKit helper/fallback path")
         #expect(!source.contains(".menuBarExtraStyle"))
+    }
+
+    /// Keeps source guards focused on executable references rather than documentation.
+    private func codeWithoutLineComments(_ source: String) -> String {
+        source.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line in
+                guard let commentStart = line.range(of: "//") else {
+                    return String(line)
+                }
+                return String(line[..<commentStart.lowerBound])
+            }
+            .joined(separator: "\n")
     }
 }
