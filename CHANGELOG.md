@@ -23,6 +23,10 @@ can never drift.
 - Added app-side recipe export and machine-local folder associations in Settings.
   Associations use read-only security-scoped bookmarks, apply only after an explicit
   source-file drop, prefer the most-specific folder, and never enter the portable file.
+- Added session-only living snapshots in the editor. An explicitly selected source file
+  refreshes automatically after saves while the editor is clean; if local edits diverge,
+  Vitrine waits for an explicit reload instead of overwriting them. File access ends when
+  the watcher or editor window closes and is never persisted.
 
 ### Documentation
 

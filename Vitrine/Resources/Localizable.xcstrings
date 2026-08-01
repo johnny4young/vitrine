@@ -9283,6 +9283,237 @@
           }
         }
       }
+    },
+    "A saved change is waiting because this editor has local edits" : {
+      "comment" : "Help for a living snapshot whose disk version cannot replace local edits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hay un cambio guardado pendiente porque este editor tiene cambios locales"
+          }
+        }
+      }
+    },
+    "Choose one source file. Vitrine will refresh clean editor content when that file is saved, only while this window remains open." : {
+      "comment" : "Privacy and behavior explanation in the living snapshot file picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un archivo de código fuente. Vitrine actualizará el contenido limpio del editor cuando se guarde el archivo, solo mientras esta ventana permanezca abierta."
+          }
+        }
+      }
+    },
+    "Keep" : {
+      "comment" : "Action that preserves local editor changes instead of loading a changed file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservar"
+          }
+        }
+      }
+    },
+    "Live file" : {
+      "comment" : "Accessibility label for the living snapshot menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivo en vivo"
+          }
+        }
+      }
+    },
+    "Live file unavailable." : {
+      "comment" : "Inline status shown when a watched source file cannot currently be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo en vivo no está disponible."
+          }
+        }
+      }
+    },
+    "Open & Watch" : {
+      "comment" : "Confirmation button in the living snapshot file picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir y observar"
+          }
+        }
+      }
+    },
+    "Open a Live File" : {
+      "comment" : "Title of the living snapshot file picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir un archivo en vivo"
+          }
+        }
+      }
+    },
+    "Open a file and refresh this editor when it is saved" : {
+      "comment" : "Help for the inactive living snapshot menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir un archivo y actualizar este editor al guardarlo"
+          }
+        }
+      }
+    },
+    "Open Different Live File…" : {
+      "comment" : "Menu action that replaces the current living snapshot source.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir otro archivo en vivo…"
+          }
+        }
+      }
+    },
+    "Open Live File…" : {
+      "comment" : "Menu action that explicitly selects a session-only watched file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir archivo en vivo…"
+          }
+        }
+      }
+    },
+    "Paste code or terminal output, or open a live file to turn it into a beautiful image." : {
+      "comment" : "Empty editor guidance including the living snapshot entry point.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega código o una salida de terminal, o abre un archivo en vivo para convertirlo en una imagen atractiva."
+          }
+        }
+      }
+    },
+    "Reload" : {
+      "comment" : "Short action that replaces local editor text with the saved file version.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recargar"
+          }
+        }
+      }
+    },
+    "Reload from File" : {
+      "comment" : "Menu action that explicitly reloads a living snapshot source.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recargar desde el archivo"
+          }
+        }
+      }
+    },
+    "Replace & Watch" : {
+      "comment" : "Destructive confirmation that replaces editor text and starts a living snapshot.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reemplazar y observar"
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "comment" : "Short action that retries reading an unavailable living snapshot source.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        }
+      }
+    },
+    "Saved file changed." : {
+      "comment" : "Inline status shown when a disk change is waiting behind local edits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo guardado cambió."
+          }
+        }
+      }
+    },
+    "Stop Watching" : {
+      "comment" : "Menu action that ends a living snapshot session and releases file access.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dejar de observar"
+          }
+        }
+      }
+    },
+    "The live file is temporarily unavailable" : {
+      "comment" : "Help for a living snapshot source that cannot currently be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo en vivo no está disponible temporalmente"
+          }
+        }
+      }
+    },
+    "This editor already has code. Replace it and watch the selected file for saved changes?" : {
+      "comment" : "Confirmation before replacing editor content and starting a living snapshot.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este editor ya tiene código. ¿Quieres reemplazarlo y observar los cambios guardados en el archivo seleccionado?"
+          }
+        }
+      }
+    },
+    "Watching %@" : {
+      "comment" : "Living snapshot menu label followed by the source filename.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Observando %@"
+          }
+        }
+      }
+    },
+    "Watching %@ for saved changes" : {
+      "comment" : "Help followed by the living snapshot source filename.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Observando %@ para detectar cambios guardados"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

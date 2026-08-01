@@ -20,6 +20,9 @@ final class EditorSession {
     /// The window's independent settings, seeded from the app-wide defaults but backed
     /// by a throwaway store, so its edits never clobber the global default.
     let settings: AppSettings
+    /// The explicit source file connected to this window, if any. Its access and
+    /// polling lifetime end with the visible editor session and are never restored.
+    let livingSnapshot: LivingSnapshotSession
     let environment: AppEnvironment
     let feedback: FeedbackDisplay
     let presentation: EditorPresentation
@@ -44,17 +47,20 @@ final class EditorSession {
         self.environment = environment
         self.feedback = feedback
         self.presentation = presentation
+        let resolvedSettings: AppSettings
         if let settings {
-            self.settings = settings
+            resolvedSettings = settings
         } else {
-            let session = environment.makeEditorSessionSettings()
+            let sessionSettings = environment.makeEditorSessionSettings()
             if identity == .primary {
                 // Mirror the live working document into the primary window's session so
                 // the editor shows the current code/style, not just the persisted style.
-                session.config = environment.appSettings.config
+                sessionSettings.config = environment.appSettings.config
             }
-            self.settings = session
+            resolvedSettings = sessionSettings
         }
+        self.settings = resolvedSettings
+        livingSnapshot = LivingSnapshotSession(settings: resolvedSettings)
     }
 
     /// A restoration snapshot of the window's current draft document/style.
@@ -63,6 +69,7 @@ final class EditorSession {
     /// Adopts a restored draft as this window's live config, used when a relaunch
     /// rebuilds the window from its archived state.
     func restore(_ state: EditorWindowState) {
+        livingSnapshot.stop()
         settings.config = state.config()
     }
 
@@ -86,6 +93,7 @@ final class EditorSession {
     /// Tears down the volatile backing store when the window closes so a per-window
     /// suite never accumulates on disk.
     func discard() {
+        livingSnapshot.stop()
         settings.discardVolatileStore()
     }
 }
@@ -206,7 +214,9 @@ final class EditorWindowController: NSObject {
     /// in-progress document), this is an explicit load: it replaces the primary
     /// window's document with `config`, creating the window if needed.
     func loadIntoPrimary(_ config: SnapshotConfig) {
-        session(for: .primary).settings.config = config
+        let session = session(for: .primary)
+        session.livingSnapshot.stop()
+        session.settings.config = config
         show()
     }
 
@@ -397,6 +407,7 @@ extension EditorWindowController: NSWindowDelegate {
             let index = windows.first(where: { $0.value === window })?.key
         else { return }
         windows[index] = nil
+        sessions[index]?.livingSnapshot.stop()
         // Retire this index's restorable-state observation: the next re-arm finds its
         // generation cleared and stops (the primary session persists, so without this its
         // chain would keep firing after the window closed).

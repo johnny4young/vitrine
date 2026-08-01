@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import UniformTypeIdentifiers
 
@@ -52,18 +53,28 @@ extension EditorView {
 
     /// Loads immediately into an empty editor, or defers to the replace/append
     /// prompt when the editor already holds code.
-    func offerLoaded(_ loaded: FileInputLoader.LoadedFile) {
+    func offerLoaded(
+        _ loaded: FileInputLoader.LoadedFile,
+        startsLivingSnapshot: Bool = false
+    ) {
         if settings.config.code.isEmpty {
-            apply(loaded, replacing: true)
+            apply(
+                loaded, replacing: true,
+                startsLivingSnapshot: startsLivingSnapshot)
         } else {
-            pendingDrop = PendingDrop(loaded: loaded)
+            pendingDrop = PendingDrop(
+                loaded: loaded,
+                startsLivingSnapshot: startsLivingSnapshot)
         }
     }
 
     /// Resolves a pending replace/append choice from the confirmation dialog.
     func applyDrop(replacing: Bool) {
         guard let pending = pendingDrop else { return }
-        apply(pending.loaded, replacing: replacing)
+        apply(
+            pending.loaded,
+            replacing: replacing,
+            startsLivingSnapshot: replacing && pending.startsLivingSnapshot)
         pendingDrop = nil
     }
 
@@ -75,7 +86,14 @@ extension EditorView {
     /// filename rides along in `metadata.filename` so a *later*
     /// capture/export reflects the source, honoring "Recents record loaded file
     /// metadata only when the user captures/exports".
-    func apply(_ loaded: FileInputLoader.LoadedFile, replacing: Bool) {
+    func apply(
+        _ loaded: FileInputLoader.LoadedFile,
+        replacing: Bool,
+        startsLivingSnapshot: Bool = false
+    ) {
+        if replacing {
+            session.livingSnapshot.stop()
+        }
         if replacing, let sourceURL = loaded.sourceURL,
             environment.workspaceRecipes.applyRecipe(for: sourceURL, to: settings) != nil
         {
@@ -83,9 +101,40 @@ extension EditorView {
         }
         loaded.apply(to: &settings.config, replacing: replacing)
         settings.noteLanguageUsed(settings.config.language)
+        if startsLivingSnapshot {
+            session.livingSnapshot.start(with: loaded)
+        }
         Log.capture.info(
             "Editor drop loaded (\(loaded.text.count, privacy: .public) chars, \(loaded.language.rawValue, privacy: .public))"
         )
+    }
+
+    /// Presents a standard one-file picker and starts a volatile living snapshot after
+    /// the selected text file replaces the editor. The picker is the consent boundary:
+    /// no directory is scanned, no bookmark is stored, and access ends with this window.
+    func openLivingSnapshotFile() {
+        let panel = NSOpenPanel()
+        panel.title = String(localized: "Open a Live File")
+        panel.message = String(
+            localized:
+                "Choose one source file. Vitrine will refresh clean editor content when that file is saved, only while this window remains open."
+        )
+        panel.prompt = String(localized: "Open & Watch")
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.resolvesAliases = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            offerLoaded(
+                try FileInputLoader.load(from: url),
+                startsLivingSnapshot: true)
+        } catch let error as FileInputLoader.LoadError {
+            dropError = error
+        } catch {
+            dropError = .unreadable
+        }
     }
 
     /// Imports a dropped image into the foreground store and returns its reference, or
@@ -132,6 +181,7 @@ extension EditorView {
     /// content marks. The existing `code` is kept (rendered again if the image is later
     /// cleared), so switching to image mode is non-destructive.
     func applyImage(_ reference: ImageReference) {
+        session.livingSnapshot.stop()
         settings.config.clearContentMarks()
         settings.config.foregroundImage = reference
         Log.capture.info("Editor drop loaded a foreground image")

@@ -176,6 +176,15 @@ URL**, and picks the matching workflow — one-step Quick mode for code using yo
 style, or the editor when you want to fine-tune. Pasted HTML opens the dedicated Web
 Snapshot editor.
 
+### Live files
+
+Open **Live file** from the editor's code header to connect one explicitly selected
+source file for that window. Clean editor content refreshes after the file is saved; if
+you have typed locally, Vitrine shows **Reload** and **Keep** instead of replacing
+your work. The connection is session-only: ordinary drops stay one-time imports, no
+folder is scanned, no bookmark is stored, and access ends when you stop watching or
+close the window. See [Living snapshots](docs/LIVING-SNAPSHOTS.md).
+
 ### Beautify any image
 
 Not just code — drop, paste, or quick-capture **any screenshot** and render it on the
@@ -229,7 +238,7 @@ Shortcuts and App Intents.
 
 | Area | What you get |
 | --- | --- |
-| **Capture** | Menu-bar app, global hotkey, clipboard detection (code · terminal · URL), Quick and editor modes; pasted HTML uses Web Snapshot |
+| **Capture** | Menu-bar app, global hotkey, clipboard detection (code · terminal · URL), Quick and editor modes, explicit session-only live files; pasted HTML uses Web Snapshot |
 | **Beautify** | Drop/paste any image → frame it (macOS window · browser · MacBook · iPhone) with auto-matched chrome |
 | **Style** | 13 themes + custom, 33 syntax languages plus Terminal and Plain Text modes, fonts, gradient & image backgrounds, focus mode, diff coloring |
 | **Annotate** | Arrows (straight · curved), lines, boxes, text, highlighter, blur, counters, spotlight, measure, stickers — with undo/redo |
@@ -247,6 +256,7 @@ Shortcuts and App Intents.
 - 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact and adds a compact project, current Git branch when available, and command header so the image keeps its context when shared (`--no-context` restores an output-only capture). It also supports **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included — and a copyable-text sidecar can ship the output as text alongside the image. `vpane` *(PRO)* images a tmux pane's visible contents without re-running anything, and dropping an **asciinema** recording (`.cast`) replays it into the same renderer. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
 - 🖼️ **Beautify any image** — drop, paste, or quick-capture any screenshot (not just code) and render it on the same backgrounds, padding, and shadow, optionally wrapped in a macOS-window, browser, or MacBook / iPhone device frame. The frame chrome auto-tints to the image's top-edge color so it blends in (Light/Dark are manual overrides). Browser and device frames are PRO.
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
+- 🔄 **Living snapshots** — explicitly open one source file from the editor and its clean content refreshes after saves. Local edits are never overwritten: a changed disk version waits for **Reload** or **Keep**. The watcher is scoped to that window and is not restored or persisted. → [`docs/LIVING-SNAPSHOTS.md`](docs/LIVING-SNAPSHOTS.md).
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
 - ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight and curved), lines, rectangles, text callouts, a highlighter, blur/redaction boxes, numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
 - 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
@@ -300,6 +310,11 @@ Vitrine is private by design, and that promise does not soften as the product gr
   local and on-device — no account, and no network at all on the App Store build (it ships
   sandboxed *without* the network entitlement). Rendering needs no Screen Recording or
   Accessibility permission.
+- **Living snapshots are explicit and temporary.** Vitrine reads only the source file
+  you choose, never scans its folder, never writes back to it, and retains no bookmark.
+  The watcher and its security-scoped access end when you stop it or close the editor
+  window. The loaded text remains an ordinary editor draft, but the file connection is
+  never restored on a later launch.
 - **URL capture: the requested webpage loads locally.** When a copied URL is captured,
   Vitrine loads that webpage **locally in WebKit on your Mac** and turns it into an image
   on-device. There is **no remote screenshot service** — the URL is never sent off your
@@ -722,6 +737,7 @@ in [`docs/`](docs/):
 - [**docs/ACTIVATION.md**](docs/ACTIVATION.md) — direct-download PRO activation runbook: keypair generation, build-time key injection, and the Lemon Squeezy product.
 - [**docs/RENDERING.md**](docs/RENDERING.md) — how every supported input reaches the local render and export pipeline.
 - [**docs/SCREEN-CAPTURE.md**](docs/SCREEN-CAPTURE.md) — why arbitrary screen/window capture is outside the product boundary.
+- [**docs/LIVING-SNAPSHOTS.md**](docs/LIVING-SNAPSHOTS.md) — explicit session-only file refresh, conflict behavior, and privacy boundary.
 - [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md) — every entitlement with its reason, user-facing behavior, and App Store impact by channel.
 - [**docs/DESIGN-QA.md**](docs/DESIGN-QA.md) — the generated launch gallery and the design-QA process.
 - [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized DMG, Homebrew cask, release workflow.

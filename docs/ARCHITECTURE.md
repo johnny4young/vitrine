@@ -196,6 +196,25 @@ source file is explicitly dropped, then `AppSettings.applyWorkspaceRecipe` prese
 document and applies every app-representable style, metadata, destination, and output
 value. A custom recipe canvas remains CLI-only and is reported as such by Settings.
 
+**Session-only living snapshots.** `LivingSnapshotSession` belongs to one
+`EditorSession`, not to `AppEnvironment` or a persistent store. The **Live file** picker
+is the only entry point: it selects one source file, applies the same bounded text loader
+used by drag and drop, and retains that file's security scope only while the editor
+window remains open. A 650 ms task compares file size, modification date, resource
+identifier, and filesystem file/volume numbers; including inode identity detects editors
+that save by atomically replacing the file instead of mutating its original inode.
+Content is read only after the stamp changes.
+
+The session records the last text it applied. When the editor still equals that baseline,
+a saved version replaces it and clears content-bound marks through the normal
+`LoadedFile.apply` policy. When the user has edited locally, the disk version becomes a
+visible pending change and requires **Reload** or **Keep**; it never overwrites the
+draft in the background. A transient read failure does not advance the observed stamp,
+so the same atomic save remains retryable. Replacing the document through another input,
+loading an image, closing the window, restoring a draft, or stopping the watcher releases
+the scope and cancels polling. The URL, watcher, and security scope are excluded from
+window restoration and app defaults; ordinary file drops remain one-time imports.
+
 **Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
 suites cover entitlement, version and catalog contracts, argument parsing and
 validation, configuration, rendering, and output behavior. Batch argument contracts
@@ -514,6 +533,7 @@ Vitrine/
 │   ├── EditorView+Toolbar/Stage/Annotations/DragDrop.swift
 │   │                         # focused editor regions and interactions
 │   ├── CodeEditorView.swift   # NSViewRepresentable over NSTextView
+│   ├── LivingSnapshotSession.swift # volatile explicit-file refresh + conflict policy
 │   ├── CodeFormatter.swift    # stable tidy/trim/dedent facade
 │   ├── CodeFormatter+JSON.swift
 │   ├── CodeFormatter+Markup.swift

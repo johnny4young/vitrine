@@ -12,6 +12,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
         assertExists(element("language-picker", in: app), in: app)
         assertExists(element("format-button", in: app), in: app)
+        assertExists(element("living-snapshot-menu", in: app), in: app)
         // The editor's destination preset picker lives in the inspector's
         // Output disclosure in the current designed layout; open it first. It keeps
         // its own identifier so it never collides with the Settings panes'
