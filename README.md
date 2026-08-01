@@ -67,8 +67,9 @@ Two modes, one engine:
 
 ## Install
 
-Requires macOS **14.0+** (Sonoma or later). Every build is signed with a
-Developer ID and notarized by Apple, and updates itself through Sparkle.
+Requires macOS **14.0+** (Sonoma or later). Official DMG releases are signed with a
+Developer ID, notarized by Apple, and updated through Sparkle. App Store releases are
+updated by the App Store; source builds use your local signing configuration.
 
 ### Homebrew (recommended)
 
