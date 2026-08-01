@@ -10,11 +10,13 @@ struct SettingsResetCoordinator {
     let presets: PresetStore
     let themes: CustomThemeStore
     let brandKit: BrandKitStore
+    let workspaceRecipes: WorkspaceRecipeStore
 
     func reset() {
         settings.resetToDefaults()
         presets.reload()
         themes.reload()
         brandKit.reload()
+        workspaceRecipes.reload()
     }
 }

@@ -188,6 +188,18 @@ struct WorkspaceRecipeDocument: Codable, Equatable {
         return try encoder.encode(self)
     }
 
+    /// Produces bytes only after checking the same contract the import boundary
+    /// enforces. User-facing exporters use this path so they cannot create a recipe
+    /// that a later CLI or app invocation would reject.
+    func validatedJSONData() throws -> Data {
+        do {
+            try Self.validate(recipe)
+        } catch let error as ValidationError {
+            throw ImportError.invalid(error)
+        }
+        return try jsonData()
+    }
+
     /// Decodes and validates a complete recipe document.
     static func recipe(from data: Data) throws -> WorkspaceRecipe {
         let document: WorkspaceRecipeDocument

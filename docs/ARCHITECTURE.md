@@ -188,8 +188,13 @@ folders, repositories, or app storage. `CLIRecipeCommand` provides stateless
 Configuration resolution stays deterministic: built-in defaults, destination sizing,
 recipe values, an explicit built-in style preset, then explicit CLI flags. Recipe
 inspection runs before AppKit initialization and the PRO render gate. Machine-local
-workspace-to-recipe associations belong at an app-owned boundary and must never be
-serialized back into the portable document.
+workspace-to-recipe associations stay at an app-owned boundary and are never serialized
+back into the portable document. `WorkspaceRecipeStore`, constructed by
+`AppEnvironment`, persists only read-only security-scoped folder and recipe bookmarks
+plus leaf display names. It resolves the most-specific associated ancestor only when a
+source file is explicitly dropped, then `AppSettings.applyWorkspaceRecipe` preserves the
+document and applies every app-representable style, metadata, destination, and output
+value. A custom recipe canvas remains CLI-only and is reported as such by Settings.
 
 **Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
 suites cover entitlement, version and catalog contracts, argument parsing and

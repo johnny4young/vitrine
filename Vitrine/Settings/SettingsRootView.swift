@@ -71,7 +71,8 @@ struct SettingsRootView: View {
                 settings: environment.appSettings,
                 presets: environment.presets,
                 themes: environment.customThemes,
-                brandKit: environment.brandKit
+                brandKit: environment.brandKit,
+                workspaceRecipes: environment.workspaceRecipes
             )
         case .style:
             StyleSettingsView(
@@ -89,7 +90,8 @@ struct SettingsRootView: View {
             LibrarySettingsView(
                 settings: environment.appSettings,
                 presets: environment.presets,
-                themes: environment.customThemes
+                themes: environment.customThemes,
+                workspaceRecipes: environment.workspaceRecipes
             )
         case .output:
             OutputSettingsView(settings: environment.appSettings)

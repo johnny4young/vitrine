@@ -40,6 +40,9 @@ enum FileInputLoader {
         var language: Language
         /// The source file's name (last path component), e.g. `ContentView.swift`.
         var filename: String
+        /// The explicitly selected source URL, retained only for machine-local
+        /// workspace association matching. Decoded text and pasted content have none.
+        var sourceURL: URL? = nil
 
         /// Writes this loaded drop into `config` in place — the same mutation the
         /// editor performs once the user resolves the replace/append choice.
@@ -137,7 +140,9 @@ enum FileInputLoader {
             throw LoadError.unreadable
         }
 
-        return try decode(data: data, filename: url.lastPathComponent)
+        var loaded = try decode(data: data, filename: url.lastPathComponent)
+        loaded.sourceURL = url.standardizedFileURL
+        return loaded
     }
 
     // MARK: - Pure decoding (unit-testable)

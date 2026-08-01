@@ -207,6 +207,7 @@ struct FileInputLoaderLoadTests {
         #expect(loaded.text == source)
         #expect(loaded.language == .typescript)
         #expect(loaded.filename == "model.ts")
+        #expect(loaded.sourceURL == url.standardizedFileURL)
     }
 
     /// A real binary file on disk is rejected with the binary error.

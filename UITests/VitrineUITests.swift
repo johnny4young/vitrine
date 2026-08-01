@@ -586,6 +586,24 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testLibraryPaneExposesWorkspaceRecipeControls() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-settings"])
+        defer { app.terminate() }
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-library", in: app).click()
+        assertExists(element("settings-library-pane", in: app), in: app, timeout: 3)
+        assertExists(element("workspace-recipe-picker", in: app), in: app, timeout: 3)
+        assertHittable(
+            "add-workspace-recipe-button", in: app,
+            "The workspace association action should be reachable")
+        assertHittable(
+            "export-workspace-recipe-button", in: app,
+            "The portable recipe export action should be reachable")
+    }
+
+    @MainActor
     func testStylePaneShowsFreeBrandKitDragHandle() {
         continueAfterFailure = false
         let app = launch(

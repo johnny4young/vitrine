@@ -83,6 +83,9 @@ enum SettingsCodec {
         /// "Reset all settings" clears the user's themes along with the rest of their
         /// data; the store reloads its in-memory copy afterward.
         static let userCustomThemes = CustomThemeStore.storageKey
+        /// Machine-local security-scoped folder-to-recipe bookmarks. Portable recipe
+        /// files never contain these associations, but Reset All must remove them.
+        static let workspaceRecipeAssociations = WorkspaceRecipeStore.storageKey
         /// Brand Kit. Owned by `BrandKitStore`, listed here so a
         /// "Reset all settings" clears the user's watermark identity and apply switch
         /// along with the rest of their preferences; the store reloads its in-memory
@@ -105,7 +108,7 @@ enum SettingsCodec {
             webAllowsLoopbackCapture, recentLanguages,
             fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
             hasSeenWelcome, lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
-            brandKit, brandKitEnabled,
+            workspaceRecipeAssociations, brandKit, brandKitEnabled,
         ]
 
         /// The keys an editor window seeds from the app-wide defaults when it opens:

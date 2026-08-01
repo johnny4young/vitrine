@@ -633,6 +633,12 @@ CLI flags. Use `vitrine recipe validate <path> [--json]` for a lightweight valid
 or `vitrine recipe show <path> [--json]` for the canonical portable contents. See
 [Workspace recipes](docs/WORKSPACE-RECIPES.md) for the schema, privacy boundary, and a
 runnable tracked example.
+The app exports the same format from **Settings ▸ Library ▸ Workspace recipes** and can
+retain an explicit folder-to-recipe association as read-only security-scoped bookmarks.
+Only source files you deliberately drop into the editor are matched; Vitrine never
+scans a repository or discovers a recipe implicitly. Exact custom canvas sizes remain
+CLI-only, while the app applies the recipe's other supported style, metadata, and output
+defaults.
 `--canvas-size <width>x<height>` pins an exact logical canvas between 64 and 2048 points
 per axis, overriding a destination preset's dimensions while retaining its style and
 recommended scale. The explicit `--scale` multiplier determines final pixel dimensions.

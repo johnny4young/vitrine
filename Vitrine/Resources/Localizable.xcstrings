@@ -8821,6 +8821,468 @@
           }
         }
       }
+    },
+    "Add…" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar…"
+          }
+        }
+      }
+    },
+    "Apply a recipe when you explicitly drop a file from a folder" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar una receta cuando sueltas explícitamente un archivo de una carpeta"
+          }
+        }
+      }
+    },
+    "Apply the selected recipe to Vitrine's default style and export settings." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar la receta seleccionada al estilo predeterminado y a los ajustes de exportación de Vitrine."
+          }
+        }
+      }
+    },
+    "Apply to Default" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar al predeterminado"
+          }
+        }
+      }
+    },
+    "Associate" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociar"
+          }
+        }
+      }
+    },
+    "Association" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación"
+          }
+        }
+      }
+    },
+    "Association Not Saved" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación no guardada"
+          }
+        }
+      }
+    },
+    "Association Removed" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación eliminada"
+          }
+        }
+      }
+    },
+    "Association Saved" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación guardada"
+          }
+        }
+      }
+    },
+    "Associations stay on this Mac as security-scoped bookmarks. Recipe files remain portable and path-free." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las asociaciones permanecen en este Mac como marcadores con ámbito de seguridad. Los archivos de receta siguen siendo portátiles y no contienen rutas."
+          }
+        }
+      }
+    },
+    "Choose Workspace" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir espacio de trabajo"
+          }
+        }
+      }
+    },
+    "Choose Workspace Recipe" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir receta de espacio de trabajo"
+          }
+        }
+      }
+    },
+    "Choose an association…" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir una asociación…"
+          }
+        }
+      }
+    },
+    "Choose one folder and one existing Vitrine recipe file." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una carpeta y un archivo de receta de Vitrine existente."
+          }
+        }
+      }
+    },
+    "Choose the folder or repository whose explicitly dropped files should use one recipe." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige la carpeta o el repositorio cuyos archivos soltados explícitamente deben usar una receta."
+          }
+        }
+      }
+    },
+    "Choose the portable Vitrine recipe to apply when you explicitly drop a file from that workspace." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige la receta portátil de Vitrine que se aplicará cuando sueltes explícitamente un archivo de ese espacio de trabajo."
+          }
+        }
+      }
+    },
+    "Export Current…" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar actual…"
+          }
+        }
+      }
+    },
+    "Export Workspace Recipe" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar receta de espacio de trabajo"
+          }
+        }
+      }
+    },
+    "Export style, safe metadata, and output defaults without source or workspace paths." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar el estilo, los metadatos seguros y los valores de salida predeterminados sin rutas de origen ni del espacio de trabajo."
+          }
+        }
+      }
+    },
+    "Export the current default for vitrine --recipe" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar la configuración predeterminada actual para vitrine --recipe"
+          }
+        }
+      }
+    },
+    "Manage" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Administrar"
+          }
+        }
+      }
+    },
+    "Name this portable recipe, then choose where to save it. The file never includes a workspace path or source text." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asigna un nombre a esta receta portátil y elige dónde guardarla. El archivo nunca incluye una ruta del espacio de trabajo ni el texto de origen."
+          }
+        }
+      }
+    },
+    "No repository scanning or implicit recipe discovery" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin análisis del repositorio ni detección implícita de recetas"
+          }
+        }
+      }
+    },
+    "Portable file" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivo portátil"
+          }
+        }
+      }
+    },
+    "Recipe Applied" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta aplicada"
+          }
+        }
+      }
+    },
+    "Recipe Not Applied" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta no aplicada"
+          }
+        }
+      }
+    },
+    "Recipe Not Exported" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta no exportada"
+          }
+        }
+      }
+    },
+    "Remove only the local association. The recipe file is not deleted." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar solo la asociación local. El archivo de receta no se elimina."
+          }
+        }
+      }
+    },
+    "Save a portable style and output recipe. It contains no workspace path, source text, output path, history, or credentials." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda una receta portátil de estilo y salida. No contiene rutas del espacio de trabajo, texto de origen, rutas de salida, historial ni credenciales."
+          }
+        }
+      }
+    },
+    "Save as:" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar como:"
+          }
+        }
+      }
+    },
+    "The local association was removed. No folder or recipe file was deleted." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se eliminó la asociación local. No se eliminó ninguna carpeta ni archivo de receta."
+          }
+        }
+      }
+    },
+    "The workspace recipe could not be exported." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo exportar la receta del espacio de trabajo."
+          }
+        }
+      }
+    },
+    "This cannot be undone. Your recent languages, saved presets, custom themes, workspace recipe associations, and Brand Kit are also cleared." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta acción no se puede deshacer. También se borrarán tus idiomas recientes, ajustes preestablecidos guardados, temas personalizados, asociaciones de recetas de espacios de trabajo y el kit de marca."
+          }
+        }
+      }
+    },
+    "Vitrine could not load the associated recipe." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo cargar la receta asociada."
+          }
+        }
+      }
+    },
+    "Vitrine could not save that workspace recipe association." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo guardar esa asociación de receta de espacio de trabajo."
+          }
+        }
+      }
+    },
+    "Workspace recipe association" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación de receta de espacio de trabajo"
+          }
+        }
+      }
+    },
+    "Workspace recipes" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas de espacios de trabajo"
+          }
+        }
+      }
+    },
+    "Workspace Recipe" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta de espacio de trabajo"
+          }
+        }
+      }
+    },
+    "%@ — %@" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "Files you explicitly drop from %@ can now use %@." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos que sueltes explícitamente desde %1$@ ahora pueden usar %2$@."
+          }
+        }
+      }
+    },
+    "Applied %@ to Vitrine's default." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aplicó %1$@ a la configuración predeterminada de Vitrine."
+          }
+        }
+      }
+    },
+    "Applied %@ to Vitrine's default. Its custom canvas size remains available to the CLI but is not applied by the app." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aplicó %1$@ a la configuración predeterminada de Vitrine. Su tamaño de lienzo personalizado sigue disponible para la CLI, pero la app no lo aplica."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

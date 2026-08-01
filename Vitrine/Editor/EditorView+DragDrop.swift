@@ -76,6 +76,11 @@ extension EditorView {
     /// capture/export reflects the source, honoring "Recents record loaded file
     /// metadata only when the user captures/exports".
     func apply(_ loaded: FileInputLoader.LoadedFile, replacing: Bool) {
+        if replacing, let sourceURL = loaded.sourceURL,
+            environment.workspaceRecipes.applyRecipe(for: sourceURL, to: settings) != nil
+        {
+            Log.capture.info("Applied a workspace recipe to an explicitly loaded file")
+        }
         loaded.apply(to: &settings.config, replacing: replacing)
         settings.noteLanguageUsed(settings.config.language)
         Log.capture.info(

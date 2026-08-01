@@ -19,6 +19,25 @@ vitrine render README.md --out /tmp/readme.png \
 `recipe validate` and `recipe show` do not render and do not require PRO activation.
 Rendering through `--recipe` follows the normal CLI entitlement boundary.
 
+The macOS app can create the same file from **Settings ▸ Library ▸ Workspace
+recipes ▸ Export Current…**. The export captures the current default style, safe
+header metadata, destination, scale, format, and color profile. Source text,
+annotations, and every filesystem path stay out of the document.
+
+## Local folder associations
+
+In **Settings ▸ Library ▸ Workspace recipes**, choose **Add…**, then select one
+folder and one existing recipe file. Vitrine stores those choices only on that Mac as
+read-only security-scoped bookmarks. Dropping a source file from the associated folder
+into the editor applies the most-specific matching recipe before loading the source.
+Nested associations therefore override parent folders, while an unavailable nested
+recipe can fall back to a usable parent association.
+
+Association lookup happens only for a file you explicitly drop. Vitrine does not watch
+the folder, scan repository contents, infer a conventional recipe filename, or read Git
+configuration. Removing an association deletes neither the folder nor the recipe file,
+and **Reset All Settings** clears the retained bookmarks.
+
 ## What a recipe contains
 
 The versioned `vitrine.workspace-recipe` envelope contains exactly one recipe:
@@ -64,8 +83,9 @@ recognized extension still requires them to agree.
 - `multi-size` rejects recipe-level destination, canvas, or scale defaults because
   each selected destination owns those dimensions.
 - Recipes currently configure code and terminal captures, not `--image` input.
+- A recipe's exact custom canvas size is currently CLI-only. The app applies every
+  other supported value and says when that canvas boundary is present.
 
 The CLI intentionally has no `recipe import` command. A portable file should remain
 the source of truth instead of being copied into hidden CLI state. Machine-local
-folder associations belong to the macOS app and remain separate from the exported
-document.
+folder associations remain separate from the exported document.

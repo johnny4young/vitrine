@@ -20,6 +20,9 @@ can never drift.
 - Added explicit CLI recipe consumption through `--recipe`, plus stateless
   `recipe validate` and `recipe show` inspection commands. Recipes are never discovered
   implicitly, and explicit CLI flags continue to take precedence.
+- Added app-side recipe export and machine-local folder associations in Settings.
+  Associations use read-only security-scoped bookmarks, apply only after an explicit
+  source-file drop, prefer the most-specific folder, and never enter the portable file.
 
 ### Documentation
 
