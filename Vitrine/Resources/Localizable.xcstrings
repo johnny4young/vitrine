@@ -9515,6 +9515,348 @@
         }
       }
     }
+,
+    "Add a short label to every capture to preview it." : {
+      "comment" : "Comparison-board empty-state guidance.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade una etiqueta breve a cada captura para obtener una vista previa."
+          }
+        }
+      }
+    },
+    "Add this capture to the comparison" : {
+      "comment" : "Help for an available capture while selecting a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir esta captura a la comparación"
+          }
+        }
+      }
+    },
+    "A board can contain up to four captures" : {
+      "comment" : "Help shown when the comparison selection has reached its limit.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un tablero puede contener hasta cuatro capturas"
+          }
+        }
+      }
+    },
+    "After" : {
+      "comment" : "Default label for the second item in a two-capture comparison.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Después"
+          }
+        }
+      }
+    },
+    "Before" : {
+      "comment" : "Default label for the first item in a two-capture comparison.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes"
+          }
+        }
+      }
+    },
+    "Board needs complete labels" : {
+      "comment" : "Comparison-board empty-state title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El tablero necesita etiquetas completas"
+          }
+        }
+      }
+    },
+    "Board preview" : {
+      "comment" : "Accessibility label for the comparison-board preview stage.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa del tablero"
+          }
+        }
+      }
+    },
+    "Capture %lld" : {
+      "comment" : "Position label for an item in a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura %lld"
+          }
+        }
+      }
+    },
+    "Captures" : {
+      "comment" : "Inspector section title for comparison-board items.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas"
+          }
+        }
+      }
+    },
+    "Column" : {
+      "comment" : "Comparison-board vertical layout choice.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Columna"
+          }
+        }
+      }
+    },
+    "Compare" : {
+      "comment" : "Recents toolbar action that starts comparison selection.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparar"
+          }
+        }
+      }
+    },
+    "Comparison Board" : {
+      "comment" : "Title for the comparison-board editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tablero comparativo"
+          }
+        }
+      }
+    },
+    "Copy board" : {
+      "comment" : "Primary action that copies a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar tablero"
+          }
+        }
+      }
+    },
+    "Couldn't prepare the selected captures" : {
+      "comment" : "Failure shown when selected captures cannot open in a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron preparar las capturas seleccionadas"
+          }
+        }
+      }
+    },
+    "Couldn't render the comparison board" : {
+      "comment" : "Failure shown when a comparison board cannot be rendered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo renderizar el tablero comparativo"
+          }
+        }
+      }
+    },
+    "Create Board (%lld)" : {
+      "comment" : "Recents action showing the current comparison selection count.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear tablero (%lld)"
+          }
+        }
+      }
+    },
+    "Grid" : {
+      "comment" : "Comparison-board grid layout choice.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuadrícula"
+          }
+        }
+      }
+    },
+    "Label" : {
+      "comment" : "Editable comparison-board item label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Etiqueta"
+          }
+        }
+      }
+    },
+    "Layout" : {
+      "comment" : "Inspector title and picker label for comparison-board layout.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disposición"
+          }
+        }
+      }
+    },
+    "Move capture earlier" : {
+      "comment" : "Action that moves a comparison item toward the start.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover captura hacia el inicio"
+          }
+        }
+      }
+    },
+    "Move capture later" : {
+      "comment" : "Action that moves a comparison item toward the end.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover captura hacia el final"
+          }
+        }
+      }
+    },
+    "Optional detail" : {
+      "comment" : "Editable optional detail for a comparison-board item.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detalle opcional"
+          }
+        }
+      }
+    },
+    "Remove capture from board" : {
+      "comment" : "Action that removes one item from a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar captura del tablero"
+          }
+        }
+      }
+    },
+    "Remove this capture from the selection" : {
+      "comment" : "Help for a selected capture in Recents comparison mode.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar esta captura de la selección"
+          }
+        }
+      }
+    },
+    "Render and copy the board to the clipboard" : {
+      "comment" : "Help for the comparison-board copy action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza y copia el tablero al portapapeles"
+          }
+        }
+      }
+    },
+    "Render and save the board as a file" : {
+      "comment" : "Help for the comparison-board save action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza y guarda el tablero como archivo"
+          }
+        }
+      }
+    },
+    "Row" : {
+      "comment" : "Comparison-board horizontal layout choice.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fila"
+          }
+        }
+      }
+    },
+    "Select two to four captures for one comparison board" : {
+      "comment" : "Help for the Recents comparison action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selecciona de dos a cuatro capturas para un tablero comparativo"
+          }
+        }
+      }
+    },
+    "Selected" : {
+      "comment" : "Accessibility state for a capture selected for comparison.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleccionada"
+          }
+        }
+      }
+    },
+    "Selected %lld" : {
+      "comment" : "Accessibility label for a capture selection badge.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selección %lld"
+          }
+        }
+      }
+    },
+    "Share the rendered board" : {
+      "comment" : "Help for the comparison-board share action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparte el tablero renderizado"
+          }
+        }
+      }
+    }
   },
   "version" : "1.1"
 }

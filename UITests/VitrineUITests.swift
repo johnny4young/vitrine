@@ -777,6 +777,77 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsCreatesAnEditableComparisonBoard() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        XCTAssertEqual(cards.count, 3)
+        assertHittable(
+            "recents-compare-button", in: app,
+            "Recents should expose the explicit comparison selection mode")
+        let search = element("recents-search-field", in: app)
+        search.click()
+        search.typeText("Rust")
+        element("recents-compare-button", in: app).click()
+        XCTAssertEqual(search.value as? String, "Rust")
+        XCTAssertFalse(search.isEnabled)
+        element("recents-compare-cancel", in: app).click()
+        XCTAssertEqual(search.value as? String, "Rust")
+        search.click()
+        search.typeKey("a", modifierFlags: .command)
+        search.typeKey(.delete, modifierFlags: [])
+        element("recents-compare-button", in: app).click()
+
+        cards.element(boundBy: 0).click()
+        cards.element(boundBy: 1).click()
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(
+                identifier: "recents-comparison-selection"
+            ).count, 2)
+
+        assertHittable(
+            "recents-create-comparison-button", in: app,
+            "Two selected captures should enable board creation")
+        element("recents-create-comparison-button", in: app).click()
+
+        assertExists(element("comparison-board-window", in: app), in: app, timeout: 8)
+        assertExists(element("comparison-board-preview-stage", in: app), in: app, timeout: 5)
+        assertExists(element("comparison-board-inspector", in: app), in: app)
+        assertHittable(
+            "comparison-board-copy-button", in: app,
+            "A valid board should expose its primary copy action")
+
+        let firstLabel = element("comparison-board-label-0", in: app)
+        assertExists(firstLabel, in: app)
+        firstLabel.click()
+        firstLabel.typeKey("a", modifierFlags: .command)
+        firstLabel.typeText("Original")
+        XCTAssertEqual(firstLabel.value as? String, "Original")
+
+        element("comparison-board-copy-button", in: app).click()
+        let copyDeadline = Date().addingTimeInterval(6)
+        var copied: NSBitmapImageRep?
+        repeat {
+            if let data = pasteboard.data(forType: .png) {
+                copied = NSBitmapImageRep(data: data)
+            }
+            if copied != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < copyDeadline
+        let board = try XCTUnwrap(copied, "Comparison board did not copy a PNG")
+        XCTAssertGreaterThan(board.pixelsWide, 1_000)
+        XCTAssertGreaterThan(board.pixelsHigh, 500)
+    }
+
+    @MainActor
     func testRecentsSearchesAndDeletesOneCapture() throws {
         continueAfterFailure = false
         let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])

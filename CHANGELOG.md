@@ -27,6 +27,10 @@ can never drift.
   refreshes automatically after saves while the editor is clean; if local edits diverge,
   Vitrine waits for an explicit reload instead of overwriting them. File access ends when
   the watcher or editor window closes and is never persisted.
+- Added comparison boards for two to four recent captures. Recents now provides an explicit,
+  ordered selection mode and a session-only editor for captions, layout, reordering, copy,
+  file export, and the Share Sheet. Boards retain rendered pixels only and never preserve
+  source paths or references into capture history.
 
 ### Documentation
 

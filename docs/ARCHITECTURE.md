@@ -161,6 +161,18 @@ normalization and PNG/PDF encoders as every other capture. This generic core rem
 separate from `ResponsiveBoardComposer`, whose variable-width cards and viewport labels
 are specialized for web snapshots.
 
+The app workflow keeps that core behind two explicit state boundaries. Recents enters an
+ephemeral selection mode backed by `ComparisonBoardSelection`, which owns ordered capture
+identifiers only until the user cancels or creates a board.
+`ComparisonBoardWindowController` then renders the selected captures once and hands
+finished pixels with fresh draft-local identities to a `ComparisonBoardDraft`; later
+caption, layout, and reorder edits never reread Recents or a source document. That one
+render uses and retains the active output scale, preventing later Settings changes from
+enlarging one-times source pixels. The controller injects app settings, feedback, and
+sharing into `ComparisonBoardEditorView`, so the SwiftUI editor does not discover
+process-global stores, HUDs, windows, or share services. Closing its window releases the
+entire draft, and no board state enters `UserDefaults` or restoration.
+
 ## Command-line renderer
 
 `vitrine render input.swift --out image.png` renders code to an image from the
@@ -575,6 +587,11 @@ Vitrine/
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
 │   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
 │   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset
+├── Comparison/
+│   ├── ComparisonBoardSelection.swift # ordered ephemeral Recents selection
+│   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
+│   ├── ComparisonBoardEditorView.swift # preview, layout, captions, export controls
+│   └── ComparisonBoardPresentation.swift # injected share operation
 ├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
 │   ├── ANSIParser.swift       # escape-sequence tokenizer
 │   ├── TerminalGrid.swift     # VT screen model (CSI dispatch, scrollback, alt screen)
@@ -647,7 +664,7 @@ Vitrine/
 ├── Rendering/                 # shared Renderer / RenderedAsset abstractions
 ├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
 ├── State/                     # RecentsStore + pure window-state model
-├── Recents/ · Updates/ · Help/ # recents; SoftwareUpdater; Help/What's New + navigation
+├── Recents/ · Updates/ · Help/ # recents selection/navigation; updates; Help/What's New
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
 │   └── Log.swift              # os.Logger per subsystem + render signposts
@@ -829,11 +846,13 @@ process-global stores or construct presentation windows.
 
 `RecentsGalleryWindowController` owns the equivalent boundary for capture history. Its
 SwiftUI root receives the retained `AppEnvironment`, an editor-navigation operation, and
-a transient-feedback operation. Gallery filtering and mutation therefore observe the
-controller's Recents store and settings, while editor handoff and copy outcomes remain
-testable without discovering app-owned windows or the HUD. Window ownership lives in a
-separate source file so the gallery view stays a store-and-action surface rather than a
-second composition root.
+a transient-feedback operation. The navigation value also routes an explicit ordered
+capture selection to `ComparisonBoardWindowController`; neither the gallery nor the board
+editor reaches that lifecycle owner directly. Gallery filtering and mutation therefore
+observe the controller's Recents store and settings, while editor handoff and copy outcomes
+remain testable without discovering app-owned windows or the HUD. Window ownership lives
+in a separate source file so the gallery view stays a store-and-action surface rather than
+a second composition root.
 
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }

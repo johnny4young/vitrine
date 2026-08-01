@@ -127,6 +127,8 @@ light and dark.
 | --- | --- | --- |
 | <img src="site/public/screenshots/welcome.png" alt="Onboarding quick-start: numbered steps, a live sample card you can restyle, and the privacy promise" width="250"> | <img src="site/public/screenshots/settings.png" alt="Settings — Style pane with the pinned live preview, sub-tabs, and theme and font chip pickers" width="250"> | <img src="site/public/screenshots/menu-bar.png" alt="The menu-bar panel: gradient capture action, recent captures, theme chips, and explicit command rows" width="250"> |
 
+<img src="site/public/screenshots/comparison-board.png" alt="The comparison-board editor with two recent captures, editable Before and After captions, layout choices, and copy, save, and share actions" width="760">
+
 </div>
 
 ### The exports
@@ -184,6 +186,15 @@ you have typed locally, Vitrine shows **Reload** and **Keep** instead of replaci
 your work. The connection is session-only: ordinary drops stay one-time imports, no
 folder is scanned, no bookmark is stored, and access ends when you stop watching or
 close the window. See [Living snapshots](docs/LIVING-SNAPSHOTS.md).
+
+### Comparison boards
+
+Open **Recents**, choose **Compare**, then select two to four captures in the order you
+want to explain them. Vitrine renders each selection once into a temporary board where
+you can edit labels and details, reorder or remove items, and choose automatic, row,
+column, or grid layout before copying, saving, or sharing the finished image. The board
+is session-only and path-free: it stores neither source-file locations nor references
+back into Recents. See [Comparison boards](docs/COMPARISON-BOARDS.md).
 
 ### Beautify any image
 
@@ -243,7 +254,7 @@ Shortcuts and App Intents.
 | **Style** | 13 themes + custom, 33 syntax languages plus Terminal and Plain Text modes, fonts, gradient & image backgrounds, focus mode, diff coloring |
 | **Annotate** | Arrows (straight · curved), lines, boxes, text, highlighter, blur, counters, spotlight, measure, stickers — with undo/redo |
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
-| **Export** | Retina PNG/PDF/HEIC, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets |
+| **Export** | Retina PNG/PDF/HEIC, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets, 2–4 capture comparison boards |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
 | **PRO** | Brand Kit watermark · multi-size one-pass export · automation (`vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
 
@@ -272,7 +283,7 @@ Shortcuts and App Intents.
 - 🌐 **Web snapshots** — render pasted **HTML** offline, or capture a **webpage** (direct-download build) after a first-use privacy disclosure. The requested page is fetched and rendered locally in WebKit; there is no remote screenshot service. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
 - ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
-- 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar.
+- 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar. Enter **Compare** to select two to four captures in order and compose a labelled, path-free board for before/after reviews or release notes. → [`docs/COMPARISON-BOARDS.md`](docs/COMPARISON-BOARDS.md).
 - 🚀 **First-run quick-start**, offline in-app **Help**, and a **What's New** window on upgrades.
 - ⚡ **Shortcuts / App Intents** *(PRO)* — render a code image or open the editor from Shortcuts and Spotlight.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
@@ -315,6 +326,10 @@ Vitrine is private by design, and that promise does not soften as the product gr
   The watcher and its security-scoped access end when you stop it or close the editor
   window. The loaded text remains an ordinary editor draft, but the file connection is
   never restored on a later launch.
+- **Comparison boards retain pixels, not sources.** A board is created only from captures
+  you explicitly select in Recents. Its draft contains the rendered images and the labels
+  you see, with no file paths, security bookmarks, source text, or persistent reference to
+  capture history; closing the board discards that draft.
 - **URL capture: the requested webpage loads locally.** When a copied URL is captured,
   Vitrine loads that webpage **locally in WebKit on your Mac** and turns it into an image
   on-device. There is **no remote screenshot service** — the URL is never sent off your
@@ -738,15 +753,19 @@ in [`docs/`](docs/):
 - [**docs/RENDERING.md**](docs/RENDERING.md) — how every supported input reaches the local render and export pipeline.
 - [**docs/SCREEN-CAPTURE.md**](docs/SCREEN-CAPTURE.md) — why arbitrary screen/window capture is outside the product boundary.
 - [**docs/LIVING-SNAPSHOTS.md**](docs/LIVING-SNAPSHOTS.md) — explicit session-only file refresh, conflict behavior, and privacy boundary.
+- [**docs/WORKSPACE-RECIPES.md**](docs/WORKSPACE-RECIPES.md) — portable recipe schema, explicit CLI usage, local folder associations, and privacy boundaries.
+- [**docs/COMPARISON-BOARDS.md**](docs/COMPARISON-BOARDS.md) — ordered Recents selection, board editing, export behavior, and session-only data ownership.
 - [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md) — every entitlement with its reason, user-facing behavior, and App Store impact by channel.
 - [**docs/DESIGN-QA.md**](docs/DESIGN-QA.md) — the generated launch gallery and the design-QA process.
 - [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized DMG, Homebrew cask, release workflow.
 
 ## Status
 
-🟢 **v0.25.5 is the latest published release.** Everything under [Features](#features) is built and
-driven by one design-token system ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in
-light and dark. It is covered by a Swift Testing unit suite plus XCTest UI smokes; CI
+🟢 **v0.25.5 is the latest published release.** Everything under [Features](#features) is
+implemented in the current repository and driven by one design-token system
+([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in light and dark. Items under
+**Unreleased** are not in the published 0.25.5 download yet. The product is covered by a
+Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
 (which pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md)).
 The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release

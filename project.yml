@@ -438,3 +438,9 @@ schemes:
       region: US
       targets:
         - VitrineUITests
+      # Forward the opt-in screenshot directory through a build-setting macro. Xcode
+      # does not pass arbitrary shell environment values into the UI-test runner.
+      environmentVariables:
+        - variable: VITRINE_SCREENSHOT_DIR
+          value: $(VITRINE_SCREENSHOT_DIR)
+          isEnabled: true

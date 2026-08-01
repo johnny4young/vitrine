@@ -237,6 +237,41 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
+    func testComparisonBoardTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer { app.terminate() }
+
+        let recentsWindow = element("recents-window", in: app)
+        XCTAssertTrue(recentsWindow.waitForExistence(timeout: 8))
+        let compare = element("recents-compare-button", in: app)
+        XCTAssertTrue(compare.waitForExistence(timeout: 5))
+        compare.click()
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        XCTAssertEqual(cards.count, 3)
+        cards.element(boundBy: 0).click()
+        cards.element(boundBy: 1).click()
+        Thread.sleep(forTimeInterval: 0.4)
+        save(
+            recentsWindow.screenshot(), as: "35-recents-comparison-selection",
+            note: "Ordered, session-only selection of two captures in Recents")
+
+        element("recents-create-comparison-button", in: app).click()
+        let boardWindow = element("comparison-board-window", in: app)
+        guard boardWindow.waitForExistence(timeout: 8) else {
+            miss("36-comparison-board", reason: "comparison board did not open")
+            return
+        }
+        let preview = element("comparison-board-preview-stage", in: app)
+        XCTAssertTrue(preview.waitForExistence(timeout: 5))
+        preview.click()
+        Thread.sleep(forTimeInterval: 1.0)
+        save(
+            boardWindow.screenshot(), as: "36-comparison-board",
+            note: "Comparison board with editable captions, layout, reorder, copy, save, and share")
+    }
+
+    @MainActor
     func testEditorSurpriseStyleTour() throws {
         let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor"])
         defer { app.terminate() }
@@ -765,6 +800,7 @@ final class ScreenshotTourUITests: XCTestCase {
         return URL(fileURLWithPath: path, isDirectory: true)
     }
 
+    @MainActor
     private func save(_ screenshot: XCUIScreenshot, as slug: String, note: String) {
         let directory = outputDirectory
         do {

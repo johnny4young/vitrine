@@ -56,6 +56,11 @@ struct RecentsGalleryView: View {
     /// card whose menu initiated it even if the grid updates meanwhile.
     @State private var pendingDeletion: Capture?
 
+    /// Explicit, session-only selection mode for composing two to four captures.
+    /// The ordered identifiers are discarded when the gallery closes or selection ends.
+    @State private var isSelectingForComparison = false
+    @State private var comparisonSelection = ComparisonBoardSelection()
+
     /// A responsive grid: cards keep a comfortable minimum width and the row
     /// reflows as the window is resized.
     private let columns = [
@@ -102,7 +107,12 @@ struct RecentsGalleryView: View {
                         RecentsCard(
                             capture: capture,
                             thumbnail: recents.thumbnail(for: capture),
-                            action: { open(capture) },
+                            action: { cardAction(capture) },
+                            comparisonIndex: comparisonSelection.index(of: capture.id),
+                            isSelectingForComparison: isSelectingForComparison,
+                            canAddToComparison:
+                                comparisonSelection.count
+                                < ComparisonBoard.itemCountRange.upperBound,
                             pin: {
                                 recents.updatePinned(id: capture.id, isPinned: !capture.isPinned)
                             },
@@ -116,9 +126,35 @@ struct RecentsGalleryView: View {
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
+                if isSelectingForComparison {
+                    Button("Cancel") { endComparisonSelection() }
+                        .accessibilityIdentifier("recents-compare-cancel")
+                } else {
+                    Button {
+                        beginComparisonSelection()
+                    } label: {
+                        Label("Compare", systemImage: "rectangle.on.rectangle.angled")
+                    }
+                    .disabled(recents.captures.count < ComparisonBoard.itemCountRange.lowerBound)
+                    .help("Select two to four captures for one comparison board")
+                    .accessibilityIdentifier("recents-compare-button")
+                }
+            }
+            if isSelectingForComparison {
+                ToolbarItem(placement: .automatic) {
+                    Button("Create Board (\(comparisonSelection.count))") {
+                        createComparisonBoard()
+                    }
+                    .disabled(!comparisonSelection.canCreateBoard)
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("recents-create-comparison-button")
+                }
+            }
+            ToolbarItem(placement: .automatic) {
                 TextField("Search Recents", text: $searchQuery)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 220)
+                    .disabled(isSelectingForComparison)
                     .accessibilityIdentifier("recents-search-field")
             }
             ToolbarItem(placement: .automatic) {
@@ -129,6 +165,7 @@ struct RecentsGalleryView: View {
                 .help("Show only pinned recent captures")
                 .accessibilityHint("Show only pinned recent captures")
                 .accessibilityIdentifier("recents-pinned-filter")
+                .disabled(isSelectingForComparison)
             }
             ToolbarItem(placement: .automatic) {
                 Menu {
@@ -151,6 +188,7 @@ struct RecentsGalleryView: View {
                 .help("Sort captures while keeping pinned favorites first")
                 .accessibilityHint("Pinned captures remain first in every sort order")
                 .accessibilityIdentifier("recents-sort-picker")
+                .disabled(isSelectingForComparison)
             }
             ToolbarItem(placement: .automatic) {
                 Menu {
@@ -175,6 +213,7 @@ struct RecentsGalleryView: View {
                 }
                 .help("Clear recent captures while optionally keeping pinned favorites")
                 .accessibilityIdentifier("recents-clear-button")
+                .disabled(isSelectingForComparison)
             }
         }
         // Clearing recents cannot be undone — it empties the list and deletes the
@@ -253,6 +292,35 @@ struct RecentsGalleryView: View {
         navigation.loadIntoPrimaryEditor(capture.applying(to: settings.config))
     }
 
+    private func cardAction(_ capture: Capture) {
+        if isSelectingForComparison {
+            toggleComparisonSelection(capture.id)
+        } else {
+            open(capture)
+        }
+    }
+
+    private func beginComparisonSelection() {
+        comparisonSelection.reset()
+        isSelectingForComparison = true
+    }
+
+    private func endComparisonSelection() {
+        comparisonSelection.reset()
+        isSelectingForComparison = false
+    }
+
+    private func toggleComparisonSelection(_ id: Capture.ID) {
+        comparisonSelection.toggle(id)
+    }
+
+    private func createComparisonBoard() {
+        let selected = comparisonSelection.resolved(in: recents.captures)
+        guard ComparisonBoard.itemCountRange.contains(selected.count) else { return }
+        navigation.showComparisonBoard(selected)
+        endComparisonSelection()
+    }
+
     /// Re-renders a past capture for one destination without changing the app's saved
     /// style or default output preset. The destination owns both the presentation
     /// guidance and exact geometry, matching the menu-bar one-off preset flow.
@@ -301,6 +369,9 @@ private struct RecentsCard: View {
     let capture: Capture
     let thumbnail: NSImage?
     let action: () -> Void
+    let comparisonIndex: Int?
+    let isSelectingForComparison: Bool
+    let canAddToComparison: Bool
     let pin: () -> Void
     let copySource: () -> Void
     let renderAs: (ExportPreset) -> Void
@@ -317,20 +388,37 @@ private struct RecentsCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Brand.Surface.raised, in: shape)
                 .overlay(
-                    shape.strokeBorder(Brand.Palette.border.color, lineWidth: Brand.Stroke.hairline)
+                    shape.strokeBorder(
+                        comparisonIndex == nil
+                            ? Brand.Palette.border.color : VitrineTokens.Accent.system,
+                        lineWidth: comparisonIndex == nil ? Brand.Stroke.hairline : 3)
                 )
                 .brandShadow(Brand.Shadow.card)
             }
             .buttonStyle(.plain)
+            .disabled(
+                isSelectingForComparison && comparisonIndex == nil && !canAddToComparison
+            )
             .accessibilityIdentifier("recents-card")
             .accessibilityLabel(accessibilityLabel)
-            .help("Open this capture in the editor")
+            .help(cardHelp)
 
-            presetMenu
-                .padding(Brand.Spacing.sm + Brand.Spacing.xs)
+            if !isSelectingForComparison {
+                presetMenu
+                    .padding(Brand.Spacing.sm + Brand.Spacing.xs)
+            }
         }
         .overlay(alignment: .topLeading) {
-            if capture.isPinned {
+            if let comparisonIndex {
+                Text(verbatim: "\(comparisonIndex + 1)")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 26, height: 26)
+                    .background(VitrineTokens.Accent.system, in: Circle())
+                    .padding(Brand.Spacing.sm + Brand.Spacing.xs)
+                    .accessibilityLabel("Selected \(comparisonIndex + 1)")
+                    .accessibilityIdentifier("recents-comparison-selection")
+            } else if capture.isPinned && !isSelectingForComparison {
                 pinBadge
                     .padding(Brand.Spacing.sm + Brand.Spacing.xs)
             }
@@ -348,9 +436,8 @@ private struct RecentsCard: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                // No cached preview (e.g. a capture restored from a build that
-                // predates ): fall back to the brand mark so the card still
-                // reads as a recents entry rather than a broken image.
+                // A capture can outlive its cached thumbnail. Fall back to the brand
+                // mark so the card still reads as a Recents entry rather than a broken image.
                 Brand.Gradient.signatureWash()
                 BrandMark(size: 32)
             }
@@ -445,7 +532,17 @@ private struct RecentsCard: View {
     private var accessibilityLabel: String {
         let when = Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date())
         let details = "\(capture.language.displayName), \(capture.theme.displayName), \(when)"
+        if let comparisonIndex {
+            return "\(String(localized: "Selected")) \(comparisonIndex + 1), \(details)"
+        }
         return capture.isPinned ? "\(String(localized: "Pinned")), \(details)" : details
+    }
+
+    private var cardHelp: LocalizedStringKey {
+        if !isSelectingForComparison { return "Open this capture in the editor" }
+        if comparisonIndex != nil { return "Remove this capture from the selection" }
+        if canAddToComparison { return "Add this capture to the comparison" }
+        return "A board can contain up to four captures"
     }
 
     private static let dateFormatter: RelativeDateTimeFormatter = {
