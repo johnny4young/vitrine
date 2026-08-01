@@ -12,6 +12,15 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- Added portable, versioned workspace recipes that bundle deterministic style,
+  metadata, output defaults, and an optional custom theme without storing source,
+  workspace, or output paths.
+- Added explicit CLI recipe consumption through `--recipe`, plus stateless
+  `recipe validate` and `recipe show` inspection commands. Recipes are never discovered
+  implicitly, and explicit CLI flags continue to take precedence.
+
 ### Documentation
 
 - Clarified the website and README around the shipped language catalog, URL and HTML

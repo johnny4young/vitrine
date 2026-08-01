@@ -178,6 +178,19 @@ boundaries introduces a second render implementation. Because the inputs and pip
 are identical, a CLI render is byte-for-byte identical to the app's export for the same
 options — a focused output-contract test asserts exactly that.
 
+**Portable workspace recipes.** `WorkspaceRecipeDocument` is a versioned JSON envelope
+over the existing `StyleSnapshot` model. It can add portable header metadata, output
+defaults, and one embedded custom theme, but it cannot encode source, workspace, or
+output paths. The CLI accepts a recipe only through an explicit `--recipe <path>`;
+`CLIRecipeLoader` requires a regular file, caps it at 1 MB, and never searches parent
+folders, repositories, or app storage. `CLIRecipeCommand` provides stateless
+`recipe validate` and `recipe show` inspection without creating a machine-local registry.
+Configuration resolution stays deterministic: built-in defaults, destination sizing,
+recipe values, an explicit built-in style preset, then explicit CLI flags. Recipe
+inspection runs before AppKit initialization and the PRO render gate. Machine-local
+workspace-to-recipe associations belong at an app-owned boundary and must never be
+serialized back into the portable document.
+
 **Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
 suites cover entitlement, version and catalog contracts, argument parsing and
 validation, configuration, rendering, and output behavior. Batch argument contracts
@@ -200,7 +213,8 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
 `--diff-bands`, `--no-diff-bands`), and the header controls (`--window-title`,
-`--filename`, `--title`, `--caption`, `--language-badge`) override individual choices.
+`--filename`, `--title`, `--caption`, `--language-badge`, `--no-language-badge`) and an
+explicit `--recipe <path>` override individual choices.
 Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation fails
 loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
 same deterministic `SecretScanner` as the editor and merges detected rows with any
@@ -543,6 +557,7 @@ Vitrine/
 │   ├── StyleSnapshot.swift / StylePreset.swift
 │   │                         # portable presentation state + reusable catalog entries
 │   ├── StylePresetDocument.swift # validated JSON exchange envelope
+│   ├── WorkspaceRecipe.swift # path-free style/metadata/output exchange envelope
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
@@ -554,6 +569,8 @@ Vitrine/
 │   ├── CLIArgumentValues.swift # catalog, range, color, and geometry conversion
 │   ├── CLIError.swift / CLIUsage.swift # process errors and help contract
 │   ├── CLICatalog.swift       # local theme/language/preset discovery for automation
+│   ├── CLIRecipeLoader.swift  # explicit bounded recipe file loading
+│   ├── CLIRecipeCommand.swift # stateless recipe validate/show inspection
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
 │   ├── CLIRenderer.swift      # stable render/multi-size/edit/batch operation facade
 │   ├── CLIRenderResources.swift # invocation-scoped backgrounds and watermark logos

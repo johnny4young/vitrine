@@ -399,9 +399,10 @@ make cli
 CLI="$(xcodebuild -project Vitrine.xcodeproj -scheme VitrineCLI -showBuildSettings \
   | awk '/ BUILT_PRODUCTS_DIR / {print $3 "/vitrine-cli"; exit}')"
 
-# These metadata commands work without a PRO activation.
+# These inspection commands work without a PRO activation.
 "$CLI" --version
 "$CLI" list languages --json
+"$CLI" recipe validate docs/examples/documentation.vitrine-recipe.json
 
 # Optional local Debug render (the bypass is absent from release binaries).
 VITRINE_PRO_UNLOCK=1 "$CLI" render README.md --out /tmp/vitrine-readme.png
@@ -458,6 +459,10 @@ vitrine render diff.patch --out review.png --language diff --highlight-lines 3,7
   --focus-lines --diff-bands
 vitrine render secrets.swift --out share.png --redact-secrets --sidecars all
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
+vitrine recipe validate docs/examples/documentation.vitrine-recipe.json
+vitrine recipe show docs/examples/documentation.vitrine-recipe.json --json
+vitrine render README.md --out readme.png \
+  --recipe docs/examples/documentation.vitrine-recipe.json
 vitrine render snippet.swift --out card.png --sidecars all
 cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
 vitrine render input.swift --out image.png --quiet --no-overwrite
@@ -517,7 +522,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
 `--redact-secrets`, `--focus-lines`, `--no-focus-lines`, `--diff-bands`,
 `--no-diff-bands`), and the header controls
-(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`) override
+(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`,
+`--no-language-badge`) and `--recipe <path>` override
 individual choices. For single-file `render`, a known
 `--out` extension (`.png`, `.pdf`, `.heic`, or `.avif`) selects the matching format when
 `--format` is omitted; if both are present, they must agree so scripts never write
@@ -617,6 +623,16 @@ and dimensions when available. When a batch contains same-stem files such as
 destination sizing and before explicit style flags. Run `vitrine list style-presets`
 to discover deterministic ids; user presets are intentionally excluded so CI does not
 depend on machine-local settings.
+`--recipe <path>` reads one explicitly named, versioned workspace recipe. A recipe can
+carry the same portable style snapshot used by the app, optional header metadata,
+output defaults, and one embedded custom theme. It never contains an input path,
+workspace path, output path, history, or credentials, and the CLI never searches parent
+folders, repositories, or app storage for one. Resolution is deterministic: built-in
+defaults, destination sizing, recipe values, a named built-in style preset, then explicit
+CLI flags. Use `vitrine recipe validate <path> [--json]` for a lightweight validity check
+or `vitrine recipe show <path> [--json]` for the canonical portable contents. See
+[Workspace recipes](docs/WORKSPACE-RECIPES.md) for the schema, privacy boundary, and a
+runnable tracked example.
 `--canvas-size <width>x<height>` pins an exact logical canvas between 64 and 2048 points
 per axis, overriding a destination preset's dimensions while retaining its style and
 recommended scale. The explicit `--scale` multiplier determines final pixel dimensions.
@@ -634,7 +650,7 @@ the local render catalogs so scripts can discover valid choices without scraping
 `vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before
 AppKit initialization or the PRO render gate, which makes CI install checks cheap. The
-`list` commands likewise inspect the local catalogs without rendering.
+`list` and `recipe` inspection commands likewise work without rendering.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)

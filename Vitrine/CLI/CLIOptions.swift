@@ -86,6 +86,9 @@ struct CLIOptions: Equatable {
     /// to preserve the app/destination-preset presentation. The CLI deliberately
     /// excludes user presets so automation never depends on machine-local defaults.
     var stylePresetID: String?
+    /// A portable recipe loaded only from an explicitly supplied `--recipe` path.
+    /// The value carries no source or workspace path and is already schema-validated.
+    var recipe: WorkspaceRecipe?
     /// Optional exact logical canvas size. It overrides destination-preset sizing,
     /// while the destination preset may still seed presentation and export scale.
     var canvasSize: CGSize?
@@ -385,10 +388,11 @@ struct CLIOptions: Equatable {
     /// Order of application, lowest precedence first:
     ///   1. App defaults (`SnapshotConfig()`).
     ///   2. The destination preset's presentation guidance (padding/background).
-    ///   3. The built-in style preset.
-    ///   4. The theme override.
-    ///   5. The transparent-background override (wins over preset backgrounds).
-    ///   6. CLI presentation overrides.
+    ///   3. The portable workspace recipe.
+    ///   4. The explicitly selected built-in style preset.
+    ///   5. The theme override.
+    ///   6. The transparent-background override (wins over preset backgrounds).
+    ///   7. CLI presentation overrides.
     ///
     /// `code` and `language` are set from the input file and never altered by a
     /// preset, exactly as in the GUI (a preset is presentation/output only).
@@ -398,6 +402,11 @@ struct CLIOptions: Equatable {
     ) -> SnapshotConfig {
         var config = SnapshotConfig().styled(
             presetID: presetID, themeID: nil, transparent: false)
+        if let recipe {
+            recipe.style.apply(to: &config, resolvingThemeWith: recipe.theme(withID:))
+            config.windowTitle = recipe.metadata.windowTitle ?? config.windowTitle
+            config.metadata = recipe.metadata.header
+        }
         resolvedStylePreset?.style.apply(to: &config)
         config = config.styled(presetID: nil, themeID: themeID, transparent: transparent)
         if let background { config.background = background }
@@ -477,9 +486,10 @@ struct CLIOptions: Equatable {
                 nil
             }
         config.metadata = SnapshotMetadata(
-            filename: metadataFilename ?? inferredMetadataFilename,
-            title: metadataTitle,
-            caption: metadataCaption,
+            filename: metadataFilename ?? inferredMetadataFilename
+                ?? recipe?.metadata.header.filename,
+            title: metadataTitle ?? recipe?.metadata.header.title,
+            caption: metadataCaption ?? recipe?.metadata.header.caption,
             showLanguageBadge: showLanguageBadge)
         return config
     }

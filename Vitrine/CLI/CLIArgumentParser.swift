@@ -16,6 +16,7 @@ struct CLIArgumentParser {
     var presetID: String?
     var multiSizePresetIDs: Set<String> = []
     var stylePresetID: String?
+    var recipePath: String?
     var canvasSize: CGSize?
     var scale: Int?
     var fontName: String?
@@ -28,7 +29,7 @@ struct CLIArgumentParser {
     var wrapColumns: Int?
     var formatCode = false
     var explicitFormat: ExportFormat?
-    var profile: ColorProfile = .fallback
+    var profile: ColorProfile?
     var transparent = false
     var background: BackgroundStyle?
     var backgroundImagePath: String?
@@ -75,7 +76,7 @@ struct CLIArgumentParser {
     var stdinFilename: String?
     var metadataTitle: String?
     var metadataCaption: String?
-    var showLanguageBadge = false
+    var showLanguageBadge: Bool?
     var showLineNumbers: Bool?
     var showChrome: Bool?
     var showShadow: Bool?
@@ -157,6 +158,8 @@ struct CLIArgumentParser {
                     try resolvePresetList(try value(for: token), flag: token))
             case "--style-preset":
                 stylePresetID = try resolveStylePreset(try value(for: token))
+            case "--recipe":
+                recipePath = try value(for: token)
             case "--canvas-size":
                 canvasSize = try resolveCanvasSize(try value(for: token), flag: token)
             case "--scale":
@@ -285,6 +288,8 @@ struct CLIArgumentParser {
                 metadataCaption = try value(for: token)
             case "--language-badge", "--show-language-badge":
                 showLanguageBadge = true
+            case "--no-language-badge":
+                showLanguageBadge = false
             case "--line-numbers":
                 showLineNumbers = true
             case "--no-line-numbers":

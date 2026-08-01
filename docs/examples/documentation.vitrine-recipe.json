@@ -1,0 +1,36 @@
+{
+  "format" : "vitrine.workspace-recipe",
+  "recipe" : {
+    "metadata" : {
+      "header" : {
+        "caption" : "Rendered locally with an explicit workspace recipe",
+        "showLanguageBadge" : true,
+        "title" : "Documentation"
+      },
+      "windowTitle" : "Vitrine"
+    },
+    "name" : "Documentation",
+    "output" : {
+      "colorProfile" : "sRGB",
+      "destinationPresetID" : "opengraph",
+      "format" : "png",
+      "scale" : 1
+    },
+    "style" : {
+      "background" : {
+        "kind" : "gradient",
+        "preset" : "Forest"
+      },
+      "cornerRadius" : 16,
+      "fontLigatures" : false,
+      "fontName" : "JetBrains Mono",
+      "fontSize" : 14,
+      "padding" : 40,
+      "showChrome" : true,
+      "showLineNumbers" : false,
+      "showShadow" : true,
+      "themeID" : "nord"
+    }
+  },
+  "schemaVersion" : 1
+}
