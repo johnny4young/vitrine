@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 /// The carousel export sheet: choose the lines-per-slide, see how many
@@ -10,6 +9,8 @@ struct CarouselExportView: View {
     /// only its `code` with that page's lines.
     let baseConfig: SnapshotConfig
     let profile: ColorProfile
+    let feedback: FeedbackDisplay
+    let presentation: BatchExportPresentation
 
     @Environment(\.dismiss) private var dismiss
 
@@ -66,13 +67,10 @@ struct CarouselExportView: View {
         let pages = pages
         guard !pages.isEmpty else { return }
 
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = String(localized: "Export")
-        panel.message = String(localized: "Choose a folder for the carousel slides.")
-        guard panel.runModal() == .OK, let directory = panel.url else { return }
+        guard
+            let directory = presentation.chooseDirectory(
+                message: String(localized: "Choose a folder for the carousel slides."))
+        else { return }
 
         failureNote = nil
         progress = (0, pages.count)
@@ -81,17 +79,16 @@ struct CarouselExportView: View {
                 baseConfig, pages: pages, to: directory, profile: profile,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil
-            if result.failed == 0 {
-                CaptureHUDController.shared.present(
-                    Notifier.confirmation(String(localized: "Carousel exported")))
-                NSWorkspace.shared.activateFileViewerSelecting([directory])
+            let completion = BatchExportCompletion(
+                written: result.written,
+                failed: result.failed,
+                expected: pages.count)
+            if completion.isComplete {
+                feedback(Notifier.confirmation(String(localized: "Carousel exported")))
+                presentation.reveal(directory)
                 dismiss()
             } else {
-                failureNote =
-                    "\(result.written)/\(pages.count) — "
-                    + String(
-                        localized:
-                            "Some images couldn't be written. Check the folder and try again.")
+                failureNote = completion.failureNote
             }
         }
     }

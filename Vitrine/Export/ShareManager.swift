@@ -71,7 +71,7 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
             pasteboard.clearContents()
             // Only open the compose page when the image actually reached the
             // pasteboard — with nothing to paste, opening the browser and claiming
-            // success would just mislead (PR review).
+            // success would mislead the user.
             guard pasteboard.writeObjects([image]) else {
                 ExportFeedback.presentCopy(false)
                 return

@@ -3,11 +3,10 @@ import Testing
 
 @testable import Vitrine
 
-/// the publish band: the carousel multi-slide export and the
-/// share-sheet compose targets.
-@Suite("Publish band (carousel + compose)")
+/// Covers carousel pagination and share-sheet compose targets.
+@Suite("Carousel export and compose")
 @MainActor
-struct PublishBandTests {
+struct PublishWorkflowTests {
     // MARK: - Carousel pagination
 
     @Test func balancedSplitNeverLeavesATinyLastSlide() {
@@ -88,7 +87,7 @@ struct PublishBandTests {
 
 // MARK: - Share-sheet compose targets
 
-extension PublishBandTests {
+extension PublishWorkflowTests {
     /// The picker only offers compose targets when the shared items carry an image;
     /// anything else falls through to the system services untouched.
     @Test func composeTargetsRequireAnImageItem() {
