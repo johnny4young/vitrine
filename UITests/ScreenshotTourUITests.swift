@@ -582,20 +582,10 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
-    func testStatusItemMenuTour() throws {
-        let app = launch(arguments: ["--skip-onboarding"])
+    func testMenuBarPanelTour() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
         defer { app.terminate() }
 
-        let statusItem = app.statusItems.firstMatch
-        guard statusItem.waitForExistence(timeout: 8), statusItem.isHittable else {
-            // Off-screen/negative frames happen under some display arrangements;
-            // the tour records a miss instead of failing (it is evidence, not a gate).
-            miss("50-menubar-panel", reason: "status item not exposed or not hittable")
-            return
-        }
-        // The current designed status surface is a MenuBarExtra window panel, not an
-        // NSMenu: clicking the item opens a panel window.
-        statusItem.click()
         let panel = element("menubar-panel", in: app)
         if panel.waitForExistence(timeout: 3) {
             Thread.sleep(forTimeInterval: 0.5)
@@ -647,15 +637,8 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarSurpriseStyleTour() throws {
-        let app = launch(arguments: ["--skip-onboarding"])
+        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
         defer { app.terminate() }
-
-        let statusItem = app.statusItems.firstMatch
-        guard statusItem.waitForExistence(timeout: 8), statusItem.isHittable else {
-            miss("52-menubar-surprise-style", reason: "status item not exposed or not hittable")
-            return
-        }
-        statusItem.click()
 
         let panel = element("menubar-panel", in: app)
         guard panel.waitForExistence(timeout: 3) else {
@@ -682,16 +665,9 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarRecentSourceActionsTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-menu-panel"])
         defer { app.terminate() }
-        app.activate()
-
-        let statusItem = app.statusItems.firstMatch
-        guard statusItem.waitForExistence(timeout: 8), statusItem.isHittable else {
-            miss("55-menubar-recent-copy-actions", reason: "status item is not reachable")
-            return
-        }
-        statusItem.click()
 
         let panel = element("menubar-panel", in: app)
         guard panel.waitForExistence(timeout: 3) else {

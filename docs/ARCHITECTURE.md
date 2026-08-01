@@ -60,7 +60,10 @@ handles the cancel command, backed by a local AppKit key monitor when no control
 focus. All close paths converge on the popover delegate lifecycle so monitor and anchor
 cleanup cannot drift between input mechanisms. The large editor remains a separate
 AppKit-hosted window. The global hotkey triggers quick mode or the editor depending on
-the user's preference.
+the user's preference. Development and UI-automation runs can open that same popover at
+a validated current-screen anchor through an explicit launch hook. Panel behavior tests
+and screenshot tours therefore exercise the production content and dismissal lifecycle
+without depending on whether the status item has usable accessibility geometry.
 
 `StatusItemController` is also the menu-bar composition boundary. It retains one
 `AppEnvironment` and supplies that graph, plus the explicitly owned feedback presenter

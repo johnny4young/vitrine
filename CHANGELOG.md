@@ -79,6 +79,10 @@ can never drift.
 
 ### Changed
 
+- **Menu-panel visual evidence no longer depends on status-item geometry.** Development
+  and UI-automation launches can open the real panel at a validated on-screen anchor, so
+  panel behavior smokes and screenshot tours run deterministically while the production
+  helper and click path remain unchanged.
 - **First-run and release-note navigation now enters through explicit composition
   boundaries.** Welcome receives its sample-editor action from its window controller,
   while What's New receives its Help action the same way; neither SwiftUI surface

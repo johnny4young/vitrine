@@ -220,6 +220,21 @@ struct AppEnvironmentTests {
         #expect(!second.brandKit.isEnabled)
     }
 
+    @Test func launchArgumentsOpenTheMenuPanelThroughTheInjectedRoute() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let environment = AppEnvironment(defaults: suite)
+        var presentations = 0
+        let handler = AppLaunchArgumentHandler(
+            environment: environment,
+            showMenuBarPanel: { presentations += 1 })
+
+        let didOpenWindow = handler.handle(["Vitrine", "--open-menu-panel"])
+
+        #expect(didOpenWindow)
+        #expect(presentations == 1)
+    }
+
     @Test func lifecycleAdaptersDoNotEscapeToGlobalDataStores() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
