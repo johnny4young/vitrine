@@ -196,6 +196,10 @@ column, or grid layout before copying, saving, or sharing the finished image. Th
 is session-only and path-free: it stores neither source-file locations nor references
 back into Recents. See [Comparison boards](docs/COMPARISON-BOARDS.md).
 
+| Ordered selection in Recents | Session-only board editor |
+| --- | --- |
+| <img src="site/public/screenshots/comparison-selection.png" alt="Recents in comparison mode with two captures selected in explicit order" width="380"> | <img src="site/public/screenshots/comparison-board.png" alt="Comparison-board editor with Before and After captions, layout controls, and export actions" width="380"> |
+
 ### Beautify any image
 
 Not just code — drop, paste, or quick-capture **any screenshot** and render it on the
@@ -669,6 +673,11 @@ Only source files you deliberately drop into the editor are matched; Vitrine nev
 scans a repository or discovers a recipe implicitly. Exact custom canvas sizes remain
 CLI-only, while the app applies the recipe's other supported style, metadata, and output
 defaults.
+
+| Explicit CLI inspection | Machine-local folder association |
+| --- | --- |
+| <img src="site/public/screenshots/workspace-recipe-cli.png" alt="Vitrine CLI validating and displaying an explicitly named workspace recipe" width="380"> | <img src="site/public/screenshots/workspace-recipes.png" alt="Workspace recipe export and local association controls in Settings Library" width="380"> |
+
 `--canvas-size <width>x<height>` pins an exact logical canvas between 64 and 2048 points
 per axis, overriding a destination preset's dimensions while retaining its style and
 recommended scale. The explicit `--scale` multiplier determines final pixel dimensions.
