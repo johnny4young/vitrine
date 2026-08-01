@@ -148,7 +148,8 @@ struct AppEnvironmentTests {
         var destinations: [MenuBarNavigation.Destination] = []
         let navigation = MenuBarNavigation(
             present: { destinations.append($0) },
-            loadPrimaryEditor: { _ in })
+            loadPrimaryEditor: { _ in },
+            terminate: {})
         let root = MenuBarContent(
             environment: env,
             feedback: feedback,

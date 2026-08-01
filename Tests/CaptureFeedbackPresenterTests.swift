@@ -70,6 +70,19 @@ struct CaptureFeedbackPresenterTests {
         #expect(routing.webSnapshotURLs == [url, nil])
     }
 
+    @Test func resolvedFeedbackUpdatesTheHUDAndRetainedPanelStatus() {
+        let display = DisplaySpy()
+        let presenter = CaptureFeedbackPresenter(
+            display: display.port,
+            routing: RoutingSpy().port)
+        let feedback = Notifier.confirmation("Source copied")
+
+        presenter.present(feedback)
+
+        #expect(display.feedback == [feedback])
+        #expect(presenter.lastFeedback == feedback)
+    }
+
     @Test func renderAsTextWithoutPendingURLRoutesToTheEditor() throws {
         let environment = try makeEnvironment()
         let display = DisplaySpy()

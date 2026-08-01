@@ -14,6 +14,9 @@ can never drift.
 
 ### Fixed
 
+- **Menu-bar copy actions now report through one feedback path.** Copying a recent
+  image or its source updates both the transient HUD and the panel's retained status,
+  including a visible failure when the clipboard write does not succeed.
 - **Batch export sheets no longer discover AppKit presentation services.** Multi-size
   and carousel exports receive directory selection, Finder reveal, and transient
   feedback as explicit operations. An incomplete writer result now keeps the sheet open

@@ -270,9 +270,11 @@ struct MenuBarStatusItemTests {
     @Test func navigationRoutesEveryDestinationAndEditorDocument() {
         var destinations: [MenuBarNavigation.Destination] = []
         var documents: [SnapshotConfig] = []
+        var terminations = 0
         let navigation = MenuBarNavigation(
             present: { destinations.append($0) },
-            loadPrimaryEditor: { documents.append($0) })
+            loadPrimaryEditor: { documents.append($0) },
+            terminate: { terminations += 1 })
         var config = SnapshotConfig()
         config.code = "let routed = true"
 
@@ -280,9 +282,11 @@ struct MenuBarStatusItemTests {
             navigation.show(destination)
         }
         navigation.loadIntoPrimaryEditor(config)
+        navigation.terminateApplication()
 
         #expect(destinations == MenuBarNavigation.Destination.allCases)
         #expect(documents == [config])
+        #expect(terminations == 1)
     }
 
     @Test func panelContainsNoWindowGlobalLookups() throws {
@@ -303,6 +307,9 @@ struct MenuBarStatusItemTests {
             "SettingsWindowManager.shared",
             "HelpWindowController.shared",
             "AboutPanel.present",
+            "CaptureHUDController.shared",
+            "ExportFeedback.present",
+            "NSApp.terminate",
         ] {
             #expect(
                 !code.contains(forbiddenDependency),

@@ -67,7 +67,9 @@ the user's preference.
 and window-navigation operations, to `MenuBarContent`. Every quick-capture entry from the
 panel resolves settings, recents, Brand Kit watermark eligibility, and recovery actions
 from that same graph. Panel rows route through the injected navigation value; only its
-live adapter reaches the reusable AppKit window owners. The global hotkey and
+live adapter reaches the reusable AppKit window owners or terminates the process. Image
+and source-copy outcomes enter the lifecycle-owned feedback presenter, which updates the
+transient HUD and the status retained by the open panel together. The global hotkey and
 application-menu command enter the same capture operation with the app-wide environment.
 This keeps the render, history write, and any later recovery render aligned without
 making the UI lifecycle presenter part of the data-store graph. The feedback presenter
