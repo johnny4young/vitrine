@@ -76,6 +76,10 @@ can never drift.
 
 ### Changed
 
+- **First-run and release-note navigation now enters through explicit composition
+  boundaries.** Welcome receives its sample-editor action from its window controller,
+  while What's New receives its Help action the same way; neither SwiftUI surface
+  discovers another app-owned window controller.
 - **Command metadata and command execution now have separate implementation boundaries.**
   The stable title, shortcut, and accessibility catalog remains independent from the
   app-scoped and key-editor responder implementations, keeping menu descriptions,

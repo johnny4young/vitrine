@@ -429,6 +429,13 @@ gate lives in one place.
   through launch hooks (`--show-welcome`, `--skip-onboarding`, `--reset-onboarding`)
   while isolating the flag via `VITRINE_USER_DEFAULTS_SUITE`.
 
+`WelcomeWindowController` supplies `WelcomeNavigation` to the SwiftUI root, keeping the
+sample-editor action at the AppKit composition boundary. `WhatsNewWindowController` does
+the same with `WhatsNewNavigation`: opening Help still stamps the displayed release as
+seen and dismisses the notes, but the view no longer discovers the process-wide Help
+controller. Both roots remain directly composable in isolated tests without constructing
+another application window.
+
 ## Architecture
 
 ```
@@ -475,7 +482,8 @@ Vitrine/
 │   ├── MenuBarContent.swift   # the popover panel (SwiftUI)
 │   └── QuickCapture.swift     # no-UI quick mode: clipboard → PNG
 ├── Onboarding/
-│   └── WelcomeView.swift      # first-run quick-start + window controller
+│   ├── WelcomeView.swift      # first-run quick-start + window controller
+│   └── WelcomeNavigation.swift # injected sample-editor route
 ├── Editor/
 │   ├── EditorView.swift       # scene shell + window-level state
 │   ├── EditorExportSheet.swift # one export/paywall presentation destination
@@ -574,7 +582,7 @@ Vitrine/
 ├── Rendering/                 # shared Renderer / RenderedAsset abstractions
 ├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
 ├── State/                     # RecentsStore + pure window-state model
-├── Recents/ · Updates/ · Help/ # recents gallery; SoftwareUpdater (Sparkle on DMG); Help/What's New
+├── Recents/ · Updates/ · Help/ # recents; SoftwareUpdater; Help/What's New + navigation
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
 │   └── Log.swift              # os.Logger per subsystem + render signposts
