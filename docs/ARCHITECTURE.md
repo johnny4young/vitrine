@@ -702,14 +702,15 @@ singletons as documented above.
 
 `AppMenu` owns the AppKit command surface and retains one app-command responder plus one
 editor-command responder for its full lifetime. Both are created from the
-`AppEnvironment` and capture-feedback presenter supplied by `AppDelegate`; rebuilding a
-menu after SwiftUI displaces it therefore reuses the same command graph. Quick capture,
-theme resolution, fallback editor settings, and the What's New command cannot escape to
-independent global stores. Window controllers remain process-wide UI lifecycle leaves,
-while toolbar formatting constructs a responder over the current editor's own settings.
-The command metadata remains in `VitrineCommands.swift`; app-scoped actions and
-key-editor actions live in separate responder files so menu descriptions, process
-navigation, and document mutation can evolve without sharing one implementation unit.
+`AppEnvironment`, capture-feedback presenter, and editor-presentation operations supplied
+by `AppDelegate`; rebuilding a menu after SwiftUI displaces it therefore reuses the same
+command graph. Quick capture, theme resolution, fallback editor settings, image sharing,
+and the What's New command cannot escape to independent global stores or presenters.
+Window controllers remain process-wide UI lifecycle leaves, while toolbar formatting
+constructs a responder over the current editor's own settings and presentation routes.
+The command metadata remains in `VitrineCommands.swift`; app-scoped actions and key-editor
+actions live in separate responder files so menu descriptions, process navigation, and
+document mutation can evolve without sharing one implementation unit.
 
 `SettingsRootView` accepts one `AppEnvironment` and passes that graph through every pane.
 Settings views do not default back to global stores: the Style preview, Brand Kit
@@ -719,16 +720,20 @@ providers likewise refresh their owning `Entitlements` instance rather than esca
 back to the shared graph.
 
 `EditorWindowController` is the equivalent composition boundary for editor windows. It
-passes one `AppEnvironment` and one transient-feedback operation to each `EditorSession`
-and `EditorView`. A session still owns volatile document/style settings — primary windows
-adopt the current working document, while additional windows seed only the default style
-— but those settings are constructed with the same Brand Kit and entitlement instances
-the view observes. Toolbar, stage, and session actions present outcomes through the
-injected operation rather than discovering the shared HUD. The application-menu editor
-responder receives that same operation from its retained capture-feedback presenter.
-Reusable styles, custom-theme resolution, watermark previews, feature gates, upgrade
-sheets, and feedback therefore cannot fall back to a different process-global graph.
-Promoting a window's style also targets the environment that created that window.
+passes one `AppEnvironment`, one transient-feedback operation, and one closure-backed
+presentation value to each `EditorSession` and `EditorView`. A session still owns volatile
+document/style settings — primary windows adopt the current working document, while
+additional windows seed only the default style — but those settings are constructed with
+the same Brand Kit and entitlement instances the view observes. Toolbar, stage, and
+session actions present outcomes through injected operations rather than discovering the
+shared HUD, pinned-window controller, share-sheet manager, or key window. A successful
+close-after-copy targets only the concrete window captured by the editor root; a failed
+clipboard write leaves it open for recovery. The application-menu editor
+responder receives the feedback and presentation operations from the lifecycle-owned
+menu. Reusable styles, custom-theme resolution, watermark previews, feature gates,
+upgrade sheets, feedback, pinning, and sharing therefore cannot fall back to a different
+process-global graph. Promoting a window's style also targets the environment that created
+that window.
 
 `SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
 the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that
