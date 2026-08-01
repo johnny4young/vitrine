@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Documentation
+
+- Clarified the website and README around the shipped language catalog, URL and HTML
+  capture boundaries, network use, PRO pricing, and direct-download CLI installation.
+- Added a runnable CLI orientation that separates metadata commands from PRO-gated
+  rendering and explains Homebrew, DMG, source-build, and App Store distribution paths.
+
 ## [0.25.5] - 2026-08-01
 
 ### Fixed
