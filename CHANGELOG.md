@@ -12,8 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.25.5] - 2026-08-01
+
 ### Fixed
 
+- **Menu-bar copy actions now report through one feedback path.** Copying a recent
+  image or its source updates both the transient HUD and the panel's retained status,
+  including a visible failure when the clipboard write does not succeed.
 - **Batch export sheets no longer discover AppKit presentation services.** Multi-size
   and carousel exports receive directory selection, Finder reveal, and transient
   feedback as explicit operations. An incomplete writer result now keeps the sheet open
@@ -76,6 +81,14 @@ can never drift.
 
 ### Changed
 
+- **Menu-panel visual evidence no longer depends on status-item geometry.** Development
+  and UI-automation launches can open the real panel at a validated on-screen anchor, so
+  panel behavior smokes and screenshot tours run deterministically while the production
+  helper and click path remain unchanged.
+- **First-run and release-note navigation now enters through explicit composition
+  boundaries.** Welcome receives its sample-editor action from its window controller,
+  while What's New receives its Help action the same way; neither SwiftUI surface
+  discovers another app-owned window controller.
 - **Command metadata and command execution now have separate implementation boundaries.**
   The stable title, shortcut, and accessibility catalog remains independent from the
   app-scoped and key-editor responder implementations, keeping menu descriptions,
@@ -870,7 +883,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.4...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.5...HEAD
+[0.25.5]: https://github.com/johnny4young/vitrine/compare/v0.25.4...v0.25.5
 [0.25.4]: https://github.com/johnny4young/vitrine/compare/v0.25.3...v0.25.4
 [0.25.3]: https://github.com/johnny4young/vitrine/compare/v0.25.2...v0.25.3
 [0.25.2]: https://github.com/johnny4young/vitrine/compare/v0.25.1...v0.25.2

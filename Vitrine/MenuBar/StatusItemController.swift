@@ -236,6 +236,15 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         showPanel(relativeTo: anchor)
     }
 
+    /// Opens the real panel at a stable on-screen anchor for development and UI automation.
+    /// This avoids depending on status-item accessibility geometry without changing the
+    /// production helper or click path.
+    func showPanelForAutomation() {
+        guard !isPanelShown, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        let frame = screen.visibleFrame
+        togglePanel(at: CGPoint(x: frame.maxX - 24, y: frame.maxY - 12))
+    }
+
     /// Rejects malformed or spoofed positions before creating a process-local panel.
     /// Real helper clicks always land inside one of the current display frames.
     static func isValidAnchorLocation(

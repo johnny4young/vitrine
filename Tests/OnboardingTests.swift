@@ -120,3 +120,42 @@ struct OnboardingSchemaMigrationTests {
         #expect(defaults.integer(forKey: SettingsSchema.versionKey) == SettingsSchema.current)
     }
 }
+
+@MainActor
+@Suite("Onboarding navigation composition")
+struct OnboardingNavigationCompositionTests {
+    private final class NavigationSpy {
+        var sampleEditorPresentations = 0
+
+        var navigation: WelcomeNavigation {
+            WelcomeNavigation { [weak self] in
+                self?.sampleEditorPresentations += 1
+            }
+        }
+    }
+
+    @Test func controllerSuppliesEditorNavigationToTheWelcomeAction() {
+        let settings = AppSettings(defaults: freshDefaults())
+        let navigation = NavigationSpy()
+        let controller = WelcomeWindowController(navigation: navigation.navigation)
+
+        let root = controller.makeRootView(settings: settings)
+        root.openSampleEditor()
+
+        #expect(root.settings === settings)
+        #expect(navigation.sampleEditorPresentations == 1)
+    }
+
+    @Test func welcomeSurfaceContainsNoEditorWindowGlobal() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Onboarding/WelcomeView.swift"),
+            encoding: .utf8)
+        let code = sourceCodeWithoutLineComments(source)
+
+        #expect(!code.contains("EditorWindowController.shared"))
+    }
+}

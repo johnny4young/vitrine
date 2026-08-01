@@ -148,7 +148,8 @@ struct AppEnvironmentTests {
         var destinations: [MenuBarNavigation.Destination] = []
         let navigation = MenuBarNavigation(
             present: { destinations.append($0) },
-            loadPrimaryEditor: { _ in })
+            loadPrimaryEditor: { _ in },
+            terminate: {})
         let root = MenuBarContent(
             environment: env,
             feedback: feedback,
@@ -217,6 +218,21 @@ struct AppEnvironmentTests {
         #expect(second.appSettings.config.language == .swift)
         #expect(second.appSettings.config.code.isEmpty)
         #expect(!second.brandKit.isEnabled)
+    }
+
+    @Test func launchArgumentsOpenTheMenuPanelThroughTheInjectedRoute() throws {
+        let suite = try #require(
+            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let environment = AppEnvironment(defaults: suite)
+        var presentations = 0
+        let handler = AppLaunchArgumentHandler(
+            environment: environment,
+            showMenuBarPanel: { presentations += 1 })
+
+        let didOpenWindow = handler.handle(["Vitrine", "--open-menu-panel"])
+
+        #expect(didOpenWindow)
+        #expect(presentations == 1)
     }
 
     @Test func lifecycleAdaptersDoNotEscapeToGlobalDataStores() throws {

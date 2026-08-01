@@ -60,14 +60,19 @@ handles the cancel command, backed by a local AppKit key monitor when no control
 focus. All close paths converge on the popover delegate lifecycle so monitor and anchor
 cleanup cannot drift between input mechanisms. The large editor remains a separate
 AppKit-hosted window. The global hotkey triggers quick mode or the editor depending on
-the user's preference.
+the user's preference. Development and UI-automation runs can open that same popover at
+a validated current-screen anchor through an explicit launch hook. Panel behavior tests
+and screenshot tours therefore exercise the production content and dismissal lifecycle
+without depending on whether the status item has usable accessibility geometry.
 
 `StatusItemController` is also the menu-bar composition boundary. It retains one
 `AppEnvironment` and supplies that graph, plus the explicitly owned feedback presenter
 and window-navigation operations, to `MenuBarContent`. Every quick-capture entry from the
 panel resolves settings, recents, Brand Kit watermark eligibility, and recovery actions
 from that same graph. Panel rows route through the injected navigation value; only its
-live adapter reaches the reusable AppKit window owners. The global hotkey and
+live adapter reaches the reusable AppKit window owners or terminates the process. Image
+and source-copy outcomes enter the lifecycle-owned feedback presenter, which updates the
+transient HUD and the status retained by the open panel together. The global hotkey and
 application-menu command enter the same capture operation with the app-wide environment.
 This keeps the render, history write, and any later recovery render aligned without
 making the UI lifecycle presenter part of the data-store graph. The feedback presenter
@@ -429,6 +434,13 @@ gate lives in one place.
   through launch hooks (`--show-welcome`, `--skip-onboarding`, `--reset-onboarding`)
   while isolating the flag via `VITRINE_USER_DEFAULTS_SUITE`.
 
+`WelcomeWindowController` supplies `WelcomeNavigation` to the SwiftUI root, keeping the
+sample-editor action at the AppKit composition boundary. `WhatsNewWindowController` does
+the same with `WhatsNewNavigation`: opening Help still stamps the displayed release as
+seen and dismisses the notes, but the view no longer discovers the process-wide Help
+controller. Both roots remain directly composable in isolated tests without constructing
+another application window.
+
 ## Architecture
 
 ```
@@ -475,7 +487,8 @@ Vitrine/
 │   ├── MenuBarContent.swift   # the popover panel (SwiftUI)
 │   └── QuickCapture.swift     # no-UI quick mode: clipboard → PNG
 ├── Onboarding/
-│   └── WelcomeView.swift      # first-run quick-start + window controller
+│   ├── WelcomeView.swift      # first-run quick-start + window controller
+│   └── WelcomeNavigation.swift # injected sample-editor route
 ├── Editor/
 │   ├── EditorView.swift       # scene shell + window-level state
 │   ├── EditorExportSheet.swift # one export/paywall presentation destination
@@ -574,7 +587,7 @@ Vitrine/
 ├── Rendering/                 # shared Renderer / RenderedAsset abstractions
 ├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
 ├── State/                     # RecentsStore + pure window-state model
-├── Recents/ · Updates/ · Help/ # recents gallery; SoftwareUpdater (Sparkle on DMG); Help/What's New
+├── Recents/ · Updates/ · Help/ # recents; SoftwareUpdater; Help/What's New + navigation
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
 │   └── Log.swift              # os.Logger per subsystem + render signposts

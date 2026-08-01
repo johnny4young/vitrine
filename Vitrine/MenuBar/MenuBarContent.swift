@@ -332,7 +332,7 @@ struct MenuBarContent: View {
             systemImage: "power",
             shortcutGlyphs: "⌘Q"
         ) {
-            NSApp.terminate(nil)
+            navigation.terminateApplication()
         }
         .keyboardShortcut("q", modifiers: .command)
         .accessibilityIdentifier("command-quit")
@@ -355,15 +355,17 @@ struct MenuBarContent: View {
         // `exportConfig`, not `config`: every export surface renders through it so
         // the PRO Brand Kit watermark is applied at the export seam.
         let config = capture.applying(to: settings.exportConfig)
-        ExportManager.copyToPasteboard(
+        let copied = ExportManager.copyToPasteboard(
             config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
+        feedback.present(ExportFeedback.copyOutcome(copied))
     }
 
     private func copySource(_ capture: Capture) {
-        ExportFeedback.presentSourceCopy(
-            ExportManager.copySourceToPasteboard(capture.code))
+        feedback.present(
+            ExportFeedback.sourceCopyOutcome(
+                ExportManager.copySourceToPasteboard(capture.code)))
     }
 }
 

@@ -14,6 +14,9 @@ import SwiftUI
 struct WhatsNewView: View {
     @Bindable var settings: AppSettings
 
+    /// Routes cross-window actions through the AppKit composition boundary.
+    let navigation: WhatsNewNavigation
+
     /// The release note to present. Injected so previews and tests can supply a
     /// fixture; in the app it is `ReleaseNotes.latest`.
     let note: ReleaseNote
@@ -116,9 +119,7 @@ struct WhatsNewView: View {
     private var footer: some View {
         HStack(spacing: Brand.Spacing.sm) {
             Button("Open Help") {
-                markSeen()
-                HelpWindowController.shared.show()
-                onDismiss()
+                openHelp()
             }
             .help("Open Vitrine Help")
             .accessibilityIdentifier("whats-new-help-button")
@@ -145,6 +146,12 @@ struct WhatsNewView: View {
         markSeen()
         onDismiss()
     }
+
+    func openHelp() {
+        markSeen()
+        navigation.showHelp()
+        onDismiss()
+    }
 }
 
 /// Owns and presents the version-gated "What's New" window.
@@ -156,6 +163,7 @@ struct WhatsNewView: View {
 final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     static let shared = WhatsNewWindowController()
 
+    let navigation: WhatsNewNavigation
     private var window: NSWindow?
 
     /// The settings the on-screen window was created against, retained so any
@@ -166,7 +174,10 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     /// record its version as seen even though the buttons are what call `markSeen`.
     private var presentedNote: ReleaseNote?
 
-    private override init() {}
+    init(navigation: WhatsNewNavigation = .live) {
+        self.navigation = navigation
+        super.init()
+    }
 
     /// Shows "What's New" only when the newest bundled notes are newer than what
     /// the user last saw. On a clean first run it shows nothing and
@@ -204,9 +215,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
         presentedNote = note
         if window == nil {
             let hosting = NSHostingController(
-                rootView: WhatsNewView(
-                    settings: settings, note: note,
-                    onDismiss: { [weak self] in self?.close() }))
+                rootView: makeRootView(settings: settings, note: note))
             let window = NSWindow(contentViewController: hosting)
             window.title = String(localized: "What's New in Vitrine")
             // A compact release-notes surface, not a working window — but resizable
@@ -231,6 +240,14 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
         window?.close()
     }
 
+    func makeRootView(settings: AppSettings, note: ReleaseNote) -> WhatsNewView {
+        WhatsNewView(
+            settings: settings,
+            navigation: navigation,
+            note: note,
+            onDismiss: { [weak self] in self?.close() })
+    }
+
     /// Records the presented version as seen on *any* dismissal — the title-bar
     /// close button, Cmd-W, or a programmatic `close()` — so closing the window is
     /// equivalent to "Continue" and the same notes never re-present. The
@@ -250,6 +267,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     #Preview("What's New") {
         WhatsNewView(
             settings: .shared,
+            navigation: .noOp,
             note: ReleaseNotes.latest
                 ?? ReleaseNote(version: "0.0.0", headline: "Preview", highlights: ["A highlight."]),
             onDismiss: {})

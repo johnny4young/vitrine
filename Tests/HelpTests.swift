@@ -237,6 +237,67 @@ struct WhatsNewLaunchGateTests {
     }
 }
 
+@MainActor
+@Suite("What's New navigation composition")
+struct WhatsNewNavigationCompositionTests {
+    private final class NavigationSpy {
+        var helpPresentations = 0
+
+        var navigation: WhatsNewNavigation {
+            WhatsNewNavigation { [weak self] in
+                self?.helpPresentations += 1
+            }
+        }
+    }
+
+    private let note = ReleaseNote(
+        version: "9.8.7",
+        headline: "A test release",
+        highlights: ["A test highlight."])
+
+    @Test func controllerSuppliesHelpNavigationToItsRoot() {
+        let settings = AppSettings(defaults: freshDefaults())
+        let navigation = NavigationSpy()
+        let controller = WhatsNewWindowController(navigation: navigation.navigation)
+
+        let root = controller.makeRootView(settings: settings, note: note)
+        root.navigation.showHelp()
+
+        #expect(root.settings === settings)
+        #expect(root.note == note)
+        #expect(navigation.helpPresentations == 1)
+    }
+
+    @Test func openHelpMarksTheNoteSeenPresentsHelpAndDismisses() {
+        let settings = AppSettings(defaults: freshDefaults())
+        let navigation = NavigationSpy()
+        var dismissals = 0
+        let root = WhatsNewView(
+            settings: settings,
+            navigation: navigation.navigation,
+            note: note,
+            onDismiss: { dismissals += 1 })
+
+        root.openHelp()
+
+        #expect(settings.lastSeenWhatsNewVersion == note.version)
+        #expect(navigation.helpPresentations == 1)
+        #expect(dismissals == 1)
+    }
+
+    @Test func whatsNewSurfaceContainsNoHelpWindowGlobal() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Vitrine/Help/WhatsNewView.swift"),
+            encoding: .utf8)
+        let code = sourceCodeWithoutLineComments(source)
+
+        #expect(!code.contains("HelpWindowController.shared"))
+    }
+}
+
 @Suite("What's New schema migration")
 struct WhatsNewSchemaMigrationTests {
     @Test func v6StoreMigratesToCurrentWithoutInventingTheKey() {

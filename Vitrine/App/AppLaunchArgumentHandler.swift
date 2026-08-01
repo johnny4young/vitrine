@@ -7,9 +7,16 @@ import AppKit
 /// the same environment as the running app.
 final class AppLaunchArgumentHandler {
     let environment: AppEnvironment
+    private let showMenuBarPanel: () -> Void
 
-    init(environment: AppEnvironment) {
+    init(
+        environment: AppEnvironment,
+        showMenuBarPanel: @escaping () -> Void = {
+            StatusItemController.shared.showPanelForAutomation()
+        }
+    ) {
         self.environment = environment
+        self.showMenuBarPanel = showMenuBarPanel
     }
 
     /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
@@ -18,6 +25,7 @@ final class AppLaunchArgumentHandler {
     /// `--demo-sql-format` does the same for a compact query;
     /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
     /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
+    /// `--open-menu-panel` opens the real panel at a deterministic automation anchor;
     /// `--show-help` / `--show-welcome` force those windows open past their gates;
     /// `--seen-old-version` seeds an older last-seen version and then presents What's
     /// New through its real version gate; `--skip-onboarding` just marks the
@@ -178,6 +186,10 @@ final class AppLaunchArgumentHandler {
         }
         if arguments.contains("--open-web-snapshot") {
             WebSnapshotPresenter.show()
+            didOpenWindow = true
+        }
+        if arguments.contains("--open-menu-panel") {
+            showMenuBarPanel()
             didOpenWindow = true
         }
         if arguments.contains("--show-about") {

@@ -975,6 +975,8 @@ final class VitrineUITests: XCTestCase {
             pasteboard.clearContents()
         }
 
+        // Preserve one end-to-end check through the painted status item. Panel-specific
+        // smokes below use the deterministic launch hook so display geometry cannot skip them.
         let statusItem = app.statusItems.firstMatch
         try XCTSkipUnless(
             statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
@@ -1012,22 +1014,15 @@ final class VitrineUITests: XCTestCase {
         pasteboard.clearContents()
         XCTAssertTrue(pasteboard.setString("sentinel", forType: .string))
 
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-menu-panel"])
         defer {
             app.terminate()
             pasteboard.clearContents()
         }
 
-        let statusItem = app.statusItems.firstMatch
-        try XCTSkipUnless(
-            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
-            "The status item is not reachable on this display arrangement")
-        statusItem.click()
-
         let panel = element("menubar-panel", in: app)
-        try XCTSkipUnless(
-            panel.waitForExistence(timeout: 3),
-            "The menu-bar panel is not reachable on this display arrangement")
+        XCTAssertTrue(panel.waitForExistence(timeout: 3))
         let row = app.descendants(matching: .any).matching(identifier: "menu-recent-row")
             .firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 3))
@@ -1055,14 +1050,8 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMenuBarSurpriseStyleUpdatesThemeWithoutClosingThePanel() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding"])
+        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
         defer { app.terminate() }
-
-        let statusItem = app.statusItems.firstMatch
-        try XCTSkipUnless(
-            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
-            "The status item is not reachable on this display arrangement")
-        statusItem.click()
 
         let panel = element("menubar-panel", in: app)
         XCTAssertTrue(panel.waitForExistence(timeout: 3))
@@ -1086,14 +1075,8 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMenuBarPanelClosesWithEscape() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding"])
+        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
         defer { app.terminate() }
-
-        let statusItem = app.statusItems.firstMatch
-        try XCTSkipUnless(
-            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
-            "The status item is not reachable on this display arrangement")
-        statusItem.click()
 
         let panel = element("menubar-panel", in: app)
         XCTAssertTrue(panel.waitForExistence(timeout: 3))

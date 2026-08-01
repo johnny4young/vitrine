@@ -42,6 +42,18 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "0.25.5",
+            headline: "More dependable exports and feedback",
+            highlights: [
+                "Copying a recent image or its source now confirms the result in both "
+                    + "the menu-bar panel and the transient HUD, including a clear failure "
+                    + "when the clipboard write does not succeed.",
+                "Batch exports now report success only after every expected image is "
+                    + "written, so partial output stays visible as a failure you can retry.",
+                "A failed clipboard export no longer closes the editor, leaving your work "
+                    + "open so you can retry or save it instead.",
+            ]),
+        ReleaseNote(
             version: "0.25.4",
             headline: "The menu-bar panel waits for you",
             highlights: [
