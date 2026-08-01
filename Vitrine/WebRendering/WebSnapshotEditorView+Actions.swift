@@ -1,5 +1,5 @@
-import AppKit
-import UniformTypeIdentifiers
+import CoreGraphics
+import Foundation
 
 /// The Web Snapshot composer's actions: starting a capture and exporting the result
 /// (copy / save / share / export-all).
@@ -112,13 +112,6 @@ extension WebSnapshotEditorView {
     /// Exports every captured viewport plus the composite board as PNGs into a folder
     /// the user picks (multi-resolution) — a ready-to-share set in one action.
     func exportAll() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.prompt = String(localized: "Export")
-        guard panel.runModal() == .OK, let directory = panel.url else { return }
-
         var items: [(name: String, image: CGImage)] = model.results.map { result in
             let size = result.preset.size
             return (
@@ -129,6 +122,11 @@ extension WebSnapshotEditorView {
         if let board = model.boardAsset?.cgImage {
             items.append(("vitrine-web-responsive-board", board))
         }
+        guard !items.isEmpty else { return }
+        guard
+            let directory = presentation.batchExport.chooseDirectory(
+                message: String(localized: "Choose a folder for the exported images."))
+        else { return }
 
         var written = 0
         for item in items {
@@ -138,10 +136,19 @@ extension WebSnapshotEditorView {
             }
         }
 
-        feedback(
-            written > 0
-                ? Notifier.confirmation(String(localized: "Images exported"))
-                : Notifier.failure(String(localized: "Couldn't export the images")))
+        let completion = BatchExportCompletion(
+            written: written,
+            failed: items.count - written,
+            expected: items.count)
+        if completion.isComplete {
+            feedback(Notifier.confirmation(String(localized: "Images exported")))
+            presentation.batchExport.reveal(directory)
+        } else {
+            feedback(
+                Notifier.failure(
+                    completion.failureNote
+                        ?? String(localized: "Couldn't export the images")))
+        }
     }
 
     func shareImage() {

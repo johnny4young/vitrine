@@ -20,6 +20,9 @@ struct WebSnapshotCompositionTests {
     private final class PresentationSpy {
         var signInURLs: [URL] = []
         var sharedImages: [NSImage] = []
+        var selectedDirectory: URL?
+        var selectionMessages: [String] = []
+        var revealedDirectories: [URL] = []
 
         var presentation: WebSnapshotPresentation {
             WebSnapshotPresentation(
@@ -28,7 +31,15 @@ struct WebSnapshotCompositionTests {
                 },
                 presentShare: { [weak self] image in
                     self?.sharedImages.append(image)
-                })
+                },
+                batchExport: BatchExportPresentation(
+                    selectDirectory: { [weak self] message in
+                        self?.selectionMessages.append(message)
+                        return self?.selectedDirectory
+                    },
+                    revealDirectory: { [weak self] directory in
+                        self?.revealedDirectories.append(directory)
+                    }))
         }
     }
 
@@ -49,9 +60,14 @@ struct WebSnapshotCompositionTests {
         let expectedFeedback = Notifier.confirmation("Web feedback")
         let expectedURL = try #require(URL(string: "https://example.com/account"))
         let expectedImage = NSImage(size: NSSize(width: 1, height: 1))
+        let expectedDirectory = URL(fileURLWithPath: "/tmp/vitrine-web-export")
+        presentation.selectedDirectory = expectedDirectory
         root.feedback(expectedFeedback)
         root.presentation.showSignIn(for: expectedURL)
         root.presentation.share(expectedImage)
+        let selectedDirectory = root.presentation.batchExport.chooseDirectory(
+            message: "Choose a directory")
+        root.presentation.batchExport.reveal(expectedDirectory)
 
         #expect(controller.environment === environment)
         #expect(controller.model === model)
@@ -61,6 +77,9 @@ struct WebSnapshotCompositionTests {
         #expect(presentation.signInURLs == [expectedURL])
         #expect(presentation.sharedImages.count == 1)
         #expect(presentation.sharedImages.first === expectedImage)
+        #expect(selectedDirectory == expectedDirectory)
+        #expect(presentation.selectionMessages == ["Choose a directory"])
+        #expect(presentation.revealedDirectories == [expectedDirectory])
     }
 
     @Test func signInActionUsesTheInjectedPresentation() throws {
@@ -99,6 +118,98 @@ struct WebSnapshotCompositionTests {
         #expect(presentation.sharedImages.map(\.size) == [NSSize(width: 1, height: 1)])
     }
 
+    @Test func exportAllUsesTheInjectedDirectoryAndRevealsOnlyACompleteBatch() throws {
+        let directory = try Self.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaults = try #require(
+            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let environment = AppEnvironment(defaults: defaults)
+        let model = WebSnapshotModel()
+        let asset = try Self.tinyRenderedAsset()
+        model.results = [CapturedViewport(kind: .desktop, preset: .desktop, asset: asset)]
+        model.boardAsset = asset
+        let display = DisplaySpy()
+        let presentation = PresentationSpy()
+        presentation.selectedDirectory = directory
+        let root = WebSnapshotEditorView(
+            model: model,
+            environment: environment,
+            feedback: display.display,
+            presentation: presentation.presentation)
+
+        root.exportAll()
+
+        #expect(
+            FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent("vitrine-web-desktop-1440x900.png").path))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent("vitrine-web-responsive-board.png").path))
+        #expect(
+            presentation.selectionMessages
+                == [String(localized: "Choose a folder for the exported images.")])
+        #expect(presentation.revealedDirectories == [directory])
+        #expect(
+            display.feedback
+                == [Notifier.confirmation(String(localized: "Images exported"))])
+    }
+
+    @Test func partialExportReportsFailureAndDoesNotRevealTheDirectory() throws {
+        let directory = try Self.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let blockedOutput = directory.appendingPathComponent("vitrine-web-responsive-board.png")
+        try FileManager.default.createDirectory(
+            at: blockedOutput,
+            withIntermediateDirectories: false)
+        let defaults = try #require(
+            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let environment = AppEnvironment(defaults: defaults)
+        let model = WebSnapshotModel()
+        let asset = try Self.tinyRenderedAsset()
+        model.results = [CapturedViewport(kind: .desktop, preset: .desktop, asset: asset)]
+        model.boardAsset = asset
+        let display = DisplaySpy()
+        let presentation = PresentationSpy()
+        presentation.selectedDirectory = directory
+        let root = WebSnapshotEditorView(
+            model: model,
+            environment: environment,
+            feedback: display.display,
+            presentation: presentation.presentation)
+        let failure = try #require(
+            BatchExportCompletion(written: 1, failed: 1, expected: 2).failureNote)
+
+        root.exportAll()
+
+        #expect(
+            FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent("vitrine-web-desktop-1440x900.png").path))
+        #expect(presentation.revealedDirectories.isEmpty)
+        #expect(display.feedback == [Notifier.failure(failure)])
+    }
+
+    @Test func cancelledExportDoesNotWriteOrPresentFeedback() throws {
+        let defaults = try #require(
+            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let environment = AppEnvironment(defaults: defaults)
+        let model = WebSnapshotModel()
+        let asset = try Self.tinyRenderedAsset()
+        model.results = [CapturedViewport(kind: .desktop, preset: .desktop, asset: asset)]
+        let display = DisplaySpy()
+        let presentation = PresentationSpy()
+        let root = WebSnapshotEditorView(
+            model: model,
+            environment: environment,
+            feedback: display.display,
+            presentation: presentation.presentation)
+
+        root.exportAll()
+
+        #expect(presentation.selectionMessages.count == 1)
+        #expect(presentation.revealedDirectories.isEmpty)
+        #expect(display.feedback.isEmpty)
+    }
+
     @Test func editorSurfacesContainNoAppOwnedPresentationGlobals() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -121,6 +232,8 @@ struct WebSnapshotCompositionTests {
                 "WebSessionWindowController.shared",
                 "ShareManager.share",
                 "ExportFeedback.present",
+                "NSOpenPanel",
+                "NSWorkspace.shared",
             ] {
                 #expect(
                     !code.contains(forbiddenDependency),
@@ -144,5 +257,14 @@ struct WebSnapshotCompositionTests {
         context.fill(CGRect(x: 0, y: 0, width: 1, height: 1))
         let image = try #require(context.makeImage())
         return RenderedAsset(cgImage: image, profile: .sRGB)
+    }
+
+    private static func makeTemporaryDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrineWebExport-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: false)
+        return directory
     }
 }

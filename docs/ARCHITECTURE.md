@@ -748,9 +748,11 @@ Web Snapshot resolves capture consent, viewport preferences, and export settings
 the same app settings. Both controllers also supply transient feedback and app-owned
 presentation operations. Social Card rendering remains independent from the share sheet,
 while Web Snapshot keeps authenticated-session and sharing routes behind a closure-backed
-adapter. The windows remain reusable and app-global, but isolated tests no longer create
-roots that silently observe or mutate process-global stores or construct presentation
-windows.
+adapter. Web Snapshot export-all reuses `BatchExportPresentation` for directory selection
+and Finder reveal, plus `BatchExportCompletion` for exact output accounting; partial writes
+remain visible as failures and never trigger a success reveal. The windows remain reusable
+and app-global, but isolated tests no longer create roots that silently observe or mutate
+process-global stores or construct presentation windows.
 
 `RecentsGalleryWindowController` owns the equivalent boundary for capture history. Its
 SwiftUI root receives the retained `AppEnvironment`, an editor-navigation operation, and
