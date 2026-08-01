@@ -64,6 +64,14 @@ final class CaptureFeedbackPresenter {
         }
     }
 
+    /// Presents an already-resolved feedback value and keeps the panel's retained
+    /// status in sync with the transient HUD.
+    func present(_ feedback: Notifier.CaptureFeedback) {
+        pendingURLText = nil
+        lastFeedback = feedback
+        display(feedback)
+    }
+
     /// Runs a recovery action the user picked from the HUD or the menu.
     func run(_ action: Notifier.RecoveryAction, environment: AppEnvironment) {
         let settings = environment.appSettings

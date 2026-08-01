@@ -55,12 +55,12 @@ requireText(english, 'class="salon"', 'Gallery hero');
 requireText(english, 'id="responsive"', 'Responsive board');
 requireText(english, 'id="whats-new"', 'Changelog section');
 requireText(english, `data-release-version="${version}"`, 'Release highlights version sync');
-requireText(english, 'The menu-bar panel now stays open while you choose.', 'Release highlight');
+requireText(english, 'Copy feedback stays visible.', 'Release highlight');
 requireText(english, 'src="/scripts/site.js"', 'English interactions');
 requireText(spanish, 'src="/scripts/site.js"', 'Spanish interactions');
 requireText(
   siteScript,
-  'El panel de la barra de menús permanece abierto mientras eliges.',
+  'La confirmación de copia permanece visible.',
   'Spanish release highlight',
 );
 requireAbsent(siteScript, 'raw.githubusercontent.com', 'Static release highlights');

@@ -1,3 +1,5 @@
+import AppKit
+
 /// Routes menu-bar commands to app-owned windows without exposing their global
 /// lifecycles to the SwiftUI panel.
 ///
@@ -16,13 +18,16 @@ struct MenuBarNavigation {
 
     private let present: (Destination) -> Void
     private let loadPrimaryEditor: (SnapshotConfig) -> Void
+    private let terminate: () -> Void
 
     init(
         present: @escaping (Destination) -> Void,
-        loadPrimaryEditor: @escaping (SnapshotConfig) -> Void
+        loadPrimaryEditor: @escaping (SnapshotConfig) -> Void,
+        terminate: @escaping () -> Void
     ) {
         self.present = present
         self.loadPrimaryEditor = loadPrimaryEditor
+        self.terminate = terminate
     }
 
     func show(_ destination: Destination) {
@@ -31,6 +36,10 @@ struct MenuBarNavigation {
 
     func loadIntoPrimaryEditor(_ config: SnapshotConfig) {
         loadPrimaryEditor(config)
+    }
+
+    func terminateApplication() {
+        terminate()
     }
 
     static let live = MenuBarNavigation(
@@ -52,8 +61,12 @@ struct MenuBarNavigation {
                 AboutPanel.present()
             }
         },
-        loadPrimaryEditor: { EditorWindowController.shared.loadIntoPrimary($0) })
+        loadPrimaryEditor: { EditorWindowController.shared.loadIntoPrimary($0) },
+        terminate: { NSApp.terminate(nil) })
 
     /// Safe standalone routing for tests that only exercise panel construction.
-    static let noOp = MenuBarNavigation(present: { _ in }, loadPrimaryEditor: { _ in })
+    static let noOp = MenuBarNavigation(
+        present: { _ in },
+        loadPrimaryEditor: { _ in },
+        terminate: {})
 }

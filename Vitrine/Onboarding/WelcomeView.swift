@@ -18,6 +18,9 @@ import SwiftUI
 struct WelcomeView: View {
     @Bindable var settings: AppSettings
 
+    /// Routes cross-window actions through the AppKit composition boundary.
+    let navigation: WelcomeNavigation
+
     /// Closes the hosting window. Injected by the window controller so the view has
     /// no dependency on how it is presented (window vs. sheet vs. preview).
     var onDismiss: () -> Void
@@ -229,10 +232,8 @@ struct WelcomeView: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("welcome-sample-capture-button")
 
-                Button("Open the editor") {
-                    EditorWindowController.shared.showWithSample()
-                }
-                .accessibilityIdentifier("welcome-open-editor-button")
+                Button("Open the editor", action: openSampleEditor)
+                    .accessibilityIdentifier("welcome-open-editor-button")
 
                 Spacer(minLength: 0)
 
@@ -398,6 +399,10 @@ struct WelcomeView: View {
         settings.hasSeenWelcome = true
         onDismiss()
     }
+
+    func openSampleEditor() {
+        navigation.showSampleEditor()
+    }
 }
 
 /// Owns and presents the first-run quick-start window.
@@ -410,9 +415,12 @@ struct WelcomeView: View {
 final class WelcomeWindowController {
     static let shared = WelcomeWindowController()
 
+    let navigation: WelcomeNavigation
     private var window: NSWindow?
 
-    private init() {}
+    init(navigation: WelcomeNavigation = .live) {
+        self.navigation = navigation
+    }
 
     /// Shows the quick-start only when it has not been seen for the active defaults
     /// suite. Returns whether it was presented, which the launch path uses
@@ -429,9 +437,7 @@ final class WelcomeWindowController {
     func show(settings: AppSettings = .shared) {
         if window == nil {
             let hosting = NSHostingController(
-                rootView: WelcomeView(
-                    settings: settings,
-                    onDismiss: { [weak self] in self?.close() }))
+                rootView: makeRootView(settings: settings))
             let window = NSWindow(contentViewController: hosting)
             window.title = String(localized: "Welcome to Vitrine")
             // No resize/minimize: the quick-start is a fixed, compact first-run
@@ -464,10 +470,17 @@ final class WelcomeWindowController {
     private func close() {
         window?.close()
     }
+
+    func makeRootView(settings: AppSettings) -> WelcomeView {
+        WelcomeView(
+            settings: settings,
+            navigation: navigation,
+            onDismiss: { [weak self] in self?.close() })
+    }
 }
 
 #if DEBUG
     #Preview("Welcome") {
-        WelcomeView(settings: .shared, onDismiss: {})
+        WelcomeView(settings: .shared, navigation: .noOp, onDismiss: {})
     }
 #endif
