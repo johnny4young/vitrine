@@ -387,13 +387,16 @@ extension EditorView {
         case .multiSizeExport:
             MultiSizeExportView(
                 baseConfig: settings.exportConfig, format: settings.export.format,
-                profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar)
+                profile: settings.export.colorProfile, textSidecar: settings.export.textSidecar,
+                feedback: session.feedback, presentation: session.presentation.batchExport)
         case .multiSizePaywall:
             PaywallSheet(feature: .multiSizeExport, entitlements: entitlements)
         case .carouselExport:
             CarouselExportView(
                 baseConfig: settings.exportConfig,
-                profile: settings.export.colorProfile)
+                profile: settings.export.colorProfile,
+                feedback: session.feedback,
+                presentation: session.presentation.batchExport)
         case .carouselPaywall:
             PaywallSheet(feature: .carouselExport, entitlements: entitlements)
         }

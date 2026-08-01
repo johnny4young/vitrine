@@ -499,8 +499,10 @@ Vitrine/
 │   ├── ExportManager+Pasteboard.swift # source/image clipboard delivery
 │   ├── ExportManager+File.swift # save-panel and file delivery
 │   ├── ExportManager+Batch.swift # multi-size and carousel delivery
+│   ├── BatchExportPresentation.swift # directory UI + completion policy
 │   ├── ShareManager.swift     # NSSharingService
 │   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
+│   ├── CarouselExportView.swift # multi-slide export sheet
 │   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
 │   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset
 ├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
@@ -728,12 +730,15 @@ the same Brand Kit and entitlement instances the view observes. Toolbar, stage, 
 session actions present outcomes through injected operations rather than discovering the
 shared HUD, pinned-window controller, share-sheet manager, or key window. A successful
 close-after-copy targets only the concrete window captured by the editor root; a failed
-clipboard write leaves it open for recovery. The application-menu editor
-responder receives the feedback and presentation operations from the lifecycle-owned
-menu. Reusable styles, custom-theme resolution, watermark previews, feature gates,
-upgrade sheets, feedback, pinning, and sharing therefore cannot fall back to a different
-process-global graph. Promoting a window's style also targets the environment that created
-that window.
+clipboard write leaves it open for recovery. Multi-size and carousel sheets receive the
+session's feedback operation plus a narrow `BatchExportPresentation` value for directory
+selection and Finder reveal. Their pure completion policy requires every expected output
+before dismissing, so an inconsistent writer result cannot silently claim success. The
+application-menu editor responder receives the feedback and presentation operations from
+the lifecycle-owned menu. Reusable styles, custom-theme resolution, watermark previews,
+feature gates, upgrade sheets, feedback, pinning, sharing, and batch export presentation
+therefore cannot fall back to a different process-global graph. Promoting a window's style
+also targets the environment that created that window.
 
 `SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
 the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that

@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Batch export sheets no longer discover AppKit presentation services.** Multi-size
+  and carousel exports receive directory selection, Finder reveal, and transient
+  feedback as explicit operations. An incomplete writer result now keeps the sheet open
+  even when its failure counter is unexpectedly zero, instead of reporting success.
 - **Editor export actions no longer discover app-owned pin or share presenters.** Each
   editor session receives explicit presentation operations from its window controller,
   and application-menu sharing receives the same boundary from the app lifecycle. A

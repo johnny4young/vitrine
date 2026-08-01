@@ -71,8 +71,8 @@ struct ExportSheetScaffold<Body: View>: View {
         .background(VitrineTokens.Surface.window)
         // A plain VStack is not an accessibility element, so an id put directly on it
         // propagates down and clobbers every child's id. `.contain` makes the root a
-        // real container element so the body keeps its own ids (root-caused in the
-        // UI-test workflow notes; the reason this chrome is shared).
+        // real container element so the body keeps its own ids, which is why the sheets
+        // share this chrome instead of duplicating the modifier order.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(rootIdentifier)
     }

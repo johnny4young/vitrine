@@ -3,8 +3,8 @@ import Testing
 
 @testable import Vitrine
 
-/// the input-intelligence band: on-device OCR of a beautified
-/// image back into copyable text, and the inferred header title.
+/// Covers on-device OCR of a beautified image back into copyable text and the inferred
+/// header title.
 @Suite("Smart input (OCR + suggested title)")
 @MainActor
 struct SmartInputTests {
