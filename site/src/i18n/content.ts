@@ -15,7 +15,7 @@ export const content: Record<Locale, SiteCopy> = {
     meta: {
       title: 'Vitrine — turn code into beautiful images, from your menu bar',
       description:
-        'A native macOS menu-bar app that turns code, URLs, and HTML into gorgeous, share-ready images — instant, fully local, and free.',
+        'A native macOS menu-bar app for share-ready code images. Code rendering is local; optional WebKit snapshots load content you explicitly request.',
       imageAlt:
         'The Vitrine editor with a code pane, live preview, and controls for theme, background, padding, and window chrome.',
     },
@@ -25,7 +25,7 @@ export const content: Record<Locale, SiteCopy> = {
     meta: {
       title: 'Vitrine — convierte código en imágenes bonitas desde la barra de menús',
       description:
-        'Una app nativa para macOS que convierte código, URLs y HTML en imágenes listas para compartir, al instante, de forma local y gratuita.',
+        'Una app nativa para macOS para crear imágenes de código listas para compartir. El renderizado de código es local; las capturas WebKit cargan el contenido que pides explícitamente.',
       imageAlt:
         'El editor de Vitrine con código, vista previa y controles de tema, fondo, relleno y marco de ventana.',
     },

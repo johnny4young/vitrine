@@ -30,7 +30,7 @@
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></div>
         <h3 data-i18n="story3.h">Diffs that read like GitHub.</h3>
         <p data-i18n="story3.p">Paste a unified diff and Vitrine bands added lines green and removed lines red, with line numbers — perfect for PR write-ups and release notes.</p>
-        <div class="tagrow"><span class="tag-pill" data-i18n="story3.t1">Unified diff</span><span class="tag-pill" data-i18n="story3.t2">Line numbers</span><span class="tag-pill" data-i18n="story3.t3">160+ languages</span></div>
+        <div class="tagrow"><span class="tag-pill" data-i18n="story3.t1">Unified diff</span><span class="tag-pill" data-i18n="story3.t2">Line numbers</span><span class="tag-pill" data-i18n="story3.t3">33 syntax languages</span></div>
       </div>
       <div class="story-media"><img src="/screenshots/diff.png" alt="A unified diff with added lines banded green and removed lines banded red" loading="lazy"></div>
     </div>
@@ -44,8 +44,8 @@
     <h2 class="title" data-i18n="loop.title">Three moves, muscle memory.</h2>
     <div class="loop">
       <div class="step"><div class="no">01</div><h4 data-i18n="loop.s1h">Copy</h4><p data-i18n="loop.s1p">Select code anywhere — your editor, a terminal, a webpage — and copy it as you always would.</p><div class="keys"><span class="keycap">⌘</span><span class="keycap">C</span></div></div>
-      <div class="step"><div class="no">02</div><h4 data-i18n="loop.s2h">Press the hotkey</h4><p data-i18n="loop.s2p">Vitrine reads the clipboard, detects code, a URL, or HTML, and renders with your saved style.</p><div class="keys"><span class="keycap">⇧</span><span class="keycap">⌘</span><span class="keycap">S</span></div></div>
-      <div class="step"><div class="no">03</div><h4 data-i18n="loop.s3h">Paste the image</h4><p data-i18n="loop.s3p">A retina PNG lands on your clipboard. Paste it into your doc, PR, chat, or slide.</p><div class="keys"><span class="keycap">⌘</span><span class="keycap">V</span></div></div>
+      <div class="step"><div class="no">02</div><h4 data-i18n="loop.s2h">Press the hotkey</h4><p data-i18n="loop.s2p">Vitrine reads the clipboard, detects code or a URL, and sends each input to its matching workflow.</p><div class="keys"><span class="keycap">⇧</span><span class="keycap">⌘</span><span class="keycap">S</span></div></div>
+      <div class="step"><div class="no">03</div><h4 data-i18n="loop.s3h">Paste the image</h4><p data-i18n="loop.s3p">Code captures put a retina PNG on your clipboard. URL snapshots open their Web Snapshot editor for viewport and export controls.</p><div class="keys"><span class="keycap">⌘</span><span class="keycap">V</span></div></div>
     </div>
   </div>
 </section>
@@ -59,7 +59,7 @@
       <div class="tcard">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.5v5.5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V5.5z"></path><path d="M9.3 12l1.9 1.9 3.6-3.8"></path></svg></div>
         <h4 data-i18n="more.c1h">Private by design</h4>
-        <p data-i18n="more.c1p">Fully local and sandboxed — no account, no network by default, no telemetry. Your code never leaves your Mac.</p>
+        <p data-i18n="more.c1p">Rendering stays on your Mac — no Vitrine cloud renderer, account, analytics, or telemetry. The network is used only for updates, license activation, and content you explicitly ask it to load.</p>
       </div>
       <div class="tcard">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M4 17l4.5-4 3 2.5L15 11l5 5"></path></svg></div>
@@ -69,7 +69,7 @@
       <div class="tcard">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.2"></rect><path d="M3.5 9h17M6.6 7h.01M9.1 7h.01"></path></svg></div>
         <h4 data-i18n="more.c3h">Web snapshots</h4>
-        <p data-i18n="more.c3p">Render pasted HTML, or capture a webpage at several viewports at once — social, desktop, Full HD, mobile — composed into a shareable responsive board. Entirely local in WebKit, with a first-use privacy disclosure.</p>
+        <p data-i18n="more.c3p">Render pasted HTML locally, or capture a webpage at several viewports at once — social, desktop, Full HD, mobile — composed into a shareable responsive board. The requested page is loaded and rendered in WebKit on your Mac; there is no remote screenshot service, and the first capture shows a privacy disclosure.</p>
       </div>
     </div>
   </div>
@@ -80,7 +80,7 @@
   <div class="wrap">
     <span class="eyebrow" data-i18n="vp.eyebrow">One page, every screen</span>
     <h2 class="title" data-i18n="vp.title">Capture every viewport at once.</h2>
-    <p class="lead" data-i18n="vp.lead">Point Vitrine at a URL or pasted HTML and it renders the page at several viewports in a single pass — social, desktop, Full HD, mobile — then composes them onto one shareable <em>responsive board</em>. The fastest way to show a design reflowing across screens. All local, in WebKit.</p>
+    <p class="lead" data-i18n="vp.lead">Point Vitrine at a URL or pasted HTML and it renders the page at several viewports in a single pass — social, desktop, Full HD, mobile — then composes them onto one shareable <em>responsive board</em>. Pasted HTML is rendered offline; URL capture is available in the direct-download build after disclosure and fetches the requested page in WebKit on your Mac.</p>
     <div class="board" role="img" aria-label="A responsive board composed by Vitrine: one landing page rendered at several viewports — social, desktop, and phone — scaled to a uniform height on a single dark shareable card, each render labelled with its name and size.">
       <figure>
         <div class="vp social">

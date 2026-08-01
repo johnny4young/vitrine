@@ -37,6 +37,7 @@ const robots = await read('robots.txt');
 const headers = await read('_headers');
 const siteScript = await readFile(new URL('../public/scripts/site.js', import.meta.url), 'utf8');
 const projectSpec = await readFile(resolve(process.cwd(), '..', 'project.yml'), 'utf8');
+const readme = await readFile(resolve(process.cwd(), '..', 'README.md'), 'utf8');
 const version = projectSpec.match(/^\s*MARKETING_VERSION:\s*"?([0-9]+\.[0-9]+\.[0-9]+)"?\s*$/m)?.[1];
 
 if (!version) {
@@ -56,6 +57,10 @@ requireText(english, 'id="responsive"', 'Responsive board');
 requireText(english, 'id="whats-new"', 'Changelog section');
 requireText(english, `data-release-version="${version}"`, 'Release highlights version sync');
 requireText(english, 'Copy feedback stays visible.', 'Release highlight');
+requireText(english, '33 syntax languages', 'Shipped language catalog claim');
+requireText(english, 'DMG installs can enable the CLI from Settings.', 'CLI installation claim');
+requireText(english, 'no Vitrine cloud renderer', 'Rendering privacy claim');
+requireText(english, 'Pasted HTML is rendered offline', 'HTML rendering boundary');
 requireText(english, 'src="/scripts/site.js"', 'English interactions');
 requireText(spanish, 'src="/scripts/site.js"', 'Spanish interactions');
 requireText(
@@ -63,6 +68,16 @@ requireText(
   'La confirmación de copia permanece visible.',
   'Spanish release highlight',
 );
+requireText(siteScript, '33 lenguajes de sintaxis', 'Spanish language catalog claim');
+requireText(siteScript, 'puedes activar la CLI desde Ajustes', 'Spanish CLI installation claim');
+requireAbsent(english, '160+ languages', 'Stale language catalog claim');
+requireAbsent(siteScript, '160+ lenguajes', 'Stale Spanish language catalog claim');
+requireAbsent(english, 'fully local', 'Overbroad local-rendering claim');
+requireAbsent(siteScript, 'todo local', 'Overbroad Spanish local-rendering claim');
+requireText(readme, '33 syntax languages', 'README language catalog claim');
+requireText(readme, 'does **not** add it to your', 'README DMG CLI claim');
+requireText(readme, 'activated direct-download PRO license', 'README CLI licensing claim');
+requireAbsent(readme, '160+ languages', 'README stale language catalog claim');
 requireAbsent(siteScript, 'raw.githubusercontent.com', 'Static release highlights');
 requireText(headers, "connect-src 'self' https://api.github.com;", 'Website connection policy');
 requireAbsent(headers, 'raw.githubusercontent.com', 'Website connection policy');
