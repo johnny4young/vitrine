@@ -27,7 +27,9 @@ can never drift.
   image sharing as explicit operations alongside the retained data-store graph.
 - **Web Snapshot actions no longer discover app-owned presenters from the SwiftUI
   editor.** Its window controller now supplies transient feedback, sign-in-window routing,
-  and image sharing as explicit operations alongside the retained data-store graph.
+  image sharing, and batch-export presentation as explicit operations alongside the
+  retained data-store graph. Export-all now reveals Finder only after every expected image
+  is written and reports partial output as a failure instead of claiming success.
 - **The Recents gallery now stays inside one explicit dependency graph.** Its window
   controller supplies capture history, settings, editor navigation, and transient
   feedback instead of letting the SwiftUI view discover process-global stores or windows.
