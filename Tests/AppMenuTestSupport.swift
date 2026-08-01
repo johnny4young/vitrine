@@ -8,5 +8,6 @@ func makeIsolatedAppMenu() -> AppMenu {
         suiteName: "VitrineAppMenuTests-\(UUID().uuidString)")!
     return AppMenu(
         environment: AppEnvironment(defaults: defaults),
-        feedback: CaptureFeedbackPresenter())
+        feedback: CaptureFeedbackPresenter(),
+        editorPresentation: .noOp)
 }

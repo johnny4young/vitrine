@@ -14,6 +14,10 @@ can never drift.
 
 ### Fixed
 
+- **Editor export actions no longer discover app-owned pin or share presenters.** Each
+  editor session receives explicit presentation operations from its window controller,
+  and application-menu sharing receives the same boundary from the app lifecycle. A
+  failed clipboard write now keeps the editor open so the user can retry or save instead.
 - **Social Card exports no longer discover app-owned presenters from the SwiftUI
   editor or renderer.** Its window controller now supplies transient feedback and
   image sharing as explicit operations alongside the retained data-store graph.

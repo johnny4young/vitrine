@@ -26,18 +26,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.environment = environment
         self.feedback = feedback
         launchArguments = AppLaunchArgumentHandler(environment: environment)
-        mainMenu = AppMenu(environment: environment, feedback: feedback)
+        mainMenu = AppMenu(
+            environment: environment,
+            feedback: feedback,
+            editorPresentation: .live)
         super.init()
     }
 
     init(
         environment: AppEnvironment,
-        feedback: CaptureFeedbackPresenter
+        feedback: CaptureFeedbackPresenter,
+        editorPresentation: EditorPresentation
     ) {
         self.environment = environment
         self.feedback = feedback
         launchArguments = AppLaunchArgumentHandler(environment: environment)
-        mainMenu = AppMenu(environment: environment, feedback: feedback)
+        mainMenu = AppMenu(
+            environment: environment,
+            feedback: feedback,
+            editorPresentation: editorPresentation)
         super.init()
     }
 

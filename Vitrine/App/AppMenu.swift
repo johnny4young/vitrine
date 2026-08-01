@@ -30,14 +30,16 @@ final class AppMenu {
 
     init(
         environment: AppEnvironment,
-        feedback: CaptureFeedbackPresenter
+        feedback: CaptureFeedbackPresenter,
+        editorPresentation: EditorPresentation
     ) {
         self.environment = environment
         self.feedback = feedback
         appCommands = AppCommandResponder(environment: environment, feedback: feedback)
         editorCommands = EditorCommandResponder(
             settings: environment.appSettings,
-            feedback: feedback.display)
+            feedback: feedback.display,
+            presentation: editorPresentation)
     }
 
     /// Assembles and assigns the main menu. Called at launch, and again by
