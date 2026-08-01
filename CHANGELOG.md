@@ -12,6 +12,8 @@ can never drift.
 
 ## [Unreleased]
 
+## [0.25.5] - 2026-08-01
+
 ### Fixed
 
 - **Menu-bar copy actions now report through one feedback path.** Copying a recent
@@ -881,7 +883,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.4...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.5...HEAD
+[0.25.5]: https://github.com/johnny4young/vitrine/compare/v0.25.4...v0.25.5
 [0.25.4]: https://github.com/johnny4young/vitrine/compare/v0.25.3...v0.25.4
 [0.25.3]: https://github.com/johnny4young/vitrine/compare/v0.25.2...v0.25.3
 [0.25.2]: https://github.com/johnny4young/vitrine/compare/v0.25.1...v0.25.2

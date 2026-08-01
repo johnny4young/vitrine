@@ -1,7 +1,7 @@
 ---
 import { currentVersion } from '~/lib/project';
 
-const releaseVersion = '0.25.4';
+const releaseVersion = '0.25.5';
 
 if (releaseVersion !== currentVersion) {
   throw new Error(
@@ -18,9 +18,11 @@ if (releaseVersion !== currentVersion) {
     <p class="lead" data-i18n="cl.lead">The highlights from the newest Vitrine release, available without waiting for a network request.</p>
     <article class="changelog" data-release-version={releaseVersion}>
       <p class="ver"><span data-i18n="cl.version">Version</span> {releaseVersion}</p>
-      <h3 data-i18n="cl.headline">A menu-bar panel that waits for you</h3>
+      <h3 data-i18n="cl.headline">More dependable exports and feedback</h3>
       <ul>
-        <li data-i18n="cl.h1"><strong>The menu-bar panel now stays open while you choose.</strong> It waits while idle, then closes naturally when you click elsewhere, change focus, press Escape, click the icon again, or choose a dismissing action.</li>
+        <li data-i18n="cl.h1"><strong>Copy feedback stays visible.</strong> Copying a recent image or its source now updates both the menu-bar panel and the transient HUD, including failures.</li>
+        <li data-i18n="cl.h2"><strong>Batch exports verify every output.</strong> Partial multi-size, carousel, and Web Snapshot exports no longer report success or reveal Finder as if the batch were complete.</li>
+        <li data-i18n="cl.h3"><strong>Failed clipboard exports keep the editor open.</strong> Your work remains available so you can retry or save it instead.</li>
       </ul>
       <a class="more" href="https://github.com/johnny4young/vitrine/blob/main/CHANGELOG.md" data-i18n="cl.more">Read the full changelog →</a>
     </article>
