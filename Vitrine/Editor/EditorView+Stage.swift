@@ -226,7 +226,11 @@ extension EditorView {
     /// same undo-aware behavior as the ⌥⌘F command.
     var formatButton: some View {
         Button {
-            EditorCommandResponder(settings: settings, feedback: session.feedback).formatCode(nil)
+            EditorCommandResponder(
+                settings: settings,
+                feedback: session.feedback,
+                presentation: session.presentation
+            ).formatCode(nil)
         } label: {
             Image(systemName: VitrineCommand.formatCode.systemImageName)
                 .font(.system(size: 11, weight: .medium))

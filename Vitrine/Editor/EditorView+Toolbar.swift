@@ -238,27 +238,39 @@ extension EditorView {
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
-        ExportFeedback.presentCopy(copied)
+        session.feedback(ExportFeedback.copyOutcome(copied))
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
         // environment's app-wide settings (what the Settings toggle edits) rather than
         // this window's per-session copy. Close *this* window — captured via
         // `WindowAccessor`, so it
         // never depends on `keyWindow` being right — deferred past the button's action,
         // and `close()` (not `performClose`) so it is unconditional.
-        guard environment.appSettings.export.closeAfterCopy else { return }
-        let target = editorWindow ?? NSApp.keyWindow
-        DispatchQueue.main.async { target?.close() }
+        guard
+            Self.shouldCloseAfterCopy(
+                copied: copied,
+                preferenceEnabled: environment.appSettings.export.closeAfterCopy)
+        else { return }
+        guard let editorWindow else { return }
+        DispatchQueue.main.async { editorWindow.close() }
+    }
+
+    /// A failed clipboard write leaves the editor open so the user can retry or save
+    /// instead of losing the surface that explains the failure.
+    static func shouldCloseAfterCopy(copied: Bool, preferenceEnabled: Bool) -> Bool {
+        copied && preferenceEnabled
     }
 
     /// Renders and saves the image, confirming the outcome through the shared HUD so the
     /// toolbar Save button gives the same feedback as the File-menu command.
     /// A cancelled save panel is silent.
     func saveImage() {
-        ExportFeedback.presentSave(
-            ExportManager.saveToFile(
-                settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-                format: settings.export.format, fixedSize: settings.effectiveFixedSize,
-                profile: settings.export.colorProfile))
+        let outcome = ExportManager.saveToFile(
+            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+            format: settings.export.format, fixedSize: settings.effectiveFixedSize,
+            profile: settings.export.colorProfile)
+        if let feedback = ExportFeedback.saveOutcome(outcome) {
+            session.feedback(feedback)
+        }
     }
 
     /// The explicit alternative copy targets behind the rich-text icon:
@@ -493,7 +505,7 @@ extension EditorView {
                 fixedSize: settings.effectiveFixedSize,
                 profile: settings.export.colorProfile)
         else { return }
-        PinnedSnapshotController.shared.pin(image)
+        session.presentation.pin(image)
     }
 
     // MARK: - Export/share actions
@@ -502,10 +514,9 @@ extension EditorView {
         guard
             let image = ExportManager.renderNSImage(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-                fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile),
-            let view = NSApp.keyWindow?.contentView
+                fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
         else { return }
-        ShareManager.share(image, relativeTo: view)
+        session.presentation.share(image, relativeTo: editorWindow?.contentView)
     }
 
     /// Copies the rendered image to the clipboard as a `data:image/png;base64,…`

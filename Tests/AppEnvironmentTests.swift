@@ -76,9 +76,16 @@ struct AppEnvironmentTests {
         env.brandKit.isEnabled = true
         env.brandKit.brandKit = BrandKit(handle: "@isolated")
 
-        let primary = EditorSession(identity: .primary, environment: env, feedback: .noOp)
+        let primary = EditorSession(
+            identity: .primary,
+            environment: env,
+            feedback: .noOp,
+            presentation: .noOp)
         let secondary = EditorSession(
-            identity: EditorWindowIdentity(index: 2), environment: env, feedback: .noOp)
+            identity: EditorWindowIdentity(index: 2),
+            environment: env,
+            feedback: .noOp,
+            presentation: .noOp)
         defer {
             primary.discard()
             secondary.discard()
@@ -168,7 +175,10 @@ struct AppEnvironmentTests {
             UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
         let env = AppEnvironment(defaults: suite)
         let feedback = CaptureFeedbackPresenter()
-        let delegate = AppDelegate(environment: env, feedback: feedback)
+        let delegate = AppDelegate(
+            environment: env,
+            feedback: feedback,
+            editorPresentation: .noOp)
 
         #expect(delegate.environment === env)
         #expect(delegate.feedback === feedback)

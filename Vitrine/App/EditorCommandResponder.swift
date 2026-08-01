@@ -23,6 +23,7 @@ import AppKit
 final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     let settings: AppSettings
     let feedback: FeedbackDisplay
+    let presentation: EditorPresentation
 
     /// Small snippets format synchronously so the menu command feels instant. Larger
     /// snippets do the pure string work off the main actor and only return to AppKit
@@ -31,9 +32,14 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     private static let asyncFormatThresholdBytes = 64 * 1024
     private static let maxInteractiveFormatBytes = 1 * 1024 * 1024
 
-    init(settings: AppSettings, feedback: FeedbackDisplay) {
+    init(
+        settings: AppSettings,
+        feedback: FeedbackDisplay,
+        presentation: EditorPresentation
+    ) {
         self.settings = settings
         self.feedback = feedback
+        self.presentation = presentation
         super.init()
     }
 
@@ -93,28 +99,18 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
-        feedback(
-            copied
-                ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
-                : Notifier.failure(String(localized: "Couldn't copy the image")))
+        feedback(ExportFeedback.copyOutcome(copied))
     }
 
     @objc func saveRenderedImage(_ sender: Any?) {
         guard canPerform(.saveImage) else { return }
         let settings = activeSettings
-        switch ExportManager.saveToFile(
+        let outcome = ExportManager.saveToFile(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             format: settings.export.format, fixedSize: settings.effectiveFixedSize,
             profile: settings.export.colorProfile)
-        {
-        case .saved:
-            feedback(
-                Notifier.confirmation(String(localized: "Image saved")))
-        case .failed:
-            feedback(
-                Notifier.failure(String(localized: "Couldn't save the image")))
-        case .cancelled:
-            break  // the user dismissed the save panel — no feedback needed
+        if let feedback = ExportFeedback.saveOutcome(outcome) {
+            self.feedback(feedback)
         }
     }
 
@@ -124,9 +120,9 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             let image = ExportManager.renderNSImage(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
                 fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile),
-            let view = NSApp.keyWindow?.contentView
+            let view = (NSApp.keyWindow ?? NSApp.mainWindow)?.contentView
         else { return }
-        ShareManager.share(image, relativeTo: view)
+        presentation.share(image, relativeTo: view)
     }
 
     /// Promotes the key editor window's current style to the app-wide default.

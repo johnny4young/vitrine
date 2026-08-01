@@ -405,7 +405,10 @@ struct EditorCommandResponderTests {
     }
 
     @Test func nonEditorCommandsAlwaysPerform() {
-        let responder = EditorCommandResponder(settings: makeSettings(code: ""), feedback: .noOp)
+        let responder = EditorCommandResponder(
+            settings: makeSettings(code: ""),
+            feedback: .noOp,
+            presentation: .noOp)
         // App-scoped commands are not gated by the responder.
         #expect(responder.canPerform(.newCapture))
         #expect(responder.canPerform(.openEditor))
@@ -419,7 +422,9 @@ struct EditorCommandResponderTests {
         // the editor-scoped commands stay disabled — exactly the validation a menu
         // would apply, proving Save/Share never act on a missing editor.
         let responder = EditorCommandResponder(
-            settings: makeSettings(code: "let x = 1"), feedback: .noOp)
+            settings: makeSettings(code: "let x = 1"),
+            feedback: .noOp,
+            presentation: .noOp)
         #expect(!responder.canPerform(.copyImage))
         #expect(!responder.canPerform(.saveImage))
         #expect(!responder.canPerform(.shareImage))
@@ -452,7 +457,9 @@ struct EditorCommandResponderTests {
 
     @Test func validateMenuItemMatchesCanPerform() {
         let responder = EditorCommandResponder(
-            settings: makeSettings(code: "let x = 1"), feedback: .noOp)
+            settings: makeSettings(code: "let x = 1"),
+            feedback: .noOp,
+            presentation: .noOp)
         let item = NSMenuItem(
             title: VitrineCommand.copyImage.title,
             action: #selector(EditorCommandResponder.copyRenderedImage(_:)), keyEquivalent: "")
