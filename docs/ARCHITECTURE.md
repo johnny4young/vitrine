@@ -145,6 +145,22 @@ fixed number formatting and attribute order), so the same template always produc
 identical bytes. This serializer is intentionally **not** wired up as a general
 export choice for the arbitrary code canvas; it exists for the template path only.
 
+## Comparison-board composition
+
+The reusable comparison core accepts two to four finished `RenderedAsset` values and
+produces one color-normalized `RenderedAsset`. `ComparisonBoard` is deliberately
+path-free: each item contains rendered pixels plus a short user-visible label and
+optional detail, never a source URL, security bookmark, or identifier into Recents.
+Composing or exporting a board therefore cannot trigger an implicit file read.
+
+`ComparisonBoardComposer` resolves row and column counts before rendering and gives
+every item an equal, aspect-fit image area. Automatic layout keeps two or three items
+in one row and uses a two-by-two grid for four; explicit horizontal, vertical, and grid
+layouts are deterministic alternatives. The finished image goes through the same color
+normalization and PNG/PDF encoders as every other capture. This generic core remains
+separate from `ResponsiveBoardComposer`, whose variable-width cards and viewport labels
+are specialized for web snapshots.
+
 ## Command-line renderer
 
 `vitrine render input.swift --out image.png` renders code to an image from the
@@ -555,6 +571,8 @@ Vitrine/
 │   ├── ShareManager.swift     # NSSharingService
 │   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
 │   ├── CarouselExportView.swift # multi-slide export sheet
+│   ├── ComparisonBoard.swift # path-free validated 2–4 item value
+│   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
 │   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
 │   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset
 ├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
