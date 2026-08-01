@@ -8,7 +8,8 @@
 
 **Vitrine** is a native macOS menu-bar app that turns code (and URLs and HTML) into
 gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so) and
-[Carbon](https://carbon.now.sh), but **native, instant, and fully local**.
+[Carbon](https://carbon.now.sh), but **native, instant, and local for code rendering**.
+Optional URL snapshots load the requested page in WebKit on your Mac.
 
 [![Website](https://img.shields.io/badge/website-vitrineframe.app-6E56CF.svg)](https://vitrineframe.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -34,7 +35,9 @@ Vitrine attacks that flow head-on:
 - **Live preview** in the editor, or a no-UI quick mode that just works.
 - **`Copy` → retina PNG** on your clipboard, ready to paste into Notion, Slack, X, Keynote.
 
-Works **offline**, **100% local**, no account, no telemetry. MIT-licensed — with an
+Code, terminal, image, and pasted-HTML rendering all work offline with no account or
+telemetry. The direct-download build uses the network for Sparkle updates, license
+activation, and URL content you explicitly ask it to load. MIT-licensed — with an
 optional [**PRO**](#vitrine-pro) tier for people who publish professionally.
 
 > ray.so (built by Raycast) is open source and is exactly the bar we hold ourselves
@@ -43,18 +46,23 @@ optional [**PRO**](#vitrine-pro) tier for people who publish professionally.
 
 ## The flow you'll actually use
 
-1. **Copy** what you want to share — a snippet of code, or a URL.
+1. **Copy** what you want to share — a snippet of code, terminal output, or a URL.
 2. **Trigger Vitrine** — global hotkey (`⇧⌘S`) or the menu-bar icon.
 3. **Vitrine detects the content type** and picks the renderer:
    - **Code** → format + syntax highlight → a beautiful image, using the theme and
      style you preset in **Settings** (no questions asked).
-   - **URL** → snapshot the page **locally** with `WKWebView` on the direct-download
-     build, with a first-use privacy disclosure (see [Rendering architecture](docs/RENDERING.md)).
-4. **The screenshot lands on your clipboard**, ready to paste anywhere — or save to a file.
+   - **URL** → open the Web Snapshot editor, which loads the requested page **locally**
+     with `WKWebView` on the direct-download build, after a first-use privacy disclosure
+     (see [Rendering architecture](docs/RENDERING.md)).
+   - **HTML** → paste it into the Web Snapshot editor; pasted HTML renders offline and
+     remote subresources are blocked.
+4. **Code captures** can land on your clipboard as a screenshot, ready to paste anywhere.
+   URL snapshots are exported from the Web Snapshot editor.
 
 Two modes, one engine:
 
-- **Quick mode** — trigger → detect → render with your saved settings → clipboard. Zero or one click.
+- **Quick mode** — trigger → detect → render code with your saved settings → clipboard.
+  URL input opens Web Snapshot instead of silently pretending it is a code capture.
 - **Editor mode** — opens a window with live preview and controls when you want to tweak before exporting.
 
 ## Install
@@ -84,6 +92,10 @@ verify the download:
 ```bash
 shasum -a 256 -c Vitrine-x.y.z.dmg.sha256
 ```
+
+The DMG embeds the direct-download `vitrine` CLI but does **not** add it to your
+PATH automatically. After launching the app, use **Settings ▸ General ▸ Command-line
+tool ▸ Install…**, or follow the manual link in [Command-line renderer](#command-line-renderer).
 
 ### Build from source
 
@@ -151,15 +163,17 @@ on every release.
 
 ## Features
 
-Vitrine does one thing — turn code into an image worth sharing — and does it without
-ever leaving your Mac.
+Vitrine does one thing — turn code into an image worth sharing. Code, terminal, image,
+and pasted-HTML rendering stays on your Mac; URL snapshots fetch the page you request
+and render it locally in WebKit.
 
 ### Capture
 
 Lives in the menu bar (`LSUIElement`, no Dock icon) and opens from anywhere with a
-global hotkey (`⇧⌘S`). It reads the clipboard, detects whether you copied **code,
-terminal output, a URL, or HTML**, and picks the renderer for you — one-step Quick mode
-using your saved style, or the editor when you want to fine-tune.
+global hotkey (`⇧⌘S`). It reads the clipboard, detects **code, terminal output, or a
+URL**, and picks the matching workflow — one-step Quick mode for code using your saved
+style, or the editor when you want to fine-tune. Pasted HTML opens the dedicated Web
+Snapshot editor.
 
 ### Beautify any image
 
@@ -170,8 +184,8 @@ blends in. *(Browser and device frames are [PRO](#vitrine-pro).)*
 
 ### Style
 
-Thirteen built-in themes (plus your own), 160+ languages of real syntax highlighting,
-developer fonts, and solid / gradient / image backgrounds. **Focus mode** dims
+Thirteen built-in themes (plus your own), 33 syntax languages plus Terminal and Plain
+Text modes, developer fonts, and solid / gradient / image backgrounds. **Focus mode** dims
 everything but the lines that matter; **diff coloring** bands `+`/`−` lines
 GitHub-style; window chrome, padding, corner radius, and shadow are all yours to tune.
 
@@ -205,16 +219,18 @@ and Spanish, updated over Sparkle on the direct-download build, and reachable fr
 Shortcuts and App Intents.
 
 > [!NOTE]
-> **Private by design.** Rendering is fully local and sandboxed — no account, no
-> network by default, no telemetry. Your code never leaves your Mac.
+> **Private by design.** Code, terminal, image, and pasted-HTML rendering stays local
+> and sandboxed — no Vitrine cloud renderer, account, analytics, or telemetry. The
+> direct-download build uses network only for updates, license activation, and URL
+> content you explicitly request.
 
 **At a glance**
 
 | Area | What you get |
 | --- | --- |
-| **Capture** | Menu-bar app, global hotkey, clipboard auto-detect (code · URL · HTML), Quick and editor modes |
+| **Capture** | Menu-bar app, global hotkey, clipboard detection (code · terminal · URL), Quick and editor modes; pasted HTML uses Web Snapshot |
 | **Beautify** | Drop/paste any image → frame it (macOS window · browser · MacBook · iPhone) with auto-matched chrome |
-| **Style** | 13 themes + custom, 160+ languages, fonts, gradient & image backgrounds, focus mode, diff coloring |
+| **Style** | 13 themes + custom, 33 syntax languages plus Terminal and Plain Text modes, fonts, gradient & image backgrounds, focus mode, diff coloring |
 | **Annotate** | Arrows (straight · curved), lines, boxes, text, highlighter, blur, counters, spotlight, measure, stickers — with undo/redo |
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
 | **Export** | Retina PNG/PDF/HEIC, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets |
@@ -226,7 +242,7 @@ Shortcuts and App Intents.
 
 - 🍫 Native **menu-bar app** (`NSStatusItem`, `LSUIElement` — no Dock icon, no app switcher).
 - ⌨️ Configurable **global hotkey** (`⇧⌘S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
-- 🌈 **Syntax highlighting** for 160+ languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js).
+- 🌈 **Syntax highlighting** for 33 shipped syntax languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js), plus Terminal and Plain Text modes. Use `vitrine list languages --json` to inspect the catalog shipped by your build.
 - 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact and adds a compact project, current Git branch when available, and command header so the image keeps its context when shared (`--no-context` restores an output-only capture). It also supports **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included — and a copyable-text sidecar can ship the output as text alongside the image. `vpane` *(PRO)* images a tmux pane's visible contents without re-running anything, and dropping an **asciinema** recording (`.cast`) replays it into the same renderer. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
 - 🖼️ **Beautify any image** — drop, paste, or quick-capture any screenshot (not just code) and render it on the same backgrounds, padding, and shadow, optionally wrapped in a macOS-window, browser, or MacBook / iPhone device frame. The frame chrome auto-tints to the image's top-edge color so it blends in (Light/Dark are manual overrides). Browser and device frames are PRO.
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
@@ -242,7 +258,7 @@ Shortcuts and App Intents.
 - 📐 **Safe-area guides** — an editor-only overlay that draws the margin platforms may crop over a fixed-size destination, with a live "lines × widest column" chip; never part of the export.
 - 📝 **Developer-grade copy formats** — copy highlighted RTF/HTML, a standalone PNG data URI, or one self-contained Markdown block containing the image plus copyable fenced source. Redacted lines stay redacted in every text representation.
 - 🪧 **Social cards** — compose a 1200×630 card from your code (template, theme, background) to copy, save, or share, with **Instagram Story** and **GitHub banner** export presets.
-- 🌐 **Web snapshots** — render pasted **HTML** to an image, or capture a **webpage** (direct-download build) — entirely locally in WebKit, with a first-use privacy disclosure. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
+- 🌐 **Web snapshots** — render pasted **HTML** offline, or capture a **webpage** (direct-download build) after a first-use privacy disclosure. The requested page is fetched and rendered locally in WebKit; there is no remote screenshot service. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
 - ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
 - 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar.
@@ -250,18 +266,17 @@ Shortcuts and App Intents.
 - ⚡ **Shortcuts / App Intents** *(PRO)* — render a code image or open the editor from Shortcuts and Spotlight.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
 - 🌍 **Localized** in English and Spanish (String Catalog), with pseudolocale and RTL layout tests.
-- 🖥️ **Command-line renderer** *(PRO)* — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app (no network, screen recording, or Accessibility needed).
-- 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark (now with a scannable **QR link chip** and a **signature footer bar** placement), multi-size one-pass export, carousel export, and the automation surfaces above; the free tier loses nothing.
-- 🔒 Sandboxed, no network by default — your code **never leaves your Mac**.
+- 🖥️ **Command-line renderer** *(direct-download PRO)* — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
+- 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark (now with a scannable **QR link chip** and a **signature footer bar** placement), multi-size one-pass export, carousel export, and the automation surfaces above; core capture and editing stay free.
+- 🔒 Sandboxed local rendering — your code **never leaves your Mac** when Vitrine renders code. URL capture is the explicit exception because the requested page must be fetched.
 
 </details>
 
 ## Vitrine PRO
 
-Vitrine is **open-core**: the app is and stays free and fully open source (MIT), and the
-free tier loses nothing — no watermark, no resolution cap, no launch-time nags. **PRO** is
-an optional **one-time** license that adds a few power features for people who publish
-professionally:
+Vitrine is MIT-licensed and free to use. Core capture and editing remain free — no
+watermark, no resolution cap, no launch-time nags. **PRO** is an optional **one-time**
+license for people who publish professionally:
 
 - **Brand Kit** — your logo, handle, and accent color applied as a tasteful watermark to
   every export, in one click.
@@ -367,13 +382,39 @@ icon — that's intentional (`LSUIElement`).
 
 ## Command-line renderer
 
-Vitrine ships a `vitrine` CLI that renders code to an image without the GUI — handy
-for docs pipelines and automation. It reuses the app's exact render path, so output is
-pixel-identical, and it needs no network, screen recording, or Accessibility.
+The direct-download build ships a `vitrine` CLI that renders code to an image without the
+GUI — handy for docs pipelines and automation. It reuses the app's local render path, so
+output is pixel-identical to the app for the same input and settings. It renders code,
+terminal content, and local images only; it cannot capture URLs or run a hosted renderer,
+and it needs no network, screen recording, or Accessibility.
+
+### Quick start
 
 ```bash
-make cli   # builds `vitrine` into DerivedData, next to its Fonts/ and Highlightr bundle
+# From a source checkout: generate the project, then build the CLI target.
+make cli
 
+# Locate the Debug binary produced by the build (resources stay beside it).
+CLI="$(xcodebuild -project Vitrine.xcodeproj -scheme VitrineCLI -showBuildSettings \
+  | awk '/ BUILT_PRODUCTS_DIR / {print $3 "/vitrine-cli"; exit}')"
+
+# These metadata commands work without a PRO activation.
+"$CLI" --version
+"$CLI" list languages --json
+
+# Optional local Debug render (the bypass is absent from release binaries).
+VITRINE_PRO_UNLOCK=1 "$CLI" render README.md --out /tmp/vitrine-readme.png
+```
+
+For an installed direct-download app, Homebrew adds the embedded binary to your PATH.
+With a DMG install, open **Settings ▸ General ▸ Command-line tool ▸ Install…**, or link
+the bundle binary manually as shown below. The App Store build does not distribute the
+CLI. Release rendering commands require an activated direct-download PRO license;
+metadata commands such as `--version` and `list languages --json` work before the render
+gate. A source Debug build can use `VITRINE_PRO_UNLOCK=1` for local QA only.
+
+```bash
+# After installing the direct-download app and activating PRO:
 vitrine render input.swift --out image.png
 vitrine render snippet.py --out card.png --theme dracula --preset opengraph
 vitrine render notes.go   --out clear.png --transparent --scale 3
@@ -591,7 +632,8 @@ cannot leave a partially updated export.
 the local render catalogs so scripts can discover valid choices without scraping docs;
 `vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before
-AppKit initialization or the PRO render gate, which makes CI install checks cheap.
+AppKit initialization or the PRO render gate, which makes CI install checks cheap. The
+`list` commands likewise inspect the local catalogs without rendering.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)
