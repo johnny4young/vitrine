@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 /// The PRO multi-size one-pass export sheet: multi-select the platform
@@ -6,7 +5,7 @@ import SwiftUI
 /// single action.
 ///
 /// This is the code/card export ladder fanned out over `ExportPreset` sizes (a
-/// publishing convenience) — distinct from 's free multi-_viewport_ web
+/// publishing convenience) — distinct from the free multi-viewport web
 /// capture. Each file equals what a single export with that preset selected would
 /// produce; the rendering itself lives in `ExportManager.exportPresetSizes`.
 struct MultiSizeExportView: View {
@@ -19,6 +18,8 @@ struct MultiSizeExportView: View {
     /// exported images. Passed in by the editor so a per-window session stays
     /// authoritative instead of re-reading the app-wide defaults.
     let textSidecar: Bool
+    let feedback: FeedbackDisplay
+    let presentation: BatchExportPresentation
 
     @Environment(\.dismiss) private var dismiss
 
@@ -113,13 +114,10 @@ struct MultiSizeExportView: View {
         let presets = ExportPreset.all.filter { selected.contains($0.id) }
         guard !presets.isEmpty else { return }
 
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = String(localized: "Export")
-        panel.message = String(localized: "Choose a folder for the exported images.")
-        guard panel.runModal() == .OK, let directory = panel.url else { return }
+        guard
+            let directory = presentation.chooseDirectory(
+                message: String(localized: "Choose a folder for the exported images."))
+        else { return }
 
         failureNote = nil
         let total = presets.count
@@ -132,22 +130,16 @@ struct MultiSizeExportView: View {
                 textSidecar: textSidecar,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil
-            if result.failed == 0 {
-                // Confirm and reveal the folder so the export doesn't finish silently — the
-                // feedback convention every other export follows.
-                CaptureHUDController.shared.present(
-                    Notifier.confirmation(String(localized: "Images exported")))
-                NSWorkspace.shared.activateFileViewerSelecting([directory])
+            let completion = BatchExportCompletion(
+                written: result.written,
+                failed: result.failed,
+                expected: total)
+            if completion.isComplete {
+                feedback(Notifier.confirmation(String(localized: "Images exported")))
+                presentation.reveal(directory)
                 dismiss()
             } else {
-                // Keep the sheet open so the user can retry. The count rides in a verbatim
-                // prefix so the localized sentence stays a plain (non-format) catalog key.
-                failureNote =
-                    "\(result.written)/\(total) — "
-                    + String(
-                        localized:
-                            "Some images couldn't be written. Check the folder and try again."
-                    )
+                failureNote = completion.failureNote
             }
         }
     }

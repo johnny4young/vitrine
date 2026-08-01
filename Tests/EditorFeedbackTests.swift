@@ -30,7 +30,8 @@ struct EditorFeedbackTests {
                 presentShare: { [weak self] image, view in
                     self?.sharedImages.append(image)
                     self?.shareAnchors.append(view)
-                })
+                },
+                batchExport: .noOp)
         }
     }
 

@@ -5,13 +5,16 @@ import AppKit
 struct EditorPresentation {
     private let presentPin: (NSImage) -> Void
     private let presentShare: (NSImage, NSView) -> Void
+    let batchExport: BatchExportPresentation
 
     init(
         presentPin: @escaping (NSImage) -> Void,
-        presentShare: @escaping (NSImage, NSView) -> Void
+        presentShare: @escaping (NSImage, NSView) -> Void,
+        batchExport: BatchExportPresentation
     ) {
         self.presentPin = presentPin
         self.presentShare = presentShare
+        self.batchExport = batchExport
     }
 
     func pin(_ image: NSImage) {
@@ -27,9 +30,11 @@ struct EditorPresentation {
         presentPin: { PinnedSnapshotController.shared.pin($0) },
         presentShare: { image, view in
             ShareManager.share(image, relativeTo: view)
-        })
+        },
+        batchExport: .live)
 
     static let noOp = EditorPresentation(
         presentPin: { _ in },
-        presentShare: { _, _ in })
+        presentShare: { _, _ in },
+        batchExport: .noOp)
 }
