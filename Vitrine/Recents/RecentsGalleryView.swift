@@ -416,7 +416,7 @@ private struct RecentsCard: View {
                     .frame(width: 26, height: 26)
                     .background(VitrineTokens.Accent.system, in: Circle())
                     .padding(Brand.Spacing.sm + Brand.Spacing.xs)
-                    .accessibilityLabel("Selected \(comparisonIndex + 1)")
+                    .accessibilityLabel(Text("Selected \(comparisonIndex + 1)"))
                     .accessibilityIdentifier("recents-comparison-selection")
             } else if capture.isPinned && !isSelectingForComparison {
                 pinBadge
@@ -533,7 +533,7 @@ private struct RecentsCard: View {
         let when = Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date())
         let details = "\(capture.language.displayName), \(capture.theme.displayName), \(when)"
         if let comparisonIndex {
-            return "\(String(localized: "Selected")) \(comparisonIndex + 1), \(details)"
+            return "\(String(localized: "Selected \(comparisonIndex + 1)")), \(details)"
         }
         return capture.isPinned ? "\(String(localized: "Pinned")), \(details)" : details
     }

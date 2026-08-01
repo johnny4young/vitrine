@@ -10,8 +10,11 @@ final class ScreenshotTourUITests: XCTestCase {
     /// Opt-in only (mirrors the golden/gallery recorders): the tour runs solely when
     /// `VITRINE_SCREENSHOT_DIR` is provided, so `make test-ui` and CI never pay for it.
     override func setUpWithError() throws {
+        let screenshotDirectory =
+            ProcessInfo.processInfo.environment["VITRINE_SCREENSHOT_DIR"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         try XCTSkipIf(
-            ProcessInfo.processInfo.environment["VITRINE_SCREENSHOT_DIR"] == nil,
+            screenshotDirectory?.isEmpty != false,
             "Visual tour is opt-in: set TEST_RUNNER_VITRINE_SCREENSHOT_DIR")
     }
 

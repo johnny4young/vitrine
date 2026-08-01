@@ -55,6 +55,44 @@ struct WorkspaceRecipeDocumentTests {
         }
     }
 
+    @Test func rejectsUnknownFieldsWithTheirCompleteJSONPath() throws {
+        let data = try WorkspaceRecipeDocument(recipe: sampleRecipe()).jsonData()
+        var root = try #require(
+            JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var recipe = try #require(root["recipe"] as? [String: Any])
+        var output = try #require(recipe["output"] as? [String: Any])
+        output["colourProfile"] = "sRGB"
+        recipe["output"] = output
+        root["recipe"] = recipe
+
+        #expect(
+            throws: WorkspaceRecipeDocument.ImportError.unknownField(
+                "recipe.output.colourProfile")
+        ) {
+            try WorkspaceRecipeDocument.recipe(
+                from: JSONSerialization.data(withJSONObject: root))
+        }
+    }
+
+    @Test func reportsThePathOfInvalidTypedValues() throws {
+        let data = try WorkspaceRecipeDocument(recipe: sampleRecipe()).jsonData()
+        var root = try #require(
+            JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var recipe = try #require(root["recipe"] as? [String: Any])
+        var output = try #require(recipe["output"] as? [String: Any])
+        output["colorProfile"] = "AdobeRGB"
+        recipe["output"] = output
+        root["recipe"] = recipe
+
+        #expect(
+            throws: WorkspaceRecipeDocument.ImportError.invalidDocument(
+                "The field \"recipe.output.colorProfile\" contains an invalid value.")
+        ) {
+            try WorkspaceRecipeDocument.recipe(
+                from: JSONSerialization.data(withJSONObject: root))
+        }
+    }
+
     @Test func validatesCatalogReferencesAndOutputBounds() throws {
         var unknownPreset = sampleRecipe()
         unknownPreset.output.destinationPresetID = "unknown"

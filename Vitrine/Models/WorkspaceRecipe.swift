@@ -166,6 +166,8 @@ struct WorkspaceRecipeDocument: Codable, Equatable {
     enum ImportError: Error, Equatable {
         case notARecipeFile
         case unsupportedSchemaVersion(Int)
+        case unknownField(String)
+        case invalidDocument(String)
         case invalid(ValidationError)
 
         var message: String {
@@ -174,6 +176,10 @@ struct WorkspaceRecipeDocument: Codable, Equatable {
                 "This file is not a Vitrine workspace recipe."
             case .unsupportedSchemaVersion(let version):
                 "This workspace recipe uses unsupported schema version \(version)."
+            case .unknownField(let path):
+                "The workspace recipe contains unknown field \"\(path)\"."
+            case .invalidDocument(let detail):
+                "The workspace recipe is invalid: \(detail)"
             case .invalid(let error):
                 error.message
             }
@@ -202,13 +208,33 @@ struct WorkspaceRecipeDocument: Codable, Equatable {
 
     /// Decodes and validates a complete recipe document.
     static func recipe(from data: Data) throws -> WorkspaceRecipe {
-        let document: WorkspaceRecipeDocument
+        let root: [String: Any]
         do {
-            document = try JSONDecoder().decode(WorkspaceRecipeDocument.self, from: data)
+            guard
+                let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                object["format"] as? String == formatMarker
+            else {
+                throw ImportError.notARecipeFile
+            }
+            root = object
+        } catch let error as ImportError {
+            throw error
         } catch {
             throw ImportError.notARecipeFile
         }
-        guard document.format == formatMarker else { throw ImportError.notARecipeFile }
+
+        if let path = RecipeJSONShape.firstUnknownField(in: root) {
+            throw ImportError.unknownField(path)
+        }
+
+        let document: WorkspaceRecipeDocument
+        do {
+            document = try JSONDecoder().decode(WorkspaceRecipeDocument.self, from: data)
+        } catch let error as DecodingError {
+            throw ImportError.invalidDocument(Self.message(for: error))
+        } catch {
+            throw ImportError.invalidDocument("The document could not be decoded.")
+        }
         guard document.schemaVersion == currentSchemaVersion else {
             throw ImportError.unsupportedSchemaVersion(document.schemaVersion)
         }
@@ -218,6 +244,45 @@ struct WorkspaceRecipeDocument: Codable, Equatable {
             throw ImportError.invalid(error)
         }
         return document.recipe
+    }
+
+    private static func message(for error: DecodingError) -> String {
+        switch error {
+        case .dataCorrupted(let context):
+            let path = codingPath(context.codingPath)
+            return path.isEmpty
+                ? "The document contains an invalid value."
+                : "The field \"\(path)\" contains an invalid value."
+        case .keyNotFound(let key, let context):
+            let path = codingPath(context.codingPath + [key])
+            return "The required field \"\(path)\" is missing."
+        case .typeMismatch(_, let context):
+            let path = codingPath(context.codingPath)
+            return path.isEmpty
+                ? "The document has the wrong value type."
+                : "The field \"\(path)\" has the wrong value type."
+        case .valueNotFound(_, let context):
+            let path = codingPath(context.codingPath)
+            return path.isEmpty
+                ? "The document contains a missing value."
+                : "The field \"\(path)\" contains a missing value."
+        @unknown default:
+            return "The document could not be decoded."
+        }
+    }
+
+    private static func codingPath(_ keys: [any CodingKey]) -> String {
+        keys.map { key in
+            if let index = key.intValue { return "[\(index)]" }
+            return key.stringValue
+        }
+        .reduce(into: "") { path, component in
+            if component.hasPrefix("[") {
+                path += component
+            } else {
+                path += path.isEmpty ? component : ".\(component)"
+            }
+        }
     }
 
     private static func validate(_ recipe: WorkspaceRecipe) throws {
@@ -258,5 +323,151 @@ struct WorkspaceRecipeDocument: Codable, Equatable {
         guard !Theme.builtInIDs.contains(customTheme.id) else {
             throw ValidationError.unusedCustomTheme(customTheme.id)
         }
+    }
+}
+
+/// The accepted JSON shape for a workspace recipe.
+///
+/// `Decodable` deliberately ignores unknown keys, which is useful for app preferences
+/// but unsafe for a source-controlled automation contract: a misspelled option would
+/// otherwise appear valid while silently doing nothing. This lightweight structural
+/// pass rejects extra fields before the typed decoder applies value validation.
+private enum RecipeJSONShape {
+    static func firstUnknownField(in root: [String: Any]) -> String? {
+        if let field = unknownKey(in: root, allowing: ["format", "schemaVersion", "recipe"]) {
+            return field
+        }
+        guard let recipe = root["recipe"] as? [String: Any] else { return nil }
+        if let field = unknownKey(
+            in: recipe,
+            allowing: ["name", "style", "customTheme", "metadata", "output"],
+            path: "recipe")
+        {
+            return field
+        }
+        if let field = validateStyle(recipe["style"], path: "recipe.style") { return field }
+        if let field = validateCustomTheme(recipe["customTheme"], path: "recipe.customTheme") {
+            return field
+        }
+        if let field = validateMetadata(recipe["metadata"], path: "recipe.metadata") {
+            return field
+        }
+        return validateOutput(recipe["output"], path: "recipe.output")
+    }
+
+    private static func validateStyle(_ value: Any?, path: String) -> String? {
+        guard let object = value as? [String: Any] else { return nil }
+        if let field = unknownKey(
+            in: object,
+            allowing: [
+                "themeID", "fontName", "fontSize", "fontLigatures", "padding",
+                "cornerRadius", "showChrome", "showShadow", "showLineNumbers", "wrapColumns",
+                "background",
+            ],
+            path: path)
+        {
+            return field
+        }
+        return validateBackground(object["background"], path: "\(path).background")
+    }
+
+    private static func validateBackground(_ value: Any?, path: String) -> String? {
+        guard let object = value as? [String: Any] else { return nil }
+        if let field = unknownKey(
+            in: object,
+            allowing: ["kind", "color", "preset", "customGradient", "image"],
+            path: path)
+        {
+            return field
+        }
+        if let field = validateColor(object["color"], path: "\(path).color") { return field }
+        if let gradient = object["customGradient"] as? [String: Any] {
+            if let field = unknownKey(
+                in: gradient, allowing: ["stops", "angle"], path: "\(path).customGradient")
+            {
+                return field
+            }
+            if let stops = gradient["stops"] as? [Any] {
+                for (index, stop) in stops.enumerated() {
+                    guard let stop = stop as? [String: Any] else { continue }
+                    let stopPath = "\(path).customGradient.stops[\(index)]"
+                    if let field = unknownKey(
+                        in: stop, allowing: ["color", "location"], path: stopPath)
+                    {
+                        return field
+                    }
+                    if let field = validateColor(stop["color"], path: "\(stopPath).color") {
+                        return field
+                    }
+                }
+            }
+        }
+        if let image = object["image"] as? [String: Any] {
+            if let field = unknownKey(
+                in: image, allowing: ["reference", "fit", "blur", "dimming"], path: "\(path).image")
+            {
+                return field
+            }
+            if let reference = image["reference"] as? [String: Any] {
+                return unknownKey(
+                    in: reference, allowing: ["fileName"], path: "\(path).image.reference")
+            }
+        }
+        return nil
+    }
+
+    private static func validateColor(_ value: Any?, path: String) -> String? {
+        guard let object = value as? [String: Any] else { return nil }
+        return unknownKey(
+            in: object, allowing: ["red", "green", "blue", "opacity"], path: path)
+    }
+
+    private static func validateCustomTheme(_ value: Any?, path: String) -> String? {
+        guard let object = value as? [String: Any] else { return nil }
+        if let field = unknownKey(in: object, allowing: ["id", "name", "palette"], path: path) {
+            return field
+        }
+        guard let palette = object["palette"] as? [String: Any] else { return nil }
+        return unknownKey(
+            in: palette,
+            allowing: [
+                "background", "foreground", "keyword", "string", "comment", "number", "type",
+                "function", "variable", "attribute",
+            ],
+            path: "\(path).palette")
+    }
+
+    private static func validateMetadata(_ value: Any?, path: String) -> String? {
+        guard let object = value as? [String: Any] else { return nil }
+        if let field = unknownKey(in: object, allowing: ["windowTitle", "header"], path: path) {
+            return field
+        }
+        guard let header = object["header"] as? [String: Any] else { return nil }
+        return unknownKey(
+            in: header,
+            allowing: ["filename", "title", "caption", "showLanguageBadge"],
+            path: "\(path).header")
+    }
+
+    private static func validateOutput(_ value: Any?, path: String) -> String? {
+        guard let object = value as? [String: Any] else { return nil }
+        if let field = unknownKey(
+            in: object,
+            allowing: ["destinationPresetID", "canvasSize", "scale", "format", "colorProfile"],
+            path: path)
+        {
+            return field
+        }
+        guard let canvas = object["canvasSize"] as? [String: Any] else { return nil }
+        return unknownKey(in: canvas, allowing: ["width", "height"], path: "\(path).canvasSize")
+    }
+
+    private static func unknownKey(
+        in object: [String: Any], allowing keys: Set<String>, path: String = ""
+    ) -> String? {
+        guard let key = object.keys.filter({ !keys.contains($0) }).sorted().first else {
+            return nil
+        }
+        return path.isEmpty ? key : "\(path).\(key)"
     }
 }
