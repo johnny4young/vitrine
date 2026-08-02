@@ -17,7 +17,7 @@ const { copy } = Astro.props;
 ---
 
 <BaseLayout copy={copy} includeMarketingInteractions>
-  <Header />
+  <Header locale={copy.locale} />
   <main>
     <Hero />
     <StyleBench />
@@ -25,5 +25,5 @@ const { copy } = Astro.props;
     <Commercial />
     <InstallFooter />
   </main>
-  <SiteFooter />
+  <SiteFooter locale={copy.locale} />
 </BaseLayout>

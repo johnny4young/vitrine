@@ -299,6 +299,29 @@ struct WorkflowConfigurationTests {
             "the runbook must preserve why an explicit workflow call is required")
     }
 
+    @Test func releasePublishesCuratedChangelogNotes() throws {
+        let release = try Self.release()
+        let doc = try Self.releasingDoc()
+
+        #expect(
+            release.contains("Prepare curated release notes")
+                && release.contains("CHANGELOG.md > \"${NOTES_PATH}\"")
+                && release.contains("body_path: ${{ runner.temp }}/release-notes.md"),
+            "the immutable GitHub release body must come from the reviewed changelog section"
+        )
+        #expect(
+            !release.contains("generate_release_notes: true"),
+            "automatic commit notes must not replace the curated changelog narrative")
+        #expect(
+            release.contains("[ ! -s \"${NOTES_PATH}\" ]")
+                && release.contains("grep -q '^### '"),
+            "release-note extraction must fail closed when the version section is empty")
+        #expect(
+            doc.contains("immutable body is extracted")
+                && doc.contains("edited after publication"),
+            "the release runbook must explain the curated immutable-note boundary")
+    }
+
     // MARK: - Contract: releases originate from durable version tags
 
     @Test func releaseRequiresAnnotatedStableSemverTags() throws {

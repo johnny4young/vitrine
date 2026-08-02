@@ -1,0 +1,258 @@
+---
+import type { Locale, SiteCopy } from '~/i18n/content';
+import { cliCommands, cliExamples, cliOptionGroups } from '~/i18n/cli';
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Header from './Header.astro';
+import SiteFooter from './SiteFooter.astro';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const es = locale === 'es';
+const text = es
+  ? {
+      title: 'CLI de Vitrine — guía, ejemplos y referencia',
+      description: 'Aprende a convertir código, diffs, terminales e imágenes locales en capturas con la CLI de Vitrine. Guía bilingüe con búsqueda, ejemplos y referencia completa.',
+      kicker: 'Automatización local para macOS',
+      heading: 'De un comando a una imagen que se entiende.',
+      intro: 'La CLI usa el mismo motor visual que la app. Renderiza archivos, entradas canalizadas, diffs de Git, terminales e imágenes locales; puede copiar, guardar, abrir el editor o producir conjuntos completos para documentación y CI.',
+      searchPlaceholder: 'Buscar un comando, opción o caso de uso…',
+      searchLabel: 'Buscar en la documentación de la CLI',
+      searchHint: 'Pulsa ⌘K para buscar',
+      results: 'resultados visibles',
+      noResults: 'No encontramos esa opción. Prueba con render, Git, recipe, redact o batch.',
+      install: 'Instalar y comprobar',
+      installIntro: 'Homebrew instala la app y añade vitrine al PATH. Con el DMG, actívala desde Ajustes ▸ General ▸ Herramienta de línea de comandos.',
+      installNote: 'La App Store no incluye la CLI. Los comandos que renderizan requieren una licencia PRO activa de la compilación de descarga directa; version, list y recipe funcionan sin renderizar.',
+      firstRun: 'Tu primera imagen',
+      firstRunIntro: 'Empieza sin configurar nada. Vitrine infiere Swift por la extensión, usa One Dark y el fondo aurora, y escribe un PNG retina.',
+      commands: 'Mapa de comandos',
+      commandsIntro: 'Elige el verbo por el resultado que quieres obtener; no necesitas memorizar opciones para empezar.',
+      workflows: 'Casos prácticos',
+      workflowsIntro: 'Ejemplos completos para tareas reales. Puedes copiarlos y cambiar solo las rutas.',
+      copy: 'Copiar',
+      copied: 'Copiado',
+      reference: 'Referencia de opciones',
+      referenceIntro: 'La referencia sigue la ayuda del binario. Usa la búsqueda para encontrar cualquier opción en segundos.',
+      troubleshooting: 'Problemas frecuentes y soluciones',
+      troubleshootingIntro: 'Las diferencias entre Homebrew, DMG, App Store y compilaciones de desarrollo explican la mayoría de problemas de instalación.',
+      privacy: 'Límite de privacidad',
+      privacyBody: 'El renderizado de código, terminales e imágenes locales no necesita red, Screen Recording ni Accessibility. Una receta solo se carga cuando pasas --recipe; Git se invoca directamente sin shell, pagers, textconv ni descargas implícitas.',
+      navStart: 'Empezar',
+      navCommands: 'Comandos',
+      navExamples: 'Casos prácticos',
+      navReference: 'Opciones',
+      navHelp: 'Soluciones',
+      screenshotAlt: 'Una captura de Vitrine que muestra los comandos recipe validate y recipe show sobre una receta nombrada explícitamente.',
+      openTerminalGuide: 'Guía completa de terminales',
+      openRecipeGuide: 'Formato de recetas de espacio de trabajo',
+    }
+  : {
+      title: 'Vitrine CLI — guide, examples, and reference',
+      description: 'Learn how to turn code, diffs, terminal output, and local images into polished captures with the Vitrine CLI. Searchable commands, examples, and complete option reference.',
+      kicker: 'Local automation for macOS',
+      heading: 'From one command to an image that explains itself.',
+      intro: 'The CLI uses the same visual engine as the app. Render files, pipes, Git diffs, terminal output, and local images; then copy, save, open the editor, or produce complete asset sets for documentation and CI.',
+      searchPlaceholder: 'Search a command, flag, or use case…',
+      searchLabel: 'Search the CLI documentation',
+      searchHint: 'Press ⌘K to search',
+      results: 'visible results',
+      noResults: 'No matching option. Try render, Git, recipe, redaction, or batch.',
+      install: 'Install and verify',
+      installIntro: 'Homebrew installs the app and puts vitrine on your PATH. With the DMG, enable it from Settings ▸ General ▸ Command-line tool.',
+      installNote: 'The App Store build does not include the CLI. Rendering commands require an active PRO license in the direct-download build; version, list, and recipe work without rendering.',
+      firstRun: 'Your first image',
+      firstRunIntro: 'Start without configuring anything. Vitrine infers Swift from the extension, uses One Dark and the aurora background, and writes a retina PNG.',
+      commands: 'Command map',
+      commandsIntro: 'Choose the verb by the result you need; you do not have to memorize flags to get started.',
+      workflows: 'Practical workflows',
+      workflowsIntro: 'Complete examples for real tasks. Copy one and change only the paths.',
+      copy: 'Copy',
+      copied: 'Copied',
+      reference: 'Option reference',
+      referenceIntro: 'This reference follows the installed binary’s help. Search to find any flag in seconds.',
+      troubleshooting: 'Common problems and workarounds',
+      troubleshootingIntro: 'Differences between Homebrew, DMG, App Store, and development builds explain most installation issues.',
+      privacy: 'Privacy boundary',
+      privacyBody: 'Rendering code, terminal output, and local images needs no network, Screen Recording, or Accessibility. A recipe loads only when you pass --recipe; Git runs directly without a shell, pagers, textconv, or implicit fetches.',
+      navStart: 'Start here',
+      navCommands: 'Commands',
+      navExamples: 'Workflows',
+      navReference: 'Options',
+      navHelp: 'Workarounds',
+      screenshotAlt: 'A Vitrine capture showing recipe validate and recipe show for one explicitly named workspace recipe.',
+      openTerminalGuide: 'Full terminal guide',
+      openRecipeGuide: 'Workspace recipe format',
+    };
+
+const meta: SiteCopy = {
+  locale,
+  meta: {
+    title: text.title,
+    description: text.description,
+    imageAlt: text.screenshotAlt,
+  },
+};
+
+const troubleshooting = es
+  ? [
+      ['vitrine: command not found', 'Con Homebrew, ejecuta brew reinstall --cask johnny4young/tap/vitrine. Con el DMG, abre Ajustes ▸ General ▸ Command-line tool ▸ Install… o crea el enlace manual documentado en README.'],
+      ['“Vitrine PRO is required”', 'Activa la licencia en la app de descarga directa y vuelve a ejecutar el comando. Las compilaciones Release ignoran VITRINE_PRO_UNLOCK por diseño.'],
+      ['La App Store no tiene el binario', 'Es intencional: ese canal no distribuye herramientas en PATH. Instala el DMG firmado o el paquete de Homebrew para usar la CLI.'],
+      ['El lenguaje detectado no es correcto', 'Pasa --language <id> o, cuando uses --stdin, añade --stdin-name con una extensión útil. Consulta vitrine list languages.'],
+      ['El archivo ya existe', 'Omite --no-overwrite para reemplazarlo, cambia --out o elimina el artefacto anterior. En batch, los existentes se informan como omitidos.'],
+      ['El texto sigue presente tras --blur-box', '--blur-box solo cambia los píxeles. Usa --redact-lines o --redact-secrets para limpiar también los archivos auxiliares.'],
+      ['Una canalización pierde los colores ANSI', 'Muchos programas desactivan el color fuera de un TTY. Usa vgrab, o fuerza el color en el programa antes de enviarlo a vitrine render --stdin.'],
+      ['Necesito ver el resultado antes de exportar', 'Cambia --out o --copy por --edit. Vitrine abre la fuente en el editor para ajustar y anotar manualmente.'],
+    ]
+  : [
+      ['vitrine: command not found', 'With Homebrew, run brew reinstall --cask johnny4young/tap/vitrine. With the DMG, open Settings ▸ General ▸ Command-line tool ▸ Install… or create the manual link documented in README.'],
+      ['“Vitrine PRO is required”', 'Activate the license in the direct-download app, then retry. Release builds ignore VITRINE_PRO_UNLOCK by design.'],
+      ['The App Store build has no binary', 'That is intentional: this channel does not distribute tools on PATH. Install the signed DMG or Homebrew cask to use the CLI.'],
+      ['Language inference chose incorrectly', 'Pass --language <id>, or add --stdin-name with a useful extension when piping. Inspect vitrine list languages for valid ids.'],
+      ['The output already exists', 'Omit --no-overwrite to replace it, choose another --out, or remove the old artifact. Batch reports existing targets as skipped.'],
+      ['Text remains after --blur-box', '--blur-box changes pixels only. Use --redact-lines or --redact-secrets to sanitize copyable sidecars too.'],
+      ['A pipe loses ANSI colors', 'Many programs disable color outside a TTY. Use vgrab, or force color in the producer before piping into vitrine render --stdin.'],
+      ['I need to inspect the result before export', 'Replace --out or --copy with --edit. Vitrine opens the source in the editor for manual styling and annotation.'],
+    ];
+---
+
+<BaseLayout copy={meta} path={locale === 'es' ? '/es/cli' : '/cli'} alternatePath="/cli">
+  <Header locale={locale} page="cli" />
+  <main id="top" class="cli-docs">
+    <section class="cli-hero">
+      <div class="wrap cli-hero-grid">
+        <div>
+          <span class="kicker"><span class="dot"></span>{text.kicker}</span>
+          <h1>{text.heading}</h1>
+          <p>{text.intro}</p>
+          <div class="cli-search-wrap">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+            <label class="sr-only" for="cli-search">{text.searchLabel}</label>
+            <input id="cli-search" type="search" placeholder={text.searchPlaceholder} autocomplete="off" data-no-results={text.noResults} />
+            <kbd>⌘K</kbd>
+          </div>
+          <p class="cli-search-status" aria-live="polite"><span id="cli-result-count"></span> <span>{text.results}</span><span class="search-hint"> · {text.searchHint}</span></p>
+        </div>
+        <figure class="cli-hero-shot">
+          <img src="/screenshots/workspace-recipe-cli.png" alt={text.screenshotAlt} />
+        </figure>
+      </div>
+    </section>
+
+    <div class="wrap cli-layout">
+      <aside class="cli-sidebar" aria-label={es ? 'Contenido de la página' : 'On this page'}>
+        <p class="cli-sidebar-label">{es ? 'En esta página' : 'On this page'}</p>
+        <a href="#start">{text.navStart}</a>
+        <a href="#commands">{text.navCommands}</a>
+        <a href="#workflows">{text.navExamples}</a>
+        <a href="#reference">{text.navReference}</a>
+        <a href="#workarounds">{text.navHelp}</a>
+        <div class="cli-sidebar-rule"></div>
+        <a href="https://github.com/johnny4young/vitrine/blob/main/docs/TERMINAL.md">{text.openTerminalGuide} ↗</a>
+        <a href="https://github.com/johnny4young/vitrine/blob/main/docs/WORKSPACE-RECIPES.md">{text.openRecipeGuide} ↗</a>
+      </aside>
+
+      <div class="cli-content">
+        <section id="start" class="cli-section" data-search-section>
+          <span class="eyebrow">01 · {text.navStart}</span>
+          <h2>{text.install}</h2>
+          <p class="cli-lead">{text.installIntro}</p>
+          <div class="cli-code-block" data-search-card data-search={`homebrew dmg path install ${text.installIntro}`}>
+            <pre><code>brew install --cask johnny4young/tap/vitrine
+vitrine --version</code></pre>
+            <button class="cli-copy" type="button" data-copy-label={text.copy} data-copied-label={text.copied}>{text.copy}</button>
+          </div>
+          <div class="cli-callout"><strong>{es ? 'Disponibilidad.' : 'Availability.'}</strong> {text.installNote}</div>
+
+          <h3>{text.firstRun}</h3>
+          <p>{text.firstRunIntro}</p>
+          <div class="cli-code-block" data-search-card data-search={`first render swift png ${text.firstRunIntro}`}>
+            <pre><code>vitrine render Sources/App.swift --out app-card.png</code></pre>
+            <button class="cli-copy" type="button" data-copy-label={text.copy} data-copied-label={text.copied}>{text.copy}</button>
+          </div>
+        </section>
+
+        <section id="commands" class="cli-section" data-search-section>
+          <span class="eyebrow">02 · {text.navCommands}</span>
+          <h2>{text.commands}</h2>
+          <p class="cli-lead">{text.commandsIntro}</p>
+          <div class="cli-command-grid">
+            {cliCommands.map((command) => (
+              <article class="cli-command" data-search-card data-search={`${command.name} ${command.syntax} ${command.summary[locale]} ${command.detail[locale]}`}>
+                <div class="cli-command-head"><code>{command.name}</code><span>{command.summary[locale]}</span></div>
+                <p>{command.detail[locale]}</p>
+                <pre><code>{command.syntax}</code></pre>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="workflows" class="cli-section" data-search-section>
+          <span class="eyebrow">03 · {text.navExamples}</span>
+          <h2>{text.workflows}</h2>
+          <p class="cli-lead">{text.workflowsIntro}</p>
+          <div class="cli-example-grid">
+            {cliExamples.map((example) => (
+              <article class="cli-example" data-search-card data-search={`${example.title[locale]} ${example.summary[locale]} ${example.code} ${example.note?.[locale] ?? ''}`}>
+                <h3>{example.title[locale]}</h3>
+                <p>{example.summary[locale]}</p>
+                <div class="cli-code-block">
+                  <pre><code>{example.code}</code></pre>
+                  <button class="cli-copy" type="button" data-copy-label={text.copy} data-copied-label={text.copied}>{text.copy}</button>
+                </div>
+                {example.note && <p class="cli-example-note">{example.note[locale]}</p>}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="reference" class="cli-section" data-search-section>
+          <span class="eyebrow">04 · {text.navReference}</span>
+          <h2>{text.reference}</h2>
+          <p class="cli-lead">{text.referenceIntro}</p>
+          <div class="cli-reference">
+            {cliOptionGroups.map((group) => (
+              <section class="cli-option-group" data-search-section>
+                <h3 id={group.id}>{group.title[locale]}</h3>
+                <p>{group.intro[locale]}</p>
+                <div class="cli-option-list">
+                  {group.options.map((option) => (
+                    <article class="cli-option" data-search-card data-search={`${option.flags} ${option.value ?? ''} ${option.description[locale]}`}>
+                      <div><code>{option.flags}</code>{option.value && <span>{option.value}</span>}</div>
+                      <p>{option.description[locale]}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </section>
+
+        <section id="workarounds" class="cli-section" data-search-section>
+          <span class="eyebrow">05 · {text.navHelp}</span>
+          <h2>{text.troubleshooting}</h2>
+          <p class="cli-lead">{text.troubleshootingIntro}</p>
+          <div class="cli-troubleshooting">
+            {troubleshooting.map(([title, body]) => (
+              <details data-search-card data-search={`${title} ${body}`}>
+                <summary>{title}</summary>
+                <p>{body}</p>
+              </details>
+            ))}
+          </div>
+          <div class="cli-privacy">
+            <span>{text.privacy}</span>
+            <p>{text.privacyBody}</p>
+          </div>
+        </section>
+
+        <p id="cli-no-results" class="cli-no-results" hidden>{text.noResults}</p>
+      </div>
+    </div>
+  </main>
+  <SiteFooter locale={locale} />
+  <script is:inline src="/scripts/cli-docs.js" defer></script>
+</BaseLayout>

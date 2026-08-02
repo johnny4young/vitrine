@@ -42,6 +42,21 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.0.0",
+            headline: "A complete local workflow, from source to story",
+            highlights: [
+                "Keep an explicitly opened source file connected to its editor window. "
+                    + "Clean content refreshes after saves, while local edits always wait "
+                    + "for your Reload or Keep choice.",
+                "Export a portable workspace recipe, associate it locally with a folder, "
+                    + "or pass it explicitly to the CLI so repeated captures keep one style "
+                    + "without repository scanning or hidden configuration.",
+                "Select two to four recent captures and turn them into a comparison board "
+                    + "with editable captions, ordering, layouts, copy, save, and share.",
+                "Learn the CLI through the new searchable English and Spanish guide, with "
+                    + "practical Git, terminal, recipe, batch, redaction, and export examples.",
+            ]),
+        ReleaseNote(
             version: "0.25.5",
             headline: "More dependable exports and feedback",
             highlights: [

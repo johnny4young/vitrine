@@ -8,6 +8,7 @@ interface Props {
   path?: string;
   noindex?: boolean;
   includeMarketingInteractions?: boolean;
+  alternatePath?: string;
 }
 
 const {
@@ -15,10 +16,11 @@ const {
   path = copy.locale === 'es' ? '/es' : '/',
   noindex = false,
   includeMarketingInteractions = false,
+  alternatePath = '',
 } = Astro.props;
 const canonical = new URL(path, Astro.site);
-const alternateEnglish = new URL('/', Astro.site);
-const alternateSpanish = new URL('/es', Astro.site);
+const alternateEnglish = new URL(alternatePath || '/', Astro.site);
+const alternateSpanish = new URL(`/es${alternatePath}`, Astro.site);
 
 const productSchema = {
   '@context': 'https://schema.org',

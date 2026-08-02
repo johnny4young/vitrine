@@ -28,11 +28,11 @@
       "story3.p": "Pega un diff unificado y Vitrine resalta las líneas añadidas en verde y las eliminadas en rojo, con números de línea — ideal para PRs y notas de versión.",
       "story3.t1": "Diff unificado", "story3.t2": "Números de línea", "story3.t3": "33 lenguajes de sintaxis",
       "story4.h": "Convierte capturas en una historia clara.",
-      "story4.p": "<strong>Preparado para la próxima versión:</strong> selecciona de dos a cuatro elementos en Recientes, conserva visible su orden y edita los textos y la disposición en un tablero comparativo dedicado. Copia, guarda o comparte el resultado; el tablero conserva píxeles terminados, no rutas de origen, y desaparece al cerrar su ventana.",
-      "story4.t1": "Próxima versión", "story4.t2": "2–4 capturas", "story4.t3": "Cuatro disposiciones", "story4.t4": "Solo durante la sesión",
+      "story4.p": "<strong>Disponible en Vitrine 1.0:</strong> selecciona de dos a cuatro elementos en Recientes, conserva visible su orden y edita los textos y la disposición en un tablero comparativo dedicado. Copia, guarda o comparte el resultado; el tablero conserva píxeles terminados, no rutas de origen, y desaparece al cerrar su ventana.",
+      "story4.t1": "Vitrine 1.0", "story4.t2": "2–4 capturas", "story4.t3": "Cuatro disposiciones", "story4.t4": "Solo durante la sesión",
       "story5.h": "Mantén la coherencia visual de un espacio de trabajo.",
-      "story5.p": "<strong>Preparado para la próxima versión:</strong> exporta el estilo actual y metadatos de cabecera seguros como una receta JSON sin rutas. Asóciala con una carpeta en este Mac para archivos que sueltas explícitamente, o pasa ese mismo archivo a <code>vitrine --recipe</code>; ninguna opción escanea el repositorio ni descubre configuración privada.",
-      "story5.t1": "Próxima versión", "story5.t2": "JSON portátil", "story5.t3": "CLI explícita", "story5.t4": "Sin escanear repositorios",
+      "story5.p": "<strong>Disponible en Vitrine 1.0:</strong> exporta el estilo actual y metadatos de cabecera seguros como una receta JSON sin rutas. Asóciala con una carpeta en este Mac para archivos que sueltas explícitamente, o pasa ese mismo archivo a <code>vitrine --recipe</code>; ninguna opción escanea el repositorio ni descubre configuración privada.",
+      "story5.t1": "Vitrine 1.0", "story5.t2": "JSON portátil", "story5.t3": "CLI explícita", "story5.t4": "Sin escanear repositorios",
       "loop.eyebrow": "El flujo", "loop.title": "Tres pasos, memoria muscular.",
       "loop.s1h": "Copia", "loop.s1p": "Selecciona código en cualquier sitio — tu editor, una terminal, una web — y cópialo como siempre.",
       "loop.s2h": "Pulsa el atajo", "loop.s2p": "Vitrine lee el portapapeles, detecta código o una URL y envía cada entrada a su flujo correspondiente.",
@@ -46,10 +46,11 @@
       "term.eyebrow": "Terminal", "term.title": "Hasta TUIs de pantalla completa.",
       "term.lead": "Pega o usa <code>vgrab</code> con salida de terminal a color — y ahora también apps de pantalla completa como <code>htop</code>, <code>lazygit</code> y Neovim. Vitrine reconstruye la pantalla final — cada movimiento del cursor y su color, con caracteres anchos (CJK y emoji) incluidos — en tu tema.",
       "cl.eyebrow": "Cambios", "cl.title": "Novedades", "cl.lead": "Los puntos destacados de la versión más reciente de Vitrine, disponibles sin esperar una solicitud de red.",
-      "cl.version": "Versión", "cl.headline": "Exportaciones y confirmaciones más confiables",
-      "cl.h1": "<strong>La confirmación de copia permanece visible.</strong> Copiar una imagen reciente o su código fuente actualiza tanto el panel de la barra de menús como el HUD temporal, incluidos los errores.",
-      "cl.h2": "<strong>Las exportaciones por lotes verifican cada resultado.</strong> Las exportaciones parciales de múltiples tamaños, carruseles y capturas web ya no informan éxito ni revelan Finder como si el lote estuviera completo.",
-      "cl.h3": "<strong>Un error al copiar mantiene abierto el editor.</strong> Tu trabajo permanece disponible para volver a intentarlo o guardarlo.",
+      "cl.version": "Versión", "cl.headline": "Un flujo local completo, desde la fuente hasta la historia",
+      "cl.h1": "<strong>Los archivos vivos protegen tus cambios.</strong> Una fuente abierta explícitamente se actualiza al guardar, pero un borrador local siempre espera tu decisión entre Recargar o Mantener.",
+      "cl.h2": "<strong>Las recetas de espacio de trabajo mantienen el estilo portátil.</strong> Exporta JSON sin rutas, asócialo localmente con una carpeta o pásalo explícitamente a la CLI, sin escanear el repositorio.",
+      "cl.h3": "<strong>Los tableros comparativos convierten capturas en una historia.</strong> Ordena de dos a cuatro imágenes, edita sus textos y disposición, y luego copia, guarda o comparte.",
+      "cl.h4": "<strong>La CLI ahora tiene documentación real.</strong> Busca cada comando y opción en inglés o español, con ejemplos prácticos de Git, terminal, recetas, censura y CI.",
       "cl.more": "Leer el changelog completo →",
       "pro.title": "Pásate a PRO cuando lo necesites.",
       "pro.lead": "Con licencia MIT y gratis. La captura y edición principales siguen siendo gratis: sin marca de agua, límite de resolución ni molestias. PRO es una licencia opcional <strong>de pago único</strong> — sin suscripción.",
@@ -85,8 +86,8 @@
       if (window.__vtag) document.querySelectorAll("[data-version]").forEach(function (el) { el.textContent = window.__vtag; });
     }
     apply(document.documentElement.lang === "es" ? "es" : "en");
-    enBtn.onclick = function () { window.location.assign("/"); };
-    esBtn.onclick = function () { window.location.assign("/es"); };
+    enBtn.onclick = function () { window.location.assign(enBtn.dataset.target || "/"); };
+    esBtn.onclick = function () { window.location.assign(esBtn.dataset.target || "/es"); };
   })();
 
   /* appearance toggle */

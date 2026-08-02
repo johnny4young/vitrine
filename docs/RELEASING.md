@@ -39,7 +39,8 @@ fix the source and publish a new patch version instead of rewriting release hist
 
 The workflow builds the Release app, signs + notarizes it when the signing secrets
 are configured, verifies the signature and runs a Gatekeeper assessment,
-creates the DMG, and publishes a GitHub release with auto-generated notes.
+creates the DMG, and publishes a GitHub release whose immutable body is extracted from
+the reviewed version section in `CHANGELOG.md`.
 
 ## Continuous integration
 
@@ -390,8 +391,10 @@ At release time:
 `make changelog-check` asserts the newest `## [x.y.z]` equals `MARKETING_VERSION` and
 that an `[Unreleased]` section still exists, and the `AppStoreReadinessTests` suite pins
 the changelog's newest version to both `MARKETING_VERSION` and `ReleaseNotes.latest` — so
-the three can never drift. That version's section is also what you paste into the GitHub
-Release body and the Sparkle appcast description.
+the three can never drift. The release workflow extracts that version's complete section
+into the GitHub Release body before publishing. The extraction fails closed when the
+section is missing or empty, which matters because GitHub immutable releases cannot be
+edited after publication.
 
 ## Auto-update (Sparkle)
 
