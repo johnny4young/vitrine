@@ -95,8 +95,11 @@ struct WorkspaceRecipe: Codable, Equatable {
         }
     }
 
-    /// A JSON-friendly logical canvas size with the same safe limits as the CLI.
+    /// A JSON-friendly logical canvas size.
     struct CanvasSize: Codable, Equatable {
+        /// The safe logical-dimension limits for a custom canvas. This is the single
+        /// source both surfaces enforce — `CLIOptions.canvasDimensionRange` refers here —
+        /// so recipe validation and `--canvas-size` can never accept different bounds.
         static let dimensionRange = 64...2_048
 
         var width: Int

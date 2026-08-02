@@ -149,7 +149,14 @@ final class WorkspaceRecipeStore {
     @discardableResult
     func applyRecipe(for sourceURL: URL, to settings: AppSettings) -> ResolvedRecipe? {
         guard let resolved = resolvedRecipe(for: sourceURL) else { return nil }
-        _ = settings.applyWorkspaceRecipe(resolved.recipe)
+        let canvasDeferred = settings.applyWorkspaceRecipe(resolved.recipe)
+        if canvasDeferred {
+            // The explicit Settings ▸ Apply action tells the user about this boundary in
+            // an alert; a file drop must not interrupt with one, so the partial
+            // application is at least visible in diagnostics instead of silent.
+            Log.settings.info(
+                "Applied a workspace recipe on drop; its custom canvas size stays CLI-only")
+        }
         return resolved
     }
 

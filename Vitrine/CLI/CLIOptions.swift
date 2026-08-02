@@ -379,7 +379,9 @@ struct CLIOptions: Equatable {
 
     /// Bounds each custom logical canvas dimension to keep a 3× render below
     /// 6,144 pixels per axis while covering every built-in destination preset.
-    static let canvasDimensionRange = 64...2_048
+    /// One limit, shared with the portable recipe contract, so the two surfaces cannot
+    /// drift: a canvas a recipe validates is exactly a canvas `--canvas-size` accepts.
+    static let canvasDimensionRange = WorkspaceRecipe.CanvasSize.dimensionRange
 
     /// Builds the `SnapshotConfig` to render from these options plus the loaded
     /// source `code`, applying the same precedence the GUI uses so the produced
@@ -404,8 +406,9 @@ struct CLIOptions: Equatable {
             presetID: presetID, themeID: nil, transparent: false)
         if let recipe {
             recipe.style.apply(to: &config, resolvingThemeWith: recipe.theme(withID:))
+            // Only the window title lands here; the header metadata merges once, at the
+            // end of this method, where explicit CLI flags take precedence per field.
             config.windowTitle = recipe.metadata.windowTitle ?? config.windowTitle
-            config.metadata = recipe.metadata.header
         }
         resolvedStylePreset?.style.apply(to: &config)
         config = config.styled(presetID: nil, themeID: themeID, transparent: transparent)

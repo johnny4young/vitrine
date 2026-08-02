@@ -101,6 +101,12 @@ struct ComparisonBoardEditorView: View {
                         .interpolation(.high)
                         .frame(width: size.width * scale, height: size.height * scale)
                         .shadow(color: .black.opacity(0.28), radius: 24, y: 18)
+                } else if draft.isValid {
+                    // A valid board with no preview yet is simply still rendering
+                    // (the debounce, or the first pass after the window opened) —
+                    // claiming it "needs complete labels" here would be false.
+                    ProgressView()
+                        .controlSize(.large)
                 } else {
                     ContentUnavailableView(
                         "Board needs complete labels",
@@ -238,27 +244,23 @@ struct ComparisonBoardEditorView: View {
     }
 
     private func saveBoard() {
-        do {
-            let format = settings.export.format
-            let payload = ExportManager.encodedPayload(
-                format,
-                png: { try? renderedBoard().cgImage },
-                pdf: {
-                    guard
-                        let image = try? draft.compose(
-                            scale: 1, profile: settings.export.colorProfile)
-                    else { return nil }
-                    return ExportManager.pdfData(from: image.cgImage)
-                })
-            guard let payload else {
-                feedback(boardFailure)
-                return
-            }
-            if let outcome = ExportFeedback.saveOutcome(
-                ExportManager.saveToFile(payload: payload, suggestedName: "vitrine-comparison"))
-            {
-                feedback(outcome)
-            }
+        let payload = ExportManager.encodedPayload(
+            settings.export.format,
+            png: { try? renderedBoard().cgImage },
+            // The PDF is a raster page, so it embeds the same export-scale render the
+            // PNG path saves — a format switch must not silently drop resolution to 1×.
+            pdf: {
+                guard let image = try? renderedBoard() else { return nil }
+                return ExportManager.pdfData(from: image.cgImage)
+            })
+        guard let payload else {
+            feedback(boardFailure)
+            return
+        }
+        if let outcome = ExportFeedback.saveOutcome(
+            ExportManager.saveToFile(payload: payload, suggestedName: "vitrine-comparison"))
+        {
+            feedback(outcome)
         }
     }
 
