@@ -12,35 +12,71 @@ can never drift.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-02
+
+Vitrine 1.0 is the first stable release of the complete local capture workflow: create a
+single polished image from the menu bar, keep it synchronized with an explicitly opened
+file, reuse a portable visual recipe across a workspace and the CLI, or turn several
+finished captures into one comparison board. The release keeps those workflows local,
+explicit, and understandable after the image leaves the Mac.
+
 ### Added
 
-- Added portable, versioned workspace recipes that bundle deterministic style,
-  metadata, output defaults, and an optional custom theme without storing source,
-  workspace, or output paths.
-- Added explicit CLI recipe consumption through `--recipe`, plus stateless
-  `recipe validate` and `recipe show` inspection commands. Recipes are never discovered
-  implicitly, and explicit CLI flags continue to take precedence.
-- Added app-side recipe export and machine-local folder associations in Settings.
-  Associations use read-only security-scoped bookmarks, apply only after an explicit
-  source-file drop, prefer the most-specific folder, and never enter the portable file.
-- Added session-only living snapshots in the editor. An explicitly selected source file
-  refreshes automatically after saves while the editor is clean; if local edits diverge,
-  Vitrine waits for an explicit reload instead of overwriting them. File access ends when
-  the watcher or editor window closes and is never persisted.
-- Added comparison boards for two to four recent captures. Recents now provides an explicit,
-  ordered selection mode and a session-only editor for captions, layout, reordering, copy,
-  file export, and the Share Sheet. Boards retain rendered pixels only and never preserve
-  source paths or references into capture history.
+- **Portable workspace recipes.** Export the current style, safe header metadata, output
+  defaults, and an optional custom theme into a versioned JSON document with no source,
+  workspace, output, history, or credential paths. The app can associate that recipe with
+  a folder through a machine-local read-only bookmark, but only an explicitly dropped
+  source file triggers matching; Vitrine never scans the repository.
+- **Deterministic recipe automation.** The CLI accepts one explicitly named recipe through
+  `--recipe` and exposes PRO-free `recipe validate` and `recipe show` inspection commands.
+  Resolution is predictable: built-in defaults, destination sizing, recipe values, a
+  named built-in style preset, and finally explicit CLI flags.
+- **Session-only living snapshots.** Open one source file from the editor and a clean
+  document refreshes after saves. If local edits exist, Vitrine presents **Reload** and
+  **Keep** instead of overwriting work. The watcher, permission, and source URL are never
+  restored after the editor closes.
+- **Comparison boards.** Select two to four items from Recents in a visible order, then
+  edit captions, details, item order, and Auto/Row/Column/Grid layout in a dedicated
+  editor. Copy, save, or share the final board; its temporary draft retains rendered
+  pixels rather than source paths or capture-history references.
+- **A dedicated CLI documentation site.** The new bilingual `/cli` page explains
+  installation, licensing, every command, practical Git/terminal/recipe/batch workflows,
+  common workarounds, and the complete searchable option catalog with copyable examples.
 
-### Documentation
+### Changed
 
-- Added real-build screenshots and focused guides for living snapshots, workspace
-  recipes, and comparison boards. The website now gives each workflow a visual example
-  and marks unreleased capabilities as such.
-- Clarified the website and README around the shipped language catalog, URL and HTML
-  capture boundaries, network use, PRO pricing, and direct-download CLI installation.
-- Added a runnable CLI orientation that separates metadata commands from PRO-gated
-  rendering and explains Homebrew, DMG, source-build, and App Store distribution paths.
+- **The README now teaches the CLI by intent.** Installation channels, the PRO boundary,
+  a first render, the command model, and everyday recipes now come before the full web
+  reference instead of presenting newcomers with one uninterrupted flag catalog.
+- **New workflows have real visual evidence.** README and the website show real-build
+  screenshots of living-file conflict handling, explicit recipe inspection and local
+  folder association, ordered comparison selection, and the comparison-board editor.
+- **Public product claims match the shipped boundaries.** The documented language count,
+  URL versus pasted-HTML behavior, network use, direct-download CLI installation, PRO
+  price, and channel differences now align with the current build.
+
+### Fixed
+
+- **Comparison previews cannot remain stuck on an indeterminate spinner.** Rendering,
+  ready, invalid, and failed states are explicit, and a compositor failure now produces
+  a localized error while preserving the last good preview when appropriate.
+- **Comparison export quality is stable across formats.** PNG, HEIC, AVIF, and raster-PDF
+  encoding share one exporter and honor the scale captured by the board draft instead of
+  silently drifting with later app settings.
+- **Recipe diagnostics point to the actual invalid field.** A strict structural pass
+  rejects unknown keys with complete paths while typed decoding keeps actionable enum and
+  value failures.
+- **Visual tours remain opt-in.** Screenshot UI tests skip when no destination directory
+  is supplied, preventing release and PR CI from accidentally executing evidence tours.
+
+### Security
+
+- Workspace recipes exclude file-system paths, credentials, capture history, and output
+  destinations by construction; custom themes remain embedded portable values.
+- Local folder associations are stored separately as read-only security-scoped bookmarks,
+  and recipe application never performs implicit discovery or repository scanning.
+- Comparison drafts and living snapshots remain window-scoped, with no persistent source
+  reference after their owning window closes.
 
 ## [0.25.5] - 2026-08-01
 
@@ -913,7 +949,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v0.25.5...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/johnny4young/vitrine/compare/v0.25.5...v1.0.0
 [0.25.5]: https://github.com/johnny4young/vitrine/compare/v0.25.4...v0.25.5
 [0.25.4]: https://github.com/johnny4young/vitrine/compare/v0.25.3...v0.25.4
 [0.25.3]: https://github.com/johnny4young/vitrine/compare/v0.25.2...v0.25.3

@@ -1,21 +1,39 @@
-<nav>
+---
+import type { Locale } from '~/i18n/content';
+
+interface Props {
+  locale?: Locale;
+  page?: 'home' | 'cli';
+}
+
+const { locale = 'en', page = 'home' } = Astro.props;
+const spanish = locale === 'es';
+const home = spanish ? '/es' : '/';
+const cli = spanish ? '/es/cli' : '/cli';
+const labels = spanish
+  ? { bench: 'Estilos', features: 'Funciones', changelog: 'Cambios', pricing: 'Precio', download: 'Descargar', language: 'Idioma', appearance: 'Apariencia', light: 'Claro', dark: 'Oscuro' }
+  : { bench: 'Style bench', features: 'Features', changelog: 'Changelog', pricing: 'Pricing', download: 'Download', language: 'Language', appearance: 'Appearance', light: 'Light', dark: 'Dark' };
+---
+
+<nav aria-label={spanish ? 'Navegación principal' : 'Primary navigation'}>
   <div class="wrap">
-    <a class="brand" href="#top"><img src="/vitrine-icon.png" alt="">Vitrine</a>
+    <a class="brand" href={`${home}#top`}><img src="/vitrine-icon.png" alt="">Vitrine</a>
     <div class="links">
-      <a class="navlink" href="#bench" data-i18n="nav.bench">Style bench</a>
-      <a class="navlink" href="#story" data-i18n="nav.features">Features</a>
-      <a class="navlink" href="#whats-new" data-i18n="nav.changelog">Changelog</a>
-      <a class="navlink" href="#pro" data-i18n="nav.pricing">Pricing</a>
+      <a class="navlink" href={`${home}#bench`} data-i18n="nav.bench">{labels.bench}</a>
+      <a class="navlink" href={`${home}#story`} data-i18n="nav.features">{labels.features}</a>
+      <a class="navlink" href={`${home}#whats-new`} data-i18n="nav.changelog">{labels.changelog}</a>
+      <a class="navlink" href={`${home}#pro`} data-i18n="nav.pricing">{labels.pricing}</a>
+      <a class:list={['navlink', 'nav-cli', { active: page === 'cli' }]} href={cli} aria-current={page === 'cli' ? 'page' : undefined}>CLI</a>
       <a class="navlink" href="https://github.com/johnny4young/vitrine">GitHub</a>
-      <div class="lang" role="group" aria-label="Language">
-        <button id="set-en" class="active" aria-label="English" aria-pressed="true">EN</button>
-        <button id="set-es" aria-label="Español" aria-pressed="false">ES</button>
+      <div class="lang" role="group" aria-label={labels.language}>
+        <button id="set-en" class:list={{ active: !spanish }} aria-label="English" aria-pressed={!spanish} data-target={page === 'cli' ? '/cli' : '/'}>EN</button>
+        <button id="set-es" class:list={{ active: spanish }} aria-label="Español" aria-pressed={spanish} data-target={page === 'cli' ? '/es/cli' : '/es'}>ES</button>
       </div>
-      <div class="appearance" role="group" aria-label="Appearance">
-        <button id="set-light" class="active" aria-label="Light" aria-pressed="true" title="Light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"></path></svg></button>
-        <button id="set-dark" aria-label="Dark" aria-pressed="false" title="Dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.2A8 8 0 0 1 9.8 4 7.2 7.2 0 1 0 20 14.2Z"></path></svg></button>
+      <div class="appearance" role="group" aria-label={labels.appearance}>
+        <button id="set-light" class="active" aria-label={labels.light} aria-pressed="true" title={labels.light}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"></path></svg></button>
+        <button id="set-dark" aria-label={labels.dark} aria-pressed="false" title={labels.dark}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.2A8 8 0 0 1 9.8 4 7.2 7.2 0 1 0 20 14.2Z"></path></svg></button>
       </div>
-      <a class="btn btn-primary" data-download href="/download" style="padding:8px 14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M7.5 10l4.5 4.5L16.5 10M5 19.5h14"></path></svg><span data-i18n="nav.download">Download</span></a>
+      <a class="btn btn-primary" data-download href="/download" style="padding:8px 14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M7.5 10l4.5 4.5L16.5 10M5 19.5h14"></path></svg><span data-i18n="nav.download">{labels.download}</span></a>
     </div>
   </div>
 </nav>
