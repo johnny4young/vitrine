@@ -26,6 +26,10 @@ nonisolated enum CLIError: Error, Equatable {
     case incompatibleOptions(String)
     /// The input source file could not be read.
     case inputUnreadable(path: String)
+    /// The explicitly named workspace recipe could not be read as a regular file.
+    case recipeUnreadable(path: String)
+    /// The recipe document was readable but failed schema or value validation.
+    case invalidRecipe(String)
     /// The input file decoded but is not text (likely a binary file).
     case inputNotText(path: String)
     /// The requested local Git diff could not be generated without exposing raw Git output.
@@ -61,7 +65,7 @@ nonisolated enum CLIError: Error, Equatable {
         case .helpRequested:
             CLIUsage.text
         case .unknownCommand(let command):
-            "Unknown command \"\(command)\". The commands are \"render\", \"multi-size\", \"batch\", \"list\", \"shell-init\", and \"version\"."
+            "Unknown command \"\(command)\". The commands are \"render\", \"multi-size\", \"batch\", \"recipe\", \"list\", \"shell-init\", and \"version\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
         case .missingValue(let flag):
@@ -74,6 +78,10 @@ nonisolated enum CLIError: Error, Equatable {
             message
         case .inputUnreadable(let path):
             "Could not read the input file at \"\(path)\"."
+        case .recipeUnreadable(let path):
+            "Could not read the workspace recipe at \"\(path)\"."
+        case .invalidRecipe(let message):
+            message
         case .inputNotText(let path):
             "The input file at \"\(path)\" is not text."
         case .gitDiffFailed:

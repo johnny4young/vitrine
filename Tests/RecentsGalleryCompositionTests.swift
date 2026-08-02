@@ -19,6 +19,7 @@ struct RecentsGalleryCompositionTests {
     private final class NavigationSpy {
         var editorPresentationCount = 0
         var loadedConfigs: [SnapshotConfig] = []
+        var comparisonBoards: [[Capture]] = []
 
         var navigation: RecentsGalleryNavigation {
             RecentsGalleryNavigation(
@@ -27,6 +28,9 @@ struct RecentsGalleryCompositionTests {
                 },
                 loadPrimaryEditor: { [weak self] config in
                     self?.loadedConfigs.append(config)
+                },
+                presentComparisonBoard: { [weak self] captures in
+                    self?.comparisonBoards.append(captures)
                 })
         }
     }
@@ -49,6 +53,11 @@ struct RecentsGalleryCompositionTests {
         root.feedback(expectedFeedback)
         root.navigation.showEditor()
         root.navigation.loadIntoPrimaryEditor(config)
+        let captures = [
+            Capture(code: "before", languageID: "swift", themeID: "one-dark"),
+            Capture(code: "after", languageID: "swift", themeID: "one-dark"),
+        ]
+        root.navigation.showComparisonBoard(captures)
 
         #expect(controller.environment === environment)
         #expect(root.environment === environment)
@@ -57,6 +66,7 @@ struct RecentsGalleryCompositionTests {
         #expect(display.feedback == [expectedFeedback])
         #expect(navigation.editorPresentationCount == 1)
         #expect(navigation.loadedConfigs.map(\.code) == ["print(\"recents\")"])
+        #expect(navigation.comparisonBoards.map { $0.map(\.code) } == [["before", "after"]])
     }
 
     @Test func galleryViewContainsNoProcessGlobalCompositionLookups() throws {

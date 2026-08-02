@@ -396,6 +396,7 @@ schemes:
       #   - VITRINE_RECORD_GOLDENS  → golden-image recorder (`make record-goldens`)
       #   - VITRINE_GENERATE_GALLERY → launch-gallery generator (`make gallery`)
       #   - VITRINE_RECORD_SOCIAL_CARD → social-card golden recorder
+      #   - VITRINE_RECORD_COMPARISON_BOARD → comparison-board evidence recorder
       environmentVariables:
         - variable: VITRINE_RECORD_GOLDENS
           value: $(VITRINE_RECORD_GOLDENS)
@@ -405,6 +406,9 @@ schemes:
           isEnabled: true
         - variable: VITRINE_RECORD_SOCIAL_CARD
           value: $(VITRINE_RECORD_SOCIAL_CARD)
+          isEnabled: true
+        - variable: VITRINE_RECORD_COMPARISON_BOARD
+          value: $(VITRINE_RECORD_COMPARISON_BOARD)
           isEnabled: true
         - variable: VITRINE_REVIEW_SHOTS
           value: $(VITRINE_REVIEW_SHOTS)
@@ -434,3 +438,9 @@ schemes:
       region: US
       targets:
         - VitrineUITests
+      # Forward the opt-in screenshot directory through a build-setting macro. Xcode
+      # does not pass arbitrary shell environment values into the UI-test runner.
+      environmentVariables:
+        - variable: VITRINE_SCREENSHOT_DIR
+          value: $(VITRINE_SCREENSHOT_DIR)
+          isEnabled: true

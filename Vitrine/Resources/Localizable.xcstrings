@@ -8821,6 +8821,1041 @@
           }
         }
       }
+    },
+    "Add…" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar…"
+          }
+        }
+      }
+    },
+    "Apply a recipe when you explicitly drop a file from a folder" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar una receta cuando sueltas explícitamente un archivo de una carpeta"
+          }
+        }
+      }
+    },
+    "Apply the selected recipe to Vitrine's default style and export settings." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar la receta seleccionada al estilo predeterminado y a los ajustes de exportación de Vitrine."
+          }
+        }
+      }
+    },
+    "Apply to Default" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar al predeterminado"
+          }
+        }
+      }
+    },
+    "Associate" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociar"
+          }
+        }
+      }
+    },
+    "Association" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación"
+          }
+        }
+      }
+    },
+    "Association Not Saved" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación no guardada"
+          }
+        }
+      }
+    },
+    "Association Removed" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación eliminada"
+          }
+        }
+      }
+    },
+    "Association Saved" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación guardada"
+          }
+        }
+      }
+    },
+    "Associations stay on this Mac as security-scoped bookmarks. Recipe files remain portable and path-free." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las asociaciones permanecen en este Mac como marcadores con ámbito de seguridad. Los archivos de receta siguen siendo portátiles y no contienen rutas."
+          }
+        }
+      }
+    },
+    "Choose Workspace" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir espacio de trabajo"
+          }
+        }
+      }
+    },
+    "Choose Workspace Recipe" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir receta de espacio de trabajo"
+          }
+        }
+      }
+    },
+    "Choose an association…" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir una asociación…"
+          }
+        }
+      }
+    },
+    "Choose one folder and one existing Vitrine recipe file." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una carpeta y un archivo de receta de Vitrine existente."
+          }
+        }
+      }
+    },
+    "Choose the folder or repository whose explicitly dropped files should use one recipe." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige la carpeta o el repositorio cuyos archivos soltados explícitamente deben usar una receta."
+          }
+        }
+      }
+    },
+    "Choose the portable Vitrine recipe to apply when you explicitly drop a file from that workspace." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige la receta portátil de Vitrine que se aplicará cuando sueltes explícitamente un archivo de ese espacio de trabajo."
+          }
+        }
+      }
+    },
+    "Export Current…" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar actual…"
+          }
+        }
+      }
+    },
+    "Export Workspace Recipe" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar receta de espacio de trabajo"
+          }
+        }
+      }
+    },
+    "Export style, safe metadata, and output defaults without source or workspace paths." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar el estilo, los metadatos seguros y los valores de salida predeterminados sin rutas de origen ni del espacio de trabajo."
+          }
+        }
+      }
+    },
+    "Export the current default for vitrine --recipe" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar la configuración predeterminada actual para vitrine --recipe"
+          }
+        }
+      }
+    },
+    "Manage" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Administrar"
+          }
+        }
+      }
+    },
+    "Name this portable recipe, then choose where to save it. The file never includes a workspace path or source text." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asigna un nombre a esta receta portátil y elige dónde guardarla. El archivo nunca incluye una ruta del espacio de trabajo ni el texto de origen."
+          }
+        }
+      }
+    },
+    "No repository scanning or implicit recipe discovery" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin análisis del repositorio ni detección implícita de recetas"
+          }
+        }
+      }
+    },
+    "Portable file" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivo portátil"
+          }
+        }
+      }
+    },
+    "Recipe Applied" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta aplicada"
+          }
+        }
+      }
+    },
+    "Recipe Not Applied" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta no aplicada"
+          }
+        }
+      }
+    },
+    "Recipe Not Exported" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta no exportada"
+          }
+        }
+      }
+    },
+    "Remove only the local association. The recipe file is not deleted." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar solo la asociación local. El archivo de receta no se elimina."
+          }
+        }
+      }
+    },
+    "Save a portable style and output recipe. It contains no workspace path, source text, output path, history, or credentials." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda una receta portátil de estilo y salida. No contiene rutas del espacio de trabajo, texto de origen, rutas de salida, historial ni credenciales."
+          }
+        }
+      }
+    },
+    "Save as:" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar como:"
+          }
+        }
+      }
+    },
+    "The local association was removed. No folder or recipe file was deleted." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se eliminó la asociación local. No se eliminó ninguna carpeta ni archivo de receta."
+          }
+        }
+      }
+    },
+    "The workspace recipe could not be exported." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo exportar la receta del espacio de trabajo."
+          }
+        }
+      }
+    },
+    "This cannot be undone. Your recent languages, saved presets, custom themes, workspace recipe associations, and Brand Kit are also cleared." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta acción no se puede deshacer. También se borrarán tus idiomas recientes, ajustes preestablecidos guardados, temas personalizados, asociaciones de recetas de espacios de trabajo y el kit de marca."
+          }
+        }
+      }
+    },
+    "Vitrine could not load the associated recipe." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo cargar la receta asociada."
+          }
+        }
+      }
+    },
+    "Vitrine could not save that workspace recipe association." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo guardar esa asociación de receta de espacio de trabajo."
+          }
+        }
+      }
+    },
+    "Workspace recipe association" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asociación de receta de espacio de trabajo"
+          }
+        }
+      }
+    },
+    "Workspace recipes" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recetas de espacios de trabajo"
+          }
+        }
+      }
+    },
+    "Workspace Recipe" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta de espacio de trabajo"
+          }
+        }
+      }
+    },
+    "%@ — %@" : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "Files you explicitly drop from %@ can now use %@." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos que sueltes explícitamente desde %1$@ ahora pueden usar %2$@."
+          }
+        }
+      }
+    },
+    "Applied %@ to Vitrine's default." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aplicó %1$@ a la configuración predeterminada de Vitrine."
+          }
+        }
+      }
+    },
+    "Applied %@ to Vitrine's default. Its custom canvas size remains available to the CLI but is not applied by the app." : {
+      "comment" : "Workspace recipes UI.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aplicó %1$@ a la configuración predeterminada de Vitrine. Su tamaño de lienzo personalizado sigue disponible para la CLI, pero la app no lo aplica."
+          }
+        }
+      }
+    },
+    "A saved change is waiting because this editor has local edits" : {
+      "comment" : "Help for a living snapshot whose disk version cannot replace local edits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hay un cambio guardado pendiente porque este editor tiene cambios locales"
+          }
+        }
+      }
+    },
+    "Choose one source file. Vitrine will refresh clean editor content when that file is saved, only while this window remains open." : {
+      "comment" : "Privacy and behavior explanation in the living snapshot file picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un archivo de código fuente. Vitrine actualizará el contenido limpio del editor cuando se guarde el archivo, solo mientras esta ventana permanezca abierta."
+          }
+        }
+      }
+    },
+    "Keep" : {
+      "comment" : "Action that preserves local editor changes instead of loading a changed file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservar"
+          }
+        }
+      }
+    },
+    "Live file" : {
+      "comment" : "Accessibility label for the living snapshot menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivo en vivo"
+          }
+        }
+      }
+    },
+    "Live file unavailable." : {
+      "comment" : "Inline status shown when a watched source file cannot currently be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo en vivo no está disponible."
+          }
+        }
+      }
+    },
+    "Open & Watch" : {
+      "comment" : "Confirmation button in the living snapshot file picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir y observar"
+          }
+        }
+      }
+    },
+    "Open a Live File" : {
+      "comment" : "Title of the living snapshot file picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir un archivo en vivo"
+          }
+        }
+      }
+    },
+    "Open a file and refresh this editor when it is saved" : {
+      "comment" : "Help for the inactive living snapshot menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir un archivo y actualizar este editor al guardarlo"
+          }
+        }
+      }
+    },
+    "Open Different Live File…" : {
+      "comment" : "Menu action that replaces the current living snapshot source.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir otro archivo en vivo…"
+          }
+        }
+      }
+    },
+    "Open Live File…" : {
+      "comment" : "Menu action that explicitly selects a session-only watched file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir archivo en vivo…"
+          }
+        }
+      }
+    },
+    "Paste code or terminal output, or open a live file to turn it into a beautiful image." : {
+      "comment" : "Empty editor guidance including the living snapshot entry point.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega código o una salida de terminal, o abre un archivo en vivo para convertirlo en una imagen atractiva."
+          }
+        }
+      }
+    },
+    "Reload" : {
+      "comment" : "Short action that replaces local editor text with the saved file version.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recargar"
+          }
+        }
+      }
+    },
+    "Reload from File" : {
+      "comment" : "Menu action that explicitly reloads a living snapshot source.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recargar desde el archivo"
+          }
+        }
+      }
+    },
+    "Replace & Watch" : {
+      "comment" : "Destructive confirmation that replaces editor text and starts a living snapshot.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reemplazar y observar"
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "comment" : "Short action that retries reading an unavailable living snapshot source.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        }
+      }
+    },
+    "Saved file changed." : {
+      "comment" : "Inline status shown when a disk change is waiting behind local edits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo guardado cambió."
+          }
+        }
+      }
+    },
+    "Stop Watching" : {
+      "comment" : "Menu action that ends a living snapshot session and releases file access.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dejar de observar"
+          }
+        }
+      }
+    },
+    "The live file is temporarily unavailable" : {
+      "comment" : "Help for a living snapshot source that cannot currently be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo en vivo no está disponible temporalmente"
+          }
+        }
+      }
+    },
+    "This editor already has code. Replace it and watch the selected file for saved changes?" : {
+      "comment" : "Confirmation before replacing editor content and starting a living snapshot.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este editor ya tiene código. ¿Quieres reemplazarlo y observar los cambios guardados en el archivo seleccionado?"
+          }
+        }
+      }
+    },
+    "Watching %@" : {
+      "comment" : "Living snapshot menu label followed by the source filename.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Observando %@"
+          }
+        }
+      }
+    },
+    "Watching %@ for saved changes" : {
+      "comment" : "Help followed by the living snapshot source filename.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Observando %@ para detectar cambios guardados"
+          }
+        }
+      }
+    }
+,
+    "Add a short label to every capture to preview it." : {
+      "comment" : "Comparison-board empty-state guidance.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade una etiqueta breve a cada captura para obtener una vista previa."
+          }
+        }
+      }
+    },
+    "Add this capture to the comparison" : {
+      "comment" : "Help for an available capture while selecting a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir esta captura a la comparación"
+          }
+        }
+      }
+    },
+    "A board can contain up to four captures" : {
+      "comment" : "Help shown when the comparison selection has reached its limit.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un tablero puede contener hasta cuatro capturas"
+          }
+        }
+      }
+    },
+    "After" : {
+      "comment" : "Default label for the second item in a two-capture comparison.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Después"
+          }
+        }
+      }
+    },
+    "Before" : {
+      "comment" : "Default label for the first item in a two-capture comparison.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes"
+          }
+        }
+      }
+    },
+    "Board needs complete labels" : {
+      "comment" : "Comparison-board empty-state title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El tablero necesita etiquetas completas"
+          }
+        }
+      }
+    },
+    "Board preview" : {
+      "comment" : "Accessibility label for the comparison-board preview stage.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa del tablero"
+          }
+        }
+      }
+    },
+    "Capture %lld" : {
+      "comment" : "Position label for an item in a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura %lld"
+          }
+        }
+      }
+    },
+    "Captures" : {
+      "comment" : "Inspector section title for comparison-board items.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas"
+          }
+        }
+      }
+    },
+    "Column" : {
+      "comment" : "Comparison-board vertical layout choice.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Columna"
+          }
+        }
+      }
+    },
+    "Compare" : {
+      "comment" : "Recents toolbar action that starts comparison selection.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparar"
+          }
+        }
+      }
+    },
+    "Comparison Board" : {
+      "comment" : "Title for the comparison-board editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tablero comparativo"
+          }
+        }
+      }
+    },
+    "Copy board" : {
+      "comment" : "Primary action that copies a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar tablero"
+          }
+        }
+      }
+    },
+    "Couldn't prepare the selected captures" : {
+      "comment" : "Failure shown when selected captures cannot open in a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron preparar las capturas seleccionadas"
+          }
+        }
+      }
+    },
+    "Couldn't render the comparison board" : {
+      "comment" : "Failure shown when a comparison board cannot be rendered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo renderizar el tablero comparativo"
+          }
+        }
+      }
+    },
+    "Create Board (%lld)" : {
+      "comment" : "Recents action showing the current comparison selection count.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear tablero (%lld)"
+          }
+        }
+      }
+    },
+    "Grid" : {
+      "comment" : "Comparison-board grid layout choice.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuadrícula"
+          }
+        }
+      }
+    },
+    "Label" : {
+      "comment" : "Editable comparison-board item label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Etiqueta"
+          }
+        }
+      }
+    },
+    "Layout" : {
+      "comment" : "Inspector title and picker label for comparison-board layout.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disposición"
+          }
+        }
+      }
+    },
+    "Move capture earlier" : {
+      "comment" : "Action that moves a comparison item toward the start.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover captura hacia el inicio"
+          }
+        }
+      }
+    },
+    "Move capture later" : {
+      "comment" : "Action that moves a comparison item toward the end.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover captura hacia el final"
+          }
+        }
+      }
+    },
+    "Optional detail" : {
+      "comment" : "Editable optional detail for a comparison-board item.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detalle opcional"
+          }
+        }
+      }
+    },
+    "Remove capture from board" : {
+      "comment" : "Action that removes one item from a comparison board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar captura del tablero"
+          }
+        }
+      }
+    },
+    "Remove this capture from the selection" : {
+      "comment" : "Help for a selected capture in Recents comparison mode.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar esta captura de la selección"
+          }
+        }
+      }
+    },
+    "Render and copy the board to the clipboard" : {
+      "comment" : "Help for the comparison-board copy action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza y copia el tablero al portapapeles"
+          }
+        }
+      }
+    },
+    "Render and save the board as a file" : {
+      "comment" : "Help for the comparison-board save action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza y guarda el tablero como archivo"
+          }
+        }
+      }
+    },
+    "Row" : {
+      "comment" : "Comparison-board horizontal layout choice.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fila"
+          }
+        }
+      }
+    },
+    "Select two to four captures for one comparison board" : {
+      "comment" : "Help for the Recents comparison action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selecciona de dos a cuatro capturas para un tablero comparativo"
+          }
+        }
+      }
+    },
+    "Selected" : {
+      "comment" : "Accessibility state for a capture selected for comparison.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleccionada"
+          }
+        }
+      }
+    },
+    "Selected %lld" : {
+      "comment" : "Accessibility label for a capture selection badge.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selección %lld"
+          }
+        }
+      }
+    },
+    "Share the rendered board" : {
+      "comment" : "Help for the comparison-board share action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparte el tablero renderizado"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

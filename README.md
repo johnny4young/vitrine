@@ -127,6 +127,8 @@ light and dark.
 | --- | --- | --- |
 | <img src="site/public/screenshots/welcome.png" alt="Onboarding quick-start: numbered steps, a live sample card you can restyle, and the privacy promise" width="250"> | <img src="site/public/screenshots/settings.png" alt="Settings — Style pane with the pinned live preview, sub-tabs, and theme and font chip pickers" width="250"> | <img src="site/public/screenshots/menu-bar.png" alt="The menu-bar panel: gradient capture action, recent captures, theme chips, and explicit command rows" width="250"> |
 
+<img src="site/public/screenshots/comparison-board.png" alt="The comparison-board editor with two recent captures, editable Before and After captions, layout choices, and copy, save, and share actions" width="760">
+
 </div>
 
 ### The exports
@@ -175,6 +177,28 @@ global hotkey (`⇧⌘S`). It reads the clipboard, detects **code, terminal outp
 URL**, and picks the matching workflow — one-step Quick mode for code using your saved
 style, or the editor when you want to fine-tune. Pasted HTML opens the dedicated Web
 Snapshot editor.
+
+### Live files
+
+Open **Live file** from the editor's code header to connect one explicitly selected
+source file for that window. Clean editor content refreshes after the file is saved; if
+you have typed locally, Vitrine shows **Reload** and **Keep** instead of replacing
+your work. The connection is session-only: ordinary drops stay one-time imports, no
+folder is scanned, no bookmark is stored, and access ends when you stop watching or
+close the window. See [Living snapshots](docs/LIVING-SNAPSHOTS.md).
+
+### Comparison boards
+
+Open **Recents**, choose **Compare**, then select two to four captures in the order you
+want to explain them. Vitrine renders each selection once into a temporary board where
+you can edit labels and details, reorder or remove items, and choose automatic, row,
+column, or grid layout before copying, saving, or sharing the finished image. The board
+is session-only and path-free: it stores neither source-file locations nor references
+back into Recents. See [Comparison boards](docs/COMPARISON-BOARDS.md).
+
+| Ordered selection in Recents | Session-only board editor |
+| --- | --- |
+| <img src="site/public/screenshots/comparison-selection.png" alt="Recents in comparison mode with two captures selected in explicit order" width="380"> | <img src="site/public/screenshots/comparison-board.png" alt="Comparison-board editor with Before and After captions, layout controls, and export actions" width="380"> |
 
 ### Beautify any image
 
@@ -229,12 +253,12 @@ Shortcuts and App Intents.
 
 | Area | What you get |
 | --- | --- |
-| **Capture** | Menu-bar app, global hotkey, clipboard detection (code · terminal · URL), Quick and editor modes; pasted HTML uses Web Snapshot |
+| **Capture** | Menu-bar app, global hotkey, clipboard detection (code · terminal · URL), Quick and editor modes, explicit session-only live files; pasted HTML uses Web Snapshot |
 | **Beautify** | Drop/paste any image → frame it (macOS window · browser · MacBook · iPhone) with auto-matched chrome |
 | **Style** | 13 themes + custom, 33 syntax languages plus Terminal and Plain Text modes, fonts, gradient & image backgrounds, focus mode, diff coloring |
 | **Annotate** | Arrows (straight · curved), lines, boxes, text, highlighter, blur, counters, spotlight, measure, stickers — with undo/redo |
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
-| **Export** | Retina PNG/PDF/HEIC, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets |
+| **Export** | Retina PNG/PDF/HEIC, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets, 2–4 capture comparison boards |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
 | **PRO** | Brand Kit watermark · multi-size one-pass export · automation (`vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
 
@@ -247,6 +271,7 @@ Shortcuts and App Intents.
 - 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact and adds a compact project, current Git branch when available, and command header so the image keeps its context when shared (`--no-context` restores an output-only capture). It also supports **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included — and a copyable-text sidecar can ship the output as text alongside the image. `vpane` *(PRO)* images a tmux pane's visible contents without re-running anything, and dropping an **asciinema** recording (`.cast`) replays it into the same renderer. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
 - 🖼️ **Beautify any image** — drop, paste, or quick-capture any screenshot (not just code) and render it on the same backgrounds, padding, and shadow, optionally wrapped in a macOS-window, browser, or MacBook / iPhone device frame. The frame chrome auto-tints to the image's top-edge color so it blends in (Light/Dark are manual overrides). Browser and device frames are PRO.
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
+- 🔄 **Living snapshots** — explicitly open one source file from the editor and its clean content refreshes after saves. Local edits are never overwritten: a changed disk version waits for **Reload** or **Keep**. The watcher is scoped to that window and is not restored or persisted. → [`docs/LIVING-SNAPSHOTS.md`](docs/LIVING-SNAPSHOTS.md).
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
 - ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight and curved), lines, rectangles, text callouts, a highlighter, blur/redaction boxes, numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
 - 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
@@ -262,7 +287,7 @@ Shortcuts and App Intents.
 - 🌐 **Web snapshots** — render pasted **HTML** offline, or capture a **webpage** (direct-download build) after a first-use privacy disclosure. The requested page is fetched and rendered locally in WebKit; there is no remote screenshot service. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
 - ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
-- 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar.
+- 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar. Enter **Compare** to select two to four captures in order and compose a labelled, path-free board for before/after reviews or release notes. → [`docs/COMPARISON-BOARDS.md`](docs/COMPARISON-BOARDS.md).
 - 🚀 **First-run quick-start**, offline in-app **Help**, and a **What's New** window on upgrades.
 - ⚡ **Shortcuts / App Intents** *(PRO)* — render a code image or open the editor from Shortcuts and Spotlight.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
@@ -300,6 +325,15 @@ Vitrine is private by design, and that promise does not soften as the product gr
   local and on-device — no account, and no network at all on the App Store build (it ships
   sandboxed *without* the network entitlement). Rendering needs no Screen Recording or
   Accessibility permission.
+- **Living snapshots are explicit and temporary.** Vitrine reads only the source file
+  you choose, never scans its folder, never writes back to it, and retains no bookmark.
+  The watcher and its security-scoped access end when you stop it or close the editor
+  window. The loaded text remains an ordinary editor draft, but the file connection is
+  never restored on a later launch.
+- **Comparison boards retain pixels, not sources.** A board is created only from captures
+  you explicitly select in Recents. Its draft contains the rendered images and the labels
+  you see, with no file paths, security bookmarks, source text, or persistent reference to
+  capture history; closing the board discards that draft.
 - **URL capture: the requested webpage loads locally.** When a copied URL is captured,
   Vitrine loads that webpage **locally in WebKit on your Mac** and turns it into an image
   on-device. There is **no remote screenshot service** — the URL is never sent off your
@@ -399,9 +433,10 @@ make cli
 CLI="$(xcodebuild -project Vitrine.xcodeproj -scheme VitrineCLI -showBuildSettings \
   | awk '/ BUILT_PRODUCTS_DIR / {print $3 "/vitrine-cli"; exit}')"
 
-# These metadata commands work without a PRO activation.
+# These inspection commands work without a PRO activation.
 "$CLI" --version
 "$CLI" list languages --json
+"$CLI" recipe validate docs/examples/documentation.vitrine-recipe.json
 
 # Optional local Debug render (the bypass is absent from release binaries).
 VITRINE_PRO_UNLOCK=1 "$CLI" render README.md --out /tmp/vitrine-readme.png
@@ -458,6 +493,10 @@ vitrine render diff.patch --out review.png --language diff --highlight-lines 3,7
   --focus-lines --diff-bands
 vitrine render secrets.swift --out share.png --redact-secrets --sidecars all
 vitrine render changelog.md --out release.png --title "Release notes" --language-badge
+vitrine recipe validate docs/examples/documentation.vitrine-recipe.json
+vitrine recipe show docs/examples/documentation.vitrine-recipe.json --json
+vitrine render README.md --out readme.png \
+  --recipe docs/examples/documentation.vitrine-recipe.json
 vitrine render snippet.swift --out card.png --sidecars all
 cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
 vitrine render input.swift --out image.png --quiet --no-overwrite
@@ -517,7 +556,8 @@ prints `render`/`batch` success summaries as structured JSON (mutually exclusive
 `--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
 `--redact-secrets`, `--focus-lines`, `--no-focus-lines`, `--diff-bands`,
 `--no-diff-bands`), and the header controls
-(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`) override
+(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`,
+`--no-language-badge`) and `--recipe <path>` override
 individual choices. For single-file `render`, a known
 `--out` extension (`.png`, `.pdf`, `.heic`, or `.avif`) selects the matching format when
 `--format` is omitted; if both are present, they must agree so scripts never write
@@ -617,6 +657,27 @@ and dimensions when available. When a batch contains same-stem files such as
 destination sizing and before explicit style flags. Run `vitrine list style-presets`
 to discover deterministic ids; user presets are intentionally excluded so CI does not
 depend on machine-local settings.
+`--recipe <path>` reads one explicitly named, versioned workspace recipe. A recipe can
+carry the same portable style snapshot used by the app, optional header metadata,
+output defaults, and one embedded custom theme. It never contains an input path,
+workspace path, output path, history, or credentials, and the CLI never searches parent
+folders, repositories, or app storage for one. Resolution is deterministic: built-in
+defaults, destination sizing, recipe values, a named built-in style preset, then explicit
+CLI flags. Use `vitrine recipe validate <path> [--json]` for a lightweight validity check
+or `vitrine recipe show <path> [--json]` for the canonical portable contents. See
+[Workspace recipes](docs/WORKSPACE-RECIPES.md) for the schema, privacy boundary, and a
+runnable tracked example.
+The app exports the same format from **Settings ▸ Library ▸ Workspace recipes** and can
+retain an explicit folder-to-recipe association as read-only security-scoped bookmarks.
+Only source files you deliberately drop into the editor are matched; Vitrine never
+scans a repository or discovers a recipe implicitly. Exact custom canvas sizes remain
+CLI-only, while the app applies the recipe's other supported style, metadata, and output
+defaults.
+
+| Explicit CLI inspection | Machine-local folder association |
+| --- | --- |
+| <img src="site/public/screenshots/workspace-recipe-cli.png" alt="Vitrine CLI validating and displaying an explicitly named workspace recipe" width="380"> | <img src="site/public/screenshots/workspace-recipes.png" alt="Workspace recipe export and local association controls in Settings Library" width="380"> |
+
 `--canvas-size <width>x<height>` pins an exact logical canvas between 64 and 2048 points
 per axis, overriding a destination preset's dimensions while retaining its style and
 recommended scale. The explicit `--scale` multiplier determines final pixel dimensions.
@@ -634,7 +695,7 @@ the local render catalogs so scripts can discover valid choices without scraping
 `vitrine list all --json` returns one object containing every catalog.
 `vitrine --version` / `vitrine version --json` reports the installed CLI version before
 AppKit initialization or the PRO render gate, which makes CI install checks cheap. The
-`list` commands likewise inspect the local catalogs without rendering.
+`list` and `recipe` inspection commands likewise work without rendering.
 
 The CLI ships **inside the app bundle**
 (`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)
@@ -700,15 +761,20 @@ in [`docs/`](docs/):
 - [**docs/ACTIVATION.md**](docs/ACTIVATION.md) — direct-download PRO activation runbook: keypair generation, build-time key injection, and the Lemon Squeezy product.
 - [**docs/RENDERING.md**](docs/RENDERING.md) — how every supported input reaches the local render and export pipeline.
 - [**docs/SCREEN-CAPTURE.md**](docs/SCREEN-CAPTURE.md) — why arbitrary screen/window capture is outside the product boundary.
+- [**docs/LIVING-SNAPSHOTS.md**](docs/LIVING-SNAPSHOTS.md) — explicit session-only file refresh, conflict behavior, and privacy boundary.
+- [**docs/WORKSPACE-RECIPES.md**](docs/WORKSPACE-RECIPES.md) — portable recipe schema, explicit CLI usage, local folder associations, and privacy boundaries.
+- [**docs/COMPARISON-BOARDS.md**](docs/COMPARISON-BOARDS.md) — ordered Recents selection, board editing, export behavior, and session-only data ownership.
 - [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md) — every entitlement with its reason, user-facing behavior, and App Store impact by channel.
 - [**docs/DESIGN-QA.md**](docs/DESIGN-QA.md) — the generated launch gallery and the design-QA process.
 - [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized DMG, Homebrew cask, release workflow.
 
 ## Status
 
-🟢 **v0.25.5 is the latest published release.** Everything under [Features](#features) is built and
-driven by one design-token system ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in
-light and dark. It is covered by a Swift Testing unit suite plus XCTest UI smokes; CI
+🟢 **v0.25.5 is the latest published release.** Everything under [Features](#features) is
+implemented in the current repository and driven by one design-token system
+([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in light and dark. Items under
+**Unreleased** are not in the published 0.25.5 download yet. The product is covered by a
+Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
 (which pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md)).
 The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release

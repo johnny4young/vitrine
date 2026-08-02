@@ -12,6 +12,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
         assertExists(element("language-picker", in: app), in: app)
         assertExists(element("format-button", in: app), in: app)
+        assertExists(element("living-snapshot-menu", in: app), in: app)
         // The editor's destination preset picker lives in the inspector's
         // Output disclosure in the current designed layout; open it first. It keeps
         // its own identifier so it never collides with the Settings panes'
@@ -586,6 +587,24 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testLibraryPaneExposesWorkspaceRecipeControls() {
+        continueAfterFailure = false
+        let app = launch(arguments: ["--open-settings"])
+        defer { app.terminate() }
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-library", in: app).click()
+        assertExists(element("settings-library-pane", in: app), in: app, timeout: 3)
+        assertExists(element("workspace-recipe-picker", in: app), in: app, timeout: 3)
+        assertHittable(
+            "add-workspace-recipe-button", in: app,
+            "The workspace association action should be reachable")
+        assertHittable(
+            "export-workspace-recipe-button", in: app,
+            "The portable recipe export action should be reachable")
+    }
+
+    @MainActor
     func testStylePaneShowsFreeBrandKitDragHandle() {
         continueAfterFailure = false
         let app = launch(
@@ -755,6 +774,77 @@ final class VitrineUITests: XCTestCase {
         let rendered = try XCTUnwrap(representation, "Recent preset did not copy a PNG")
         XCTAssertEqual(rendered.pixelsWide, 1200)
         XCTAssertEqual(rendered.pixelsHigh, 630)
+    }
+
+    @MainActor
+    func testRecentsCreatesAnEditableComparisonBoard() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        XCTAssertEqual(cards.count, 3)
+        assertHittable(
+            "recents-compare-button", in: app,
+            "Recents should expose the explicit comparison selection mode")
+        let search = element("recents-search-field", in: app)
+        search.click()
+        search.typeText("Rust")
+        element("recents-compare-button", in: app).click()
+        XCTAssertEqual(search.value as? String, "Rust")
+        XCTAssertFalse(search.isEnabled)
+        element("recents-compare-cancel", in: app).click()
+        XCTAssertEqual(search.value as? String, "Rust")
+        search.click()
+        search.typeKey("a", modifierFlags: .command)
+        search.typeKey(.delete, modifierFlags: [])
+        element("recents-compare-button", in: app).click()
+
+        cards.element(boundBy: 0).click()
+        cards.element(boundBy: 1).click()
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(
+                identifier: "recents-comparison-selection"
+            ).count, 2)
+
+        assertHittable(
+            "recents-create-comparison-button", in: app,
+            "Two selected captures should enable board creation")
+        element("recents-create-comparison-button", in: app).click()
+
+        assertExists(element("comparison-board-window", in: app), in: app, timeout: 8)
+        assertExists(element("comparison-board-preview-stage", in: app), in: app, timeout: 5)
+        assertExists(element("comparison-board-inspector", in: app), in: app)
+        assertHittable(
+            "comparison-board-copy-button", in: app,
+            "A valid board should expose its primary copy action")
+
+        let firstLabel = element("comparison-board-label-0", in: app)
+        assertExists(firstLabel, in: app)
+        firstLabel.click()
+        firstLabel.typeKey("a", modifierFlags: .command)
+        firstLabel.typeText("Original")
+        XCTAssertEqual(firstLabel.value as? String, "Original")
+
+        element("comparison-board-copy-button", in: app).click()
+        let copyDeadline = Date().addingTimeInterval(6)
+        var copied: NSBitmapImageRep?
+        repeat {
+            if let data = pasteboard.data(forType: .png) {
+                copied = NSBitmapImageRep(data: data)
+            }
+            if copied != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < copyDeadline
+        let board = try XCTUnwrap(copied, "Comparison board did not copy a PNG")
+        XCTAssertGreaterThan(board.pixelsWide, 1_000)
+        XCTAssertGreaterThan(board.pixelsHigh, 500)
     }
 
     @MainActor

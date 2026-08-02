@@ -25,6 +25,7 @@ extension EditorView {
                     Text(lineCountLabel)
                         .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
                         .foregroundStyle(VitrineTokens.Text.tertiary)
+                    livingSnapshotMenu
                     formatButton
                 }
             }
@@ -34,30 +35,33 @@ extension EditorView {
             if settings.config.usesImageContent {
                 imagePanel
             } else {
-                CodeEditorView(
-                    text: $settings.documentCode,
-                    language: settings.config.language,
-                    theme: settings.config.theme,
-                    fontName: settings.config.fontName,
-                    fontSize: settings.config.fontSize,
-                    fontLigatures: settings.config.fontLigatures,
-                    reindentOnPaste: environment.appSettings.reindentOnPaste,
-                    onReplaceAllPaste: { settings.config.clearContentMarks() }
-                )
-                .overlay {
-                    if settings.documentCode.isEmpty {
-                        // The overlay is non-interactive except for its "Paste Code" button
-                        // (see EmptyStateView): a click anywhere else falls through to the
-                        // text view so the caret can land and the user can start typing —
-                        // matching the "paste or type" affordance the copy promises.
-                        EmptyStateView(
-                            title: "Nothing to show yet",
-                            message:
-                                "Paste code or terminal output, or drop a file, to turn it into a beautiful image.",
-                            actionTitle: "Paste Code",
-                            action: pasteFromClipboard,
-                            compact: true
-                        )
+                VStack(spacing: 0) {
+                    livingSnapshotNotice
+                    CodeEditorView(
+                        text: $settings.documentCode,
+                        language: settings.config.language,
+                        theme: settings.config.theme,
+                        fontName: settings.config.fontName,
+                        fontSize: settings.config.fontSize,
+                        fontLigatures: settings.config.fontLigatures,
+                        reindentOnPaste: environment.appSettings.reindentOnPaste,
+                        onReplaceAllPaste: { settings.config.clearContentMarks() }
+                    )
+                    .overlay {
+                        if settings.documentCode.isEmpty {
+                            // The overlay is non-interactive except for its "Paste Code" button
+                            // (see EmptyStateView): a click anywhere else falls through to the
+                            // text view so the caret can land and the user can start typing —
+                            // matching the "paste or type" affordance the copy promises.
+                            EmptyStateView(
+                                title: "Nothing to show yet",
+                                message:
+                                    "Paste code or terminal output, or open a live file to turn it into a beautiful image.",
+                                actionTitle: "Paste Code",
+                                action: pasteFromClipboard,
+                                compact: true
+                            )
+                        }
                     }
                 }
             }
@@ -77,6 +81,121 @@ extension EditorView {
         }
         .overlay { dropAffordance }
         .accessibilityContainerIdentifier("editor-drop-target")
+    }
+
+    /// Compact access to the explicit, session-only file connection. The menu stays in
+    /// the code header so a live source is visible without crowding the primary export
+    /// toolbar, and it remains available from an empty editor as the entry point.
+    var livingSnapshotMenu: some View {
+        Menu {
+            if session.livingSnapshot.isActive {
+                Text("Watching \(session.livingSnapshot.displayName)")
+                Button("Reload from File") {
+                    session.livingSnapshot.reloadFromDisk()
+                }
+                Button("Open Different Live File…") {
+                    openLivingSnapshotFile()
+                }
+                Divider()
+                Button("Stop Watching", role: .destructive) {
+                    session.livingSnapshot.stop()
+                }
+            } else {
+                Button("Open Live File…") {
+                    openLivingSnapshotFile()
+                }
+            }
+        } label: {
+            Image(systemName: livingSnapshotSystemImage)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(livingSnapshotColor)
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(livingSnapshotHelp)
+        .accessibilityLabel("Live file")
+        .accessibilityIdentifier("living-snapshot-menu")
+    }
+
+    @ViewBuilder var livingSnapshotNotice: some View {
+        switch session.livingSnapshot.status {
+        case .changeAvailable:
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.arrow.triangle.2.circlepath")
+                    .foregroundStyle(.orange)
+                Text("Saved file changed.")
+                    .font(.system(size: VitrineTokens.FontSize.caption, weight: .medium))
+                Spacer(minLength: 2)
+                Button("Reload") {
+                    session.livingSnapshot.reloadFromDisk()
+                }
+                Button("Keep") {
+                    session.livingSnapshot.keepEditing()
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Color.orange.opacity(0.12))
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(VitrineTokens.Line.border).frame(height: Brand.Stroke.hairline)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("living-snapshot-change-notice")
+        case .unavailable:
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text("Live file unavailable.")
+                    .font(.system(size: VitrineTokens.FontSize.caption, weight: .medium))
+                Spacer(minLength: 2)
+                Button("Retry") {
+                    session.livingSnapshot.reloadFromDisk()
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Color.orange.opacity(0.12))
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(VitrineTokens.Line.border).frame(height: Brand.Stroke.hairline)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("living-snapshot-unavailable-notice")
+        case .inactive, .watching:
+            EmptyView()
+        }
+    }
+
+    var livingSnapshotSystemImage: String {
+        switch session.livingSnapshot.status {
+        case .inactive: "doc.badge.plus"
+        case .watching: "arrow.triangle.2.circlepath.circle.fill"
+        case .changeAvailable: "exclamationmark.arrow.triangle.2.circlepath"
+        case .unavailable: "exclamationmark.triangle.fill"
+        }
+    }
+
+    var livingSnapshotColor: Color {
+        switch session.livingSnapshot.status {
+        case .watching: VitrineTokens.Accent.system
+        case .changeAvailable, .unavailable: .orange
+        case .inactive: VitrineTokens.Text.tertiary
+        }
+    }
+
+    var livingSnapshotHelp: String {
+        switch session.livingSnapshot.status {
+        case .inactive:
+            String(localized: "Open a file and refresh this editor when it is saved")
+        case .watching:
+            String(localized: "Watching \(session.livingSnapshot.displayName) for saved changes")
+        case .changeAvailable:
+            String(localized: "A saved change is waiting because this editor has local edits")
+        case .unavailable:
+            String(localized: "The live file is temporarily unavailable")
+        }
     }
 
     /// Replaces the code editor when a beautified image is the content: a thumbnail of the

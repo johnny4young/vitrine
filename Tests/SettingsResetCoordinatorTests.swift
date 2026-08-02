@@ -13,6 +13,14 @@ struct SettingsResetCoordinatorTests {
         let presets = PresetStore(defaults: defaults)
         let themes = CustomThemeStore(defaults: defaults)
         let brandKit = BrandKitStore(defaults: defaults)
+        let association = WorkspaceRecipeAssociation(
+            id: UUID(), workspaceBookmark: Data([1]), recipeBookmark: Data([2]),
+            workspaceName: "Example", recipeFilename: "docs.json")
+        defaults.set(
+            try JSONEncoder().encode([association]),
+            forKey: WorkspaceRecipeStore.storageKey)
+        let workspaceRecipes = WorkspaceRecipeStore(defaults: defaults)
+        #expect(workspaceRecipes.associations == [association])
 
         settings.treatURLsAsScreenshot = true
         presets.savePreset(named: "Temporary", from: settings.config)
@@ -30,7 +38,8 @@ struct SettingsResetCoordinatorTests {
             settings: settings,
             presets: presets,
             themes: themes,
-            brandKit: brandKit
+            brandKit: brandKit,
+            workspaceRecipes: workspaceRecipes
         ).reset()
 
         #expect(!settings.treatURLsAsScreenshot)
@@ -39,9 +48,11 @@ struct SettingsResetCoordinatorTests {
         #expect(themes.customThemes.isEmpty)
         #expect(brandKit.brandKit == BrandKit())
         #expect(!brandKit.isEnabled)
+        #expect(workspaceRecipes.associations.isEmpty)
         #expect(defaults.data(forKey: PresetStore.storageKey) == nil)
         #expect(defaults.data(forKey: CustomThemeStore.storageKey) == nil)
         #expect(defaults.data(forKey: BrandKitStore.storageKey) == nil)
         #expect(defaults.object(forKey: BrandKitStore.enabledStorageKey) == nil)
+        #expect(defaults.data(forKey: WorkspaceRecipeStore.storageKey) == nil)
     }
 }

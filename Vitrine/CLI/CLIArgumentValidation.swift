@@ -3,6 +3,14 @@ import Foundation
 extension CLIArgumentParser {
     /// Validates option combinations and materializes the immutable command contract.
     mutating func resolvedOptions() throws -> CLIOptions {
+        let recipe = try recipePath.map(CLIRecipeLoader.load(path:))
+        let resolvedPresetID = presetID ?? recipe?.output.destinationPresetID
+        let resolvedCanvasSize = canvasSize ?? recipe?.output.canvasSize?.cgSize
+        let resolvedScale = scale ?? recipe?.output.scale
+        let resolvedProfile = profile ?? recipe?.output.colorProfile ?? .fallback
+        let resolvedLanguageBadge =
+            showLanguageBadge ?? recipe?.metadata.header.showLanguageBadge ?? false
+
         // Alternate source controls, image-input controls, `--copy`, and `--edit` are
         // render/multi-size-only (a batch needs a real input folder).
         if mode == .batch,
@@ -54,9 +62,19 @@ extension CLIArgumentParser {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine multi-size with --preset; use --presets.")
             }
+            if recipe?.output.destinationPresetID != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot use a recipe destination preset with multi-size; use --presets."
+                )
+            }
             if canvasSize != nil || scale != nil {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine multi-size with --canvas-size or --scale; destination presets pin their dimensions."
+                )
+            }
+            if recipe?.output.canvasSize != nil || recipe?.output.scale != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot use recipe canvas-size or scale defaults with multi-size; destination presets pin their dimensions."
                 )
             }
             if imageInputPath != nil {
@@ -233,11 +251,13 @@ extension CLIArgumentParser {
             throw CLIError.incompatibleOptions(
                 "Cannot combine \(mode.rawValue) with --exclude-ext.")
         }
+        let recipeHeaderRequested =
+            recipe?.metadata.windowTitle != nil || recipe?.metadata.header.isEmpty == false
         let metadataHeaderRequested =
-            windowTitle != nil || metadataFilename != nil
-            || metadataTitle != nil || metadataCaption != nil || showLanguageBadge
+            recipeHeaderRequested || windowTitle != nil || metadataFilename != nil
+            || metadataTitle != nil || metadataCaption != nil || showLanguageBadge != nil
         let styleOptionsRequested =
-            stylePresetID != nil || canvasSize != nil || background != nil
+            recipe != nil || stylePresetID != nil || canvasSize != nil || background != nil
             || backgroundImagePath != nil || transparent || fontName != nil
             || fontLigatures != nil
             || fontSize != nil || padding != nil
@@ -256,6 +276,11 @@ extension CLIArgumentParser {
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
 
         if imageInputPath != nil {
+            if recipe != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --image with --recipe; workspace recipes configure code captures."
+                )
+            }
             if openInEditor {
                 throw CLIError.incompatibleOptions("Cannot combine --image with --edit.")
             }
@@ -263,7 +288,7 @@ extension CLIArgumentParser {
                 themeID != nil || languageID != nil || fontName != nil || fontLigatures != nil
                 || fontSize != nil || terminalColumns != nil || wrapColumns != nil || formatCode
                 || metadataFilename != nil || metadataTitle != nil
-                || metadataCaption != nil || showLanguageBadge || showLineNumbers != nil
+                || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
                 || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
                 || textSidecar || markdownSidecar || htmlSidecar
@@ -355,7 +380,8 @@ extension CLIArgumentParser {
         }
 
         let resolvedFormat = try resolveFormat(
-            explicitFormat, command: mode, outputPath: resolvedOutput)
+            explicitFormat, fallback: recipe?.output.format, command: mode,
+            outputPath: resolvedOutput)
         let watermarkFreePosition: CGPoint? =
             if let watermarkX, let watermarkY {
                 CGPoint(x: watermarkX, y: watermarkY)
@@ -410,11 +436,12 @@ extension CLIArgumentParser {
             outputPath: resolvedOutput,
             themeID: themeID,
             language: languageID.flatMap(Language.init(rawValue:)),
-            presetID: presetID,
+            presetID: resolvedPresetID,
             multiSizePresetIDs: resolvedMultiSizePresetIDs,
             stylePresetID: stylePresetID,
-            canvasSize: canvasSize,
-            scale: scale,
+            recipe: recipe,
+            canvasSize: resolvedCanvasSize,
+            scale: resolvedScale,
             fontName: fontName,
             fontLigatures: fontLigatures,
             fontSize: fontSize,
@@ -425,7 +452,7 @@ extension CLIArgumentParser {
             wrapColumns: wrapColumns,
             formatCode: formatCode,
             format: resolvedFormat,
-            profile: profile,
+            profile: resolvedProfile,
             transparent: transparent,
             background: background,
             backgroundImagePath: backgroundImagePath,
@@ -458,7 +485,7 @@ extension CLIArgumentParser {
             stdinFilename: stdinFilename,
             metadataTitle: metadataTitle,
             metadataCaption: metadataCaption,
-            showLanguageBadge: showLanguageBadge,
+            showLanguageBadge: resolvedLanguageBadge,
             showLineNumbers: showLineNumbers,
             showChrome: showChrome,
             showShadow: showShadow,

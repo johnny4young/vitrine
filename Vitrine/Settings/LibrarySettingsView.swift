@@ -7,10 +7,12 @@ struct LibrarySettingsView: View {
     @Bindable var settings: AppSettings
     var presets: PresetStore
     var themes: CustomThemeStore
+    var workspaceRecipes: WorkspaceRecipeStore
 
     var body: some View {
         SettingsPaneScroll {
             StylePresetsSection(settings: settings, store: presets, themes: themes)
+            WorkspaceRecipeSettingsSection(settings: settings, store: workspaceRecipes)
             CustomThemesSection(settings: settings, store: themes)
         }
         .accessibilityIdentifier("settings-library-pane")

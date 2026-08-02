@@ -9,6 +9,7 @@ struct GeneralSettingsView: View {
     var presets: PresetStore
     var themes: CustomThemeStore
     var brandKit: BrandKitStore
+    var workspaceRecipes: WorkspaceRecipeStore
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var showResetConfirmation = false
 
@@ -185,14 +186,15 @@ struct GeneralSettingsView: View {
                     settings: settings,
                     presets: presets,
                     themes: themes,
-                    brandKit: brandKit
+                    brandKit: brandKit,
+                    workspaceRecipes: workspaceRecipes
                 ).reset()
                 launchAtLogin = LaunchAtLogin.isEnabled
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This cannot be undone. Your recent languages, saved presets, custom themes, and Brand Kit are also cleared."
+                "This cannot be undone. Your recent languages, saved presets, custom themes, workspace recipe associations, and Brand Kit are also cleared."
             )
         }
     }

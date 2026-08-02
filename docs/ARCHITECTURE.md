@@ -145,6 +145,38 @@ fixed number formatting and attribute order), so the same template always produc
 identical bytes. This serializer is intentionally **not** wired up as a general
 export choice for the arbitrary code canvas; it exists for the template path only.
 
+## Comparison-board composition
+
+The reusable comparison core accepts two to four finished `RenderedAsset` values and
+produces one color-normalized `RenderedAsset`. `ComparisonBoard` is deliberately
+path-free: each item contains rendered pixels plus a short user-visible label and
+optional detail, never a source URL, security bookmark, or identifier into Recents.
+Composing or exporting a board therefore cannot trigger an implicit file read.
+
+`ComparisonBoardComposer` resolves row and column counts before rendering and gives
+every item an equal, aspect-fit image area. Automatic layout keeps two or three items
+in one row and uses a two-by-two grid for four; explicit horizontal, vertical, and grid
+layouts are deterministic alternatives. The finished image goes through the same color
+normalization and PNG/PDF encoders as every other capture. This generic core remains
+separate from `ResponsiveBoardComposer`, whose variable-width cards and viewport labels
+are specialized for web snapshots.
+
+The app workflow keeps that core behind two explicit state boundaries. Recents enters an
+ephemeral selection mode backed by `ComparisonBoardSelection`, which owns ordered capture
+identifiers only until the user cancels or creates a board.
+`ComparisonBoardWindowController` then renders the selected captures once and hands
+finished pixels with fresh draft-local identities to a `ComparisonBoardDraft`; later
+caption, layout, and reorder edits never reread Recents or a source document. That one
+render uses and retains the active output scale, preventing later Settings changes from
+enlarging one-times source pixels. The controller injects app settings, feedback, and
+sharing into `ComparisonBoardEditorView`, so the SwiftUI editor does not discover
+process-global stores, HUDs, windows, or share services. `ComparisonBoardPreview` keeps
+rendering, validation, and renderer-failure states distinct while retaining the last good
+image during a debounced refresh. File encoding belongs to `ComparisonBoardExporter`,
+which renders once through the draft's captured scale and sends the resulting pixels
+through the shared raster/PDF encoders. Closing the window releases the entire draft and
+preview, and no board state enters `UserDefaults` or restoration.
+
 ## Command-line renderer
 
 `vitrine render input.swift --out image.png` renders code to an image from the
@@ -178,6 +210,43 @@ boundaries introduces a second render implementation. Because the inputs and pip
 are identical, a CLI render is byte-for-byte identical to the app's export for the same
 options — a focused output-contract test asserts exactly that.
 
+**Portable workspace recipes.** `WorkspaceRecipeDocument` is a versioned JSON envelope
+over the existing `StyleSnapshot` model. It can add portable header metadata, output
+defaults, and one embedded custom theme, but it cannot encode source, workspace, or
+output paths. The CLI accepts a recipe only through an explicit `--recipe <path>`;
+`CLIRecipeLoader` requires a regular file, caps it at 1 MB, and never searches parent
+folders, repositories, or app storage. `CLIRecipeCommand` provides stateless
+`recipe validate` and `recipe show` inspection without creating a machine-local registry.
+Configuration resolution stays deterministic: built-in defaults, destination sizing,
+recipe values, an explicit built-in style preset, then explicit CLI flags. Recipe
+inspection runs before AppKit initialization and the PRO render gate. Machine-local
+workspace-to-recipe associations stay at an app-owned boundary and are never serialized
+back into the portable document. `WorkspaceRecipeStore`, constructed by
+`AppEnvironment`, persists only read-only security-scoped folder and recipe bookmarks
+plus leaf display names. It resolves the most-specific associated ancestor only when a
+source file is explicitly dropped, then `AppSettings.applyWorkspaceRecipe` preserves the
+document and applies every app-representable style, metadata, destination, and output
+value. A custom recipe canvas remains CLI-only and is reported as such by Settings.
+
+**Session-only living snapshots.** `LivingSnapshotSession` belongs to one
+`EditorSession`, not to `AppEnvironment` or a persistent store. The **Live file** picker
+is the only entry point: it selects one source file, applies the same bounded text loader
+used by drag and drop, and retains that file's security scope only while the editor
+window remains open. A 650 ms task compares file size, modification date, resource
+identifier, and filesystem file/volume numbers; including inode identity detects editors
+that save by atomically replacing the file instead of mutating its original inode.
+Content is read only after the stamp changes.
+
+The session records the last text it applied. When the editor still equals that baseline,
+a saved version replaces it and clears content-bound marks through the normal
+`LoadedFile.apply` policy. When the user has edited locally, the disk version becomes a
+visible pending change and requires **Reload** or **Keep**; it never overwrites the
+draft in the background. A transient read failure does not advance the observed stamp,
+so the same atomic save remains retryable. Replacing the document through another input,
+loading an image, closing the window, restoring a draft, or stopping the watcher releases
+the scope and cancels polling. The URL, watcher, and security scope are excluded from
+window restoration and app defaults; ordinary file drops remain one-time imports.
+
 **Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
 suites cover entitlement, version and catalog contracts, argument parsing and
 validation, configuration, rendering, and output behavior. Batch argument contracts
@@ -200,7 +269,8 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
 `--diff-bands`, `--no-diff-bands`), and the header controls (`--window-title`,
-`--filename`, `--title`, `--caption`, `--language-badge`) override individual choices.
+`--filename`, `--title`, `--caption`, `--language-badge`, `--no-language-badge`) and an
+explicit `--recipe <path>` override individual choices.
 Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation fails
 loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
 same deterministic `SecretScanner` as the editor and merges detected rows with any
@@ -495,6 +565,7 @@ Vitrine/
 │   ├── EditorView+Toolbar/Stage/Annotations/DragDrop.swift
 │   │                         # focused editor regions and interactions
 │   ├── CodeEditorView.swift   # NSViewRepresentable over NSTextView
+│   ├── LivingSnapshotSession.swift # volatile explicit-file refresh + conflict policy
 │   ├── CodeFormatter.swift    # stable tidy/trim/dedent facade
 │   ├── CodeFormatter+JSON.swift
 │   ├── CodeFormatter+Markup.swift
@@ -516,8 +587,17 @@ Vitrine/
 │   ├── ShareManager.swift     # NSSharingService
 │   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
 │   ├── CarouselExportView.swift # multi-slide export sheet
+│   ├── ComparisonBoard.swift # path-free validated 2–4 item value
+│   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
+│   ├── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
 │   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
 │   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset
+├── Comparison/
+│   ├── ComparisonBoardSelection.swift # ordered ephemeral Recents selection
+│   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
+│   ├── ComparisonBoardPreview.swift # debounced preview phase and failure state
+│   ├── ComparisonBoardEditorView.swift # preview, layout, captions, export controls
+│   └── ComparisonBoardPresentation.swift # injected share operation
 ├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
 │   ├── ANSIParser.swift       # escape-sequence tokenizer
 │   ├── TerminalGrid.swift     # VT screen model (CSI dispatch, scrollback, alt screen)
@@ -543,6 +623,7 @@ Vitrine/
 │   ├── StyleSnapshot.swift / StylePreset.swift
 │   │                         # portable presentation state + reusable catalog entries
 │   ├── StylePresetDocument.swift # validated JSON exchange envelope
+│   ├── WorkspaceRecipe.swift # path-free style/metadata/output exchange envelope
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
@@ -554,6 +635,8 @@ Vitrine/
 │   ├── CLIArgumentValues.swift # catalog, range, color, and geometry conversion
 │   ├── CLIError.swift / CLIUsage.swift # process errors and help contract
 │   ├── CLICatalog.swift       # local theme/language/preset discovery for automation
+│   ├── CLIRecipeLoader.swift  # explicit bounded recipe file loading
+│   ├── CLIRecipeCommand.swift # stateless recipe validate/show inspection
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
 │   ├── CLIRenderer.swift      # stable render/multi-size/edit/batch operation facade
 │   ├── CLIRenderResources.swift # invocation-scoped backgrounds and watermark logos
@@ -587,7 +670,7 @@ Vitrine/
 ├── Rendering/                 # shared Renderer / RenderedAsset abstractions
 ├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
 ├── State/                     # RecentsStore + pure window-state model
-├── Recents/ · Updates/ · Help/ # recents; SoftwareUpdater; Help/What's New + navigation
+├── Recents/ · Updates/ · Help/ # recents selection/navigation; updates; Help/What's New
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
 │   └── Log.swift              # os.Logger per subsystem + render signposts
@@ -769,11 +852,13 @@ process-global stores or construct presentation windows.
 
 `RecentsGalleryWindowController` owns the equivalent boundary for capture history. Its
 SwiftUI root receives the retained `AppEnvironment`, an editor-navigation operation, and
-a transient-feedback operation. Gallery filtering and mutation therefore observe the
-controller's Recents store and settings, while editor handoff and copy outcomes remain
-testable without discovering app-owned windows or the HUD. Window ownership lives in a
-separate source file so the gallery view stays a store-and-action surface rather than a
-second composition root.
+a transient-feedback operation. The navigation value also routes an explicit ordered
+capture selection to `ComparisonBoardWindowController`; neither the gallery nor the board
+editor reaches that lifecycle owner directly. Gallery filtering and mutation therefore
+observe the controller's Recents store and settings, while editor handoff and copy outcomes
+remain testable without discovering app-owned windows or the HUD. Window ownership lives
+in a separate source file so the gallery view stays a store-and-action surface rather than
+a second composition root.
 
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }

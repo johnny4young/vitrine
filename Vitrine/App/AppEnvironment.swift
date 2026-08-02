@@ -30,12 +30,13 @@ final class AppEnvironment {
     let recents: RecentsStore
     let customThemes: CustomThemeStore
     let presets: PresetStore
+    let workspaceRecipes: WorkspaceRecipeStore
     private let defaults: UserDefaults
 
     /// Builds the whole store graph over `defaults` in dependency order: the entitlement
     /// and Brand Kit first, then `AppSettings` (which takes them), then the independent
-    /// catalog/recents stores. Nothing here reads a `.shared`, so constructing the root
-    /// never re-enters itself.
+    /// catalog, recents, and machine-local association stores. Nothing here reads a
+    /// `.shared`, so constructing the root never re-enters itself.
     init(
         defaults: UserDefaults = AppDefaults.current,
         entitlements: Entitlements? = nil
@@ -49,6 +50,7 @@ final class AppEnvironment {
         recents = RecentsStore(defaults: defaults)
         customThemes = CustomThemeStore(defaults: defaults)
         presets = PresetStore(defaults: defaults)
+        workspaceRecipes = WorkspaceRecipeStore(defaults: defaults)
     }
 
     /// Creates one editor window's volatile settings from this graph. The session keeps
