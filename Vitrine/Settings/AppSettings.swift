@@ -371,6 +371,54 @@ final class AppSettings {
         Log.settings.info("Applied a style preset")
     }
 
+    // MARK: - Workspace recipes
+
+    /// Captures the current portable presentation and output defaults without source
+    /// text, paths, annotations, or other document-specific state.
+    func workspaceRecipe(named name: String) -> WorkspaceRecipe {
+        WorkspaceRecipe(
+            name: name,
+            style: StyleSnapshot(capturing: config),
+            customTheme: StoredCustomTheme(config.theme),
+            metadata: WorkspaceRecipe.Metadata(
+                windowTitle: config.windowTitle, header: config.metadata),
+            output: WorkspaceRecipe.Output(
+                destinationPresetID: selectedPresetID,
+                scale: export.scale,
+                format: export.format,
+                colorProfile: export.colorProfile))
+    }
+
+    /// Applies every app-representable recipe value while preserving the current
+    /// source, language, and content-bound marks. Exact custom canvas dimensions are
+    /// intentionally CLI-only until the app has a first-class custom-canvas model.
+    ///
+    /// - Returns: `true` when the recipe carried a custom canvas size that the app
+    ///   could not adopt. Callers can surface that boundary instead of silently
+    ///   implying full parity.
+    @discardableResult
+    func applyWorkspaceRecipe(_ recipe: WorkspaceRecipe) -> Bool {
+        isApplyingPreset = true
+        defer { isApplyingPreset = false }
+
+        var updated = config
+        let destination = recipe.output.destinationPresetID.flatMap(ExportPreset.preset(withID:))
+        destination?.apply(to: &updated)
+        recipe.style.apply(to: &updated, resolvingThemeWith: recipe.theme(withID:))
+        if let windowTitle = recipe.metadata.windowTitle {
+            updated.windowTitle = windowTitle
+        }
+        updated.metadata = recipe.metadata.header
+        config = updated
+        selectedPresetID = destination?.id
+
+        if let scale = recipe.output.scale ?? destination?.scale { export.scale = scale }
+        if let format = recipe.output.format { export.format = format }
+        if let profile = recipe.output.colorProfile { export.colorProfile = profile }
+        Log.settings.info("Applied a workspace recipe")
+        return recipe.output.canvasSize != nil
+    }
+
     /// Applies the next curated built-in look without altering document content.
     /// Returning the chosen preset keeps feedback and automation deterministic.
     @discardableResult

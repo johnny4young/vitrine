@@ -12,8 +12,31 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- Added portable, versioned workspace recipes that bundle deterministic style,
+  metadata, output defaults, and an optional custom theme without storing source,
+  workspace, or output paths.
+- Added explicit CLI recipe consumption through `--recipe`, plus stateless
+  `recipe validate` and `recipe show` inspection commands. Recipes are never discovered
+  implicitly, and explicit CLI flags continue to take precedence.
+- Added app-side recipe export and machine-local folder associations in Settings.
+  Associations use read-only security-scoped bookmarks, apply only after an explicit
+  source-file drop, prefer the most-specific folder, and never enter the portable file.
+- Added session-only living snapshots in the editor. An explicitly selected source file
+  refreshes automatically after saves while the editor is clean; if local edits diverge,
+  Vitrine waits for an explicit reload instead of overwriting them. File access ends when
+  the watcher or editor window closes and is never persisted.
+- Added comparison boards for two to four recent captures. Recents now provides an explicit,
+  ordered selection mode and a session-only editor for captions, layout, reordering, copy,
+  file export, and the Share Sheet. Boards retain rendered pixels only and never preserve
+  source paths or references into capture history.
+
 ### Documentation
 
+- Added real-build screenshots and focused guides for living snapshots, workspace
+  recipes, and comparison boards. The website now gives each workflow a visual example
+  and marks unreleased capabilities as such.
 - Clarified the website and README around the shipped language catalog, URL and HTML
   capture boundaries, network use, PRO pricing, and direct-download CLI installation.
 - Added a runnable CLI orientation that separates metadata commands from PRO-gated

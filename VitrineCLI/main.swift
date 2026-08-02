@@ -97,6 +97,40 @@ if rawArguments.first == "list" {
     }
 }
 
+// Recipe inspection is also local metadata work. Keep it outside AppKit and the
+// render entitlement gate so scripts can validate configuration during setup.
+if rawArguments.first == "recipe" {
+    switch CLIRecipeCommand.invocation(for: Array(rawArguments.dropFirst())) {
+    case .help:
+        print(CLIRecipeCommand.usage)
+        exit(0)
+    case .run(let action, let path, let format):
+        do {
+            print(
+                try CLIRecipeCommand.output(action: action, path: path, format: format),
+                terminator: "")
+            exit(0)
+        } catch let error as CLIError {
+            printError("error: " + error.message)
+            exit(error.exitCode)
+        } catch {
+            printError("error: \(error)")
+            exit(1)
+        }
+    case .unknownAction(let action):
+        printError("error: unknown recipe action \"\(action)\".\n\n" + CLIRecipeCommand.usage)
+        exit(2)
+    case .unknownFlag(let flag):
+        printError("error: unknown recipe option \"\(flag)\".\n\n" + CLIRecipeCommand.usage)
+        exit(2)
+    case .extraArguments(let extras):
+        printError(
+            "error: unexpected argument(s) \"\(extras.joined(separator: " "))\" after recipe path.\n\n"
+                + CLIRecipeCommand.usage)
+        exit(2)
+    }
+}
+
 // Bring up the shared application as a background accessory: this initializes AppKit
 // enough for `ImageRenderer`/Highlightr without showing a Dock icon or menu bar.
 let application = NSApplication.shared

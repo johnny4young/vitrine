@@ -28,6 +28,7 @@ struct AppEnvironmentTests {
         #expect(env.recents !== AppEnvironment.shared.recents)
         #expect(env.customThemes !== AppEnvironment.shared.customThemes)
         #expect(env.presets !== AppEnvironment.shared.presets)
+        #expect(env.workspaceRecipes !== AppEnvironment.shared.workspaceRecipes)
         #expect(env.entitlements !== AppEnvironment.shared.entitlements)
     }
 

@@ -436,15 +436,19 @@ extension CLIArgumentParser {
     /// `.pdf` path. If the user passes both `--format` and a known extension, they must
     /// agree so automation never produces misleading artifacts. `batch` writes into a
     /// folder and derives each output extension from the chosen format, so its directory
-    /// name is intentionally ignored here.
+    /// name is intentionally ignored here. A recipe format is a fallback below any
+    /// explicit CLI choice, including a recognized output extension.
     func resolveFormat(
-        _ explicitFormat: ExportFormat?, command: CLIOptions.Command, outputPath: String
+        _ explicitFormat: ExportFormat?, fallback: ExportFormat? = nil,
+        command: CLIOptions.Command, outputPath: String
     ) throws -> ExportFormat {
-        guard command == .render, !outputPath.isEmpty else { return explicitFormat ?? .png }
+        guard command == .render, !outputPath.isEmpty else {
+            return explicitFormat ?? fallback ?? .png
+        }
 
         let outputExtension = URL(fileURLWithPath: outputPath).pathExtension.lowercased()
         guard let extensionFormat = ExportFormat(rawValue: outputExtension) else {
-            return explicitFormat ?? .png
+            return explicitFormat ?? fallback ?? .png
         }
 
         if let explicitFormat {

@@ -136,6 +136,9 @@ struct EditorView: View {
     /// confirmation dialog can apply exactly what was dropped.
     struct PendingDrop {
         var loaded: FileInputLoader.LoadedFile
+        /// Whether the explicit file picker should start a session-only watcher after
+        /// the user confirms replacement. Ordinary drops remain one-time imports.
+        var startsLivingSnapshot = false
 
         /// The dialog title names the source so the choice has context — the
         /// filename for a dropped file, or a generic label for dropped text.
@@ -145,6 +148,18 @@ struct EditorView: View {
             loaded.filename.isEmpty
                 ? String(localized: "Add Dropped Text")
                 : String(localized: "Load “\(loaded.filename)”")
+        }
+
+        var promptMessage: String {
+            startsLivingSnapshot
+                ? String(
+                    localized:
+                        "This editor already has code. Replace it and watch the selected file for saved changes?"
+                )
+                : String(
+                    localized:
+                        "This editor already has code. Replace it with the dropped content, or append to the end?"
+                )
         }
     }
 
@@ -259,16 +274,20 @@ struct EditorView: View {
                 set: { if !$0 { pendingDrop = nil } }),
             titleVisibility: .visible
         ) {
-            // Replacing discards the entire current document, so it is marked
-            // destructive (red) to distinguish it from the safe Append — matching
-            // every other irreversible action in the app.
-            Button("Replace", role: .destructive) { applyDrop(replacing: true) }
-            Button("Append") { applyDrop(replacing: false) }
+            if pendingDrop?.startsLivingSnapshot == true {
+                Button("Replace & Watch", role: .destructive) {
+                    applyDrop(replacing: true)
+                }
+            } else {
+                // Replacing discards the entire current document, so it is marked
+                // destructive (red) to distinguish it from the safe Append — matching
+                // every other irreversible action in the app.
+                Button("Replace", role: .destructive) { applyDrop(replacing: true) }
+                Button("Append") { applyDrop(replacing: false) }
+            }
             Button("Cancel", role: .cancel) { pendingDrop = nil }
         } message: {
-            Text(
-                "This editor already has code. Replace it with the dropped content, or append to the end?"
-            )
+            Text(pendingDrop?.promptMessage ?? "")
         }
     }
 }

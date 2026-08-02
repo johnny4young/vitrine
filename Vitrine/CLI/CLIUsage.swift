@@ -16,6 +16,7 @@ nonisolated enum CLIUsage {
           vitrine render (<input-file> | --stdin | --git-diff <range> | --git-staged) --edit [options]
           vitrine multi-size (<input-file> | --stdin | --git-diff <range> | --git-staged) --out <output-folder> [--presets <ids>] [options]
           vitrine batch <input-folder> --out <output-folder> [options]
+          vitrine recipe <validate|show> <path> [--json]
           vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]
           vitrine --version [--json]
           vitrine version [--json]
@@ -51,6 +52,8 @@ nonisolated enum CLIUsage {
                                  or all (the default). Use `vitrine list presets`.
           --style-preset <id>    Built-in presentation preset. Use
                                  `vitrine list style-presets`.
+          --recipe <path>        Load one explicit Vitrine workspace recipe. The CLI
+                                 never searches parent folders or app storage.
           --canvas-size <WxH>    Exact logical canvas size (64-2048 per axis).
                                  Final pixels are multiplied by --scale.
           --scale <1|2|3>        Export resolution multiplier. Defaults to the app
@@ -140,6 +143,7 @@ nonisolated enum CLIUsage {
           --title <text>         Title shown in the metadata header.
           --caption <text>       Caption shown below the metadata title.
           --language-badge       Show the language badge in the metadata header.
+          --no-language-badge    Hide a language badge enabled by a recipe.
           --line-numbers         Show the line-number gutter.
           --no-line-numbers      Hide the line-number gutter.
           --chrome / --no-chrome Show or hide the rendered window chrome.
