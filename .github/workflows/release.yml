@@ -89,6 +89,9 @@ jobs:
       - name: Install pinned XcodeGen
         run: ./scripts/install-xcodegen.sh
 
+      - name: CHANGELOG matches the tagged version
+        run: make changelog-check
+
       - name: Cache Swift Package Manager
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
@@ -353,7 +356,7 @@ jobs:
             echo "Served at the SUFeedURL in Info.plist; attached to this release as \`appcast.xml\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Signed build-provenance for the DMG (supply-chain posture,  family):
+      # Signed build provenance for the DMG:
       # GitHub's first-party attestation records which workflow run, on which
       # commit, produced these exact bytes. Anyone can verify a download with:
       #   gh attestation verify Vitrine-<version>.dmg --repo <owner>/vitrine
@@ -373,6 +376,32 @@ jobs:
           upload-artifact: false
           upload-release-assets: false
 
+      # Immutable GitHub releases cannot be repaired after publication. Build the public
+      # notes from the reviewed Keep a Changelog section rather than replacing that
+      # narrative with an automatically generated commit list.
+      - name: Prepare curated release notes
+        env:
+          VERSION: ${{ steps.checksum.outputs.version }}
+        run: |
+          set -euo pipefail
+          NOTES_PATH="${RUNNER_TEMP}/release-notes.md"
+          awk -v heading="## [${VERSION}]" '
+            $0 == heading || index($0, heading " - ") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found && !started && $0 == "" { next }
+            found { started = 1; print }
+            END { if (!found) exit 2 }
+          ' CHANGELOG.md > "${NOTES_PATH}"
+          if [ ! -s "${NOTES_PATH}" ] || ! grep -q '^### ' "${NOTES_PATH}"; then
+            echo "::error::CHANGELOG.md has no curated release body for ${VERSION}."
+            exit 1
+          fi
+          {
+            echo "### Curated release notes"
+            echo ""
+            cat "${NOTES_PATH}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
         with:
@@ -382,7 +411,7 @@ jobs:
             dist/*.spdx.json
             dist/vitrine-cask-update.txt
             dist/appcast.xml
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/release-notes.md
 
       # Keep the Homebrew tap in lockstep with the release: regenerate
       # the cask from the repo's source template (packaging/Casks/vitrine.rb,

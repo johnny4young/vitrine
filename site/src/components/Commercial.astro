@@ -1,7 +1,7 @@
 ---
 import { currentVersion } from '~/lib/project';
 
-const releaseVersion = '0.25.5';
+const releaseVersion = '1.0.0';
 
 if (releaseVersion !== currentVersion) {
   throw new Error(
@@ -18,11 +18,12 @@ if (releaseVersion !== currentVersion) {
     <p class="lead" data-i18n="cl.lead">The highlights from the newest Vitrine release, available without waiting for a network request.</p>
     <article class="changelog" data-release-version={releaseVersion}>
       <p class="ver"><span data-i18n="cl.version">Version</span> {releaseVersion}</p>
-      <h3 data-i18n="cl.headline">More dependable exports and feedback</h3>
+      <h3 data-i18n="cl.headline">A complete local workflow, from source to story</h3>
       <ul>
-        <li data-i18n="cl.h1"><strong>Copy feedback stays visible.</strong> Copying a recent image or its source now updates both the menu-bar panel and the transient HUD, including failures.</li>
-        <li data-i18n="cl.h2"><strong>Batch exports verify every output.</strong> Partial multi-size, carousel, and Web Snapshot exports no longer report success or reveal Finder as if the batch were complete.</li>
-        <li data-i18n="cl.h3"><strong>Failed clipboard exports keep the editor open.</strong> Your work remains available so you can retry or save it instead.</li>
+        <li data-i18n="cl.h1"><strong>Living files protect local edits.</strong> An explicitly opened source refreshes after saves, but a local draft always waits for Reload or Keep.</li>
+        <li data-i18n="cl.h2"><strong>Workspace recipes keep style portable.</strong> Export path-free JSON, associate it locally with a folder, or pass it explicitly to the CLI — no repository scan.</li>
+        <li data-i18n="cl.h3"><strong>Comparison boards turn captures into one story.</strong> Order two to four recent images, edit captions and layout, then copy, save, or share.</li>
+        <li data-i18n="cl.h4"><strong>The CLI now has real documentation.</strong> Search every command and option in English or Spanish, with practical Git, terminal, recipe, redaction, and CI examples.</li>
       </ul>
       <a class="more" href="https://github.com/johnny4young/vitrine/blob/main/CHANGELOG.md" data-i18n="cl.more">Read the full changelog →</a>
     </article>

@@ -15,7 +15,7 @@ Optional URL snapshots load the requested page in WebKit on your Mac.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v0.25.5%20shipped-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v1.0.0%20stable-brightgreen.svg)](#status)
 
 </div>
 
@@ -417,301 +417,164 @@ icon — that's intentional (`LSUIElement`).
 
 ## Command-line renderer
 
-The direct-download build ships a `vitrine` CLI that renders code to an image without the
-GUI — handy for docs pipelines and automation. It reuses the app's local render path, so
-output is pixel-identical to the app for the same input and settings. It renders code,
-terminal content, and local images only; it cannot capture URLs or run a hosted renderer,
-and it needs no network, screen recording, or Accessibility.
+The `vitrine` CLI is for the moments when opening a window would interrupt the flow:
+turning a source file into a README image, capturing the diff you are about to review,
+preserving a colored test run, or rebuilding a whole documentation gallery in CI. It
+uses the same renderer, themes, fonts, backgrounds, annotations, and export formats as
+the app, so automation does not create a second visual system.
 
-### Quick start
+**New to the CLI?** Start with the searchable, bilingual
+[**CLI guide and reference**](https://vitrineframe.app/cli). It explains every command
+and option with copyable examples, practical workflows, and troubleshooting.
 
-```bash
-# From a source checkout: generate the project, then build the CLI target.
-make cli
+### Where the CLI comes from
 
-# Locate the Debug binary produced by the build (resources stay beside it).
-CLI="$(xcodebuild -project Vitrine.xcodeproj -scheme VitrineCLI -showBuildSettings \
-  | awk '/ BUILT_PRODUCTS_DIR / {print $3 "/vitrine-cli"; exit}')"
+| Installation | CLI availability |
+| --- | --- |
+| **Homebrew cask** | Installs Vitrine and puts `vitrine` on your `PATH` automatically. |
+| **Signed DMG** | The binary is inside the app. Enable it from **Settings ▸ General ▸ Command-line tool ▸ Install…**. The DMG does **not** add it to your PATH automatically. |
+| **Mac App Store** | Does not include the CLI because App Store apps do not distribute command-line tools on `PATH`. |
+| **Source checkout** | `make cli` builds the development binary in DerivedData, next to its required resources. |
 
-# These inspection commands work without a PRO activation.
-"$CLI" --version
-"$CLI" list languages --json
-"$CLI" recipe validate docs/examples/documentation.vitrine-recipe.json
+Commands that create images require an **activated direct-download PRO license**.
+Inspection commands — `--version`, `list`, and `recipe validate/show` — remain
+available before the render gate, which makes installation and configuration easy to
+check. A Debug source build can use `VITRINE_PRO_UNLOCK=1` for local QA; release builds
+ignore that variable.
 
-# Optional local Debug render (the bypass is absent from release binaries).
-VITRINE_PRO_UNLOCK=1 "$CLI" render README.md --out /tmp/vitrine-readme.png
-```
-
-For an installed direct-download app, Homebrew adds the embedded binary to your PATH.
-With a DMG install, open **Settings ▸ General ▸ Command-line tool ▸ Install…**, or link
-the bundle binary manually as shown below. The App Store build does not distribute the
-CLI. Release rendering commands require an activated direct-download PRO license;
-metadata commands such as `--version` and `list languages --json` work before the render
-gate. A source Debug build can use `VITRINE_PRO_UNLOCK=1` for local QA only.
+### Your first useful image
 
 ```bash
-# After installing the direct-download app and activating PRO:
-vitrine render input.swift --out image.png
-vitrine render snippet.py --out card.png --theme dracula --preset opengraph
-vitrine render notes.go   --out clear.png --transparent --scale 3
-vitrine render server.go  --out night.png --background night
-vitrine render query.sql  --out solid.png --background-color '#1E293B'
-vitrine render app.swift --out gradient.png \
-  --background-gradient '#FF453A,#FFD60A,#64D2FF' --background-angle 215
-vitrine render app.swift --out photo.png --background-image landscape.png \
-  --background-fit fill --background-blur 8 --background-dimming 0.35
-vitrine render payload.json --out payload.png --format-code --text-sidecar
-vitrine render release.swift --out branded.png --watermark '@jane · vitrine' \
-  --watermark-color '#7DD3FC' --watermark-position top-left
-vitrine render release.swift --out logo.png --watermark-logo brand.png \
-  --watermark-position bottom-left
-vitrine render release.swift --out centered.png --watermark '@jane · vitrine' \
-  --watermark-position free --watermark-x 0.5 --watermark-y 0.18
-vitrine render release.swift --out reviewed.png --callout 'Review this branch' \
-  --callout-x 0.68 --callout-y 0.2 --callout-color '#FDE047' --callout-size 6
-vitrine render release.swift --out steps.png --counter 1 \
-  --counter-x 0.82 --counter-y 0.2 --counter-color '#22C55E' --counter-size 8
-vitrine render release.swift --out guided.png --arrow 0.18,0.8,0.7,0.25 \
-  --arrow-color '#38BDF8' --arrow-size 9
-vitrine render release.swift --out underlined.png --line 0.16,0.76,0.84,0.76 \
-  --line-color '#A78BFA' --line-size 10
-vitrine render release.swift --out boxed.png --rectangle 0.12,0.28,0.88,0.8 \
-  --rectangle-color '#FB7185' --rectangle-size 9
-vitrine render release.swift --out highlighted.png --highlighter 0.12,0.42,0.88,0.54 \
-  --highlighter-color '#FFD60A'
-vitrine render release.swift --out obscured.png --blur-box 0.12,0.42,0.88,0.54
-vitrine render release.swift --out review-map.png \
-  --arrow 0.15,0.82,0.4,0.58 --arrow 0.85,0.82,0.6,0.58 --arrow-color '#38BDF8'
-vitrine render --image dashboard.png --out showcase.png --background night --padding 40
-vitrine render --image dashboard.png --out browser.png --frame browser \
-  --frame-appearance dark --window-title 'app.example.com'
-vitrine render --image dashboard.png --out device.png --frame macbook
-vitrine render long-line.swift --out wrapped.png --wrap-columns 80
-vitrine render snippet.swift --out compact.png --font "Fira Code" --font-ligatures \
-  --font-size 12 --padding 24 --corner-radius 10 --shadow-radius 12
-vitrine render diff.patch --out review.png --language diff --highlight-lines 3,7-9 \
-  --focus-lines --diff-bands
-vitrine render secrets.swift --out share.png --redact-secrets --sidecars all
-vitrine render changelog.md --out release.png --title "Release notes" --language-badge
-vitrine recipe validate docs/examples/documentation.vitrine-recipe.json
-vitrine recipe show docs/examples/documentation.vitrine-recipe.json --json
-vitrine render README.md --out readme.png \
-  --recipe docs/examples/documentation.vitrine-recipe.json
-vitrine render snippet.swift --out card.png --sidecars all
-cat Component.tsx | vitrine render --stdin --stdin-name Component.tsx --out card.png
-vitrine render input.swift --out image.png --quiet --no-overwrite
-vitrine render input.swift --out image.png --json --no-overwrite
-vitrine render input.swift --out image.pdf
-vitrine multi-size input.swift --out social-cards --presets twitter,linkedin,opengraph
-vitrine multi-size input.swift --out all-sizes --presets all --sidecars all
-vitrine list themes
-vitrine list languages --json
-vitrine list all --json
-vitrine list fonts
-vitrine list backgrounds
-vitrine list background-fits
-vitrine list frames
-vitrine list frame-appearances
-vitrine list watermark-positions
-vitrine list formats
-vitrine list profiles --json
+# 1. Confirm the command is the version you expect.
 vitrine --version
-vitrine version --json
-vitrine batch Sources --out docs/cards --recursive --dry-run --include-ext swift,md \
-  --fail-on-empty
-vitrine batch Sources --out docs/cards --recursive --include-ext swift,md --exclude-ext tmp \
-  --sidecars all --fail-on-empty --fail-on-skipped --skipped-report docs/cards/skipped.json \
-  --manifest docs/cards/manifest.json
-vitrine render --git-diff main...HEAD --git-path Vitrine --out review.png
-vitrine render --git-staged --git-context 6 --out staged-review.png
-vitrine render --help
+
+# 2. Render one file. Language comes from the extension; PNG comes from --out.
+vitrine render Sources/App.swift --out app-card.png
+
+# 3. Open the file to inspect the result.
+open app-card.png
 ```
 
-Defaults match the app (One Dark, JetBrains Mono, aurora background); `--quiet`
-suppresses the success summary for scripts while leaving errors visible, and `--json`
-prints `render`/`batch` success summaries as structured JSON (mutually exclusive with
-`--quiet`). `--theme`,
-`--language`, `--preset`, `--scale`, `--format` (`png`/`pdf`/`heic`/`avif`), `--profile`
-(`srgb`/`p3`), `--font <family>`, `--font-ligatures`, `--no-font-ligatures`,
-`--transparent`, `--background <id>`, `--background-color <hex>`,
-`--background-gradient <hex,hex,...>`, `--background-angle <degrees>`,
-`--background-image <path>`,
-`--background-fit <fill|fit>`, `--background-blur <0...40>`,
-`--background-dimming <0...1>`,
-`--frame <id>`, `--frame-appearance <auto|light|dark>`,
-`--watermark <text>`, `--watermark-logo <path>`, `--watermark-color <hex>`,
-`--watermark-position <corner|free>`,
-`--watermark-x <0...1>`, `--watermark-y <0...1>`,
-`--callout <text>`, `--callout-x <0...1>`, `--callout-y <0...1>`,
-`--callout-color <hex>`, `--callout-size <2...28>`,
-`--counter <1...99>`, `--counter-x <0...1>`, `--counter-y <0...1>`,
-`--counter-color <hex>`, `--counter-size <2...28>`,
-`--arrow <x1,y1,x2,y2>`, `--arrow-color <hex>`, `--arrow-size <2...28>`,
-`--line <x1,y1,x2,y2>`, `--line-color <hex>`, `--line-size <2...28>`,
-`--rectangle <x1,y1,x2,y2>`, `--rectangle-color <hex>`,
-`--rectangle-size <2...28>`, `--highlighter <x1,y1,x2,y2>`,
-`--highlighter-color <hex>`, `--blur-box <x1,y1,x2,y2>`, style controls
-(`--font-size`, `--padding`, `--wrap-columns`, `--format-code` (alias `--tidy`),
-`--corner-radius`, `--shadow-radius`, `--line-numbers`, `--no-chrome`, `--shadow`,
-`--no-shadow`, `--highlight-lines <spec>`, `--redact-lines <spec>`,
-`--redact-secrets`, `--focus-lines`, `--no-focus-lines`, `--diff-bands`,
-`--no-diff-bands`), and the header controls
-(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`,
-`--no-language-badge`) and `--recipe <path>` override
-individual choices. For single-file `render`, a known
-`--out` extension (`.png`, `.pdf`, `.heic`, or `.avif`) selects the matching format when
-`--format` is omitted; if both are present, they must agree so scripts never write
-mislabeled artifacts. With `--stdin`, `--stdin-name <name>` supplies a filename hint
-for extension-based language inference and default metadata without reading that file.
-`--git-diff <revision-range>` loads a revision diff from the current local repository;
-`--git-staged` selects only changes already in the index. Both work with `render` and
-`multi-size`; repeatable `--git-path <path>` values narrow them to selected paths, while
-`--git-context <0...100>` controls unchanged lines around each hunk. Vitrine invokes
-`/usr/bin/git` directly without a shell, disables pagers,
-external diff drivers, textconv, and color, places pathspecs after `--`, and rejects
-empty output or stops Git when output exceeds 5 MB. Stable prefixes and context keep
-captures independent of global Git presentation settings. Paths are literal, prompts
-are disabled, and partial clones never fetch missing objects, keeping the operation
-offline. Diff syntax and GitHub-style bands are selected automatically unless
-`--language` or `--no-diff-bands` overrides them.
-`--format-code` uses Vitrine's dependency-free, language-aware indentation tidy before
-rendering; the formatted source is also used by sidecars and secret scanning so every
-artifact describes the same visible code.
-`--background-gradient` builds a custom gradient from two or more comma-separated
-RGB/RGBA colors, spaced evenly across the canvas. `--background-angle` selects a
-direction from 0 through 360 degrees and defaults to 135; custom gradients are mutually
-exclusive with preset, solid, and transparent backgrounds.
-`--background-image <path>` uses a local image for the canvas in both `render` and
-`batch`. Vitrine imports it once per invocation into an isolated temporary store,
-reuses it for every batch output, and removes the copy when the command exits; the
-source image and the app's persistent background library remain unchanged.
-Use `--background-fit` to choose edge-to-edge cropping or whole-image fitting,
-`--background-blur` for a 0–40 point local blur, and `--background-dimming` for a
-normalized dark overlay. These modifiers require `--background-image`; their bounds
-match the editor and invalid values fail before any output is written.
-`--watermark <text>` and `--watermark-logo <path>` add text, a local image, or both
-to a deterministic badge through the same render-core overlay as Brand Kit. The logo
-is loaded once per invocation and its source file remains unchanged.
-`--watermark-color <hex>` changes the text tint and
-`--watermark-position <corner|free>` selects one of the ids printed by
-`vitrine list watermark-positions`; placement requires watermark text or a logo, while
-color requires visible text.
-The `free` placement additionally requires both normalized coordinates through
-`--watermark-x` and `--watermark-y`, making scripted placement deterministic while the
-four corner placements keep their existing behavior.
-`--callout <text>` adds one deterministic text pill through the same normalized
-annotation layer as the editor. It defaults to the canvas center and the editor's red
-annotation style; optional x/y coordinates move its anchor, while color and size tune
-its appearance. Coordinates must be supplied together, and every modifier requires
-visible callout text.
-`--counter <1...99>` adds one numbered badge through the same annotation layer. It
-defaults to the canvas center and editor annotation style; optional paired coordinates,
-fill color, and size keep scripted walkthrough steps deterministic and legible.
-`--arrow <x1,y1,x2,y2>` draws a straight arrow from a normalized canvas tail to its
-head through the editor annotation renderer. Repeat the flag to compose several arrows;
-optional color and size apply to every arrow and use the same fixed-sRGB and stroke
-ranges as the editor. Zero-length or out-of-canvas segments are rejected rather than
-silently producing an invisible mark.
-`--line <x1,y1,x2,y2>` draws a straight segment between normalized canvas points and
-is repeatable. Its shared color and size use the editor's fixed-sRGB and stroke ranges;
-malformed, out-of-canvas, or zero-length segments fail before rendering.
-`--rectangle <x1,y1,x2,y2>` is repeatable and outlines each region between normalized
-opposite corners. Shared color and size match the editor toolbar; collapsed width or
-height is rejected so every successful command produces visible boxes.
-`--highlighter <x1,y1,x2,y2>` is repeatable and draws the editor's translucent marker
-fill across each normalized region. Its optional shared color uses fixed-sRGB input,
-while collapsed width or height is rejected before rendering.
-`--blur-box <x1,y1,x2,y2>` is repeatable and visually obscures normalized regions using
-the editor's blur compositor. It does **not** sanitize the source or copyable sidecars; use
-`--redact-lines` or `--redact-secrets` when sensitive text must be removed. Collapsed
-width or height is rejected before rendering.
-`--image <path>` beautifies a local image through the same canvas as the editor. The
-source is decoded locally, copied only into an invocation-scoped temporary store, and
-removed when the command exits; it is never added to Vitrine's persistent image library.
-Use `--frame <id>` to wrap it in one of the frames printed by `vitrine list frames`;
-`--frame-appearance <auto|light|dark>` controls the chrome and requires a frame other
-than `none`. `--window-title` is available with the `macos-window` and `browser` frames.
-Code-only controls and source sidecars are rejected for image input instead of silently
-doing nothing, while canvas, background, export, shadow, frame, and watermark controls
-remain available.
-`--no-overwrite` (alias `--no-clobber`) refuses to replace
-existing image or sidecar outputs; in `batch`, existing targets are reported as
-skipped so the remaining new cards can still be produced. `--text-sidecar`,
-`--markdown-sidecar`, `--html-sidecar`, or `--sidecars all` write copyable source
-beside the image for accessible docs, README, or web embeds; rows selected with
-`--redact-lines` or detected by `--redact-secrets` are replaced with `[redacted]` in
-every sidecar so hidden secrets do not leak through copyable text. `vitrine batch --recursive`
-walks nested folders and mirrors their relative paths under the output folder; `--dry-run`
-scans and decodes the matching
-inputs without writing images or sidecars. `--include-ext <list>` and
-`--exclude-ext <list>` let docs pipelines pre-filter known source extensions before
-loading files. Add `--fail-on-empty` when CI should fail if those filters leave no
-renderable inputs, `--fail-on-skipped` when CI should fail if any unreadable or non-text
-file was skipped, and `--skipped-report <json>` to write a parseable skipped-files
-artifact. `--manifest <json>` writes a positive manifest of rendered outputs (or
-planned outputs during `--dry-run`) with relative image paths, requested sidecar paths,
-and dimensions when available. When a batch contains same-stem files such as
-`Widget.swift` and `Widget.ts`, only that colliding group preserves the input extension
-(`Widget.swift.png`, `Widget.ts.png`) so one artifact never overwrites the other.
-`--style-preset <id>` applies one of the app's immutable built-in visual presets after
-destination sizing and before explicit style flags. Run `vitrine list style-presets`
-to discover deterministic ids; user presets are intentionally excluded so CI does not
-depend on machine-local settings.
-`--recipe <path>` reads one explicitly named, versioned workspace recipe. A recipe can
-carry the same portable style snapshot used by the app, optional header metadata,
-output defaults, and one embedded custom theme. It never contains an input path,
-workspace path, output path, history, or credentials, and the CLI never searches parent
-folders, repositories, or app storage for one. Resolution is deterministic: built-in
-defaults, destination sizing, recipe values, a named built-in style preset, then explicit
-CLI flags. Use `vitrine recipe validate <path> [--json]` for a lightweight validity check
-or `vitrine recipe show <path> [--json]` for the canonical portable contents. See
-[Workspace recipes](docs/WORKSPACE-RECIPES.md) for the schema, privacy boundary, and a
-runnable tracked example.
-The app exports the same format from **Settings ▸ Library ▸ Workspace recipes** and can
-retain an explicit folder-to-recipe association as read-only security-scoped bookmarks.
-Only source files you deliberately drop into the editor are matched; Vitrine never
-scans a repository or discovers a recipe implicitly. Exact custom canvas sizes remain
-CLI-only, while the app applies the recipe's other supported style, metadata, and output
-defaults.
+Without extra options, the CLI uses Vitrine's familiar defaults: One Dark, JetBrains
+Mono, the aurora background, and retina output. Add choices only when the image needs
+them:
+
+```bash
+vitrine render Sources/App.swift --out launch-card.png \
+  --theme dracula --preset opengraph --title "Vitrine 1.0"
+```
+
+### Pick a command by intent
+
+| You want to… | Command |
+| --- | --- |
+| Create one image from a file, pipe, Git diff, or local image | `vitrine render` |
+| Export one source at several social/documentation sizes | `vitrine multi-size` |
+| Generate images for a folder or documentation tree | `vitrine batch` |
+| Validate or inspect a portable style recipe | `vitrine recipe` |
+| Discover valid theme, language, preset, font, frame, or format IDs | `vitrine list` |
+| Verify the installed version and build | `vitrine --version` |
+| Enable `vgrab` and `vpane` terminal helpers | `vitrine shell-init` |
+
+Run `vitrine render --help` for the exact reference shipped by your installed build, or
+use the [web reference](https://vitrineframe.app/cli#reference) to search every option.
+
+### Everyday workflows
+
+**Pipe code without creating a temporary file.** `--stdin-name` gives Vitrine a safe
+filename hint for language detection and metadata; it does not read that path.
+
+```bash
+cat Component.tsx | vitrine render --stdin \
+  --stdin-name Component.tsx --copy
+```
+
+**Share exactly what is staged.** Vitrine asks `/usr/bin/git` directly, disables pagers
+and external diff drivers, and never fetches missing objects.
+
+```bash
+vitrine render --git-staged --git-context 6 --out staged-review.png
+vitrine render --git-diff main...HEAD --git-path Vitrine/CLI --out cli-review.png
+```
+
+**Capture a terminal command with the context a shared image needs.** The `vgrab`
+helper preserves ANSI color and adds the project, current Git branch when available,
+and exact command above the result. Use `--no-context` whenever arguments, paths, or
+branch names should remain private.
+
+```bash
+# One-time zsh setup; bash and fish are supported too.
+eval "$(vitrine shell-init zsh)"
+
+vgrab npm test
+vgrab -e git status                 # finish styling or annotating in the editor
+vgrab --no-context env | sort       # deliberately omit project, branch, and command
+```
+
+See [Terminal capture](docs/TERMINAL.md) for `vpane`, full-screen TUIs, color-preserving
+pipes, and shell-specific setup.
+
+**Reuse one visual language without hidden repository configuration.** Export a
+workspace recipe from **Settings ▸ Library**, inspect it, then pass its path explicitly.
+The CLI never searches parent folders or app storage for a recipe, and explicit flags
+still win over recipe values.
+
+```bash
+vitrine recipe validate docs.vitrine-recipe.json
+vitrine recipe show docs.vitrine-recipe.json --json
+vitrine render README.md --out readme.png \
+  --recipe docs.vitrine-recipe.json --scale 2
+```
 
 | Explicit CLI inspection | Machine-local folder association |
 | --- | --- |
 | <img src="site/public/screenshots/workspace-recipe-cli.png" alt="Vitrine CLI validating and displaying an explicitly named workspace recipe" width="380"> | <img src="site/public/screenshots/workspace-recipes.png" alt="Workspace recipe export and local association controls in Settings Library" width="380"> |
 
-`--canvas-size <width>x<height>` pins an exact logical canvas between 64 and 2048 points
-per axis, overriding a destination preset's dimensions while retaining its style and
-recommended scale. The explicit `--scale` multiplier determines final pixel dimensions.
-`vitrine multi-size <input> --out <folder>` loads one code or stdin source once and
-fans it out through destination presets using stable `vitrine-<preset-id>.<format>`
-filenames. It exports every preset by default; `--presets <id,id,...>` narrows the set
-using ids from `vitrine list presets`, while `--presets all` is the explicit full-catalog
-form. Each destination pins its own dimensions and scale, so multi-size rejects the
-singular `--preset`, `--canvas-size`, and `--scale` controls. Style, metadata, annotation,
-watermark, format, profile, sidecar, and no-overwrite options still apply to every output;
-`--no-overwrite` preflights the complete set before rendering so an existing artifact
-cannot leave a partially updated export.
-`vitrine list <all|themes|languages|presets|style-presets|fonts|backgrounds|background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]` prints
-the local render catalogs so scripts can discover valid choices without scraping docs;
-`vitrine list all --json` returns one object containing every catalog.
-`vitrine --version` / `vitrine version --json` reports the installed CLI version before
-AppKit initialization or the PRO render gate, which makes CI install checks cheap. The
-`list` and `recipe` inspection commands likewise work without rendering.
+See [Workspace recipes](docs/WORKSPACE-RECIPES.md) for the versioned schema, precedence,
+privacy boundary, and a runnable tracked example.
 
-The CLI ships **inside the app bundle**
-(`Vitrine.app/Contents/MacOS/vitrine-cli`), so a [Homebrew install](#install)
-symlinks it onto your PATH as `vitrine` automatically (from v0.5.0). With a
-DMG install, use **Settings ▸ General ▸ Command-line tool ▸ Install…** — or
-link it yourself:
+**Create an image pack from one source.** Destination presets own their dimensions and
+recommended scale, while your style and metadata apply to every result.
 
 ```bash
-sudo ln -sf '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' /usr/local/bin/vitrine
+vitrine multi-size launch.swift --out launch-assets \
+  --presets twitter,linkedin,opengraph \
+  --recipe launch.vitrine-recipe.json
 ```
 
-When building from source (`make cli`), the dev binary lands in DerivedData as
-`vitrine-cli` next to its `Fonts/` folder and `Highlightr_Highlightr.bundle` —
-keep them adjacent if you relocate it. See
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ("Command-line renderer") for the
-hosting strategy and bundling details.
+**Make a documentation batch strict enough for CI.** Dry-run first, require at least one
+matching input, fail when anything is skipped, and retain machine-readable evidence.
+
+```bash
+vitrine batch Sources --out docs/cards --recursive \
+  --include-ext swift,md --dry-run --fail-on-empty
+
+vitrine batch Sources --out docs/cards --recursive \
+  --include-ext swift,md --fail-on-empty --fail-on-skipped \
+  --manifest docs/cards/manifest.json \
+  --skipped-report docs/cards/skipped.json
+```
+
+**Redact before adding selectable source.** `--redact-secrets` and `--redact-lines`
+sanitize both the rendered rows and text/Markdown/HTML sidecars. A visual `--blur-box`
+changes pixels only and must not be used as a text-sanitization boundary.
+
+```bash
+vitrine render config.swift --out safe.png \
+  --redact-secrets --sidecars all
+```
+
+### Local by construction
+
+The CLI renders code, terminal content, and local images only. It does not capture URLs,
+call a hosted renderer, scan repositories for configuration, or require network, Screen
+Recording, or Accessibility permissions. Local background and watermark images are
+copied into invocation-scoped temporary storage and removed when the command exits.
+
+For the complete option catalog, aliases, bounds, examples, and workarounds, use the
+[**Vitrine CLI documentation**](https://vitrineframe.app/cli). The installed binary
+remains the final source of truth: `vitrine render --help` and `vitrine list all --json`
+report exactly what that build accepts.
 
 ## Project layout
 
@@ -770,19 +633,17 @@ in [`docs/`](docs/):
 
 ## Status
 
-🟢 **v0.25.5 is the latest published release.** Everything under [Features](#features) is
-implemented in the current repository and driven by one design-token system
-([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in light and dark. Items under
-**Unreleased** are not in the published 0.25.5 download yet. The product is covered by a
-Swift Testing unit suite plus XCTest UI smokes; CI
+🟢 **v1.0.0 is the stable release.** Everything under [Features](#features) ships in
+the signed direct-download build and is driven by one design-token system
+([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in light and dark. The product is
+covered by a Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
 (which pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md)).
 The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release
 also ships an in-app **What's New**.
 
-The main branch also contains the work listed under **Unreleased** in the changelog. It
-is implemented and tested but is not a published version until the release workflow
-produces a tagged artifact.
+Anything added under **Unreleased** in the changelog belongs to a future build and is not
+part of the v1.0.0 artifact until another release workflow publishes it.
 
 Two explicit product boundaries — no arbitrary screen/window capture and no dependency
 on a hosted web-render service — are documented in

@@ -31,6 +31,8 @@ async function requireMissing(relative) {
 
 const english = await read('index.html');
 const spanish = await read('es.html');
+const cli = await read('cli.html');
+const spanishCli = await read('es/cli.html');
 const download = await read('download.html');
 const notFound = await read('404.html');
 const robots = await read('robots.txt');
@@ -38,6 +40,10 @@ const headers = await read('_headers');
 const siteScript = await readFile(new URL('../public/scripts/site.js', import.meta.url), 'utf8');
 const projectSpec = await readFile(resolve(process.cwd(), '..', 'project.yml'), 'utf8');
 const readme = await readFile(resolve(process.cwd(), '..', 'README.md'), 'utf8');
+const cliUsage = await readFile(
+  resolve(process.cwd(), '..', 'Vitrine', 'CLI', 'CLIUsage.swift'),
+  'utf8',
+);
 const version = projectSpec.match(/^\s*MARKETING_VERSION:\s*"?([0-9]+\.[0-9]+\.[0-9]+)"?\s*$/m)?.[1];
 
 if (!version) {
@@ -48,6 +54,16 @@ requireText(english, '<html lang="en"', 'English route');
 requireText(spanish, '<html lang="es"', 'Spanish route');
 requireText(english, 'hreflang="es"', 'English alternate language');
 requireText(spanish, 'hreflang="en"', 'Spanish alternate language');
+requireText(cli, '<html lang="en"', 'English CLI route');
+requireText(spanishCli, '<html lang="es"', 'Spanish CLI route');
+requireText(cli, 'href="https://vitrineframe.app/cli"', 'English CLI canonical');
+requireText(cli, 'hreflang="es" href="https://vitrineframe.app/es/cli"', 'CLI Spanish alternate');
+requireText(spanishCli, 'hreflang="en" href="https://vitrineframe.app/cli"', 'CLI English alternate');
+requireText(cli, 'id="cli-search"', 'Searchable CLI reference');
+requireText(cli, 'data-search-card', 'Searchable CLI entries');
+requireText(cli, 'src="/screenshots/workspace-recipe-cli.png"', 'CLI visual evidence');
+requireText(cli, 'src="/scripts/cli-docs.js"', 'CLI interactions');
+requireText(spanishCli, 'Problemas frecuentes y soluciones', 'Spanish CLI troubleshooting');
 requireText(english, 'application/ld+json', 'English structured data');
 requireText(spanish, 'application/ld+json', 'Spanish structured data');
 requireText(english, `"softwareVersion":"${version}"`, 'Project version sync');
@@ -56,18 +72,14 @@ requireText(english, 'class="salon"', 'Gallery hero');
 requireText(english, 'id="responsive"', 'Responsive board');
 requireText(english, 'id="whats-new"', 'Changelog section');
 requireText(english, `data-release-version="${version}"`, 'Release highlights version sync');
-requireText(english, 'Copy feedback stays visible.', 'Release highlight');
+requireText(english, 'Living files protect local edits.', 'Release highlight');
 requireText(english, '33 syntax languages', 'Shipped language catalog claim');
 requireText(english, 'DMG installs can enable the CLI from Settings.', 'CLI installation claim');
 requireText(english, 'no Vitrine cloud renderer', 'Rendering privacy claim');
 requireText(english, 'Pasted HTML is rendered offline', 'HTML rendering boundary');
 requireText(english, 'src="/scripts/site.js"', 'English interactions');
 requireText(spanish, 'src="/scripts/site.js"', 'Spanish interactions');
-requireText(
-  siteScript,
-  'La confirmación de copia permanece visible.',
-  'Spanish release highlight',
-);
+requireText(siteScript, 'Los archivos vivos protegen tus cambios.', 'Spanish release highlight');
 requireText(siteScript, '33 lenguajes de sintaxis', 'Spanish language catalog claim');
 requireText(siteScript, 'puedes activar la CLI desde Ajustes', 'Spanish CLI installation claim');
 requireAbsent(english, '160+ languages', 'Stale language catalog claim');
@@ -77,6 +89,7 @@ requireAbsent(siteScript, 'todo local', 'Overbroad Spanish local-rendering claim
 requireText(readme, '33 syntax languages', 'README language catalog claim');
 requireText(readme, 'does **not** add it to your', 'README DMG CLI claim');
 requireText(readme, 'activated direct-download PRO license', 'README CLI licensing claim');
+requireText(readme, 'https://vitrineframe.app/cli', 'README CLI documentation route');
 requireAbsent(readme, '160+ languages', 'README stale language catalog claim');
 requireAbsent(siteScript, 'raw.githubusercontent.com', 'Static release highlights');
 requireText(headers, "connect-src 'self' https://api.github.com;", 'Website connection policy');
@@ -111,7 +124,27 @@ if (width !== 1200 || height !== 630) {
   throw new Error(`og-card.png must be 1200x630, found ${width}x${height}.`);
 }
 
-for (const required of ['sitemap-index.xml', 'sitemap-0.xml', 'es.html', 'download.html']) {
+const documentedFlags = new Set(
+  [...cliUsage.matchAll(/(?<![A-Za-z0-9])(--[a-z][a-z-]*|-[oqeh])(?=[\s,/<])/g)].map(
+    (match) => match[1],
+  ),
+);
+for (const flag of documentedFlags) {
+  requireText(cli, flag, `CLI option reference ${flag}`);
+}
+
+for (const command of ['render', 'multi-size', 'batch', 'recipe', 'list', 'version', 'shell-init']) {
+  requireText(cli, `>${command}<`, `CLI command ${command}`);
+}
+
+for (const required of [
+  'sitemap-index.xml',
+  'sitemap-0.xml',
+  'es.html',
+  'cli.html',
+  'es/cli.html',
+  'download.html',
+]) {
   await stat(join(root.pathname, required));
 }
 await requireMissing('es/index.html');
