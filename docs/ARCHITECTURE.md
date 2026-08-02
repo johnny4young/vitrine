@@ -170,8 +170,12 @@ caption, layout, and reorder edits never reread Recents or a source document. Th
 render uses and retains the active output scale, preventing later Settings changes from
 enlarging one-times source pixels. The controller injects app settings, feedback, and
 sharing into `ComparisonBoardEditorView`, so the SwiftUI editor does not discover
-process-global stores, HUDs, windows, or share services. Closing its window releases the
-entire draft, and no board state enters `UserDefaults` or restoration.
+process-global stores, HUDs, windows, or share services. `ComparisonBoardPreview` keeps
+rendering, validation, and renderer-failure states distinct while retaining the last good
+image during a debounced refresh. File encoding belongs to `ComparisonBoardExporter`,
+which renders once through the draft's captured scale and sends the resulting pixels
+through the shared raster/PDF encoders. Closing the window releases the entire draft and
+preview, and no board state enters `UserDefaults` or restoration.
 
 ## Command-line renderer
 
@@ -585,11 +589,13 @@ Vitrine/
 │   ├── CarouselExportView.swift # multi-slide export sheet
 │   ├── ComparisonBoard.swift # path-free validated 2–4 item value
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
+│   ├── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
 │   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
 │   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset
 ├── Comparison/
 │   ├── ComparisonBoardSelection.swift # ordered ephemeral Recents selection
 │   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
+│   ├── ComparisonBoardPreview.swift # debounced preview phase and failure state
 │   ├── ComparisonBoardEditorView.swift # preview, layout, captions, export controls
 │   └── ComparisonBoardPresentation.swift # injected share operation
 ├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
