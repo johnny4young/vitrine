@@ -34,6 +34,9 @@ can never drift.
 
 ### Documentation
 
+- Added real-build screenshots and focused guides for living snapshots, workspace
+  recipes, and comparison boards. The website now gives each workflow a visual example
+  and marks unreleased capabilities as such.
 - Clarified the website and README around the shipped language catalog, URL and HTML
   capture boundaries, network use, PRO pricing, and direct-download CLI installation.
 - Added a runnable CLI orientation that separates metadata commands from PRO-gated

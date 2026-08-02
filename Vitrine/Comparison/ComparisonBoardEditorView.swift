@@ -13,7 +13,7 @@ struct ComparisonBoardEditorView: View {
     let feedback: FeedbackDisplay
     let presentation: ComparisonBoardPresentation
 
-    @State private var preview: RenderedAsset?
+    @State private var preview = ComparisonBoardPreview()
     @FocusState private var focusedField: Field?
 
     var settings: AppSettings { environment.appSettings }
@@ -32,9 +32,9 @@ struct ComparisonBoardEditorView: View {
         .background(VitrineTokens.Surface.window)
         .tint(VitrineTokens.Accent.system)
         .task(id: draft.previewKey(profile: settings.export.colorProfile)) {
-            try? await Task.sleep(for: .milliseconds(80))
-            guard !Task.isCancelled else { return }
-            preview = try? draft.compose(scale: 1, profile: settings.export.colorProfile)
+            await preview.refresh(isValid: draft.isValid) {
+                try draft.compose(scale: 1, profile: settings.export.colorProfile)
+            }
         }
     }
 
@@ -90,23 +90,27 @@ struct ComparisonBoardEditorView: View {
     private var previewStage: some View {
         GeometryReader { proxy in
             ZStack {
-                if let preview {
-                    let size = preview.pixelSize
+                if let asset = preview.asset,
+                    preview.phase == .ready || preview.phase == .rendering
+                {
+                    let size = asset.pixelSize
                     let scale = min(
                         1,
                         max(0.01, (proxy.size.width - 72) / size.width),
                         max(0.01, (proxy.size.height - 72) / size.height))
-                    Image(decorative: preview.cgImage, scale: 1)
+                    Image(decorative: asset.cgImage, scale: 1)
                         .resizable()
                         .interpolation(.high)
                         .frame(width: size.width * scale, height: size.height * scale)
                         .shadow(color: .black.opacity(0.28), radius: 24, y: 18)
-                } else if draft.isValid {
-                    // A valid board with no preview yet is simply still rendering
-                    // (the debounce, or the first pass after the window opened) —
-                    // claiming it "needs complete labels" here would be false.
+                } else if preview.phase == .rendering {
                     ProgressView()
                         .controlSize(.large)
+                        .accessibilityLabel("Rendering locally…")
+                } else if preview.phase == .failed {
+                    ContentUnavailableView(
+                        "Couldn't render the comparison board",
+                        systemImage: "exclamationmark.triangle")
                 } else {
                     ContentUnavailableView(
                         "Board needs complete labels",
@@ -244,15 +248,10 @@ struct ComparisonBoardEditorView: View {
     }
 
     private func saveBoard() {
-        let payload = ExportManager.encodedPayload(
-            settings.export.format,
-            png: { try? renderedBoard().cgImage },
-            // The PDF is a raster page, so it embeds the same export-scale render the
-            // PNG path saves — a format switch must not silently drop resolution to 1×.
-            pdf: {
-                guard let image = try? renderedBoard() else { return nil }
-                return ExportManager.pdfData(from: image.cgImage)
-            })
+        let payload = ComparisonBoardExporter.encodedPayload(
+            for: draft,
+            format: settings.export.format,
+            profile: settings.export.colorProfile)
         guard let payload else {
             feedback(boardFailure)
             return
