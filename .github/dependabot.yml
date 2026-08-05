@@ -22,3 +22,12 @@ updates:
     groups:
       site-dependencies:
         patterns: ["*"]
+    # `@astrojs/check` declares `peer typescript@"^5.0.0 || ^6.0.0"`, so a TypeScript
+    # major bump fails `npm ci` with ERESOLVE in the Linux static-check job. Because a
+    # single group covers every package here, that one incompatible major also blocks
+    # the safe astro/wrangler bumps and any queued security fix riding the same tree.
+    # Minor and patch TypeScript updates still flow. Remove this entry once
+    # `@astrojs/check` widens its peer range to accept the next major.
+    ignore:
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
