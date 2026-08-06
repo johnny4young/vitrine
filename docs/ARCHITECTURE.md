@@ -145,6 +145,78 @@ fixed number formatting and attribute order), so the same template always produc
 identical bytes. This serializer is intentionally **not** wired up as a general
 export choice for the arbitrary code canvas; it exists for the template path only.
 
+## Terminal rendering: two engines
+
+Terminal capture is not "syntax highlighting with an ANSI palette". Two structurally
+different programs write to a terminal, and rendering either one the other's way
+produces a wrong image, so `Vitrine/Terminal/` ships **two renderers behind one
+entry point**. The user-facing guide is [TERMINAL.md](TERMINAL.md); this section is
+the design rationale behind it.
+
+`ANSIRenderer.styledRuns(_:columns:)` is the router. Both engines return `[ANSIRun]`,
+so everything downstream — image layout, themes, the copyable sidecars — is identical
+whether the source was `git log` or `htop`.
+
+**The routing decision.** `TerminalScreen.usesScreenAddressing(_:)` inspects the byte
+stream for evidence that the program is addressing screen *cells* rather than
+appending *lines*:
+
+| Sequence                      | Meaning                       | Why it is a trigger                        |
+| ----------------------------- | ----------------------------- | ------------------------------------------ |
+| `ESC[?1049h` / `?47h` / `?1047h` | enter the alternate screen | the unambiguous signature of a TUI         |
+| `ESC[…J` (`ED`)               | erase display                 | only a full-screen redraw erases the screen |
+| `ESC[…d` (`VPA`)              | absolute row                  | positioning implies a fixed screen          |
+| `ESC[…r` (`DECSTBM`)          | scroll region                 | only a screen model has regions             |
+| `ESC[…H` / `f` (`CUP`) past home | absolute cell               | home alone is ambiguous, so it is excluded  |
+
+Plain colored output carries only `SGR`, so `git`, `ls`, and a test run never trip
+this and stay in line mode.
+
+**Line mode is the correct answer, not the fallback.** Scrolling output has no final
+frame — the transcript *is* the artifact, and a reader expects every line of it. So
+line mode parses the whole stream verbatim after `ANSIRenderer.normalize(_:)` cleans
+the control bytes a pseudo-terminal leaves behind (`\r` redraws, `\b` backspaces,
+stray `^D`/BEL from `script`), keeping tab, newline, and ESC for the parser.
+
+**Grid mode deliberately skips `normalize`.** That function collapses exactly the
+`\r`/`\b` sequences the emulator needs to interpret as cursor motion, and strips
+escapes it depends on. Feeding normalized text to the cell buffer would destroy the
+input it exists to replay. `TerminalScreen` instead replays the stream into a
+two-dimensional buffer of `TerminalCell` and reports the final frame — including
+scroll regions, scroll up/down, and `ICH`/`DCH`/`ECH`. It also snapshots the alternate
+frame before an in-alt full clear, because `nvim` and `lazygit` erase the screen
+*before* leaving the alt buffer on exit, which would otherwise capture a blank screen.
+
+**The progress-bar idiom is handled in line mode, on purpose.** Spinners (`ora`, npm,
+cargo) emit `EL`/`CHA` but never address the screen, so routing them to the grid would
+be wrong. `ANSIRenderer.lineEdit(finalByte:params:)` maps them where `\r` is already
+handled:
+
+| Sequence           | Mapped? | Reason                                                        |
+| ------------------ | ------- | ------------------------------------------------------------- |
+| `EL 1`, `EL 2`     | discard the line | everything since `lineStart` is exactly start-to-cursor, so this is exact, not an approximation |
+| `CHA` (empty or 1) | discard the line | returning to column 1 is what `\r` means                |
+| `EL 0`             | left to the parser | erases *forward* from a cursor already at the end — a no-op |
+| `CHA n>1`          | left to the parser | without a real cursor the options are to pad or truncate, and truncating deletes text a program aligned |
+
+**Cell width is a model, not a font question.** `CharacterWidth.displayWidth(_:)`
+classifies each scalar as two columns (CJK, emoji), one, or zero (combining marks), so
+a frame dense with wide glyphs does not drift column by column. The caveat is
+downstream and honest: the image is laid out as flowed monospaced text, so *pixel*
+alignment of a wide glyph still depends on the code font's advance. The cell model is
+exact; the rendering is as good as the font.
+
+**Width is inferred unless pinned.** `inferColumns`/`inferRows` derive a replay size
+wide enough that no addressed cell or printed line wraps early. The error is
+deliberately asymmetric: the grid trims trailing blanks, so over-estimating is
+harmless, while under-estimating wraps a TUI's content wrong — hence a floor of 80
+columns. `vgrab -w <cols>` and `vitrine render --terminal-width` pin the width
+instead, so wraps match what was on screen.
+
+**Verifying a change.** `ANSIRenderer.plainText(_:columns:)` returns the reconstructed
+visible text and backs the `--text-sidecar` output, so a terminal-rendering change can
+be asserted as text rather than compared as pixels — diff the sidecar, not the PNG.
+
 ## Comparison-board composition
 
 The reusable comparison core accepts two to four finished `RenderedAsset` values and

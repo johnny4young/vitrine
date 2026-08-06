@@ -165,6 +165,11 @@ vgrab lazygit
 The switch is automatic, by content: plain scrolling output (a `git log`, a test run)
 keeps rendering the full transcript line by line, unaffected.
 
+> Which escape sequences trigger the switch, why scrolling output is not merely a
+> fallback, and how progress bars are collapsed without going through the emulator are
+> documented in
+> [ARCHITECTURE.md → Terminal rendering: two engines](ARCHITECTURE.md#terminal-rendering-two-engines).
+
 ## Manual alternatives (no shell integration)
 
 ```sh
