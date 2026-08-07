@@ -4,12 +4,13 @@
 
 # Vitrine
 
-### Turn code into beautiful images — straight from your menu bar.
+### Turn code — and your terminal — into beautiful images, straight from the menu bar.
 
-**Vitrine** is a native macOS menu-bar app that turns code (and URLs and HTML) into
-gorgeous, share-ready images — in the spirit of [ray.so](https://ray.so) and
-[Carbon](https://carbon.now.sh), but **native, instant, and local for code rendering**.
-Optional URL snapshots load the requested page in WebKit on your Mac.
+**Vitrine** is a native macOS app that renders code, terminal output, and **full-screen
+terminal apps** as share-ready images. Run `vgrab htop` and it reconstructs the screen
+you actually saw — cursor moves, colors, and all — from one command, with no `tmux`
+capture step and no escape-code wrangling. It also renders code, images, URLs, and
+pasted HTML, entirely on your Mac.
 
 [![Website](https://img.shields.io/badge/website-vitrineframe.app-6E56CF.svg)](https://vitrineframe.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -17,18 +18,33 @@ Optional URL snapshots load the requested page in WebKit on your Mac.
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
 [![Status](https://img.shields.io/badge/status-v1.0.0%20stable-brightgreen.svg)](#status)
 
+| `vgrab htop` | `vgrab lazygit` | `vgrab nvim` |
+| --- | --- | --- |
+| <img src="site/public/screenshots/terminal-htop.png" alt="htop's system monitor reconstructed as an image — CPU and memory meters, the process table, and the function-key bar" width="270"> | <img src="site/public/screenshots/terminal-lazygit.png" alt="The lazygit multi-panel git dashboard reconstructed — status, files, branches, commits, and a diff pane" width="270"> | <img src="site/public/screenshots/terminal-nvim.png" alt="A Neovim editing session reconstructed with syntax highlighting and the status line" width="270"> |
+
+*Real captures. Vitrine detects that a program is addressing the screen and replays it
+through a cell-buffer emulator, so you get the final frame instead of a transcript of
+escape codes.*
+
 </div>
 
 ---
 
 ## Why
 
-`Carbon.now.sh` and `ray.so` are the go-to tools for turning code into images — but
-they're **web apps**: open the browser, paste, configure, export. **None of them
-live in your Mac's menu bar.** A developer who shares code on X, in docs, or in
-slides does it many times a week, and every second of friction adds up.
+**Terminal output is a first-class subject, not an afterthought.** Most tools that turn
+code into images treat a terminal as text with some color in it. Vitrine models the
+*screen*: when a program addresses cells instead of appending lines — `htop`, `lazygit`,
+`k9s`, `vim`, a pager — it replays the stream through a cell-buffer emulator and renders
+the final frame. Progress bars and spinners collapse to their last line instead of
+stacking every frame. Wide CJK and emoji advance two columns, so dense frames stay
+aligned. One command does it: `vgrab htop`. The design is documented in
+[**ARCHITECTURE.md → Terminal rendering: two engines**](docs/ARCHITECTURE.md#terminal-rendering-two-engines).
 
-Vitrine attacks that flow head-on:
+**And the code path is the fastest one you have.** The usual tools for turning code into
+images are **web apps**: open the browser, paste, configure, export. A developer who
+shares code on X, in docs, or in slides does it many times a week, and every second of
+friction adds up.
 
 - **0 seconds to open** — always present in the menu bar.
 - **Code already loaded** — read straight from the clipboard.
@@ -153,11 +169,8 @@ on every release.
 | --- | --- |
 | <img src="site/public/screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur/redaction box over a secret, an arrow, and a text callout" width="380"> | <img src="site/public/screenshots/diff.png" alt="A unified diff with + lines banded green and − lines banded red, GitHub-style, with line numbers" width="380"> |
 
-**Full-screen TUIs** — Vitrine reconstructs the final screen (cursor moves, colors, and all), not just scrolling output. Real captures of `htop`, `lazygit`, and Neovim:
-
-| `htop` · One Dark | `lazygit` · Dracula | `nvim` · Nord |
-| --- | --- | --- |
-| <img src="site/public/screenshots/terminal-htop.png" alt="htop's system monitor reconstructed as an image — CPU and memory meters, the process table, and the function-key bar" width="250"> | <img src="site/public/screenshots/terminal-lazygit.png" alt="The lazygit multi-panel git dashboard reconstructed — status, files, branches, commits, and a diff pane" width="250"> | <img src="site/public/screenshots/terminal-nvim.png" alt="A Neovim editing session reconstructed with syntax highlighting and the status line" width="250"> |
+*Full-screen TUI captures — `htop`, `lazygit`, and Neovim — are at the
+[top of this page](#vitrine); the themes above apply to them too.*
 
 </div>
 
