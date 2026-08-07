@@ -127,6 +127,7 @@ struct TerminalScreen {
         guard ANSIParser.containsANSI(text) else { return false }
         let scalars = Array(text.unicodeScalars)
         var index = 0
+        var erasedDisplayOnce = false
         while index < scalars.count {
             guard scalars[index] == "\u{1B}", index + 1 < scalars.count else {
                 index += 1
@@ -149,7 +150,19 @@ struct TerminalScreen {
                 continue
             }
             switch finalByte {
-            case "J": return true  // ED — erase display (full-screen redraw)
+            case "J":
+                // ED alone is ambiguous. A TUI repaints with it — but `clear` emits
+                // exactly one (macOS `\e[H\e[2J`; Linux appends `\e[3J`, the scrollback
+                // erase, which never means repaint), and `clear && <command>` is scrolling
+                // output whose transcript is the artifact: routed to the grid, a 1,500-line
+                // capture collapses to the last screenful. So one display erase is the
+                // clear idiom and stays in line mode (which resets the transcript at the
+                // erase — see `ANSIRenderer.lineEdit`); a second one means a repaint loop
+                // (`watch`, multi-line progress redraws) and selects the grid.
+                if Int(params) ?? 0 != 3 {
+                    if erasedDisplayOnce { return true }
+                    erasedDisplayOnce = true
+                }
             case "d": return true  // VPA — absolute row
             case "r": return true  // DECSTBM — scroll region
             case "H", "f":  // CUP — count only positioning beyond home

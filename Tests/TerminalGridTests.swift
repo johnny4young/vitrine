@@ -331,9 +331,11 @@ struct TerminalGridTests {
     }
 
     @Test func cursorAddressedOutputUsesGrid() {
-        // The alt screen, erase-display (ED), absolute CUP, and VPA each mark a TUI.
+        // The alt screen, absolute CUP, VPA, and *repeated* erase-display each mark a
+        // TUI. A single ED is deliberately absent here: alone it is the `clear` idiom
+        // and stays in line mode (covered below).
         #expect(TerminalScreen.usesScreenAddressing("\(esc)[?1049hframe\(esc)[?1049l"))
-        #expect(TerminalScreen.usesScreenAddressing("\(esc)[2Jcleared"))
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[2Jone\(esc)[2Jtwo"))
         #expect(TerminalScreen.usesScreenAddressing("\(esc)[5;10Hx"))
         #expect(TerminalScreen.usesScreenAddressing("\(esc)[3dx"))
     }
@@ -372,12 +374,55 @@ struct TerminalGridTests {
     }
 
     @Test func explicitColumnsOverrideInferenceInGridMode() {
-        // `--terminal-width` flows through ANSIRenderer to the grid emulator. ED puts the
-        // stream in grid mode; a 10-char line then wraps at the pinned width, where the
+        // `--terminal-width` flows through ANSIRenderer to the grid emulator. Absolute
+        // positioning puts the stream in grid mode (a lone ED no longer does — that is
+        // the `clear` idiom); a 10-char line then wraps at the pinned width, where the
         // inferred width (floored at 80) would keep it on one line.
-        let tui = "\(esc)[2JABCDEFGHIJ"
-        #expect(ANSIRenderer.plainText(tui) == "ABCDEFGHIJ")  // inferred ≥ 80: no wrap
-        #expect(ANSIRenderer.plainText(tui, columns: 4) == "ABCD\nEFGH\nIJ")  // pinned to 4
+        let tui = "\(esc)[2;1HABCDEFGHIJ"
+        #expect(ANSIRenderer.plainText(tui) == "\nABCDEFGHIJ")  // inferred ≥ 80: no wrap
+        #expect(ANSIRenderer.plainText(tui, columns: 4) == "\nABCD\nEFGH\nIJ")  // pinned to 4
+    }
+
+    // MARK: - `clear` routes to line mode; repaint loops route to the grid
+
+    /// One display erase is `clear && <command>`: scrolling output whose transcript is
+    /// the artifact. Routed to the grid, a long capture collapsed to the last screenful
+    /// (reproduced: 1,500 lines → 38). Line mode instead resets the transcript at the
+    /// erase and keeps everything after it.
+    @Test func aLoneClearStaysInLineModeAndResetsTheTranscript() {
+        let macOSClear = "\(esc)[H\(esc)[2J"
+        let capture =
+            "old prompt\n\(macOSClear)" + (1...100).map(String.init).joined(separator: "\n")
+
+        #expect(!TerminalScreen.usesScreenAddressing(capture))
+        let text = ANSIRenderer.plainText(capture)
+        #expect(text.hasPrefix("1\n"))
+        #expect(text.hasSuffix("\n100"))
+        #expect(!text.contains("old prompt"))
+    }
+
+    @Test func linuxClearWithScrollbackEraseIsStillOneClear() {
+        // Linux `clear` appends ED-3 (erase scrollback) to ED-2. Two J sequences, one
+        // clear — ED-3 never means repaint, so it must not count toward the grid.
+        let linuxClear = "\(esc)[H\(esc)[2J\(esc)[3J"
+        #expect(!TerminalScreen.usesScreenAddressing("\(linuxClear)hello\nworld"))
+        #expect(ANSIRenderer.plainText("before\n\(linuxClear)hello") == "hello")
+    }
+
+    @Test func repeatedDisplayErasesSelectTheGrid() {
+        // Two or more full erases are a repaint loop (`watch`, multi-line progress):
+        // the final frame is the artifact, so the grid takes over. Real repaints home
+        // the cursor before erasing, exactly as `watch` emits.
+        let watchStyle = "\(esc)[H\(esc)[2Jframe one\(esc)[H\(esc)[2Jframe two"
+        #expect(TerminalScreen.usesScreenAddressing(watchStyle))
+        #expect(ANSIRenderer.plainText(watchStyle) == "frame two")
+    }
+
+    @Test func aClearBesideRealAddressingStillSelectsTheGrid() {
+        // The single-ED allowance never weakens the unambiguous triggers: one clear
+        // plus absolute positioning (or the alternate screen) is a TUI.
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[2J\(esc)[5;3Hx"))
+        #expect(TerminalScreen.usesScreenAddressing("\(esc)[?1049h\(esc)[2Jx\(esc)[?1049l"))
     }
 
     // MARK: - Hostile parameter magnitudes
