@@ -280,6 +280,53 @@ struct CLIBatchRenderingTests: CLITestSupport {
         #expect(outputs["Widget.ts"] == "Widget.ts.png")
     }
 
+    /// The per-group rename can itself collide: `a.swift` and `a.py` share the stem `a`,
+    /// so both keep their input extension (`a.swift.png`) — but an input literally named
+    /// `a.swift.txt` already owns `a.swift.png` through the plain mapping. The planner
+    /// used to hand both files the same URL; whichever rendered last silently replaced
+    /// the other while the batch reported `rendered: 3, skipped: 0` and the manifest
+    /// listed two entries claiming one file.
+    @Test func batchRecomputedNamesNeverClobberAnotherInputsOutput() throws {
+        let root = try makeTempDirectory()
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("out", isDirectory: true)
+        let manifest = root.appendingPathComponent("manifest.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        try "let a = 1\n".write(
+            to: input.appendingPathComponent("a.swift"), atomically: true, encoding: .utf8)
+        try "a = 2\n".write(
+            to: input.appendingPathComponent("a.py"), atomically: true, encoding: .utf8)
+        try "plain text\n".write(
+            to: input.appendingPathComponent("a.swift.txt"), atomically: true, encoding: .utf8)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--manifest", manifest.path,
+        ])
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Rendered 3 image"))
+        // Three inputs, three files on disk — nothing overwritten.
+        let written = try FileManager.default.contentsOfDirectory(atPath: output.path)
+            .filter { $0.hasSuffix(".png") }
+        #expect(written.count == 3)
+
+        // And the manifest's outputs are unique: the sorted walk gives `a.swift` (the
+        // earlier path) the plain name and discriminates the later claimant.
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
+        let outputsByInput = decoded.reduce(into: [String: String]()) { result, entry in
+            if let input = entry["input"] as? String, let output = entry["output"] as? String {
+                result[input] = output
+            }
+        }
+        #expect(outputsByInput["a.py"] == "a.py.png")
+        #expect(outputsByInput["a.swift"] == "a.swift.png")
+        #expect(outputsByInput["a.swift.txt"] == "a.swift-2.png")
+        #expect(Set(outputsByInput.values).count == 3)
+    }
+
     @Test func batchNoOverwriteSkipsExistingTargetsAndReportsThem() throws {
         let root = try makeTempDirectory()
         let input = root.appendingPathComponent("input", isDirectory: true)
