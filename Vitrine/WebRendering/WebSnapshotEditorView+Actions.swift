@@ -11,12 +11,12 @@ extension WebSnapshotEditorView {
     /// HTML renders immediately since it never reaches the network.
     func attemptCapture() {
         // Ignore a re-entrant trigger (a fast second click, or Return in the URL field)
-        // while a capture is already in flight. Guard on `renderTask`, not
-        // `model.isRendering`: `renderTask` is assigned synchronously below, whereas
+        // while a capture is already in flight. Guard on `model.isCapturing`, not
+        // `model.isRendering`: the handle is assigned synchronously below, whereas
         // `isRendering` only flips once the spawned task starts running — so two quick
         // triggers could both clear an `isRendering` guard and the second would overwrite
         // the handle, leaving Cancel pointed at a no-op task while the real render runs.
-        guard renderTask == nil else { return }
+        guard !model.isCapturing else { return }
         // Show the privacy disclosure only when URL capture is actually available and the
         // user hasn't consented yet. On a build that can't reach the network the disclosure's
         // confirm button is permanently disabled, so routing through it strands the user in a
@@ -28,7 +28,7 @@ extension WebSnapshotEditorView {
             showDisclosure = true
             return
         }
-        renderTask = Task { await capture() }
+        model.beginRender(Task { await capture() })
     }
 
     /// Opens the interactive sign-in window on the URL being captured.
@@ -49,7 +49,7 @@ extension WebSnapshotEditorView {
 
     func capture() async {
         defer {
-            renderTask = nil
+            model.finishRender()
             // Pick up a prefill that arrived while this capture was in flight (it was
             // left pending rather than dropped — see `autoCaptureIfPending`).
             autoCaptureIfPending()
@@ -65,9 +65,9 @@ extension WebSnapshotEditorView {
     /// so this routes through the privacy disclosure on first use just like a manual tap.
     func autoCaptureIfPending() {
         // Don't consume the flag while a capture is running: `attemptCapture` would early
-        // return on its `renderTask != nil` guard and drop the signal. Leave it set — the
+        // return on its `isCapturing` guard and drop the signal. Leave it set — the
         // running capture's `defer` calls back here once it finishes.
-        guard model.pendingAutoCapture, renderTask == nil else { return }
+        guard model.pendingAutoCapture, !model.isCapturing else { return }
         model.pendingAutoCapture = false
         attemptCapture()
     }
@@ -76,7 +76,7 @@ extension WebSnapshotEditorView {
     /// into `model.render`, which stops between viewports and whose in-flight renderer
     /// aborts its load and waits, so the user is never stuck waiting out a long batch.
     func cancelCapture() {
-        renderTask?.cancel()
+        model.cancelRender()
     }
 
     // MARK: - Export

@@ -57,6 +57,11 @@ struct MultiSizeExportView: View {
             onConfirm: exportSelected,
             content: { content }
         )
+        // Disabling the buttons stops a *button* dismissal, but not Escape or a click
+        // outside, and the export runs in an unstructured `Task` that would keep writing
+        // into the chosen folder while reporting completion to a sheet that is gone. This
+        // enforces the invariant the buttons only imply.
+        .interactiveDismissDisabled(isExporting)
     }
 
     /// The multi-size sheet's distinct body: the scrollable preset list and the
