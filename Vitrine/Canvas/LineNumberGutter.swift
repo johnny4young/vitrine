@@ -85,7 +85,13 @@ enum LineHighlight {
         let sorted = ranges.sorted { $0.lowerBound < $1.lowerBound }
         var merged: [ClosedRange<Int>] = []
         for range in sorted {
-            if let last = merged.last, range.lowerBound <= last.upperBound + 1 {
+            // Adjacency is tested as `lowerBound - 1 <= upperBound` rather than
+            // `lowerBound <= upperBound + 1`: the bounds come from user text (a
+            // `--highlight-lines` spec, or the inspector field parsed on every keystroke),
+            // so an upper bound of `Int.max` overflows the increment and traps the process.
+            // Every bound here is `>= 1` (`positiveLine` rejects the rest), so decrementing
+            // the lower bound cannot underflow. The merge semantics are unchanged.
+            if let last = merged.last, range.lowerBound - 1 <= last.upperBound {
                 merged[merged.count - 1] = last.lowerBound...max(last.upperBound, range.upperBound)
             } else {
                 merged.append(range)

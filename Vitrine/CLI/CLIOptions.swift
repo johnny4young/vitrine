@@ -68,6 +68,18 @@ struct CLIOptions: Equatable {
     /// Where the rendered image is written (an output folder for `batch`).
     var outputPath: String
 
+    /// The local files a single render reads, so output preflight can refuse to write on
+    /// top of its own source. Empty when the source is stdin or a Git diff (nothing on
+    /// disk is read), and never used for `batch`, whose inputs are discovered by the
+    /// batch planner instead. `inputPath` carries both code and `--image` sources, so one
+    /// entry covers each.
+    var sourceFileURLs: [URL] {
+        guard command != .batch, !readStdin, gitDiffSource == nil, !inputPath.isEmpty else {
+            return []
+        }
+        return [URL(fileURLWithPath: inputPath)]
+    }
+
     /// An explicit syntax theme id (e.g. `dracula`), or `nil` to use the default
     /// theme. Resolved through the built-in catalog; an unknown id is rejected up
     /// front rather than silently degraded, so a typo in a docs pipeline fails loud.

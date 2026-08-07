@@ -403,4 +403,52 @@ struct CLIBatchRenderingTests: CLITestSupport {
             JSONSerialization.jsonObject(with: data) as? [[String: String]])
         #expect(decoded == [["path": "Blob.bin", "reason": "not readable text"]])
     }
+
+    /// Rendering a folder into itself derives each sidecar's name from the output image, so
+    /// one file's `.md`/`.txt`/`.html` sidecar can land exactly on another *input*. The
+    /// plan is preflighted, so the run fails before writing and the folder is untouched —
+    /// previously it reported success while replacing sources with generated content.
+    @Test func batchRefusesToWriteASidecarOntoAnyInput() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        // Distinct stems on purpose: same-stem inputs (`a.md` + `a.swift`) are already
+        // de-collided into `a.md.png`/`a.swift.png`, which moves their sidecars out of the
+        // way. The collision needs `a.md` to render to `a.png`, whose `.md` sidecar is then
+        // the input itself.
+        try "# notes\n".write(
+            to: directory.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+        try "let b = 1".write(
+            to: directory.appendingPathComponent("b.swift"), atomically: true, encoding: .utf8)
+        let before = try Data(contentsOf: directory.appendingPathComponent("a.md"))
+
+        let options = try CLIArguments.parse([
+            "batch", directory.path, "--out", directory.path, "--markdown-sidecar",
+        ])
+        #expect(throws: CLIError.self) { try CLIBatchRenderer.run(options) }
+        #expect(try Data(contentsOf: directory.appendingPathComponent("a.md")) == before)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent("a.png").path))
+    }
+
+    @Test func batchIntoASeparateFolderStillWritesSidecars() throws {
+        // The guard is about collisions with inputs, not about sidecars in general.
+        let input = try makeTempDirectory()
+        let output = try makeTempDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: input)
+            try? FileManager.default.removeItem(at: output)
+        }
+        try "# notes\n".write(
+            to: input.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+
+        _ = try CLIBatchRenderer.run(
+            try CLIArguments.parse([
+                "batch", input.path, "--out", output.path, "--markdown-sidecar",
+            ]))
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("a.png").path))
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("a.md").path))
+        #expect(FileManager.default.fileExists(atPath: input.appendingPathComponent("a.md").path))
+    }
 }

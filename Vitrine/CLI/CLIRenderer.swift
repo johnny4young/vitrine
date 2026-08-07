@@ -122,6 +122,8 @@ enum CLIRenderer {
         // Preflight every target before creating the directory or rendering anything,
         // so --no-overwrite cannot leave a partially updated preset set.
         for outputURL in outputURLs {
+            try CLIOutputWriter.guardSidecarsDoNotOverwriteInputs(
+                beside: outputURL, options: options, inputs: options.sourceFileURLs)
             try CLIOutputWriter.guardNoOverwriteTargetsAvailable(
                 beside: outputURL, options: options)
         }
@@ -220,6 +222,8 @@ enum CLIRenderer {
         let optionalOutputURL =
             options.outputPath.isEmpty ? nil : URL(fileURLWithPath: options.outputPath)
         if let optionalOutputURL {
+            try CLIOutputWriter.guardSidecarsDoNotOverwriteInputs(
+                beside: optionalOutputURL, options: options, inputs: options.sourceFileURLs)
             try CLIOutputWriter.guardNoOverwriteTargetsAvailable(
                 beside: optionalOutputURL, options: options)
         }

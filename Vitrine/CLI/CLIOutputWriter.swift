@@ -37,6 +37,40 @@ enum CLIOutputWriter {
         return targets
     }
 
+    /// Rejects a run whose sidecars would be written on top of one of its own inputs.
+    ///
+    /// Sidecar names are derived from `--out` alone (`base.txt`/`.md`/`.html`), so a run
+    /// whose output shares a basename with a source file — `render notes.md --out
+    /// notes.png --markdown-sidecar`, or any batch rendering a folder into itself —
+    /// silently replaces the source with generated content and still exits 0. With
+    /// `--redact-lines`/`--redact-secrets` the original text is not recoverable.
+    ///
+    /// This is deliberately **not** gated on `--no-overwrite`: that flag protects
+    /// *artifacts* from being replaced, and defaults to off. Destroying an input is never
+    /// the intent, so it fails the run regardless of the flag, before anything is written.
+    static func guardSidecarsDoNotOverwriteInputs(
+        beside imageURL: URL,
+        options: CLIOptions,
+        inputs: [URL]
+    ) throws {
+        let sidecars = sidecarURLs(options, beside: imageURL)
+        guard !sidecars.isEmpty, !inputs.isEmpty else { return }
+        let claimed = Set(inputs.map(canonicalPath))
+        for sidecar in sidecars where claimed.contains(canonicalPath(sidecar)) {
+            throw CLIError.incompatibleOptions(
+                "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
+                    + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
+                    + "source, or drop the sidecar flag.")
+        }
+    }
+
+    /// A comparable filesystem identity: symlinks resolved and `.`/`..` removed, so two
+    /// spellings of the same file compare equal. Applied to targets that do not exist yet,
+    /// it still normalizes the directories leading to them.
+    private static func canonicalPath(_ url: URL) -> String {
+        url.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
     /// Finds the first existing output target when `--no-overwrite` is active.
     static func existingNoOverwriteTarget(beside imageURL: URL, options: CLIOptions) -> URL? {
         guard options.noOverwrite else { return nil }

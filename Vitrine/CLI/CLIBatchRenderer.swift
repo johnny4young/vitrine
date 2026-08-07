@@ -104,6 +104,18 @@ enum CLIBatchRenderer {
         let outputURLs = batchOutputURLs(
             for: loadedInputs.map(\.file), inputDirectory: inputDirectory,
             outputDirectory: outputDirectory, recursive: options.recursiveBatch, fileExtension: ext)
+
+        // Preflight the whole plan before writing anything: rendering a folder into itself
+        // with a sidecar flag derives sidecar names from the output image, so file A's
+        // `.md`/`.txt`/`.html` sidecar can land exactly on file B. Checked against every
+        // discovered input, not just the current one, and before the render loop so a
+        // rejected run leaves the folder untouched.
+        let batchInputs = loadedInputs.map(\.file)
+        for outputURL in outputURLs.values {
+            try CLIOutputWriter.guardSidecarsDoNotOverwriteInputs(
+                beside: outputURL, options: options, inputs: batchInputs)
+        }
+
         var rendered = 0
         var manifest: [BatchManifestEntry] = []
         for input in loadedInputs {

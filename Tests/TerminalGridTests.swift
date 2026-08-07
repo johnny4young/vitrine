@@ -379,4 +379,36 @@ struct TerminalGridTests {
         #expect(ANSIRenderer.plainText(tui) == "ABCDEFGHIJ")  // inferred ≥ 80: no wrap
         #expect(ANSIRenderer.plainText(tui, columns: 4) == "ABCD\nEFGH\nIJ")  // pinned to 4
     }
+
+    // MARK: - Hostile parameter magnitudes
+
+    /// Cursor motion adds the CSI parameter to the current position *before* clamping, so
+    /// an unbounded parameter used to overflow `Int` and trap the process (SIGTRAP, exit
+    /// 133) instead of saturating. A terminal capture is whatever a program printed, and
+    /// `vgrab` pipes it straight in, so this was reachable from ordinary use.
+    ///
+    /// The cursor must be off column/row zero first: `0 + Int.max` is representable, and
+    /// only a nonzero starting position actually overflows.
+    @Test(arguments: ["B", "C", "E", "X", "S", "T", "L", "M", "@", "P"])
+    func hugeCSIParameterSaturatesInsteadOfTrapping(_ finalByte: String) {
+        let huge = String(Int.max)
+        let stream = "\(esc)[2J\(esc)[5;10Hx\(esc)[\(huge)\(finalByte)done"
+        // Reaching this line at all is the assertion: an overflow traps rather than throws.
+        #expect(!plain(stream).isEmpty)
+    }
+
+    @Test func hugeCursorMotionLandsAtTheScreenEdgeNotBeyondIt() {
+        // Saturation must still respect the screen bounds, so the clamp — not the raw
+        // parameter — decides the final position.
+        let huge = String(Int.max)
+        let forward = plain("\(esc)[2J\(esc)[1;5Hx\(esc)[\(huge)CY", columns: 20)
+        #expect(forward.contains("Y"))
+        #expect(forward.split(separator: "\n").allSatisfy { $0.count <= 20 })
+    }
+
+    @Test func hugeScrollRegionParametersDoNotTrap() {
+        // DECSTBM subtracts 1 from each bound before clamping, a second overflow shape.
+        let huge = String(Int.max)
+        #expect(!plain("\(esc)[2J\(esc)[\(huge);\(huge)r\(esc)[1;1Hx").isEmpty)
+    }
 }

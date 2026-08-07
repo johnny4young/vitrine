@@ -122,6 +122,11 @@ struct EditorWindowState: Codable, Equatable {
     var foregroundImageFileName: String?
     var imageFrameID: String
     var imageFrameAppearanceID: String
+    var windowTitle: String
+    var wrapColumns: Int?
+    var focusHighlightedLines: Bool
+    var diffDecorations: Bool
+    var annotations: [Annotation]
 
     /// Captures `config` for archiving. Line ranges are flattened to their canonical
     /// spec string and the theme/language to their ids, matching how the rest of the
@@ -146,6 +151,11 @@ struct EditorWindowState: Codable, Equatable {
         foregroundImageFileName = config.foregroundImage?.fileName
         imageFrameID = config.imageFrame.rawValue
         imageFrameAppearanceID = config.imageFrameAppearance.rawValue
+        windowTitle = config.windowTitle
+        wrapColumns = config.wrapColumns
+        focusHighlightedLines = config.focusHighlightedLines
+        diffDecorations = config.diffDecorations
+        annotations = config.annotations
     }
 
     /// Rebuilds a `SnapshotConfig`, resolving the theme through `themes` (so a custom
@@ -176,6 +186,11 @@ struct EditorWindowState: Codable, Equatable {
         }
         config.imageFrame = ImageFrame(rawValue: imageFrameID) ?? .none
         config.imageFrameAppearance = FrameAppearance(rawValue: imageFrameAppearanceID) ?? .auto
+        config.windowTitle = windowTitle
+        config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
+        config.focusHighlightedLines = focusHighlightedLines
+        config.diffDecorations = diffDecorations
+        config.annotations = annotations
         return config
     }
 
@@ -184,6 +199,7 @@ struct EditorWindowState: Codable, Equatable {
         case padding, cornerRadius, shadowRadius, showChrome, showShadow
         case showLineNumbers, highlightedLines, redactedLines, background, metadata
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
+        case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
     }
 
     /// A defensive decoder: every field tolerates being absent or the wrong type by
@@ -228,6 +244,16 @@ struct EditorWindowState: Codable, Equatable {
         imageFrameAppearanceID =
             (try? container.decode(String.self, forKey: .imageFrameAppearanceID))
             ?? fallback.imageFrameAppearance.rawValue
+        windowTitle =
+            (try? container.decode(String.self, forKey: .windowTitle)) ?? fallback.windowTitle
+        wrapColumns = try? container.decodeIfPresent(Int.self, forKey: .wrapColumns)
+        focusHighlightedLines =
+            (try? container.decode(Bool.self, forKey: .focusHighlightedLines))
+            ?? fallback.focusHighlightedLines
+        diffDecorations =
+            (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? fallback.diffDecorations
+        annotations =
+            (try? container.decode([Annotation].self, forKey: .annotations)) ?? fallback.annotations
     }
 
     /// JSON for archiving this draft into an `NSCoder` restoration record.
