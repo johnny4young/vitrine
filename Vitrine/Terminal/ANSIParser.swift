@@ -81,7 +81,7 @@ enum ANSIParser {
             switch next {
             case "[":  // CSI — control sequence (SGR is the only one with a text effect)
                 let (params, finalByte, end) = Self.scanCSI(scalars, from: index + 2)
-                if finalByte == "m" {
+                if finalByte == "m", !Self.hasPrivateParameterPrefix(params) {
                     flush()
                     style = Self.applySGR(params, to: style)
                 }
@@ -122,6 +122,19 @@ enum ANSIParser {
     }
 
     // MARK: - Sequence scanning
+
+    /// Whether a CSI parameter string opens with a private-use marker (`<`, `=`, `>`).
+    ///
+    /// These mark vendor sequences — xterm's `ESC[>4;1m` (modifyOtherKeys, which tmux
+    /// emits), `ESC[=c` device queries — that share final bytes with standard controls
+    /// but mean something else entirely. Executed as standard, `>4;1m` ghost-applies
+    /// bold and a private cursor final moves the cursor. A static capture has no
+    /// terminal to answer them, so they are dropped wholesale. (`?` is marked private
+    /// too, but callers route it separately: DECSET modes drive the alt screen.)
+    static func hasPrivateParameterPrefix(_ params: String) -> Bool {
+        guard let first = params.unicodeScalars.first else { return false }
+        return first == "<" || first == "=" || first == ">"
+    }
 
     /// Whether the byte after ESC opens a *string* sequence — DCS (`P`), SOS (`X`),
     /// PM (`^`), or APC (`_`) — whose body is data addressed to the terminal (sixel,

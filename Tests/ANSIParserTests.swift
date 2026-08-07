@@ -258,4 +258,30 @@ struct ANSIParserTests {
         #expect(!TerminalScreen.usesScreenAddressing(transcript))
         #expect(ANSIRenderer.plainText(transcript) == "line one\nline two")
     }
+
+    // MARK: - Private-parameter CSI (`<`, `=`, `>`) is vendor data, never standard
+
+    @Test func privateParameterSGRDoesNotGhostStyleThePen() {
+        // xterm's modifyOtherKeys (`ESC[>4;1m`) shares SGR's final byte. The `>4` maps
+        // to the ignored -1, but the trailing `1` used to execute as real SGR bold.
+        let runs = ANSIParser.parse("\(esc)[31mred\(esc)[>4;1mstill plain red\(esc)[0m")
+        #expect(runs.allSatisfy { !$0.style.bold })
+        #expect(runs.map(\.text).joined() == "redstill plain red")
+    }
+
+    @Test func privateParameterCursorFinalsDoNotMoveTheGridCursor() {
+        // `ESC[>5A`-shaped vendor sequences share cursor final bytes; executed as
+        // standard they walk the cursor mid-frame.
+        var screen = TerminalScreen(columns: 20)
+        screen.feed("\(esc)[3;1Hbase\(esc)[>2Aup")
+        #expect(screen.plainText() == "\n\nbaseup")
+    }
+
+    @Test func privateParameterSequencesNeverSelectTheGridOrWidenInference() {
+        // A `>`-marked sequence with an ED/CUP shape is a query, not screen addressing:
+        // it must not route a scrolling capture to the grid, and its numbers must not
+        // inflate the inferred width.
+        #expect(!TerminalScreen.usesScreenAddressing("\(esc)[>2Jplain\ntranscript"))
+        #expect(TerminalScreen.inferColumns("\(esc)[>1;200Hshort") == 80)
+    }
 }
