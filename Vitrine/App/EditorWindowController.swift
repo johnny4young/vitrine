@@ -418,6 +418,21 @@ extension EditorWindowController: NSWindowDelegate {
         }
     }
 
+    /// Tears down every session's volatile store, including the primary's.
+    ///
+    /// `windowWillClose` deliberately keeps the primary session so a closed-and-reopened
+    /// editor resumes its draft, which means only app termination can discard it — and
+    /// nothing did, so every run of the app stranded one populated per-window plist
+    /// (with the user's annotation text inside) on disk, permanently. Called from
+    /// `applicationWillTerminate`; a force-quit skips it, which the launch sweep in
+    /// `AppSettings.sweepStaleEditorSessionSuites` covers.
+    func discardAllSessions() {
+        for (index, session) in sessions {
+            session.discard()
+            sessions[index] = nil
+        }
+    }
+
     /// Archives the window's current draft config into its restorable state, so secure
     /// restoration can rebuild the document on the next launch. AppKit calls
     /// this delegate hook from the window's `encodeRestorableState(with:)`. The matching

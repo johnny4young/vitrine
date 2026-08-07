@@ -266,6 +266,60 @@ final class AppSettings {
     /// `AppEnvironment`, so saved presets and custom themes are visible in every window.
     /// Creating the UUID-named suite is an isolation invariant; failure stops session
     /// construction rather than silently writing editor changes into app-wide defaults.
+    /// The suite-name prefix shared by every per-window volatile store, and the launch
+    /// sweep's match criterion.
+    static let editorSessionSuitePrefix = "com.johnny4young.vitrine.editor-session."
+
+    /// Deletes stale per-window suite files left behind by earlier runs.
+    ///
+    /// A per-window suite should die with its window, but three paths strand its plist
+    /// on disk: the primary session is deliberately kept for the app's whole run (so
+    /// only a clean quit can discard it), a force-quit or crash skips teardown
+    /// entirely, and `removePersistentDomain` itself leaves an empty husk behind —
+    /// `cfprefsd` owns the file, so deleting it at discard time races the daemon, which
+    /// is why the husk is cleaned here instead. Left alone they accumulate without
+    /// bound, holding user-typed annotation text; a machine that has run Vitrine for
+    /// two months carried 4,667 of them.
+    ///
+    /// At launch no session of *this* process exists yet, so every matching file is
+    /// garbage — except one belonging to a concurrently running second instance (a dev
+    /// build and an installed build share the container). The age threshold makes the
+    /// sweep safe against that race: a live session's plist was written recently, a
+    /// stranded one has not been touched since its run died.
+    static func sweepStaleEditorSessionSuites(
+        preferencesDirectory: URL,
+        olderThan age: TimeInterval = 86_400,
+        now: Date = Date()
+    ) {
+        let fileManager = FileManager.default
+        guard
+            let files = try? fileManager.contentsOfDirectory(
+                at: preferencesDirectory, includingPropertiesForKeys: [.contentModificationDateKey],
+                options: [.skipsHiddenFiles])
+        else { return }
+        for file in files {
+            let name = file.lastPathComponent
+            guard name.hasPrefix(editorSessionSuitePrefix), name.hasSuffix(".plist") else {
+                continue
+            }
+            let modified =
+                (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate ?? .distantPast
+            guard now.timeIntervalSince(modified) > age else { continue }
+            // Empty the domain first so cfprefsd's cache agrees with the deletion, then
+            // remove the file itself — the half `removePersistentDomain` cannot do.
+            let suiteName = String(name.dropLast(".plist".count))
+            UserDefaults.standard.removePersistentDomain(forName: suiteName)
+            try? fileManager.removeItem(at: file)
+        }
+    }
+
+    /// The container's Preferences directory, where `cfprefsd` materializes suites.
+    static var preferencesDirectory: URL {
+        FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Preferences", isDirectory: true)
+    }
+
     static func makeEditorSession(
         seededFrom source: UserDefaults,
         brandKit: BrandKitStore,
@@ -273,7 +327,7 @@ final class AppSettings {
     )
         -> AppSettings
     {
-        let suiteName = "com.johnny4young.vitrine.editor-session.\(UUID().uuidString)"
+        let suiteName = "\(editorSessionSuitePrefix)\(UUID().uuidString)"
         guard let volatile = UserDefaults(suiteName: suiteName) else {
             preconditionFailure("Unable to create an isolated editor settings store")
         }
