@@ -142,6 +142,42 @@ final class WebSnapshotModel {
     /// Releases the large rendered images — a multi-viewport batch can hold several
     /// full-resolution `CGImage`s (~100 MB) — when the window closes. The input text, mode,
     /// and settings stay, so reopening resumes ready to re-capture.
+    /// The in-flight capture.
+    ///
+    /// Owned by the model rather than the view's `@State` so window teardown can reach
+    /// it: `windowWillClose` lives on the AppKit controller and cannot see SwiftUI state,
+    /// so a capture started from the view outlived its window and re-seated `results`,
+    /// `renderedAsset`, and `boardAsset` into the model that `discardRenderedAssets()`
+    /// had just cleared — keeping the full-resolution captures resident for the app's
+    /// lifetime and presenting an abandoned batch on the next open.
+    private(set) var renderTask: Task<Void, Never>?
+
+    /// Whether a capture is in flight.
+    ///
+    /// This is the re-entrancy guard, not `isRendering`: the handle is assigned
+    /// synchronously on the main actor by ``beginRender(_:)``, whereas `isRendering` only
+    /// flips once the spawned task starts running, so two quick triggers could both clear
+    /// an `isRendering` check.
+    var isCapturing: Bool { renderTask != nil }
+
+    /// Records the capture the view just spawned. Synchronous on the main actor, which is
+    /// what makes ``isCapturing`` a reliable guard.
+    func beginRender(_ task: Task<Void, Never>) {
+        renderTask = task
+    }
+
+    /// Clears the handle once a capture finishes, so the next trigger is accepted.
+    func finishRender() {
+        renderTask = nil
+    }
+
+    /// Stops an in-flight capture. `render` checks `Task.isCancelled` before publishing,
+    /// and both this and that check run on the main actor with no suspension point
+    /// between them, so a cancel issued during teardown lands before any write.
+    func cancelRender() {
+        renderTask?.cancel()
+    }
+
     func discardRenderedAssets() {
         renderedAsset = nil
         results = []
@@ -514,7 +550,11 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     /// Frees the large rendered images when the window closes. The window is reused
     /// (`isReleasedWhenClosed = false`), so without this a multi-viewport batch's
     /// full-resolution captures would stay resident for the app's lifetime.
+    ///
+    /// Cancel first: discarding alone left an in-flight capture running against a closed
+    /// window, and its tail then re-seated the very assets this just cleared.
     func windowWillClose(_ notification: Notification) {
+        model.cancelRender()
         model.discardRenderedAssets()
     }
 }

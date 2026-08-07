@@ -32,6 +32,10 @@ final class AppSettings {
     private(set) var renderConfiguration: SnapshotConfig {
         didSet {
             guard renderConfiguration != oldValue else { return }
+            // In-memory state still updates so a late task cannot corrupt what is on
+            // screen; only the write-back is suppressed once the session's store is gone
+            // (see `isDiscarded`).
+            guard !isDiscarded else { return }
             SettingsCodec.persistStyle(renderConfiguration, to: defaults)
             dropPresetIfStyleDiverged()
         }
@@ -300,6 +304,20 @@ final class AppSettings {
     /// (persistent) instance. Used to clean up the volatile store on window close.
     private(set) var volatileSuiteName: String?
 
+    /// Whether this session's store has been torn down, so later writes stop persisting.
+    ///
+    /// A window can close while an async task it started is still in flight — the
+    /// editor's image OCR/redaction pass is the known case, taking seconds on a large
+    /// screenshot. That task then assigns `settings.config`, whose observer persists ~18
+    /// keys into the domain `discardVolatileStore()` just removed, so `cfprefsd`
+    /// *recreates* the per-window plist. Because `volatileSuiteName` is already nil by
+    /// then, nothing will ever clean that file up again: one orphan per occurrence,
+    /// surviving relaunches, containing user-typed annotation text.
+    ///
+    /// Latched only for a volatile session (the guard below returns first for the shared
+    /// persistent instance), so the app-wide store is never silenced.
+    private var isDiscarded = false
+
     /// Removes this session's volatile backing store, if any. Called when an editor
     /// window closes so a per-window suite never accumulates on disk. A no-op
     /// for the shared, persistent instance.
@@ -307,6 +325,7 @@ final class AppSettings {
         guard let volatileSuiteName else { return }
         defaults.removePersistentDomain(forName: volatileSuiteName)
         self.volatileSuiteName = nil
+        isDiscarded = true
     }
 
     /// Adopts the presentational parts of `session.config` (and the accompanying output
