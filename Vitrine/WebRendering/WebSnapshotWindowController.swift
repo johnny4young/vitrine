@@ -139,9 +139,6 @@ final class WebSnapshotModel {
         return url.host
     }
 
-    /// Releases the large rendered images — a multi-viewport batch can hold several
-    /// full-resolution `CGImage`s (~100 MB) — when the window closes. The input text, mode,
-    /// and settings stay, so reopening resumes ready to re-capture.
     /// The in-flight capture.
     ///
     /// Owned by the model rather than the view's `@State` so window teardown can reach
@@ -178,6 +175,9 @@ final class WebSnapshotModel {
         renderTask?.cancel()
     }
 
+    /// Releases the large rendered images — a multi-viewport batch can hold several
+    /// full-resolution `CGImage`s (~100 MB) — when the window closes. The input text, mode,
+    /// and settings stay, so reopening resumes ready to re-capture.
     func discardRenderedAssets() {
         renderedAsset = nil
         results = []

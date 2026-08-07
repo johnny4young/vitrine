@@ -139,8 +139,10 @@ struct WebMultiViewportSelectionTests {
         #expect(!model.isCapturing)
 
         let started = Task<Void, Never> {
-            // Long enough that the cancellation below always lands first.
-            try? await Task.sleep(for: .seconds(30))
+            // The cancel below is issued synchronously on the same actor before this task
+            // can reach its first suspension, so any non-trivial duration works. Kept
+            // short so a regression fails in a second rather than hanging the suite.
+            try? await Task.sleep(for: .seconds(1))
         }
         model.beginRender(started)
         #expect(model.isCapturing)
