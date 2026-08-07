@@ -494,6 +494,38 @@ struct EditorSessionIndependenceTests {
         settings.discardVolatileStore()  // no crash, no effect
         #expect(settings.volatileSuiteName == nil)
     }
+
+    /// A window can close while an async task it started is still running — the editor's
+    /// image OCR/redaction pass takes seconds on a large screenshot. That task's write to
+    /// `config` used to persist through the observer into the domain the teardown had just
+    /// removed, so `cfprefsd` recreated the per-window plist; with `volatileSuiteName`
+    /// already nil, nothing would ever clean it up again.
+    @Test func aWriteAfterDiscardDoesNotRecreateTheVolatileSuite() throws {
+        let defaults = freshDefaults()
+        let session = makeEnvironment(defaults: defaults).makeEditorSessionSettings()
+        let suiteName = try #require(session.volatileSuiteName)
+        session.config.padding = 48
+        session.discardVolatileStore()
+
+        // The late write still lands in memory, so what is on screen stays correct…
+        session.config.padding = 56
+        #expect(session.config.padding == 56)
+
+        // …but nothing is written back, so the removed domain stays empty.
+        let reopened = UserDefaults(suiteName: suiteName)
+        #expect(reopened?.dictionaryRepresentation()[SettingsCodec.Keys.padding] == nil)
+    }
+
+    @Test func discardingASessionNeverSilencesTheSharedStore() {
+        // The latch must be scoped to volatile sessions: a stray discard on the shared
+        // instance returns before latching, so app-wide settings keep persisting.
+        let defaults = freshDefaults()
+        let shared = AppSettings(defaults: defaults)
+        shared.discardVolatileStore()
+        shared.config.padding = 52
+
+        #expect(AppSettings(defaults: defaults).config.padding == 52)
+    }
 }
 
 // MARK: - Secure state restoration stays enabled

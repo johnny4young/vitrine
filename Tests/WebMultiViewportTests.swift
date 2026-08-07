@@ -129,6 +129,41 @@ struct WebMultiViewportSelectionTests {
         model.discardRenderedAssets()
         #expect(model.pendingAutoCapture == false)
     }
+
+    /// The capture handle lives on the model rather than the view's `@State` precisely so
+    /// `windowWillClose` — which runs on the AppKit controller and cannot see SwiftUI
+    /// state — can cancel it. Without that, a capture outlived its window and re-seated
+    /// results into the model the teardown had just cleared.
+    @Test func theModelOwnsTheCaptureHandleSoTeardownCanReachIt() async {
+        let model = WebSnapshotModel()
+        #expect(!model.isCapturing)
+
+        let started = Task<Void, Never> {
+            // The cancel below is issued synchronously on the same actor before this task
+            // can reach its first suspension, so any non-trivial duration works. Kept
+            // short so a regression fails in a second rather than hanging the suite.
+            try? await Task.sleep(for: .seconds(1))
+        }
+        model.beginRender(started)
+        #expect(model.isCapturing)
+
+        model.cancelRender()
+        await started.value
+        #expect(started.isCancelled)
+
+        model.finishRender()
+        #expect(!model.isCapturing)
+    }
+
+    /// `isCapturing` is the re-entrancy guard because the handle is assigned
+    /// synchronously on the main actor, unlike `isRendering`, which only flips once the
+    /// spawned task starts running.
+    @Test func beginRenderMakesTheGuardTrueSynchronously() {
+        let model = WebSnapshotModel()
+        model.beginRender(Task {})
+        #expect(model.isCapturing)  // no await between begin and this read
+        model.finishRender()
+    }
 }
 
 @Suite("Responsive board composite")

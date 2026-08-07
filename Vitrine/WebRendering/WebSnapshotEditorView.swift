@@ -28,9 +28,6 @@ struct WebSnapshotEditorView: View {
     /// Which captured viewport the big preview is showing (the highlighted filmstrip
     /// tile) in a multi-resolution batch.
     @State var previewedKind: WebSnapshotConfig.ViewportPreset.Kind?
-    /// The in-flight capture task, held so the Cancel button can stop a long
-    /// multi-viewport batch. `nil` when no capture is running.
-    @State var renderTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -67,9 +64,15 @@ struct WebSnapshotEditorView: View {
             WebPrivacyDisclosureView(
                 onConfirm: {
                     // Record consent and proceed with the capture the user asked for.
+                    // Route back through `attemptCapture` rather than spawning here, so the
+                    // re-entrancy guard covers this path too: a double-confirm (or key
+                    // repeat) before the sheet dismisses would otherwise start a second
+                    // capture and overwrite the stored handle, leaving Cancel pointed at a
+                    // task that is no longer the one running. Consent is set first, so the
+                    // disclosure branch inside is already false and cannot loop.
                     settings.webCapture.consentGiven = true
                     showDisclosure = false
-                    renderTask = Task { await capture() }
+                    attemptCapture()
                 },
                 onCancel: { showDisclosure = false }
             )
