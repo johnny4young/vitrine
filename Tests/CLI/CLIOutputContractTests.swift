@@ -776,4 +776,61 @@ struct CLIOutputContractTests: CLITestSupport {
         #expect(FileManager.default.fileExists(atPath: output))
     }
 
+    // MARK: - A sidecar never overwrites its own input
+
+    /// Sidecar names come from `--out` alone, so an output sharing the source's basename
+    /// used to replace the source with generated content and still exit 0 — and with
+    /// `--redact-lines` the original text was unrecoverable. The run must fail before
+    /// anything is written, and must do so without `--no-overwrite`, which defaults to off
+    /// and protects artifacts rather than inputs.
+    @Test func markdownSidecarRefusesToOverwriteItsInput() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput("# notes\nsecret line\n", named: "notes.md", in: directory)
+        let before = try Data(contentsOf: URL(fileURLWithPath: input))
+        let output = directory.appendingPathComponent("notes.png").path
+        let options = try CLIArguments.parse([
+            "render", input, "--out", output, "--markdown-sidecar", "--redact-lines", "1",
+        ])
+
+        #expect(throws: CLIError.self) { try CLIRenderer.run(options) }
+        // The source is byte-identical and the image was never written.
+        #expect(try Data(contentsOf: URL(fileURLWithPath: input)) == before)
+        #expect(!FileManager.default.fileExists(atPath: output))
+    }
+
+    @Test func textAndHtmlSidecarsAreGuardedToo() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        for (name, flag) in [("notes.txt", "--text-sidecar"), ("page.html", "--html-sidecar")] {
+            let input = try writeInput("plain\n", named: name, in: directory)
+            let stem = (name as NSString).deletingPathExtension
+            let output = directory.appendingPathComponent("\(stem).png").path
+            let options = try CLIArguments.parse(["render", input, "--out", output, flag])
+            #expect(throws: CLIError.self) { try CLIRenderer.run(options) }
+            #expect(FileManager.default.fileExists(atPath: input))
+        }
+    }
+
+    @Test func aSidecarBesideADifferentlyNamedOutputStillWrites() throws {
+        // The guard must not fire on the normal case: only a collision with a real input
+        // is rejected, so ordinary sidecar runs keep working.
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Source.swift", in: directory)
+        let output = directory.appendingPathComponent("card.png").path
+        let options = try CLIArguments.parse([
+            "render", input, "--out", output, "--markdown-sidecar",
+        ])
+
+        _ = try CLIRenderer.run(options)
+        #expect(FileManager.default.fileExists(atPath: output))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent("card.md").path))
+        #expect(FileManager.default.fileExists(atPath: input))
+    }
 }
