@@ -57,50 +57,22 @@ enum RenderError: Error, Equatable, Sendable {
 
 /// One strategy for turning a `CaptureInput` into a `RenderedAsset`.
 ///
-/// The protocol intentionally has **no `associatedtype`**: an associatedtype
-/// protocol cannot be stored as `any Renderer` or selected by input case, which is
-/// exactly what routing needs. Dispatch happens on the `CaptureInput` enum and
-/// each concrete renderer declares, via `canRender`, the cases it handles. This is
-/// what lets the code path and the web-rendering paths evolve as independent types
-/// behind one coordinator.
+/// The shared contract of the web renderers (`URLRenderer`, `HTMLRenderer`): the
+/// Web Snapshot model holds either one and calls `render(_:config:)` per viewport
+/// without caring which. Dispatch happens on the `CaptureInput` enum; a renderer
+/// called with an input it rejects throws `RenderError.noRendererFor`. (A
+/// `RenderCoordinator` that routed across renderers by `canRender` used to sit on
+/// top of this protocol; nothing in the product ever called it, so it is gone —
+/// quick capture classifies inputs itself and the Web Snapshot surface picks its
+/// renderer by mode.)
 protocol Renderer {
-    /// Whether this renderer handles `input`. A coordinator calls this to route;
-    /// it must be cheap and side-effect-free.
+    /// Whether this renderer handles `input`. Cheap and side-effect-free.
     func canRender(_ input: CaptureInput) -> Bool
 
     /// Renders `input` with `config` to a `RenderedAsset`, or throws a
     /// `RenderError`. Implementations should not be called for an input they
     /// reject; doing so throws `RenderError.noRendererFor`.
     func render(_ input: CaptureInput, config: SnapshotConfig) async throws -> RenderedAsset
-}
-
-/// Picks the first registered renderer that accepts an input and delegates to it.
-/// The order of `renderers` is the routing priority, so a more specific
-/// renderer can precede a fallback. The coordinator owns no rendering logic itself
-/// it is purely the seam between input classification and rendering.
-struct RenderCoordinator {
-    /// Renderers in priority order, e.g. `[CodeRenderer(), URLRenderer(), …]`.
-    let renderers: [any Renderer]
-
-    // `RenderCoordinator.standard` — the production coordinator wired with the code
-    // and web renderers — lives in `WebRendering/RenderCoordinator+Standard.swift`,
-    // which the CLI target excludes (the headless tool ships no WebKit). This struct
-    // stays platform-neutral so both the app and the CLI compile it.
-
-    /// Returns the first renderer that accepts `input`, or `nil` when none do.
-    func renderer(for input: CaptureInput) -> (any Renderer)? {
-        renderers.first { $0.canRender(input) }
-    }
-
-    /// Routes `input` to the first accepting renderer and returns its asset.
-    /// Throws `RenderError.noRendererFor` when nothing accepts the input, and
-    /// otherwise propagates the chosen renderer's error.
-    func render(_ input: CaptureInput, config: SnapshotConfig) async throws -> RenderedAsset {
-        guard let renderer = renderer(for: input) else {
-            throw RenderError.noRendererFor(kind: input.diagnosticKind)
-        }
-        return try await renderer.render(input, config: config)
-    }
 }
 
 extension CaptureInput {

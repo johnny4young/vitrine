@@ -235,25 +235,6 @@ enum QuickCapture {
 
     // MARK: - Input classification
 
-    /// Classifies raw clipboard text into a typed `CaptureInput` for the renderer
-    /// abstraction, *without rendering* — the seam that keeps the code-rendering path
-    /// free of web capture's URL assumptions.
-    ///
-    /// When `treatURLsAsScreenshot` is on and the text is a single http(s) URL, the
-    /// input is `.url`; otherwise the text is interpreted (Markdown fences, file
-    /// paths, content scoring) and returned as `.code` carrying the detected
-    /// language as its hint. HTML is not produced from clipboard text here — pasted
-    /// HTML arrives through a dedicated web-capture entry point, not by sniffing the
-    /// code path — so plain HTML source still classifies as `.code` (highlighted)
-    /// exactly as before.
-    static func classify(_ text: String, treatURLsAsScreenshot: Bool) -> CaptureInput {
-        if treatURLsAsScreenshot, let url = classifyURL(text) {
-            return url
-        }
-        let interpreted = LanguageDetector.interpret(text)
-        return .code(interpreted.code, languageHint: interpreted.language)
-    }
-
     /// Returns a `.url` input when `text` is a single http(s) URL that `URL` can
     /// parse, or `nil` otherwise. This pairs `LanguageDetector.isURL` (the textual
     /// gate, which the rest of the app already trusts) with an actual `URL` value

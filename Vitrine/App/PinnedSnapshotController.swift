@@ -13,7 +13,9 @@ import SwiftUI
 final class PinnedSnapshotController {
     static let shared = PinnedSnapshotController()
 
-    private var panel: NSPanel?
+    /// Read-internal so tests can assert the unpin teardown; only this controller
+    /// writes it.
+    private(set) var panel: NSPanel?
 
     /// Whether the pin panel is currently on screen (drives the toolbar button state).
     var isPinned: Bool { panel?.isVisible ?? false }
@@ -33,8 +35,14 @@ final class PinnedSnapshotController {
     }
 
     /// Closes the pin, if any.
+    ///
+    /// Also drops the content view: the panel is reused (`isReleasedWhenClosed =
+    /// false`), so ordering it out alone kept the hosting view — and the pinned
+    /// full-resolution `NSImage`, megabytes at 2–3× scale — resident until the next
+    /// pin or app quit.
     func unpin() {
         panel?.orderOut(nil)
+        panel?.contentView = nil
     }
 
     private func reusablePanel() -> NSPanel {

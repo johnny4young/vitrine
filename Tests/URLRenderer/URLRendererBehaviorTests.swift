@@ -98,11 +98,13 @@ struct URLRendererRoutingTests {
         }
     }
 
-    @Test func urlRendererInACoordinatorRoutesToIt() throws {
-        // Wired into a coordinator, a URL routes to the real renderer.
-        let coordinator = RenderCoordinator(renderers: [URLRenderer()])
-        let url = CaptureInput.url(try URLFixture.valid())
-        #expect(coordinator.renderer(for: url) is URLRenderer)
+    @Test func urlRendererAcceptsExactlyTheURLInput() throws {
+        // The `canRender` contract is what lets the Web Snapshot surface hold either
+        // web renderer behind the shared protocol shape.
+        let renderer = URLRenderer()
+        #expect(renderer.canRender(.url(try URLFixture.valid())))
+        #expect(!renderer.canRender(.code("x", languageHint: nil)))
+        #expect(!renderer.canRender(.html("<b>x</b>")))
     }
 }
 

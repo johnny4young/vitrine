@@ -84,6 +84,26 @@ struct ReferenceToolsTests {
         #expect(!controller.isPinned)
     }
 
+    @Test func unpinReleasesThePinnedImageNotJustThePanel() throws {
+        // The panel is reused (`isReleasedWhenClosed = false`), so ordering it out
+        // alone kept the hosting view — and the pinned full-resolution NSImage,
+        // megabytes at 2–3× export scale — resident until the next pin or app quit.
+        // Unpin must drop the content view so the bitmap can actually deallocate.
+        let controller = PinnedSnapshotController.shared
+        defer { controller.unpin() }
+
+        let image = NSImage(size: NSSize(width: 300, height: 200), flipped: false) { rect in
+            NSColor.systemTeal.setFill()
+            rect.fill()
+            return true
+        }
+        controller.pin(image)
+        #expect(try #require(controller.panel).contentView != nil)
+
+        controller.unpin()
+        #expect(try #require(controller.panel).contentView == nil)
+    }
+
     /// A pinned image larger than the bound scales down keeping aspect; a small one
     /// is never upscaled.
     @Test func pinnedPanelBoundsItsInitialSize() throws {

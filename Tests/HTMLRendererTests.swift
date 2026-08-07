@@ -561,10 +561,13 @@ struct HTMLRendererRoutingTests {
         }
     }
 
-    @Test func htmlRendererInACoordinatorRoutesToIt() throws {
-        // Wired into a coordinator, HTML routes to the real renderer.
-        let coordinator = RenderCoordinator(renderers: [HTMLRenderer()])
-        #expect(coordinator.renderer(for: .html("<b>x</b>")) is HTMLRenderer)
+    @Test func htmlRendererAcceptsExactlyTheHTMLInput() throws {
+        // The `canRender` contract is what lets the Web Snapshot surface hold either
+        // web renderer behind the shared protocol shape.
+        let renderer = HTMLRenderer()
+        #expect(renderer.canRender(.html("<b>x</b>")))
+        #expect(!renderer.canRender(.code("x", languageHint: nil)))
+        #expect(!renderer.canRender(.url(try #require(URL(string: "https://example.com")))))
     }
 }
 
@@ -596,13 +599,12 @@ struct HTMLRendererRenderTests {
         #expect(asset.profile == .displayP3)
     }
 
-    @Test func htmlRendererRoutesThroughACoordinator() async throws {
-        // Routed through a coordinator, an HTML input rasterizes to the requested
-        // pixel size — the end-to-end abstraction path for HTML.
-        let coordinator = RenderCoordinator(
-            renderers: [HTMLRenderer(viewport: CGSize(width: 300, height: 200), scale: 1)])
-        let asset = try await coordinator.render(
-            .html(HTMLFixture.minimal), config: SnapshotConfig())
+    @Test func htmlRendererHonorsTheConfiguredViewportEndToEnd() async throws {
+        // Driven through the shared `Renderer` shape (the same call the Web Snapshot
+        // model makes), an HTML input rasterizes to the requested pixel size.
+        let renderer: any Renderer = HTMLRenderer(
+            viewport: CGSize(width: 300, height: 200), scale: 1)
+        let asset = try await renderer.render(.html(HTMLFixture.minimal), config: SnapshotConfig())
         #expect(asset.pixelWidth == 300)
         #expect(asset.pixelHeight == 200)
     }
