@@ -73,6 +73,26 @@ struct LineHighlightParserTests {
         #expect(!LineHighlight.contains(ranges, line: 4))
         #expect(!LineHighlight.contains(ranges, line: 10))
     }
+
+    /// `normalize` tested adjacency as `lowerBound <= upperBound + 1`, which overflows and
+    /// traps when an upper bound is `Int.max`. The spec comes from user text — a
+    /// `--highlight-lines`/`--redact-lines` value, or the inspector field, which parses on
+    /// every keystroke — so typing this aborted the process (SIGTRAP, exit 133). Two
+    /// ranges are required: a single huge range never reaches the merge comparison.
+    @Test func extremeUpperBoundMergesInsteadOfTrapping() {
+        let huge = String(Int.max)
+        #expect(LineHighlight.parse("1-\(huge),5") == [1...Int.max])
+        #expect(LineHighlight.parse("5,1-\(huge)") == [1...Int.max])
+        #expect(LineHighlight.parse("\(huge),\(huge)") == [Int.max...Int.max])
+    }
+
+    @Test func mergeSemanticsAreUnchangedByTheOverflowGuard() {
+        // The rewritten comparison must keep adjacency and gaps behaving exactly as before.
+        #expect(LineHighlight.parse("1-2, 3-3") == [1...3])  // adjacent: merges
+        #expect(LineHighlight.parse("1-2, 4-4") == [1...2, 4...4])  // one-line gap: stays split
+        #expect(LineHighlight.parse("1-1, 2-2") == [1...2])
+        #expect(LineHighlight.normalize([]) == [])
+    }
 }
 
 @Suite("LineHighlight describe / round-trip")
