@@ -100,6 +100,15 @@ struct EditorWindowStateTests {
         config.background = .gradient(.sunset)
         config.metadata = SnapshotMetadata(
             filename: "main.py", title: "Demo", caption: "A caption", showLanguageBadge: true)
+        config.windowTitle = "Demo window"
+        config.wrapColumns = 72
+        config.focusHighlightedLines = true
+        config.diffDecorations = true
+        config.annotations = [
+            Annotation(
+                kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),
+                text: "step one", number: 1)
+        ]
         return config
     }
 
@@ -123,6 +132,20 @@ struct EditorWindowStateTests {
         #expect(restored.redactedLineRanges == original.redactedLineRanges)
         #expect(restored.background == original.background)
         #expect(restored.metadata == original.metadata)
+        #expect(restored.windowTitle == original.windowTitle)
+        #expect(restored.wrapColumns == original.wrapColumns)
+        #expect(restored.focusHighlightedLines == original.focusHighlightedLines)
+        #expect(restored.diffDecorations == original.diffDecorations)
+        #expect(restored.annotations == original.annotations)
+    }
+
+    /// Restoration is wholesale — `config()` starts from a fresh `SnapshotConfig` — so a
+    /// field the bridge omits is not merely un-restored, it *overwrites* the correctly
+    /// seeded value with a type default. Comparing whole configs catches an omission that
+    /// a field-by-field list would miss whenever someone adds a field and forgets the test.
+    @Test func restoredConfigEqualsTheOriginalWholesale() {
+        let original = richConfig()
+        #expect(EditorWindowState(config: original).config() == original)
     }
 
     @Test func roundTripsThroughJSONData() throws {
@@ -131,12 +154,52 @@ struct EditorWindowStateTests {
         let decoded = try #require(EditorWindowState.decoded(from: data))
         let restored = decoded.config()
 
-        #expect(restored.code == original.code)
-        #expect(restored.theme.id == original.theme.id)
-        #expect(restored.language == original.language)
-        #expect(restored.background == original.background)
-        #expect(restored.highlightedLineRanges == original.highlightedLineRanges)
-        #expect(restored.redactedLineRanges == original.redactedLineRanges)
+        #expect(restored == original)
+    }
+
+    /// Structural guard against the drift that let five document fields go missing.
+    ///
+    /// `EditorWindowState` and `SettingsCodec.Keys.editorSessionSeed` are two hand-kept
+    /// lists of the same document/style surface, and nothing forced them to agree: a field
+    /// added to one and forgotten in the other silently stopped surviving relaunch. This
+    /// reads the archive's own JSON keys and requires every seeded key to be either
+    /// carried by the bridge or explicitly excused below, so the next field cannot land in
+    /// only one place without failing here.
+    @Test func archiveCoversEverySeededDocumentKey() throws {
+        let data = try #require(EditorWindowState(config: richConfig()).encoded())
+        let archived = Set(
+            try #require(
+                JSONSerialization.jsonObject(with: data) as? [String: Any]
+            ).keys)
+
+        // Keys a window seeds but the *draft archive* deliberately does not carry, each
+        // with the reason it is not drift. Adding a key here must be a decision, not an
+        // oversight.
+        let excused: [String: String] = [
+            // The bridge stores the whole `BackgroundStyle` under `background`, which
+            // subsumes both of these.
+            SettingsCodec.Keys.gradientPreset: "carried by `background`",
+            SettingsCodec.Keys.backgroundStyle: "carried by `background`",
+            // Output/export preferences, not document content: they belong to the export
+            // action, not to the draft being restored.
+            SettingsCodec.Keys.exportScale: "output preference, not document state",
+            SettingsCodec.Keys.exportFormat: "output preference, not document state",
+            SettingsCodec.Keys.colorProfile: "output preference, not document state",
+            SettingsCodec.Keys.richClipboard: "output preference, not document state",
+            SettingsCodec.Keys.textSidecar: "output preference, not document state",
+            SettingsCodec.Keys.selectedPreset: "output preference, not document state",
+        ]
+
+        let missing = SettingsCodec.Keys.editorSessionSeed
+            .filter { !archived.contains($0) && excused[$0] == nil }
+        #expect(
+            missing.isEmpty,
+            """
+            EditorWindowState does not archive these seeded document keys, so a window \
+            restoring after relaunch will overwrite them with type defaults: \
+            \(missing.sorted().joined(separator: ", ")). Add them to EditorWindowState, or \
+            excuse them in this test with the reason.
+            """)
     }
 
     @Test func defaultConfigRoundTripsToItself() {
