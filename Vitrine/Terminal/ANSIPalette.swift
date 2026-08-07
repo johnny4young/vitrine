@@ -281,15 +281,19 @@ enum ANSIRenderer {
                     // Every other CSI (SGR above all) falls through untouched — its bytes
                     // are all ≥ 0x20, so the parser still receives and interprets it.
                 }
-                // Preserve an OSC sequence intact so the stray-control stripping below
-                // never eats its BEL/ST terminator — without this, an OSC 8 hyperlink
-                // (and the rest of its line) is swallowed as an unterminated OSC, since
-                // BEL is otherwise dropped as a `^G`. CSI needs no special case: its
-                // bytes are all ≥ 0x20 and already pass through.
+                // Preserve an OSC — or a DCS/SOS/PM/APC string sequence — intact so the
+                // stray-control stripping below never eats its BEL/ST terminator.
+                // Without this, an OSC 8 hyperlink (and the rest of its line) is
+                // swallowed as an unterminated OSC, and a BEL-terminated DCS body loses
+                // the terminator the parser's skip relies on, overrunning into real
+                // text. CSI needs no special case: its bytes are all ≥ 0x20 and already
+                // pass through.
                 output.append(scalar)  // ESC
                 index += 1
-                guard index < scalars.count, scalars[index] == "]" else { break }
-                output.append(scalars[index])  // ]
+                guard index < scalars.count,
+                    scalars[index] == "]" || ANSIParser.isStringSequenceIntroducer(scalars[index])
+                else { break }
+                output.append(scalars[index])  // `]`, or the string introducer (P/X/^/_)
                 index += 1
                 while index < scalars.count {
                     let byte = scalars[index]

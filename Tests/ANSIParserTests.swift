@@ -175,4 +175,42 @@ struct ANSIParserTests {
         #expect(runs.map(\.text).joined() == "ab")
         #expect(runs.allSatisfy { $0.style.hyperlink == "https://x" })
     }
+
+    // MARK: - String sequences (DCS/SOS/PM/APC) are command data, never text
+
+    /// Treated as two-byte escapes, only the introducer was dropped and the whole body
+    /// leaked into the rendered image — a tmux passthrough or kitty graphics payload
+    /// printed as literal text.
+    @Test(arguments: ["P", "X", "^", "_"])
+    func stringSequenceBodiesNeverLeakIntoText(_ introducer: String) {
+        let stream = "before\(esc)\(introducer)command-payload;123\(esc)\\after"
+        #expect(ANSIParser.parse(stream).map(\.text).joined() == "beforeafter")
+        // And through the full line-mode pipeline (normalize + parse), which must
+        // preserve the terminator its skip relies on.
+        #expect(ANSIRenderer.plainText(stream) == "beforeafter")
+    }
+
+    @Test func belTerminatedStringSequenceEndsAtTheBel() {
+        // BEL is accepted with the same laxity as OSC. The body is dropped, the text
+        // after the terminator survives — including through normalize, whose stray-C0
+        // stripping must not eat the BEL before the parser's skip sees it.
+        let stream = "keep\(esc)Psixel-ish-body\u{07}also kept"
+        #expect(ANSIParser.parse(stream).map(\.text).joined() == "keepalso kept")
+        #expect(ANSIRenderer.plainText(stream) == "keepalso kept")
+    }
+
+    @Test func unterminatedStringSequenceConsumesToEndOfInput() {
+        // A truncated capture can cut a DCS mid-body. The remainder is command data,
+        // not text: dropping it beats spilling half a payload into the image.
+        let stream = "shown\(esc)_Gtruncated kitty payload with no terminator"
+        #expect(ANSIParser.parse(stream).map(\.text).joined() == "shown")
+    }
+
+    @Test func stringSequenceBodiesAreNotTypedIntoTheGrid() {
+        // The grid emulator shares the skip: a DCS body must not be written into cells.
+        let stream = "\(esc)[2;1Hrow\(esc)Ptmux;wrapped-escape\(esc)\\ok"
+        var screen = TerminalScreen(columns: 40)
+        screen.feed(stream)
+        #expect(screen.plainText() == "\nrowok")
+    }
 }

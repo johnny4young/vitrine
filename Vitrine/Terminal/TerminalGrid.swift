@@ -321,6 +321,13 @@ struct TerminalScreen {
                     indexDown()
                     index += 2
                 default:
+                    // DCS/SOS/PM/APC string bodies are command data, never cells: skip
+                    // to their terminator with the shared scanner so a sixel or kitty
+                    // graphics payload is not typed into the screen.
+                    if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                        index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                        continue
+                    }
                     // ESC followed by an intermediate byte (0x20–0x2F) is a longer
                     // sequence — most often charset designation (`ESC (B`, which htop and
                     // friends emit constantly): consume the intermediate(s) and the final
