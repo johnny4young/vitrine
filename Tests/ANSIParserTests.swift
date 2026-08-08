@@ -213,4 +213,34 @@ struct ANSIParserTests {
         screen.feed(stream)
         #expect(screen.plainText() == "\nrowok")
     }
+
+    /// Feeding a fixed-width screen is not enough: `TerminalScreen.runs` sizes the grid
+    /// from the stream *first*. The dimension and routing scanners have their own ESC
+    /// handling, and dropping only the introducer left a payload counting as visible
+    /// text — a 400-byte body inflated the inferred width to its 1,000-column ceiling
+    /// and rewrapped the real cells (reproduced: a 848 px canvas became 7,087 px).
+    @Test func aStringPayloadDoesNotInflateTheInferredWidth() {
+        let payload = "q" + String(repeating: "A", count: 400)
+        let withPayload = "\(esc)[2;1Hrow one\(esc)P\(payload)\(esc)\\\(esc)[3;1Hrow two"
+        let without = "\(esc)[2;1Hrow one\(esc)[3;1Hrow two"
+
+        #expect(TerminalScreen.inferColumns(withPayload) == TerminalScreen.inferColumns(without))
+        // And the end-to-end path agrees: same reconstruction either way.
+        #expect(ANSIRenderer.plainText(withPayload) == ANSIRenderer.plainText(without))
+    }
+
+    @Test func aStringPayloadDoesNotInflateTheInferredHeight() {
+        // Row inference reads only CSI positioning, but a passthrough body carries
+        // escaped sequences — a CUP shape inside one must not count.
+        let smuggled = "\(esc)[2;1Hrow\(esc)P\(esc)[200;1H smuggled\(esc)\\"
+        #expect(TerminalScreen.inferRows(smuggled) == TerminalScreen.inferRows("\(esc)[2;1Hrow"))
+    }
+
+    @Test func aStringPayloadDoesNotDecideTheRoute() {
+        // tmux passthrough wraps real escape sequences; a payload's alternate-screen or
+        // erase-display bytes must not route a scrolling transcript to the grid.
+        let transcript = "line one\n\(esc)P\(esc)[?1049h\(esc)[2J\(esc)[2J\(esc)\\line two"
+        #expect(!TerminalScreen.usesScreenAddressing(transcript))
+        #expect(ANSIRenderer.plainText(transcript) == "line one\nline two")
+    }
 }

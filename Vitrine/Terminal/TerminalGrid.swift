@@ -134,6 +134,13 @@ struct TerminalScreen {
                 continue
             }
             guard scalars[index + 1] == "[" else {  // only CSI carries these
+                // A DCS/SOS/PM/APC body is command data, and tmux passthrough carries
+                // *escaped escape sequences* inside one — so scanning through a body
+                // byte by byte would let a payload's CSI-shaped bytes decide the route.
+                if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                    index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                    continue
+                }
                 index += 2
                 continue
             }
@@ -212,6 +219,14 @@ struct TerminalScreen {
                     index = end
                     continue
                 default:
+                    // Skip a string-sequence body outright. Dropping only the introducer
+                    // left the payload — a sixel frame, a kitty graphics blob — counting
+                    // as visible text, so a 400-byte body inflated the inferred width to
+                    // its 1,000-column ceiling and rewrapped the real cells.
+                    if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                        index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                        continue
+                    }
                     if (0x20...0x2F).contains(scalars[index + 1].value) {
                         var cursor = index + 1
                         while cursor < scalars.count,
@@ -266,6 +281,15 @@ struct TerminalScreen {
                     }
                 }
                 index = end
+                continue
+            }
+            // Row inference reads only CSI positioning, so a payload cannot inflate it
+            // by length — but a passthrough body carries escaped sequences, and a
+            // `CUP` shape inside one would still be counted. Skip the body.
+            if scalars[index] == "\u{1B}", index + 1 < scalars.count,
+                ANSIParser.isStringSequenceIntroducer(scalars[index + 1])
+            {
+                index = ANSIParser.skipStringSequence(scalars, from: index + 2)
                 continue
             }
             index += 1
