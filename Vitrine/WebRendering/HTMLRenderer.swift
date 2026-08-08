@@ -4,8 +4,10 @@ import OSLog
 
 /// Renders a `.html` input to an image locally through `WKWebView`.
 ///
-/// It slots into the `Renderer` abstraction so a coordinator routes HTML
-/// to it through the same `Renderer` shape as a URL capture. Rendering is fully
+/// The Web Snapshot flow constructs it directly for an `.html` input (see
+/// `WebSnapshotModel.renderOne`), configured from the user's viewport and output
+/// settings; it conforms to `Renderer` so its call shape matches
+/// `URLRenderer`'s. Rendering is fully
 /// local — the offscreen `WebSnapshotView` it delegates to blocks remote loads for
 /// pasted HTML and never touches the screen — so an HTML snapshot needs neither the
 /// network entitlement nor Screen Recording permission.

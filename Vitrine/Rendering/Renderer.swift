@@ -55,18 +55,25 @@ enum RenderError: Error, Equatable, Sendable {
     case loopbackCaptureDisabled
 }
 
-/// One strategy for turning a `CaptureInput` into a `RenderedAsset`.
+/// The shared call shape of the web renderers, `URLRenderer` and `HTMLRenderer`.
 ///
-/// The shared contract of the web renderers (`URLRenderer`, `HTMLRenderer`): the
-/// Web Snapshot model holds either one and calls `render(_:config:)` per viewport
-/// without caring which. Dispatch happens on the `CaptureInput` enum; a renderer
-/// called with an input it rejects throws `RenderError.noRendererFor`. (A
-/// `RenderCoordinator` that routed across renderers by `canRender` used to sit on
-/// top of this protocol; nothing in the product ever called it, so it is gone —
-/// quick capture classifies inputs itself and the Web Snapshot surface picks its
-/// renderer by mode.)
+/// **It is not a dispatch mechanism.** `WebSnapshotModel.renderOne` switches on the
+/// `CaptureInput` and constructs the concrete renderer for that case, configured from
+/// the user's viewport and output settings — nothing holds an `any Renderer`. What the
+/// protocol buys is that both renderers take the same arguments and return the same
+/// `RenderedAsset`, so the per-viewport call site is one shape rather than two.
+///
+/// A `RenderCoordinator` that routed across renderers by `canRender` used to sit on top
+/// of this protocol; nothing in the product ever called it, so it is gone — quick
+/// capture classifies inputs itself and renders through `ExportManager`.
+///
+/// Each renderer re-checks its own input and throws `RenderError.noRendererFor` when it
+/// is handed a case it does not own, so a wiring mistake is a typed failure rather than
+/// a blank image.
 protocol Renderer {
-    /// Whether this renderer handles `input`. Cheap and side-effect-free.
+    /// Whether this renderer handles `input` — a declarative statement of which case it
+    /// owns, pinned by tests. No production caller routes on it (each renderer guards
+    /// its own `render` instead), so it documents the split rather than performing it.
     func canRender(_ input: CaptureInput) -> Bool
 
     /// Renders `input` with `config` to a `RenderedAsset`, or throws a

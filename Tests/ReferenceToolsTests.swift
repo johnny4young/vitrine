@@ -104,6 +104,31 @@ struct ReferenceToolsTests {
         #expect(try #require(controller.panel).contentView == nil)
     }
 
+    /// The panel is `.closable`, so its title-bar button dismisses the window without
+    /// going through `unpin()` — the ordinary way a user gets rid of a pin. AppKit only
+    /// hides it (`isReleasedWhenClosed` is false) and keeps retaining the hosting view,
+    /// so the window delegate has to free the content for that path too.
+    @Test func closingThePanelFromItsTitleBarAlsoReleasesTheImage() throws {
+        let controller = PinnedSnapshotController.shared
+        defer { controller.unpin() }
+
+        let image = NSImage(size: NSSize(width: 300, height: 200), flipped: false) { rect in
+            NSColor.systemPink.setFill()
+            rect.fill()
+            return true
+        }
+        controller.pin(image)
+        let panel = try #require(controller.panel)
+        #expect(panel.contentView != nil)
+        #expect(panel.delegate === controller, "the controller must observe its own panel")
+
+        // What the close button does: `performClose` runs the full close path,
+        // delegate callback included.
+        panel.performClose(nil)
+        #expect(panel.contentView == nil)
+        #expect(!controller.isPinned)
+    }
+
     /// A pinned image larger than the bound scales down keeping aspect; a small one
     /// is never upscaled.
     @Test func pinnedPanelBoundsItsInitialSize() throws {

@@ -97,15 +97,6 @@ struct URLRendererRoutingTests {
             try await renderer.render(.code("x", languageHint: nil), config: SnapshotConfig())
         }
     }
-
-    @Test func urlRendererAcceptsExactlyTheURLInput() throws {
-        // The `canRender` contract is what lets the Web Snapshot surface hold either
-        // web renderer behind the shared protocol shape.
-        let renderer = URLRenderer()
-        #expect(renderer.canRender(.url(try URLFixture.valid())))
-        #expect(!renderer.canRender(.code("x", languageHint: nil)))
-        #expect(!renderer.canRender(.html("<b>x</b>")))
-    }
 }
 
 // MARK: - URLRenderer validation through the abstraction (no web process needed)

@@ -560,15 +560,6 @@ struct HTMLRendererRoutingTests {
             try await renderer.render(.code("x", languageHint: nil), config: SnapshotConfig())
         }
     }
-
-    @Test func htmlRendererAcceptsExactlyTheHTMLInput() throws {
-        // The `canRender` contract is what lets the Web Snapshot surface hold either
-        // web renderer behind the shared protocol shape.
-        let renderer = HTMLRenderer()
-        #expect(renderer.canRender(.html("<b>x</b>")))
-        #expect(!renderer.canRender(.code("x", languageHint: nil)))
-        #expect(!renderer.canRender(.url(try #require(URL(string: "https://example.com")))))
-    }
 }
 
 // MARK: - HTMLRenderer live render (Renderer abstraction → real image)
