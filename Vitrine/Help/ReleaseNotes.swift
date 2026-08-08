@@ -42,6 +42,22 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.0.1",
+            headline: "Steadier everywhere it counts",
+            highlights: [
+                "Reopening an editor window now brings the whole document back, not "
+                    + "just most of it, and two crashes on that path are fixed.",
+                "Terminal captures are more faithful: a cleared screen stays cleared, "
+                    + "control sequences your terminal hides stay hidden, and full-screen "
+                    + "apps render the way they look.",
+                "Shadow depth now travels with the rest of your style, so a saved preset "
+                    + "or exported recipe looks the same when you come back to it.",
+                "Batch exports never overwrite each other anymore, even when two source "
+                    + "names differ only in capitalization.",
+                "Vitrine cleans up after itself: dismissing a pinned snapshot frees its "
+                    + "image, and per-window preference files no longer pile up on disk.",
+            ]),
+        ReleaseNote(
             version: "1.0.0",
             headline: "A complete local workflow, from source to story",
             highlights: [

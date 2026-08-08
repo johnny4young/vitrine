@@ -12,6 +12,63 @@ can never drift.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-08-08
+
+A stability release. Every user-facing change here is a fix found by a systematic audit
+of the 1.0 codebase: two crashes, two paths that silently lost work, four terminal
+rendering faults, and a set of resources the app never released.
+
+### Fixed
+
+- **Restoring an editor window no longer drops part of the document.** Five fields
+  survived the window's own state but not its restoration, so a reopened window came
+  back with the style intact and parts of the content missing. Restoration now carries
+  the complete document, and two crash paths on the same route are closed.
+- **Work started in a window no longer outlives it.** Renders, watchers, and consent
+  prompts kept running after their window closed, so a result could arrive with nothing
+  left to deliver it to. Each window now cancels what it started when it goes away.
+- **Shadow depth now travels with the rest of the style.** Saving a preset, exporting a
+  recipe, or restoring a session kept every other style value and quietly reset the
+  shadow, so a style that looked right in the editor exported flat.
+- **Batch exports can no longer overwrite each other's output.** Two sources whose names
+  resolved to the same file — including names differing only in case or in Unicode
+  normalization, which macOS treats as one file — silently produced a single image
+  instead of two. Each output name is now claimed against the filesystem's own notion of
+  identity before anything is written.
+- **`clear && command` no longer leaves the cleared transcript in the capture.** The
+  routing that decides between transcript and full-screen rendering counted a partial
+  erase as a whole-display one, so the text you cleared stayed in the image.
+- **Terminal escape sequences that carry data no longer print as text.** Sequences a
+  terminal consumes silently (DCS, SOS, PM, APC) appeared as literal characters in the
+  capture, and a stray BEL inside one could end it early.
+- **Private terminal control sequences are no longer executed as standard ones.** A
+  sequence a real terminal ignores could move the cursor or erase the screen in the
+  capture, so full-screen apps rendered wrong.
+- **Per-window preference files no longer accumulate on disk forever.** Each editor
+  window created a volatile preferences suite that was never removed, leaving thousands
+  of orphan files on a long-lived install. They are cleaned up when the window closes,
+  and a launch sweep removes any left by earlier versions.
+- **Dismissing a pinned snapshot now releases its image.** The floating reference panel
+  is reused, so closing it — by unpinning *or* by its title-bar button — kept the
+  full-resolution bitmap resident until the next pin or app quit.
+- **The Welcome window's step tiles no longer touch the hero band.** They sat directly
+  on the seam where the gradient ends; there is now a gap between the two.
+
+### Changed
+
+- **Vitrine is described by what it does best.** The README, repository description, and
+  documentation now lead with terminal capture, and
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the two rendering engines —
+  transcript and screen — and how a capture is routed between them.
+- **The unused render-routing indirection is gone.** `RenderCoordinator`, `CodeRenderer`,
+  and the classification helper beside them had no caller in the shipping app and
+  duplicated logic the live path already performed; their tests now pin the live path.
+
+### Security
+
+- **`undici` is pinned to the patched 7.29.0** for the documentation site's build
+  toolchain, and the site's dependency group and the Sparkle updater pin are current.
+
 ## [1.0.0] - 2026-08-02
 
 Vitrine 1.0 is the first stable release of the complete local capture workflow: create a
@@ -949,7 +1006,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/johnny4young/vitrine/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/johnny4young/vitrine/compare/v0.25.5...v1.0.0
 [0.25.5]: https://github.com/johnny4young/vitrine/compare/v0.25.4...v0.25.5
 [0.25.4]: https://github.com/johnny4young/vitrine/compare/v0.25.3...v0.25.4

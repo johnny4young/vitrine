@@ -16,7 +16,7 @@ pasted HTML, entirely on your Mac.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v1.0.0%20stable-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v1.0.1%20stable-brightgreen.svg)](#status)
 
 | `vgrab htop` | `vgrab lazygit` | `vgrab nvim` |
 | --- | --- | --- |
@@ -646,7 +646,7 @@ in [`docs/`](docs/):
 
 ## Status
 
-🟢 **v1.0.0 is the stable release.** Everything under [Features](#features) ships in
+🟢 **v1.0.1 is the stable release.** Everything under [Features](#features) ships in
 the signed direct-download build and is driven by one design-token system
 ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in light and dark. The product is
 covered by a Swift Testing unit suite plus XCTest UI smokes; CI
@@ -656,7 +656,7 @@ The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every
 also ships an in-app **What's New**.
 
 Anything added under **Unreleased** in the changelog belongs to a future build and is not
-part of the v1.0.0 artifact until another release workflow publishes it.
+part of the v1.0.1 artifact until another release workflow publishes it.
 
 Two explicit product boundaries — no arbitrary screen/window capture and no dependency
 on a hosted web-render service — are documented in
