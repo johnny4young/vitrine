@@ -156,6 +156,10 @@ struct TerminalScreen {
                 }
                 continue
             }
+            // Vendor sequences (`<`/`=`/`>` markers) share final bytes with the
+            // standard controls but are not screen addressing — counting them here
+            // would misroute a stream over a stray `ESC[>…J`-shaped query.
+            if ANSIParser.hasPrivateParameterPrefix(params) { continue }
             switch finalByte {
             case "J":
                 // ED 2 alone is ambiguous. A TUI repaints with it — but `clear` emits
@@ -202,7 +206,9 @@ struct TerminalScreen {
                 switch scalars[index + 1] {
                 case "[":
                     let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
-                    if let finalByte, !params.hasPrefix("?") {
+                    if let finalByte, !params.hasPrefix("?"),
+                        !ANSIParser.hasPrivateParameterPrefix(params)
+                    {
                         let nums = params.split(separator: ";", omittingEmptySubsequences: false)
                             .map { Int($0) ?? 0 }
                         if finalByte == "H" || finalByte == "f", nums.count > 1 {
@@ -268,7 +274,9 @@ struct TerminalScreen {
         while index < scalars.count {
             if scalars[index] == "\u{1B}", index + 1 < scalars.count, scalars[index + 1] == "[" {
                 let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
-                if let finalByte, !params.hasPrefix("?") {
+                if let finalByte, !params.hasPrefix("?"),
+                    !ANSIParser.hasPrivateParameterPrefix(params)
+                {
                     let nums = params.split(separator: ";", omittingEmptySubsequences: false)
                         .map { Int($0) ?? 0 }
                     if finalByte == "H" || finalByte == "f" || finalByte == "d",
@@ -404,6 +412,11 @@ struct TerminalScreen {
             applyPrivateMode(String(params.dropFirst()), finalByte)
             return
         }
+        // Other private-use markers (`<`, `=`, `>`) are vendor sequences sharing final
+        // bytes with the standard controls: executed as standard, xterm's `>4;1m`
+        // ghost-styles the pen and a private cursor final walks the cursor. Nothing a
+        // static capture can honor — drop them wholesale.
+        if ANSIParser.hasPrivateParameterPrefix(params) { return }
         let nums = Self.parseParams(params)
 
         switch finalByte {
