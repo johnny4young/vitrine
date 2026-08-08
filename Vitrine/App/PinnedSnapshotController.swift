@@ -10,10 +10,12 @@ import SwiftUI
 /// image and re-shows the panel. The panel is titled/closable/resizable, so the user
 /// dismisses or resizes it like any window; closing it is the same as unpinning.
 @MainActor
-final class PinnedSnapshotController {
+final class PinnedSnapshotController: NSObject, NSWindowDelegate {
     static let shared = PinnedSnapshotController()
 
-    private var panel: NSPanel?
+    /// Read-internal so tests can assert the unpin teardown; only this controller
+    /// writes it.
+    private(set) var panel: NSPanel?
 
     /// Whether the pin panel is currently on screen (drives the toolbar button state).
     var isPinned: Bool { panel?.isVisible ?? false }
@@ -33,8 +35,28 @@ final class PinnedSnapshotController {
     }
 
     /// Closes the pin, if any.
+    ///
+    /// Also drops the content view: the panel is reused (`isReleasedWhenClosed =
+    /// false`), so ordering it out alone kept the hosting view — and the pinned
+    /// full-resolution `NSImage`, megabytes at 2–3× scale — resident until the next
+    /// pin or app quit.
     func unpin() {
         panel?.orderOut(nil)
+        releaseContent()
+    }
+
+    /// The panel is `.closable`, so its title-bar button dismisses the window without
+    /// routing through ``unpin()`` — AppKit just hides it (`isReleasedWhenClosed` is
+    /// false) and keeps retaining the hosting view. Freeing here covers that path, so
+    /// every dismissal releases the image, not only the ones that call `unpin()`.
+    func windowWillClose(_ notification: Notification) {
+        releaseContent()
+    }
+
+    /// Drops the hosting view so the pinned image can deallocate. Idempotent: both
+    /// dismissal paths can run for one close.
+    private func releaseContent() {
+        panel?.contentView = nil
     }
 
     private func reusablePanel() -> NSPanel {
@@ -52,8 +74,10 @@ final class PinnedSnapshotController {
         panel.level = .floating
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        // Closing just hides it (the controller owns the instance for reuse).
+        // Closing just hides it (the controller owns the instance for reuse), which is
+        // why the delegate below has to free the content explicitly.
         panel.isReleasedWhenClosed = false
+        panel.delegate = self
         panel.setAccessibilityIdentifier("pinned-snapshot-window")
         self.panel = panel
         return panel
