@@ -292,17 +292,36 @@ enum CLIBatchRenderer {
             var relativePath = batchOutputRelativePath(
                 for: entry.file, inputDirectory: inputDirectory, recursive: recursive,
                 preservingInputExtension: shouldPreserveInputExtension, fileExtension: ext)
-            if claimed.contains(relativePath) {
+            if claimed.contains(filesystemKey(relativePath)) {
                 let stem = (relativePath as NSString).deletingPathExtension
                 var discriminator = 2
-                while claimed.contains("\(stem)-\(discriminator).\(ext)") { discriminator += 1 }
+                while claimed.contains(filesystemKey("\(stem)-\(discriminator).\(ext)")) {
+                    discriminator += 1
+                }
                 relativePath = "\(stem)-\(discriminator).\(ext)"
             }
-            claimed.insert(relativePath)
+            claimed.insert(filesystemKey(relativePath))
             outputs[batchOutputKey(for: entry.file)] = outputDirectory.appendingPathComponent(
                 relativePath)
         }
         return outputs
+    }
+
+    /// The identity two output names share when the destination volume cannot tell them
+    /// apart, used to claim names during batch planning.
+    ///
+    /// Swift string equality is exact, but the default macOS volume (APFS, and HFS+
+    /// before it) is **case-insensitive** and compares normalized Unicode. So
+    /// `a.swift.png` and `A.swift.png` are one file on disk: claiming them as distinct
+    /// let one render silently overwrite the other while the summary reported both and
+    /// the manifest listed two outputs. Reproduced on APFS — three inputs,
+    /// `Rendered 3 images`, two files on disk.
+    ///
+    /// Folding here is deliberately one-directional: it decides *whether* a name is
+    /// taken, never what gets written. The path itself keeps the author's casing, so a
+    /// case-sensitive volume still receives exactly the names it always did.
+    private static func filesystemKey(_ relativePath: String) -> String {
+        relativePath.precomposedStringWithCanonicalMapping.lowercased()
     }
 
     /// Builds the output image URL for one batched input using the legacy mapping.
