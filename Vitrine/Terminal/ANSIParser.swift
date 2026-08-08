@@ -94,6 +94,13 @@ enum ANSIParser {
                 }
                 index = end
             default:
+                // DCS/SOS/PM/APC carry a *string body* to a terminator: command data
+                // (sixel, kitty graphics, tmux passthrough), never text. Dropped as a
+                // two-byte escape, the introducer vanishes and the body prints.
+                if Self.isStringSequenceIntroducer(next) {
+                    index = Self.skipStringSequence(scalars, from: index + 2)
+                    continue
+                }
                 // A charset designation or other escape with intermediate bytes
                 // (0x20–0x2F, e.g. `ESC (B` emitted by `tput sgr0`) consumes the
                 // intermediates plus the final byte — mirroring the grid emulator in
@@ -115,6 +122,39 @@ enum ANSIParser {
     }
 
     // MARK: - Sequence scanning
+
+    /// Whether the byte after ESC opens a *string* sequence — DCS (`P`), SOS (`X`),
+    /// PM (`^`), or APC (`_`) — whose body is data addressed to the terminal (sixel,
+    /// kitty graphics, tmux passthrough), never text. Treated as a two-byte escape,
+    /// the introducer is dropped and the whole body leaks into the rendered image.
+    static func isStringSequenceIntroducer(_ scalar: Unicode.Scalar) -> Bool {
+        scalar == "P" || scalar == "X" || scalar == "^" || scalar == "_"
+    }
+
+    /// Skips a DCS/SOS/PM/APC body starting just past its introducer, returning the
+    /// index just past its ST terminator (`ESC \`).
+    ///
+    /// **ST only** — unlike OSC, which also accepts BEL as an xterm extension. These
+    /// bodies carry binary-ish command payloads (sixel data, a kitty graphics blob) and
+    /// tmux passthrough wraps whole inner sequences, so a raw `BEL` byte inside one is
+    /// ordinary content: ending the scan there would spill the remaining payload into
+    /// the image as text, and would truncate a passthrough carrying a BEL-terminated
+    /// inner OSC.
+    ///
+    /// An unterminated body at end of input is consumed rather than spilled — a
+    /// truncated capture drops half a payload instead of printing it.
+    static func skipStringSequence(_ scalars: [Unicode.Scalar], from start: Int) -> Int {
+        var cursor = start
+        while cursor < scalars.count {
+            if scalars[cursor] == "\u{1B}", cursor + 1 < scalars.count,
+                scalars[cursor + 1] == "\\"
+            {
+                return cursor + 2
+            }
+            cursor += 1
+        }
+        return cursor
+    }
 
     /// Scans a CSI body starting at `start` (just past `ESC[`): parameter/intermediate
     /// bytes (0x20–0x3F) up to the final byte (0x40–0x7E). Returns the parameter
