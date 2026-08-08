@@ -28,7 +28,10 @@ struct SnapshotConfig: Equatable {
     // `Brand.Shadow.elevated.radius` (20); kept as literals so the model carries no
     // dependency on the SwiftUI design-token layer (VitrineCore prerequisite).
     var cornerRadius: Double = 8
-    var shadowRadius: Double = 20
+    var shadowRadius: Double = Self.defaultShadowRadius
+    /// Named so persistence surfaces (`StyleSnapshot`'s pre-field decode fallback) can
+    /// reference the same value the property initializes to.
+    static let defaultShadowRadius: Double = 20
 
     /// Draw a line-number gutter beside the code, in both preview and export.
     /// Off by default so the signature look is unchanged.

@@ -18,6 +18,11 @@ enum SettingsCodec {
         static let fontSize = "fontSize"
         static let padding = "padding"
         static let cornerRadius = "cornerRadius"
+        /// The drop-shadow blur radius ("Shadow depth" in the inspector). Added late:
+        /// the slider shipped without a codec key, so the value silently reset to the
+        /// default in new windows and after relaunch while every neighboring slider
+        /// persisted — the window-restoration blob carried it all along.
+        static let shadowRadius = "shadowRadius"
         static let showChrome = "showChrome"
         static let windowTitle = "windowTitle"
         static let showShadow = "showShadow"
@@ -97,7 +102,8 @@ enum SettingsCodec {
         /// store without an app reinstall. The schema version key is reset by
         /// the migration step that runs afterward.
         static let all = [
-            themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
+            themeID, languageID, fontSize, padding, cornerRadius, shadowRadius, showChrome,
+            windowTitle,
             showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
@@ -109,6 +115,9 @@ enum SettingsCodec {
             fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
             hasSeenWelcome, lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
             workspaceRecipeAssociations, brandKit, brandKitEnabled,
+            // Written by the inspector's @AppStorage toggle, not by this codec — listed so
+            // "Reset All Settings" actually clears it.
+            SafeAreaGuide.storageKey,
         ]
 
         /// The keys an editor window seeds from the app-wide defaults when it opens:
@@ -120,7 +129,8 @@ enum SettingsCodec {
         /// what lets a new window open looking like the user's default while editing
         /// its own copy.
         static let editorSessionSeed = [
-            themeID, languageID, fontSize, padding, cornerRadius, showChrome, windowTitle,
+            themeID, languageID, fontSize, padding, cornerRadius, shadowRadius, showChrome,
+            windowTitle,
             showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
@@ -159,6 +169,9 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.cornerRadius) as? Double {
             config.cornerRadius = SettingsDefaults.clampCornerRadius(value)
+        }
+        if let value = defaults.object(forKey: Keys.shadowRadius) as? Double {
+            config.shadowRadius = SettingsDefaults.clampShadowRadius(value)
         }
         if let value = defaults.object(forKey: Keys.showChrome) as? Bool {
             config.showChrome = value
@@ -280,6 +293,7 @@ enum SettingsCodec {
         defaults.set(config.fontSize, forKey: Keys.fontSize)
         defaults.set(config.padding, forKey: Keys.padding)
         defaults.set(config.cornerRadius, forKey: Keys.cornerRadius)
+        defaults.set(config.shadowRadius, forKey: Keys.shadowRadius)
         defaults.set(config.showChrome, forKey: Keys.showChrome)
         defaults.set(config.windowTitle, forKey: Keys.windowTitle)
         defaults.set(config.showShadow, forKey: Keys.showShadow)
@@ -295,6 +309,10 @@ enum SettingsCodec {
         defaults.set(config.diffDecorations, forKey: Keys.diffDecorations)
         defaults.set(
             LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
+        // `redactedLineRanges` is deliberately NOT persisted here: redactions hide secrets
+        // at specific lines of a specific document, so seeding them into new windows would
+        // blank arbitrary lines of unrelated code. They travel with the *document* —
+        // window restoration (`EditorWindowState`) carries them — never with the style.
         persistAnnotations(config.annotations, to: defaults)
         persistMetadata(config.metadata, to: defaults)
         persistBackground(config.background, to: defaults)

@@ -35,6 +35,10 @@ struct StyleSnapshot: Hashable, Codable {
     var showChrome: Bool
     /// Whether the drop shadow is drawn.
     var showShadow: Bool
+    /// Drop-shadow blur radius in points ("Shadow depth"), clamped to its documented
+    /// range. Part of the shadow look alongside `showShadow`; presets saved before this
+    /// field existed decode to the type default.
+    var shadowRadius: Double
     /// Whether a line-number gutter is drawn.
     var showLineNumbers: Bool
     /// Optional code soft-wrap column count; `nil` keeps the card size-to-content.
@@ -61,6 +65,7 @@ struct StyleSnapshot: Hashable, Codable {
         self.cornerRadius = config.cornerRadius
         self.showChrome = config.showChrome
         self.showShadow = config.showShadow
+        self.shadowRadius = SettingsDefaults.clampShadowRadius(config.shadowRadius)
         self.showLineNumbers = config.showLineNumbers
         self.wrapColumns = config.wrapColumns.map(SettingsDefaults.clampWrapColumns)
         self.background = Self.portableBackground(config.background)
@@ -77,6 +82,7 @@ struct StyleSnapshot: Hashable, Codable {
         cornerRadius: Double = SettingsDefaults.cornerRadius,
         showChrome: Bool = true,
         showShadow: Bool = true,
+        shadowRadius: Double = SnapshotConfig.defaultShadowRadius,
         showLineNumbers: Bool = false,
         wrapColumns: Int? = nil,
         background: BackgroundStyle
@@ -89,6 +95,7 @@ struct StyleSnapshot: Hashable, Codable {
         self.cornerRadius = SettingsDefaults.clampCornerRadius(cornerRadius)
         self.showChrome = showChrome
         self.showShadow = showShadow
+        self.shadowRadius = SettingsDefaults.clampShadowRadius(shadowRadius)
         self.showLineNumbers = showLineNumbers
         self.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
         self.background = Self.portableBackground(background)
@@ -113,6 +120,7 @@ struct StyleSnapshot: Hashable, Codable {
         config.cornerRadius = SettingsDefaults.clampCornerRadius(cornerRadius)
         config.showChrome = showChrome
         config.showShadow = showShadow
+        config.shadowRadius = SettingsDefaults.clampShadowRadius(shadowRadius)
         config.showLineNumbers = showLineNumbers
         config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
         config.background = background
@@ -129,7 +137,7 @@ struct StyleSnapshot: Hashable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case themeID, fontName, fontSize, fontLigatures, padding, cornerRadius
-        case showChrome, showShadow, showLineNumbers, wrapColumns, background
+        case showChrome, showShadow, shadowRadius, showLineNumbers, wrapColumns, background
     }
 
     init(from decoder: Decoder) throws {
@@ -151,6 +159,11 @@ struct StyleSnapshot: Hashable, Codable {
                 ?? SettingsDefaults.cornerRadius)
         showChrome = (try? container.decode(Bool.self, forKey: .showChrome)) ?? true
         showShadow = (try? container.decode(Bool.self, forKey: .showShadow)) ?? true
+        // Presets saved before this field existed have no key: decode to the type
+        // default so an older file applies exactly as it did when it was saved.
+        shadowRadius = SettingsDefaults.clampShadowRadius(
+            (try? container.decode(Double.self, forKey: .shadowRadius))
+                ?? SnapshotConfig.defaultShadowRadius)
         showLineNumbers = (try? container.decode(Bool.self, forKey: .showLineNumbers)) ?? false
         if let columns = try? container.decode(Int.self, forKey: .wrapColumns) {
             wrapColumns = SettingsDefaults.clampWrapColumns(columns)
