@@ -4,8 +4,10 @@ import OSLog
 
 /// Renders a `.html` input to an image locally through `WKWebView`.
 ///
-/// It slots into the `Renderer` abstraction so a coordinator routes HTML
-/// to it exactly as it routes code to `CodeRenderer`. Rendering is fully
+/// The Web Snapshot flow constructs it directly for an `.html` input (see
+/// `WebSnapshotModel.renderOne`), configured from the user's viewport and output
+/// settings; it conforms to `Renderer` so its call shape matches
+/// `URLRenderer`'s. Rendering is fully
 /// local — the offscreen `WebSnapshotView` it delegates to blocks remote loads for
 /// pasted HTML and never touches the screen — so an HTML snapshot needs neither the
 /// network entitlement nor Screen Recording permission.
@@ -38,8 +40,7 @@ struct HTMLRenderer: Renderer {
     /// base URL, so relative references cannot resolve to anything.
     var localBaseURL: URL?
 
-    /// Accepts only the HTML input; code and URL are handled by their own renderers
-    /// (`CodeRenderer` and 's URL renderer).
+    /// Accepts only the HTML input; a URL capture is `URLRenderer`'s case.
     func canRender(_ input: CaptureInput) -> Bool {
         if case .html = input { return true }
         return false
@@ -47,7 +48,7 @@ struct HTMLRenderer: Renderer {
 
     /// Renders a `.html` input to a `RenderedAsset`.
     ///
-    /// The `config` is accepted for protocol symmetry with `CodeRenderer` but does
+    /// The `config` is accepted for protocol symmetry with `URLRenderer` but does
     /// not style the page — HTML carries its own CSS, so the snapshot is of the
     /// document as written, not of Vitrine's code frame. Rejecting any non-HTML
     /// input throws `RenderError.noRendererFor`; a load or snapshot failure surfaces

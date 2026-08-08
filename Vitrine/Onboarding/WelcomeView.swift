@@ -86,6 +86,11 @@ struct WelcomeView: View {
                 footer
             }
             .padding(.horizontal, 40)
+            // The outer stack is `spacing: 0` so the hero's wash runs flush to the
+            // window edges. That left the step tiles sitting directly on the seam where
+            // the wash ends, reading as one touching edge; this is the gap that keeps
+            // the two bands distinct.
+            .padding(.top, VitrineTokens.Spacing.lg)
             .padding(.bottom, VitrineTokens.Spacing.xl)
         }
         .frame(width: 700)

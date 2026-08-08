@@ -97,13 +97,6 @@ struct URLRendererRoutingTests {
             try await renderer.render(.code("x", languageHint: nil), config: SnapshotConfig())
         }
     }
-
-    @Test func urlRendererInACoordinatorRoutesToIt() throws {
-        // Wired into a coordinator, a URL routes to the real renderer.
-        let coordinator = RenderCoordinator(renderers: [URLRenderer()])
-        let url = CaptureInput.url(try URLFixture.valid())
-        #expect(coordinator.renderer(for: url) is URLRenderer)
-    }
 }
 
 // MARK: - URLRenderer validation through the abstraction (no web process needed)

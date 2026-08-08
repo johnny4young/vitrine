@@ -5,15 +5,13 @@ import Testing
 
 /// the renderer abstraction for typed inputs.
 ///
-/// These suites prove three routing and isolation properties:
+/// These suites prove the isolation properties of the typed-input seam:
 ///
-/// 1. **Routing** — a `RenderCoordinator` picks the first renderer that accepts an
-///    input, and `CodeRenderer` handles the local rendering code case only.
-/// 2. **web rendering** — HTML routes to the local `HTMLRenderer` and URL to
-///    the `URLRenderer`; URL capture is gated on the network entitlement, and a
-///    gated capture throws a *typed* error, never a blank image.
-/// 3. **No-network code path** — code rendering produces a real asset without any
-///    URL configuration, and the app target ships with no network entitlement.
+/// 1. **web rendering** — HTML renders through the local `HTMLRenderer` and URL
+///    through the `URLRenderer`; URL capture is gated on the network entitlement,
+///    and a gated capture throws a *typed* error, never a blank image.
+/// 2. **No-network code path** — the app target provably ships with no network
+///    entitlement, so local code rendering cannot reach the network.
 
 // MARK: - Input classification
 
@@ -29,67 +27,20 @@ struct CaptureInputTests {
     }
 }
 
-// MARK: - Routing
-
-@MainActor
-@Suite("RenderCoordinator routing")
-struct RenderCoordinatorRoutingTests {
-    @Test func codeRendererAcceptsOnlyCode() throws {
-        let renderer = CodeRenderer()
-        #expect(renderer.canRender(.code("x", languageHint: nil)))
-        #expect(!renderer.canRender(.url(try #require(URL(string: "https://example.com")))))
-        #expect(!renderer.canRender(.html("<b>x</b>")))
-    }
-
-    @Test func standardCoordinatorRoutesEachInputToTheRightRenderer() throws {
-        // web capture is wired: HTML routes to the local HTMLRenderer and URL to the
-        // URLRenderer (the latter still gated on the network entitlement at render
-        // time).
-        let coordinator = RenderCoordinator.standard
-        #expect(coordinator.renderer(for: .code("x", languageHint: nil)) is CodeRenderer)
-        #expect(coordinator.renderer(for: .html("<b>x</b>")) is HTMLRenderer)
-        #expect(
-            coordinator.renderer(for: .url(try #require(URL(string: "https://example.com"))))
-                is URLRenderer)
-    }
-
-    @Test func firstAcceptingRendererWins() throws {
-        // Routing is "first that accepts", so order is priority: a code-accepting
-        // renderer placed before `CodeRenderer` would intercept code. Verify the
-        // documented order by putting `CodeRenderer` first.
-        let coordinator = RenderCoordinator(renderers: [CodeRenderer(), HTMLRenderer()])
-        let chosen = coordinator.renderer(for: .code("x", languageHint: nil))
-        #expect(chosen is CodeRenderer)
-    }
-
-    @Test func unroutableInputThrowsNoRendererFor() async throws {
-        // A coordinator with no renderers cannot route anything; the error names
-        // the kind, not the content.
-        let coordinator = RenderCoordinator(renderers: [])
-        await #expect(throws: RenderError.noRendererFor(kind: "code")) {
-            try await coordinator.render(.code("x", languageHint: nil), config: SnapshotConfig())
-        }
-    }
-}
-
 // MARK: - web rendering (HTML local, URL gated)
 
 @MainActor
 @Suite("web rendering")
 struct WebRenderingTests {
-    @Test func htmlRoutesToTheLocalRenderer() throws {
-        // HTML renders locally; the standard coordinator routes it to the real
-        // HTMLRenderer.
-        let coordinator = RenderCoordinator.standard
-        #expect(coordinator.renderer(for: .html("<h1>Hello</h1>")) is HTMLRenderer)
-    }
-
-    @Test func urlRoutesToTheURLRenderer() throws {
-        // URL routes to the real URLRenderer; whether a capture can run is decided at
-        // render time by the network entitlement, not by routing.
-        let coordinator = RenderCoordinator.standard
-        let input = CaptureInput.url(try #require(URL(string: "https://example.com")))
-        #expect(coordinator.renderer(for: input) is URLRenderer)
+    @Test func eachWebRendererAcceptsExactlyItsOwnInput() throws {
+        // The two web renderers split the input space cleanly: HTML renders locally
+        // through HTMLRenderer, a URL only through URLRenderer (whether the capture
+        // can run is decided at render time by the network entitlement).
+        let url = CaptureInput.url(try #require(URL(string: "https://example.com")))
+        #expect(HTMLRenderer().canRender(.html("<h1>Hello</h1>")))
+        #expect(!HTMLRenderer().canRender(url))
+        #expect(URLRenderer().canRender(url))
+        #expect(!URLRenderer().canRender(.html("<h1>Hello</h1>")))
     }
 
     @Test func urlCaptureWithoutTheEntitlementThrowsTypedNotABlankImage() async throws {
@@ -125,36 +76,6 @@ struct WebRenderingTests {
 @MainActor
 @Suite("Code rendering needs no network or URL config")
 struct CodeRenderingNoNetworkTests {
-    @Test func codeRendererProducesAnAssetWithoutURLConfig() async throws {
-        // Rendering code goes through the abstraction and yields a real image with
-        // no URL, no network, and no web configuration involved.
-        let coordinator = RenderCoordinator.standard
-        let asset = try await coordinator.render(
-            .code("let answer = 42", languageHint: .swift), config: SnapshotConfig())
-        #expect(asset.pixelWidth > 0)
-        #expect(asset.pixelHeight > 0)
-        #expect(asset.profile == .sRGB)
-    }
-
-    @Test func languageHintOverridesTheConfigLanguage() async throws {
-        // The renderer honors the detector's hint over the config's stored language
-        // (classification done upstream is respected, not re-derived).
-        var config = SnapshotConfig()
-        config.language = .plaintext
-        let asset = try await CodeRenderer().render(
-            .code("print(1)", languageHint: .python), config: config)
-        #expect(asset.pixelWidth > 0)
-    }
-
-    @Test func nonCodeInputThrowsFromCodeRenderer() async throws {
-        // Calling `CodeRenderer` with an input it rejects is a routing mistake and
-        // throws, rather than producing an image.
-        let url = CaptureInput.url(try #require(URL(string: "https://example.com")))
-        await #expect(throws: RenderError.noRendererFor(kind: "url")) {
-            try await CodeRenderer().render(url, config: SnapshotConfig())
-        }
-    }
-
     /// The app target ships **without** `com.apple.security.network.client`, so the
     /// local rendering render path provably cannot reach the network. The
     /// entitlements file is excluded from the app's compiled sources and is not a
@@ -196,52 +117,29 @@ struct QuickCaptureClassificationTests {
         UserDefaults(suiteName: "VitrineRenderer-\(UUID().uuidString)")!
     }
 
-    @Test func clipboardCodeClassifiesAsCodeWithDetectedLanguage() {
-        let input = QuickCapture.classify("def greet():\n    pass", treatURLsAsScreenshot: false)
-        guard case .code(let code, let hint) = input else {
-            Issue.record("Expected a code input, got \(input)")
-            return
-        }
-        #expect(code == "def greet():\n    pass")
-        #expect(hint == .python)
+    // These tests target the exact seams `QuickCapture.capture` calls —
+    // `LanguageDetector.interpret` for the code path and `classifyURL` for the URL
+    // gate. They used to run through a `classify` wrapper that re-implemented the
+    // same composition and had no production call site, so they were pinning a copy
+    // rather than the truth.
+
+    @Test func clipboardCodeInterpretsWithDetectedLanguage() {
+        let interpreted = LanguageDetector.interpret("def greet():\n    pass")
+        #expect(interpreted.code == "def greet():\n    pass")
+        #expect(interpreted.language == .python)
     }
 
-    @Test func markdownFenceIsStrippedDuringClassification() {
-        let input = QuickCapture.classify(
-            "```swift\nlet x = 1\n```", treatURLsAsScreenshot: false)
-        guard case .code(let code, let hint) = input else {
-            Issue.record("Expected a code input, got \(input)")
-            return
-        }
-        #expect(code == "let x = 1")
-        #expect(hint == .swift)
+    @Test func markdownFenceIsStrippedDuringInterpretation() {
+        let interpreted = LanguageDetector.interpret("```swift\nlet x = 1\n```")
+        #expect(interpreted.code == "let x = 1")
+        #expect(interpreted.language == .swift)
     }
 
-    @Test func urlClassifiesAsURLOnlyWhenScreenshotEnabled() throws {
-        // With the opt-in off, a URL stays on the code path (rendered as text).
-        let asCode = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: false)
-        guard case .code = asCode else {
-            Issue.record("Expected a code input with the opt-in off, got \(asCode)")
-            return
-        }
-
-        // With the opt-in on, the same text classifies as a URL input.
-        let asURL = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: true)
-        guard case .url(let url) = asURL else {
-            Issue.record("Expected a url input, got \(asURL)")
-            return
-        }
-        #expect(url == (try #require(URL(string: "https://example.com"))))
-    }
-
-    @Test func nonURLTextNeverClassifiesAsURLEvenWhenEnabled() {
-        // Plain code with the URL opt-in on still classifies as code: only a single
-        // http(s) URL trips the URL branch.
-        let input = QuickCapture.classify("let x = 1", treatURLsAsScreenshot: true)
-        guard case .code = input else {
-            Issue.record("Expected a code input, got \(input)")
-            return
-        }
+    @Test func nonURLTextNeverPassesTheURLGate() {
+        // Only a single http(s) URL trips the URL branch; plain code never does,
+        // regardless of the opt-in (`capture` consults the gate only when the opt-in
+        // is on, and the opt-in behavior itself is covered by the `run` tests below).
+        #expect(QuickCapture.classifyURL("let x = 1") == nil)
     }
 
     @Test func classifyURLReturnsNilForNonURL() {
@@ -259,18 +157,6 @@ struct QuickCaptureClassificationTests {
             return
         }
         #expect(url == (try #require(URL(string: "https://example.com/path"))))
-    }
-
-    @Test func classifyFallsBackToCodeCarryingTheOriginalTextWhenURLOptInIsOff() {
-        // With the opt-in off, even a bare URL string takes the code path and the
-        // input carries the text verbatim (it is framed as a snippet, unchanged
-        // local rendering behavior) — proving the URL branch is gated, not the code path.
-        let input = QuickCapture.classify("https://example.com", treatURLsAsScreenshot: false)
-        guard case .code(let code, _) = input else {
-            Issue.record("Expected a code input, got \(input)")
-            return
-        }
-        #expect(code == "https://example.com")
     }
 
     @Test func quickCaptureReportsAURLOutcomeWhenEnabled() {

@@ -5,8 +5,9 @@ import Foundation
 ///
 /// Separating classification from rendering keeps the code-rendering path free of
 /// the network and web-view assumptions that web capture's URL, HTML, and social-card
-/// inputs introduce: the capture layer decides *what* the input is, and a
-/// `RenderCoordinator` later picks the renderer that handles that case. Adding a
+/// inputs introduce: the capture layer decides *what* the input is, and the surface
+/// that owns the input picks the renderer for that case (quick capture renders code
+/// itself; the Web Snapshot model holds the URL/HTML renderer for its mode). Adding a
 /// web capture input is therefore a new `case` plus a new `Renderer`, with no change
 /// to the code path.
 ///

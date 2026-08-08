@@ -7,9 +7,9 @@ import OSLog
 ///
 /// URL screenshots are part of web capture, but they keep Vitrine's privacy promise:
 /// the page is loaded on this Mac and turned into a bitmap on-device — there is
-/// **no remote render service**. The renderer slots into the existing `Renderer`
-/// abstraction so a coordinator routes a `.url` input here exactly as it
-/// routes code to `CodeRenderer` and HTML to `HTMLRenderer`.
+/// **no remote render service**. The renderer conforms to the shared `Renderer`
+/// contract, so the Web Snapshot model drives a `.url` capture through the same
+/// `render(_:config:)` shape as `HTMLRenderer`.
 ///
 /// ## Safety gate
 ///
