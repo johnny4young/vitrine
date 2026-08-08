@@ -158,12 +158,17 @@ struct StyleSnapshotShadowRadiusTests {
     }
 
     @Test func decodeClampsAnOutOfRangeShadowRadius() throws {
+        // The rest of the fixture is a *valid* file on purpose: only `shadowRadius`
+        // is hostile, so the clamp — not the tolerant whole-field fallback — is what
+        // the assertion exercises. The background check proves the fixture decoded as
+        // written rather than degrading to the aurora fallback.
         let hostile = """
             {"themeID":"dracula","shadowRadius":9999,
-             "background":{"kind":"gradient","gradient":"aurora"}}
+             "background":{"kind":"gradient","preset":"Sunset"}}
             """
         let decoded = try JSONDecoder().decode(StyleSnapshot.self, from: Data(hostile.utf8))
         #expect(decoded.shadowRadius <= SettingsDefaults.shadowRadiusRange.upperBound)
+        #expect(decoded.background == .gradient(.sunset))
     }
 
     @Test func encodeDecodeRoundTripsTheField() throws {
