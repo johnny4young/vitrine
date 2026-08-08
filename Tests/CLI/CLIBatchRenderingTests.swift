@@ -479,6 +479,47 @@ struct CLIBatchRenderingTests: CLITestSupport {
                 atPath: directory.appendingPathComponent("a.png").path))
     }
 
+    /// The name-claiming set compared exact Swift strings, but the default macOS volume
+    /// is case-insensitive: `a.swift` + `a.py` de-collide to `a.swift.png`/`a.py.png`
+    /// while `A.swift.txt` independently claims `A.swift.png` — one file on disk. The
+    /// batch reported three renders and wrote two, and the manifest listed an output
+    /// that had been overwritten.
+    @Test func batchOutputsAreUniqueOnACaseInsensitiveVolume() throws {
+        let input = try makeTempDirectory()
+        let output = try makeTempDirectory()
+        let manifest = try makeTempDirectory().appendingPathComponent("manifest.json")
+        defer {
+            try? FileManager.default.removeItem(at: input)
+            try? FileManager.default.removeItem(at: output)
+            try? FileManager.default.removeItem(at: manifest.deletingLastPathComponent())
+        }
+        try "let a = 1\n".write(
+            to: input.appendingPathComponent("a.swift"), atomically: true, encoding: .utf8)
+        try "a = 2\n".write(
+            to: input.appendingPathComponent("a.py"), atomically: true, encoding: .utf8)
+        try "plain\n".write(
+            to: input.appendingPathComponent("A.swift.txt"), atomically: true, encoding: .utf8)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--manifest", manifest.path,
+        ])
+        #expect(try CLIRenderer.runBatch(options).contains("Rendered 3 image"))
+
+        // Three renders must be three files, whatever the volume's case semantics.
+        let written = try FileManager.default.contentsOfDirectory(atPath: output.path)
+            .filter { $0.hasSuffix(".png") }
+        #expect(written.count == 3)
+
+        // And no two manifest outputs may fold onto the same name.
+        let decoded = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
+        let folded = decoded.compactMap {
+            ($0["output"] as? String)?.precomposedStringWithCanonicalMapping.lowercased()
+        }
+        #expect(Set(folded).count == folded.count)
+        #expect(folded.count == 3)
+    }
+
     @Test func batchIntoASeparateFolderStillWritesSidecars() throws {
         // The guard is about collisions with inputs, not about sidecars in general.
         let input = try makeTempDirectory()
