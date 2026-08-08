@@ -190,13 +190,28 @@ struct ANSIParserTests {
         #expect(ANSIRenderer.plainText(stream) == "beforeafter")
     }
 
-    @Test func belTerminatedStringSequenceEndsAtTheBel() {
-        // BEL is accepted with the same laxity as OSC. The body is dropped, the text
-        // after the terminator survives — including through normalize, whose stray-C0
-        // stripping must not eat the BEL before the parser's skip sees it.
-        let stream = "keep\(esc)Psixel-ish-body\u{07}also kept"
+    /// Unlike OSC, a DCS/SOS/PM/APC body ends only at ST. These payloads are
+    /// binary-ish command data and tmux passthrough wraps whole inner sequences, so a
+    /// raw BEL byte inside one is ordinary content — treating it as a terminator would
+    /// spill the rest of the payload into the image as text.
+    @Test func aBelInsideAStringSequenceIsContentNotATerminator() {
+        let stream = "keep\(esc)Psixel\u{07}still-payload\(esc)\\also kept"
         #expect(ANSIParser.parse(stream).map(\.text).joined() == "keepalso kept")
         #expect(ANSIRenderer.plainText(stream) == "keepalso kept")
+    }
+
+    @Test func passthroughCarryingABelTerminatedInnerOSCIsNotTruncated() {
+        // tmux passthrough wraps a whole inner sequence; a BEL-terminated OSC inside
+        // one must not end the outer DCS early.
+        let stream = "before\(esc)Ptmux;\(esc)]0;inner title\u{07}\(esc)\\after"
+        #expect(ANSIParser.parse(stream).map(\.text).joined() == "beforeafter")
+        #expect(ANSIRenderer.plainText(stream) == "beforeafter")
+    }
+
+    @Test func oscStillAcceptsBelAsATerminator() {
+        // The laxity stays where it belongs: OSC's BEL terminator is an xterm
+        // extension the rest of the app relies on (window titles, OSC 8 links).
+        #expect(ANSIParser.parse("\(esc)]0;title\u{07}body").map(\.text).joined() == "body")
     }
 
     @Test func unterminatedStringSequenceConsumesToEndOfInput() {

@@ -293,13 +293,19 @@ enum ANSIRenderer {
                 guard index < scalars.count,
                     scalars[index] == "]" || ANSIParser.isStringSequenceIntroducer(scalars[index])
                 else { break }
+                // BEL ends an OSC (the xterm extension the app relies on for window
+                // titles and OSC 8), but inside a DCS/SOS/PM/APC body it is ordinary
+                // payload content — see `ANSIParser.skipStringSequence`. Copying with
+                // the wrong terminator would hand the parser a body the stray-control
+                // stripping had already chewed through.
+                let belTerminates = scalars[index] == "]"
                 output.append(scalars[index])  // `]`, or the string introducer (P/X/^/_)
                 index += 1
                 while index < scalars.count {
                     let byte = scalars[index]
                     output.append(byte)
                     index += 1
-                    if byte == "\u{07}" { break }  // BEL terminator
+                    if belTerminates, byte == "\u{07}" { break }  // BEL terminator
                     if byte == "\u{1B}", index < scalars.count, scalars[index] == "\\" {
                         output.append(scalars[index])  // ST terminator's trailing `\`
                         index += 1

@@ -132,12 +132,28 @@ enum ANSIParser {
     }
 
     /// Skips a DCS/SOS/PM/APC body starting just past its introducer, returning the
-    /// index just past the terminator. Delegates to ``scanOSC(_:from:)`` so there is
-    /// one scanner of the string-sequence wire format: the body runs to ST (`ESC \`),
-    /// BEL is accepted with the same laxity as OSC, and an unterminated body at end of
-    /// input is consumed rather than spilled.
+    /// index just past its ST terminator (`ESC \`).
+    ///
+    /// **ST only** — unlike OSC, which also accepts BEL as an xterm extension. These
+    /// bodies carry binary-ish command payloads (sixel data, a kitty graphics blob) and
+    /// tmux passthrough wraps whole inner sequences, so a raw `BEL` byte inside one is
+    /// ordinary content: ending the scan there would spill the remaining payload into
+    /// the image as text, and would truncate a passthrough carrying a BEL-terminated
+    /// inner OSC.
+    ///
+    /// An unterminated body at end of input is consumed rather than spilled — a
+    /// truncated capture drops half a payload instead of printing it.
     static func skipStringSequence(_ scalars: [Unicode.Scalar], from start: Int) -> Int {
-        scanOSC(scalars, from: start).end
+        var cursor = start
+        while cursor < scalars.count {
+            if scalars[cursor] == "\u{1B}", cursor + 1 < scalars.count,
+                scalars[cursor + 1] == "\\"
+            {
+                return cursor + 2
+            }
+            cursor += 1
+        }
+        return cursor
     }
 
     /// Scans a CSI body starting at `start` (just past `ESC[`): parameter/intermediate
