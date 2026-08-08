@@ -123,17 +123,24 @@ enum ANSIParser {
 
     // MARK: - Sequence scanning
 
-    /// Whether a CSI parameter string opens with a private-use marker (`<`, `=`, `>`).
+    /// Whether a CSI parameter string opens with a private-use marker (`<`, `=`, `>`,
+    /// or `?`).
     ///
-    /// These mark vendor sequences — xterm's `ESC[>4;1m` (modifyOtherKeys, which tmux
-    /// emits), `ESC[=c` device queries — that share final bytes with standard controls
-    /// but mean something else entirely. Executed as standard, `>4;1m` ghost-applies
-    /// bold and a private cursor final moves the cursor. A static capture has no
-    /// terminal to answer them, so they are dropped wholesale. (`?` is marked private
-    /// too, but callers route it separately: DECSET modes drive the alt screen.)
+    /// These mark vendor and DEC-private sequences — xterm's `ESC[>4;1m`
+    /// (modifyOtherKeys, which tmux emits), `ESC[=c` device queries, `ESC[?1049h` — that
+    /// share final bytes with standard controls but mean something else entirely.
+    /// Executed as standard, `>4;1m` and `?4;1m` alike ghost-apply bold (the marked
+    /// first field is ignored, the trailing `1` is not) and a private cursor final moves
+    /// the cursor. A static capture has no terminal to answer any of them.
+    ///
+    /// `?` belongs here even though it is *also* meaningful: the grid emulator and the
+    /// router both branch on `params.hasPrefix("?")` **before** consulting this
+    /// predicate, so DECSET modes still drive the alternate screen. Only the SGR path —
+    /// which has no private branch of its own — is affected, which is exactly where the
+    /// ghost-styling happened.
     static func hasPrivateParameterPrefix(_ params: String) -> Bool {
         guard let first = params.unicodeScalars.first else { return false }
-        return first == "<" || first == "=" || first == ">"
+        return first == "<" || first == "=" || first == ">" || first == "?"
     }
 
     /// Whether the byte after ESC opens a *string* sequence — DCS (`P`), SOS (`X`),

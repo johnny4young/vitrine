@@ -269,6 +269,23 @@ struct ANSIParserTests {
         #expect(runs.map(\.text).joined() == "redstill plain red")
     }
 
+    @Test func decPrivateSGRDoesNotGhostStyleThePenEither() {
+        // `?` is a private marker too, and the SGR path has no DEC branch of its own —
+        // so `ESC[?4;1m` reached applySGR, where `?4` mapped to the ignored -1 but the
+        // trailing `1` applied real bold. Same defect as `>`, different marker.
+        let runs = ANSIParser.parse("\(esc)[31mred\(esc)[?4;1mstill plain red\(esc)[0m")
+        #expect(runs.allSatisfy { !$0.style.bold })
+        #expect(runs.map(\.text).joined() == "redstill plain red")
+    }
+
+    @Test func decPrivateModesStillDriveTheAlternateScreen() {
+        // Adding `?` to the predicate must not disturb DECSET: the grid and the router
+        // both branch on `?` before consulting it, so alt-screen capture is untouched.
+        let tui = "before\(esc)[?1049h\(esc)[2J\(esc)[1;1HTUI\(esc)[?1049lafter"
+        #expect(TerminalScreen.usesScreenAddressing(tui))
+        #expect(ANSIRenderer.plainText(tui) == "TUI")
+    }
+
     @Test func privateParameterCursorFinalsDoNotMoveTheGridCursor() {
         // `ESC[>5A`-shaped vendor sequences share cursor final bytes; executed as
         // standard they walk the cursor mid-frame.
