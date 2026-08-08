@@ -175,4 +175,130 @@ struct ANSIParserTests {
         #expect(runs.map(\.text).joined() == "ab")
         #expect(runs.allSatisfy { $0.style.hyperlink == "https://x" })
     }
+
+    // MARK: - String sequences (DCS/SOS/PM/APC) are command data, never text
+
+    /// Treated as two-byte escapes, only the introducer was dropped and the whole body
+    /// leaked into the rendered image — a tmux passthrough or kitty graphics payload
+    /// printed as literal text.
+    @Test(arguments: ["P", "X", "^", "_"])
+    func stringSequenceBodiesNeverLeakIntoText(_ introducer: String) {
+        let stream = "before\(esc)\(introducer)command-payload;123\(esc)\\after"
+        #expect(ANSIParser.parse(stream).map(\.text).joined() == "beforeafter")
+        // And through the full line-mode pipeline (normalize + parse), which must
+        // preserve the terminator its skip relies on.
+        #expect(ANSIRenderer.plainText(stream) == "beforeafter")
+    }
+
+    /// Unlike OSC, a DCS/SOS/PM/APC body ends only at ST. These payloads are
+    /// binary-ish command data and tmux passthrough wraps whole inner sequences, so a
+    /// raw BEL byte inside one is ordinary content — treating it as a terminator would
+    /// spill the rest of the payload into the image as text.
+    @Test func aBelInsideAStringSequenceIsContentNotATerminator() {
+        let stream = "keep\(esc)Psixel\u{07}still-payload\(esc)\\also kept"
+        #expect(ANSIParser.parse(stream).map(\.text).joined() == "keepalso kept")
+        #expect(ANSIRenderer.plainText(stream) == "keepalso kept")
+    }
+
+    @Test func passthroughCarryingABelTerminatedInnerOSCIsNotTruncated() {
+        // tmux passthrough wraps a whole inner sequence; a BEL-terminated OSC inside
+        // one must not end the outer DCS early.
+        let stream = "before\(esc)Ptmux;\(esc)]0;inner title\u{07}\(esc)\\after"
+        #expect(ANSIParser.parse(stream).map(\.text).joined() == "beforeafter")
+        #expect(ANSIRenderer.plainText(stream) == "beforeafter")
+    }
+
+    @Test func oscStillAcceptsBelAsATerminator() {
+        // The laxity stays where it belongs: OSC's BEL terminator is an xterm
+        // extension the rest of the app relies on (window titles, OSC 8 links).
+        #expect(ANSIParser.parse("\(esc)]0;title\u{07}body").map(\.text).joined() == "body")
+    }
+
+    @Test func unterminatedStringSequenceConsumesToEndOfInput() {
+        // A truncated capture can cut a DCS mid-body. The remainder is command data,
+        // not text: dropping it beats spilling half a payload into the image.
+        let stream = "shown\(esc)_Gtruncated kitty payload with no terminator"
+        #expect(ANSIParser.parse(stream).map(\.text).joined() == "shown")
+    }
+
+    @Test func stringSequenceBodiesAreNotTypedIntoTheGrid() {
+        // The grid emulator shares the skip: a DCS body must not be written into cells.
+        let stream = "\(esc)[2;1Hrow\(esc)Ptmux;wrapped-escape\(esc)\\ok"
+        var screen = TerminalScreen(columns: 40)
+        screen.feed(stream)
+        #expect(screen.plainText() == "\nrowok")
+    }
+
+    /// Feeding a fixed-width screen is not enough: `TerminalScreen.runs` sizes the grid
+    /// from the stream *first*. The dimension and routing scanners have their own ESC
+    /// handling, and dropping only the introducer left a payload counting as visible
+    /// text — a 400-byte body inflated the inferred width to its 1,000-column ceiling
+    /// and rewrapped the real cells (reproduced: a 848 px canvas became 7,087 px).
+    @Test func aStringPayloadDoesNotInflateTheInferredWidth() {
+        let payload = "q" + String(repeating: "A", count: 400)
+        let withPayload = "\(esc)[2;1Hrow one\(esc)P\(payload)\(esc)\\\(esc)[3;1Hrow two"
+        let without = "\(esc)[2;1Hrow one\(esc)[3;1Hrow two"
+
+        #expect(TerminalScreen.inferColumns(withPayload) == TerminalScreen.inferColumns(without))
+        // And the end-to-end path agrees: same reconstruction either way.
+        #expect(ANSIRenderer.plainText(withPayload) == ANSIRenderer.plainText(without))
+    }
+
+    @Test func aStringPayloadDoesNotInflateTheInferredHeight() {
+        // Row inference reads only CSI positioning, but a passthrough body carries
+        // escaped sequences — a CUP shape inside one must not count.
+        let smuggled = "\(esc)[2;1Hrow\(esc)P\(esc)[200;1H smuggled\(esc)\\"
+        #expect(TerminalScreen.inferRows(smuggled) == TerminalScreen.inferRows("\(esc)[2;1Hrow"))
+    }
+
+    @Test func aStringPayloadDoesNotDecideTheRoute() {
+        // tmux passthrough wraps real escape sequences; a payload's alternate-screen or
+        // erase-display bytes must not route a scrolling transcript to the grid.
+        let transcript = "line one\n\(esc)P\(esc)[?1049h\(esc)[2J\(esc)[2J\(esc)\\line two"
+        #expect(!TerminalScreen.usesScreenAddressing(transcript))
+        #expect(ANSIRenderer.plainText(transcript) == "line one\nline two")
+    }
+
+    // MARK: - Private-parameter CSI (`<`, `=`, `>`) is vendor data, never standard
+
+    @Test func privateParameterSGRDoesNotGhostStyleThePen() {
+        // xterm's modifyOtherKeys (`ESC[>4;1m`) shares SGR's final byte. The `>4` maps
+        // to the ignored -1, but the trailing `1` used to execute as real SGR bold.
+        let runs = ANSIParser.parse("\(esc)[31mred\(esc)[>4;1mstill plain red\(esc)[0m")
+        #expect(runs.allSatisfy { !$0.style.bold })
+        #expect(runs.map(\.text).joined() == "redstill plain red")
+    }
+
+    @Test func decPrivateSGRDoesNotGhostStyleThePenEither() {
+        // `?` is a private marker too, and the SGR path has no DEC branch of its own —
+        // so `ESC[?4;1m` reached applySGR, where `?4` mapped to the ignored -1 but the
+        // trailing `1` applied real bold. Same defect as `>`, different marker.
+        let runs = ANSIParser.parse("\(esc)[31mred\(esc)[?4;1mstill plain red\(esc)[0m")
+        #expect(runs.allSatisfy { !$0.style.bold })
+        #expect(runs.map(\.text).joined() == "redstill plain red")
+    }
+
+    @Test func decPrivateModesStillDriveTheAlternateScreen() {
+        // Adding `?` to the predicate must not disturb DECSET: the grid and the router
+        // both branch on `?` before consulting it, so alt-screen capture is untouched.
+        let tui = "before\(esc)[?1049h\(esc)[2J\(esc)[1;1HTUI\(esc)[?1049lafter"
+        #expect(TerminalScreen.usesScreenAddressing(tui))
+        #expect(ANSIRenderer.plainText(tui) == "TUI")
+    }
+
+    @Test func privateParameterCursorFinalsDoNotMoveTheGridCursor() {
+        // `ESC[>5A`-shaped vendor sequences share cursor final bytes; executed as
+        // standard they walk the cursor mid-frame.
+        var screen = TerminalScreen(columns: 20)
+        screen.feed("\(esc)[3;1Hbase\(esc)[>2Aup")
+        #expect(screen.plainText() == "\n\nbaseup")
+    }
+
+    @Test func privateParameterSequencesNeverSelectTheGridOrWidenInference() {
+        // A `>`-marked sequence with an ED/CUP shape is a query, not screen addressing:
+        // it must not route a scrolling capture to the grid, and its numbers must not
+        // inflate the inferred width.
+        #expect(!TerminalScreen.usesScreenAddressing("\(esc)[>2Jplain\ntranscript"))
+        #expect(TerminalScreen.inferColumns("\(esc)[>1;200Hshort") == 80)
+    }
 }

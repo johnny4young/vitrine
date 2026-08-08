@@ -516,6 +516,51 @@ struct EditorSessionIndependenceTests {
         #expect(reopened?.dictionaryRepresentation()[SettingsCodec.Keys.padding] == nil)
     }
 
+    /// The launch sweep is what actually bounds per-window suites on disk: the primary
+    /// session only dies on a clean quit, a force-quit strands every session, and
+    /// `removePersistentDomain` leaves an empty husk `cfprefsd` owns. All three end up
+    /// as files the next launch must collect — a two-month machine carried 4,667.
+    @Test func sweepCollectsOnlyStaleEditorSessionFiles() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vitrine-sweep-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let now = Date()
+        func plant(_ name: String, ageDays: Double) throws -> URL {
+            let url = directory.appendingPathComponent(name)
+            try Data("stub".utf8).write(to: url)
+            try FileManager.default.setAttributes(
+                [.modificationDate: now.addingTimeInterval(-ageDays * 86_400)],
+                ofItemAtPath: url.path)
+            return url
+        }
+
+        let staleSession = try plant(
+            "\(AppSettings.editorSessionSuitePrefix)AAAA.plist", ageDays: 30)
+        let freshSession = try plant(
+            "\(AppSettings.editorSessionSuitePrefix)BBBB.plist", ageDays: 0)
+        let unrelated = try plant("com.johnny4young.vitrine.plist", ageDays: 30)
+        let nonPlist = try plant(
+            "\(AppSettings.editorSessionSuitePrefix)CCCC.backup", ageDays: 30)
+
+        AppSettings.sweepStaleEditorSessionSuites(preferencesDirectory: directory, now: now)
+
+        // Only the stale session file is collected: a fresh one may belong to a
+        // concurrently running second instance, the app-wide store is untouchable, and
+        // anything that is not a suite plist is not ours to delete.
+        #expect(!FileManager.default.fileExists(atPath: staleSession.path))
+        #expect(FileManager.default.fileExists(atPath: freshSession.path))
+        #expect(FileManager.default.fileExists(atPath: unrelated.path))
+        #expect(FileManager.default.fileExists(atPath: nonPlist.path))
+    }
+
+    @Test func sweepToleratesAMissingDirectory() {
+        // First launch on a clean container: the Preferences directory may not exist.
+        AppSettings.sweepStaleEditorSessionSuites(
+            preferencesDirectory: URL(fileURLWithPath: "/nonexistent/vitrine-sweep-test"))
+    }
+
     @Test func discardingASessionNeverSilencesTheSharedStore() {
         // The latch must be scoped to volatile sessions: a stray discard on the shared
         // instance returns before latching, so app-wide settings keep persisting.

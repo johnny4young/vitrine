@@ -127,12 +127,20 @@ struct TerminalScreen {
         guard ANSIParser.containsANSI(text) else { return false }
         let scalars = Array(text.unicodeScalars)
         var index = 0
+        var erasedDisplayOnce = false
         while index < scalars.count {
             guard scalars[index] == "\u{1B}", index + 1 < scalars.count else {
                 index += 1
                 continue
             }
             guard scalars[index + 1] == "[" else {  // only CSI carries these
+                // A DCS/SOS/PM/APC body is command data, and tmux passthrough carries
+                // *escaped escape sequences* inside one — so scanning through a body
+                // byte by byte would let a payload's CSI-shaped bytes decide the route.
+                if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                    index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                    continue
+                }
                 index += 2
                 continue
             }
@@ -148,8 +156,29 @@ struct TerminalScreen {
                 }
                 continue
             }
+            // Vendor sequences (`<`/`=`/`>` markers) share final bytes with the
+            // standard controls but are not screen addressing — counting them here
+            // would misroute a stream over a stray `ESC[>…J`-shaped query.
+            if ANSIParser.hasPrivateParameterPrefix(params) { continue }
             switch finalByte {
-            case "J": return true  // ED — erase display (full-screen redraw)
+            case "J":
+                // ED 2 alone is ambiguous. A TUI repaints with it — but `clear` emits
+                // exactly one (macOS `\e[H\e[2J`; Linux appends `\e[3J`, the scrollback
+                // erase), and `clear && <command>` is scrolling output whose transcript is
+                // the artifact: routed to the grid, a 1,500-line capture collapses to the
+                // last screenful. So one whole-display erase is the clear idiom and stays
+                // in line mode (which resets the transcript at the erase — see
+                // `ANSIRenderer.lineEdit`); a second one means a repaint loop (`watch`,
+                // multi-line progress redraws) and selects the grid.
+                //
+                // Only parameter 2 counts. ED 0 (the default, erase forward) and ED 1
+                // (erase backward) are *partial* erases that scrolling output emits
+                // routinely, so counting them would let two partial erases collapse a
+                // transcript; ED 3 erases saved scrollback, never the visible screen.
+                if params == "2" {
+                    if erasedDisplayOnce { return true }
+                    erasedDisplayOnce = true
+                }
             case "d": return true  // VPA — absolute row
             case "r": return true  // DECSTBM — scroll region
             case "H", "f":  // CUP — count only positioning beyond home
@@ -177,7 +206,9 @@ struct TerminalScreen {
                 switch scalars[index + 1] {
                 case "[":
                     let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
-                    if let finalByte, !params.hasPrefix("?") {
+                    if let finalByte, !params.hasPrefix("?"),
+                        !ANSIParser.hasPrivateParameterPrefix(params)
+                    {
                         let nums = params.split(separator: ";", omittingEmptySubsequences: false)
                             .map { Int($0) ?? 0 }
                         if finalByte == "H" || finalByte == "f", nums.count > 1 {
@@ -194,6 +225,14 @@ struct TerminalScreen {
                     index = end
                     continue
                 default:
+                    // Skip a string-sequence body outright. Dropping only the introducer
+                    // left the payload — a sixel frame, a kitty graphics blob — counting
+                    // as visible text, so a 400-byte body inflated the inferred width to
+                    // its 1,000-column ceiling and rewrapped the real cells.
+                    if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                        index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                        continue
+                    }
                     if (0x20...0x2F).contains(scalars[index + 1].value) {
                         var cursor = index + 1
                         while cursor < scalars.count,
@@ -235,7 +274,9 @@ struct TerminalScreen {
         while index < scalars.count {
             if scalars[index] == "\u{1B}", index + 1 < scalars.count, scalars[index + 1] == "[" {
                 let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
-                if let finalByte, !params.hasPrefix("?") {
+                if let finalByte, !params.hasPrefix("?"),
+                    !ANSIParser.hasPrivateParameterPrefix(params)
+                {
                     let nums = params.split(separator: ";", omittingEmptySubsequences: false)
                         .map { Int($0) ?? 0 }
                     if finalByte == "H" || finalByte == "f" || finalByte == "d",
@@ -248,6 +289,15 @@ struct TerminalScreen {
                     }
                 }
                 index = end
+                continue
+            }
+            // Row inference reads only CSI positioning, so a payload cannot inflate it
+            // by length — but a passthrough body carries escaped sequences, and a
+            // `CUP` shape inside one would still be counted. Skip the body.
+            if scalars[index] == "\u{1B}", index + 1 < scalars.count,
+                ANSIParser.isStringSequenceIntroducer(scalars[index + 1])
+            {
+                index = ANSIParser.skipStringSequence(scalars, from: index + 2)
                 continue
             }
             index += 1
@@ -303,6 +353,13 @@ struct TerminalScreen {
                     indexDown()
                     index += 2
                 default:
+                    // DCS/SOS/PM/APC string bodies are command data, never cells: skip
+                    // to their terminator with the shared scanner so a sixel or kitty
+                    // graphics payload is not typed into the screen.
+                    if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                        index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                        continue
+                    }
                     // ESC followed by an intermediate byte (0x20–0x2F) is a longer
                     // sequence — most often charset designation (`ESC (B`, which htop and
                     // friends emit constantly): consume the intermediate(s) and the final
@@ -355,6 +412,11 @@ struct TerminalScreen {
             applyPrivateMode(String(params.dropFirst()), finalByte)
             return
         }
+        // Other private-use markers (`<`, `=`, `>`) are vendor sequences sharing final
+        // bytes with the standard controls: executed as standard, xterm's `>4;1m`
+        // ghost-styles the pen and a private cursor final walks the cursor. Nothing a
+        // static capture can honor — drop them wholesale.
+        if ANSIParser.hasPrivateParameterPrefix(params) { return }
         let nums = Self.parseParams(params)
 
         switch finalByte {
