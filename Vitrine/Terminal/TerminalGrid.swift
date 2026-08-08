@@ -134,6 +134,13 @@ struct TerminalScreen {
                 continue
             }
             guard scalars[index + 1] == "[" else {  // only CSI carries these
+                // A DCS/SOS/PM/APC body is command data, and tmux passthrough carries
+                // *escaped escape sequences* inside one — so scanning through a body
+                // byte by byte would let a payload's CSI-shaped bytes decide the route.
+                if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                    index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                    continue
+                }
                 index += 2
                 continue
             }
@@ -212,6 +219,14 @@ struct TerminalScreen {
                     index = end
                     continue
                 default:
+                    // Skip a string-sequence body outright. Dropping only the introducer
+                    // left the payload — a sixel frame, a kitty graphics blob — counting
+                    // as visible text, so a 400-byte body inflated the inferred width to
+                    // its 1,000-column ceiling and rewrapped the real cells.
+                    if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                        index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                        continue
+                    }
                     if (0x20...0x2F).contains(scalars[index + 1].value) {
                         var cursor = index + 1
                         while cursor < scalars.count,
@@ -268,6 +283,15 @@ struct TerminalScreen {
                 index = end
                 continue
             }
+            // Row inference reads only CSI positioning, so a payload cannot inflate it
+            // by length — but a passthrough body carries escaped sequences, and a
+            // `CUP` shape inside one would still be counted. Skip the body.
+            if scalars[index] == "\u{1B}", index + 1 < scalars.count,
+                ANSIParser.isStringSequenceIntroducer(scalars[index + 1])
+            {
+                index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                continue
+            }
             index += 1
         }
         if maxRow == 0 { return 40 }  // relative-only app: a typical screen height
@@ -321,6 +345,13 @@ struct TerminalScreen {
                     indexDown()
                     index += 2
                 default:
+                    // DCS/SOS/PM/APC string bodies are command data, never cells: skip
+                    // to their terminator with the shared scanner so a sixel or kitty
+                    // graphics payload is not typed into the screen.
+                    if ANSIParser.isStringSequenceIntroducer(scalars[index + 1]) {
+                        index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+                        continue
+                    }
                     // ESC followed by an intermediate byte (0x20–0x2F) is a longer
                     // sequence — most often charset designation (`ESC (B`, which htop and
                     // friends emit constantly): consume the intermediate(s) and the final
