@@ -151,15 +151,20 @@ struct TerminalScreen {
             }
             switch finalByte {
             case "J":
-                // ED alone is ambiguous. A TUI repaints with it — but `clear` emits
+                // ED 2 alone is ambiguous. A TUI repaints with it — but `clear` emits
                 // exactly one (macOS `\e[H\e[2J`; Linux appends `\e[3J`, the scrollback
-                // erase, which never means repaint), and `clear && <command>` is scrolling
-                // output whose transcript is the artifact: routed to the grid, a 1,500-line
-                // capture collapses to the last screenful. So one display erase is the
-                // clear idiom and stays in line mode (which resets the transcript at the
-                // erase — see `ANSIRenderer.lineEdit`); a second one means a repaint loop
-                // (`watch`, multi-line progress redraws) and selects the grid.
-                if Int(params) ?? 0 != 3 {
+                // erase), and `clear && <command>` is scrolling output whose transcript is
+                // the artifact: routed to the grid, a 1,500-line capture collapses to the
+                // last screenful. So one whole-display erase is the clear idiom and stays
+                // in line mode (which resets the transcript at the erase — see
+                // `ANSIRenderer.lineEdit`); a second one means a repaint loop (`watch`,
+                // multi-line progress redraws) and selects the grid.
+                //
+                // Only parameter 2 counts. ED 0 (the default, erase forward) and ED 1
+                // (erase backward) are *partial* erases that scrolling output emits
+                // routinely, so counting them would let two partial erases collapse a
+                // transcript; ED 3 erases saved scrollback, never the visible screen.
+                if params == "2" {
                     if erasedDisplayOnce { return true }
                     erasedDisplayOnce = true
                 }

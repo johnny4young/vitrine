@@ -418,6 +418,28 @@ struct TerminalGridTests {
         #expect(ANSIRenderer.plainText(watchStyle) == "frame two")
     }
 
+    @Test func partialDisplayErasesNeverSelectTheGridOrResetTheTranscript() {
+        // ED 0 (the default, erase forward) and ED 1 (erase backward) are *partial*
+        // erases that ordinary scrolling output emits routinely. Counting them toward
+        // the repaint threshold would let two of them collapse a transcript to a
+        // screenful, and treating either as a transcript reset would delete lines the
+        // user saw.
+        let partials = "line one\n\(esc)[Jline two\n\(esc)[0Jline three\n\(esc)[1Jline four"
+        #expect(!TerminalScreen.usesScreenAddressing(partials))
+        let text = ANSIRenderer.plainText(partials)
+        for line in ["line one", "line two", "line three", "line four"] {
+            #expect(text.contains(line))
+        }
+    }
+
+    @Test func aStandaloneScrollbackEraseKeepsTheVisibleTranscript() {
+        // ED 3 erases *saved scrollback*, never the visible screen. A program that
+        // emits it on its own must not lose the lines already printed.
+        let capture = "kept before\n\(esc)[3Jkept after"
+        #expect(!TerminalScreen.usesScreenAddressing(capture))
+        #expect(ANSIRenderer.plainText(capture) == "kept before\nkept after")
+    }
+
     @Test func aClearBesideRealAddressingStillSelectsTheGrid() {
         // The single-ED allowance never weakens the unambiguous triggers: one clear
         // plus absolute positioning (or the alternate screen) is a TUI.
