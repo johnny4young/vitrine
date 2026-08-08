@@ -276,12 +276,29 @@ enum CLIBatchRenderer {
         }
         let collisions = Dictionary(grouping: baseRelativePaths) { $0.relativePath }
 
+        // The per-group rename above is not enough on its own: a *recomputed* name can
+        // land on a name another group never changed. `a.swift` + `a.py` collide on
+        // `a.png` and become `a.swift.png`/`a.py.png` — but a third input literally named
+        // `a.swift.txt` already owns `a.swift.png` via the legacy mapping, and whichever
+        // rendered last silently replaced the other while the batch reported every file
+        // as rendered. So the assignment claims names as it goes: any candidate that is
+        // already taken gets a numeric discriminator before the image extension.
+        // Iteration is sorted by input path, so which file keeps the plain name (and
+        // which gets `-2`) never depends on directory-listing order.
         var outputs: [String: URL] = [:]
-        for entry in baseRelativePaths {
+        var claimed: Set<String> = []
+        for entry in baseRelativePaths.sorted(by: { $0.file.path < $1.file.path }) {
             let shouldPreserveInputExtension = (collisions[entry.relativePath]?.count ?? 0) > 1
-            let relativePath = batchOutputRelativePath(
+            var relativePath = batchOutputRelativePath(
                 for: entry.file, inputDirectory: inputDirectory, recursive: recursive,
                 preservingInputExtension: shouldPreserveInputExtension, fileExtension: ext)
+            if claimed.contains(relativePath) {
+                let stem = (relativePath as NSString).deletingPathExtension
+                var discriminator = 2
+                while claimed.contains("\(stem)-\(discriminator).\(ext)") { discriminator += 1 }
+                relativePath = "\(stem)-\(discriminator).\(ext)"
+            }
+            claimed.insert(relativePath)
             outputs[batchOutputKey(for: entry.file)] = outputDirectory.appendingPathComponent(
                 relativePath)
         }
