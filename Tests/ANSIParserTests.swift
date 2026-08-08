@@ -258,4 +258,47 @@ struct ANSIParserTests {
         #expect(!TerminalScreen.usesScreenAddressing(transcript))
         #expect(ANSIRenderer.plainText(transcript) == "line one\nline two")
     }
+
+    // MARK: - Private-parameter CSI (`<`, `=`, `>`) is vendor data, never standard
+
+    @Test func privateParameterSGRDoesNotGhostStyleThePen() {
+        // xterm's modifyOtherKeys (`ESC[>4;1m`) shares SGR's final byte. The `>4` maps
+        // to the ignored -1, but the trailing `1` used to execute as real SGR bold.
+        let runs = ANSIParser.parse("\(esc)[31mred\(esc)[>4;1mstill plain red\(esc)[0m")
+        #expect(runs.allSatisfy { !$0.style.bold })
+        #expect(runs.map(\.text).joined() == "redstill plain red")
+    }
+
+    @Test func decPrivateSGRDoesNotGhostStyleThePenEither() {
+        // `?` is a private marker too, and the SGR path has no DEC branch of its own —
+        // so `ESC[?4;1m` reached applySGR, where `?4` mapped to the ignored -1 but the
+        // trailing `1` applied real bold. Same defect as `>`, different marker.
+        let runs = ANSIParser.parse("\(esc)[31mred\(esc)[?4;1mstill plain red\(esc)[0m")
+        #expect(runs.allSatisfy { !$0.style.bold })
+        #expect(runs.map(\.text).joined() == "redstill plain red")
+    }
+
+    @Test func decPrivateModesStillDriveTheAlternateScreen() {
+        // Adding `?` to the predicate must not disturb DECSET: the grid and the router
+        // both branch on `?` before consulting it, so alt-screen capture is untouched.
+        let tui = "before\(esc)[?1049h\(esc)[2J\(esc)[1;1HTUI\(esc)[?1049lafter"
+        #expect(TerminalScreen.usesScreenAddressing(tui))
+        #expect(ANSIRenderer.plainText(tui) == "TUI")
+    }
+
+    @Test func privateParameterCursorFinalsDoNotMoveTheGridCursor() {
+        // `ESC[>5A`-shaped vendor sequences share cursor final bytes; executed as
+        // standard they walk the cursor mid-frame.
+        var screen = TerminalScreen(columns: 20)
+        screen.feed("\(esc)[3;1Hbase\(esc)[>2Aup")
+        #expect(screen.plainText() == "\n\nbaseup")
+    }
+
+    @Test func privateParameterSequencesNeverSelectTheGridOrWidenInference() {
+        // A `>`-marked sequence with an ED/CUP shape is a query, not screen addressing:
+        // it must not route a scrolling capture to the grid, and its numbers must not
+        // inflate the inferred width.
+        #expect(!TerminalScreen.usesScreenAddressing("\(esc)[>2Jplain\ntranscript"))
+        #expect(TerminalScreen.inferColumns("\(esc)[>1;200Hshort") == 80)
+    }
 }
