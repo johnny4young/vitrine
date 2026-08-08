@@ -174,13 +174,18 @@ enum ANSIRenderer {
     }
 
     /// What a redraw escape does to the text ``normalize(_:)`` has emitted for the
-    /// current line. Only one outcome is expressible in that model — the line renderer
-    /// tracks where the line started, not where a cursor sits — and it is the only one
-    /// the progress-bar idiom needs.
+    /// current line. The line renderer tracks where the line started, not where a
+    /// cursor sits, so only whole-span edits are expressible — and they are the only
+    /// ones the progress-bar and clear idioms need.
     private enum LineEdit {
         /// Discard the current line, so what follows replaces it. This is what `\r`
         /// already does.
         case clearLine
+        /// Discard everything emitted so far — the `clear && <command>` idiom. A lone
+        /// display erase no longer routes the stream to the grid (see
+        /// `TerminalScreen.usesScreenAddressing`), so the reset it implies is applied
+        /// here: what follows the clear is what the user saw.
+        case clearTranscript
     }
 
     /// Maps a CSI to its effect on the current line, or `nil` to leave the sequence for
@@ -203,6 +208,15 @@ enum ANSIRenderer {
             return params == "1" || params == "2" ? .clearLine : nil
         case "G":  // CHA — cursor to an absolute column (empty parameter means column 1)
             return params.isEmpty || params == "1" ? .clearLine : nil
+        case "J":  // ED — erase display
+            // Only `2` (erase the whole screen) discards the transcript. `3` erases
+            // *saved scrollback*, not the visible screen — a standalone `CSI 3 J` must
+            // not delete text emitted before it, and the Linux `clear` it usually
+            // follows already carries the `2` that does the reset. `0`/`1` erase
+            // forward/backward of a cursor this model does not track; with everything
+            // emitted sitting "above" the cursor, `0` is a no-op and `1` is left to the
+            // parser like any other decoration.
+            return params == "2" ? .clearTranscript : nil
         default:
             return nil
         }
@@ -257,6 +271,9 @@ enum ANSIRenderer {
                         switch edit {
                         case .clearLine:
                             output.removeSubrange(lineStart..<output.count)
+                        case .clearTranscript:
+                            output.removeAll(keepingCapacity: true)
+                            lineStart = 0
                         }
                         index = end
                         break  // consumed: never re-emitted as text
