@@ -424,8 +424,15 @@ extension EditorWindowController: NSWindowDelegate {
     /// editor resumes its draft, which means only app termination can discard it — and
     /// nothing did, so every run of the app stranded one populated per-window plist
     /// (with the user's annotation text inside) on disk, permanently. Called from
-    /// `applicationWillTerminate`; a force-quit skips it, which the launch sweep in
-    /// `AppSettings.sweepStaleEditorSessionSuites` covers.
+    /// `applicationWillTerminate`.
+    ///
+    /// Precisely what this guarantees: the suites' *contents* — the user-typed text —
+    /// are removed immediately. `removePersistentDomain` can still leave an empty
+    /// husk file behind (cfprefsd owns it; racing the daemon here is the fragile
+    /// move this design avoids), and a force-quit skips this method entirely. Both
+    /// leftovers are data-free or stale respectively, and the launch sweep in
+    /// `AppSettings.sweepStaleEditorSessionSuites` collects them once they age past
+    /// its concurrent-instance guard.
     func discardAllSessions() {
         for (index, session) in sessions {
             session.discard()

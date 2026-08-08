@@ -302,10 +302,16 @@ final class AppSettings {
             guard name.hasPrefix(editorSessionSuitePrefix), name.hasSuffix(".plist") else {
                 continue
             }
-            let modified =
-                (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?
-                .contentModificationDate ?? .distantPast
-            guard now.timeIntervalSince(modified) > age else { continue }
+            // Fail conservatively: a file whose modification date cannot be read is
+            // *skipped*, not treated as ancient — a transient filesystem error must
+            // never clear a suite that might belong to a live session. A genuinely
+            // stranded file will stat fine on a later launch and be collected then.
+            guard
+                let modified =
+                    (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?
+                    .contentModificationDate,
+                now.timeIntervalSince(modified) > age
+            else { continue }
             // Empty the domain first so cfprefsd's cache agrees with the deletion, then
             // remove the file itself — the half `removePersistentDomain` cannot do.
             let suiteName = String(name.dropLast(".plist".count))
