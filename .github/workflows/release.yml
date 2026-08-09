@@ -344,6 +344,18 @@ jobs:
             --link "${RELEASE_URL}" \
             dist/
 
+          # Builds before the one that added SUEnableInstallerLauncherService cannot
+          # install anything: sandboxed, they never reach Sparkle's Installer XPC
+          # service and fail with "An error occurred while launching the installer."
+          # Shipping a fixed build does not repair them, because the updater doing the
+          # work is the broken one already on disk. Marking the entry informational for
+          # exactly those hosts turns their alert into a download link — the only route
+          # left to that installed base. Newer hosts are unaffected and install in place.
+          # Runs before the appcast is staged or attached, so every published copy
+          # carries the marker. It rewrites XML only; each enclosure's EdDSA signature
+          # covers the DMG bytes and is preserved verbatim.
+          python3 scripts/mark-informational-update.py dist/appcast.xml
+
           # Stage the appcast for the GitHub Pages deploy (served at SUFeedURL).
           mkdir -p _site
           cp dist/appcast.xml _site/appcast.xml
