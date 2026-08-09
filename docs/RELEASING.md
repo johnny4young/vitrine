@@ -54,7 +54,8 @@ CI is a release gate, not just a compile check.
   Package Manager download cache is restored between runs (keyed on `project.yml`,
   the dependency source of truth) to cut build time without risking a stale build.
   A parallel **`UI tests` job** executes the full XCUITest suite (`make test-ui`)
-  on the same triggers — see *Running the UI tests* below.
+  plus the strict visual evidence tour (`make test-visual`) on the same triggers —
+  see *Running the UI tests* below.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
@@ -125,6 +126,22 @@ The release gate (`release.yml`) still only *compiles* the UI tests: every commi
 on `main` has already had the full suite executed by `ci.yml`, and a UI-level
 flake should not block an urgent tag. Run `make test-ui` locally before tagging if
 the release includes UI changes that never went through a PR.
+
+### Running the strict visual tour
+
+`make test-visual` runs the 53-state `ScreenshotTourUITests` catalog separately from
+the ordinary UI smoke suite. Every state is a required `.xcresult` attachment: a
+missing state, invalid or duplicate PNG, empty capture frame, source/manifest drift,
+or a capture attempted while another application is frontmost fails the command.
+The validator then exports stable filenames plus a dimension/hash manifest under
+`build/screenshot-tour/`; the raw bundle remains at
+`build/screenshot-tour.xcresult` for offline diagnostics.
+
+CI runs this gate on every pull request and push to `main` and uploads the friendly
+evidence even on success. For a local run, keep Vitrine frontmost and avoid launching
+other applications until the tour finishes. This is intentional: visual evidence
+that contains an interrupting browser, terminal, or IDE must fail rather than be
+mistaken for a valid Vitrine screenshot.
 
 ## Signing, notarization & Gatekeeper
 

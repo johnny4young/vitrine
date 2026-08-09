@@ -39,6 +39,7 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make test`     | run the Swift Testing unit suite (~25 s)                     |
 | `make build-ui-tests` | compile the UI tests (no automation permission needed) |
 | `make test-ui`  | run the XCUITest smokes (first run asks for UI automation)   |
+| `make test-visual` | run the strict UI screenshot tour and export 53 reviewed PNGs |
 | `make cli`      | build the `vitrine` command-line renderer                    |
 | `make build-boundaries` | sample clean/incremental builds and focused test build/startup |
 | `make gallery`  | regenerate the launch-gallery design-QA samples              |
@@ -48,9 +49,11 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make lint`     | lint Swift sources (fails on issues); run in CI              |
 | `make clean`    | remove the generated project and build artifacts             |
 
-README screenshots are regenerated with the opt-in tour in
+The opt-in tour in
 [`UITests/ScreenshotTourUITests.swift`](UITests/ScreenshotTourUITests.swift)
-(set `TEST_RUNNER_VITRINE_SCREENSHOT_DIR` when running `make test-ui`).
+is a separate visual gate. Run `make test-visual`; it keeps canonical attachments in
+`build/screenshot-tour.xcresult`, validates the required state manifest, and exports
+review-friendly PNGs to `build/screenshot-tour/`.
 
 > `make` auto-detects full Xcode via `DEVELOPER_DIR` even when `xcode-select` points at
 > the Command Line Tools.

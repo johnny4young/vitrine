@@ -48,6 +48,9 @@ jobs:
       - name: Check repository hygiene
         run: make hygiene
 
+      - name: Check strict screenshot-tour contract
+        run: make screenshot-tour-check
+
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: "22"
@@ -448,6 +451,18 @@ jobs:
           set -o pipefail
           make test-ui RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
 
+      # The ordinary UI suite intentionally skips the expensive screenshot tour.
+      # Run it separately with its opt-in environment, retain every image in the
+      # xcresult, and reject missing/duplicate/invalid evidence before publishing
+      # friendly PNGs for review.
+      - name: Run strict visual evidence tour
+        run: |
+          set -o pipefail
+          make test-visual \
+            VISUAL_OUTPUT="${RUNNER_TEMP}/screenshot-tour" \
+            VISUAL_RESULT_BUNDLE="${RUNNER_TEMP}/screenshot-tour.xcresult" \
+            2>&1 | tee test-visual.log
+
       # Tell an automation-authorization failure apart from an ordinary test
       # failure: the former is a runner-image regression (it has happened —
       # actions/runner-images#7621, #8546), not a product bug, and should be
@@ -464,5 +479,15 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ui-test-xcresult
-          path: ${{ runner.temp }}/test-ui.xcresult
+          path: |
+            ${{ runner.temp }}/test-ui.xcresult
+            ${{ runner.temp }}/screenshot-tour.xcresult
+          if-no-files-found: ignore
+
+      - name: Upload strict visual evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: screenshot-tour
+          path: ${{ runner.temp }}/screenshot-tour
           if-no-files-found: ignore

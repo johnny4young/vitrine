@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- **Visual UI evidence is now a strict CI gate.** The complete 53-state screenshot
+  tour fails on missing surfaces, foreground-app contamination, invalid or duplicate
+  captures, and manifest drift, then publishes stable PNG artifacts for review.
+
 ### Fixed
 
 - **Welcome remains usable on shorter displays.** The first-run journey now scrolls

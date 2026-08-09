@@ -24,6 +24,12 @@ SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 # invocation is unchanged.
 RESULT_BUNDLE_FLAG := $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)")
 
+# Canonical strict visual-tour outputs. The XCTest runner always retains images in
+# the result bundle; scripts/validate-screenshot-tour.py exports friendly PNG names
+# from that bundle after proving the required set is complete.
+VISUAL_OUTPUT ?= build/screenshot-tour
+VISUAL_RESULT_BUNDLE ?= build/screenshot-tour.xcresult
+
 # The entitlements file the Vitrine target signs with, consumed by project.yml as
 # ${VITRINE_ENTITLEMENTS_FILE} (XcodeGen resolves it to a literal at generate time,
 # so there is no xcodebuild build-time variable that the CI runner stalls on). The
@@ -40,7 +46,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build cli test build-ui-tests test-ui perf build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build cli test build-ui-tests test-ui test-visual screenshot-tour-check perf build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -114,6 +120,31 @@ test-ui: project
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(UI_SCHEME) -configuration Debug \
 		-destination 'platform=macOS' $(RESULT_BUNDLE_FLAG) $(TEST_UI_SKIP_FLAGS) test
 
+## screenshot-tour-check: validate the required screenshot manifest and source contract
+screenshot-tour-check:
+	python3 scripts/validate-screenshot-tour.py \
+		--manifest UITests/ScreenshotTourManifest.json \
+		--source UITests/ScreenshotTourUITests.swift
+
+## test-visual: run the strict visual tour and export its complete xcresult evidence
+## Missing states, foreground-app contamination, duplicate images, invalid PNGs,
+## and source/manifest drift all fail this gate. Friendly PNGs land in
+## VISUAL_OUTPUT; override VISUAL_RESULT_BUNDLE to retain the raw bundle elsewhere.
+test-visual: project screenshot-tour-check
+	@rm -rf "$(VISUAL_OUTPUT)" "$(VISUAL_RESULT_BUNDLE)"
+	@status=0; \
+		env TEST_RUNNER_VITRINE_SCREENSHOT_DIR="$(abspath $(VISUAL_OUTPUT))" \
+		$(XCODEBUILD) -project $(PROJECT) -scheme $(UI_SCHEME) -configuration Debug \
+			-destination 'platform=macOS' \
+			-resultBundlePath "$(VISUAL_RESULT_BUNDLE)" \
+			-only-testing:VitrineUITests/ScreenshotTourUITests test || status=$$?; \
+		python3 scripts/validate-screenshot-tour.py \
+			--manifest UITests/ScreenshotTourManifest.json \
+			--source UITests/ScreenshotTourUITests.swift \
+			--result-bundle "$(VISUAL_RESULT_BUNDLE)" \
+			--output "$(VISUAL_OUTPUT)" || status=$$?; \
+		exit $$status
+
 ## perf: run only the render-latency performance budget
 ## Documented budget: default render target 300 ms after warm-up (PERF WARN past
 ## it); the suite fails only past the hard ceiling. Grep the log for `PERF`/`PERF
@@ -172,7 +203,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineCLI Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene build-boundaries-check
+lint: hygiene build-boundaries-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
