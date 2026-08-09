@@ -38,7 +38,9 @@ nonisolated enum CLIError: Error, Equatable {
     case gitDiffEmpty
     /// The generated diff exceeded the shared bounded source-input limit.
     case gitDiffTooLarge
-    /// `--image` input decoded as bytes but is not an image supported by AppKit.
+    /// A local image input exceeds the shared encoded-byte or decoded-pixel budget.
+    case inputImageTooLarge(path: String)
+    /// `--image` input decoded as bytes but is not an image supported by ImageIO/AppKit.
     case inputNotImage(path: String)
     /// Rendering produced no image (an internal renderer failure).
     case renderFailed
@@ -90,6 +92,8 @@ nonisolated enum CLIError: Error, Equatable {
             "The selected Git revision and paths produced an empty diff."
         case .gitDiffTooLarge:
             "The generated Git diff is too large to render (maximum 5 MB)."
+        case .inputImageTooLarge(let path):
+            "The image at \"\(path)\" is too large (maximum 25 MB and 64 total megapixels)."
         case .inputNotImage(let path):
             "The input file at \"\(path)\" is not a supported image."
         case .renderFailed:

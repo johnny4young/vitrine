@@ -32,6 +32,12 @@ can never drift.
 
 ### Fixed
 
+- **Every image import now has one memory-safety budget.** Picker, drag-and-drop,
+  clipboard, URL, Brand Kit, and CLI inputs reject more than 25 MB, more than 256
+  frames, or more than 64 million decoded pixels before AppKit creates a surface.
+  Local reads remain bounded if a file grows while it is being read, and the editor
+  and CLI now explain the specific rejection instead of falling through to a generic
+  file or render error.
 - **HTML and URL captures now share one bounded WebKit load state machine.** It keeps
   exactly one continuation, rejects accidental concurrent/repeated waits instead of
   hanging a render, ignores late delegate callbacks, and resolves timeout/cancellation

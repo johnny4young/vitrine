@@ -182,20 +182,17 @@ enum CLIRenderer {
         watermarkLogo: CLIRenderResources.PreparedWatermarkLogo?
     ) throws -> String {
         let sourceURL = URL(fileURLWithPath: options.inputPath)
-        let data: Data
-        do {
-            data = try Data(contentsOf: sourceURL)
-        } catch {
-            throw CLIError.inputUnreadable(path: options.inputPath)
-        }
         let directory = CLIRenderResources.temporaryImageDirectory()
         let store = BackgroundImageStore(directory: directory)
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let reference: ImageReference
         do {
-            reference = try store.importImage(
-                data: data, preferredExtension: sourceURL.pathExtension)
+            reference = try store.importImage(from: sourceURL)
+        } catch BackgroundImageStore.ImportError.copyFailed {
+            throw CLIError.inputUnreadable(path: options.inputPath)
+        } catch BackgroundImageStore.ImportError.tooLarge {
+            throw CLIError.inputImageTooLarge(path: options.inputPath)
         } catch BackgroundImageStore.ImportError.notAnImage {
             throw CLIError.inputNotImage(path: options.inputPath)
         } catch {

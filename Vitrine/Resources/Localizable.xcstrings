@@ -1253,6 +1253,17 @@
         }
       }
     },
+    "Can't Load That Image" : {
+      "comment" : "Alert title when a dropped image is rejected.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se puede cargar esa imagen"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "comment" : "Standard cancel button.",
       "extractionState" : "stale",
@@ -7038,38 +7049,46 @@
         }
       }
     },
-    "That image is too large to use as a background." : {
-      "comment" : "Background editor: URL download too-large error.",
-      "extractionState" : "stale",
+    "That image is too large. Choose one up to 25 MB and 64 total megapixels." : {
+      "comment" : "Image import error: encoded or decoded size exceeds the shared safety budget.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esa imagen es demasiado grande para usarla como fondo."
+            "value" : "Esa imagen es demasiado grande. Elige una de hasta 25 MB y 64 megapíxeles totales."
           }
         }
       }
     },
-    "That URL didn't return a usable image." : {
-      "comment" : "Background editor: URL download not-an-image error.",
-      "extractionState" : "stale",
+    "That source didn't contain a supported image." : {
+      "comment" : "Image import error: the selected source is not a supported image.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esa URL no devolvió una imagen utilizable."
+            "value" : "Ese origen no contenía una imagen compatible."
           }
         }
       }
     },
-    "Couldn't download an image from that URL." : {
-      "comment" : "Background editor: URL download generic failure.",
-      "extractionState" : "stale",
+    "Vitrine couldn't read or save that image." : {
+      "comment" : "Image import error: the image could not be read or copied into the app container.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo descargar una imagen desde esa URL."
+            "value" : "Vitrine no pudo leer ni guardar esa imagen."
+          }
+        }
+      }
+    },
+    "Vitrine couldn't download an image from that URL." : {
+      "comment" : "Image import error: the direct URL download failed.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo descargar una imagen desde esa URL."
           }
         }
       }

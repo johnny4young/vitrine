@@ -771,6 +771,7 @@ struct CLIValidationTests: CLITestSupport {
             .missingValue(flag: "--out"), .missingRequired("input file"),
             .invalidValue(flag: "--theme", value: "x"), .inputUnreadable(path: "/x"),
             .inputNotText(path: "/x"), .gitDiffFailed, .gitDiffEmpty, .gitDiffTooLarge,
+            .inputImageTooLarge(path: "/x"), .inputNotImage(path: "/x"),
             .renderFailed, .outputExists(path: "/x"),
             .writeFailed(path: "/x"), .batchSkipped(rendered: 1, skipped: 1),
         ]

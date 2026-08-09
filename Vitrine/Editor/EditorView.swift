@@ -46,6 +46,11 @@ struct EditorView: View {
     /// alert so the rejection is clearly explained.
     @State var dropError: FileInputLoader.LoadError?
 
+    /// A dropped image that exceeded the shared import budget or could not be
+    /// recognized/read. Kept separate from source-file errors so a failed image does
+    /// not fall through to the misleading binary-source alert.
+    @State var imageDropError: BackgroundImageStore.ImportError?
+
     /// A successful load that is waiting on the user to choose replace vs. append,
     /// because the editor already has code. `nil` when no decision is
     /// pending.
@@ -264,6 +269,16 @@ struct EditorView: View {
             Button("OK", role: .cancel) { dropError = nil }
         } message: {
             Text(dropError?.message ?? "")
+        }
+        .alert(
+            "Can't Load That Image",
+            isPresented: Binding(
+                get: { imageDropError != nil },
+                set: { if !$0 { imageDropError = nil } })
+        ) {
+            Button("OK", role: .cancel) { imageDropError = nil }
+        } message: {
+            Text(imageDropError?.message ?? "")
         }
         // When the editor already has code, a drop asks before clobbering it:
         // replace everything, or append to the end.

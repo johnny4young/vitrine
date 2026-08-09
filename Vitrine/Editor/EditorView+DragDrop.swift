@@ -16,8 +16,16 @@ extension EditorView {
         // becomes the beautified foreground content (CS "beautify any image"), so it must
         // be intercepted before the source-file path (which would reject a binary image).
         for provider in providers {
-            if let reference = await readImageReference(from: provider) {
-                applyImage(reference)
+            do {
+                if let reference = try await readImageReference(from: provider) {
+                    applyImage(reference)
+                    return
+                }
+            } catch let error as BackgroundImageStore.ImportError {
+                imageDropError = error
+                return
+            } catch {
+                imageDropError = .copyFailed
                 return
             }
         }
@@ -140,12 +148,12 @@ extension EditorView {
     /// Imports a dropped image into the foreground store and returns its reference, or
     /// `nil` when the provider carries no image. Handles both a dropped image **file**
     /// (Finder) and an in-app drag carrying image **bytes** (Preview, a browser).
-    func readImageReference(from provider: NSItemProvider) async -> ImageReference? {
+    func readImageReference(from provider: NSItemProvider) async throws -> ImageReference? {
         if let url = await readImageFileURL(from: provider) {
-            return try? foregroundImageStore.importImage(from: url)
+            return try foregroundImageStore.importImage(from: url)
         }
-        if let (data, ext) = await readImageData(from: provider) {
-            return try? foregroundImageStore.importImage(data: data, preferredExtension: ext)
+        if let (data, ext) = try await readImageData(from: provider) {
+            return try foregroundImageStore.importImage(data: data, preferredExtension: ext)
         }
         return nil
     }
@@ -161,15 +169,15 @@ extension EditorView {
     /// Reads raw image bytes (and a preferred extension) from a provider that carries an
     /// image directly, or `nil` when it carries none. Loading the original data preserves
     /// the source format instead of re-encoding through `NSImage`.
-    func readImageData(from provider: NSItemProvider) async -> (Data, String)? {
+    func readImageData(from provider: NSItemProvider) async throws -> (Data, String)? {
         let imageType = provider.registeredTypeIdentifiers.first { identifier in
             UTType(identifier)?.conforms(to: .image) == true
         }
         guard let imageType, let type = UTType(imageType) else { return nil }
-        return await withCheckedContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             provider.loadDataRepresentation(forTypeIdentifier: imageType) { data, _ in
                 guard let data else {
-                    continuation.resume(returning: nil)
+                    continuation.resume(throwing: BackgroundImageStore.ImportError.copyFailed)
                     return
                 }
                 continuation.resume(returning: (data, type.preferredFilenameExtension ?? ""))

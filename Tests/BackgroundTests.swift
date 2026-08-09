@@ -327,6 +327,21 @@ struct BackgroundTests {
         #expect(store.image(for: ImageReference(fileName: "nope.png")) == nil)
     }
 
+    @Test func legacyStoredImageCannotBypassCurrentByteLimit() throws {
+        let store = Self.tempStore()
+        try FileManager.default.createDirectory(
+            at: store.directory, withIntermediateDirectories: true)
+        let reference = ImageReference(fileName: "legacy.png")
+        let source = store.directory.appendingPathComponent(reference.fileName)
+        #expect(FileManager.default.createFile(atPath: source.path, contents: Data()))
+        let handle = try FileHandle(forWritingTo: source)
+        try handle.truncate(atOffset: UInt64(BackgroundImageStore.maxImportBytes + 1))
+        try handle.close()
+
+        #expect(store.url(for: reference) == source)
+        #expect(store.image(for: reference) == nil)
+    }
+
     @Test func missingImageBackgroundStillRendersWithoutCrashing() throws {
         // A relocated/missing image must not blank the export: the canvas falls
         // back to the signature gradient, so a fixed-size render still produces a
@@ -412,6 +427,99 @@ struct BackgroundTests {
 
         #expect(reference.fileName.hasSuffix(".png"))
         #expect(store.image(for: reference) != nil)
+    }
+
+    @Test func inMemoryImportRejectsPayloadPastUniversalByteLimit() {
+        let store = Self.tempStore()
+        let oversized = Data(count: BackgroundImageStore.maxImportBytes + 1)
+
+        #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try store.importImage(data: oversized, preferredExtension: "png")
+        }
+        #expect(!FileManager.default.fileExists(atPath: store.directory.path))
+    }
+
+    @Test func localImportRejectsKnownLargeFileBeforeCopying() throws {
+        let store = Self.tempStore()
+        let source = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).png")
+        #expect(FileManager.default.createFile(atPath: source.path, contents: Data()))
+        let handle = try FileHandle(forWritingTo: source)
+        try handle.truncate(atOffset: UInt64(BackgroundImageStore.maxImportBytes + 1))
+        try handle.close()
+
+        #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try store.importImage(from: source)
+        }
+        #expect(!FileManager.default.fileExists(atPath: store.directory.path))
+    }
+
+    @Test func imageDimensionBudgetAllowsBoundaryAndRejectsCumulativeOverflow() throws {
+        #expect(
+            try BackgroundImageStore.validateImageDimensions([(width: 8_000, height: 8_000)])
+                == BackgroundImageStore.maxDecodedPixelCount)
+        #expect(
+            try BackgroundImageStore.validateImageDimensions([
+                (width: 4_000, height: 8_000),
+                (width: 4_000, height: 8_000),
+            ]) == BackgroundImageStore.maxDecodedPixelCount)
+
+        #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try BackgroundImageStore.validateImageDimensions([
+                (width: 4_000, height: 8_000),
+                (width: 4_000, height: 8_000),
+                (width: 1, height: 1),
+            ])
+        }
+    }
+
+    @Test func imageDimensionBudgetRejectsInvalidOverflowingAndExcessiveFrames() {
+        #expect(throws: BackgroundImageStore.ImportError.notAnImage) {
+            _ = try BackgroundImageStore.validateImageDimensions([])
+        }
+        #expect(throws: BackgroundImageStore.ImportError.notAnImage) {
+            _ = try BackgroundImageStore.validateImageDimensions([(width: 0, height: 100)])
+        }
+        #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try BackgroundImageStore.validateImageDimensions([
+                (width: Int.max, height: 2)
+            ])
+        }
+        #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try BackgroundImageStore.validateImageDimensions(
+                Array(
+                    repeating: (width: 1, height: 1),
+                    count: BackgroundImageStore.maxImageFrameCount + 1))
+        }
+    }
+
+    @Test func imageValidationRejectsRecognizedButUndecodableContainer() {
+        // A complete PNG signature/IHDR/IEND with no image payload is recognizable
+        // enough to expose dimensions, but must not enter the content-addressed store.
+        let incompletePNG = Data([
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+            0xDE, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+            0x44, 0xAE, 0x42, 0x60, 0x82,
+        ])
+
+        #expect(throws: BackgroundImageStore.ImportError.notAnImage) {
+            try BackgroundImageStore.validateImageData(incompletePNG)
+        }
+    }
+
+    @Test func imageImportErrorsProvideDistinctActionableMessages() {
+        let messages = Set(
+            [
+                BackgroundImageStore.ImportError.notAnImage,
+                .copyFailed,
+                .downloadFailed,
+                .tooLarge,
+            ].map(\.message))
+        #expect(messages.count == 4)
+        #expect(messages.allSatisfy { !$0.isEmpty })
     }
 
     @Test func importingANonImageThrows() throws {
