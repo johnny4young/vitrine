@@ -47,6 +47,19 @@ final class RecentsGalleryWindowController {
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
+        if let window {
+            var visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame
+            #if DEBUG
+                visibleFrame =
+                    UITestVisibleFrame.decode(
+                        from: ProcessInfo.processInfo.environment) ?? visibleFrame
+            #endif
+            if let visibleFrame {
+                window.setFrame(
+                    WindowFrameSolver.clamp(window.frame, into: visibleFrame), display: true)
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 }

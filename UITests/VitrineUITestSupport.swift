@@ -41,6 +41,19 @@ extension XCTestCase {
         app.descendants(matching: .any)[identifier]
     }
 
+    /// Shares the UI runner's screen geometry with the launched Debug app.
+    ///
+    /// GitHub's virtualized macOS images can report a wider screen to the app than
+    /// XCUIAutomation can actually interact with. Passing the runner's visible frame
+    /// keeps centered windows inside the coordinate space used for hit testing.
+    @MainActor
+    func configureVisibleFrame(for app: XCUIApplication) {
+        guard let frame = NSScreen.main?.visibleFrame else { return }
+        app.launchEnvironment["VITRINE_UI_TEST_VISIBLE_FRAME"] = [
+            frame.minX, frame.minY, frame.width, frame.height,
+        ].map(String.init).joined(separator: ",")
+    }
+
     /// Every AX element carrying `identifier`, resolved fresh on each call.
     ///
     /// A single identifier can legitimately match nested elements: an AppKit toolbar
@@ -50,6 +63,18 @@ extension XCTestCase {
         app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier == %@", identifier))
             .allElementsBoundByIndex
+    }
+
+    /// Resolves the actionable node when AppKit gives a wrapper and its control
+    /// the same accessibility identifier.
+    ///
+    /// Keep `element(_:in:)` lazy: eagerly enumerating every match can outlive a
+    /// transient HUD. Use this targeted lookup only for stable controls that need
+    /// wrapper disambiguation.
+    @MainActor
+    func hittableElement(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        matches(identifier, in: app).first(where: { $0.isHittable })
+            ?? element(identifier, in: app)
     }
 
     /// Returns whether some element carrying `identifier` becomes hittable.
@@ -125,7 +150,7 @@ extension XCTestCase {
             "Toolbar action \(identifier) is not reachable",
             file: file,
             line: line)
-        return element(identifier, in: app)
+        return hittableElement(identifier, in: app)
     }
 
     /// Verifies a group of actions without selecting one. Compact menus stay open

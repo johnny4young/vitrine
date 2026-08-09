@@ -1082,7 +1082,7 @@ final class VitrineUITests: XCTestCase {
         let search = element("recents-search-field", in: app)
         search.click()
         search.typeText("Rust")
-        element("recents-compare-button", in: app).click()
+        hittableElement("recents-compare-button", in: app).click()
         XCTAssertEqual(search.value as? String, "Rust")
         XCTAssertFalse(search.isEnabled)
         element("recents-compare-cancel", in: app).click()
@@ -1090,7 +1090,7 @@ final class VitrineUITests: XCTestCase {
         search.click()
         search.typeKey("a", modifierFlags: .command)
         search.typeKey(.delete, modifierFlags: [])
-        element("recents-compare-button", in: app).click()
+        hittableElement("recents-compare-button", in: app).click()
 
         cards.element(boundBy: 0).click()
         cards.element(boundBy: 1).click()
@@ -1220,9 +1220,10 @@ final class VitrineUITests: XCTestCase {
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
         XCTAssertEqual(cards.count, 3)
-        let pinnedFilter = element("recents-pinned-filter", in: app)
-        XCTAssertTrue(pinnedFilter.waitForExistence(timeout: 8))
-        XCTAssertTrue(pinnedFilter.isHittable)
+        assertHittable(
+            "recents-pinned-filter", in: app,
+            "Recents should expose the pinned-only filter", timeout: 8)
+        let pinnedFilter = hittableElement("recents-pinned-filter", in: app)
 
         pinnedFilter.click()
         let filteredDeadline = Date().addingTimeInterval(3)
@@ -1249,9 +1250,10 @@ final class VitrineUITests: XCTestCase {
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
         XCTAssertEqual(cards.count, 3)
-        let manage = element("recents-clear-button", in: app)
-        XCTAssertTrue(manage.waitForExistence(timeout: 8))
-        XCTAssertTrue(manage.isHittable)
+        assertHittable(
+            "recents-clear-button", in: app,
+            "Recents should expose capture cleanup actions", timeout: 8)
+        let manage = hittableElement("recents-clear-button", in: app)
         manage.click()
 
         let clearUnpinned = app.menuItems["Clear Unpinned"]
@@ -1289,9 +1291,10 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
         XCTAssertTrue(cards.element(boundBy: 1).label.contains("Rust"))
 
-        let sort = element("recents-sort-picker", in: app)
-        XCTAssertTrue(sort.waitForExistence(timeout: 8))
-        XCTAssertTrue(sort.isHittable)
+        assertHittable(
+            "recents-sort-picker", in: app,
+            "Recents should expose its sort picker", timeout: 8)
+        let sort = hittableElement("recents-sort-picker", in: app)
         sort.click()
         let oldestFirst = app.menuItems["Oldest First"]
         XCTAssertTrue(oldestFirst.waitForExistence(timeout: 3))
@@ -1767,6 +1770,7 @@ final class VitrineUITests: XCTestCase {
         app.launchArguments = arguments + locale.launchArguments
         app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
             "VitrineUITests-\(name)-\(UUID().uuidString)"
+        configureVisibleFrame(for: app)
         for (key, value) in environment {
             app.launchEnvironment[key] = value
         }

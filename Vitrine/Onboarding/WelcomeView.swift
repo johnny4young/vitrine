@@ -469,27 +469,35 @@ final class WelcomeWindowController {
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
-        if let window, let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
-            var availableFrame = visibleFrame
+        if let window {
+            var visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame
             #if DEBUG
-                // A deterministic compact-height seam for UI validation. It is compiled
-                // out of release builds and lets the suite prove that the first-run flow
-                // scrolls instead of relying on the attached display to be short enough.
-                if let rawHeight = ProcessInfo.processInfo.environment[
-                    "VITRINE_WELCOME_TEST_MAX_HEIGHT"
-                ], let requestedHeight = Double(rawHeight), requestedHeight > 0 {
-                    let height = min(CGFloat(requestedHeight), visibleFrame.height)
-                    availableFrame.origin.y = visibleFrame.midY - height / 2
-                    availableFrame.size.height = height
-                }
+                visibleFrame =
+                    UITestVisibleFrame.decode(
+                        from: ProcessInfo.processInfo.environment) ?? visibleFrame
             #endif
-            // Keep the adaptive quick-start surface fully inside the visible screen after
-            // AppKit assigns it to a display. Mixed-display setups and menu-bar/Dock
-            // insets can otherwise leave the footer actions just off-screen even
-            // though the window exists.
-            window.setFrame(
-                WindowFrameSolver.clamp(window.frame, into: availableFrame), display: true)
-            window.makeKeyAndOrderFront(nil)
+            if let visibleFrame {
+                var availableFrame = visibleFrame
+                #if DEBUG
+                    // A deterministic compact-height seam for UI validation. It is compiled
+                    // out of release builds and lets the suite prove that the first-run flow
+                    // scrolls instead of relying on the attached display to be short enough.
+                    if let rawHeight = ProcessInfo.processInfo.environment[
+                        "VITRINE_WELCOME_TEST_MAX_HEIGHT"
+                    ], let requestedHeight = Double(rawHeight), requestedHeight > 0 {
+                        let height = min(CGFloat(requestedHeight), visibleFrame.height)
+                        availableFrame.origin.y = visibleFrame.midY - height / 2
+                        availableFrame.size.height = height
+                    }
+                #endif
+                // Keep the adaptive quick-start surface fully inside the visible screen after
+                // AppKit assigns it to a display. Mixed-display setups and menu-bar/Dock
+                // insets can otherwise leave the footer actions just off-screen even
+                // though the window exists.
+                window.setFrame(
+                    WindowFrameSolver.clamp(window.frame, into: availableFrame), display: true)
+                window.makeKeyAndOrderFront(nil)
+            }
         }
         NSApp.activate(ignoringOtherApps: true)
     }

@@ -805,6 +805,7 @@ final class ScreenshotTourUITests: XCTestCase {
         app.launchArguments = arguments
         app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
             "VitrineScreenshotTour-\(name)-\(UUID().uuidString)"
+        configureVisibleFrame(for: app)
         app.launch()
         app.activate()
         XCTAssertTrue(
