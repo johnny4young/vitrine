@@ -457,6 +457,9 @@ final class VitrineUITests: XCTestCase {
         for identifier in [
             "annotation-duplicate", "annotation-bring-front", "annotation-send-back",
         ] {
+            XCTAssertTrue(
+                element(identifier, in: app).waitForExistence(timeout: 3),
+                "\(identifier) did not materialize after opening the compact mark-actions menu")
             let matches = app.descendants(matching: .any)
                 .matching(NSPredicate(format: "identifier == %@", identifier))
                 .allElementsBoundByIndex
@@ -810,6 +813,100 @@ final class VitrineUITests: XCTestCase {
         let copied = try XCTUnwrap(copiedImage, "Copy image did not place a PNG on the pasteboard")
         XCTAssertEqual(copied.pixelsWide, 780)
         XCTAssertEqual(copied.pixelsHigh, 1688)
+    }
+
+    // MARK: - Social Card
+
+    @MainActor
+    func testSocialCardEditsTemplateAndCopiesRenderedPNG() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        let app = launch(arguments: ["--skip-onboarding", "--open-social-card"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        let window = element("social-card-window", in: app)
+        assertExists(window, in: app, timeout: 8)
+        assertExists(element("social-card-inspector", in: app), in: app, timeout: 3)
+        assertExists(element("social-card-preview-stage", in: app), in: app, timeout: 3)
+
+        let copyButton = app.buttons["social-card-copy-button"]
+        let saveButton = app.buttons["social-card-save-button"]
+        let shareButton = app.buttons["social-card-share-button"]
+        for button in [copyButton, saveButton, shareButton] {
+            assertExists(button, in: app, timeout: 3)
+            XCTAssertFalse(button.isEnabled, "An empty card must not enable image export")
+        }
+
+        let title = app.textFields["social-card-title-field"]
+        let subtitle = app.textFields["social-card-subtitle-field"]
+        assertExists(title, in: app, timeout: 3)
+        assertExists(subtitle, in: app, timeout: 3)
+        title.click()
+        title.typeText("Ship reliable macOS visuals")
+        subtitle.click()
+        subtitle.typeText("Local, deterministic, and ready to share")
+
+        // The shared inspector code field exposes a real AppKit TextView. Paste the
+        // multiline fixture in one operation so keyboard-layout differences cannot
+        // alter braces, punctuation, or indentation under automation.
+        let excerpt = app.textViews["social-card-excerpt-editor"]
+        assertExists(excerpt, in: app, timeout: 3)
+        let code = """
+            struct ReleaseGate {
+                let platform = "macOS"
+                let testsAreGreen = true
+            }
+            """
+        XCTAssertTrue(pasteboard.setString(code, forType: .string))
+        excerpt.click()
+        excerpt.typeKey("v", modifierFlags: .command)
+        XCTAssertTrue(
+            (excerpt.value as? String)?.contains("ReleaseGate") == true,
+            "The code fixture must reach the Social Card excerpt editor")
+
+        let standard = app.buttons["social-card-template-standard"]
+        let codeFocus = app.buttons["social-card-template-codeFocus"]
+        assertExists(standard, in: app, timeout: 3)
+        assertExists(codeFocus, in: app, timeout: 3)
+        XCTAssertTrue(standard.isSelected, "A fresh Social Card must start on Standard")
+        codeFocus.click()
+        XCTAssertTrue(codeFocus.isSelected, "Selecting Code focus must update the working card")
+
+        for identifier in [
+            "social-card-copy-button", "social-card-save-button", "social-card-share-button",
+        ] {
+            assertHittable(
+                identifier, in: app,
+                "A renderable Social Card must enable action \(identifier)", timeout: 5)
+        }
+
+        Thread.sleep(forTimeInterval: 0.5)
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "social-card-code-focus-render"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        copyButton.click()
+        assertExists(element("capture-hud", in: app), in: app, timeout: 3)
+
+        let copyDeadline = Date().addingTimeInterval(6)
+        var copiedImage: NSBitmapImageRep?
+        repeat {
+            if let data = pasteboard.data(forType: .png) {
+                copiedImage = NSBitmapImageRep(data: data)
+            }
+            if copiedImage != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < copyDeadline
+
+        let copied = try XCTUnwrap(copiedImage, "Copy card did not place a PNG on the pasteboard")
+        XCTAssertEqual(copied.pixelsWide, 2400)
+        XCTAssertEqual(copied.pixelsHigh, 1260)
     }
 
     @MainActor
