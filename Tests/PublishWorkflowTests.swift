@@ -34,7 +34,9 @@ struct PublishWorkflowTests {
     }
 
     /// The export writes one numbered PNG per page at the 4:5 slide frame, and each
-    /// slide is exactly what a single render of that page produces.
+    /// slide matches a single render of that page at the normalized-pixel layer.
+    /// ImageIO may encode identical pixels into different PNG byte streams, so the
+    /// compressed container bytes are deliberately outside this rendering contract.
     @Test func carouselWritesNumberedSlidesMatchingSingleRenders() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("VitrineCarousel-\(UUID().uuidString)", isDirectory: true)
@@ -52,7 +54,9 @@ struct PublishWorkflowTests {
 
         for (index, page) in pages.enumerated() {
             let url = dir.appendingPathComponent(String(format: "carousel-%02d.png", index + 1))
-            let written = try Data(contentsOf: url)
+            let written = try #require(
+                GoldenComparator.loadImage(at: url),
+                "carousel slide \(index + 1) is not a decodable image")
             var single = base
             single.clearContentMarks()
             single.code = page
@@ -61,7 +65,25 @@ struct PublishWorkflowTests {
             let reference = try #require(
                 ExportManager.renderCGImage(
                     single, scale: 1, fixedSize: ExportManager.carouselSlideSize))
-            #expect(written == ExportManager.pngData(from: reference))
+            let comparison = try Self.pixelComparison(written, reference)
+            #expect(
+                comparison.matches,
+                "carousel slide \(index + 1) changed \(comparison.differingPixels)/\(comparison.pixelCount) pixels (max channel delta \(comparison.maxChannelDelta))"
+            )
+        }
+    }
+
+    /// Uses the same canonical RGBA8 comparison as the cross-version golden suite,
+    /// preserving dimension checks and a narrow anti-aliasing tolerance without
+    /// coupling this workflow test to PNG metadata or compression decisions.
+    private static func pixelComparison(
+        _ lhs: CGImage, _ rhs: CGImage
+    ) throws -> GoldenComparator.Result {
+        switch GoldenComparator.compare(lhs, rhs) {
+        case .success(let result):
+            return result
+        case .failure(let failure):
+            throw failure
         }
     }
 
