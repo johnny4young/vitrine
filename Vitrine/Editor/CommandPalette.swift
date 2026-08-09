@@ -1,5 +1,21 @@
 import SwiftUI
 
+/// Query-invariant metadata for one command-search field.
+///
+/// Commands are rebuilt only when editor state changes, while the palette ranks the
+/// same catalog on every keystroke. Keeping both the folded text and its word slices
+/// here avoids repeating normalization and tokenization in that hot path.
+private struct CommandSearchTarget {
+    let text: String
+    let wordStarts: [Substring]
+
+    init(_ value: String) {
+        let text = LocalSearch.fold(value)
+        self.text = text
+        self.wordStarts = text.split { $0 == " " || $0 == "-" }
+    }
+}
+
 /// One action the command palette can run: a titled, keyword-tagged command that
 /// fuzzy-search surfaces and Return executes.
 ///
@@ -22,7 +38,7 @@ struct EditorCommand: Identifiable {
     /// Search targets folded once when the catalog is built, not again for every
     /// keystroke. The catalog is rebuilt when editor state changes, so labels remain
     /// current without making query-time work depend on locale-aware normalization.
-    fileprivate let searchTargets: [String]
+    fileprivate let searchTargets: [CommandSearchTarget]
     /// Run the command. The palette closes first, then invokes this on the main actor.
     let run: () -> Void
 
@@ -35,7 +51,7 @@ struct EditorCommand: Identifiable {
         self.group = group
         self.keywords = keywords
         self.symbol = symbol
-        self.searchTargets = ([title, group] + keywords).map { LocalSearch.fold($0) }
+        self.searchTargets = ([title, group] + keywords).map(CommandSearchTarget.init)
         self.run = run
     }
 }
@@ -94,31 +110,26 @@ enum CommandPaletteFilter {
     /// Scores `needle` against a single `haystack`, or `nil` if it isn't even a
     /// subsequence. The tiers are spaced by 100 so the per-target keyword demotion
     /// (÷10) can never lift a keyword match above a title match of the same tier.
-    private static func matchScore(needle: String, in haystack: String) -> Int? {
-        if haystack.hasPrefix(needle) { return 400 }
-        if wordStarts(of: haystack).contains(where: { $0.hasPrefix(needle) }) { return 300 }
-        if haystack.contains(needle) { return 200 }
-        if isSubsequence(needle, of: haystack) { return 100 }
+    private static func matchScore(needle: String, in target: CommandSearchTarget) -> Int? {
+        if target.text.hasPrefix(needle) { return 400 }
+        if target.wordStarts.contains(where: { $0.hasPrefix(needle) }) { return 300 }
+        if target.text.contains(needle) { return 200 }
+        if isSubsequence(needle, of: target.text) { return 100 }
         return nil
     }
 
-    /// The substrings of `haystack` that begin a word — split on spaces and hyphens —
-    /// so "line" word-start-matches "Show line numbers".
-    private static func wordStarts(of haystack: String) -> [Substring] {
-        haystack.split { $0 == " " || $0 == "-" }
-    }
-
     /// Whether every character of `needle` appears in `haystack` in order (the fuzzy
-    /// rule). Both are already lowercased by the caller.
+    /// rule). Both are already folded by the caller. A single forward scan avoids
+    /// constructing and searching a new suffix for every character in the query.
     private static func isSubsequence(_ needle: String, of haystack: String) -> Bool {
-        var haystackIndex = haystack.startIndex
-        for character in needle {
-            guard let found = haystack[haystackIndex...].firstIndex(of: character) else {
-                return false
-            }
-            haystackIndex = haystack.index(after: found)
+        var needleIterator = needle.makeIterator()
+        guard var expected = needleIterator.next() else { return true }
+
+        for character in haystack where character == expected {
+            guard let next = needleIterator.next() else { return true }
+            expected = next
         }
-        return true
+        return false
     }
 }
 

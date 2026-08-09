@@ -56,17 +56,23 @@ struct CommandPaletteTests {
 
     @Test func prefixBeatsWordStartBeatsSubstringBeatsSubsequence() {
         let catalog = [
-            command("subseq", "Redcap layers"),  // "rdc" subsequence only
-            command("substr", "Aardvark"),  // contains "rd"
-            command("wordstart", "Show rows"),  // word starts with "r"... use "row"
-            command("prefix", "Rotate"),  // prefix "ro"
+            command("subsequence", "Arrange code"),
+            command("substring", "Marchive"),
+            command("word-start", "Open archive"),
+            command("prefix", "Archive"),
         ]
-        // Query "ro": prefix (Rotate) > word-start (Show rows) > substring (none here).
-        let ranked = ids(CommandPaletteFilter.rank(catalog, query: "ro"))
-        #expect(ranked.first == "prefix")
-        #expect(ranked.contains("wordstart"))
-        // "Aardvark" and "Redcap" don't contain "ro" as a subsequence in order → dropped.
-        #expect(!ranked.contains("substr"))
+        #expect(
+            ids(CommandPaletteFilter.rank(catalog, query: "arc")) == [
+                "prefix", "word-start", "substring", "subsequence",
+            ])
+    }
+
+    @Test func hyphensRemainWordBoundariesButOtherPunctuationDoesNot() {
+        let catalog = [
+            command("slash", "Open/archive"),
+            command("hyphen", "Open-archive"),
+        ]
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "archive")) == ["hyphen", "slash"])
     }
 
     @Test func aTitleMatchAlwaysOutranksAKeywordOnlyMatch() {
