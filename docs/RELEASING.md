@@ -51,8 +51,10 @@ CI is a release gate, not just a compile check.
   `macos-15` (Sequoia) and `macos-26` (Tahoe). Before building, each row records
   the exact image, Xcode, and Swift versions into the job summary, so a green or
   red result is always tied to a known environment. CI validates every workflow's
-  YAML, then runs `make lint`, `make build`, `make build-ui-tests`, and
-  `make test-coverage`. The Swift Package Manager download cache is restored between
+  YAML, then runs `make lint`, `make build`, `make build-release`,
+  `make build-ui-tests`, and `make test-coverage`. The Release lane compiles both arm64
+  and x86_64 with optimization on every supported runner, so optimizer-only failures are
+  caught before packaging. The Swift Package Manager download cache is restored between
   runs (keyed on `project.yml`,
   the dependency source of truth) to cut build time without risking a stale build.
   A parallel **`UI tests` job** executes the full XCUITest suite (`make test-ui`)

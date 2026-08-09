@@ -36,6 +36,7 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make project`  | `xcodegen generate` → `Vitrine.xcodeproj`                    |
 | `make open`     | open the generated project in Xcode                          |
 | `make build`    | headless `xcodebuild` compile-check (Debug)                  |
+| `make build-release` | optimized universal compile-check (arm64 + x86_64)     |
 | `make test`     | run the Swift Testing unit suite (~25 s)                     |
 | `make build-ui-tests` | compile the UI tests (no automation permission needed) |
 | `make test-ui`  | run the XCUITest smokes (first run asks for UI automation)   |

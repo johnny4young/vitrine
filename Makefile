@@ -17,9 +17,9 @@ XCODEBUILD := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcodebuild
 SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 
 # Optional .xcresult capture. Set RESULT_BUNDLE=<path> on the `make`
-# command line and the `build`, `build-ui-tests`, `test`, `test-coverage`, and
-# `test-ui` targets append `-resultBundlePath` so CI can upload the bundle on
-# failure. xcodebuild requires the path to not already exist, so each target
+# command line and the `build`, `build-release`, `build-ui-tests`, `test`,
+# `test-coverage`, and `test-ui` targets append `-resultBundlePath` so CI can upload
+# the bundle on failure. xcodebuild requires the path to not already exist, so each target
 # removes a stale bundle first.
 # Unset (a normal local `make`), RESULT_BUNDLE_FLAG expands to nothing and the
 # invocation is unchanged.
@@ -55,7 +55,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build cli test test-coverage build-ui-tests test-ui test-visual screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage build-ui-tests test-ui test-visual screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -79,6 +79,16 @@ build: project
 	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO $(RESULT_BUNDLE_FLAG) build
+
+## build-release: compile the optimized universal app without signing
+## This gate catches optimizer-only failures that Debug cannot expose and explicitly
+## proves both supported Mac architectures compile before packaging starts.
+## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.
+build-release: project
+	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
+		-destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO \
+		ONLY_ACTIVE_ARCH=NO ARCHS='arm64 x86_64' $(RESULT_BUNDLE_FLAG) build
 
 ## cli: build the command-line renderer. The built `vitrine-cli` binary lands
 ## in DerivedData next to its bundled Fonts/ and the Highlightr resource bundle; the

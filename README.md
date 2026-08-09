@@ -410,6 +410,7 @@ Or step by step:
 make project    # xcodegen generate  → Vitrine.xcodeproj
 make open       # open Vitrine.xcodeproj in Xcode
 make build      # headless xcodebuild (Debug)
+make build-release # optimized universal xcodebuild (arm64 + x86_64)
 make cli        # build the `vitrine` command-line renderer
 make test          # run the Swift Testing suite without coverage (fast local feedback)
 make test-coverage # run the same suite with coverage (CI parity)

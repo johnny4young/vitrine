@@ -265,6 +265,33 @@ struct WorkflowConfigurationTests {
             "Makefile must pass -resultBundlePath to xcodebuild when RESULT_BUNDLE is set")
     }
 
+    // MARK: - Contract: compile optimized universal builds before packaging
+
+    @Test func ciAndReleaseCompileAUniversalOptimizedBuild() throws {
+        let make = try Self.makefile()
+        let releaseMarker = try #require(make.range(of: "\nbuild-release: project"))
+        let cliMarker = try #require(make.range(of: "\n## cli:"))
+        let lane = String(make[releaseMarker.lowerBound..<cliMarker.lowerBound])
+        for required in [
+            "-configuration Release",
+            "generic/platform=macOS",
+            "ONLY_ACTIVE_ARCH=NO",
+            "ARCHS='arm64 x86_64'",
+            "$(RESULT_BUNDLE_FLAG)",
+        ] {
+            #expect(lane.contains(required), "universal Release lane must contain \(required)")
+        }
+
+        for (name, workflow) in [("CI", try Self.ci()), ("release", try Self.release())] {
+            #expect(
+                workflow.contains("make build-release RESULT_BUNDLE="),
+                "\(name) must compile the optimized universal app")
+            #expect(
+                workflow.contains("build-release.xcresult"),
+                "\(name) must retain optimized-build diagnostics")
+        }
+    }
+
     // MARK: - Contract: run `make build-ui-tests` on every PR
 
     @Test func ciRunsBuildUITestsOnPullRequests() throws {
@@ -305,9 +332,12 @@ struct WorkflowConfigurationTests {
     @Test func releaseRefusesToPublishWhenAnyGateFails() throws {
         let release = try Self.release()
 
-        // A verify job runs all four gate checks.
+        // A verify job runs every gate check, including both build configurations.
         #expect(release.contains("make lint"), "release gate must run lint")
         #expect(release.contains("make build "), "release gate must run the Debug build")
+        #expect(
+            release.contains("make build-release "),
+            "release gate must run the optimized universal build")
         #expect(
             release.contains("make build-ui-tests"),
             "release gate must compile the UI tests")
@@ -447,7 +477,9 @@ struct WorkflowConfigurationTests {
         let release = try Self.release()
 
         // Every build/test phase in the gate must request an .xcresult bundle.
-        for phase in ["make build ", "make build-ui-tests ", "make test "] {
+        for phase in [
+            "make build ", "make build-release ", "make build-ui-tests ", "make test ",
+        ] {
             let invocation = try #require(
                 release.components(separatedBy: .newlines).first { $0.contains(phase) },
                 "release gate must invoke `\(phase.trimmingCharacters(in: .whitespaces))`")

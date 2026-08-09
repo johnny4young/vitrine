@@ -14,13 +14,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Release gate: the same lint/build/test/UI-test-build checks CI runs
+  # Release gate: the same lint/Debug+Release-build/test/UI-test-build checks CI runs
   # on every PR, re-run against the tagged commit. `publish` needs this job, so a
   # tag can never publish a DMG that fails lint, build, the unit suite, or the UI
   # test compile. This makes a tagged release a true quality gate, not just a
   # packaging step.
   verify:
-    name: Verify (lint, build, UI-test build, test)
+    name: Verify (lint, Debug/Release builds, UI-test build, test)
     runs-on: macos-latest
     # Cap well under the 6-hour default so a wedged SPM resolve or hung
     # xcodebuild surfaces in minutes on the tag run.
@@ -106,6 +106,9 @@ jobs:
       - name: Build (Debug)
         run: make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult"
 
+      - name: Build (universal Release)
+        run: make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult"
+
       - name: Build UI tests
         run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
 
@@ -121,6 +124,7 @@ jobs:
           name: release-verify-xcresults
           path: |
             ${{ runner.temp }}/build.xcresult
+            ${{ runner.temp }}/build-release.xcresult
             ${{ runner.temp }}/build-ui-tests.xcresult
             ${{ runner.temp }}/test.xcresult
           if-no-files-found: ignore

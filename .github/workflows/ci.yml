@@ -228,9 +228,15 @@ jobs:
 
       # Capture an .xcresult bundle for each xcodebuild phase so a failure
       # can be triaged offline from the uploaded artifact. RESULT_BUNDLE is honored
-      # by the build/test/build-ui-tests make targets.
+      # by the build/build-release/test/build-ui-tests make targets.
       - name: Build (Debug)
         run: make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult"
+
+      # Debug does not exercise Swift's optimizing pipeline. Compile a universal
+      # Release product on both compatibility rows so optimizer and cross-architecture
+      # failures surface on the PR instead of during packaging.
+      - name: Build (universal Release)
+        run: make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult"
 
       - name: Build UI tests
         run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
@@ -263,6 +269,7 @@ jobs:
           name: xcresults-${{ matrix.artifact }}
           path: |
             ${{ runner.temp }}/build.xcresult
+            ${{ runner.temp }}/build-release.xcresult
             ${{ runner.temp }}/build-ui-tests.xcresult
             ${{ runner.temp }}/test.xcresult
           if-no-files-found: ignore
