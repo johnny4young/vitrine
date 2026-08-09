@@ -35,4 +35,28 @@ struct ConcurrencySafetyTests {
             "Production code must use actor-aware @concurrent work, not detached tasks: \(offenders)"
         )
     }
+
+    /// AppKit item providers are external callback boundaries and are allowed to omit
+    /// their callback. Keep every editor representation behind the tested timeout /
+    /// exactly-once bridge, and keep the owning SwiftUI task cancellable on replacement
+    /// or teardown instead of reintroducing fire-and-forget drop work.
+    @Test func editorItemProvidersUseTheBoundedOwnedBridge() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let dragDrop = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Editor/EditorView+DragDrop.swift"),
+            encoding: .utf8)
+        let stage = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Editor/EditorView+Stage.swift"),
+            encoding: .utf8)
+
+        #expect(!dragDrop.contains("withCheckedContinuation"))
+        #expect(dragDrop.components(separatedBy: "ItemProviderLoadWaiter<").count - 1 == 3)
+        #expect(dragDrop.contains("itemProviderLoadTimeout"))
+        #expect(stage.contains("dropTask?.cancel()"))
+        #expect(stage.contains(".onDisappear"))
+    }
 }

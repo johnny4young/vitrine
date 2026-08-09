@@ -7,6 +7,10 @@ import UniformTypeIdentifiers
 extension EditorView {
     // MARK: - Drag-and-drop input
 
+    /// Local item-provider reads should settle quickly, but iCloud-backed or
+    /// cross-process providers get a generous bounded window before Vitrine gives up.
+    static let itemProviderLoadTimeout: Duration = .seconds(10)
+
     /// Handles a drop onto the editor: reads a source file (preferred) or selected
     /// text from the providers, then either loads it straight away (empty editor)
     /// or asks whether to replace or append (non-empty editor). A binary, oversized,
@@ -21,6 +25,8 @@ extension EditorView {
                     applyImage(reference)
                     return
                 }
+            } catch is CancellationError {
+                return
             } catch let error as BackgroundImageStore.ImportError {
                 imageDropError = error
                 return
@@ -32,8 +38,10 @@ extension EditorView {
 
         // A dragged file is the richer source, so try file URLs before text — a
         // Finder drag often advertises both.
+        var fileProviderFailed = false
         for provider in providers {
-            if let url = await readFileURL(from: provider) {
+            do {
+                guard let url = try await readFileURL(from: provider) else { continue }
                 do {
                     offerLoaded(try FileInputLoader.load(from: url))
                 } catch let error as FileInputLoader.LoadError {
@@ -42,20 +50,37 @@ extension EditorView {
                     dropError = .unreadable
                 }
                 return
+            } catch is CancellationError {
+                return
+            } catch {
+                // A provider can advertise a file URL and fail only that coercion.
+                // Keep looking so another provider or its plain-text representation
+                // can still satisfy the drop before showing an error.
+                fileProviderFailed = true
+                continue
             }
         }
 
         // No file: fall back to dropped text, inferring the language from content.
         for provider in providers {
-            if let text = await readText(from: provider),
-                !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            {
+            do {
+                guard let text = try await readText(from: provider),
+                    !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                else { continue }
                 let interpreted = LanguageDetector.interpret(text)
                 offerLoaded(
                     FileInputLoader.LoadedFile(
                         text: interpreted.code, language: interpreted.language, filename: ""))
                 return
+            } catch is CancellationError {
+                return
+            } catch {
+                continue
             }
+        }
+
+        if fileProviderFailed {
+            dropError = .unreadable
         }
     }
 
@@ -149,7 +174,18 @@ extension EditorView {
     /// `nil` when the provider carries no image. Handles both a dropped image **file**
     /// (Finder) and an in-app drag carrying image **bytes** (Preview, a browser).
     func readImageReference(from provider: NSItemProvider) async throws -> ImageReference? {
-        if let url = await readImageFileURL(from: provider) {
+        let fileURL: URL?
+        do {
+            fileURL = try await readImageFileURL(from: provider)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // Some providers advertise a file URL but fail that representation while
+            // still serving their image bytes. Preserve the direct-data fallback.
+            fileURL = nil
+        }
+
+        if let url = fileURL {
             return try foregroundImageStore.importImage(from: url)
         }
         if let (data, ext) = try await readImageData(from: provider) {
@@ -159,8 +195,8 @@ extension EditorView {
     }
 
     /// A dropped file URL that points at an image file, or `nil` for a non-image file.
-    func readImageFileURL(from provider: NSItemProvider) async -> URL? {
-        guard let url = await readFileURL(from: provider),
+    func readImageFileURL(from provider: NSItemProvider) async throws -> URL? {
+        guard let url = try await readFileURL(from: provider),
             let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image)
         else { return nil }
         return url
@@ -174,15 +210,18 @@ extension EditorView {
             UTType(identifier)?.conforms(to: .image) == true
         }
         guard let imageType, let type = UTType(imageType) else { return nil }
-        return try await withCheckedThrowingContinuation { continuation in
-            provider.loadDataRepresentation(forTypeIdentifier: imageType) { data, _ in
-                guard let data else {
-                    continuation.resume(throwing: BackgroundImageStore.ImportError.copyFailed)
-                    return
+        let waiter = ItemProviderLoadWaiter<Data?>()
+        let data = try await waiter.wait(timeout: Self.itemProviderLoadTimeout) { completion in
+            provider.loadDataRepresentation(forTypeIdentifier: imageType) { data, error in
+                if let error {
+                    completion(.failure(error))
+                } else {
+                    completion(.success(data))
                 }
-                continuation.resume(returning: (data, type.preferredFilenameExtension ?? ""))
             }
         }
+        guard let data else { throw BackgroundImageStore.ImportError.copyFailed }
+        return (data, type.preferredFilenameExtension ?? "")
     }
 
     /// Loads a beautified foreground image into the live document, replacing any prior
@@ -199,29 +238,42 @@ extension EditorView {
     /// The coerced item is a `URL` (or URL bytes), which `FileInputLoader` then
     /// reads under a security-scoped access — no broad file entitlement is
     /// involved.
-    func readFileURL(from provider: NSItemProvider) async -> URL? {
+    func readFileURL(from provider: NSItemProvider) async throws -> URL? {
         let type = UTType.fileURL.identifier
         guard provider.hasItemConformingToTypeIdentifier(type) else { return nil }
-        return await withCheckedContinuation { continuation in
-            provider.loadItem(forTypeIdentifier: type) { item, _ in
+        let waiter = ItemProviderLoadWaiter<URL?>()
+        return try await waiter.wait(timeout: Self.itemProviderLoadTimeout) { completion in
+            provider.loadItem(forTypeIdentifier: type, options: nil) { item, error in
+                if let error {
+                    completion(.failure(error))
+                    return
+                }
                 if let url = item as? URL {
-                    continuation.resume(returning: url)
+                    completion(.success(url))
                 } else if let data = item as? Data,
                     let url = URL(dataRepresentation: data, relativeTo: nil)
                 {
-                    continuation.resume(returning: url)
+                    completion(.success(url))
                 } else {
-                    continuation.resume(returning: nil)
+                    completion(.success(nil))
                 }
             }
+            // Unlike the representation/object APIs, this legacy file-URL overload
+            // exposes no Progress to cancel. The waiter still bounds its continuation.
+            return nil
         }
     }
 
     /// Reads dropped plain text from a provider, or `nil` when it carries none.
-    func readText(from provider: NSItemProvider) async -> String? {
-        await withCheckedContinuation { continuation in
-            _ = provider.loadObject(ofClass: String.self) { string, _ in
-                continuation.resume(returning: string)
+    func readText(from provider: NSItemProvider) async throws -> String? {
+        let waiter = ItemProviderLoadWaiter<String?>()
+        return try await waiter.wait(timeout: Self.itemProviderLoadTimeout) { completion in
+            provider.loadObject(ofClass: String.self) { string, error in
+                if let error {
+                    completion(.failure(error))
+                } else {
+                    completion(.success(string))
+                }
             }
         }
     }

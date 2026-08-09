@@ -51,6 +51,10 @@ struct EditorView: View {
     /// not fall through to the misleading binary-source alert.
     @State var imageDropError: BackgroundImageStore.ImportError?
 
+    /// The current callback-backed item-provider bridge. A replacement drop cancels
+    /// the previous request, and the stage tears it down when this editor disappears.
+    @State var dropTask: Task<Void, Never>?
+
     /// A successful load that is waiting on the user to choose replace vs. append,
     /// because the editor already has code. `nil` when no decision is
     /// pending.

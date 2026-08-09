@@ -32,6 +32,11 @@ can never drift.
 
 ### Fixed
 
+- **Editor drops no longer depend on an item provider calling back forever.** Image,
+  file-URL, and text representations now share one exactly-once bridge with a ten-second
+  timeout, task cancellation, late-callback rejection, and provider-progress teardown.
+  Replacing a drop or closing its editor cancels the owned task instead of leaving
+  fire-and-forget work suspended behind AppKit.
 - **Every image import now has one memory-safety budget.** Picker, drag-and-drop,
   clipboard, URL, Brand Kit, and CLI inputs reject more than 25 MB, more than 256
   frames, or more than 64 million decoded pixels before AppKit creates a surface.
