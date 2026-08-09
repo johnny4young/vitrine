@@ -28,6 +28,10 @@ can never drift.
 
 ### Fixed
 
+- **HTML and URL captures now share one bounded WebKit load state machine.** It keeps
+  exactly one continuation, rejects accidental concurrent/repeated waits instead of
+  hanging a render, ignores late delegate callbacks, and resolves timeout/cancellation
+  races through the same deterministic path.
 - **App Store PRO transaction observers now end with their owner.** Replacing or releasing
   the StoreKit provider cancels its previous update task, while purchase, cancellation,
   pending, restore, failure, and verified-entitlement cache transitions now have

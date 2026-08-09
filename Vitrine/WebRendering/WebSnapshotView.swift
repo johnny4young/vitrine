@@ -363,21 +363,7 @@ private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
     /// Whether remote loads are permitted. When `false`, any request to a remote
     /// scheme/host is cancelled.
     private let allowsNetwork: Bool
-
-    /// The continuation resumed when the load finishes, fails, or times out.
-    /// Resumed exactly once; cleared on resume so neither a late navigation
-    /// callback nor the timeout can resume it twice.
-    private var loadContinuation: CheckedContinuation<Void, Error>?
-
-    /// Set once the navigation has settled so `waitForLoad` can return immediately
-    /// if the load completed before the caller began waiting (a fast, fully local
-    /// document can finish before the `await` suspends).
-    private var outcome: Result<Void, Error>?
-
-    /// The armed timeout. It resumes the wait with `.timedOut` if the load has not
-    /// settled in time, and is cancelled the moment the load does settle so a
-    /// completed render never trips the timer.
-    private var timeoutTask: Task<Void, Never>?
+    private let loadWaiter = WebLoadWaiter()
 
     init(allowsNetwork: Bool) {
         self.allowsNetwork = allowsNetwork
@@ -387,58 +373,11 @@ private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
     /// elapses (whichever comes first). Throws `WebSnapshotError.timedOut` on the
     /// timeout and `WebSnapshotError.loadFailed` on a navigation failure.
     ///
-    /// The timeout is a sibling `Task` that calls back onto this main-actor object;
-    /// a continuation (rather than a task group) keeps the region-based isolation
-    /// simple — `self` is the only shared state and it is `@MainActor`.
+    /// ``WebLoadWaiter`` owns the sibling timeout task and exactly-once continuation;
+    /// this coordinator only translates WebKit delegate outcomes into that shared,
+    /// main-actor-isolated state machine.
     func waitForLoad(timeout: Duration) async throws {
-        // If the load already settled before we started waiting, return its result
-        // without suspending.
-        if let outcome {
-            self.outcome = nil
-            try outcome.get()
-            return
-        }
-
-        try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation {
-                (continuation: CheckedContinuation<Void, Error>) in
-                // The task may already have been cancelled before we suspended.
-                guard !Task.isCancelled else {
-                    continuation.resume(throwing: CancellationError())
-                    return
-                }
-                loadContinuation = continuation
-                timeoutTask = Task { @MainActor [weak self] in
-                    try? await Task.sleep(for: timeout)
-                    guard !Task.isCancelled else { return }
-                    // The load did not settle in time; fail the wait through the same
-                    // single-resume guard a real navigation result uses.
-                    self?.resume(.failure(WebSnapshotError.timedOut))
-                }
-            }
-        } onCancel: {
-            // Cancel can arrive on any executor; hop to this type's main-actor isolation
-            // to resume the wait. `resume` is idempotent, so a cancel racing a real
-            // completion is harmless; the caller's `defer` then stops the load.
-            Task { @MainActor [weak self] in
-                self?.resume(.failure(CancellationError()))
-            }
-        }
-    }
-
-    /// Resumes the load continuation exactly once, recording the outcome for a
-    /// caller that has not started waiting yet, and disarming the timeout.
-    private func resume(_ result: Result<Void, Error>) {
-        timeoutTask?.cancel()
-        timeoutTask = nil
-        if let continuation = loadContinuation {
-            loadContinuation = nil
-            continuation.resume(with: result)
-        } else {
-            // The result arrived before `waitForLoad` suspended; stash it so the
-            // subsequent await returns it immediately.
-            outcome = result
-        }
+        try await loadWaiter.wait(timeout: timeout)
     }
 
     // MARK: WKNavigationDelegate
@@ -469,7 +408,7 @@ private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        resume(.success(()))
+        loadWaiter.complete(.success(()))
     }
 
     func webView(
@@ -477,7 +416,7 @@ private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
     ) {
         Log.render.error(
             "HTML page navigation failed (\((error as NSError).domain, privacy: .public))")
-        resume(.failure(WebSnapshotError.loadFailed))
+        loadWaiter.complete(.failure(WebSnapshotError.loadFailed))
     }
 
     func webView(
@@ -488,6 +427,6 @@ private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
         Log.render.error(
             "HTML page provisional navigation failed (\((error as NSError).domain, privacy: .public))"
         )
-        resume(.failure(WebSnapshotError.loadFailed))
+        loadWaiter.complete(.failure(WebSnapshotError.loadFailed))
     }
 }
