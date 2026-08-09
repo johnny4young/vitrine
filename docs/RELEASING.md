@@ -6,8 +6,10 @@
 > runbook. This file assumes those credentials already exist and covers running the
 > pipeline.
 
-Vitrine ships as a Developer ID-signed, notarized DMG attached to a GitHub release,
-installable via a Homebrew cask. The pipeline degrades gracefully: without signing
+Vitrine's canonical distribution channels are a Developer ID-signed, notarized DMG
+attached to a GitHub release and the Homebrew cask that consumes it. The Mac App Store
+is an optional secondary GUI-only channel and never blocks a direct-channel release. The
+pipeline degrades gracefully: without signing
 secrets it still produces an **unsigned** DMG for local development — but that
 unsigned build is **never production-ready** (Gatekeeper rejects it). See
 [Signing, notarization & Gatekeeper](#signing-notarization--gatekeeper).
@@ -753,10 +755,13 @@ website and confirm the license email arrives. The optional
 above are the manual half. See [`ACTIVATION.md`](ACTIVATION.md) for exact secret-safe CLI and
 token-permission commands.
 
-The direct-download v1 lifecycle has a deliberate documented limit: there is no in-app
-Restore or Deactivate action, and remote seat/refund re-validation is not implemented. Do
-not record those nonexistent flows as passed. Upgrades/offline relaunches preserve the local
-token; a clean Mac activates the license again.
+The direct-download lifecycle can deactivate seats created by current builds because the
+activation record retains the exact provider instance. Include that explicit Settings →
+About action in buyer-journey QA when activation/deactivation code changes. Activations
+created by older builds without that record still require the purchase portal or support.
+Automatic cross-device Restore and periodic remote seat/refund re-validation remain out of
+scope. Upgrades/offline relaunches preserve the local token; a clean Mac activates the
+license again.
 
 ## Checklist
 

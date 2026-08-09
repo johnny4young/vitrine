@@ -83,9 +83,10 @@ Two modes, one engine:
 
 ## Install
 
-Requires macOS **14.0+** (Sonoma or later). Official DMG releases are signed with a
-Developer ID, notarized by Apple, and updated through Sparkle. App Store releases are
-updated by the App Store; source builds use your local signing configuration.
+Requires macOS **14.0+** (Sonoma or later). **Homebrew and the signed, notarized DMG are
+the canonical distribution channels.** Those builds update through Sparkle. An optional
+App Store build is a secondary GUI-only channel, uses StoreKit for PRO, omits the CLI,
+and is updated by the App Store. Source builds use your local signing configuration.
 
 ### Homebrew (recommended)
 
@@ -113,6 +114,10 @@ shasum -a 256 -c Vitrine-x.y.z.dmg.sha256
 The DMG embeds the direct-download `vitrine` CLI but does **not** add it to your
 PATH automatically. After launching the app, use **Settings ▸ General ▸ Command-line
 tool ▸ Install…**, or follow the manual link in [Command-line renderer](#command-line-renderer).
+
+Choose Homebrew when you want the CLI on `PATH` automatically; choose the DMG when you
+prefer a direct install. Neither route starts a countdown or requires an account for the
+free core.
 
 ### Build from source
 
@@ -323,6 +328,12 @@ license for people who publish professionally:
   OpenGraph, …) into a folder in a single pass.
 - **Advanced automation** — general `vitrine render`, multi-size, `vpane`, Shortcuts /
   App Intents, and folder batch rendering. Basic `vgrab` terminal capture stays free.
+
+**Evaluate it without a clock.** There is **no expiring trial** and no temporary PRO
+unlock to race through. The complete free core is the evaluation surface and remains
+usable indefinitely; upgrade only when Brand Kit, multi-size/carousel workflows, or
+advanced automation save you enough time. PRO prompts appear only after you invoke a
+PRO action, never at launch.
 
 It is **honor/convenience, not anti-fork DRM**. On the Mac App Store, PRO is a StoreKit
 in-app purchase; on the direct-download build, a license key activates **once** online and

@@ -13,10 +13,14 @@ struct ProDocumentationTests {
     }
 
     private static func proDocumentation() throws -> String {
-        let documentation = try String(
-            contentsOf: repositoryRoot.appendingPathComponent("docs/PRO.md"),
-            encoding: .utf8)
+        let documentation = try text("docs/PRO.md")
         return documentation.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    private static func text(_ relativePath: String) throws -> String {
+        try String(
+            contentsOf: repositoryRoot.appendingPathComponent(relativePath),
+            encoding: .utf8)
     }
 
     @Test func documentsTheInjectedEntitlementAndWatermarkGraph() throws {
@@ -58,5 +62,27 @@ struct ProDocumentationTests {
         #expect(documentation.contains("never reads a real Keychain item"))
         #expect(documentation.contains("Release validation"))
         #expect(documentation.contains("inspect it for the fixture's environment"))
+    }
+
+    @Test func publicProductPolicyKeepsEvaluationFreeAndDistributionDirect() throws {
+        let readme = try Self.text("README.md")
+        let project = try Self.text("docs/PROJECT.md")
+        let architecture = try Self.text("docs/ARCHITECTURE.md")
+        let pro = try Self.text("docs/PRO.md")
+        let website = try Self.text("site/src/components/Commercial.astro")
+        let websiteTranslations = try Self.text("site/public/scripts/site.js")
+
+        for document in [readme, project, architecture, pro, website] {
+            #expect(document.localizedCaseInsensitiveContains("no expiring trial"))
+        }
+        #expect(websiteTranslations.contains("No hay una prueba que caduque"))
+
+        for document in [readme, project, architecture, pro] {
+            #expect(document.contains("Homebrew"))
+            #expect(document.localizedCaseInsensitiveContains("signed, notarized DMG"))
+            #expect(
+                document.localizedCaseInsensitiveContains("optional")
+                    && document.contains("App Store"))
+        }
     }
 }

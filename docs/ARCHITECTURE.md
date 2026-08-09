@@ -3,6 +3,23 @@
 This document mirrors the shipping module layout in [`Vitrine/`](../Vitrine) and the
 runtime boundaries enforced by the test suite.
 
+## Product and distribution boundaries
+
+Vitrine has one open-core product contract, not separate demo and paid render engines.
+There is **no expiring trial**: the indefinitely usable free core is the evaluation
+surface, while PRO gates only additive output and automation at UI/CLI/system edges.
+The render core never reads entitlement state, and the app never manufactures a temporary
+PRO entitlement or a trial clock. This removes an entire expiry/offline/recovery state
+machine and keeps free and PRO pixels on the same deterministic path.
+
+Homebrew and the signed, notarized DMG are the canonical distribution channels. They
+share the direct-download build, Sparkle updater, offline signed-license provider, and
+embedded CLI; Homebrew additionally places the CLI on `PATH`. The optional App Store
+build is a secondary GUI-only variant selected at build boundaries: it removes Sparkle,
+network-backed features, and the CLI, and resolves PRO through StoreKit. Channel-specific
+capabilities are compiled and entitlement-gated explicitly rather than discovered at
+runtime.
+
 ## Experience: menu-bar status item + panel
 
 The app lives behind an AppKit `NSStatusItem`. Clicking the icon opens an

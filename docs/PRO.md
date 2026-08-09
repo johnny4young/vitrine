@@ -21,6 +21,20 @@ output and unlocks *new* surfaces.
 | Feature: automation gating | `VitrineCLI/main.swift`, `Vitrine/CLI/CLIOptions.swift` (`Command.requiresPro`), `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
 | Tests | `Tests/EntitlementsTests.swift`, `Tests/LicenseActivationTests.swift`, `Tests/ProDocumentationTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLIAutomationTests.swift`, `UITests/VitrineUITests.swift` |
 
+## Product contract: evaluation and distribution
+
+There is **no expiring trial** and no temporary PRO entitlement. The indefinitely usable
+free core is the evaluation surface: normal capture and editing, export without a
+watermark or resolution cap, and basic `vgrab` terminal capture. A PRO sheet appears
+only after the user invokes a gated action; Vitrine never starts with a sales prompt.
+This deliberately avoids trial-expiry clocks, offline grace periods, and recovery state
+that would create a second licensing lifecycle beside the signed-token model below.
+
+The canonical distribution channels are Homebrew and the signed, notarized DMG. Both use
+the direct-download entitlement provider and ship the CLI; Homebrew also puts it on
+`PATH`. The optional App Store build is a secondary GUI-only channel: it uses StoreKit,
+omits the CLI, and is not a requirement for evaluating or buying Vitrine.
+
 ## Entitlement resolution
 
 `AppEnvironment` owns the app-wide `Entitlements` instance and injects that same reference into

@@ -19,6 +19,10 @@ can never drift.
 
 ### Changed
 
+- **The free-core evaluation and distribution contract is now explicit and regression
+  tested.** There is no expiring trial: core capture/editing and basic `vgrab` remain
+  available indefinitely, while advanced automation stays PRO. Homebrew and the signed,
+  notarized DMG are the canonical channels; the App Store remains optional and GUI-only.
 - **Swift compiler warnings now fail every app-owned target build.** The existing test
   diagnostics were removed, including a redundant optional requirement, an obsolete
   throwing helper, and unnecessary weak mutability.
