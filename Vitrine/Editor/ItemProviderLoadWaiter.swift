@@ -1,5 +1,27 @@
 import Foundation
 
+/// Owns cancellable provider resources outside the generic waiter.
+///
+/// Xcode 26.6's Swift 6.3 optimizer crashes in `EarlyPerfInliner` when compiling the
+/// generic waiter's actor-isolated destructor. Keeping cancellation in a small,
+/// non-generic owner lets the generic container use a side-effect-free, nonisolated
+/// destructor without relying on underscored optimization attributes.
+private final class ItemProviderLoadLifetime {
+    var timeoutTask: Task<Void, Never>?
+    var progress: Progress?
+
+    isolated deinit {
+        cancel()
+    }
+
+    func cancel() {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        progress?.cancel()
+        progress = nil
+    }
+}
+
 /// A one-shot, main-actor bridge for callback-based `NSItemProvider` loads.
 ///
 /// Item providers are external process boundaries: a broken provider can omit its
@@ -32,13 +54,9 @@ final class ItemProviderLoadWaiter<Value: Sendable> {
     }
 
     private var state: State = .idle
-    private var timeoutTask: Task<Void, Never>?
-    private var progress: Progress?
+    private let lifetime = ItemProviderLoadLifetime()
 
-    isolated deinit {
-        timeoutTask?.cancel()
-        progress?.cancel()
-    }
+    nonisolated deinit {}
 
     /// Starts one provider request and waits for its callback, cancellation, or timeout.
     ///
@@ -76,7 +94,7 @@ final class ItemProviderLoadWaiter<Value: Sendable> {
                     }
 
                     state = .waiting(continuation)
-                    timeoutTask = Task { @MainActor [weak self] in
+                    lifetime.timeoutTask = Task { @MainActor [weak self] in
                         do {
                             try await Task.sleep(for: timeout)
                         } catch {
@@ -84,7 +102,7 @@ final class ItemProviderLoadWaiter<Value: Sendable> {
                         }
                         self?.complete(.failure(LoadError.timedOut))
                     }
-                    progress = start { [weak self] result in
+                    lifetime.progress = start { [weak self] result in
                         Task { @MainActor [weak self] in
                             self?.complete(result)
                         }
@@ -104,10 +122,7 @@ final class ItemProviderLoadWaiter<Value: Sendable> {
 
     /// Supplies the first provider outcome. Later callbacks are ignored.
     func complete(_ result: Result<Value, Error>) {
-        timeoutTask?.cancel()
-        timeoutTask = nil
-        progress?.cancel()
-        progress = nil
+        lifetime.cancel()
 
         switch state {
         case .idle, .starting:
