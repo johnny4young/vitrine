@@ -308,11 +308,16 @@ enum CLIRenderer {
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile = {
             try FileInputLoader.load(from: $0)
         },
+        stage: (String, Language?) -> URL? = {
+            EditorHandoff.stage(content: $0, language: $1)
+        },
         open: (URL) -> Bool = { NSWorkspace.shared.open($0) }
     ) throws -> String {
         let loaded = try loadInput(options, fileLoader: fileLoader)
         let language = options.language ?? loaded.language
-        let url = EditorHandoff.stage(content: loaded.text, language: language)
+        guard let url = stage(loaded.text, language) else {
+            throw CLIError.editorHandoffFailed
+        }
         guard open(url) else { throw CLIError.editorOpenFailed }
         Log.export.notice("CLI handed the source to the editor (--edit)")
         if options.jsonOutput {

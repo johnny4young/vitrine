@@ -35,6 +35,8 @@ import Foundation
     /// A typed activation failure, so the paywall can tell "wrong key" from "no internet"
     /// instead of one generic message.
     enum LicenseActivationError: Error, Equatable, Sendable {
+        /// This build has no valid activation endpoint, so no credential may be sent.
+        case notConfigured
         /// Lemon Squeezy rejected the key (unknown, disabled, or refunded).
         case invalidKey
         /// The key is valid but already activated on its maximum number of machines.
@@ -60,6 +62,8 @@ import Foundation
 
     /// Typed remote failures keep local cleanup policy out of the HTTP client.
     enum LicenseDeactivationError: Error, Equatable, Sendable {
+        /// This build has no valid deactivation endpoint, so the seat stays active.
+        case notConfigured
         /// The specific instance is already absent, so local cleanup is safe and idempotent.
         case alreadyInactive
         /// The request never reached a provider verdict.
@@ -104,6 +108,7 @@ import Foundation
         func activate(
             licenseKey: String, instanceName: String
         ) async throws -> LicenseActivation {
+            guard let endpoint else { throw LicenseActivationError.notConfigured }
             var request = URLRequest(url: endpoint)
             request.httpMethod = "POST"
             request.setValue(
@@ -127,6 +132,9 @@ import Foundation
         func deactivate(
             licenseKey: String, instanceID: String
         ) async throws -> LicenseDeactivation {
+            guard let deactivationEndpoint else {
+                throw LicenseDeactivationError.notConfigured
+            }
             let request = Self.deactivationRequest(
                 licenseKey: licenseKey,
                 instanceID: instanceID,
@@ -380,6 +388,8 @@ import Foundation
                 return .invalidKey
             } catch LicenseActivationError.activationLimitReached {
                 return .activationLimitReached
+            } catch LicenseActivationError.notConfigured {
+                return .notConfigured
             } catch LicenseActivationError.server(let message) {
                 // Log a typed reason plus a derived length only — the server-supplied
                 // message is external, untrusted text and must never be logged at
@@ -435,6 +445,8 @@ import Foundation
                 return .deactivated
             } catch LicenseDeactivationError.alreadyInactive {
                 return .alreadyInactive
+            } catch LicenseDeactivationError.notConfigured {
+                return .refused
             } catch LicenseDeactivationError.refused(let message) {
                 Log.settings.error(
                     "License deactivation refused by server (message length \(message.count, privacy: .public))"
@@ -446,15 +458,4 @@ import Foundation
         }
     }
 
-    /// The public Lemon Squeezy checkout for Vitrine PRO, opened by the paywall's
-    /// purchase button. Direct-download only; the App Store build unlocks through
-    /// StoreKit instead. The early-bird price is set on the product in Lemon Squeezy
-    /// (no discount code), so the link carries no query parameters.
-    enum LemonSqueezyStore {
-        /// Checkout for the one-time PRO license.
-        static let checkoutURL = URL(
-            string: "https://johnny4young.lemonsqueezy.com/checkout/buy/"
-                + "314e7d43-efa1-41be-a319-7474628e5185"
-        )!
-    }
 #endif

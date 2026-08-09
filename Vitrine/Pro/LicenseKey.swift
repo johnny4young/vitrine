@@ -26,15 +26,28 @@ struct LicenseToken: Codable, Equatable {
 /// Verifies a signed `LicenseToken` offline against an embedded Ed25519 public key.
 /// Shared by the app and the CLI so both reach the same verdict from the same token bytes.
 struct LicenseVerifier {
-    /// The signing public key, embedded in the build. This value is safe to ship in source;
-    /// only the matching private key is secret and injected into the official
-    /// direct-download build.
-    let publicKey: Curve25519.Signing.PublicKey
+    /// The signing public key, or `nil` when an embedded representation is malformed. This
+    /// value is safe to ship in source; only the matching private key is secret and injected
+    /// into the official direct-download build.
+    let publicKey: Curve25519.Signing.PublicKey?
+
+    init(publicKey: Curve25519.Signing.PublicKey) {
+        self.publicKey = publicKey
+    }
+
+    /// Builds a verifier from shipped configuration. Invalid bytes produce an unconfigured
+    /// verifier that rejects every token rather than terminating app or CLI startup.
+    init(publicKeyBase64: String) {
+        publicKey = Data(base64Encoded: publicKeyBase64).flatMap {
+            try? Curve25519.Signing.PublicKey(rawRepresentation: $0)
+        }
+    }
 
     /// Decodes and verifies a `"<base64 payload>.<base64 signature>"` token, returning the
     /// payload only when the signature checks out. Any malformed, tampered, or
     /// wrongly-signed token returns `nil` — never a partial trust.
     func verify(_ token: String) -> LicenseToken? {
+        guard let publicKey else { return nil }
         let parts = token.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
         guard parts.count == 2,
             let payload = Data(base64Encoded: String(parts[0])),
@@ -54,22 +67,11 @@ struct LicenseVerifier {
     /// `embeddedPublicKeyIsThePinnedProductionKey`, so a forgotten swap to a throwaway key cannot
     /// silently lock out paying users. `embeddedVerifierRejectsForeignTokens` guards against
     /// accepting a token signed by a foreign key.
-    static let embedded = LicenseVerifier(
-        publicKey: LicensePublicKeys.production
-    )
+    static let embedded = LicenseVerifier(publicKeyBase64: LicensePublicKeys.productionBase64)
 }
 
 private enum LicensePublicKeys {
     nonisolated static let productionBase64 = "GBiLsURlP+jwJGvfAJUAxTACaZbObIVBnBurkOQ+Fd0="
-
-    nonisolated static let production: Curve25519.Signing.PublicKey = {
-        guard let raw = Data(base64Encoded: productionBase64),
-            let key = try? Curve25519.Signing.PublicKey(rawRepresentation: raw)
-        else {
-            preconditionFailure("Invalid embedded production license public key")
-        }
-        return key
-    }()
 }
 
 /// Mints a signed token from a private key. Under embedded-key activation model the **app** runs this

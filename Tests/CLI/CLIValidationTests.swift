@@ -473,7 +473,8 @@ struct CLIValidationTests: CLITestSupport {
         #expect(summary.contains("editor"))
         #expect(captured?.scheme == "vitrine" && captured?.host == "edit")
         // The staged content is reachable through the captured URL's token.
-        #expect(EditorHandoff.consume(url: captured!)?.content == "\u{1B}[31merror\u{1B}[0m")
+        let capturedURL = try #require(captured)
+        #expect(EditorHandoff.consume(url: capturedURL)?.content == "\u{1B}[31merror\u{1B}[0m")
     }
 
     @Test func editThrowsWhenTheAppCannotBeOpened() throws {
@@ -488,6 +489,23 @@ struct CLIValidationTests: CLITestSupport {
                         text: "x", language: .terminal, filename: "session.log")
                 },
                 open: { _ in false })
+        }
+    }
+
+    @Test func editThrowsWhenTheLocalHandoffCannotBePrepared() throws {
+        let options = try CLIArguments.parse(["render", "session.log", "--edit"])
+        #expect(throws: CLIError.editorHandoffFailed) {
+            try CLIRenderer.openInEditor(
+                options,
+                fileLoader: { _ in
+                    FileInputLoader.LoadedFile(
+                        text: "x", language: .terminal, filename: "session.log")
+                },
+                stage: { _, _ in nil },
+                open: { _ in
+                    Issue.record("open must not run without a handoff URL")
+                    return true
+                })
         }
     }
 
@@ -769,11 +787,15 @@ struct CLIValidationTests: CLITestSupport {
         let errors: [CLIError] = [
             .helpRequested, .unknownCommand("x"), .unknownFlag("-x"),
             .missingValue(flag: "--out"), .missingRequired("input file"),
-            .invalidValue(flag: "--theme", value: "x"), .inputUnreadable(path: "/x"),
+            .invalidValue(flag: "--theme", value: "x"), .incompatibleOptions("conflict"),
+            .inputUnreadable(path: "/x"), .recipeUnreadable(path: "/recipe"),
+            .invalidRecipe("invalid recipe"),
             .inputNotText(path: "/x"), .gitDiffFailed, .gitDiffEmpty, .gitDiffTooLarge,
             .inputImageTooLarge(path: "/x"), .inputNotImage(path: "/x"),
             .renderFailed, .outputExists(path: "/x"),
-            .writeFailed(path: "/x"), .batchSkipped(rendered: 1, skipped: 1),
+            .writeFailed(path: "/x"), .batchEmpty(skipped: 1),
+            .batchSkipped(rendered: 1, skipped: 1), .editorOpenFailed,
+            .editorHandoffFailed, .proRequired,
         ]
         for error in errors {
             #expect(!error.message.isEmpty)

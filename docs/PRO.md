@@ -178,3 +178,6 @@ be claimed as supported.
    `terminal-capture` command must stay constrained by an explicit parser allowlist.
 5. A successful provider response is not enough: direct-download activation must match the
    pinned Lemon Squeezy store/product and reject test-mode, foreign, incomplete, or inactive keys.
+6. Invalid static public-key or HTTPS-link configuration must fail closed, never terminate app or
+   CLI startup: an unconfigured verifier rejects every token, provider calls stop before sending
+   credentials, and unavailable external links stay out of the UI.

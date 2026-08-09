@@ -57,6 +57,8 @@ nonisolated enum CLIError: Error, Equatable {
     /// `vitrine://` scheme, or a Launch Services failure). Surfaced so a script sees a
     /// non-zero exit instead of a false success.
     case editorOpenFailed
+    /// The private pasteboard payload could not be paired with a valid local handoff URL.
+    case editorHandoffFailed
     /// The PRO tier is required for an advanced command-line automation capability but
     /// is not active. Reported before any file work; basic `vgrab` capture stays free.
     case proRequired
@@ -111,6 +113,8 @@ nonisolated enum CLIError: Error, Equatable {
                 + "\(skipped) file\(skipped == 1 ? "" : "s")."
         case .editorOpenFailed:
             "Could not open Vitrine to receive the output. Is Vitrine installed?"
+        case .editorHandoffFailed:
+            "Could not prepare the local Vitrine editor handoff."
         case .proRequired:
             "Vitrine PRO is required for advanced command-line automation. "
                 + "Basic vgrab terminal capture is free; activate PRO in the Vitrine app "

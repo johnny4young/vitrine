@@ -373,14 +373,25 @@ struct LicenseKeyTests {
         #expect(LicenseVerifier.embedded.verify(token) == nil)
     }
 
-    @Test func embeddedPublicKeyIsThePinnedProductionKey() {
+    @Test func embeddedPublicKeyIsThePinnedProductionKey() throws {
         // The embedded verifier must be the fixed production public key: silent key
         // drift would lock out paying users because their
         // real-key-signed tokens would stop verifying), so pin the exact bytes here.
         // Update this literal only alongside a deliberate key rotation.
         #expect(
-            LicenseVerifier.embedded.publicKey.rawRepresentation.base64EncodedString()
+            try #require(LicenseVerifier.embedded.publicKey).rawRepresentation
+                .base64EncodedString()
                 == "GBiLsURlP+jwJGvfAJUAxTACaZbObIVBnBurkOQ+Fd0=")
+    }
+
+    @Test func malformedConfiguredPublicKeyRejectsEveryTokenWithoutTerminating() throws {
+        let signer = Curve25519.Signing.PrivateKey()
+        let token = try LicenseSigner.sign(
+            LicenseToken(licenseID: "LOCAL", issuedAt: .now), with: signer)
+        let verifier = LicenseVerifier(publicKeyBase64: "not-a-public-key")
+
+        #expect(verifier.publicKey == nil)
+        #expect(verifier.verify(token) == nil)
     }
 
     #if VITRINE_DIRECT_DOWNLOAD

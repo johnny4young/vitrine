@@ -13,9 +13,13 @@ import SwiftUI
 /// consistently across the app. Custom themes derive the same
 /// quartet from their user palette.
 enum ThemeChipColors {
+    private static let fallback = (
+        bg: "#282C34", a: "#C678DD", b: "#98C379", c: "#61AFEF"
+    )
+
     /// `id → (background, dot1, dot2, dot3)` for the built-in catalog.
     private static let builtIns: [String: (bg: String, a: String, b: String, c: String)] = [
-        "one-dark": ("#282C34", "#C678DD", "#98C379", "#61AFEF"),
+        "one-dark": fallback,
         "one-light": ("#FAFAFA", "#A626A4", "#50A14F", "#4078F2"),
         "dracula": ("#282A36", "#FF79C6", "#F1FA8C", "#50FA7B"),
         "github": ("#FFFFFF", "#D73A49", "#005CC5", "#6F42C1"),
@@ -66,7 +70,6 @@ enum ThemeChipColors {
                 [palette.keyword.color, palette.string.color, palette.function.color]
             )
         }
-        let fallback = builtIns["one-dark"]!
         return (
             Color(hex: fallback.bg),
             [Color(hex: fallback.a), Color(hex: fallback.b), Color(hex: fallback.c)]

@@ -184,6 +184,16 @@ import Testing
                     == LemonSqueezyValidator.requestTimeout)
         }
 
+        @Test func missingActivationEndpointFailsClosedBeforeNetworking() async {
+            var validator = LemonSqueezyValidator()
+            validator.endpoint = nil
+            let service = LicenseActivationService(
+                validator: validator,
+                signingKey: Curve25519.Signing.PrivateKey())
+
+            #expect(await service.activate(licenseKey: "KEY") == .notConfigured)
+        }
+
         // MARK: - Lemon Squeezy deactivation
 
         @Test func parsesSuccessfulDeactivationForActiveOrInactiveLicenses() throws {
@@ -273,6 +283,17 @@ import Testing
             #expect(
                 request.httpBody.flatMap { String(data: $0, encoding: .utf8) }
                     == "instance_id=instance%2F1&license_key=KEY%20VALUE")
+        }
+
+        @Test func missingDeactivationEndpointPreservesTheSeatWithoutNetworking() async throws {
+            var validator = LemonSqueezyValidator()
+            validator.deactivationEndpoint = nil
+            let service = LicenseDeactivationService(deactivator: validator)
+            let record = try #require(
+                LicenseActivationRecord(
+                    licenseKey: "KEY", licenseID: "42", instanceID: "instance"))
+
+            #expect(await service.deactivate(record: record) == .refused)
         }
 
         // MARK: - Activation service (local minting)

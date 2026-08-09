@@ -44,6 +44,10 @@ can never drift.
 
 ### Fixed
 
+- **Invalid shipped URLs or license-verifier bytes no longer terminate startup.** Trusted external
+  links now require absolute credential-free HTTPS URLs, license operations stop before networking
+  when an endpoint is unavailable, an invalid embedded public key keeps PRO locked, and a local CLI
+  editor-handoff construction failure exits with a typed error instead of trapping.
 - **Editor drops no longer depend on an item provider calling back forever.** Image,
   file-URL, and text representations now share one exactly-once bridge with a ten-second
   timeout, task cancellation, late-callback rejection, and provider-progress teardown.

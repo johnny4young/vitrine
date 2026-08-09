@@ -30,21 +30,26 @@ enum SocialComposer {
     /// The compose URL for `network`, with `text` prefilled, or `nil` when the text
     /// can't be encoded (not expected for any real string).
     static func composeURL(for network: Network, text: String) -> URL? {
-        var components: URLComponents
+        let rawBaseURL: String
+        let queryItems: [URLQueryItem]
         switch network {
         case .x:
-            components = URLComponents(string: "https://x.com/intent/post")!
-            components.queryItems = [URLQueryItem(name: "text", value: text)]
+            rawBaseURL = "https://x.com/intent/post"
+            queryItems = [URLQueryItem(name: "text", value: text)]
         case .linkedIn:
-            components = URLComponents(string: "https://www.linkedin.com/feed/")!
-            components.queryItems = [
+            rawBaseURL = "https://www.linkedin.com/feed/"
+            queryItems = [
                 URLQueryItem(name: "shareActive", value: "true"),
                 URLQueryItem(name: "text", value: text),
             ]
         case .bluesky:
-            components = URLComponents(string: "https://bsky.app/intent/compose")!
-            components.queryItems = [URLQueryItem(name: "text", value: text)]
+            rawBaseURL = "https://bsky.app/intent/compose"
+            queryItems = [URLQueryItem(name: "text", value: text)]
         }
+        guard let baseURL = VitrineLinks.trustedHTTPSURL(rawBaseURL),
+            var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+        else { return nil }
+        components.queryItems = queryItems
         return components.url
     }
 }
