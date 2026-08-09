@@ -76,6 +76,20 @@ struct WelcomeView: View {
     }
 
     var body: some View {
+        ScrollView(.vertical) {
+            welcomeContent
+        }
+        .frame(width: 700)
+        .frame(minHeight: 360, idealHeight: 770)
+        .background(VitrineTokens.Surface.window)
+        .tint(VitrineTokens.Accent.system)
+        .accessibilityContainerIdentifier("welcome-view")
+    }
+
+    /// The complete first-run journey. The enclosing scroll view remains visually
+    /// unchanged when the content fits and keeps every action reachable when AppKit
+    /// constrains the window below its ideal height.
+    private var welcomeContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             hero
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
@@ -93,10 +107,6 @@ struct WelcomeView: View {
             .padding(.top, VitrineTokens.Spacing.lg)
             .padding(.bottom, VitrineTokens.Spacing.xl)
         }
-        .frame(width: 700)
-        .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
-        .accessibilityContainerIdentifier("welcome-view")
         .onAppear {
             if case .gradient(let preset) = settings.config.background {
                 selectedBackground = preset
@@ -445,8 +455,9 @@ final class WelcomeWindowController {
                 rootView: makeRootView(settings: settings))
             let window = NSWindow(contentViewController: hosting)
             window.title = String(localized: "Welcome to Vitrine")
-            // No resize/minimize: the quick-start is a fixed, compact first-run
-            // surface, not a working window. The title bar merges into the
+            // No resize/minimize: the quick-start is an adaptive first-run surface,
+            // not a working window. Its content scrolls when the available display is
+            // shorter than the ideal layout. The title bar merges into the
             // hero so the card reads as one surface; the
             // hero's 44 pt top padding clears the traffic lights.
             window.styleMask = [.titled, .closable, .fullSizeContentView]
@@ -459,12 +470,25 @@ final class WelcomeWindowController {
         }
         window?.makeKeyAndOrderFront(nil)
         if let window, let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
-            // Keep the fixed quick-start surface fully inside the visible screen after
+            var availableFrame = visibleFrame
+            #if DEBUG
+                // A deterministic compact-height seam for UI validation. It is compiled
+                // out of release builds and lets the suite prove that the first-run flow
+                // scrolls instead of relying on the attached display to be short enough.
+                if let rawHeight = ProcessInfo.processInfo.environment[
+                    "VITRINE_WELCOME_TEST_MAX_HEIGHT"
+                ], let requestedHeight = Double(rawHeight), requestedHeight > 0 {
+                    let height = min(CGFloat(requestedHeight), visibleFrame.height)
+                    availableFrame.origin.y = visibleFrame.midY - height / 2
+                    availableFrame.size.height = height
+                }
+            #endif
+            // Keep the adaptive quick-start surface fully inside the visible screen after
             // AppKit assigns it to a display. Mixed-display setups and menu-bar/Dock
             // insets can otherwise leave the footer actions just off-screen even
             // though the window exists.
             window.setFrame(
-                WindowFrameSolver.clamp(window.frame, into: visibleFrame), display: true)
+                WindowFrameSolver.clamp(window.frame, into: availableFrame), display: true)
             window.makeKeyAndOrderFront(nil)
         }
         NSApp.activate(ignoringOtherApps: true)

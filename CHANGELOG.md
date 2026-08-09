@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Welcome remains usable on shorter displays.** The first-run journey now scrolls
+  when the available screen cannot hold its ideal height, keeping sample capture,
+  setup, Skip, and Get Started controls reachable instead of clipping the footer.
+
 ## [1.0.1] - 2026-08-08
 
 A stability release. Every user-facing change here is a fix found by a systematic audit

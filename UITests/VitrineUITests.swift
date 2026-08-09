@@ -1179,7 +1179,7 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() throws {
+    func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() {
         continueAfterFailure = false
         // A fresh defaults suite is a first run, so the quick-start appears on
         // launch with no extra hook.
@@ -1187,9 +1187,6 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("welcome-window", in: app), in: app, timeout: 8)
-        // The bottom controls (sample capture / skip) overhang a display too short to
-        // hold the welcome window, so skip the interaction there rather than flaking.
-        try skipUnlessADisplayFitsTheWelcomeWindow(app)
         assertExists(element("welcome-view", in: app), in: app, timeout: 3)
         // Local-only privacy copy is visible before any capture.
         assertExists(element("welcome-privacy-badge", in: app), in: app)
@@ -1205,15 +1202,35 @@ final class VitrineUITests: XCTestCase {
         // Poll for hittability first: the welcome window can still be settling into
         // place when the button already exists, so an immediate click flakes with
         // "is not hittable" on the hosted CI runner.
-        assertHittable(
-            "welcome-sample-capture-button", in: app,
-            "Sample-capture button should become reachable on the quick-start", timeout: 5)
+        revealWelcomeControl("welcome-sample-capture-button", in: app)
         element("welcome-sample-capture-button", in: app).click()
         assertExists(element("welcome-sample-status", in: app), in: app, timeout: 5)
     }
 
     @MainActor
-    func testForcedQuickStartCanBeSkippedToReachTheEditor() throws {
+    func testQuickStartKeepsPrimaryActionsReachableAtCompactHeight() {
+        continueAfterFailure = false
+        let app = launch(
+            arguments: [],
+            environment: ["VITRINE_WELCOME_TEST_MAX_HEIGHT": "520"])
+        defer { app.terminate() }
+
+        let window = element("welcome-window", in: app)
+        assertExists(window, in: app, timeout: 8)
+        XCTAssertLessThanOrEqual(
+            window.frame.height, 521,
+            "The deterministic compact-height seam did not constrain the Welcome window")
+        assertExists(app.scrollViews["welcome-view"], in: app, timeout: 3)
+
+        revealWelcomeControl("welcome-get-started-button", in: app)
+        element("welcome-get-started-button", in: app).click()
+        XCTAssertTrue(
+            window.waitForNonExistence(timeout: 3),
+            "Get Started should dismiss Welcome after scrolling to the compact footer")
+    }
+
+    @MainActor
+    func testForcedQuickStartCanBeSkippedToReachTheEditor() {
         continueAfterFailure = false
         // Force the quick-start open and also open the editor: skipping the
         // quick-start must not gate access to the rest of the app.
@@ -1221,21 +1238,11 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("welcome-window", in: app), in: app, timeout: 8)
-        // The Skip button overhangs a display too short to hold the welcome window,
-        // so skip the interaction there rather than flaking on hittability.
-        try skipUnlessADisplayFitsTheWelcomeWindow(app)
-        // Wait for the Skip button to be hittable, not just present: the window may
-        // still be animating forward, which flakes an immediate click as
-        // "is not hittable" on the hosted CI runner. If a multi-display run reports
-        // the fixed Welcome footer just outside the active visible frame, the forced
-        // launch has already opened the editor; still prove the user is not gated by
-        // the quick-start instead of failing on host geometry.
-        if waitForHittableElement("welcome-skip-button", in: app, timeout: 5) {
-            element("welcome-skip-button", in: app).click()
-        }
+        revealWelcomeControl("welcome-skip-button", in: app)
+        element("welcome-skip-button", in: app).click()
 
-        // After skipping (or when the forced editor is already reachable), the editor
-        // window is available. This launch deliberately opens Welcome and the editor at
+        // After skipping, the editor window is available. This launch deliberately
+        // opens Welcome and the editor at
         // the same time, so AppKit can briefly reorder windows while Welcome closes;
         // assert the editor surface itself instead of a specific toolbar item whose
         // nested AX node may not realize immediately.
