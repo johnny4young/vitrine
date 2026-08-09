@@ -372,29 +372,6 @@ struct WindowFrameSolverTests {
     }
 }
 
-@Suite("UI test visible-frame decoding")
-struct UITestVisibleFrameTests {
-    @Test func decodesFinitePositiveGeometry() {
-        let frame = UITestVisibleFrame.decode(from: [
-            UITestVisibleFrame.environmentKey: "-1024,63,1024,674"
-        ])
-
-        #expect(frame == CGRect(x: -1024, y: 63, width: 1024, height: 674))
-    }
-
-    @Test(arguments: [
-        "", "0,0,1024", "0,0,0,674", "0,0,-1,674", "0,0,nan,674", "0,0,inf,674",
-    ])
-    func rejectsMalformedOrUnusableGeometry(_ value: String) {
-        #expect(
-            UITestVisibleFrame.decode(from: [UITestVisibleFrame.environmentKey: value]) == nil)
-    }
-
-    @Test func absentGeometryDoesNotInventAFrame() {
-        #expect(UITestVisibleFrame.decode(from: [:]) == nil)
-    }
-}
-
 // MARK: - Per-window sessions: independence and explicit "make default"
 
 @MainActor

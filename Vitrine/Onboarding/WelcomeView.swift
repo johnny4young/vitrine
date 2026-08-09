@@ -79,7 +79,10 @@ struct WelcomeView: View {
         ScrollView(.vertical) {
             welcomeContent
         }
-        .frame(width: 700)
+        // Preserve the spacious 700 pt desktop treatment while allowing AppKit to
+        // shrink the first-run window on compact displays and in split-screen. A
+        // fixed width can put the trailing actions outside the interactive screen.
+        .frame(minWidth: 480, idealWidth: 700, maxWidth: 700)
         .frame(minHeight: 360, idealHeight: 770)
         .background(VitrineTokens.Surface.window)
         .tint(VitrineTokens.Accent.system)
@@ -470,18 +473,19 @@ final class WelcomeWindowController {
         }
         window?.makeKeyAndOrderFront(nil)
         if let window {
-            var visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame
-            #if DEBUG
-                visibleFrame =
-                    UITestVisibleFrame.decode(
-                        from: ProcessInfo.processInfo.environment) ?? visibleFrame
-            #endif
-            if let visibleFrame {
+            if let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
                 var availableFrame = visibleFrame
                 #if DEBUG
-                    // A deterministic compact-height seam for UI validation. It is compiled
-                    // out of release builds and lets the suite prove that the first-run flow
-                    // scrolls instead of relying on the attached display to be short enough.
+                    // Deterministic compact-display seams for UI validation. They are
+                    // compiled out of release builds and let the suite prove the adaptive
+                    // layout without depending on the attached display dimensions.
+                    if let rawWidth = ProcessInfo.processInfo.environment[
+                        "VITRINE_WELCOME_TEST_MAX_WIDTH"
+                    ], let requestedWidth = Double(rawWidth), requestedWidth > 0 {
+                        let width = min(CGFloat(requestedWidth), visibleFrame.width)
+                        availableFrame.origin.x = visibleFrame.midX - width / 2
+                        availableFrame.size.width = width
+                    }
                     if let rawHeight = ProcessInfo.processInfo.environment[
                         "VITRINE_WELCOME_TEST_MAX_HEIGHT"
                     ], let requestedHeight = Double(rawHeight), requestedHeight > 0 {

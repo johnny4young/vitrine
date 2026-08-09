@@ -84,136 +84,49 @@ struct RecentsGalleryView: View {
     // MARK: - Gallery
 
     private var gallery: some View {
-        ScrollView {
-            if filteredCaptures.isEmpty {
-                if showsPinnedOnly
-                    && searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                {
-                    ContentUnavailableView(
-                        "No pinned captures",
-                        systemImage: "pin",
-                        description: Text("Pin important captures to keep them easy to find.")
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 320)
-                    .accessibilityIdentifier("recents-no-pinned-results")
-                } else {
-                    ContentUnavailableView.search(text: searchQuery)
+        VStack(spacing: 0) {
+            galleryToolbar
+            Divider()
+            ScrollView {
+                if filteredCaptures.isEmpty {
+                    if showsPinnedOnly
+                        && searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    {
+                        ContentUnavailableView(
+                            "No pinned captures",
+                            systemImage: "pin",
+                            description: Text("Pin important captures to keep them easy to find.")
+                        )
                         .frame(maxWidth: .infinity, minHeight: 320)
-                        .accessibilityIdentifier("recents-no-search-results")
-                }
-            } else {
-                LazyVGrid(columns: columns, spacing: Brand.Spacing.md) {
-                    ForEach(filteredCaptures) { capture in
-                        RecentsCard(
-                            capture: capture,
-                            thumbnail: recents.thumbnail(for: capture),
-                            action: { cardAction(capture) },
-                            comparisonIndex: comparisonSelection.index(of: capture.id),
-                            isSelectingForComparison: isSelectingForComparison,
-                            canAddToComparison:
-                                comparisonSelection.count
-                                < ComparisonBoard.itemCountRange.upperBound,
-                            pin: {
-                                recents.updatePinned(id: capture.id, isPinned: !capture.isPinned)
-                            },
-                            copySource: { copySource(capture) },
-                            renderAs: { preset in render(capture, as: preset) },
-                            delete: { pendingDeletion = capture })
+                        .accessibilityIdentifier("recents-no-pinned-results")
+                    } else {
+                        ContentUnavailableView.search(text: searchQuery)
+                            .frame(maxWidth: .infinity, minHeight: 320)
+                            .accessibilityIdentifier("recents-no-search-results")
                     }
-                }
-                .padding(Brand.Spacing.lg)
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                if isSelectingForComparison {
-                    Button("Cancel") { endComparisonSelection() }
-                        .accessibilityIdentifier("recents-compare-cancel")
                 } else {
-                    Button {
-                        beginComparisonSelection()
-                    } label: {
-                        Label("Compare", systemImage: "rectangle.on.rectangle.angled")
-                    }
-                    .disabled(recents.captures.count < ComparisonBoard.itemCountRange.lowerBound)
-                    .help("Select two to four captures for one comparison board")
-                    .accessibilityIdentifier("recents-compare-button")
-                }
-            }
-            if isSelectingForComparison {
-                ToolbarItem(placement: .automatic) {
-                    Button("Create Board (\(comparisonSelection.count))") {
-                        createComparisonBoard()
-                    }
-                    .disabled(!comparisonSelection.canCreateBoard)
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("recents-create-comparison-button")
-                }
-            }
-            ToolbarItem(placement: .automatic) {
-                TextField("Search Recents", text: $searchQuery)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 220)
-                    .disabled(isSelectingForComparison)
-                    .accessibilityIdentifier("recents-search-field")
-            }
-            ToolbarItem(placement: .automatic) {
-                Toggle(isOn: $showsPinnedOnly) {
-                    Label("Pinned only", systemImage: "pin")
-                }
-                .toggleStyle(.button)
-                .help("Show only pinned recent captures")
-                .accessibilityHint("Show only pinned recent captures")
-                .accessibilityIdentifier("recents-pinned-filter")
-                .disabled(isSelectingForComparison)
-            }
-            ToolbarItem(placement: .automatic) {
-                Menu {
-                    ForEach(RecentsSortOrder.allCases) { order in
-                        Button {
-                            sortOrder = order
-                        } label: {
-                            HStack {
-                                Text(order.title)
-                                if sortOrder == order {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
+                    LazyVGrid(columns: columns, spacing: Brand.Spacing.md) {
+                        ForEach(filteredCaptures) { capture in
+                            RecentsCard(
+                                capture: capture,
+                                thumbnail: recents.thumbnail(for: capture),
+                                action: { cardAction(capture) },
+                                comparisonIndex: comparisonSelection.index(of: capture.id),
+                                isSelectingForComparison: isSelectingForComparison,
+                                canAddToComparison:
+                                    comparisonSelection.count
+                                    < ComparisonBoard.itemCountRange.upperBound,
+                                pin: {
+                                    recents.updatePinned(
+                                        id: capture.id, isPinned: !capture.isPinned)
+                                },
+                                copySource: { copySource(capture) },
+                                renderAs: { preset in render(capture, as: preset) },
+                                delete: { pendingDeletion = capture })
                         }
-                        .accessibilityIdentifier("recents-sort-\(order.rawValue)")
                     }
-                } label: {
-                    Label(sortOrder.title, systemImage: "arrow.up.arrow.down")
+                    .padding(Brand.Spacing.lg)
                 }
-                .help("Sort captures while keeping pinned favorites first")
-                .accessibilityHint("Pinned captures remain first in every sort order")
-                .accessibilityIdentifier("recents-sort-picker")
-                .disabled(isSelectingForComparison)
-            }
-            ToolbarItem(placement: .automatic) {
-                Menu {
-                    Button(role: .destructive) {
-                        isConfirmingClearUnpinned = true
-                    } label: {
-                        Label("Clear Unpinned", systemImage: "trash.slash")
-                    }
-                    .disabled(!recents.captures.contains(where: { !$0.isPinned }))
-                    .accessibilityIdentifier("recents-clear-unpinned-button")
-
-                    Divider()
-
-                    Button(role: .destructive) {
-                        isConfirmingClear = true
-                    } label: {
-                        Label("Clear All", systemImage: "trash")
-                    }
-                    .accessibilityIdentifier("recents-clear-all-button")
-                } label: {
-                    Label("Manage Recents", systemImage: "ellipsis.circle")
-                }
-                .help("Clear recent captures while optionally keeping pinned favorites")
-                .accessibilityIdentifier("recents-clear-button")
-                .disabled(isSelectingForComparison)
             }
         }
         // Clearing recents cannot be undone — it empties the list and deletes the
@@ -229,7 +142,6 @@ struct RecentsGalleryView: View {
         } message: {
             Text("This removes every recent capture and its cached preview. This can't be undone.")
         }
-        .accessibilityIdentifier("recents-clear-confirmation")
         .confirmationDialog(
             "Clear Unpinned?",
             isPresented: $isConfirmingClearUnpinned,
@@ -242,7 +154,6 @@ struct RecentsGalleryView: View {
                 "This removes every unpinned capture and its cached preview. Pinned captures stay in Recents. This can't be undone."
             )
         }
-        .accessibilityIdentifier("recents-clear-unpinned-confirmation")
         .confirmationDialog(
             "Delete Capture?",
             isPresented: Binding(
@@ -258,7 +169,131 @@ struct RecentsGalleryView: View {
         } message: {
             Text("This removes the capture and its cached preview. This can't be undone.")
         }
-        .accessibilityIdentifier("recents-delete-confirmation")
+    }
+
+    /// Keeps every library action visible instead of relying on AppKit toolbar
+    /// overflow behavior, which can omit controls entirely on narrow windows.
+    /// `ViewThatFits` preserves the single-row desktop treatment when it fits and
+    /// switches to a two-row arrangement for compact displays and split-screen use.
+    private var galleryToolbar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Brand.Spacing.sm) {
+                comparisonControls
+                Spacer(minLength: 0)
+                searchField
+                    .frame(width: 220)
+                pinnedFilter
+                sortMenu
+                clearMenu
+            }
+            VStack(spacing: Brand.Spacing.sm) {
+                searchField
+                    .frame(maxWidth: .infinity)
+                HStack(spacing: Brand.Spacing.sm) {
+                    comparisonControls
+                    Spacer(minLength: 0)
+                    pinnedFilter
+                        .labelStyle(.iconOnly)
+                    sortMenu
+                        .labelStyle(.iconOnly)
+                    clearMenu
+                        .labelStyle(.iconOnly)
+                }
+            }
+        }
+        .padding(.horizontal, Brand.Spacing.md)
+        .padding(.vertical, Brand.Spacing.sm)
+        .background(.bar)
+    }
+
+    @ViewBuilder private var comparisonControls: some View {
+        if isSelectingForComparison {
+            Button("Cancel") { endComparisonSelection() }
+                .accessibilityIdentifier("recents-compare-cancel")
+            Button("Create Board (\(comparisonSelection.count))") {
+                createComparisonBoard()
+            }
+            .disabled(!comparisonSelection.canCreateBoard)
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("recents-create-comparison-button")
+        } else {
+            Button {
+                beginComparisonSelection()
+            } label: {
+                Label("Compare", systemImage: "rectangle.on.rectangle.angled")
+            }
+            .disabled(recents.captures.count < ComparisonBoard.itemCountRange.lowerBound)
+            .help("Select two to four captures for one comparison board")
+            .accessibilityIdentifier("recents-compare-button")
+        }
+    }
+
+    private var searchField: some View {
+        TextField("Search Recents", text: $searchQuery)
+            .textFieldStyle(.roundedBorder)
+            .disabled(isSelectingForComparison)
+            .accessibilityIdentifier("recents-search-field")
+    }
+
+    private var pinnedFilter: some View {
+        Toggle(isOn: $showsPinnedOnly) {
+            Label("Pinned only", systemImage: "pin")
+        }
+        .toggleStyle(.button)
+        .help("Show only pinned recent captures")
+        .accessibilityHint("Show only pinned recent captures")
+        .accessibilityIdentifier("recents-pinned-filter")
+        .disabled(isSelectingForComparison)
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            ForEach(RecentsSortOrder.allCases) { order in
+                Button {
+                    sortOrder = order
+                } label: {
+                    HStack {
+                        Text(order.title)
+                        if sortOrder == order {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                .accessibilityIdentifier("recents-sort-\(order.rawValue)")
+            }
+        } label: {
+            Label(sortOrder.title, systemImage: "arrow.up.arrow.down")
+        }
+        .help("Sort captures while keeping pinned favorites first")
+        .accessibilityHint("Pinned captures remain first in every sort order")
+        .accessibilityIdentifier("recents-sort-picker")
+        .disabled(isSelectingForComparison)
+    }
+
+    private var clearMenu: some View {
+        Menu {
+            Button(role: .destructive) {
+                isConfirmingClearUnpinned = true
+            } label: {
+                Label("Clear Unpinned", systemImage: "trash.slash")
+            }
+            .disabled(!recents.captures.contains(where: { !$0.isPinned }))
+            .accessibilityIdentifier("recents-clear-unpinned-button")
+
+            Divider()
+
+            Button(role: .destructive) {
+                isConfirmingClear = true
+            } label: {
+                Label("Clear All", systemImage: "trash")
+            }
+            .accessibilityIdentifier("recents-clear-all-button")
+        } label: {
+            Label("Manage Recents", systemImage: "ellipsis.circle")
+        }
+        .help("Clear recent captures while optionally keeping pinned favorites")
+        .accessibilityIdentifier("recents-clear-button")
+        .disabled(isSelectingForComparison)
     }
 
     /// A prefiltered value keeps `ForEach` stable and makes the search contract easy

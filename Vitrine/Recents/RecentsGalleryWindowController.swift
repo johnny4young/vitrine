@@ -48,15 +48,21 @@ final class RecentsGalleryWindowController {
         }
         window?.makeKeyAndOrderFront(nil)
         if let window {
-            var visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame
-            #if DEBUG
-                visibleFrame =
-                    UITestVisibleFrame.decode(
-                        from: ProcessInfo.processInfo.environment) ?? visibleFrame
-            #endif
-            if let visibleFrame {
+            if let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
+                var availableFrame = visibleFrame
+                #if DEBUG
+                    // Forces the compact action-bar layout in UI automation without
+                    // coupling the assertion to the test machine's display width.
+                    if let rawWidth = ProcessInfo.processInfo.environment[
+                        "VITRINE_RECENTS_TEST_MAX_WIDTH"
+                    ], let requestedWidth = Double(rawWidth), requestedWidth > 0 {
+                        let width = min(CGFloat(requestedWidth), visibleFrame.width)
+                        availableFrame.origin.x = visibleFrame.midX - width / 2
+                        availableFrame.size.width = width
+                    }
+                #endif
                 window.setFrame(
-                    WindowFrameSolver.clamp(window.frame, into: visibleFrame), display: true)
+                    WindowFrameSolver.clamp(window.frame, into: availableFrame), display: true)
                 window.makeKeyAndOrderFront(nil)
             }
         }

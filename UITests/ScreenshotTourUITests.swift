@@ -524,7 +524,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let clearUnpinned = app.menuItems["Clear Unpinned"]
         XCTAssertTrue(clearUnpinned.waitForExistence(timeout: 3))
-        clearUnpinned.click()
+        clearUnpinned.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
         let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
         Thread.sleep(forTimeInterval: 0.4)
@@ -805,7 +805,6 @@ final class ScreenshotTourUITests: XCTestCase {
         app.launchArguments = arguments
         app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
             "VitrineScreenshotTour-\(name)-\(UUID().uuidString)"
-        configureVisibleFrame(for: app)
         app.launch()
         app.activate()
         XCTAssertTrue(

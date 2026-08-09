@@ -41,26 +41,6 @@ extension XCTestCase {
         app.descendants(matching: .any)[identifier]
     }
 
-    /// Shares XCUIAutomation's interactive screen geometry with the launched Debug app.
-    ///
-    /// GitHub's virtualized macOS images can report a transient, window-sized
-    /// `NSScreen.main.visibleFrame` before `XCUIApplication.launch()`, then switch the
-    /// automation desktop to 1024×768. `XCUIScreen` is the source of truth for the
-    /// coordinate space XCUIAutomation can hit; its screenshot is an `NSImage`, whose
-    /// size is expressed in logical points on macOS. The app owns menu-bar/Dock insets,
-    /// so this seam passes the complete interactive bounds from the origin.
-    @MainActor
-    func configureVisibleFrame(for app: XCUIApplication) {
-        let size = XCUIScreen.main.screenshot().image.size
-        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else {
-            return
-        }
-        let frame = CGRect(origin: .zero, size: size)
-        app.launchEnvironment["VITRINE_UI_TEST_VISIBLE_FRAME"] = [
-            frame.minX, frame.minY, frame.width, frame.height,
-        ].map(String.init).joined(separator: ",")
-    }
-
     /// Every AX element carrying `identifier`, resolved fresh on each call.
     ///
     /// A single identifier can legitimately match nested elements: an AppKit toolbar

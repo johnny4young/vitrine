@@ -1069,7 +1069,9 @@ final class VitrineUITests: XCTestCase {
         try skipUnlessADisplayFitsTheEditor()
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer {
             app.terminate()
             pasteboard.clearContents()
@@ -1216,7 +1218,9 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testRecentsCanFilterToPinnedCaptures() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
@@ -1235,7 +1239,9 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(cards.firstMatch.label.contains("Go"))
         XCTAssertTrue(element("recents-pinned-badge", in: app).exists)
 
-        pinnedFilter.click()
+        // The adaptive action bar can rebuild its compact branch after filtering;
+        // resolve the toggle again instead of reusing the pre-update AX handle.
+        hittableElement("recents-pinned-filter", in: app).click()
         let restoredDeadline = Date().addingTimeInterval(3)
         while cards.count != 3, Date() < restoredDeadline {
             Thread.sleep(forTimeInterval: 0.2)
@@ -1246,7 +1252,9 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testRecentsCanClearUnpinnedCaptures() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
@@ -1259,7 +1267,9 @@ final class VitrineUITests: XCTestCase {
 
         let clearUnpinned = app.menuItems["Clear Unpinned"]
         XCTAssertTrue(clearUnpinned.waitForExistence(timeout: 3))
-        clearUnpinned.click()
+        // The menu item intentionally disappears as soon as it presents the dialog.
+        // A coordinate click avoids XCUI retrying the now-defunct menu element.
+        clearUnpinned.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
 
         let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
@@ -1277,7 +1287,9 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testRecentsCanSortOldestFirstWithoutDisplacingPins() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
@@ -1502,7 +1514,10 @@ final class VitrineUITests: XCTestCase {
         continueAfterFailure = false
         let app = launch(
             arguments: [],
-            environment: ["VITRINE_WELCOME_TEST_MAX_HEIGHT": "520"])
+            environment: [
+                "VITRINE_WELCOME_TEST_MAX_HEIGHT": "520",
+                "VITRINE_WELCOME_TEST_MAX_WIDTH": "560",
+            ])
         defer { app.terminate() }
 
         let window = element("welcome-window", in: app)
@@ -1510,6 +1525,9 @@ final class VitrineUITests: XCTestCase {
         XCTAssertLessThanOrEqual(
             window.frame.height, 521,
             "The deterministic compact-height seam did not constrain the Welcome window")
+        XCTAssertLessThanOrEqual(
+            window.frame.width, 561,
+            "The deterministic compact-width seam did not constrain the Welcome window")
         assertExists(app.scrollViews["welcome-view"], in: app, timeout: 3)
 
         revealWelcomeControl("welcome-get-started-button", in: app)
@@ -1785,7 +1803,6 @@ final class VitrineUITests: XCTestCase {
         app.launchArguments = arguments + locale.launchArguments
         app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
             "VitrineUITests-\(name)-\(UUID().uuidString)"
-        configureVisibleFrame(for: app)
         for (key, value) in environment {
             app.launchEnvironment[key] = value
         }

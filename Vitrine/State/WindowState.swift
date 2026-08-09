@@ -354,24 +354,3 @@ enum WindowFrameSolver {
         min(minimumVisibleExtent, dimension)
     }
 }
-
-/// Decodes the visible frame reported by the UI-test runner.
-///
-/// Hosted macOS runners can expose different screen coordinate spaces to the
-/// XCTest process and the launched app. The UI harness passes its visible frame
-/// explicitly so Debug-only window placement can use the same geometry that
-/// XCUIAutomation uses for hittability. Production builds never consult this seam.
-enum UITestVisibleFrame {
-    static let environmentKey = "VITRINE_UI_TEST_VISIBLE_FRAME"
-
-    static func decode(from environment: [String: String]) -> CGRect? {
-        guard let rawValue = environment[environmentKey] else { return nil }
-        let components = rawValue.split(separator: ",", omittingEmptySubsequences: false)
-        guard components.count == 4 else { return nil }
-        let values = components.compactMap { Double($0) }
-        guard values.count == 4, values.allSatisfy(\.isFinite) else { return nil }
-        guard values[2] > 0, values[3] > 0 else { return nil }
-        let frame = CGRect(x: values[0], y: values[1], width: values[2], height: values[3])
-        return frame
-    }
-}

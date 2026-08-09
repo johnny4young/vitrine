@@ -601,7 +601,9 @@ gate lives in one place.
   style picker, the hotkey recorder, a launch-at-login toggle, a local-only privacy
   badge, and a clear **Skip / Get Started**. Both buttons mark the flow seen and
   close; skipping unlocks nothing because every feature is already reachable from the
-  menu bar.
+  menu bar. The root has a 700-point ideal width but can shrink to 480 points, and the
+  controller clamps it using AppKit's own visible-frame coordinate space so hosted,
+  split-screen, and compact-display layouts keep their trailing actions reachable.
 - **Sample capture with no clipboard.** "Try a sample capture" renders a built-in
   snippet through `QuickCapture.renderText` — the same exporter path as a real
   capture — so a brand-new user sees the full loop work without copying anything
@@ -973,7 +975,9 @@ editor reaches that lifecycle owner directly. Gallery filtering and mutation the
 observe the controller's Recents store and settings, while editor handoff and copy outcomes
 remain testable without discovering app-owned windows or the HUD. Window ownership lives
 in a separate source file so the gallery view stays a store-and-action surface rather than
-a second composition root.
+a second composition root. The gallery keeps search and all library actions in an adaptive
+in-content bar: `ViewThatFits` uses one row at desktop widths and two rows on compact
+windows. This avoids AppKit toolbar overflow dropping actions from the accessibility tree.
 
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }

@@ -220,13 +220,15 @@ the display again, individual tests can still be excluded with
 `make test-ui TEST_UI_SKIP="<test> <test>"` — if you reintroduce that in `ci.yml`,
 annotate every skipped test on every run so the skip stays visible.
 
-Hosted virtualization can also expose different screen coordinate spaces to the
-XCTest process and the launched app. The harness therefore passes its visible frame
-through `VITRINE_UI_TEST_VISIBLE_FRAME`; Debug builds use that value to keep Welcome
-and Recents inside the exact coordinate space XCUIAutomation can hit. Release builds
-never consult this test seam. Targeted UI selectors also choose a hittable match when
-AppKit exposes one toolbar identifier on both a wrapper and its nested control, which
-keeps the same assertions valid across Sequoia and Tahoe accessibility trees.
+Hosted virtualization can expose different screen coordinate spaces to the XCTest
+process and the launched app. Product windows therefore size and clamp themselves only
+against AppKit's own `NSScreen.visibleFrame`; transferring XCTest coordinates into the
+app would mix incompatible spaces. Welcome accepts a compact width, while Recents uses
+an adaptive in-content action bar so every action remains present when AppKit reports a
+narrow logical display. Failure attachments include both AppKit and XCUIAutomation
+geometry for diagnosis. Targeted UI selectors also choose a hittable match when AppKit
+exposes one identifier on both a wrapper and its nested control, which keeps the same
+assertions valid across Sequoia and Tahoe accessibility trees.
 
 The release gate (`release.yml`) still only *compiles* the UI tests: every commit
 on `main` has already had the full suite executed by `ci.yml`, and a UI-level
