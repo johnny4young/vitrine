@@ -36,7 +36,7 @@ struct CaptureFeedbackPresenterTests {
     }
 
     @Test func presentsFeedbackAndRoutesOpenEditorThroughInjectedPorts() throws {
-        let environment = try makeEnvironment()
+        let environment = makeEnvironment()
         environment.appSettings.config.code = "let answer = 42"
         let display = DisplaySpy()
         let routing = RoutingSpy()
@@ -53,7 +53,7 @@ struct CaptureFeedbackPresenterTests {
     }
 
     @Test func webSnapshotRecoveryConsumesThePendingURL() throws {
-        let environment = try makeEnvironment()
+        let environment = makeEnvironment()
         let display = DisplaySpy()
         let routing = RoutingSpy()
         let presenter = CaptureFeedbackPresenter(
@@ -86,7 +86,7 @@ struct CaptureFeedbackPresenterTests {
     }
 
     @Test func renderAsTextWithoutPendingURLRoutesToTheEditor() throws {
-        let environment = try makeEnvironment()
+        let environment = makeEnvironment()
         let display = DisplaySpy()
         let routing = RoutingSpy()
         let presenter = CaptureFeedbackPresenter(

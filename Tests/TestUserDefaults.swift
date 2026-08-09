@@ -1,67 +1,16 @@
 import Foundation
 import Testing
 
-/// A process-local `UserDefaults` test double.
+@testable import Vitrine
+
+/// The test-facing name for Vitrine's process-local defaults implementation.
 ///
 /// UUID-named `UserDefaults(suiteName:)` instances still create persistent plist files
 /// inside the sandbox even when a test later calls `removePersistentDomain`. Repeated
-/// local and CI runs therefore leak one file per fixture. This implementation preserves
-/// the `UserDefaults` API that Vitrine consumes while keeping every value in memory.
-/// Tests that explicitly exercise cross-instance cfprefsd persistence continue to use
-/// real named suites at their call sites.
-nonisolated class TestUserDefaults: UserDefaults, @unchecked Sendable {
-    private let lock = NSLock()
-    private var storedValues: [String: Any]
-    private var registeredValues: [String: Any]
-
-    init(initialValues: [String: Any] = [:]) {
-        self.storedValues = initialValues
-        self.registeredValues = [:]
-        super.init(suiteName: nil)!
-    }
-
-    override func object(forKey defaultName: String) -> Any? {
-        lock.withLock { storedValues[defaultName] ?? registeredValues[defaultName] }
-    }
-
-    override func set(_ value: Any?, forKey defaultName: String) {
-        lock.withLock {
-            if let value {
-                storedValues[defaultName] = value
-            } else {
-                storedValues.removeValue(forKey: defaultName)
-            }
-        }
-    }
-
-    override func removeObject(forKey defaultName: String) {
-        lock.withLock { _ = storedValues.removeValue(forKey: defaultName) }
-    }
-
-    override func register(defaults registrationDictionary: [String: Any]) {
-        lock.withLock { registeredValues.merge(registrationDictionary) { _, new in new } }
-    }
-
-    override func dictionaryRepresentation() -> [String: Any] {
-        lock.withLock {
-            registeredValues.merging(storedValues) { _, stored in stored }
-        }
-    }
-
-    override func persistentDomain(forName domainName: String) -> [String: Any]? {
-        lock.withLock { storedValues }
-    }
-
-    override func setPersistentDomain(_ domain: [String: Any], forName domainName: String) {
-        lock.withLock { storedValues = domain }
-    }
-
-    override func removePersistentDomain(forName domainName: String) {
-        lock.withLock { storedValues.removeAll(keepingCapacity: false) }
-    }
-
-    override func synchronize() -> Bool { true }
-}
+/// local and CI runs therefore leak one file per fixture. Tests inherit the exact store
+/// used by real editor sessions rather than maintaining a second simulation that can
+/// drift from production behavior.
+nonisolated class TestUserDefaults: InMemoryUserDefaults {}
 
 /// Creates a fresh in-memory defaults graph for one test.
 nonisolated func testDefaults(initialValues: [String: Any] = [:]) -> UserDefaults {
@@ -96,29 +45,54 @@ struct TestUserDefaultsTests {
         #expect(second.string(forKey: "stored") == "second")
     }
 
+    @Test func discardedStorePermanentlyRejectsLateWrites() {
+        let defaults = TestUserDefaults(initialValues: ["stored": "value"])
+        defaults.register(defaults: ["fallback": "registered"])
+
+        defaults.discard()
+        defaults.set("late", forKey: "stored")
+        defaults.register(defaults: ["fallback": "late"])
+        defaults.setPersistentDomain(["domain": "late"], forName: "ignored")
+
+        #expect(defaults.dictionaryRepresentation().isEmpty)
+
+        defaults.removeAllValues()
+        defaults.set("next", forKey: "stored")
+        #expect(defaults.object(forKey: "stored") == nil)
+    }
+
     @Test func persistentSuiteConstructionIsExplicitlyLimited() throws {
-        let testsRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        let projectRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
         let construction = try NSRegularExpression(
             pattern: #"UserDefaults\s*\(\s*suiteName:"#)
-        let enumerator = try #require(
-            FileManager.default.enumerator(
-                at: testsRoot, includingPropertiesForKeys: nil,
-                options: [.skipsHiddenFiles]))
         var offenders: [String] = []
 
-        for case let url as URL in enumerator
-        where url.pathExtension == "swift" && url.lastPathComponent != "TestUserDefaults.swift" {
-            let source = try String(contentsOf: url, encoding: .utf8)
-            let count = construction.numberOfMatches(
-                in: source, range: NSRange(source.startIndex..., in: source))
-            if count > 0 {
-                offenders.append("\(url.lastPathComponent): \(count)")
+        for directoryName in ["Vitrine", "Tests"] {
+            let directory = projectRoot.appendingPathComponent(directoryName, isDirectory: true)
+            let enumerator = try #require(
+                FileManager.default.enumerator(
+                    at: directory, includingPropertiesForKeys: nil,
+                    options: [.skipsHiddenFiles]))
+            for case let url as URL in enumerator
+            where url.pathExtension == "swift" && url.lastPathComponent != "TestUserDefaults.swift"
+            {
+                let source = sourceCodeWithoutLineComments(
+                    try String(contentsOf: url, encoding: .utf8))
+                let count = construction.numberOfMatches(
+                    in: source, range: NSRange(source.startIndex..., in: source))
+                if count > 0 {
+                    let relativePath = url.path.replacingOccurrences(
+                        of: "\(projectRoot.path)/", with: "")
+                    offenders.append("\(relativePath): \(count)")
+                }
             }
         }
 
         #expect(
-            offenders == ["WindowStateTests.swift: 1"],
-            "Persistent defaults are reserved for the explicit cfprefsd teardown contract: \(offenders)"
+            offenders == ["Vitrine/Support/AppDefaults.swift: 1"],
+            "Only the opt-in cross-launch UI-test store may create a persistent suite: \(offenders)"
         )
     }
 }

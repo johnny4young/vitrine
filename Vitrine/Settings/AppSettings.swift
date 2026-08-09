@@ -252,34 +252,18 @@ final class AppSettings {
 
     // MARK: - Per-window editor sessions
 
-    /// Builds an independent settings instance for one editor window, seeded from the
-    /// app-wide defaults but backed by its own **volatile** store, so the window edits
-    /// its own document/style without clobbering the global default. Edits in
-    /// the returned instance persist only to its throwaway suite; the user adopts a
-    /// window's look as the new default explicitly via ``makeDefault(from:)``.
-    ///
-    /// Seeding copies just the document/style and output keys (``Keys.editorSessionSeed``)
-    /// from `source` into a fresh, uniquely-named suite, then loads through the normal
-    /// defensive read path so the window starts from exactly what the user would see —
-    /// same theme (built-in or custom), font, background, and output settings. The
-    /// preset/theme *catalogs* are not copied: the editor resolves those through its
-    /// `AppEnvironment`, so saved presets and custom themes are visible in every window.
-    /// Creating the UUID-named suite is an isolation invariant; failure stops session
-    /// construction rather than silently writing editor changes into app-wide defaults.
-    /// The suite-name prefix shared by every per-window volatile store, and the launch
-    /// sweep's match criterion.
-    static let editorSessionSuitePrefix = "com.johnny4young.vitrine.editor-session."
+    /// The suite-name prefix used by editor sessions in earlier releases. Current sessions
+    /// never create a persistent suite; this remains only as the launch sweep's match
+    /// criterion so an upgrade can collect historical files safely.
+    static let legacyEditorSessionSuitePrefix = "com.johnny4young.vitrine.editor-session."
 
-    /// Deletes stale per-window suite files left behind by earlier runs.
+    /// Deletes stale per-window suite files left behind by earlier releases.
     ///
-    /// A per-window suite should die with its window, but three paths strand its plist
-    /// on disk: the primary session is deliberately kept for the app's whole run (so
-    /// only a clean quit can discard it), a force-quit or crash skips teardown
-    /// entirely, and `removePersistentDomain` itself leaves an empty husk behind —
-    /// `cfprefsd` owns the file, so deleting it at discard time races the daemon, which
-    /// is why the husk is cleaned here instead. Left alone they accumulate without
-    /// bound, holding user-typed annotation text; a machine that has run Vitrine for
-    /// two months carried 4,667 of them.
+    /// Earlier per-window UUID suites could outlive a primary session, a force-quit, or
+    /// a crash, and `removePersistentDomain` could leave an empty cfprefsd-owned husk.
+    /// Left alone they accumulated without bound and could hold user-typed annotation
+    /// text. Current sessions use ``InMemoryUserDefaults`` and cannot create these files;
+    /// this migration sweep remains so upgrading users converge to the new invariant.
     ///
     /// At launch no session of *this* process exists yet, so every matching file is
     /// garbage — except one belonging to a concurrently running second instance (a dev
@@ -299,7 +283,7 @@ final class AppSettings {
         else { return }
         for file in files {
             let name = file.lastPathComponent
-            guard name.hasPrefix(editorSessionSuitePrefix), name.hasSuffix(".plist") else {
+            guard name.hasPrefix(legacyEditorSessionSuitePrefix), name.hasSuffix(".plist") else {
                 continue
             }
             // Fail conservatively: a file whose modification date cannot be read is
@@ -326,65 +310,78 @@ final class AppSettings {
             .appendingPathComponent("Preferences", isDirectory: true)
     }
 
+    /// Builds an independent settings instance for one editor window, seeded from the
+    /// app-wide defaults but backed by its own **ephemeral in-memory** store, so the window
+    /// edits its own document/style without clobbering the global default. Edits in the
+    /// returned instance live only for this process; the user adopts a window's look as
+    /// the new default explicitly via ``makeDefault(from:)``.
+    ///
+    /// Seeding copies just the document/style and output keys (``Keys.editorSessionSeed``)
+    /// from `source` into a fresh memory store, then loads through the normal defensive
+    /// read path so the window starts from exactly what the user would see — same theme
+    /// (built-in or custom), font, background, and output settings. The preset/theme
+    /// *catalogs* are not copied: the editor resolves those through its `AppEnvironment`,
+    /// so saved presets and custom themes are visible in every window.
     static func makeEditorSession(
         seededFrom source: UserDefaults,
+        store: InMemoryUserDefaults = InMemoryUserDefaults(),
         brandKit: BrandKitStore,
         entitlements: Entitlements
     )
         -> AppSettings
     {
-        let suiteName = "\(editorSessionSuitePrefix)\(UUID().uuidString)"
-        guard let volatile = UserDefaults(suiteName: suiteName) else {
-            preconditionFailure("Unable to create an isolated editor settings store")
-        }
-        // Start from a clean slate so a reused suite name (it never is — the name is a
-        // fresh UUID) cannot leak prior values, then copy the seed keys verbatim.
-        volatile.removePersistentDomain(forName: suiteName)
+        // Start from a clean slate on the fresh, exclusive store, then copy the seed keys
+        // verbatim. Construction is nonfailable and never falls back to the app-wide
+        // persistent domain. A discarded store is deliberately never reusable: otherwise
+        // its old owner could write into a new editor session.
+        store.removeAllValues()
         for key in Keys.editorSessionSeed {
-            if let value = source.object(forKey: key) { volatile.set(value, forKey: key) }
+            if let value = source.object(forKey: key) { store.set(value, forKey: key) }
         }
         return AppSettings(
-            defaults: volatile, volatileSuiteName: suiteName,
+            defaults: store, ephemeralStore: store,
             brandKit: brandKit, entitlements: entitlements)
     }
 
-    /// Convenience initializer for a volatile per-window session that records its
-    /// throwaway suite name so it can be torn down when the window closes.
+    /// Convenience initializer for an ephemeral per-window session that retains the
+    /// memory store so its values can be cleared deterministically on window close.
     private convenience init(
-        defaults: UserDefaults,
-        volatileSuiteName: String,
+        defaults: InMemoryUserDefaults,
+        ephemeralStore: InMemoryUserDefaults,
         brandKit: BrandKitStore,
         entitlements: Entitlements
     ) {
         self.init(defaults: defaults, brandKit: brandKit, entitlements: entitlements)
-        self.volatileSuiteName = volatileSuiteName
+        self.ephemeralStore = ephemeralStore
+        isEphemeralSession = true
     }
 
-    /// The throwaway suite name backing a per-window session, or `nil` for the shared
-    /// (persistent) instance. Used to clean up the volatile store on window close.
-    private(set) var volatileSuiteName: String?
+    /// The in-memory store backing a per-window session. It is intentionally ignored by
+    /// Observation because teardown is lifecycle state, not a UI input.
+    @ObservationIgnored private var ephemeralStore: InMemoryUserDefaults?
+
+    /// Whether this instance owns a live ephemeral editor store rather than the shared,
+    /// persistent app domain.
+    private(set) var isEphemeralSession = false
 
     /// Whether this session's store has been torn down, so later writes stop persisting.
     ///
-    /// A window can close while an async task it started is still in flight — the
-    /// editor's image OCR/redaction pass is the known case, taking seconds on a large
-    /// screenshot. That task then assigns `settings.config`, whose observer persists ~18
-    /// keys into the domain `discardVolatileStore()` just removed, so `cfprefsd`
-    /// *recreates* the per-window plist. Because `volatileSuiteName` is already nil by
-    /// then, nothing will ever clean that file up again: one orphan per occurrence,
-    /// surviving relaunches, containing user-typed annotation text.
+    /// A window can close while an async task it started is still in flight. That task
+    /// may still assign `settings.config`; the live value is allowed to update, but its
+    /// write-back stays suppressed after teardown so cleared objects are not retained.
     ///
-    /// Latched only for a volatile session (the guard below returns first for the shared
+    /// Latched only for an ephemeral session (the guard below returns first for the shared
     /// persistent instance), so the app-wide store is never silenced.
     private var isDiscarded = false
 
-    /// Removes this session's volatile backing store, if any. Called when an editor
-    /// window closes so a per-window suite never accumulates on disk. A no-op
+    /// Clears this session's ephemeral backing store, if any. Called when an editor
+    /// window closes so draft objects are released promptly. A no-op
     /// for the shared, persistent instance.
-    func discardVolatileStore() {
-        guard let volatileSuiteName else { return }
-        defaults.removePersistentDomain(forName: volatileSuiteName)
-        self.volatileSuiteName = nil
+    func discardEphemeralStore() {
+        guard let ephemeralStore else { return }
+        ephemeralStore.discard()
+        self.ephemeralStore = nil
+        isEphemeralSession = false
         isDiscarded = true
     }
 

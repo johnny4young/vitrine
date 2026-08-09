@@ -53,7 +53,7 @@ final class AppEnvironment {
         workspaceRecipes = WorkspaceRecipeStore(defaults: defaults)
     }
 
-    /// Creates one editor window's volatile settings from this graph. The session keeps
+    /// Creates one editor window's ephemeral in-memory settings from this graph. The session keeps
     /// its own document/style store, while Brand Kit and entitlement resolution stay
     /// aligned with the long-lived instances the editor view observes.
     func makeEditorSessionSettings() -> AppSettings {

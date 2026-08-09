@@ -891,8 +891,8 @@ back to the shared graph.
 
 `EditorWindowController` is the equivalent composition boundary for editor windows. It
 passes one `AppEnvironment`, one transient-feedback operation, and one closure-backed
-presentation value to each `EditorSession` and `EditorView`. A session still owns volatile
-document/style settings — primary windows adopt the current working document, while
+presentation value to each `EditorSession` and `EditorView`. A session owns ephemeral,
+process-local document/style settings — primary windows adopt the current working document, while
 additional windows seed only the default style — but those settings are constructed with
 the same Brand Kit and entitlement instances the view observes. Toolbar, stage, and
 session actions present outcomes through injected operations rather than discovering the
