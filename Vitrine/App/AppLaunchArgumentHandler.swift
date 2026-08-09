@@ -31,7 +31,9 @@ final class AppLaunchArgumentHandler {
     /// New through its real version gate; `--skip-onboarding` just marks the
     /// quick-start as seen; the multi-window hooks (`--open-second-editor`,
     /// `--force-offscreen-editor`) drive UI smoke tests; `--demo-brand-kit-free`
-    /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests.
+    /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests;
+    /// `--web-snapshot-ui-test-renderer` keeps that strict UI journey deterministic
+    /// when XCTest cannot launch WebKit's out-of-process renderer.
     ///
     /// - Returns: whether a hook opened a window, so the normal first-run surfaces
     ///   (`presentIfFirstRun` / `presentIfNewVersion`) are not stacked on top of one.

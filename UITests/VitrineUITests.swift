@@ -690,6 +690,128 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("metadata-language-badge-toggle", in: app), in: app)
     }
 
+    // MARK: - Web Snapshot
+
+    @MainActor
+    func testWebSnapshotRendersAndCopiesMultipleLocalHTMLViewports() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        let app = launch(
+            arguments: [
+                "--skip-onboarding", "--web-snapshot-ui-test-renderer", "--open-web-snapshot",
+            ])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        let window = element("web-snapshot-window", in: app)
+        assertExists(window, in: app, timeout: 8)
+        assertExists(element("web-snapshot-inspector", in: app), in: app, timeout: 3)
+        assertExists(element("web-snapshot-preview-stage", in: app), in: app, timeout: 3)
+
+        let htmlMode = element("web-snapshot-mode-html", in: app)
+        assertExists(htmlMode, in: app, timeout: 3)
+        htmlMode.click()
+
+        // SwiftUI exposes both the placeholder StaticText and the editable TextView
+        // with this identifier. Resolve the typed control so actions never face an
+        // ambiguous any-element query.
+        let editor = app.textViews["web-snapshot-html-editor"]
+        assertExists(editor, in: app, timeout: 3)
+        editor.click()
+        let html = """
+            <!doctype html><html><head><meta name="viewport" content="width=device-width">
+            <style>
+            *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;
+            background:#0b1020;color:#f8fafc;font-family:-apple-system}main{text-align:center;
+            padding:48px}h1{margin:0 0 12px;font-size:64px}p{margin:0;color:#a7f3d0;font-size:24px}
+            @media(max-width:600px){h1{font-size:38px}p{font-size:18px}}
+            </style></head><body><main><h1>Vitrine Web Journey</h1><p>Rendered locally.</p>
+            </main></body></html>
+            """
+        XCTAssertTrue(pasteboard.setString(html, forType: .string))
+        editor.typeKey("v", modifierFlags: .command)
+        XCTAssertTrue(
+            (editor.value as? String)?.contains("Vitrine Web Journey") == true,
+            "The local HTML fixture must reach the editable source field")
+
+        let social = element("web-viewport-chip-openGraph", in: app)
+        let desktop = element("web-viewport-chip-desktop", in: app)
+        let mobile = element("web-viewport-chip-mobile", in: app)
+        for chip in [social, desktop, mobile] {
+            assertExists(chip, in: app, timeout: 3)
+        }
+        XCTAssertTrue(social.isSelected, "The default Social viewport must remain selected")
+        desktop.click()
+        mobile.click()
+        XCTAssertTrue(desktop.isSelected, "Desktop must join the capture set")
+        XCTAssertTrue(mobile.isSelected, "Mobile must join the capture set")
+
+        assertHittable(
+            "web-snapshot-capture-button", in: app,
+            "Local HTML should enable the Web Snapshot render action")
+        element("web-snapshot-capture-button", in: app).click()
+
+        let results = element("web-snapshot-results", in: app)
+        assertExists(results, in: app, timeout: 20)
+        for identifier in [
+            "web-snapshot-result-board", "web-snapshot-result-openGraph",
+            "web-snapshot-result-desktop", "web-snapshot-result-mobile",
+        ] {
+            assertHittable(
+                identifier, in: app,
+                "A successful multi-viewport render must expose result \(identifier)",
+                timeout: 5)
+        }
+        XCTAssertTrue(
+            element("web-snapshot-result-board", in: app).isSelected,
+            "The responsive board must be the default multi-viewport result")
+
+        for identifier in [
+            "web-snapshot-export-all-button", "web-snapshot-save-button",
+            "web-snapshot-share-button", "web-snapshot-copy-button",
+        ] {
+            assertHittable(
+                identifier, in: app,
+                "Rendered Web Snapshot action \(identifier) must be enabled",
+                timeout: 5)
+        }
+
+        let mobileResult = element("web-snapshot-result-mobile", in: app)
+        mobileResult.click()
+        let selectedDeadline = Date().addingTimeInterval(3)
+        while !mobileResult.isSelected, Date() < selectedDeadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(mobileResult.isSelected, "Selecting Mobile must update the export target")
+
+        Thread.sleep(forTimeInterval: 0.5)
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "web-snapshot-multi-viewport-render"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        element("web-snapshot-copy-button", in: app).click()
+        assertExists(element("capture-hud", in: app), in: app, timeout: 3)
+
+        let copyDeadline = Date().addingTimeInterval(6)
+        var copiedImage: NSBitmapImageRep?
+        repeat {
+            if let data = pasteboard.data(forType: .png) {
+                copiedImage = NSBitmapImageRep(data: data)
+            }
+            if copiedImage != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < copyDeadline
+
+        let copied = try XCTUnwrap(copiedImage, "Copy image did not place a PNG on the pasteboard")
+        XCTAssertEqual(copied.pixelsWide, 780)
+        XCTAssertEqual(copied.pixelsHigh, 1688)
+    }
+
     @MainActor
     func testMainMenuExposesPrimaryCommands() {
         continueAfterFailure = false
