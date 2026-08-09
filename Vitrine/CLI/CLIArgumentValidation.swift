@@ -4,13 +4,14 @@ extension CLIArgumentParser {
     /// Validates option combinations and materializes the immutable command contract.
     mutating func resolvedOptions() throws -> CLIOptions {
         let recipe = try recipePath.map(CLIRecipeLoader.load(path:))
-        let resolvedPresetID = presetID ?? recipe?.output.destinationPresetID
-        let resolvedCanvasSize = canvasSize ?? recipe?.output.canvasSize?.cgSize
-        let resolvedScale = scale ?? recipe?.output.scale
-        let resolvedProfile = profile ?? recipe?.output.colorProfile ?? .fallback
-        let resolvedLanguageBadge =
-            showLanguageBadge ?? recipe?.metadata.header.showLanguageBadge ?? false
+        try validateOptionCombinations(recipe: recipe)
+        return try materializeOptions(recipe: recipe)
+    }
 
+    /// Keeps the compatibility matrix separate from immutable option construction.
+    /// Besides making each responsibility reviewable, this bounds the stack frame
+    /// the Swift backend must instrument in sanitizer builds.
+    private mutating func validateOptionCombinations(recipe: WorkspaceRecipe?) throws {
         if mode == .terminalCapture, !copyToClipboard, !openInEditor {
             throw CLIError.missingRequired("--copy or --edit")
         }
@@ -359,6 +360,18 @@ extension CLIArgumentParser {
             throw CLIError.incompatibleOptions(
                 "--html-sidecar needs an --out path to write beside.")
         }
+    }
+
+    /// Resolves recipe fallbacks and constructs the value returned to the renderer.
+    /// All invalid combinations have already been rejected by the validation pass.
+    private func materializeOptions(recipe: WorkspaceRecipe?) throws -> CLIOptions {
+        let resolvedPresetID = presetID ?? recipe?.output.destinationPresetID
+        let resolvedCanvasSize = canvasSize ?? recipe?.output.canvasSize?.cgSize
+        let resolvedScale = scale ?? recipe?.output.scale
+        let resolvedProfile = profile ?? recipe?.output.colorProfile ?? .fallback
+        let resolvedLanguageBadge =
+            showLanguageBadge ?? recipe?.metadata.header.showLanguageBadge ?? false
+
         // Input is a code file, local image, stdin, or a generated local Git diff;
         // output is required unless copying or handing the source to the editor.
         let resolvedInput: String
