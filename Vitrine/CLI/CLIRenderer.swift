@@ -384,6 +384,8 @@ enum CLIRenderer {
                 throw CLIError.gitDiffEmpty
             } catch GitDiffInputLoader.LoadError.tooLarge {
                 throw CLIError.gitDiffTooLarge
+            } catch GitDiffInputLoader.LoadError.invalidContextLines(let value) {
+                throw CLIError.invalidValue(flag: "--git-context", value: String(value))
             } catch {
                 throw CLIError.gitDiffFailed
             }

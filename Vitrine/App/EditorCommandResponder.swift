@@ -31,6 +31,11 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     /// of risking an unresponsive editor.
     private static let asyncFormatThresholdBytes = 64 * 1024
     private static let maxInteractiveFormatBytes = 1 * 1024 * 1024
+    /// At most one large format may remain relevant. Replacing it cooperatively cancels
+    /// stale CPU work and, more importantly, prevents an older result from winning after
+    /// a newer command or a synchronous small edit.
+    private var formatTask: Task<Void, Never>?
+    private var formatGeneration: UInt = 0
 
     init(
         settings: AppSettings,
@@ -41,6 +46,10 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         self.feedback = feedback
         self.presentation = presentation
         super.init()
+    }
+
+    isolated deinit {
+        formatTask?.cancel()
     }
 
     /// The settings the command should act on: the key editor window's own session,
@@ -161,21 +170,39 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         guard canPerform(.formatCode),
             let textView = Self.editorTextView(in: NSApp.keyWindow ?? NSApp.mainWindow)
         else { return }
+        formatCode(in: textView, language: activeSettings.config.language)
+    }
+
+    /// Formats an already-resolved editor. Keeping the AppKit lookup at the command
+    /// boundary lets the asynchronous edit contract be exercised without relying on
+    /// process-global key-window state in the test host.
+    func formatCode(in textView: NSTextView, language: Language) {
         let original = textView.string
         let byteCount = original.utf8.count
+        formatTask?.cancel()
+        formatTask = nil
+        formatGeneration &+= 1
+        let generation = formatGeneration
         guard byteCount <= Self.maxInteractiveFormatBytes else {
             feedback(
                 Notifier.failure(String(localized: "Code is too large to format interactively")))
             return
         }
 
-        let language = activeSettings.config.language
         if byteCount > Self.asyncFormatThresholdBytes {
-            Task { [weak textView] in
-                let tidied = await Task.detached(priority: .userInitiated) {
-                    CodeFormatter.tidy(original, language: language)
-                }.value
-                guard let textView, textView.string == original else { return }
+            formatTask = Task(priority: .userInitiated) { [weak self, weak textView] in
+                defer {
+                    if self?.formatGeneration == generation {
+                        self?.formatTask = nil
+                    }
+                }
+                guard
+                    let tidied = try? await CodeFormatter.tidyConcurrently(
+                        original, language: language),
+                    !Task.isCancelled,
+                    let textView,
+                    textView.string == original
+                else { return }
                 Self.applyFormattedCode(tidied, original: original, to: textView)
             }
             return

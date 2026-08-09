@@ -540,7 +540,7 @@ struct WebFullPageCaptureRenderTests {
 
     @Test func aVisibleViewportCaptureIsExactlyTheViewportSize() async throws {
         let engine = URLSnapshotEngine()
-        let config = WebSnapshotConfig(
+        let config = try WebSnapshotConfig(
             localFileURL: try Self.writeTallPage(contentHeight: 4000),
             viewportPreset: .custom(width: 600, height: 400),
             captureMode: .visibleViewport, scale: 1)
@@ -554,7 +554,7 @@ struct WebFullPageCaptureRenderTests {
     @Test func aFullPageCaptureExtendsToTheContentHeight() async throws {
         let contentHeight = 3000
         let engine = URLSnapshotEngine()
-        let config = WebSnapshotConfig(
+        let config = try WebSnapshotConfig(
             localFileURL: try Self.writeTallPage(contentHeight: contentHeight),
             viewportPreset: .custom(width: 600, height: 400),
             captureMode: .fullPage, scale: 1)
@@ -574,7 +574,7 @@ struct WebFullPageCaptureRenderTests {
         // pixel count is bounded no matter how long the page is.
         let cappedCaps = WebSnapshotConfig.SafetyCaps(maxPageHeight: 1200, maxTimeout: .seconds(60))
         let engine = URLSnapshotEngine()
-        let config = WebSnapshotConfig(
+        let config = try WebSnapshotConfig(
             localFileURL: try Self.writeTallPage(contentHeight: 8000),
             viewportPreset: .custom(width: 500, height: 400),
             captureMode: .fullPage, safetyCaps: cappedCaps, scale: 1)

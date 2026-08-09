@@ -466,4 +466,44 @@ struct EditorCommandResponderTests {
         // Disabled: no editor window is key in the test host.
         #expect(responder.validateMenuItem(item) == false)
     }
+
+    @Test func largeFormatRunsConcurrentlyAndAppliesToTheLiveTextView() async throws {
+        let input = String(repeating: "struct A {\nlet x = 1\n}\n", count: 3_000)
+        #expect(input.utf8.count > 64 * 1_024)
+        let expected = CodeFormatter.tidy(input, language: .swift)
+        let responder = EditorCommandResponder(
+            settings: makeSettings(code: input),
+            feedback: .noOp,
+            presentation: .noOp)
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+        textView.setAccessibilityIdentifier("code-editor-text-view")
+        textView.string = input
+
+        responder.formatCode(in: textView, language: .swift)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while textView.string == input, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(textView.string == expected)
+    }
+
+    @Test func aNewFormatCommandPreventsAnOlderLargeResultFromWinning() async throws {
+        let largeInput = String(repeating: "struct Old {\nlet stale = true\n}\n", count: 3_000)
+        let currentInput = "struct Current {\nlet value = true\n}"
+        let expected = CodeFormatter.tidy(currentInput, language: .swift)
+        let responder = EditorCommandResponder(
+            settings: makeSettings(code: largeInput),
+            feedback: .noOp,
+            presentation: .noOp)
+        let textView = NSTextView(frame: .zero)
+        textView.string = largeInput
+
+        responder.formatCode(in: textView, language: .swift)
+        textView.string = currentInput
+        responder.formatCode(in: textView, language: .swift)
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(textView.string == expected)
+    }
 }
