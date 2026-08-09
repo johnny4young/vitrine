@@ -33,8 +33,10 @@ VISUAL_RESULT_BUNDLE ?= build/screenshot-tour.xcresult
 
 # Dynamic-memory evidence is intentionally local and review-driven. It reuses the normal
 # Debug build and resolved exact package checkouts, then launches under `leaks`; optional
-# MEMORY_BASELINE points at an earlier report.json for same-environment deltas.
+# MEMORY_BASELINE points at an earlier report.json for same-environment/same-journey
+# deltas. MEMORY_JOURNEY selects editor-snapshot or image-import-cycle.
 MEMORY_OUTPUT ?= build/memory-smoke
+MEMORY_JOURNEY ?= editor-snapshot
 MEMORY_BASELINE_FLAG := $(if $(MEMORY_BASELINE),--baseline "$(MEMORY_BASELINE)",)
 
 # The entitlements file the Vitrine target signs with, consumed by project.yml as
@@ -179,11 +181,13 @@ perf: project
 ## memory-smoke: capture an editor memgraph and parsed at-exit leak evidence
 ## This is an evidence lane, not a zero-leak gate: Apple/WebKit roots and reachable
 ## growth require human classification. Compare a prior same-environment report with
-## MEMORY_BASELINE=build/memory-smoke/<run>/report.json.
+## MEMORY_BASELINE=build/memory-smoke/<run>/report.json. Use
+## MEMORY_JOURNEY=image-import-cycle for repeated isolated image import/decode evidence.
 memory-smoke: build memory-smoke-check
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
 		--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
-		--output "$(MEMORY_OUTPUT)" $(MEMORY_BASELINE_FLAG)
+		--output "$(MEMORY_OUTPUT)" --journey "$(MEMORY_JOURNEY)" \
+		$(MEMORY_BASELINE_FLAG)
 
 ## memory-smoke-check: validate the parser and baseline comparison without launching UI
 memory-smoke-check:

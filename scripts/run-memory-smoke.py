@@ -19,6 +19,19 @@ from typing import Sequence
 
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT = Path("build/memory-smoke")
+DEFAULT_JOURNEY = "editor-snapshot"
+JOURNEYS = {
+    "editor-snapshot": {
+        "label": "editor snapshot loop",
+        "arguments": ["--open-editor", "--snapshot-loop"],
+        "completion_marker": None,
+    },
+    "image-import-cycle": {
+        "label": "foreground image import and decode cycle",
+        "arguments": ["--memory-image-cycle"],
+        "completion_marker": "VITRINE_MEMORY_IMAGE_CYCLE_COMPLETE",
+    },
+}
 APP_FRAME_MARKER = "Vitrine.debug.dylib"
 ROOT_STACK_PATTERN = re.compile(
     r"^STACK OF (?P<count>\d+) INSTANCES? OF '(?P<header>.*)':$"
@@ -193,12 +206,17 @@ def baseline_comparison(
         for key in ("macos", "architecture", "xcode")
         if baseline_environment.get(key) != candidate_environment.get(key)
     ]
+    baseline_journey = baseline.get("journey_id", baseline.get("journey"))
+    candidate_journey = candidate.get("journey_id", candidate.get("journey"))
+    comparable_journey = baseline_journey == candidate_journey
     baseline_metrics = baseline.get("metrics")
     candidate_metrics = candidate.get("metrics")
     if not isinstance(baseline_metrics, dict) or not isinstance(candidate_metrics, dict):
         raise ValueError("baseline and candidate need parsed metrics")
     return {
+        "comparable": not mismatches and comparable_journey,
         "comparable_environment": not mismatches,
+        "comparable_journey": comparable_journey,
         "environment_mismatches": mismatches,
         "leak_records_delta": int(candidate_metrics["leak_records"])
         - int(baseline_metrics["leak_records"]),
@@ -256,6 +274,8 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
         "generic app entry points excluded",
     )
     baseline = {
+        "journey_id": "editor-snapshot",
+        "journey": "editor snapshot loop",
         "environment": {"macos": "15.0", "architecture": "arm64", "xcode": ["16"]},
         "metrics": {
             "leak_records": 3,
@@ -265,6 +285,8 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
         },
     }
     candidate = {
+        "journey_id": "editor-snapshot",
+        "journey": "editor snapshot loop",
         "environment": {"macos": "15.0", "architecture": "arm64", "xcode": ["16"]},
         "metrics": {
             "leak_records": 4,
@@ -274,8 +296,17 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
         },
     }
     comparison = baseline_comparison(baseline, candidate)
+    require_self_test(comparison["comparable"] is True, "comparable report")
     require_self_test(comparison["comparable_environment"] is True, "comparable baseline")
+    require_self_test(comparison["comparable_journey"] is True, "comparable journey")
     require_self_test(comparison["leaked_bytes_delta"] == 32, "baseline delta")
+    candidate["journey_id"] = "image-import-cycle"
+    different_journey = baseline_comparison(baseline, candidate)
+    require_self_test(
+        different_journey["comparable"] is False
+        and different_journey["comparable_journey"] is False,
+        "different journeys are not comparable",
+    )
     require_self_test(approximate_bytes("1.5M") == 1_572_864, "compact quantity")
     print("memory-smoke self-test passed")
     return 0
@@ -360,6 +391,9 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
     suite = f"com.johnny4young.vitrine.memory-smoke.{uuid.uuid4()}"
     environment = os.environ.copy()
     environment["VITRINE_USER_DEFAULTS_SUITE"] = suite
+    journey = JOURNEYS[arguments.journey]
+    if arguments.journey == "image-import-cycle":
+        environment["VITRINE_MEMORY_IMAGE_STORE_ISOLATED"] = "1"
     command = [
         "xcrun",
         "leaks",
@@ -369,8 +403,7 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
         "--",
         str(executable),
         "--skip-onboarding",
-        "--open-editor",
-        "--snapshot-loop",
+        *journey["arguments"],
     ]
 
     launch_status: int | None = None
@@ -400,6 +433,12 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
             f"leaks did not produce {memgraph}; inspect {launch_log} "
             f"(exit status {launch_status})"
         )
+    completion_marker = journey["completion_marker"]
+    launch_text = launch_log.read_text(encoding="utf-8")
+    if completion_marker is not None and completion_marker not in launch_text:
+        raise RuntimeError(
+            f"{arguments.journey} did not report completion; inspect {launch_log}"
+        )
     with leaks_report.open("w", encoding="utf-8") as output:
         analysis = subprocess.run(
             ["xcrun", "leaks", "--fullStacks", str(memgraph)],
@@ -419,7 +458,8 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
     metrics = parse_leaks_report(report_text)
     report: dict[str, object] = {
         "schema_version": SCHEMA_VERSION,
-        "journey": "editor snapshot loop",
+        "journey_id": arguments.journey,
+        "journey": journey["label"],
         "environment": environment_metadata(root),
         "app": str(app),
         "launch_exit_status": launch_status,
@@ -438,6 +478,12 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
                 "An application frame identifies an allocation path, not ownership of the leaked root.",
                 "Snapshot rasterization contributes to the recorded peak footprint.",
                 "Framework leaks are reported rather than silently allowlisted or treated as product failures.",
+                (
+                    "The image journey uses deterministic local PNGs; it does not simulate "
+                    "a defective external item provider or a maximum-size image."
+                    if arguments.journey == "image-import-cycle"
+                    else "The editor snapshot journey does not exercise image import or item-provider callbacks."
+                ),
             ],
         },
     }
@@ -453,7 +499,10 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
     report["artifacts"]["report"] = str(report_path)
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    print("Dynamic-memory evidence captured; manual root classification is required.")
+    print(
+        f"Dynamic-memory evidence captured for {journey['label']}; "
+        "manual root classification is required."
+    )
     print(
         f"Leaks: {metrics['leak_records']} records / {metrics['leaked_bytes']} bytes; "
         f"footprint: {metrics['physical_footprint']} "
@@ -480,6 +529,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--project", type=Path, default=Path("Vitrine.xcodeproj"))
     parser.add_argument("--scheme", default="Vitrine")
     parser.add_argument("--configuration", default="Debug")
+    parser.add_argument(
+        "--journey", choices=sorted(JOURNEYS), default=DEFAULT_JOURNEY
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--launch-timeout", type=int, default=180)

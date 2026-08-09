@@ -100,12 +100,37 @@ struct BackgroundImageStore {
     /// directory if Application Support is unavailable so the store is always usable.
     private static func appContainer(subdirectory: String) -> BackgroundImageStore {
         let base =
-            (try? FileManager.default.url(
+            debugIsolatedContainerRoot()
+            ?? (try? FileManager.default.url(
                 for: .applicationSupportDirectory, in: .userDomainMask,
                 appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
         return BackgroundImageStore(
             directory: base.appendingPathComponent(subdirectory, isDirectory: true))
+    }
+
+    /// A per-launch temporary root for the opt-in dynamic image-memory journey.
+    ///
+    /// The override exists only in Debug and requires the same isolated-defaults marker
+    /// used by UI/memory automation. A normal app launch — including every Release build
+    /// — therefore continues to use Application Support. Hashing the suite produces a
+    /// plain path component without trusting environment text as a filesystem path.
+    static func debugIsolatedContainerRoot(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        temporaryDirectory: URL = FileManager.default.temporaryDirectory
+    ) -> URL? {
+        #if DEBUG
+            guard environment["VITRINE_MEMORY_IMAGE_STORE_ISOLATED"] == "1",
+                let suite = environment["VITRINE_USER_DEFAULTS_SUITE"], !suite.isEmpty
+            else { return nil }
+            let digest = SHA256.hash(data: Data(suite.utf8))
+                .map { String(format: "%02x", $0) }
+                .joined()
+            return temporaryDirectory.appendingPathComponent(
+                "vitrine-memory-images-\(digest)", isDirectory: true)
+        #else
+            return nil
+        #endif
     }
 
     /// Copies the user-selected image at `sourceURL` into the container and

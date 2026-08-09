@@ -116,17 +116,26 @@ the Xcode scheme default.
 
 Run `make memory-smoke` before a release candidate and after changes to window,
 renderer, observer, or asynchronous-task lifecycles. It runs the normal headless Debug
-build, reusing Xcode's already-resolved exact package checkouts, then launches an
-isolated editor journey under Apple's `leaks --atExit`. The raw memgraph, full stack
-report, launch log, and a machine-readable summary are retained below
-`build/memory-smoke/<timestamp>/`.
+build, reusing Xcode's already-resolved exact package checkouts, then launches a selected
+isolated journey under Apple's `leaks --atExit`. The default editor journey exercises
+window rendering and repeated snapshot rasterization. The image journey imports and
+decodes a deterministic sequence through the production `BackgroundImageStore`, replaces
+and clears the live foreground image, rejects duplicate window snapshots so disconnected
+UI state cannot pass silently, and removes its synthetic temporary store before reporting
+completion. The raw memgraph, full stack report, launch log, and a machine-readable
+summary are retained below `build/memory-smoke/<timestamp>/`.
 
 ```bash
 make memory-smoke
 
+# Exercise distinct foreground-image imports, decodes, replacements, and teardown.
+make memory-smoke MEMORY_JOURNEY=image-import-cycle
+
 # Compare counts and footprints with an earlier run from the same OS, architecture,
-# and Xcode. The report marks environment drift instead of pretending it is comparable.
+# Xcode, and journey. The report marks either kind of drift instead of pretending the
+# evidence is comparable.
 make memory-smoke \
+  MEMORY_JOURNEY=image-import-cycle \
   MEMORY_BASELINE=build/memory-smoke/<earlier-run>/report.json
 ```
 
@@ -138,7 +147,9 @@ also contributes to the peak footprint. Review the root stacks in `leaks.txt` an
 memgraph before classifying a regression. The command fails when the build, journey,
 capture, or report is invalid, but it does not silently allowlist framework roots or
 turn their mere presence into an app failure. Keep all generated evidence local and
-untracked.
+untracked. The image journey deliberately uses local bounded fixtures; it does not replace
+the unit coverage for oversized/corrupt inputs and does not simulate an external item
+provider that never calls back.
 
 ### Running the UI tests
 

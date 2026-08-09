@@ -12,9 +12,10 @@ can never drift.
 
 ## [Unreleased]
 
-- Add a repeatable dynamic-memory evidence lane that captures an isolated editor
-  memgraph, reports allocation and leak roots without false framework allowlists, and
-  compares only explicitly identified same-environment baselines.
+- Add a repeatable dynamic-memory evidence lane with selectable editor and isolated image
+  import/decode journeys. It retains raw memgraphs, reports allocation and leak roots
+  without false framework allowlists, and compares only explicitly identified baselines
+  from the same environment and journey.
 
 ### Changed
 

@@ -27,10 +27,18 @@ struct MemorySmokeContractTests {
         let script = try Self.text("scripts", "run-memory-smoke.py")
         for required in [
             "VITRINE_USER_DEFAULTS_SUITE",
+            "VITRINE_MEMORY_IMAGE_STORE_ISOLATED",
             "--outputGraph=",
             "--atExit",
             "--fullStacks",
+            "--journey",
             "--snapshot-loop",
+            "--memory-image-cycle",
+            "VITRINE_MEMORY_IMAGE_CYCLE_COMPLETE",
+            "editor-snapshot",
+            "image-import-cycle",
+            "journey_id",
+            "comparable_journey",
             "editor.memgraph",
             "leaks.txt",
             "report.json",
@@ -43,10 +51,30 @@ struct MemorySmokeContractTests {
         let makefile = try Self.text("Makefile")
         #expect(makefile.contains("memory-smoke: build memory-smoke-check"))
         #expect(makefile.contains("python3 scripts/run-memory-smoke.py --self-test"))
+        #expect(makefile.contains(#"--journey "$(MEMORY_JOURNEY)""#))
 
         let lintLine = try #require(
             makefile.components(separatedBy: .newlines).first { $0.hasPrefix("lint:") })
         #expect(lintLine.contains("memory-smoke-check"))
+    }
+
+    @Test func imageJourneyOwnsItsTaskAndRequiresDebugIsolation() throws {
+        let handler = try Self.text("Vitrine", "App", "AppLaunchArgumentHandler.swift")
+        #expect(handler.contains("private var memoryImageCycleTask: Task<Void, Never>?"))
+        #expect(handler.contains("memoryImageCycleTask?.cancel()"))
+        #expect(handler.contains("debugIsolatedContainerRoot()"))
+        #expect(handler.contains("session(for: .primary).settings"))
+        #expect(handler.contains("unique-snapshots="))
+
+        let store = try Self.text("Vitrine", "Models", "BackgroundImageStore.swift")
+        #expect(store.contains("#if DEBUG"))
+        #expect(store.contains("VITRINE_MEMORY_IMAGE_STORE_ISOLATED"))
+        #expect(store.contains("SHA256.hash"))
+
+        let journey = try Self.text("Vitrine", "App", "MemoryImageCycleJourney.swift")
+        #expect(journey.contains("VITRINE_MEMORY_IMAGE_CYCLE_COMPLETE"))
+        #expect(journey.contains("defer { settings.config.foregroundImage = nil }"))
+        #expect(journey.contains("JourneyError.duplicateSnapshot"))
     }
 
     @Test func laneRequiresReviewInsteadOfInferringLeakOwnership() throws {
