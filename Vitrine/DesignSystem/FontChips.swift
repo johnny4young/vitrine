@@ -83,7 +83,6 @@ struct FontChipPicker: View {
     }
 
     private var filteredFonts: [String] {
-        guard !query.isEmpty else { return CodeFont.all }
-        return CodeFont.all.filter { $0.localizedCaseInsensitiveContains(query) }
+        CodeFont.all.filter { LocalSearch.matchesAllTerms(query, in: [$0]) }
     }
 }

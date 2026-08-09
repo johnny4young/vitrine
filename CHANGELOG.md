@@ -14,6 +14,10 @@ can never drift.
 
 ### Changed
 
+- **Local search is more consistent and resilient.** Command Palette queries now accept
+  multiple terms in any order and reuse pre-folded command targets; Recents, theme, and
+  font filters share the same case-, diacritic-, and width-insensitive term matching.
+  A deliberately oversized command catalog has a regression budget in the performance suite.
 - **Basic `vgrab` terminal capture is now free.** Its dedicated CLI capability can copy
   a terminal capture or open it in the editor with optional width and context. General
   file/Git rendering, multi-size, batch, `vpane`, sidecars, and styling automation remain

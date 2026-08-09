@@ -95,8 +95,11 @@ final class VitrineUITests: XCTestCase {
         let field = element("command-palette-field", in: app)
         assertExists(field, in: app, timeout: 5)
 
-        // Typing filters the list; "dracula" narrows to the Dracula theme command.
-        field.typeText("dracula")
+        // Multi-term input can match the visible group and title independently;
+        // "theme dracula" narrows to the Dracula theme command in either word order.
+        field.typeText("theme dracula")
+        assertExists(
+            element("command-palette-command-theme.dracula", in: app), in: app, timeout: 3)
         Thread.sleep(forTimeInterval: 0.4)  // let the filtered list settle before the shot
         let screenshot = editor.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)

@@ -38,6 +38,22 @@ struct CommandPaletteTests {
         #expect(ids(CommandPaletteFilter.rank(catalog, query: "captura")) == ["capture"])
     }
 
+    @Test func matchingIsWidthInsensitive() {
+        let catalog = [command("capture", "Capture")]
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "Ｃａｐｔｕｒｅ")) == ["capture"])
+    }
+
+    @Test func everyTermCanMatchADifferentTargetInAnyOrder() {
+        let catalog = [
+            command("dark", "One Dark", group: "Theme", keywords: ["syntax"]),
+            command("save", "Save image", group: "Export", keywords: ["png"]),
+        ]
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "theme dark")) == ["dark"])
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "dark theme")) == ["dark"])
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "export png")) == ["save"])
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "theme png")).isEmpty)
+    }
+
     @Test func prefixBeatsWordStartBeatsSubstringBeatsSubsequence() {
         let catalog = [
             command("subseq", "Redcap layers"),  // "rdc" subsequence only

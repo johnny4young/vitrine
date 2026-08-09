@@ -194,8 +194,7 @@ struct ThemeChipPicker: View {
 
     private var filteredThemes: [Theme] {
         let all = ThemeChipColors.orderedBuiltIns + themes.customThemes
-        guard !query.isEmpty else { return all }
-        return all.filter { $0.displayName.localizedCaseInsensitiveContains(query) }
+        return all.filter { LocalSearch.matchesAllTerms(query, in: [$0.displayName]) }
     }
 
     private func chip(for theme: Theme) -> some View {

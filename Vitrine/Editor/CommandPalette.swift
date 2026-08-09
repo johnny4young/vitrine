@@ -19,6 +19,10 @@ struct EditorCommand: Identifiable {
     let keywords: [String]
     /// An SF Symbol shown leading.
     let symbol: String
+    /// Search targets folded once when the catalog is built, not again for every
+    /// keystroke. The catalog is rebuilt when editor state changes, so labels remain
+    /// current without making query-time work depend on locale-aware normalization.
+    fileprivate let searchTargets: [String]
     /// Run the command. The palette closes first, then invokes this on the main actor.
     let run: () -> Void
 
@@ -31,36 +35,32 @@ struct EditorCommand: Identifiable {
         self.group = group
         self.keywords = keywords
         self.symbol = symbol
+        self.searchTargets = ([title, group] + keywords).map { LocalSearch.fold($0) }
         self.run = run
-    }
-
-    /// Searchable title, group, and keywords with locale-aware case and diacritic
-    /// folding applied.
-    var searchTargets: [String] {
-        ([title, group] + keywords).map(CommandPaletteFilter.foldForSearch)
     }
 }
 
 /// The palette's search — pure so its ranking is unit-testable without a view.
 ///
-/// Matching is a case-insensitive **subsequence** test (the classic fuzzy-finder
-/// rule: "clr" matches "Clear"), scored so the most direct matches lead:
-/// a title prefix beats a title word-start beats a title substring beats a
-/// subsequence, and any title match beats a keyword-only match. Ties keep the input
-/// order, so a given catalog + query always ranks identically.
+/// Every whitespace-separated term must match, in any order. Each term uses a
+/// case-/diacritic-/width-insensitive **subsequence** test (the classic fuzzy-finder
+/// rule: "clr" matches "Clear"), scored so the most direct matches lead: a prefix
+/// beats a word-start, which beats a substring, which beats a subsequence. Title and
+/// group hits beat keyword-only hits. Ties keep the input order, so a given catalog +
+/// query always ranks identically.
 enum CommandPaletteFilter {
     /// Ranks `commands` for `query`. An empty/whitespace query returns the catalog
     /// unchanged (the palette opens showing everything in author order); otherwise
     /// only matching commands are returned, best first.
     static func rank(_ commands: [EditorCommand], query: String) -> [EditorCommand] {
-        let needle = foldForSearch(query.trimmingCharacters(in: .whitespacesAndNewlines))
-        guard !needle.isEmpty else { return commands }
+        let needles = LocalSearch.terms(in: query)
+        guard !needles.isEmpty else { return commands }
 
         return
             commands
             .enumerated()
             .compactMap { index, command -> (score: Int, order: Int, command: EditorCommand)? in
-                guard let score = bestScore(for: command, needle: needle) else { return nil }
+                guard let score = bestScore(for: command, needles: needles) else { return nil }
                 return (score, index, command)
             }
             // Higher score first; ties fall back to author order (stable).
@@ -70,23 +70,25 @@ enum CommandPaletteFilter {
             .map(\.command)
     }
 
-    static func foldForSearch(_ value: String) -> String {
-        value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-    }
-
-    /// The best score of `needle` against any of a command's search targets, or `nil`
-    /// when it matches none. The title (target 0) and group (target 1) score higher
-    /// than a keyword (target ≥ 2), so a keyword-only hit never outranks a title hit.
-    private static func bestScore(for command: EditorCommand, needle: String) -> Int? {
-        var best: Int?
-        for (targetIndex, target) in command.searchTargets.enumerated() {
-            guard let base = matchScore(needle: needle, in: target) else { continue }
-            // Title/group hits get the full weight; keyword hits are demoted so they
-            // only surface a command the title couldn't.
-            let weight = targetIndex <= 1 ? base : base / 10
-            best = max(best ?? 0, weight)
+    /// The sum of each term's best target score, or `nil` when any term is absent.
+    /// A term may land in a different field from its neighbors, so "dark theme" can
+    /// match a theme's appearance keyword plus its group even when that exact phrase
+    /// does not appear in one string.
+    private static func bestScore(for command: EditorCommand, needles: [String]) -> Int? {
+        var total = 0
+        for needle in needles {
+            var best: Int?
+            for (targetIndex, target) in command.searchTargets.enumerated() {
+                guard let base = matchScore(needle: needle, in: target) else { continue }
+                // Title/group hits get the full weight; keyword hits are demoted so they
+                // only surface a command the visible copy could not.
+                let weight = targetIndex <= 1 ? base : base / 10
+                best = max(best ?? 0, weight)
+            }
+            guard let best else { return nil }
+            total += best
         }
-        return best
+        return total
     }
 
     /// Scores `needle` against a single `haystack`, or `nil` if it isn't even a
