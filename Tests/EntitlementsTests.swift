@@ -131,19 +131,155 @@ struct EntitlementsTests {
     }
 }
 
-/// the App Store StoreKit provider. The live purchase/restore/refund flow is
-/// validated manually with an Xcode `.storekit` configuration (it needs StoreKit's test
-/// environment); this pins the deterministic, runtime-free guarantees.
+/// The App Store StoreKit provider. StoreKit itself is still certified with an Xcode
+/// `.storekit` configuration before distribution; the injected client keeps the provider's
+/// caching, purchase, restore, and observer lifecycle deterministic in the normal suite.
 @Suite("StoreKit PRO provider")
 @MainActor
 struct StoreKitProviderTests {
-    @Test func startsFreeAndExposesTheConfiguredProduct() {
-        let provider = StoreKitProvider(
-            defaults: testDefaults())
-        // No purchase recorded → free at boot, and the product id matches the App Store
-        // Connect IAP the provider queries.
-        #expect(!provider.cachedIsPro)
+    private final class ClientSpy {
+        struct FixtureError: Error {}
+
+        var currentResults: [Bool] = []
+        var purchaseResult: StoreKitClient.PurchaseResult = .failed
+        var purchaseError: Error?
+        var syncError: Error?
+
+        var currentProductIDs: [String] = []
+        var purchaseProductIDs: [String] = []
+        var syncCount = 0
+        var updateHandlers: [@MainActor () -> Void] = []
+        var updateTasks: [Task<Void, Never>] = []
+
+        var client: StoreKitClient {
+            StoreKitClient(
+                currentIsPro: { productID in
+                    self.currentProductIDs.append(productID)
+                    return self.currentResults.isEmpty ? false : self.currentResults.removeFirst()
+                },
+                purchase: { productID in
+                    self.purchaseProductIDs.append(productID)
+                    if let purchaseError = self.purchaseError { throw purchaseError }
+                    return self.purchaseResult
+                },
+                sync: {
+                    self.syncCount += 1
+                    if let syncError = self.syncError { throw syncError }
+                },
+                observeUpdates: { handler in
+                    self.updateHandlers.append(handler)
+                    let task = Task<Void, Never> {
+                        try? await Task.sleep(for: .seconds(60))
+                    }
+                    self.updateTasks.append(task)
+                    return task
+                })
+        }
+    }
+
+    @Test func startsFromTheOfflineCacheAndExposesTheConfiguredProduct() {
+        let defaults = testDefaults()
+        defaults.set(true, forKey: "proStoreKitCachedIsPro")
+        let provider = StoreKitProvider(defaults: defaults, client: ClientSpy().client)
+
+        #expect(provider.cachedIsPro)
         #expect(StoreKitProvider.productID == "com.johnny4young.vitrine.pro")
+    }
+
+    @Test func currentEntitlementReplacesTheOfflineCache() async {
+        let defaults = testDefaults()
+        let spy = ClientSpy()
+        spy.currentResults = [true, false]
+        let provider = StoreKitProvider(defaults: defaults, client: spy.client)
+
+        #expect(await provider.currentIsPro())
+        #expect(provider.cachedIsPro)
+        #expect(await provider.currentIsPro() == false)
+        #expect(!provider.cachedIsPro)
+        #expect(spy.currentProductIDs == [StoreKitProvider.productID, StoreKitProvider.productID])
+    }
+
+    @Test(arguments: [false, true])
+    func completedPurchaseTrustsOnlyTheRefreshedEntitlement(isVerified: Bool) async {
+        let spy = ClientSpy()
+        spy.purchaseResult = .completed
+        spy.currentResults = [isVerified]
+        let provider = StoreKitProvider(defaults: testDefaults(), client: spy.client)
+
+        let outcome = await provider.purchase()
+
+        #expect(outcome == (isVerified ? .unlocked : .failed))
+        #expect(spy.purchaseProductIDs == [StoreKitProvider.productID])
+        #expect(spy.currentProductIDs == [StoreKitProvider.productID])
+        #expect(provider.cachedIsPro == isVerified)
+    }
+
+    @Test(arguments: [StoreKitClient.PurchaseResult.userCancelled, .pending])
+    func cancellationAndPendingStaySilent(
+        result: StoreKitClient.PurchaseResult
+    ) async {
+        let spy = ClientSpy()
+        spy.purchaseResult = result
+        let provider = StoreKitProvider(defaults: testDefaults(), client: spy.client)
+
+        #expect(await provider.purchase() == .cancelled)
+        #expect(spy.currentProductIDs.isEmpty)
+    }
+
+    @Test func storeKitFailureAndThrownErrorFailWithoutUnlocking() async {
+        let spy = ClientSpy()
+        let provider = StoreKitProvider(defaults: testDefaults(), client: spy.client)
+
+        #expect(await provider.purchase() == .failed)
+        spy.purchaseError = ClientSpy.FixtureError()
+        #expect(await provider.purchase() == .failed)
+        #expect(spy.currentProductIDs.isEmpty)
+        #expect(!provider.cachedIsPro)
+    }
+
+    @Test(arguments: [false, true])
+    func restoreRefreshesAfterSyncEvenWhenSyncFails(syncFails: Bool) async {
+        let spy = ClientSpy()
+        spy.currentResults = [true]
+        if syncFails { spy.syncError = ClientSpy.FixtureError() }
+        let provider = StoreKitProvider(defaults: testDefaults(), client: spy.client)
+
+        #expect(await provider.restore())
+        #expect(spy.syncCount == 1)
+        #expect(spy.currentProductIDs == [StoreKitProvider.productID])
+        #expect(provider.cachedIsPro)
+    }
+
+    @Test func replacingTheUpdateObserverCancelsTheOldTask() async throws {
+        let spy = ClientSpy()
+        let provider = StoreKitProvider(defaults: testDefaults(), client: spy.client)
+        var firstChanges = 0
+        var secondChanges = 0
+
+        provider.startObservingUpdates { firstChanges += 1 }
+        let firstTask = try #require(spy.updateTasks.first)
+        provider.startObservingUpdates { secondChanges += 1 }
+
+        #expect(firstTask.isCancelled)
+        #expect(spy.updateTasks.count == 2)
+        #expect(spy.updateHandlers.count == 2)
+        spy.updateHandlers[1]()
+        #expect(firstChanges == 0)
+        #expect(secondChanges == 1)
+    }
+
+    @Test func releasingTheProviderCancelsItsUpdateObserver() throws {
+        let spy = ClientSpy()
+        var provider: StoreKitProvider? = StoreKitProvider(
+            defaults: testDefaults(), client: spy.client)
+        weak var releasedProvider = provider
+        provider?.startObservingUpdates {}
+        let task = try #require(spy.updateTasks.first)
+
+        provider = nil
+
+        #expect(releasedProvider == nil)
+        #expect(task.isCancelled)
     }
 }
 

@@ -28,6 +28,10 @@ can never drift.
 
 ### Fixed
 
+- **App Store PRO transaction observers now end with their owner.** Replacing or releasing
+  the StoreKit provider cancels its previous update task, while purchase, cancellation,
+  pending, restore, failure, and verified-entitlement cache transitions now have
+  deterministic regression coverage without contacting an App Store account.
 - **Welcome remains usable on shorter displays.** The first-run journey now scrolls
   when the available screen cannot hold its ideal height, keeping sample capture,
   setup, Skip, and Get Started controls reachable instead of clipping the footer.
