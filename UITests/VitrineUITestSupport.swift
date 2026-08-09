@@ -86,9 +86,9 @@ extension XCTestCase {
     ///
     /// Opening an `NSPopover` from a launch argument is too early for a UI test:
     /// Sequoia can inject XCTAutomationSupport after `applicationDidFinishLaunching`
-    /// and abort the app with a private libdispatch main-queue assertion. The
-    /// post-launch handoff is accepted only by the isolated UI-test process and avoids
-    /// status-item frames that can be non-hittable across logical display spaces.
+    /// and abort the app with a private libdispatch main-queue assertion. Clicking the
+    /// in-process status item exercises the production interaction after the automation
+    /// handshake, without retrying or hiding an unexpected process exit.
     @MainActor
     @discardableResult
     func openMenuBarPanel(
@@ -97,44 +97,22 @@ extension XCTestCase {
         line: UInt = #line
     ) -> XCUIElement {
         let panel = element("menubar-panel", in: app)
-        let sourceProcessID = ProcessInfo.processInfo.processIdentifier
-        guard
-            let url = URL(
-                string: "vitrine://automation-menu-panel?source-pid=\(sourceProcessID)")
-        else {
-            XCTFail("The static menu-panel automation URL is invalid", file: file, line: line)
-            return panel
-        }
-        let target = NSAppleEventDescriptor(
-            bundleIdentifier: "com.johnny4young.vitrine")
-        let handoff = NSAppleEventDescriptor(
-            eventClass: AEEventClass(kInternetEventClass),
-            eventID: AEEventID(kAEGetURL),
-            targetDescriptor: target,
-            returnID: AEReturnID(kAutoGenerateReturnID),
-            transactionID: AETransactionID(kAnyTransactionID))
-        handoff.setParam(
-            NSAppleEventDescriptor(string: url.absoluteString),
-            forKeyword: AEKeyword(keyDirectObject))
-        do {
-            _ = try handoff.sendEvent(
-                options: NSAppleEventDescriptor.SendOptions.noReply,
-                timeout: 1)
-        } catch {
-            XCTFail(
-                "The post-launch menu-panel handoff could not be delivered: \(error)",
+        guard waitForHittableElement("menubar-status-item", in: app, timeout: 8) else {
+            assertHittable(
+                "menubar-status-item",
+                in: app,
+                "The in-process menu-bar item is not reachable",
+                timeout: 0,
                 file: file,
                 line: line)
             return panel
         }
-        // Address Vitrine's unique bundle identifier directly. Launch Services URL
-        // dispatch is deliberately avoided because another development build or test
-        // host can register the same custom scheme and become foreground instead.
-        app.activate()
+
+        hittableElement("menubar-status-item", in: app).click()
 
         XCTAssertTrue(
             panel.waitForExistence(timeout: 5),
-            "The menu-bar panel did not open after the automation handshake",
+            "The menu-bar panel did not open after clicking the status item",
             file: file,
             line: line)
         return panel

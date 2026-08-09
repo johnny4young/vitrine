@@ -141,8 +141,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Routes an incoming `vitrine://…` URL by host. Any unrecognized URL is ignored.
     func openHandoff(_ url: URL) {
-        if launchArguments.handleAutomationHandoff(url) { return }
-
         switch Self.handoffRoute(for: url) {
         case .edit: openEditHandoff(url)
         case .sharedSnapshot: openSharedSnapshot(url)
