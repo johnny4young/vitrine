@@ -539,6 +539,12 @@ mechanism, and a third-party updater is disallowed there) — see
   `CODE_SIGN_ENTITLEMENTS`. The default and App Store builds keep the minimal
   `Vitrine.entitlements` (no network, no Sparkle), so the local rendering "no network" posture in
   [`docs/PERMISSIONS.md`](PERMISSIONS.md) is unchanged.
+- **Sandboxed installer service.** `Info.plist` sets
+  `SUEnableInstallerLauncherService = YES`, which Sparkle requires for every sandboxed host.
+  `Installer.xpc` remains inside `Sparkle.framework`; do not copy or rename it. The app already
+  owns `com.apple.security.network.client`, so `SUEnableDownloaderService` stays disabled.
+  `scripts/build-dmg.sh` rejects a packaged app unless the final Info.plist, embedded service,
+  and expanded `-spks` / `-spki` mach-lookup entitlements agree.
 - **No analytics.** Sparkle's optional system profiling is off (`SUEnableSystemProfiling`
   is `NO`, and no profiling delegate is installed), so an update check sends only the
   requests needed to fetch the appcast and the chosen download — no telemetry.
@@ -608,8 +614,14 @@ every release, or Sparkle will not see the new build as newer.
 2. Tag *N+1* (after bumping the versions in `project.yml`) so the release workflow
    publishes its DMG and the refreshed appcast.
 3. Launch the installed *N* and choose **Check for Updates…** — Sparkle should find *N+1*,
-   verify its EdDSA signature against `SUPublicEDKey`, and install it. A download whose
-   signature does not verify is rejected, which is the man-in-the-middle protection.
+   verify its EdDSA signature against `SUPublicEDKey`, and offer **Install Update**.
+4. Click **Install Update** and require the app to relaunch on *N+1* with no installer or
+   authorization error. Detecting and downloading the update is not a pass: the release gate
+   covers the complete sandboxed Installer Launcher journey.
+
+A download whose signature does not verify is rejected, which is the man-in-the-middle
+protection. Record the installed source/candidate versions and the final relaunched version in
+the QA log. **Do not publish a direct-download release until this N-to-N+1 installation passes.**
 
 ### App Store build excludes Sparkle
 
@@ -678,7 +690,10 @@ signature retains `com.apple.security.app-sandbox` plus
 XPC service lacks either arm64 or x86_64. For the direct-download PRO channel, it additionally
 requires `VitrineLicenseSigningKey` to exist and decode to exactly 32 bytes. That check
 uses private mode-`0600` temporary files and reports only pass/fail — it never prints the
-embedded private key.
+embedded private key. The same artifact check requires
+`SUEnableInstallerLauncherService = YES`, an embedded Sparkle `Installer.xpc`, and final
+`network.client` plus matching `-spks` / `-spki` entitlements; it rejects the unnecessary
+Downloader service because this app already has direct network access.
 
 **App bug vs. signing failure.** A failed check is classified and the **exit code says
 which class** it is, because the two have completely different owners and fixes:
@@ -722,7 +737,10 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
     free in a later tier contract.
 14. **Token permissions** — without reading or printing it, confirm the non-empty
     `pro-license.token` mirror has POSIX mode exactly `0600`.
-15. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
+15. **N to N+1 update** — install the previous direct-download release in a disposable QA
+    location, choose **Check for Updates…**, click **Install Update**, and confirm Vitrine
+    relaunches on the candidate version without an installer or authorization error.
+16. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
     leaves no menu-bar icon and no login item behind.
 
 Record one QA log entry per release (environment header + each checklist result). For PRO,

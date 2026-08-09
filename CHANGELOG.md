@@ -46,6 +46,10 @@ can never drift.
 
 ### Fixed
 
+- **Sandboxed direct-download builds can install Sparkle updates again.** The app now
+  enables Sparkle's required Installer Launcher XPC service, packaging and clean-Mac QA
+  verify the final Info.plist, embedded service, and matching `-spks`/`-spki` entitlements,
+  and every release must complete a real N-to-N+1 install before publication.
 - **Invalid shipped URLs or license-verifier bytes no longer terminate startup.** Trusted external
   links now require absolute credential-free HTTPS URLs, license operations stop before networking
   when an endpoint is unavailable, an invalid embedded public key keeps PRO locked, and a local CLI

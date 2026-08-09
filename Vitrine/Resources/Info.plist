@@ -123,6 +123,12 @@
 	     bundle's CFBundleVersion to decide whether an update is available. -->
 	<key>SUFeedURL</key>
 	<string>https://johnny4young.github.io/vitrine/appcast.xml</string>
+	<!-- Required by Sparkle for every sandboxed host. Installer.xpc stays inside
+	     Sparkle.framework; this switch lets Sparkle use it to install the verified
+	     update outside Vitrine's app sandbox. The separate Downloader service stays
+	     disabled because the direct-download app already has network.client. -->
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
 	<!-- The EdDSA (ed25519) public key Sparkle uses to verify every downloaded
 	     update's signature before installing it. The matching PRIVATE key never
 	     leaves the release maintainer's Keychain; the appcast's signatures are

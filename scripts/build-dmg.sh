@@ -240,6 +240,52 @@ assert_distribution_entitlements() {
 	fi
 }
 
+assert_sparkle_sandbox_contract() {
+	local info_plist="$APP/Contents/Info.plist"
+	local installer_xpc="$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+	local entitlements="$DERIVED/Vitrine-sparkle-entitlements.plist"
+	local bundle_id installer_enabled downloader_enabled mach_lookups
+
+	bundle_id="$("$PLIST_BUDDY" -c "Print :CFBundleIdentifier" "$info_plist" 2>/dev/null || true)"
+	installer_enabled="$("$PLIST_BUDDY" -c "Print :SUEnableInstallerLauncherService" "$info_plist" 2>/dev/null || true)"
+	downloader_enabled="$("$PLIST_BUDDY" -c "Print :SUEnableDownloaderService" "$info_plist" 2>/dev/null || true)"
+
+	if [ "$installer_enabled" != "true" ]; then
+		echo "error: sandboxed Sparkle builds require SUEnableInstallerLauncherService=YES" >&2
+		return 1
+	fi
+	if [ "$downloader_enabled" = "true" ]; then
+		echo "error: SUEnableDownloaderService must stay disabled when the app has network.client" >&2
+		return 1
+	fi
+	if [ ! -d "$installer_xpc" ]; then
+		echo "error: Sparkle Installer.xpc is missing from the embedded framework" >&2
+		return 1
+	fi
+	if [ -z "$bundle_id" ]; then
+		echo "error: packaged app is missing CFBundleIdentifier" >&2
+		return 1
+	fi
+
+	if ! codesign -d --entitlements :- "$APP" > "$entitlements" 2>/dev/null; then
+		echo "error: could not inspect packaged app entitlements for Sparkle" >&2
+		return 1
+	fi
+	if [ "$("$PLIST_BUDDY" -c "Print :com.apple.security.app-sandbox" "$entitlements" 2>/dev/null || true)" != "true" ] \
+		|| [ "$("$PLIST_BUDDY" -c "Print :com.apple.security.network.client" "$entitlements" 2>/dev/null || true)" != "true" ]; then
+		echo "error: direct-download app must carry app-sandbox + network.client entitlements" >&2
+		return 1
+	fi
+	mach_lookups="$("$PLIST_BUDDY" -c "Print :com.apple.security.temporary-exception.mach-lookup.global-name" "$entitlements" 2>/dev/null || true)"
+	if [[ "$mach_lookups" != *"$bundle_id-spks"* ]] || [[ "$mach_lookups" != *"$bundle_id-spki"* ]]; then
+		echo "error: packaged app is missing Sparkle -spks/-spki mach-lookup exceptions" >&2
+		return 1
+	fi
+
+	echo "==> Verified sandboxed Sparkle installer contract"
+	echo "    Installer Launcher enabled; framework XPC embedded; network + -spks/-spki entitlements present"
+}
+
 # This script uses Xcode's build action instead of Archive/Export so the CI job can
 # produce a signed DMG directly from the tag. Compensate for the distribution work
 # Archive/Export normally performs: sign the embedded CLI and menu-bar helper,
@@ -251,6 +297,12 @@ if [ "$SIGNED" -eq 1 ]; then
 	resign_sparkle_for_distribution
 	assert_distribution_entitlements
 fi
+
+# A valid signature and embedded framework are insufficient for a sandboxed updater:
+# Sparkle's Installer Launcher must be enabled in the packaged Info.plist and the final
+# app signature must expose the matching network/XPC entitlements. Run this for signed
+# and ad-hoc artifacts so local packaging catches the same integration drift as release CI.
+assert_sparkle_sandbox_contract
 
 # --- Signature verification (Developer ID builds only) ----------------------
 # Gatekeeper rejects an app whose code signature does not verify, so prove it

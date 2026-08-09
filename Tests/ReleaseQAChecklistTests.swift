@@ -68,6 +68,7 @@ struct ReleaseQAChecklistTests {
         ("offline PRO relaunch", ["Offline relaunch", "offline relaunch"]),
         ("PRO CLI", ["PRO CLI", "PRO-only CLI"]),
         ("token permissions", ["Token permissions", "POSIX mode", "0600"]),
+        ("Sparkle N to N+1 update", ["N to N+1", "N→N+1", "Install Update"]),
         ("uninstall", ["Uninstall", "uninstall"]),
     ]
 
@@ -246,6 +247,23 @@ struct ReleaseQAChecklistTests {
         #expect(script.contains("com.apple.security.app-sandbox"))
         #expect(script.contains("com.apple.security.inherit"))
         #expect(script.contains("Menu-bar helper present and executable"))
+    }
+
+    @Test func scriptValidatesThePackagedSparkleSandboxContract() throws {
+        let script = try Self.script()
+
+        for requirement in [
+            "SUEnableInstallerLauncherService", "Installer.xpc", "network.client", "-spks",
+            "-spki",
+        ] {
+            #expect(
+                script.contains(requirement),
+                "clean-Mac QA must inspect the packaged Sparkle requirement: \(requirement)")
+        }
+        #expect(
+            script.contains("SUEnableDownloaderService"),
+            "clean-Mac QA must reject the unnecessary Downloader service when network.client is present"
+        )
     }
 
     @Test func scriptRejectsAnyThinMachOPayloadInTheDownloadedApp() throws {

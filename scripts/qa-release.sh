@@ -43,7 +43,7 @@
 #   DMG open, drag-to-Applications, first launch past Gatekeeper, the menu-bar icon
 #   appearing with NO Dock icon, quick capture, editor export, settings,
 #   launch-at-login, a real PRO activation, offline relaunch, PRO-only CLI output,
-#   token-file permissions, and a clean uninstall. These are interactive behaviors
+#   token-file permissions, a real Sparkle N-to-N+1 install, and a clean uninstall. These are interactive behaviors
 #   no headless check can prove; the script prints them as a numbered log to walk
 #   through and record per release (see docs/RELEASING.md).
 #
@@ -129,6 +129,7 @@ fi
 MOUNT_POINT=""
 DMG=""
 HELPER_ENTITLEMENTS_FILE=""
+APP_ENTITLEMENTS_FILE=""
 LICENSE_KEY_BASE64_FILE=""
 LICENSE_KEY_RAW_FILE=""
 # Invoked indirectly via `trap … EXIT` below, so shellcheck cannot see the call.
@@ -136,6 +137,9 @@ LICENSE_KEY_RAW_FILE=""
 cleanup() {
 	if [ -n "$HELPER_ENTITLEMENTS_FILE" ]; then
 		rm -f "$HELPER_ENTITLEMENTS_FILE"
+	fi
+	if [ -n "$APP_ENTITLEMENTS_FILE" ]; then
+		rm -f "$APP_ENTITLEMENTS_FILE"
 	fi
 	# These files hold the private activation signer only long enough to validate its
 	# encoded shape. Never print, inspect, or retain either file.
@@ -201,6 +205,8 @@ APP_VERSION="$(plist_value CFBundleShortVersionString)"
 BUILD_VERSION="$(plist_value CFBundleVersion)"
 BUNDLE_ID="$(plist_value CFBundleIdentifier)"
 LSUIELEMENT="$(plist_value LSUIElement)"
+SPARKLE_INSTALLER_ENABLED="$(plist_value SUEnableInstallerLauncherService)"
+SPARKLE_DOWNLOADER_ENABLED="$(plist_value SUEnableDownloaderService)"
 
 # Signing identity: the Developer ID "Authority" line from the app's signature, or
 # a clear marker when the bundle is unsigned / ad-hoc. Capture the output once so
@@ -245,6 +251,54 @@ if [ "$LSUIELEMENT" = "true" ] || [ "$LSUIELEMENT" = "1" ] || [ "$LSUIELEMENT" =
 	pass "LSUIElement is set (menu-bar agent, no Dock icon)"
 else
 	fail_app "LSUIElement is not set — the app would show a Dock icon"
+fi
+
+# Sparkle keeps Installer.xpc inside its framework, but every sandboxed host must
+# explicitly enable that service and expose its matching -spks/-spki mach names.
+# Vitrine already owns network.client for its direct channel, so the optional
+# Downloader service must remain disabled.
+if [ "$SPARKLE_INSTALLER_ENABLED" = "true" ] \
+	|| [ "$SPARKLE_INSTALLER_ENABLED" = "1" ] \
+	|| [ "$SPARKLE_INSTALLER_ENABLED" = "YES" ]; then
+	pass "Sparkle Installer Launcher service is enabled for the sandboxed app"
+else
+	fail_app "SUEnableInstallerLauncherService is not enabled — Sparkle updates cannot install"
+fi
+
+if [ "$SPARKLE_DOWNLOADER_ENABLED" = "true" ] \
+	|| [ "$SPARKLE_DOWNLOADER_ENABLED" = "1" ] \
+	|| [ "$SPARKLE_DOWNLOADER_ENABLED" = "YES" ]; then
+	fail_app "SUEnableDownloaderService must stay disabled when network.client is present"
+else
+	pass "Sparkle Downloader service is disabled; the app uses network.client directly"
+fi
+
+SPARKLE_INSTALLER_XPC="$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+if [ -d "$SPARKLE_INSTALLER_XPC" ]; then
+	pass "Sparkle Installer.xpc is embedded inside Sparkle.framework"
+else
+	fail_app "Sparkle Installer.xpc is missing from the embedded framework"
+fi
+
+APP_ENTITLEMENTS_FILE="$(mktemp /tmp/vitrine-app-entitlements.XXXXXX)"
+if codesign -d --entitlements :- "$APP" > "$APP_ENTITLEMENTS_FILE" 2>/dev/null; then
+	APP_SANDBOX="$(/usr/libexec/PlistBuddy -c \
+		'Print :com.apple.security.app-sandbox' "$APP_ENTITLEMENTS_FILE" 2>/dev/null || true)"
+	NETWORK_CLIENT="$(/usr/libexec/PlistBuddy -c \
+		'Print :com.apple.security.network.client' "$APP_ENTITLEMENTS_FILE" 2>/dev/null || true)"
+	MACH_LOOKUPS="$(/usr/libexec/PlistBuddy -c \
+		'Print :com.apple.security.temporary-exception.mach-lookup.global-name' \
+		"$APP_ENTITLEMENTS_FILE" 2>/dev/null || true)"
+	if [ "$APP_SANDBOX" = "true" ] \
+		&& [ "$NETWORK_CLIENT" = "true" ] \
+		&& [[ "$MACH_LOOKUPS" == *"$BUNDLE_ID-spks"* ]] \
+		&& [[ "$MACH_LOOKUPS" == *"$BUNDLE_ID-spki"* ]]; then
+		pass "Sparkle sandbox entitlements include network.client and matching -spks/-spki names"
+	else
+		fail_app "Sparkle sandbox entitlements are incomplete or do not match $BUNDLE_ID"
+	fi
+else
+	fail_app "could not inspect app entitlements for the Sparkle sandbox contract"
 fi
 
 # The public direct-download app sells PRO activation, so a published artifact without
@@ -441,7 +495,12 @@ cat <<'CHECKLIST'
                                   this proves the out-of-process signed-token handoff.
     [ ] 14. Token permissions — without printing its contents, confirm the non-empty
                                   pro-license.token mirror has POSIX mode exactly 0600.
-    [ ] 15. Uninstall         — quit Vitrine, move it to the Trash (or
+    [ ] 15. N to N+1 update  — install the previous published direct-download
+                                  version on a disposable QA path, choose Check for
+                                  Updates…, click Install Update, and confirm Vitrine
+                                  relaunches on the candidate version without an
+                                  installer or authorization error.
+    [ ] 16. Uninstall         — quit Vitrine, move it to the Trash (or
                                   `brew uninstall --cask vitrine`); it leaves no
                                   menu-bar icon and no login item behind.
 CHECKLIST
