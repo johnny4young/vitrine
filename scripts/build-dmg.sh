@@ -28,6 +28,7 @@
 #     MACOS_NOTARY_TEAM_ID       — Developer Team ID
 #
 # Verification always runs against whatever was produced:
+#   lipo -archs                                      (every executable Mach-O)
 #   codesign --verify --deep --strict --verbose=2   (Developer ID builds)
 #   spctl -a -vv                                     on the final artifact.
 #
@@ -83,7 +84,10 @@ if [ "$SIGNED" -eq 1 ]; then
 		-project Vitrine.xcodeproj \
 		-scheme Vitrine \
 		-configuration Release \
+		-destination 'generic/platform=macOS' \
 		-derivedDataPath "$DERIVED" \
+		ONLY_ACTIVE_ARCH=NO \
+		ARCHS="arm64 x86_64" \
 		CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
 		CODE_SIGN_STYLE=Manual \
 		CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
@@ -97,7 +101,10 @@ else
 		-project Vitrine.xcodeproj \
 		-scheme Vitrine \
 		-configuration Release \
+		-destination 'generic/platform=macOS' \
 		-derivedDataPath "$DERIVED" \
+		ONLY_ACTIVE_ARCH=NO \
+		ARCHS="arm64 x86_64" \
 		CODE_SIGN_IDENTITY="-" \
 		CODE_SIGN_STYLE=Manual \
 		build
@@ -107,6 +114,47 @@ if [ ! -d "$APP" ]; then
 	echo "error: $APP not found" >&2
 	exit 1
 fi
+
+verify_universal_macho_bundle() {
+	local candidate architectures required_arch relative_path
+	local macho_count=0
+	local invalid_count=0
+	local required_architectures=(arm64 x86_64)
+
+	echo "==> Verifying universal Mach-O payloads (arm64 + x86_64)"
+	while IFS= read -r -d '' candidate; do
+		if ! architectures="$(/usr/bin/lipo -archs "$candidate" 2>/dev/null)"; then
+			continue
+		fi
+
+		macho_count=$((macho_count + 1))
+		relative_path="${candidate#"$APP"/}"
+		for required_arch in "${required_architectures[@]}"; do
+			if [[ " $architectures " != *" $required_arch "* ]]; then
+				echo "error: $relative_path is not universal (architectures: $architectures; missing: $required_arch)" >&2
+				invalid_count=$((invalid_count + 1))
+				break
+			fi
+		done
+	done < <(find "$APP" -type f -perm -111 -print0)
+
+	if [ "$macho_count" -eq 0 ]; then
+		echo "error: no Mach-O payloads found in $APP" >&2
+		return 1
+	fi
+	if [ "$invalid_count" -ne 0 ]; then
+		echo "error: $invalid_count of $macho_count Mach-O payloads are not universal" >&2
+		return 1
+	fi
+
+	echo "    Verified $macho_count Mach-O payloads: arm64 + x86_64"
+}
+
+# The tag packaging path performs its own Xcode build, so the earlier CI
+# `make build-release` result cannot prove what this app bundle contains. Inspect
+# every executable Mach-O before signing or notarization; a thin nested helper is a broken
+# Intel artifact even when the outer app executable is universal.
+verify_universal_macho_bundle
 
 resign_sparkle_for_distribution() {
 	local sparkle="$APP/Contents/Frameworks/Sparkle.framework"

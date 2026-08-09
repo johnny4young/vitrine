@@ -235,7 +235,14 @@ Gatekeeper rejects the artifact.
 
 What the script does for a signed build:
 
-1. **Signs** the app with the Developer ID Application identity.
+Before either the signed or unsigned path can create a DMG, the script builds for a
+generic macOS destination with `ONLY_ACTIVE_ARCH=NO` and `ARCHS="arm64 x86_64"`. It
+then enumerates **every executable Mach-O payload** in the app with `lipo -archs` and requires both
+architectures. This includes the embedded CLI, menu-bar helper, frameworks, and XPC
+services; checking only the outer executable would allow a partially thin app to reach
+Intel users. A missing architecture stops before signing or notarization.
+
+1. **Signs** the already-verified universal app with the Developer ID Application identity.
 2. **Keeps the hardened runtime on** (`ENABLE_HARDENED_RUNTIME=YES`, set in
    `project.yml` and re-asserted on the signed build) — required for notarization.
 3. **Requests secure code-signing timestamps** (`OTHER_CODE_SIGN_FLAGS=--timestamp`)
@@ -631,7 +638,7 @@ the only place this check is meaningful.
 
 `scripts/qa-release.sh` drives it. The script is deliberately self-contained: it needs
 only the artifact and the stock macOS command-line tools (`codesign`, `spctl`,
-`stapler`, `hdiutil`, `plutil`, `base64`, `sw_vers`, `uname`, `stat`), so you can copy
+`stapler`, `hdiutil`, `plutil`, `lipo`, `base64`, `sw_vers`, `uname`, `stat`), so you can copy
 that one file — or download it with the release — onto the clean Mac and run it without
 checking out the repo.
 
@@ -657,7 +664,9 @@ app inside it: `codesign --verify --deep --strict`, the hardened-runtime flag, `
 `plutil` Info.plist validation (including `LSUIElement`, the no-Dock-icon marker).
 It also requires the embedded `VitrineMenuBarHelper` executable and proves that its
 signature retains `com.apple.security.app-sandbox` plus
-`com.apple.security.inherit`. For the direct-download PRO channel, it additionally
+`com.apple.security.inherit`. It enumerates every executable Mach-O in the downloaded app with
+`lipo -archs` and rejects the artifact if the app, embedded CLI, helper, framework, or
+XPC service lacks either arm64 or x86_64. For the direct-download PRO channel, it additionally
 requires `VitrineLicenseSigningKey` to exist and decode to exactly 32 bytes. That check
 uses private mode-`0600` temporary files and reports only pass/fail — it never prints the
 embedded private key.

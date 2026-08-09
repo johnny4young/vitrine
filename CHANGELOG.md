@@ -19,6 +19,10 @@ can never drift.
 
 ### Changed
 
+- **Direct-download artifacts now fail closed on partial architecture support.** DMG
+  packaging explicitly builds arm64 and x86_64, then inspects every executable Mach-O in the app
+  before signing. Clean-Mac release QA independently repeats the check against the
+  downloaded artifact, including the CLI, menu-bar helper, frameworks, and XPC services.
 - **Local search is more consistent and resilient.** Command Palette queries now accept
   multiple terms in any order and reuse pre-folded command targets; Recents, theme, and
   font filters share the same case-, diacritic-, and width-insensitive term matching.

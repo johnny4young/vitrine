@@ -153,7 +153,7 @@ struct ReleaseQAChecklistTests {
                 "qa-release.sh must not invoke `\(command)`; it runs on a clean Mac")
         }
         // It must rely only on stock macOS tools that are present without the repo.
-        for tool in ["codesign", "spctl", "plutil", "sw_vers", "hdiutil"] {
+        for tool in ["codesign", "spctl", "plutil", "lipo", "sw_vers", "hdiutil"] {
             #expect(
                 script.contains(tool),
                 "qa-release.sh should use the stock macOS tool `\(tool)`")
@@ -246,6 +246,16 @@ struct ReleaseQAChecklistTests {
         #expect(script.contains("com.apple.security.app-sandbox"))
         #expect(script.contains("com.apple.security.inherit"))
         #expect(script.contains("Menu-bar helper present and executable"))
+    }
+
+    @Test func scriptRejectsAnyThinMachOPayloadInTheDownloadedApp() throws {
+        let script = try Self.script()
+
+        #expect(script.contains(#"/usr/bin/lipo -archs "$candidate""#))
+        #expect(script.contains(#"find "$APP" -type f -perm -111 -print0"#))
+        #expect(script.contains("for required_architecture in arm64 x86_64"))
+        #expect(script.contains("is not universal"))
+        #expect(script.contains("All $MACHO_COUNT Mach-O payloads contain arm64 + x86_64"))
     }
 
     /// A direct-download artifact that cannot mint the offline token is not saleable,
