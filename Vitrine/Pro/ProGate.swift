@@ -139,7 +139,9 @@ struct PaywallSheet: View {
                 .controlSize(.large)
                 .accessibilityIdentifier("pro-get-license-button")
 
-                TextField("Enter your license key", text: $licenseKey)
+                // A license key is a credential. Keep it masked so release QA recordings,
+                // screenshots, and shoulder-surfing cannot expose the pasted value.
+                SecureField("Enter your license key", text: $licenseKey)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("pro-license-field")
                 Button {

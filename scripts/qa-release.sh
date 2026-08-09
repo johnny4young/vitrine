@@ -10,7 +10,8 @@
 # catches that before a release reaches users.
 #
 # It is deliberately SELF-CONTAINED: it needs only the artifact and the macOS
-# command-line tools (codesign, spctl, stapler, hdiutil, plutil, sw_vers, uname),
+# command-line tools (codesign, spctl, stapler, hdiutil, plutil, base64, sw_vers,
+# uname, stat),
 # all present on a stock Mac. It does NOT read project.yml, the .xcodeproj, or any
 # DerivedData, so you can copy this one file (or download it from the release) onto
 # a freshly imaged Mac that has never seen the repository and run the same checks a
@@ -28,7 +29,9 @@
 #     starts from a written record of WHERE it ran and WHAT it tested.
 #   * Runs the signing / notarization assessment a user's Gatekeeper runs on first
 #     launch: codesign --verify --deep --strict, spctl -a, stapler validate, and an
-#     Info.plist sanity check (plutil), on both the DMG and the app inside it.
+#     Info.plist sanity check (plutil), on both the DMG and the app inside it. The
+#     direct-download PRO signing key must be present and decode to exactly 32 bytes;
+#     the script never prints or logs that private value.
 #   * Classifies every result so a FAILURE distinguishes an *app bug* from a
 #     *signing / notarization* failure — the two have completely different fixes
 #     (code change vs. certificate / notarytool / stapling), and conflating them
@@ -37,8 +40,9 @@
 # What stays MANUAL (a human at the clean Mac, guided by the printed checklist):
 #   DMG open, drag-to-Applications, first launch past Gatekeeper, the menu-bar icon
 #   appearing with NO Dock icon, quick capture, editor export, settings,
-#   launch-at-login, and a clean uninstall. These are interactive behaviors no
-#   headless check can prove; the script prints them as a numbered log to walk
+#   launch-at-login, a real PRO activation, offline relaunch, PRO-only CLI output,
+#   token-file permissions, and a clean uninstall. These are interactive behaviors
+#   no headless check can prove; the script prints them as a numbered log to walk
 #   through and record per release (see docs/RELEASING.md).
 #
 # Exit status:
@@ -123,11 +127,21 @@ fi
 MOUNT_POINT=""
 DMG=""
 HELPER_ENTITLEMENTS_FILE=""
+LICENSE_KEY_BASE64_FILE=""
+LICENSE_KEY_RAW_FILE=""
 # Invoked indirectly via `trap … EXIT` below, so shellcheck cannot see the call.
 # shellcheck disable=SC2329
 cleanup() {
 	if [ -n "$HELPER_ENTITLEMENTS_FILE" ]; then
 		rm -f "$HELPER_ENTITLEMENTS_FILE"
+	fi
+	# These files hold the private activation signer only long enough to validate its
+	# encoded shape. Never print, inspect, or retain either file.
+	if [ -n "$LICENSE_KEY_BASE64_FILE" ]; then
+		rm -f "$LICENSE_KEY_BASE64_FILE"
+	fi
+	if [ -n "$LICENSE_KEY_RAW_FILE" ]; then
+		rm -f "$LICENSE_KEY_RAW_FILE"
 	fi
 	if [ -n "$MOUNT_POINT" ] && [ -d "$MOUNT_POINT" ]; then
 		hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
@@ -229,6 +243,28 @@ if [ "$LSUIELEMENT" = "true" ] || [ "$LSUIELEMENT" = "1" ] || [ "$LSUIELEMENT" =
 	pass "LSUIElement is set (menu-bar agent, no Dock icon)"
 else
 	fail_app "LSUIElement is not set — the app would show a Dock icon"
+fi
+
+# The public direct-download app sells PRO activation, so a published artifact without
+# the injected Ed25519 private key is functionally broken even when it is perfectly
+# signed and notarized. Read the sensitive value straight into mode-0600 temporary files,
+# decode it with stock macOS base64, and validate only the raw byte count. No command ever
+# writes the value to stdout/stderr or the QA log.
+LICENSE_KEY_BASE64_FILE="$(mktemp /tmp/vitrine-license-key-base64.XXXXXX)"
+LICENSE_KEY_RAW_FILE="$(mktemp /tmp/vitrine-license-key-raw.XXXXXX)"
+chmod 600 "$LICENSE_KEY_BASE64_FILE" "$LICENSE_KEY_RAW_FILE"
+if plutil -extract VitrineLicenseSigningKey raw \
+	-o "$LICENSE_KEY_BASE64_FILE" "$INFO_PLIST" 2>/dev/null \
+	&& /usr/bin/base64 -D < "$LICENSE_KEY_BASE64_FILE" \
+		> "$LICENSE_KEY_RAW_FILE" 2>/dev/null; then
+	LICENSE_KEY_BYTES="$(wc -c < "$LICENSE_KEY_RAW_FILE" | tr -d '[:space:]')"
+	if [ "$LICENSE_KEY_BYTES" = "32" ]; then
+		pass "PRO activation signer is embedded and structurally valid (secret not printed)"
+	else
+		fail_app "VitrineLicenseSigningKey must decode to exactly 32 bytes — published PRO activation is broken"
+	fi
+else
+	fail_app "VitrineLicenseSigningKey is missing or invalid — published PRO activation is broken"
 fi
 
 EXECUTABLE="$(plist_value CFBundleExecutable)"
@@ -357,7 +393,19 @@ cat <<'CHECKLIST'
     [ ] 10. Launch at login   — toggle "Launch at login" on; log out and back in
                                   (or reboot) and confirm Vitrine starts. Toggle it
                                   off and confirm it no longer auto-starts.
-    [ ] 11. Uninstall         — quit Vitrine, move it to the Trash (or
+    [ ] 11. PRO activation    — while online, open a PRO-gated feature and paste
+                                  the dedicated LIVE QA license. Activate it; the
+                                  masked field must never expose the key in the log
+                                  or screenshots, the sheet closes, and PRO unlocks.
+    [ ] 12. Offline relaunch  — quit Vitrine, disconnect the Mac from every network,
+                                  relaunch, and confirm PRO remains unlocked and a
+                                  PRO-only multi-size export still completes.
+    [ ] 13. PRO CLI           — still offline, run the bundled CLI's `multi-size`
+                                  command and confirm it writes the requested images;
+                                  this proves the out-of-process signed-token handoff.
+    [ ] 14. Token permissions — without printing its contents, confirm the non-empty
+                                  pro-license.token mirror has POSIX mode exactly 0600.
+    [ ] 15. Uninstall         — quit Vitrine, move it to the Trash (or
                                   `brew uninstall --cask vitrine`); it leaves no
                                   menu-bar icon and no login item behind.
 CHECKLIST

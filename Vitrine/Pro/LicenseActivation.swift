@@ -58,6 +58,14 @@ import Foundation
     /// Squeezy API secret is embedded in the app. Response parsing is a pure, testable
     /// function (`parse(status:data:)`) exercised with canned payloads.
     nonisolated struct LemonSqueezyValidator: LicenseKeyValidator {
+        /// Public identifiers for the live Vitrine PRO product. A successful License API
+        /// response is not authorization by itself: Lemon Squeezy keys from another product
+        /// use the same endpoint and response shape. Pinning the store + product makes the
+        /// activation boundary fail closed without embedding an API secret. Keep the product
+        /// id stable when adding price variants; update it only when replacing the product.
+        nonisolated static let expectedStoreID = 408_765
+        nonisolated static let expectedProductID = 1_156_861
+
         /// The activation endpoint. Overridable so a test or a self-host can repoint it.
         var endpoint = VitrineLinks.lemonSqueezyActivationEndpoint
         /// Bound the one online activation attempt so a stalled network does not leave the
@@ -133,10 +141,24 @@ import Foundation
                     ? LicenseActivationError.invalidKey
                     : LicenseActivationError.server(message)
             }
+
+            // The public License API accepts keys for every Lemon Squeezy product. Never mint
+            // a Vitrine token from a merely-valid foreign or test-mode key. The successful
+            // response must carry the documented license id, active status, and the pinned
+            // Vitrine store/product identity. Missing identity fails closed too.
+            guard let licenseKey = decoded.licenseKey,
+                let licenseID = licenseKey.id,
+                licenseKey.status == "active",
+                licenseKey.testMode != true,
+                decoded.meta?.storeID == expectedStoreID,
+                decoded.meta?.productID == expectedProductID
+            else {
+                throw LicenseActivationError.invalidKey
+            }
             return LicenseActivation(
-                licenseID: decoded.licenseKey?.id.map(String.init) ?? "",
+                licenseID: String(licenseID),
                 instanceID: instance.id,
-                status: decoded.licenseKey?.status ?? "active")
+                status: licenseKey.status ?? "active")
         }
 
         /// The subset of the Lemon Squeezy activation response the app reads.
@@ -145,15 +167,31 @@ import Foundation
             let error: String?
             let licenseKey: LSLicenseKey?
             let instance: LSInstance?
+            let meta: LSMeta?
 
             struct LSLicenseKey: Decodable {
                 let id: Int?
                 let status: String?
+                let testMode: Bool?
+
+                enum CodingKeys: String, CodingKey {
+                    case id, status
+                    case testMode = "test_mode"
+                }
             }
             struct LSInstance: Decodable { let id: String }
+            struct LSMeta: Decodable {
+                let storeID: Int?
+                let productID: Int?
+
+                enum CodingKeys: String, CodingKey {
+                    case storeID = "store_id"
+                    case productID = "product_id"
+                }
+            }
 
             enum CodingKeys: String, CodingKey {
-                case activated, error, instance
+                case activated, error, instance, meta
                 case licenseKey = "license_key"
             }
         }

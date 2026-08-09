@@ -590,9 +590,9 @@ the only place this check is meaningful.
 
 `scripts/qa-release.sh` drives it. The script is deliberately self-contained: it needs
 only the artifact and the stock macOS command-line tools (`codesign`, `spctl`,
-`stapler`, `hdiutil`, `plutil`, `sw_vers`, `uname`), so you can copy that one file — or
-download it with the release — onto the clean Mac and run it without checking out the
-repo.
+`stapler`, `hdiutil`, `plutil`, `base64`, `sw_vers`, `uname`, `stat`), so you can copy
+that one file — or download it with the release — onto the clean Mac and run it without
+checking out the repo.
 
 ```bash
 # On the clean Mac, against the downloaded release DMG:
@@ -616,7 +616,10 @@ app inside it: `codesign --verify --deep --strict`, the hardened-runtime flag, `
 `plutil` Info.plist validation (including `LSUIElement`, the no-Dock-icon marker).
 It also requires the embedded `VitrineMenuBarHelper` executable and proves that its
 signature retains `com.apple.security.app-sandbox` plus
-`com.apple.security.inherit`.
+`com.apple.security.inherit`. For the direct-download PRO channel, it additionally
+requires `VitrineLicenseSigningKey` to exist and decode to exactly 32 bytes. That check
+uses private mode-`0600` temporary files and reports only pass/fail — it never prints the
+embedded private key.
 
 **App bug vs. signing failure.** A failed check is classified and the **exit code says
 which class** it is, because the two have completely different owners and fixes:
@@ -649,12 +652,34 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
 9. **Settings** — Settings panes load and a changed setting persists across relaunch.
 10. **Launch at login** — toggling it on auto-starts Vitrine after a re-login/reboot;
     toggling it off stops that.
-11. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
+11. **PRO activation** — while online, open a PRO-gated action, paste the dedicated live
+    QA license into the masked field, activate, and confirm the sheet closes and PRO
+    unlocks. Never put the raw license key in a screenshot, shell history, or QA log.
+12. **Offline relaunch** — quit, disconnect every network interface, relaunch, and confirm
+    PRO remains unlocked and a PRO-only multi-size export succeeds.
+13. **PRO CLI** — still offline, run the bundled `vitrine-cli multi-size` path and confirm
+    it writes the requested images. This proves the separate process accepts the app's
+    signed token; a basic render is not sufficient because basic terminal capture may be
+    free in a later tier contract.
+14. **Token permissions** — without reading or printing it, confirm the non-empty
+    `pro-license.token` mirror has POSIX mode exactly `0600`.
+15. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
     leaves no menu-bar icon and no login item behind.
 
-Record one QA log entry per release (environment header + each checklist result). The
-optional `codesign`/`spctl`/`plutil`/`stapler` checks above run automatically; the
-interactive items above are the manual half.
+Record one QA log entry per release (environment header + each checklist result). For PRO,
+record only the dedicated QA license label or a **redacted** order/license identifier and
+the outcome. **Never record** the raw license key, embedded private signing key, or token
+contents. Before the first public sale — and whenever checkout, pricing, fulfillment email,
+or product configuration changes — also complete a production-mode checkout from the public
+website and confirm the license email arrives. The optional
+`codesign`/`spctl`/`plutil`/`stapler` checks above run automatically; the interactive items
+above are the manual half. See [`ACTIVATION.md`](ACTIVATION.md) for exact secret-safe CLI and
+token-permission commands.
+
+The direct-download v1 lifecycle has a deliberate documented limit: there is no in-app
+Restore or Deactivate action, and remote seat/refund re-validation is not implemented. Do
+not record those nonexistent flows as passed. Upgrades/offline relaunches preserve the local
+token; a clean Mac activates the license again.
 
 ## Checklist
 
@@ -676,4 +701,6 @@ interactive items above are the manual half.
       `brew install`/`brew uninstall --cask` smoke-tested on a clean Mac
 - [ ] **Release artifact QA on a clean Mac** done: `scripts/qa-release.sh` run against
       the published DMG, its environment header + manual checklist recorded in the
-      release QA log, and any failure triaged as app bug vs. signing/notarization
+      release QA log (including secret-safe online activation, offline relaunch,
+      PRO-only CLI multi-size, and `0600` token proof), and any failure triaged as app bug
+      vs. signing/notarization

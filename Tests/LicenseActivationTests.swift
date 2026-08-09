@@ -50,8 +50,9 @@ import Testing
             let json = Data(
                 """
                 {"activated":true,"error":null,
-                 "license_key":{"id":42,"status":"active"},
-                 "instance":{"id":"inst-1","name":"Mac"}}
+                 "license_key":{"id":42,"status":"active","test_mode":false},
+                 "instance":{"id":"inst-1","name":"Mac"},
+                 "meta":{"store_id":408765,"product_id":1156861}}
                 """.utf8)
             let activation = try LemonSqueezyValidator.parse(status: 200, data: json)
             #expect(
@@ -71,8 +72,9 @@ import Testing
                              "created_at":"2026-01-01T00:00:00.000000Z"},
                  "license_key":{"id":1433534,"status":"active","key":"XXXX-XXXX-XXXX-XXXX",
                                 "activation_limit":3,"activation_usage":1,"expires_at":null,
-                                "created_at":"2026-01-01T00:00:00.000000Z","test_mode":true},
-                 "meta":{"store_id":1,"product_id":1,"product_name":"Vitrine PRO"}}
+                                "created_at":"2026-01-01T00:00:00.000000Z","test_mode":false},
+                 "meta":{"store_id":408765,"product_id":1156861,
+                         "product_name":"Vitrine PRO"}}
                 """.utf8)
             let activation = try LemonSqueezyValidator.parse(status: 200, data: json)
             #expect(
@@ -95,6 +97,48 @@ import Testing
             let json = Data(#"{"activated":false,"error":"license_key not found"}"#.utf8)
             #expect(throws: LicenseActivationError.invalidKey) {
                 try LemonSqueezyValidator.parse(status: 404, data: json)
+            }
+        }
+
+        @Test func parseRejectsAKeyForAnotherProductOrStore() {
+            func response(storeID: Int, productID: Int, testMode: Bool = false) -> Data {
+                Data(
+                    """
+                    {"activated":true,"error":null,
+                     "license_key":{"id":42,"status":"active","test_mode":\(testMode)},
+                     "instance":{"id":"inst-1","name":"Mac"},
+                     "meta":{"store_id":\(storeID),"product_id":\(productID)}}
+                    """.utf8)
+            }
+
+            for data in [
+                response(
+                    storeID: LemonSqueezyValidator.expectedStoreID + 1,
+                    productID: LemonSqueezyValidator.expectedProductID),
+                response(
+                    storeID: LemonSqueezyValidator.expectedStoreID,
+                    productID: LemonSqueezyValidator.expectedProductID + 1),
+                response(
+                    storeID: LemonSqueezyValidator.expectedStoreID,
+                    productID: LemonSqueezyValidator.expectedProductID,
+                    testMode: true),
+            ] {
+                #expect(throws: LicenseActivationError.invalidKey) {
+                    try LemonSqueezyValidator.parse(status: 200, data: data)
+                }
+            }
+        }
+
+        @Test func parseRejectsASuccessWithoutATraceableLicenseID() {
+            let json = Data(
+                """
+                {"activated":true,"error":null,
+                 "license_key":{"status":"active","test_mode":false},
+                 "instance":{"id":"inst-1","name":"Mac"},
+                 "meta":{"store_id":408765,"product_id":1156861}}
+                """.utf8)
+            #expect(throws: LicenseActivationError.invalidKey) {
+                try LemonSqueezyValidator.parse(status: 200, data: json)
             }
         }
 
@@ -182,6 +226,9 @@ import Testing
             #expect(
                 LicenseSigningKey.key(fromBase64: validBase64)?.rawRepresentation
                     == real.rawRepresentation)
+            #expect(
+                LicenseSigningKey.key(fromBase64: " \n\(validBase64)\t")?.rawRepresentation
+                    == real.rawRepresentation)
             #expect(LicenseSigningKey.key(fromBase64: nil) == nil)
             #expect(LicenseSigningKey.key(fromBase64: "") == nil)
             #expect(LicenseSigningKey.key(fromBase64: "$(VITRINE_LICENSE_SIGNING_KEY)") == nil)
@@ -198,8 +245,20 @@ import Testing
             let file = CLITokenFile(url: url)
             file.write("a-token")
             #expect(try String(contentsOf: url, encoding: .utf8) == "a-token")
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let permissions = try #require(attributes[.posixPermissions] as? NSNumber)
+            #expect(permissions.intValue & 0o777 == 0o600)
             file.write(nil)
             #expect(!FileManager.default.fileExists(atPath: url.path))
+        }
+
+        @Test func paywallMasksTheLicenseCredential() throws {
+            let source = try String(
+                contentsOf: Self.repositoryRoot
+                    .appendingPathComponent("Vitrine/Pro/ProGate.swift"),
+                encoding: .utf8)
+            #expect(source.contains(#"SecureField("Enter your license key""#))
+            #expect(!source.contains(#"TextField("Enter your license key""#))
         }
 
         // MARK: - End-to-end: activation → CLI verdict
@@ -237,6 +296,12 @@ import Testing
             #expect(
                 !CLIEntitlement.isProUnlocked(
                     tokenURL: tokenURL, verifier: verifier, environment: [:]))
+        }
+
+        private static var repositoryRoot: URL {
+            URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
         }
     }
 #endif

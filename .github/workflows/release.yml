@@ -478,8 +478,10 @@ jobs:
 
   # Post-publish distribution QA: download the DMG users will actually get and
   # run the scripted half of the release QA checklist against it — Gatekeeper's own
-  # codesign/spctl/stapler assessment, version/identity recording, and the
-  # app-vs-signing failure classification qa-release.sh already encodes. Runs after
+  # codesign/spctl/stapler assessment, version/identity recording, secret-safe PRO
+  # signer presence validation, and the app-vs-signing failure classification
+  # qa-release.sh already encodes. The real online/offline activation journey remains
+  # the documented clean-Mac manual half. Runs after
   # publish so a failure never blocks the release; it flags the published artifact
   # for immediate investigation instead.
   qa:

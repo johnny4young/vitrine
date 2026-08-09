@@ -148,8 +148,9 @@ struct StoreKitProviderTests {
 }
 
 /// the direct-download license-key provider: offline Ed25519 token verification,
-/// tamper rejection, and the activate/deactivate round-trip. Real Lemon Squeezy activation
-/// is deferred (it needs the LS account); these pin the offline crypto the CLI also relies on.
+/// tamper rejection, and the local activate/deactivate round-trip. The external published-DMG
+/// activation journey is certified separately by the release QA runbook; these pin the offline
+/// crypto the CLI also relies on.
 @Suite("License key PRO provider")
 @MainActor
 struct LicenseKeyTests {

@@ -10,7 +10,7 @@ output and unlocks *new* surfaces.
 
 | Concern | Files |
 | --- | --- |
-| Entitlement state | `Vitrine/Pro/Entitlements.swift` — `Entitlements` (`@MainActor ObservableObject`, `isPro`), `ProFeature`, `EntitlementProvider`, `FreeProvider`, `#if DEBUG DebugUnlockProvider` |
+| Entitlement state | `Vitrine/Pro/Entitlements.swift` — `Entitlements` (`@MainActor @Observable`, `isPro`), `ProFeature`, `EntitlementProvider`, `FreeProvider`, `#if DEBUG DebugUnlockProvider` |
 | App Store provider | `Vitrine/Pro/StoreKitProvider.swift` — non-consumable IAP `com.johnny4young.vitrine.pro` |
 | Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — Ed25519 `LicenseToken`/`LicenseVerifier`/`LicenseSigner`, `#if VITRINE_DIRECT_DOWNLOAD LicenseKeyProvider` |
 | CLI entitlement (out-of-process) | `Vitrine/CLI/CLIEntitlement.swift` — offline token verify + Debug bypass |
@@ -23,7 +23,7 @@ output and unlocks *new* surfaces.
 
 ## Entitlement resolution
 
-`Entitlements.shared` is a `@MainActor ObservableObject`; `isPro` is seeded synchronously from
+`Entitlements.shared` is a `@MainActor @Observable` reference; `isPro` is seeded synchronously from
 the active provider's `cachedIsPro` at boot (no flicker, no network) and updated by `refresh()`.
 The provider is chosen per build in `defaultProvider()`:
 
@@ -39,7 +39,8 @@ sites honest and leaves room for finer gating later.
 
 ## The direct-download license model (offline, honor-based)
 
-The official direct-download build validates a Lemon Squeezy license key once, then signs the
+The official direct-download build validates a Lemon Squeezy license key once, confirms that the
+response belongs to the source-pinned Vitrine store/product (and is not a test-mode key), then signs the
 offline `LicenseToken` **locally** with the build-injected Ed25519 private key
 (`LicenseSigningKey.embedded`). This is a deliberate honor/convenience model, not server-side
 DRM: the private key is injected only into the signed release binary, never committed, while a
@@ -114,19 +115,28 @@ absent from any Release binary. `EntitlementsTests.debugUnlockProviderIsCompiled
 and `CLIAutomationTests.theEnvBypassIsCompiledOutOfRelease` source-scan guardrail that the unlock
 can never ship.
 
-## Release/account checklist
+## Release/account status and certification
 
-The code path is built and tested against fakes/test keys. Before a public PRO release, finish
-the external account and release-machine setup:
+The direct-download production path is wired: the app and website point at the live Vitrine PRO
+checkout, the release workflow injects `VITRINE_LICENSE_SIGNING_KEY`, the runtime pins the public
+key plus Lemon Squeezy store/product identifiers, and `scripts/qa-release.sh` rejects a published
+artifact whose private signer is missing or malformed. None of those static facts proves that a
+real buyer journey succeeded.
 
-- **Lemon Squeezy** product/license-key setup for the direct-download channel; test a real
-  activation against `/v1/licenses/activate`.
-- **Private-key injection on the release machine** via `VITRINE_LICENSE_SIGNING_KEY`; keep the
-  public key pinned in `LicenseVerifier.embedded` and rotate only deliberately.
-- **App Store Connect** non-consumable IAP product + a `.storekit` config for the live App Store
-  purchase/restore flow.
-- **Optional account lifecycle polish**: a deactivate action and lenient periodic re-validation
-  using the `instanceID` returned by Lemon Squeezy.
+Every direct-download release still needs the secret-safe published-artifact procedure in
+[`ACTIVATION.md`](ACTIVATION.md) and [`RELEASING.md`](RELEASING.md): online activation with a
+dedicated live QA license, offline relaunch, a PRO-only GUI action, the PRO-only CLI `multi-size`
+path, and a non-empty mode-`0600` token mirror. Record pass/fail evidence, but never the raw
+license key, private signing key, or token contents.
+
+The App Store channel remains separate: its StoreKit non-consumable and real purchase/restore
+journey must be certified before that channel is distributed.
+
+**Known direct-download lifecycle boundary:** v1 has no in-app Restore or Deactivate control and
+does not retain the Lemon Squeezy `instanceID` after minting the offline token. Upgrades and
+offline relaunches preserve the local entitlement; moving to a clean Mac requires activating the
+license again. Do not claim remote seat deactivation, periodic refund revocation, or a restore
+workflow until those contracts are deliberately designed and tested.
 
 ## Invariants to preserve
 
@@ -137,3 +147,5 @@ the external account and release-machine setup:
 3. Any local unlock stays `#if DEBUG` with a source-scan guardrail test.
 4. The CLI verifies tokens itself; it must never depend on `Entitlements.shared` (which resolves
    via StoreKit in a CLI process).
+5. A successful provider response is not enough: direct-download activation must match the
+   pinned Lemon Squeezy store/product and reject test-mode, foreign, incomplete, or inactive keys.
