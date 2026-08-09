@@ -32,6 +32,9 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    # Keep every app-owned target warning-clean. A new Swift/toolchain diagnostic is a
+    # compatibility signal to resolve deliberately, not noise to accumulate in CI.
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     # Direct-download channel marker. Code guarded by
     # `#if VITRINE_DIRECT_DOWNLOAD` ships in the direct-download build (the default) and
     # is compiled out of the Mac App Store binary, which also strips the Sparkle

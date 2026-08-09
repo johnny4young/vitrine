@@ -272,7 +272,7 @@ struct StoreKitProviderTests {
         let spy = ClientSpy()
         var provider: StoreKitProvider? = StoreKitProvider(
             defaults: testDefaults(), client: spy.client)
-        weak var releasedProvider = provider
+        weak let releasedProvider = provider
         provider?.startObservingUpdates {}
         let task = try #require(spy.updateTasks.first)
 

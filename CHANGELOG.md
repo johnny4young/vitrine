@@ -19,6 +19,9 @@ can never drift.
 
 ### Changed
 
+- **Swift compiler warnings now fail every app-owned target build.** The existing test
+  diagnostics were removed, including a redundant optional requirement, an obsolete
+  throwing helper, and unnecessary weak mutability.
 - **The menu-bar helper lifecycle contract is now directly testable.** Its PID/token
   parser, exact owner identity, watchdog decision, executable name, and historical
   visibility repair are shared with the main app instead of living as private duplicated

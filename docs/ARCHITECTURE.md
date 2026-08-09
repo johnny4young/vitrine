@@ -800,6 +800,10 @@ cache-key bottleneck.
 
 ### Build boundaries
 
+All app-owned targets inherit `SWIFT_TREAT_WARNINGS_AS_ERRORS`. Compiler diagnostics from
+a new Swift or macOS SDK are compatibility signals that must be resolved deliberately;
+they cannot accumulate silently behind otherwise-green CI results.
+
 `make build-boundaries` measures architectural build costs before a new module or
 package boundary is introduced. It runs clean and no-op builds plus low-fan-out
 Foundation and high-fan-out model changes in disposable DerivedData. It also compares

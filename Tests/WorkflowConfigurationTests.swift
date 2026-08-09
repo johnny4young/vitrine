@@ -173,6 +173,11 @@ struct WorkflowConfigurationTests {
         #expect(ci.contains("xcrun xccov view --report --only-targets"))
     }
 
+    @Test func swiftWarningsFailEveryAppOwnedTargetBuild() throws {
+        let project = try Self.text("project.yml")
+        #expect(project.contains("SWIFT_TREAT_WARNINGS_AS_ERRORS: YES"))
+    }
+
     // MARK: - Contract: cache SPM dependencies where safe
 
     @Test func ciCachesSwiftPackageManagerDependencies() throws {
