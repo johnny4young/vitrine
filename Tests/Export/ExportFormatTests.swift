@@ -23,6 +23,15 @@ struct ExportFormatTests {
         #expect(vectors == [.pdf])
     }
 
+    @Test("Interactive formats mirror the active ImageIO destination writers")
+    func availableCasesMatchEncodingCapabilities() {
+        #expect(ExportFormat.availableCases.contains(.png))
+        #expect(ExportFormat.availableCases.contains(.pdf))
+        for format in ExportFormat.allCases {
+            #expect(ExportFormat.availableCases.contains(format) == format.isEncodingAvailable)
+        }
+    }
+
     @Test("Each format has a non-empty display name and summary")
     func formatLabelsArePresent() {
         for format in ExportFormat.allCases {
@@ -57,5 +66,8 @@ struct ExportFormatTests {
         #expect(ExportFormat.resolve("") == .png)
         #expect(ExportFormat.resolve("svg") == .png)
         #expect(ExportFormat.fallback == .png)
+        #expect(
+            ExportFormat.resolveAvailable("avif")
+                == (ExportFormat.avif.isEncodingAvailable ? .avif : .png))
     }
 }

@@ -51,9 +51,14 @@ can never drift.
 ### Fixed
 
 - **Hosted Sequoia and Tahoe UI validation now uses the runner's real interactive
-  screen geometry.** Debug UI runs pass the XCUIAutomation-visible frame to Welcome
-  and Recents before hit testing, and targeted selectors prefer the hittable control
-  when AppKit exposes the same toolbar identifier on nested wrapper nodes.
+  screen geometry.** Debug UI runs derive the XCUIAutomation-visible bounds from
+  `XCUIScreen` rather than the runner's transient pre-launch `NSScreen`, then pass them
+  to Welcome and Recents before hit testing, and targeted selectors prefer the hittable
+  control when AppKit exposes the same toolbar identifier on nested wrapper nodes.
+- **Output choices now follow the codecs the running macOS can actually write.** AVIF
+  remains available on Tahoe, while Sequoia no longer offers or restores an AVIF choice
+  its ImageIO stack recognizes as a type but cannot encode. PNG, PDF, and HEIC remain
+  available across the supported compatibility matrix.
 - **Sandboxed direct-download builds can install Sparkle updates again.** The app now
   enables Sparkle's required Installer Launcher XPC service, packaging and clean-Mac QA
   verify the final Info.plist, embedded service, and matching `-spks`/`-spki` entitlements,

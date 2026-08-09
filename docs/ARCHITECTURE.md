@@ -383,6 +383,14 @@ explicit `--format` is present, the extension must match so automation never rec
 mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
 extension-based language inference and default metadata while still reading the source
 only from standard input.
+
+Raster availability is capability-driven rather than version-switched:
+`ExportFormat.availableCases` caches `CGImageDestinationCopyTypeIdentifiers()` once and
+interactive pickers expose only writers the active ImageIO stack actually provides.
+That keeps PNG/PDF/HEIC available on Sequoia while adding AVIF on Tahoe and newer.
+Persisted or imported AVIF settings fall back to PNG on a Mac without the writer; the
+CLI grammar remains stable across OS versions and returns an encoding failure rather
+than ever writing mislabeled bytes.
 `--git-diff <revision-range>` is a bounded local source for `render` and `multi-size`.
 `GitDiffInputLoader` executes `/usr/bin/git` directly with a fixed argument vector,
 disables pagers, external diff drivers, textconv, and color, and puts repeatable

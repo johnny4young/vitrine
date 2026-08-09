@@ -98,13 +98,17 @@ enum CLIOutputWriter {
     /// color profile — so the CLI never re-implements the format switch. The PNG branch
     /// keeps its `CGImage` only to report exact pixel dimensions; the format-specific
     /// dimension reporting below is the one genuinely CLI-only part. A render or encode
-    /// failure maps to `CLIError.renderFailed`; a write failure to
+    /// failure maps to `CLIError.renderFailed`; an unavailable system writer to
+    /// `CLIError.unsupportedOutputFormat`; a write failure to
     /// `CLIError.writeFailed` — neither ever crashes the process.
     static func renderAndWrite(
         _ config: SnapshotConfig, options: CLIOptions,
         backgroundStore: BackgroundImageStore = .container,
         foregroundStore: BackgroundImageStore = .foregroundContainer, to url: URL
     ) throws -> (width: Int, height: Int) {
+        guard options.format.isEncodingAvailable else {
+            throw CLIError.unsupportedOutputFormat(options.format.displayName)
+        }
         var pngImage: CGImage?
         let payload = ExportManager.encodedPayload(
             options.format,

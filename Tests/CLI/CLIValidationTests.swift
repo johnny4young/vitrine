@@ -792,7 +792,7 @@ struct CLIValidationTests: CLITestSupport {
             .invalidRecipe("invalid recipe"),
             .inputNotText(path: "/x"), .gitDiffFailed, .gitDiffEmpty, .gitDiffTooLarge,
             .inputImageTooLarge(path: "/x"), .inputNotImage(path: "/x"),
-            .renderFailed, .outputExists(path: "/x"),
+            .renderFailed, .unsupportedOutputFormat("AVIF"), .outputExists(path: "/x"),
             .writeFailed(path: "/x"), .batchEmpty(skipped: 1),
             .batchSkipped(rendered: 1, skipped: 1), .editorOpenFailed,
             .editorHandoffFailed, .proRequired,

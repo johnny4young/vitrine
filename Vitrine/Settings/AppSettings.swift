@@ -397,7 +397,7 @@ final class AppSettings {
         defaultConfig.clearContentMarks()
         config = defaultConfig
         export.scale = session.export.scale
-        export.format = session.export.format
+        export.format = session.export.format.availableOrFallback
         export.colorProfile = session.export.colorProfile
         export.richClipboard = session.export.richClipboard
         export.textSidecar = session.export.textSidecar
@@ -489,7 +489,7 @@ final class AppSettings {
         selectedPresetID = destination?.id
 
         if let scale = recipe.output.scale ?? destination?.scale { export.scale = scale }
-        if let format = recipe.output.format { export.format = format }
+        if let format = recipe.output.format { export.format = format.availableOrFallback }
         if let profile = recipe.output.colorProfile { export.colorProfile = profile }
         Log.settings.info("Applied a workspace recipe")
         return recipe.output.canvasSize != nil

@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import XCTest
 
 final class VitrineUITests: XCTestCase {
@@ -1650,7 +1651,7 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testOutputFormatPickerOffersAVIF() {
+    func testOutputFormatPickerMatchesSystemAVIFSupport() {
         continueAfterFailure = false
         let app = launch(arguments: ["--open-settings"])
         defer { app.terminate() }
@@ -1659,10 +1660,24 @@ final class VitrineUITests: XCTestCase {
         element("settings-nav-output", in: app).click()
         assertExists(element("settings-output-pane", in: app), in: app, timeout: 3)
         let avif = element("output-format-avif", in: app)
-        assertExists(avif, in: app)
-        XCTAssertTrue(avif.isHittable, "AVIF is present but not reachable in the format picker")
-        avif.click()
-        XCTAssertTrue(avif.isSelected, "Selecting AVIF did not update the output format")
+        let supportsAVIF =
+            Set(CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []).contains("public.avif")
+        if supportsAVIF {
+            assertExists(avif, in: app)
+            XCTAssertTrue(avif.isHittable, "AVIF is present but not reachable in the format picker")
+            avif.click()
+            let selectedDeadline = Date().addingTimeInterval(3)
+            while !element("output-format-avif", in: app).isSelected,
+                Date() < selectedDeadline
+            {
+                Thread.sleep(forTimeInterval: 0.2)
+            }
+            XCTAssertTrue(
+                element("output-format-avif", in: app).isSelected,
+                "Selecting AVIF did not update the output format")
+        } else {
+            XCTAssertFalse(avif.exists, "AVIF must not be offered without an ImageIO writer")
+        }
     }
 
     // MARK: - Localization smoke

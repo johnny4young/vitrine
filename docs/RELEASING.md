@@ -99,6 +99,12 @@ assuming they match. `fail-fast: false` ensures a failure on one OS never cancel
 evidence from the other. Artifact names include `sequoia-15` or `tahoe-26`, preventing
 parallel matrix uploads from colliding.
 
+The matrix also proves capability-specific UI rather than pretending both systems ship
+identical codecs. ImageIO exposes PNG, PDF, and HEIC writers on both rows; AVIF is shown
+and restored only when `CGImageDestinationCopyTypeIdentifiers()` reports its writer
+(Tahoe and newer). Sequoia must omit AVIF from interactive pickers and return a typed CLI
+error for an explicit AVIF request instead of surfacing a late generic render failure.
+
 An unreleased future macOS major is not silently claimed as supported. Add its explicit
 runner label to both matrices, obtain a green build/UI/visual run, and update this table
 before calling that runtime certified.

@@ -44,6 +44,8 @@ nonisolated enum CLIError: Error, Equatable {
     case inputNotImage(path: String)
     /// Rendering produced no image (an internal renderer failure).
     case renderFailed
+    /// The requested format is valid, but this macOS ImageIO stack has no writer for it.
+    case unsupportedOutputFormat(String)
     /// An output path already exists and `--no-overwrite` requested a safe run.
     case outputExists(path: String)
     /// Encoding or writing the output file failed.
@@ -100,6 +102,8 @@ nonisolated enum CLIError: Error, Equatable {
             "The input file at \"\(path)\" is not a supported image."
         case .renderFailed:
             "Rendering failed to produce an image."
+        case .unsupportedOutputFormat(let format):
+            "This Mac's ImageIO stack cannot encode \(format). Choose PNG, PDF, or HEIC instead."
         case .outputExists(let path):
             "The output already exists at \"\(path)\". Remove it or omit --no-overwrite."
         case .writeFailed(let path):

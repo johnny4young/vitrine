@@ -464,9 +464,9 @@ struct EditorInspectorView: View {
         }
         InspectorRow(label: Text("Format")) {
             TokenSegmentedPicker(
-                options: ExportFormat.allCases.map { ($0, Text(verbatim: $0.displayName)) },
+                options: ExportFormat.availableCases.map { ($0, Text(verbatim: $0.displayName)) },
                 selection: $settings.export.format,
-                optionIdentifiers: ExportFormat.allCases.map {
+                optionIdentifiers: ExportFormat.availableCases.map {
                     "inspector-format-\($0.rawValue)"
                 }
             )

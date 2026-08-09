@@ -41,6 +41,7 @@ editing a board never mutates capture history or the app's saved style.
 
 Board composition is deterministic for the same pixels, captions, layout, scale, and
 color profile. The result uses the shared Vitrine encoders and can be exported as PNG,
-HEIC, AVIF, or PDF according to the current Output setting. PDF contains the finished
+HEIC, or PDF according to the current Output setting, plus AVIF when the running macOS
+ImageIO stack provides an AVIF writer (Tahoe and newer). PDF contains the finished
 board image on one correctly sized page; it does not recreate each source capture as
 editable vector content.

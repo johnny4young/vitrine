@@ -244,7 +244,8 @@ and passwords and blurs those lines for you — image *and* copyable text.
 
 ### Export & share
 
-Retina **PNG**, **PDF**, and **HEIC** to the clipboard, a file, or the Share Sheet — sRGB
+Retina **PNG**, **PDF**, and **HEIC** to the clipboard, a file, or the Share Sheet — plus
+**AVIF** when the running macOS ImageIO stack provides its writer (Tahoe and newer) — sRGB
 by default (Display P3 on demand), with real alpha for transparent backgrounds.
 The editor's alternate copy menu can also produce highlighted RTF/HTML, a PNG data URI,
 or a self-contained Markdown block with the rendered image and redaction-safe source.
@@ -276,7 +277,7 @@ Shortcuts and App Intents.
 | **Style** | 13 themes + custom, 33 syntax languages plus Terminal and Plain Text modes, fonts, gradient & image backgrounds, focus mode, diff coloring |
 | **Annotate** | Arrows (straight · curved), lines, boxes, text, highlighter, blur, counters, spotlight, measure, stickers — with undo/redo |
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
-| **Export** | Retina PNG/PDF/HEIC, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets, 2–4 capture comparison boards |
+| **Export** | Retina PNG/PDF/HEIC, AVIF where ImageIO supports it, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets, 2–4 capture comparison boards |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
 | **PRO** | Brand Kit watermark · multi-size one-pass export · advanced automation (general `vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
 
@@ -294,7 +295,7 @@ Shortcuts and App Intents.
 - ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight and curved), lines, rectangles, text callouts, a highlighter, blur/redaction boxes, numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
 - 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
-- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format and **HEIC** as the compact one for docs sites and wikis. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
+- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format, **HEIC** as a compact option for docs sites and wikis, and **AVIF** when the active ImageIO stack can encode it (Tahoe and newer). Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
 - 📣 **Post to X / LinkedIn / Bluesky** — compose targets in the share sheet: the image is staged on the clipboard and the network's compose page opens with a paste hint. One paste from posting; Vitrine sends nothing anywhere.
 - 🎠 **Carousel export** *(PRO)* — split a long snippet into numbered 4:5 slides (`carousel-01.png` …) for a LinkedIn/Instagram carousel. Pick the lines per slide; the split balances so the last slide never trails, and every slide carries your style and brand mark.
 - 📌 **Pinned snapshot** — pin the current render in a floating window that stays above every app and follows you across Spaces, so the error or design you're working against stays visible while you code.
@@ -619,7 +620,7 @@ vitrine/
 │   ├── Rendering/         # capture input → code render pipeline
 │   ├── WebRendering/      # local URL/HTML snapshots (WebKit, on-device)
 │   ├── SocialCards/       # social-card composition
-│   ├── Export/            # ImageRenderer → PNG/PDF → clipboard / file / share
+│   ├── Export/            # ImageRenderer → capability-gated raster/PDF → clipboard / file / share
 │   ├── Recents/           # capture history + gallery window
 │   ├── Help/              # offline Help + What's New release notes
 │   ├── Feedback/          # capture HUD, notifications, diagnostics bundle
