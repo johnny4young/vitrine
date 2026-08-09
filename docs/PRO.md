@@ -18,7 +18,7 @@ output and unlocks *new* surfaces.
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `Vitrine/Models/SnapshotConfig.swift` (`Watermark`), `Vitrine/Canvas/WatermarkBadge.swift` |
 | Feature: multi-size export | `Vitrine/Export/ExportManager+Batch.swift` (`exportPresetSizes`), `Vitrine/Export/MultiSizeExportView.swift` |
 | Feature: carousel export | `Vitrine/Export/ExportManager+Batch.swift` (`exportCarousel`), `Vitrine/Export/CarouselExportView.swift`, `Vitrine/Export/CarouselPaginator.swift` |
-| Feature: automation gating | `VitrineCLI/main.swift`, `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
+| Feature: automation gating | `VitrineCLI/main.swift`, `Vitrine/CLI/CLIOptions.swift` (`Command.requiresPro`), `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
 | Tests | `Tests/EntitlementsTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLIAutomationTests.swift` |
 
 ## Entitlement resolution
@@ -92,10 +92,14 @@ unlock path (StoreKit buy + Restore, or a license-key field).
 
 In-process surfaces gate on `Entitlements.shared.isUnlocked(.automation)`:
 `RenderCodeImageIntent.perform()` (→ `IntentRenderError`), `CodeImageService.process()`
-(→ `.failed`, injectable for tests). The CLI is out-of-process: `main.swift` gates at the
-boundary via `CLIEntitlement.isProUnlocked()` (which verifies the signed token and honors the
-Debug bypass) before dispatching `render`/`batch`, so `CLIRenderer.run`/`runBatch` stay ungated
-and fully testable. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
+(→ `.failed`, injectable for tests). The CLI is out-of-process and applies capability policy
+before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
+forces terminal language, requires clipboard copy or editor handoff, and accepts only terminal
+width plus filename/title context. The parser rejects every general style, output, sidecar, and
+automation flag on that command. `render`, `multi-size`, and `batch` remain PRO; `main.swift`
+calls `CLIEntitlement.isProUnlocked()` for those commands before dispatch, so the unchanged
+`CLIRenderer` operations stay ungated and fully testable. `vpane` deliberately uses general
+`render` and remains PRO. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
 `--recursive` opts into nested folders while preserving their relative output paths, and
 `--fail-on-skipped` turns any skipped file into a non-zero automation exit after the
 readable files are rendered. `--skipped-report <json>` can be paired with either mode
@@ -145,7 +149,8 @@ workflow until those contracts are deliberately designed and tested.
 2. New PRO visuals are additive + default-off on `SnapshotConfig` (like `annotations`/`metadata`)
    so goldens stay byte-identical.
 3. Any local unlock stays `#if DEBUG` with a source-scan guardrail test.
-4. The CLI verifies tokens itself; it must never depend on `Entitlements.shared` (which resolves
-   via StoreKit in a CLI process).
+4. Advanced CLI commands verify tokens themselves; they must never depend on
+   `Entitlements.shared` (which resolves via StoreKit in a CLI process). The free
+   `terminal-capture` command must stay constrained by an explicit parser allowlist.
 5. A successful provider response is not enough: direct-download activation must match the
    pinned Lemon Squeezy store/product and reject test-mode, foreign, incomplete, or inactive keys.

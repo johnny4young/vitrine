@@ -48,9 +48,10 @@ available from GitHub and through the Homebrew cask. The same app can also be bu
 for App Store distribution.
 
 An optional one-time PRO purchase funds development. PRO adds Brand Kit,
-multi-size export, carousel workflows, and automation-oriented capabilities. The
-render core and normal editing workflow remain available without PRO. StoreKit is
-used for the App Store channel; the direct-download channel verifies signed license
+multi-size export, carousel workflows, and advanced automation-oriented capabilities.
+Basic `vgrab` terminal capture, the render core, and the normal editing workflow remain
+available without PRO. StoreKit is used for the App Store channel; the direct-download
+channel verifies signed license
 data locally. See [`PRO.md`](PRO.md) and [`ACTIVATION.md`](ACTIVATION.md).
 
 ## Privacy and permissions

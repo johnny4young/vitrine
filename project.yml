@@ -269,9 +269,9 @@ targets:
         # A tool is not a sandboxed .app: render is fully local and needs no
         # entitlements, network, screen recording, or Accessibility. The
         # font-staging build phase writes next to the binary, so user-script sandboxing
-        # (on for the shipping app) is off — but the Hardened Runtime stays ON: the CLI
-        # verifies the PRO license token, so its runtime integrity (resisting dylib
-        # injection / debugger attach on the verification path) matters most here.
+        # (on for the shipping app) is off — but the Hardened Runtime stays ON: advanced
+        # CLI commands verify the PRO license token, so runtime integrity (resisting dylib
+        # injection / debugger attach on that verification path) matters most here.
         # The two settings are independent.
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
@@ -291,7 +291,8 @@ targets:
       configs:
         # Debug still defines DEBUG (but NOT VITRINE_DIRECT_DOWNLOAD) so the CLI's
         # `#if DEBUG` `VITRINE_PRO_UNLOCK` bypass is available for local QA; Release
-        # stays bare, so a shipped `vitrine` unlocks only via a signature-valid token.
+        # stays bare, so a shipped `vitrine` unlocks advanced commands only via a
+        # signature-valid token. The constrained terminal-capture command remains free.
         Debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
 

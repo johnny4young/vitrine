@@ -78,7 +78,32 @@ struct CLIEntitlementTests: CLITestSupport {
     }
 
     @Test func proRequiredReportsAClearMessageAndFailureExitCode() {
-        #expect(!CLIError.proRequired.message.isEmpty)
+        #expect(CLIError.proRequired.message.contains("Basic vgrab terminal capture is free"))
         #expect(CLIError.proRequired.exitCode == 1)
     }
+
+    @Test func onlyTheConstrainedTerminalCaptureCommandBypassesPro() throws {
+        let free = try CLIArguments.parse([
+            "terminal-capture", "capture.log", "--terminal-width", "120",
+            "--filename", "vitrine · main", "--title", "$ make test", "--copy",
+        ])
+        #expect(free.command == .terminalCapture)
+        #expect(!free.command.requiresPro)
+        #expect(free.language == .terminal)
+
+        for command in CLIOptions.Command.allProCommands {
+            #expect(command.requiresPro, "\(command.rawValue) must stay behind PRO")
+        }
+    }
+
+    @Test func executableChecksTheCapabilityBeforeReadingTheProToken() throws {
+        let source = try String(
+            contentsOf: repoFile("VitrineCLI", "main.swift"), encoding: .utf8)
+        #expect(source.contains("options.command.requiresPro"))
+        #expect(source.contains("CLIEntitlement.isProUnlocked()"))
+    }
+}
+
+extension CLIOptions.Command {
+    fileprivate static let allProCommands: [Self] = [.render, .multiSize, .batch]
 }

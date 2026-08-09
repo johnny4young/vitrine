@@ -25,7 +25,7 @@ const text = es
       noResults: 'No encontramos esa opción. Prueba con render, Git, recipe, redact o batch.',
       install: 'Instalar y comprobar',
       installIntro: 'Homebrew instala la app y añade vitrine al PATH. Con el DMG, actívala desde Ajustes ▸ General ▸ Herramienta de línea de comandos.',
-      installNote: 'La App Store no incluye la CLI. Los comandos que renderizan requieren una licencia PRO activa de la compilación de descarga directa; version, list y recipe funcionan sin renderizar.',
+      installNote: 'La App Store no incluye la CLI. La captura básica con vgrab es gratis; render, multi-size, batch y vpane requieren una licencia PRO activa de la compilación de descarga directa. version, list y recipe también funcionan sin PRO.',
       firstRun: 'Tu primera imagen',
       firstRunIntro: 'Empieza sin configurar nada. Vitrine infiere Swift por la extensión, usa One Dark y el fondo aurora, y escribe un PNG retina.',
       commands: 'Mapa de comandos',
@@ -62,7 +62,7 @@ const text = es
       noResults: 'No matching option. Try render, Git, recipe, redaction, or batch.',
       install: 'Install and verify',
       installIntro: 'Homebrew installs the app and puts vitrine on your PATH. With the DMG, enable it from Settings ▸ General ▸ Command-line tool.',
-      installNote: 'The App Store build does not include the CLI. Rendering commands require an active PRO license in the direct-download build; version, list, and recipe work without rendering.',
+      installNote: 'The App Store build does not include the CLI. Basic vgrab capture is free; render, multi-size, batch, and vpane require an active PRO license in the direct-download build. version, list, and recipe also work without PRO.',
       firstRun: 'Your first image',
       firstRunIntro: 'Start without configuring anything. Vitrine infers Swift from the extension, uses One Dark and the aurora background, and writes a retina PNG.',
       commands: 'Command map',
@@ -99,7 +99,7 @@ const meta: SiteCopy = {
 const troubleshooting = es
   ? [
       ['vitrine: command not found', 'Con Homebrew, ejecuta brew reinstall --cask johnny4young/tap/vitrine. Con el DMG, abre Ajustes ▸ General ▸ Command-line tool ▸ Install… o crea el enlace manual documentado en README.'],
-      ['“Vitrine PRO is required”', 'Activa la licencia en la app de descarga directa y vuelve a ejecutar el comando. Las compilaciones Release ignoran VITRINE_PRO_UNLOCK por diseño.'],
+      ['“Vitrine PRO is required”', 'vgrab básico es gratis. Para render, multi-size, batch o vpane, activa la licencia en la app de descarga directa y vuelve a ejecutar el comando. Las compilaciones Release ignoran VITRINE_PRO_UNLOCK por diseño.'],
       ['La App Store no tiene el binario', 'Es intencional: ese canal no distribuye herramientas en PATH. Instala el DMG firmado o el paquete de Homebrew para usar la CLI.'],
       ['El lenguaje detectado no es correcto', 'Pasa --language <id> o, cuando uses --stdin, añade --stdin-name con una extensión útil. Consulta vitrine list languages.'],
       ['El archivo ya existe', 'Omite --no-overwrite para reemplazarlo, cambia --out o elimina el artefacto anterior. En batch, los existentes se informan como omitidos.'],
@@ -109,7 +109,7 @@ const troubleshooting = es
     ]
   : [
       ['vitrine: command not found', 'With Homebrew, run brew reinstall --cask johnny4young/tap/vitrine. With the DMG, open Settings ▸ General ▸ Command-line tool ▸ Install… or create the manual link documented in README.'],
-      ['“Vitrine PRO is required”', 'Activate the license in the direct-download app, then retry. Release builds ignore VITRINE_PRO_UNLOCK by design.'],
+      ['“Vitrine PRO is required”', 'Basic vgrab is free. For render, multi-size, batch, or vpane, activate the license in the direct-download app and retry. Release builds ignore VITRINE_PRO_UNLOCK by design.'],
       ['The App Store build has no binary', 'That is intentional: this channel does not distribute tools on PATH. Install the signed DMG or Homebrew cask to use the CLI.'],
       ['Language inference chose incorrectly', 'Pass --language <id>, or add --stdin-name with a useful extension when piping. Inspect vitrine list languages for valid ids.'],
       ['The output already exists', 'Omit --no-overwrite to replace it, choose another --out, or remove the old artifact. Batch reports existing targets as skipped.'],

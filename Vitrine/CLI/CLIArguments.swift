@@ -3,10 +3,11 @@ import Foundation
 /// Parses `vitrine` command-line arguments into a `CLIOptions`.
 ///
 /// The grammar is deliberately tiny and dependency-free (no third-party arg parser):
-/// a `render`, `multi-size`, or `batch` subcommand, one positional input path/folder,
-/// a command-specific `--out` requirement, and boolean / `--flag value` options. Pure
+/// a constrained free `terminal-capture` or general `render`, `multi-size`, and `batch`
+/// subcommand, one positional input path/folder, a command-specific output contract,
+/// and boolean / `--flag value` options. Pure
 /// inspection commands such as `list`, `recipe`, and `shell-init` are handled before
-/// this parser so they can run without AppKit or the PRO render gate. Keeping the parser
+/// this parser so they can run without AppKit or the capability gate. Keeping the parser
 /// hand-rolled means the CLI adds no new package to the app and remains straightforward
 /// to unit-test.
 ///
@@ -20,7 +21,7 @@ import Foundation
 @MainActor
 enum CLIArguments {
     /// Parses the argument list *after* the executable name (that is,
-    /// `CommandLine.arguments.dropFirst()`), returning the options for a `render` command.
+    /// `CommandLine.arguments.dropFirst()`), returning one validated command contract.
     ///
     /// Throws `CLIError.helpRequested` for `--help`/`-h` (the caller prints usage),
     /// and a specific error for any malformed input.

@@ -55,8 +55,8 @@ nonisolated enum CLIError: Error, Equatable {
     /// `vitrine://` scheme, or a Launch Services failure). Surfaced so a script sees a
     /// non-zero exit instead of a false success.
     case editorOpenFailed
-    /// The PRO tier is required for command-line/automation rendering but is not
-    /// active. Reported before any file work so a free build never renders.
+    /// The PRO tier is required for an advanced command-line automation capability but
+    /// is not active. Reported before any file work; basic `vgrab` capture stays free.
     case proRequired
 
     /// A short, human-readable explanation suitable for stderr.
@@ -65,7 +65,7 @@ nonisolated enum CLIError: Error, Equatable {
         case .helpRequested:
             CLIUsage.text
         case .unknownCommand(let command):
-            "Unknown command \"\(command)\". The commands are \"render\", \"multi-size\", \"batch\", \"recipe\", \"list\", \"shell-init\", and \"version\"."
+            "Unknown command \"\(command)\". The commands are \"terminal-capture\", \"render\", \"multi-size\", \"batch\", \"recipe\", \"list\", \"shell-init\", and \"version\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
         case .missingValue(let flag):
@@ -108,8 +108,9 @@ nonisolated enum CLIError: Error, Equatable {
         case .editorOpenFailed:
             "Could not open Vitrine to receive the output. Is Vitrine installed?"
         case .proRequired:
-            "Vitrine PRO is required for command-line and automation rendering. "
-                + "Activate PRO in the Vitrine app to unlock it."
+            "Vitrine PRO is required for advanced command-line automation. "
+                + "Basic vgrab terminal capture is free; activate PRO in the Vitrine app "
+                + "to unlock render, multi-size, batch, and vpane."
         }
     }
 

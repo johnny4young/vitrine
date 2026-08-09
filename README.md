@@ -273,7 +273,7 @@ Shortcuts and App Intents.
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
 | **Export** | Retina PNG/PDF/HEIC, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets, 2–4 capture comparison boards |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
-| **PRO** | Brand Kit watermark · multi-size one-pass export · automation (`vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
+| **PRO** | Brand Kit watermark · multi-size one-pass export · advanced automation (general `vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
 
 <details>
 <summary>Everything, in detail</summary>
@@ -281,7 +281,7 @@ Shortcuts and App Intents.
 - 🍫 Native **menu-bar app** (`NSStatusItem`, `LSUIElement` — no Dock icon, no app switcher).
 - ⌨️ Configurable **global hotkey** (`⇧⌘S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 33 shipped syntax languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js), plus Terminal and Plain Text modes. Use `vitrine list languages --json` to inspect the catalog shipped by your build.
-- 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The `vgrab` shell helper *(PRO)* captures a command's output with its color intact and adds a compact project, current Git branch when available, and command header so the image keeps its context when shared (`--no-context` restores an output-only capture). It also supports **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included — and a copyable-text sidecar can ship the output as text alongside the image. `vpane` *(PRO)* images a tmux pane's visible contents without re-running anything, and dropping an **asciinema** recording (`.cast`) replays it into the same renderer. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
+- 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The basic **`vgrab` shell helper is free**: it captures a command's output with its color intact and adds a compact project, current Git branch when available, and command header so the image keeps its context when shared (`--no-context` restores an output-only capture). It also supports **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included. `vpane` and general CLI automation remain PRO, and dropping an **asciinema** recording (`.cast`) replays it into the same renderer. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
 - 🖼️ **Beautify any image** — drop, paste, or quick-capture any screenshot (not just code) and render it on the same backgrounds, padding, and shadow, optionally wrapped in a macOS-window, browser, or MacBook / iPhone device frame. The frame chrome auto-tints to the image's top-edge color so it blends in (Light/Dark are manual overrides). Browser and device frames are PRO.
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
 - 🔄 **Living snapshots** — explicitly open one source file from the editor and its clean content refreshes after saves. Local edits are never overwritten: a changed disk version waits for **Reload** or **Keep**. The watcher is scoped to that window and is not restored or persisted. → [`docs/LIVING-SNAPSHOTS.md`](docs/LIVING-SNAPSHOTS.md).
@@ -305,7 +305,7 @@ Shortcuts and App Intents.
 - ⚡ **Shortcuts / App Intents** *(PRO)* — render a code image or open the editor from Shortcuts and Spotlight.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
 - 🌍 **Localized** in English and Spanish (String Catalog), with pseudolocale and RTL layout tests.
-- 🖥️ **Command-line renderer** *(direct-download PRO)* — `vitrine render input.swift --out image.png` for docs pipelines and automation, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
+- 🖥️ **Command-line tools** — basic `vgrab <command>` terminal capture is free. The general `vitrine render input.swift --out image.png`, multi-size, batch, and `vpane` automation surfaces are direct-download PRO, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
 - 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark (now with a scannable **QR link chip** and a **signature footer bar** placement), multi-size one-pass export, carousel export, and the automation surfaces above; core capture and editing stay free.
 - 🔒 Sandboxed local rendering — your code **never leaves your Mac** when Vitrine renders code. URL capture is the explicit exception because the requested page must be fetched.
 
@@ -321,13 +321,13 @@ license for people who publish professionally:
   every export, in one click.
 - **Multi-size export** — one capture rendered to every platform size (X, LinkedIn,
   OpenGraph, …) into a folder in a single pass.
-- **Automation** — the `vitrine` command-line renderer, Shortcuts / App Intents, and folder
-  batch rendering.
+- **Advanced automation** — general `vitrine render`, multi-size, `vpane`, Shortcuts /
+  App Intents, and folder batch rendering. Basic `vgrab` terminal capture stays free.
 
 It is **honor/convenience, not anti-fork DRM**. On the Mac App Store, PRO is a StoreKit
 in-app purchase; on the direct-download build, a license key activates **once** online and
-the app then verifies an **offline, signed token** on every launch (the bundled CLI
-re-verifies the same token), so PRO works without the network after activation. Nothing
+the app then verifies an **offline, signed token** on every launch (advanced bundled CLI
+commands re-verify the same token), so PRO works without the network after activation. Nothing
 about your code or usage is ever sent. Details: [`docs/PRO.md`](docs/PRO.md).
 
 ## Privacy
@@ -450,11 +450,13 @@ and option with copyable examples, practical workflows, and troubleshooting.
 | **Mac App Store** | Does not include the CLI because App Store apps do not distribute command-line tools on `PATH`. |
 | **Source checkout** | `make cli` builds the development binary in DerivedData, next to its required resources. |
 
-Commands that create images require an **activated direct-download PRO license**.
-Inspection commands — `--version`, `list`, and `recipe validate/show` — remain
-available before the render gate, which makes installation and configuration easy to
-check. A Debug source build can use `VITRINE_PRO_UNLOCK=1` for local QA; release builds
-ignore that variable.
+Basic `vgrab <command>` terminal capture is **free**. It uses a deliberately constrained
+CLI capability: terminal input can be copied or opened in the editor, with optional width
+and context, but it cannot opt into general styling, sidecars, file output, or batch work.
+General `render`, `multi-size`, `batch`, and `vpane` automation require an **activated
+direct-download PRO license**. Inspection commands — `--version`, `list`, and `recipe
+validate/show` — also remain available without PRO. A Debug source build can use
+`VITRINE_PRO_UNLOCK=1` for local QA; release builds ignore that variable.
 
 ### Your first useful image
 

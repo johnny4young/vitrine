@@ -35,6 +35,16 @@ const both = (en: string, es: string): LocalizedText => ({ en, es });
 
 export const cliCommands: CLICommandDoc[] = [
   {
+    id: 'terminal-capture',
+    name: 'terminal-capture',
+    syntax: 'vitrine terminal-capture <capture-file> (--copy | --edit)',
+    summary: both('Free path behind vgrab', 'Ruta gratuita de vgrab'),
+    detail: both(
+      'The constrained local command emitted by vgrab. It accepts terminal width and context, but no general styling, file output, sidecars, or batch automation.',
+      'El comando local y limitado que usa vgrab. Acepta ancho y contexto de terminal, pero no estilos generales, salida a archivo, archivos auxiliares ni automatización por lotes.',
+    ),
+  },
+  {
     id: 'render',
     name: 'render',
     syntax: 'vitrine render <input> --out <image> [options]',
@@ -152,8 +162,8 @@ export const cliExamples: CLIExample[] = [
     ),
     code: 'vgrab npm test\nvgrab -e git status\nvgrab --no-context env | sort',
     note: both(
-      'Use --no-context whenever arguments, paths, or branch names should stay private.',
-      'Usa --no-context cuando los argumentos, rutas o nombres de rama deban mantenerse privados.',
+      'Basic vgrab capture is free. Use --no-context whenever arguments, paths, or branch names should stay private.',
+      'La captura básica con vgrab es gratis. Usa --no-context cuando los argumentos, rutas o nombres de rama deban mantenerse privados.',
     ),
   },
   {

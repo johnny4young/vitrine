@@ -1,6 +1,6 @@
 import Foundation
 
-/// The out-of-process PRO entitlement check for the `vitrine` CLI.
+/// The out-of-process PRO entitlement check for Vitrine's advanced CLI capabilities.
 ///
 /// The CLI is a separate process from the app and a direct-download/Homebrew feature
 /// (the sandboxed App Store build can't symlink a binary onto PATH), so it cannot read
@@ -39,8 +39,9 @@ enum CLIEntitlement {
     /// place. It therefore resolves that same physical file explicitly under the app's
     /// container from the real home, which is where the app actually wrote it.
     ///
-    /// Without a token signed by the pinned production key, the CLI stays free here except
-    /// under the Debug bypass — the correct "locked until activation" state.
+    /// Without a token signed by the pinned production key, advanced CLI capabilities stay
+    /// locked except under the Debug bypass. The separate basic `vgrab` policy never calls
+    /// this verifier.
     static var defaultTokenURL: URL {
         let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
         return

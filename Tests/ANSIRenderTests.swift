@@ -181,18 +181,21 @@ struct ANSIRenderTests {
         let zsh = ShellInit.snippet(for: .zsh)
         #expect(zsh.contains("vgrab()"))
         #expect(zsh.contains("script -qe") && zsh.contains("--copy"))
+        #expect(zsh.contains("command vitrine terminal-capture"))
         #expect(zsh.contains("--terminal-width"))
         #expect(zsh.contains("--no-context"))
         #expect(zsh.contains("numeric column count (1-1000)"))
         #expect(zsh.contains("vpane()"))
         let bash = ShellInit.snippet(for: .bash)
         #expect(bash.contains("vgrab()"))
+        #expect(bash.contains("command vitrine terminal-capture"))
         #expect(bash.contains("--terminal-width"))
         #expect(bash.contains("--no-context"))
         #expect(bash.contains("numeric column count (1-1000)"))
         #expect(bash.contains("vpane()"))
         let fish = ShellInit.snippet(for: .fish)
         #expect(fish.contains("function vgrab"))
+        #expect(fish.contains("command vitrine terminal-capture"))
         #expect(fish.contains("--terminal-width"))
         #expect(fish.contains("--no-context"))
         #expect(fish.contains("numeric column count (1-1000)"))
@@ -214,6 +217,7 @@ struct ANSIRenderTests {
         // re-runs anything: it must read via `tmux capture-pane -ep` in every shell.
         for snippet in [zsh, bash, fish] {
             #expect(snippet.contains("tmux capture-pane -ep"))
+            #expect(snippet.contains("command vitrine render") && snippet.contains("vpane"))
         }
 
         // The integration is `vgrab` only: a plain function with no passive recorder,

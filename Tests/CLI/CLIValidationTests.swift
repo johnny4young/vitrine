@@ -66,6 +66,46 @@ struct CLIValidationTests: CLITestSupport {
         #expect(both.copyToClipboard && both.outputPath == "x.png")
     }
 
+    @Test func terminalCaptureAcceptsOnlyTheBasicVgrabContract() throws {
+        let copied = try CLIArguments.parse([
+            "terminal-capture", "/tmp/capture.log", "--terminal-width", "100",
+            "--filename", "project · branch", "--title", "$ npm test", "--copy",
+        ])
+        #expect(copied.command == .terminalCapture)
+        #expect(copied.inputPath == "/tmp/capture.log")
+        #expect(copied.language == .terminal)
+        #expect(copied.terminalColumns == 100)
+        #expect(copied.copyToClipboard)
+
+        let editor = try CLIArguments.parse([
+            "terminal-capture", "/tmp/capture.log", "--edit",
+        ])
+        #expect(editor.openInEditor)
+        #expect(editor.language == .terminal)
+
+        #expect(throws: CLIError.missingRequired("--copy or --edit")) {
+            try CLIArguments.parse(["terminal-capture", "/tmp/capture.log"])
+        }
+    }
+
+    @Test func terminalCaptureRejectsEveryAdvancedOptionAtTheParserBoundary() {
+        let advancedArguments: [[String]] = [
+            ["--out", "capture.png"], ["--stdin"], ["--language", "swift"],
+            ["--theme", "dracula"], ["--preset", "twitter"], ["--scale", "3"],
+            ["--background", "night"], ["--watermark", "Vitrine"],
+            ["--callout", "note"], ["--redact-secrets"], ["--text-sidecar"],
+            ["--quiet"], ["--json"], ["--no-overwrite"],
+        ]
+
+        for arguments in advancedArguments {
+            let flag = arguments[0]
+            #expect(throws: CLIError.unknownFlag(flag)) {
+                try CLIArguments.parse(
+                    ["terminal-capture", "/tmp/capture.log", "--copy"] + arguments)
+            }
+        }
+    }
+
     @Test func imageInputParsesAsARenderOnlyLocalSource() throws {
         let options = try CLIArguments.parse([
             "render", "--image", "Screenshot.png", "--out", "card.png",

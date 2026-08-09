@@ -265,6 +265,15 @@ synchronously on the main actor, and exits — it never shows a window and never
 `app.run()`, so there is no UI and no event loop to get stuck in. This approach has no
 IPC surface and keeps the render in-process where it can reuse the app's exact pipeline.
 
+**Capability boundary.** The shell-generated `vgrab` helper dispatches one deliberately
+constrained `terminal-capture` command. It always resolves terminal language, requires
+clipboard copy or editor handoff, and its parser allowlist accepts only capture width and
+filename/title context. That basic path is free. General `render`, `multi-size`,
+`batch`, and `vpane` remain PRO and verify the signed offline token at the executable
+boundary before file work. `CLIOptions.Command.requiresPro` uses an exhaustive switch
+so every future command must make an explicit product decision; a new general flag
+remains unavailable to the free command until its allowlist is deliberately changed.
+
 **Pixel-identical output.** The CLI does not re-implement rendering. The `VitrineCLI`
 target compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
 `ExportManager`, `HighlightManager`, …) and supplies its own `main.swift`, excluding
@@ -417,21 +426,22 @@ input extension, so non-colliding legacy output names stay unchanged.
 [--json]` prints the same local catalog ids the parser validates for `--theme`,
 `--language`, `--preset`, `--font`, `--background`, `--format`, and `--profile`;
 `vitrine list all --json` returns one keyed object with every catalog for setup scripts that want a single
-metadata call. It runs before AppKit initialization and before the PRO render gate
+metadata call. It runs before AppKit initialization and before the capability gate
 because it reads only bundled metadata, so scripts can cheaply discover valid options
 without touching user files or rendering images.
 
 **Shell capture context.** `vitrine shell-init` emits opt-in `vgrab` and `vpane`
 functions for zsh, bash, and fish without installing prompt hooks or background
-processes. A normal `vgrab` resolves the local Git root (falling back to the current
-directory), resolves the current attached branch when available, and sends a combined
-project/branch label plus the shell-escaped command through the existing `--filename`
+processes. `vgrab` uses the constrained free `terminal-capture` command; `vpane` uses
+the general PRO renderer. A normal `vgrab` resolves the local Git root (falling back to
+the current directory), resolves the current attached branch when available, and sends
+a combined project/branch label plus the shell-escaped command through the existing `--filename`
 and `--title` metadata options. Context therefore stays outside the ANSI transcript and
 works for both scrolling output and reconstructed full-screen frames. It never reads
 repository status, and `--no-context` omits the header for minimal or sensitive captures.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
-prints the installed CLI version before AppKit initialization and before the PRO render
+prints the installed CLI version before AppKit initialization and before the capability
 gate. The helper prefers runtime bundle metadata, falls back to the enclosing app
 bundle when the CLI is launched from `Vitrine.app/Contents/MacOS`, and finally uses
 project-version constants guarded by tests against `project.yml` for development tool

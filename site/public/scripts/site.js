@@ -58,7 +58,7 @@
       "pro.note": "El precio actual en checkout es <strong>$19.99</strong> como pago único. El precio normal previsto es <strong>$25</strong> después del periodo de lanzamiento de 2026.",
       "pro.l1": "Brand Kit — tu logo, usuario y acento como marca de agua en cada exportación",
       "pro.l2": "Exportación multi-tamaño en una pasada — cada tamaño de plataforma a una carpeta de una vez",
-      "pro.l3": "Automatización — la CLI <code>vitrine</code> de descarga directa, Atajos y renderizado por lotes de carpetas",
+      "pro.l3": "Automatización avanzada — renderizado general con <code>vitrine</code>, multi-tamaño, lotes, vpane y Atajos (vgrab básico sigue gratis)",
       "pro.cta1": "Obtener Vitrine PRO", "pro.cta2": "Descargar gratis",
       "pro.foot": "Paga una vez y actívalo en la app con la clave de licencia que recibes por correo.",
       "inst.eyebrow": "Instalar", "inst.title": "A dos comandos.",

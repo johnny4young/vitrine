@@ -19,16 +19,27 @@ import Foundation
 /// model exactly as the GUI does, keeping the produced image identical.
 @MainActor
 struct CLIOptions: Equatable {
-    /// Whether this is a single-file `render`, one-source `multi-size`, or folder
-    /// `batch` invocation. Output paths are directories for the latter two.
+    /// Whether this is the constrained free terminal-capture path, a single-file
+    /// `render`, one-source `multi-size`, or folder `batch` invocation. Output paths
+    /// are directories for the latter two automation commands.
     var command: Command = .render
 
-    /// The CLI subcommand. `render` writes one image, `multi-size` fans one source out
-    /// through destination presets, and `batch` renders every text file in a folder.
+    /// The CLI subcommand. `terminal-capture` is the narrow local operation generated
+    /// by `vgrab`; the general automation commands remain PRO.
     enum Command: String, Equatable, Sendable {
+        case terminalCapture = "terminal-capture"
         case render
         case multiSize = "multi-size"
         case batch
+
+        /// Keeps entitlement policy exhaustive: adding a command forces an explicit
+        /// free-versus-PRO decision at compile time rather than inheriting an unsafe default.
+        var requiresPro: Bool {
+            switch self {
+            case .terminalCapture: false
+            case .render, .multiSize, .batch: true
+            }
+        }
     }
 
     /// Whether `inputPath` names source text or a local image to beautify. Image input

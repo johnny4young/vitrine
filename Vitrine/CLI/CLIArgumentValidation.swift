@@ -11,6 +11,10 @@ extension CLIArgumentParser {
         let resolvedLanguageBadge =
             showLanguageBadge ?? recipe?.metadata.header.showLanguageBadge ?? false
 
+        if mode == .terminalCapture, !copyToClipboard, !openInEditor {
+            throw CLIError.missingRequired("--copy or --edit")
+        }
+
         // Alternate source controls, image-input controls, `--copy`, and `--edit` are
         // render/multi-size-only (a batch needs a real input folder).
         if mode == .batch,
@@ -435,7 +439,9 @@ extension CLIArgumentParser {
             inputPath: resolvedInput,
             outputPath: resolvedOutput,
             themeID: themeID,
-            language: languageID.flatMap(Language.init(rawValue:)),
+            language:
+                mode == .terminalCapture
+                ? .terminal : languageID.flatMap(Language.init(rawValue:)),
             presetID: resolvedPresetID,
             multiSizePresetIDs: resolvedMultiSizePresetIDs,
             stylePresetID: stylePresetID,
