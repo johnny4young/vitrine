@@ -112,6 +112,34 @@ per-target `xccov` output in the job summary. Keep the lanes separate: local fee
 must not depend on coverage finalization, and CI coverage must not depend implicitly on
 the Xcode scheme default.
 
+### Dynamic memory evidence
+
+Run `make memory-smoke` before a release candidate and after changes to window,
+renderer, observer, or asynchronous-task lifecycles. It runs the normal headless Debug
+build, reusing Xcode's already-resolved exact package checkouts, then launches an
+isolated editor journey under Apple's `leaks --atExit`. The raw memgraph, full stack
+report, launch log, and a machine-readable summary are retained below
+`build/memory-smoke/<timestamp>/`.
+
+```bash
+make memory-smoke
+
+# Compare counts and footprints with an earlier run from the same OS, architecture,
+# and Xcode. The report marks environment drift instead of pretending it is comparable.
+make memory-smoke \
+  MEMORY_BASELINE=build/memory-smoke/<earlier-run>/report.json
+```
+
+This is deliberately an **evidence lane, not a zero-leak CI gate**. At-exit analysis
+cannot detect every reachable retain cycle or prove a stable long-running footprint;
+Apple frameworks can own reported roots; and a Vitrine frame only proves that the app
+was on an allocation path, not that it owns the leaked object. Snapshot rasterization
+also contributes to the peak footprint. Review the root stacks in `leaks.txt` and the
+memgraph before classifying a regression. The command fails when the build, journey,
+capture, or report is invalid, but it does not silently allowlist framework roots or
+turn their mere presence into an app failure. Keep all generated evidence local and
+untracked.
+
 ### Running the UI tests
 
 **The full UI suite (`make test-ui`) runs in CI on every PR and push to `main`**,

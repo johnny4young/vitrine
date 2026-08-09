@@ -31,6 +31,12 @@ RESULT_BUNDLE_FLAG := $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)"
 VISUAL_OUTPUT ?= build/screenshot-tour
 VISUAL_RESULT_BUNDLE ?= build/screenshot-tour.xcresult
 
+# Dynamic-memory evidence is intentionally local and review-driven. It reuses the normal
+# Debug build and resolved exact package checkouts, then launches under `leaks`; optional
+# MEMORY_BASELINE points at an earlier report.json for same-environment deltas.
+MEMORY_OUTPUT ?= build/memory-smoke
+MEMORY_BASELINE_FLAG := $(if $(MEMORY_BASELINE),--baseline "$(MEMORY_BASELINE)",)
+
 # The entitlements file the Vitrine target signs with, consumed by project.yml as
 # ${VITRINE_ENTITLEMENTS_FILE} (XcodeGen resolves it to a literal at generate time,
 # so there is no xcodebuild build-time variable that the CI runner stalls on). The
@@ -47,7 +53,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build cli test test-coverage build-ui-tests test-ui test-visual screenshot-tour-check perf build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build cli test test-coverage build-ui-tests test-ui test-visual screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -170,6 +176,19 @@ perf: project
 		-destination 'platform=macOS' \
 		-only-testing:VitrineTests/PerformanceTests test
 
+## memory-smoke: capture an editor memgraph and parsed at-exit leak evidence
+## This is an evidence lane, not a zero-leak gate: Apple/WebKit roots and reachable
+## growth require human classification. Compare a prior same-environment report with
+## MEMORY_BASELINE=build/memory-smoke/<run>/report.json.
+memory-smoke: build memory-smoke-check
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
+		--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
+		--output "$(MEMORY_OUTPUT)" $(MEMORY_BASELINE_FLAG)
+
+## memory-smoke-check: validate the parser and baseline comparison without launching UI
+memory-smoke-check:
+	python3 scripts/run-memory-smoke.py --self-test
+
 ## build-boundaries: measure clean/no-op/incremental builds and focused test startup
 ## in disposable DerivedData. The JSON report and complete logs stay under ignored
 ## build/ paths. The default is seven samples; override it with
@@ -216,7 +235,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineCLI Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene build-boundaries-check screenshot-tour-check
+lint: hygiene build-boundaries-check memory-smoke-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts

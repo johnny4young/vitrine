@@ -12,6 +12,10 @@ can never drift.
 
 ## [Unreleased]
 
+- Add a repeatable dynamic-memory evidence lane that captures an isolated editor
+  memgraph, reports allocation and leak roots without false framework allowlists, and
+  compares only explicitly identified same-environment baselines.
+
 ### Changed
 
 - **Local search is more consistent and resilient.** Command Palette queries now accept
