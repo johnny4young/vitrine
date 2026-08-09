@@ -107,9 +107,6 @@ struct WorkspaceRecipeApplicationTests {
     }
 
     private func isolatedDefaults() throws -> UserDefaults {
-        let name = "VitrineWorkspaceRecipeApplication-\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: name))
-        defaults.removePersistentDomain(forName: name)
-        return defaults
+        testDefaults()
     }
 }

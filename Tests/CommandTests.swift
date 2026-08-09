@@ -399,7 +399,7 @@ struct AppMenuTests {
 struct EditorCommandResponderTests {
     private func makeSettings(code: String) -> AppSettings {
         let settings = AppSettings(
-            defaults: UserDefaults(suiteName: "VitrineCommandTests-\(UUID().uuidString)")!)
+            defaults: testDefaults())
         settings.config.code = code
         return settings
     }

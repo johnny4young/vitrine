@@ -5,7 +5,7 @@ import Foundation
 /// Fixtures shared by the reusable-style preset suites.
 enum PresetTestFixtures {
     static func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrinePresetStoreTests-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     /// A style snapshot exercising several presentation fields.

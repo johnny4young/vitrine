@@ -36,8 +36,7 @@ struct RecentsGalleryCompositionTests {
     }
 
     @Test func controllerSuppliesOneDependencyGraphToItsRoot() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineRecentsComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let display = DisplaySpy()
         let navigation = NavigationSpy()

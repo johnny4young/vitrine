@@ -13,10 +13,10 @@ import Testing
 @MainActor
 @Suite("Menu-bar status item")
 struct MenuBarStatusItemTests {
-    /// A suite of its own, so the assertions never depend on — or disturb — the defaults
+    /// A store of its own, so the assertions never depend on — or disturb — the defaults
     /// of the app hosting these tests.
-    private func isolatedDefaults(_ name: String) -> UserDefaults {
-        let defaults = UserDefaults(suiteName: "menubar-tests-\(name)")!
+    private func isolatedDefaults() -> UserDefaults {
+        let defaults = testDefaults()
         for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("NSStatusItem") {
             defaults.removeObject(forKey: key)
         }
@@ -24,7 +24,7 @@ struct MenuBarStatusItemTests {
     }
 
     @Test func repairClearsAPersistedHiddenStateForBothKeyForms() {
-        let defaults = isolatedDefaults(#function)
+        let defaults = isolatedDefaults()
         // The exact state macOS persists once the icon is hidden.
         defaults.set(false, forKey: "NSStatusItem VisibleCC Item-0")
         defaults.set(false, forKey: "NSStatusItem Visible Item-0")
@@ -36,7 +36,7 @@ struct MenuBarStatusItemTests {
     }
 
     @Test func repairCoversEveryAutosaveNameTheSceneCouldHavePicked() {
-        let defaults = isolatedDefaults(#function)
+        let defaults = isolatedDefaults()
         StatusItemController.repairVisibilityDefaults(in: defaults)
 
         for autosaveName in StatusItemController.repairedAutosaveNames {
@@ -57,7 +57,7 @@ struct MenuBarStatusItemTests {
 
     @Test func attachInstallsOneVisibleFixedItemAndIsIdempotent() throws {
         let controller = StatusItemController(
-            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            environment: AppEnvironment(defaults: isolatedDefaults()),
             feedback: CaptureFeedbackPresenter(),
             navigation: .noOp)
         #expect(!controller.isAttached)
@@ -86,7 +86,7 @@ struct MenuBarStatusItemTests {
     /// post-materialization pass repairs it.
     @Test func delayedRepairRestoresVisibilityAfterHosting() async throws {
         let controller = StatusItemController(
-            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            environment: AppEnvironment(defaults: isolatedDefaults()),
             feedback: CaptureFeedbackPresenter(),
             navigation: .noOp,
             visibilityRepairDelays: [.milliseconds(10)])
@@ -217,7 +217,7 @@ struct MenuBarStatusItemTests {
         let screen = try #require(NSScreen.screens.first)
         let anchor = CGPoint(x: screen.frame.midX, y: screen.frame.maxY - 12)
         let controller = StatusItemController(
-            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            environment: AppEnvironment(defaults: isolatedDefaults()),
             feedback: CaptureFeedbackPresenter(),
             navigation: .noOp)
         defer {
@@ -253,7 +253,7 @@ struct MenuBarStatusItemTests {
     @Test func theDefaultDismissActionIsANoOp() {
         var sideEffects = 0
         let observed = MenuBarDismissAction { sideEffects += 1 }
-        let environment = AppEnvironment(defaults: isolatedDefaults(#function))
+        let environment = AppEnvironment(defaults: isolatedDefaults())
 
         MenuBarDismissAction()()
         MenuBarContent(

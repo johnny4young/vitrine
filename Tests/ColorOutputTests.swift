@@ -31,9 +31,9 @@ struct ColorOutputTests {
         return config
     }
 
-    /// An isolated, empty `UserDefaults` per test (mirrors the migration tests).
+    /// An isolated, empty in-memory `UserDefaults` per test.
     private static func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineColorOutputTests-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     /// Renders `config` at `profile`, PNG-encodes it, and decodes the PNG back to

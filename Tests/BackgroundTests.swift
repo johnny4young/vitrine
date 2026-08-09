@@ -26,7 +26,7 @@ struct BackgroundTests {
     // MARK: - Fixtures & helpers
 
     private static func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineBackgroundTests-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     /// A store rooted in a unique temporary directory, so import/resolve tests

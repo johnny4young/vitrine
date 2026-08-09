@@ -22,8 +22,7 @@ struct LivingSnapshotSessionTests {
 
     private func settings() throws -> AppSettings {
         try AppSettings(
-            defaults: #require(
-                UserDefaults(suiteName: "VitrineLivingSnapshot-\(UUID().uuidString)")))
+            defaults: testDefaults())
     }
 
     private func loaded(_ text: String, url: URL) -> FileInputLoader.LoadedFile {

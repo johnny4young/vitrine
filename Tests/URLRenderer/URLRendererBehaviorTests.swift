@@ -136,7 +136,7 @@ struct URLRendererValidationTests {
     }
 
     @Test func configuredRendererCarriesThePersistedLoopbackChoice() {
-        let defaults = UserDefaults(suiteName: "VitrineLoopbackRenderer-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         let settings = AppSettings(defaults: defaults)
         #expect(!URLRenderer.configured(from: settings).allowsLoopbackCapture)
 

@@ -29,9 +29,7 @@ struct SocialCardPersistenceTests {
     }
 
     @Test func theWorkingCardRoundTripsThroughUserDefaults() {
-        let suite = "VitrineSocialCardPersistence-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = testDefaults()
 
         let card = sampleCard()
         let settings = AppSettings(defaults: defaults)
@@ -44,17 +42,13 @@ struct SocialCardPersistenceTests {
     }
 
     @Test func aFreshStoreYieldsTheDefaultCard() {
-        let suite = "VitrineSocialCardDefault-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = testDefaults()
         let settings = AppSettings(defaults: defaults)
         #expect(settings.socialCard == SocialCardModel())
     }
 
     @Test func resetToDefaultsClearsTheWorkingCard() {
-        let suite = "VitrineSocialCardReset-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = testDefaults()
         let settings = AppSettings(defaults: defaults)
         settings.socialCard = sampleCard()
         settings.resetToDefaults()
@@ -64,9 +58,7 @@ struct SocialCardPersistenceTests {
     @Test func aCorruptStoredBlobFallsBackToTheDefaultCard() {
         // Defensive posture: a hand-edited or garbage blob never traps; it degrades to a
         // fresh default card.
-        let suite = "VitrineSocialCardCorrupt-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = testDefaults()
         defaults.set(Data("not json".utf8), forKey: SettingsCodec.Keys.socialCard)
         let settings = AppSettings(defaults: defaults)
         #expect(settings.socialCard == SocialCardModel())

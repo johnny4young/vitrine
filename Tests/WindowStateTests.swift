@@ -243,7 +243,7 @@ struct EditorWindowStateTests {
         // A window editing a *custom* theme restores it by resolving the id through a
         // custom-theme store, proving the bridge is not limited to built-ins.
         let store = CustomThemeStore(
-            defaults: UserDefaults(suiteName: "WindowStateThemeTests-\(UUID().uuidString)")!)
+            defaults: testDefaults())
         let custom = store.addTheme(
             named: "My Theme",
             palette: ThemePalette(
@@ -378,7 +378,7 @@ struct WindowFrameSolverTests {
 @Suite("Editor session independence")
 struct EditorSessionIndependenceTests {
     private func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "EditorSessionTests-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     private func makeEnvironment(defaults: UserDefaults) -> AppEnvironment {

@@ -5,7 +5,7 @@ import Testing
 @testable import Vitrine
 
 private func freshDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrinePresetTests-\(UUID().uuidString)")!
+    testDefaults()
 }
 
 // MARK: - Catalog

@@ -11,7 +11,7 @@ import Testing
 @MainActor
 struct WebMultiViewportSelectionTests {
     private func defaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineWebMultiViewport-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     @Test func viewportsDefaultsToTheSingleViewportWhenUnset() {

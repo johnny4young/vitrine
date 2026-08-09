@@ -139,7 +139,7 @@ struct EntitlementsTests {
 struct StoreKitProviderTests {
     @Test func startsFreeAndExposesTheConfiguredProduct() {
         let provider = StoreKitProvider(
-            defaults: UserDefaults(suiteName: "VitrineStoreKit-\(UUID().uuidString)")!)
+            defaults: testDefaults())
         // No purchase recorded → free at boot, and the product id matches the App Store
         // Connect IAP the provider queries.
         #expect(!provider.cachedIsPro)

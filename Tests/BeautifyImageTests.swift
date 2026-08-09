@@ -149,9 +149,9 @@ struct BeautifyImageTests {
     }
 
     @Test func makeDefaultDoesNotPromoteWorkingImageContent() {
-        let defaults = UserDefaults(suiteName: "VitrineImageDefaultTests-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         let sessionDefaults =
-            UserDefaults(suiteName: "VitrineImageDefaultSession-\(UUID().uuidString)")!
+            testDefaults()
         let settings = AppSettings(defaults: defaults)
         let session = AppSettings(defaults: sessionDefaults)
         session.config.code = "let working = \"do not seed future captures\""

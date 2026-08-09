@@ -11,7 +11,7 @@ import Testing
 /// multi-block paste into a deferred-to-editor outcome.
 
 private func quickCaptureDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrineQuickCapture-\(UUID().uuidString)")!
+    testDefaults()
 }
 
 // MARK: - Markdown fence parsing (table-driven)
