@@ -114,6 +114,63 @@ struct EntitlementsTests {
             "DebugUnlockProvider must be inside #if DEBUG so it never ships in a release build")
     }
 
+    #if DEBUG && VITRINE_DIRECT_DOWNLOAD
+        @Test func managedLicenseUIFixtureRequiresExplicitIsolation() {
+            #expect(
+                ManagedLicenseUITestFixture.makeEntitlements(environment: [:]) == nil)
+            #expect(
+                ManagedLicenseUITestFixture.makeEntitlements(
+                    environment: [
+                        ManagedLicenseUITestFixture.environmentKey: "1"
+                    ]) == nil)
+            #expect(
+                ManagedLicenseUITestFixture.makeEntitlements(
+                    environment: ["VITRINE_USER_DEFAULTS_SUITE": "isolated"]) == nil)
+            #expect(
+                ManagedLicenseUITestFixture.makeEntitlements(
+                    environment: [
+                        ManagedLicenseUITestFixture.environmentKey: "1",
+                        "VITRINE_USER_DEFAULTS_SUITE": "   ",
+                    ]) == nil)
+        }
+
+        @Test func managedLicenseUIFixtureRelocksThroughTheDefaultService() async {
+            let entitlements = Entitlements.makeDefault(
+                environment: [
+                    ManagedLicenseUITestFixture.environmentKey: "1",
+                    "VITRINE_USER_DEFAULTS_SUITE": "isolated-managed-license-test",
+                ])
+
+            #expect(entitlements.isPro)
+            #expect(entitlements.directLicenseManagementState == .active)
+            #expect(await entitlements.deactivateLicense() == .deactivated)
+            #expect(!entitlements.isPro)
+            #expect(entitlements.directLicenseManagementState == .unavailable)
+        }
+
+        @Test func managedLicenseUIFixtureCannotDriftIntoProductionOrRealCredentials() throws {
+            let fixture = try String(
+                contentsOf: Self.repoFile(
+                    "Vitrine", "Pro", "ManagedLicenseUITestFixture.swift"),
+                encoding: .utf8)
+            let environmentRoot = try String(
+                contentsOf: Self.repoFile("Vitrine", "App", "AppEnvironment.swift"),
+                encoding: .utf8)
+            let uiTests = try String(
+                contentsOf: Self.repoFile("UITests", "VitrineUITests.swift"), encoding: .utf8)
+
+            #expect(fixture.hasPrefix("#if DEBUG && VITRINE_DIRECT_DOWNLOAD"))
+            #expect(fixture.contains("VITRINE_MANAGED_LICENSE_UI_TEST"))
+            #expect(fixture.contains("VITRINE_USER_DEFAULTS_SUITE"))
+            #expect(fixture.contains("KeychainLicenseStore") == false)
+            #expect(fixture.contains("KeychainLicenseActivationRecordStore") == false)
+            #expect(fixture.contains("LemonSqueezyValidator()") == false)
+            #expect(fixture.contains("URLSession") == false)
+            #expect(environmentRoot.contains("entitlements ?? Entitlements.makeDefault()"))
+            #expect(uiTests.contains("VITRINE_MANAGED_LICENSE_UI_TEST"))
+        }
+    #endif
+
     private static func repoFile(_ components: String...) -> URL {
         components.reduce(
             URL(fileURLWithPath: #filePath)

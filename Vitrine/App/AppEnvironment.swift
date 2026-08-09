@@ -42,8 +42,7 @@ final class AppEnvironment {
         entitlements: Entitlements? = nil
     ) {
         self.defaults = defaults
-        self.entitlements =
-            entitlements ?? Entitlements(provider: Entitlements.defaultProvider())
+        self.entitlements = entitlements ?? Entitlements.makeDefault()
         brandKit = BrandKitStore(defaults: defaults)
         appSettings = AppSettings(
             defaults: defaults, brandKit: brandKit, entitlements: self.entitlements)

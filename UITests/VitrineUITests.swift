@@ -649,6 +649,70 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testManagedLicenseDeactivationRelocksProWithoutNetwork() {
+        continueAfterFailure = false
+        let app = launch(
+            arguments: ["--open-settings"],
+            environment: ["VITRINE_MANAGED_LICENSE_UI_TEST": "1"])
+        defer { app.terminate() }
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-about", in: app).click()
+
+        let aboutPane = element("settings-about-pane", in: app)
+        assertExists(aboutPane, in: app, timeout: 3)
+        let licenseSection = element("license-management-section", in: app)
+        assertExists(licenseSection, in: app, timeout: 3)
+        assertExists(
+            app.staticTexts["Vitrine PRO is active on this Mac."], in: app, timeout: 3)
+        assertHittable(
+            "deactivate-license-button",
+            in: app,
+            "An active managed license must expose its deactivation action")
+
+        let activeAttachment = XCTAttachment(screenshot: aboutPane.screenshot())
+        activeAttachment.name = "managed-license-active"
+        activeAttachment.lifetime = .keepAlways
+        add(activeAttachment)
+
+        element("deactivate-license-button", in: app).click()
+        // macOS mirrors confirmation actions into the Touch Bar accessibility tree.
+        // Scope to the visible sheet so automation never chooses that non-clickable duplicate.
+        let confirm = app.sheets.buttons["Deactivate This Mac"].firstMatch
+        assertExists(confirm, in: app, timeout: 3)
+        confirm.click()
+
+        let success = app.staticTexts["Vitrine PRO was deactivated on this Mac."].firstMatch
+        assertExists(success, in: app, timeout: 5)
+        let resultSheet = app.sheets.firstMatch
+        assertExists(resultSheet, in: app, timeout: 3)
+        let resultAttachment = XCTAttachment(screenshot: resultSheet.screenshot())
+        resultAttachment.name = "managed-license-deactivated"
+        resultAttachment.lifetime = .keepAlways
+        add(resultAttachment)
+
+        let acknowledge = app.sheets.buttons["OK"].firstMatch
+        assertExists(acknowledge, in: app, timeout: 3)
+        acknowledge.click()
+        XCTAssertTrue(
+            licenseSection.waitForNonExistence(timeout: 3),
+            "A deactivated managed license must disappear from About")
+
+        element("settings-nav-brandKit", in: app).click()
+        let brandKitPane = element("settings-brandkit-pane", in: app)
+        assertExists(brandKitPane, in: app, timeout: 3)
+        assertExists(element("settings-brand-kit-upsell", in: app), in: app, timeout: 3)
+        XCTAssertTrue(
+            element("settings-brand-kit-controls", in: app).waitForNonExistence(timeout: 2),
+            "Deactivation must re-lock Brand Kit in the same running app")
+
+        let relockedAttachment = XCTAttachment(screenshot: brandKitPane.screenshot())
+        relockedAttachment.name = "managed-license-brand-kit-relocked"
+        relockedAttachment.lifetime = .keepAlways
+        add(relockedAttachment)
+    }
+
+    @MainActor
     func testInputPaneExposesReindentOnPasteToggle() {
         continueAfterFailure = false
         let app = launch(arguments: ["--open-settings"])

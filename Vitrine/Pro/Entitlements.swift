@@ -30,15 +30,47 @@ final class Entitlements {
     private let provider: EntitlementProvider
 
     #if VITRINE_DIRECT_DOWNLOAD
+        /// The remote seat-release boundary. Production uses Lemon Squeezy; a Debug-only
+        /// UI fixture injects a deterministic local deactivator so automation never handles
+        /// a real credential or contacts the network.
+        private let licenseDeactivationService: LicenseDeactivationService
+
         /// Invalidates older suspended license operations when a newer user action begins.
         private var licenseOperationGeneration = 0
     #endif
 
     /// Seeds `isPro` from the provider's cached flag — instant and offline, so the first
     /// frame already reflects the last known state with no flash.
-    init(provider: EntitlementProvider) {
-        self.provider = provider
-        self.isPro = provider.cachedIsPro
+    #if VITRINE_DIRECT_DOWNLOAD
+        init(
+            provider: EntitlementProvider,
+            licenseDeactivationService: LicenseDeactivationService = LicenseDeactivationService(
+                deactivator: LemonSqueezyValidator())
+        ) {
+            self.provider = provider
+            self.licenseDeactivationService = licenseDeactivationService
+            self.isPro = provider.cachedIsPro
+        }
+    #else
+        init(provider: EntitlementProvider) {
+            self.provider = provider
+            self.isPro = provider.cachedIsPro
+        }
+    #endif
+
+    /// Builds the app-wide entitlement graph. Debug UI automation can opt into a complete,
+    /// secret-free managed-license fixture; every other launch follows the real build channel.
+    static func makeDefault(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Entitlements {
+        #if DEBUG && VITRINE_DIRECT_DOWNLOAD
+            if let fixture = ManagedLicenseUITestFixture.makeEntitlements(
+                environment: environment)
+            {
+                return fixture
+            }
+        #endif
+        return Entitlements(provider: defaultProvider(environment: environment))
     }
 
     /// Whether `feature` is available. PRO unlocks as a single tier in v1, so every
@@ -134,8 +166,7 @@ final class Entitlements {
         /// Releases this machine's direct-download seat and clears entitlement state only
         /// after a conclusive provider verdict. Network and refusal outcomes preserve PRO.
         func deactivateLicense() async -> LicenseDeactivationOutcome {
-            await deactivateLicense(
-                using: LicenseDeactivationService(deactivator: LemonSqueezyValidator()))
+            await deactivateLicense(using: licenseDeactivationService)
         }
 
         /// Injectable form used by deterministic tests. The full record is captured before
@@ -170,9 +201,10 @@ final class Entitlements {
     /// succeeds. In a **Debug** build only, `VITRINE_PRO_UNLOCK=1` swaps in
     /// `DebugUnlockProvider` so PRO can be exercised locally — that override is compiled
     /// out of release, so a shipped binary has no path to PRO through it.
-    static func defaultProvider() -> EntitlementProvider {
+    static func defaultProvider(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> EntitlementProvider {
         #if DEBUG
-            let environment = ProcessInfo.processInfo.environment
             if environment["VITRINE_PRO_UNLOCK"] == "1" {
                 return DebugUnlockProvider()
             }
