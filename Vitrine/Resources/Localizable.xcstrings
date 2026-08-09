@@ -9875,6 +9875,204 @@
           }
         }
       }
+    },
+    "License" : {
+      "comment" : "About pane direct-download license section title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licencia"
+          }
+        }
+      }
+    },
+    "Vitrine PRO is active on this Mac." : {
+      "comment" : "About pane managed license status.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine PRO está activo en esta Mac."
+          }
+        }
+      }
+    },
+    "Deactivate This Mac…" : {
+      "comment" : "About pane button that begins license deactivation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivar esta Mac…"
+          }
+        }
+      }
+    },
+    "Deactivate Vitrine PRO on this Mac?" : {
+      "comment" : "License deactivation confirmation title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Desactivar Vitrine PRO en esta Mac?"
+          }
+        }
+      }
+    },
+    "Deactivate This Mac" : {
+      "comment" : "Destructive license deactivation confirmation button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivar esta Mac"
+          }
+        }
+      }
+    },
+    "This releases one license seat and removes PRO access from this Mac." : {
+      "comment" : "License deactivation confirmation explanation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto libera un cupo de licencia y elimina el acceso PRO de esta Mac."
+          }
+        }
+      }
+    },
+    "License Deactivation" : {
+      "comment" : "License deactivation result alert title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivación de licencia"
+          }
+        }
+      }
+    },
+    "Vitrine PRO is active. This activation predates in-app seat management; use your purchase portal or support to release it." : {
+      "comment" : "About pane status for legacy direct-download activations.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine PRO está activo. Esta activación es anterior a la gestión de cupos dentro de la app; usa tu portal de compra o soporte para liberarla."
+          }
+        }
+      }
+    },
+    "This Mac has an incomplete license change. Release its recorded seat before activating again." : {
+      "comment" : "About pane status for a recoverable partial license operation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta Mac tiene un cambio de licencia incompleto. Libera el cupo registrado antes de volver a activar."
+          }
+        }
+      }
+    },
+    "Release Recorded Seat…" : {
+      "comment" : "About pane button for recovering a partial license operation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liberar cupo registrado…"
+          }
+        }
+      }
+    },
+    "License management" : {
+      "comment" : "Accessibility label for the About pane license section.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestión de licencia"
+          }
+        }
+      }
+    },
+    "Vitrine PRO was deactivated on this Mac." : {
+      "comment" : "Successful license deactivation message.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine PRO se desactivó en esta Mac."
+          }
+        }
+      }
+    },
+    "The provider had already released this seat. Local PRO access was removed." : {
+      "comment" : "Idempotent license deactivation result.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El proveedor ya había liberado este cupo. Se eliminó el acceso PRO local."
+          }
+        }
+      }
+    },
+    "There is no recorded license seat to deactivate." : {
+      "comment" : "Missing activation record result.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ningún cupo de licencia registrado para desactivar."
+          }
+        }
+      }
+    },
+    "Vitrine PRO remains active because the license service could not be reached. Try again." : {
+      "comment" : "Network failure during license deactivation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine PRO sigue activo porque no se pudo contactar el servicio de licencias. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Vitrine PRO remains active because the provider did not confirm deactivation." : {
+      "comment" : "Provider refusal during license deactivation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine PRO sigue activo porque el proveedor no confirmó la desactivación."
+          }
+        }
+      }
+    },
+    "The license changed while deactivation was in progress. The newer activation was kept." : {
+      "comment" : "Concurrent license change result.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La licencia cambió durante la desactivación. Se conservó la activación más reciente."
+          }
+        }
+      }
+    },
+    "The seat was released, but local license cleanup did not finish. Try again." : {
+      "comment" : "Partial local cleanup after remote deactivation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El cupo se liberó, pero la limpieza local de la licencia no terminó. Inténtalo de nuevo."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

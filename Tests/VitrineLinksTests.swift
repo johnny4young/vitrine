@@ -12,5 +12,8 @@ struct VitrineLinksTests {
         #expect(
             VitrineLinks.lemonSqueezyActivationEndpoint.absoluteString
                 == "https://api.lemonsqueezy.com/v1/licenses/activate")
+        #expect(
+            VitrineLinks.lemonSqueezyDeactivationEndpoint.absoluteString
+                == "https://api.lemonsqueezy.com/v1/licenses/deactivate")
     }
 }

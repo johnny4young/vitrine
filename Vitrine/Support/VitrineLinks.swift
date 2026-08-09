@@ -9,6 +9,8 @@ enum VitrineLinks {
     nonisolated static let githubRepository = requiredURL("https://github.com/johnny4young/vitrine")
     nonisolated static let lemonSqueezyActivationEndpoint = requiredURL(
         "https://api.lemonsqueezy.com/v1/licenses/activate")
+    nonisolated static let lemonSqueezyDeactivationEndpoint = requiredURL(
+        "https://api.lemonsqueezy.com/v1/licenses/deactivate")
 
     nonisolated private static func requiredURL(_ rawValue: String) -> URL {
         guard let url = URL(string: rawValue) else {

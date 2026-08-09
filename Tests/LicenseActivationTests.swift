@@ -31,11 +31,33 @@ import Testing
             }
         }
 
+        nonisolated struct StubDeactivator: LicenseKeyDeactivator {
+            var result: Result<LicenseDeactivation, LicenseDeactivationError>
+
+            func deactivate(
+                licenseKey: String, instanceID: String
+            ) async throws -> LicenseDeactivation {
+                try result.get()
+            }
+        }
+
         /// An in-memory token store so the provider round-trip never touches the real Keychain.
         final class InMemoryTokenStore: LicenseTokenStore {
             private var token: String?
             func read() -> String? { token }
-            func write(_ token: String?) { self.token = token }
+            func write(_ token: String?) -> Bool {
+                self.token = token
+                return true
+            }
+        }
+
+        final class InMemoryActivationRecordStore: LicenseActivationRecordStore {
+            private var record: LicenseActivationRecord?
+            func read() -> LicenseActivationRecord? { record }
+            func write(_ record: LicenseActivationRecord?) -> Bool {
+                self.record = record
+                return true
+            }
         }
 
         private func tempTokenURL() -> URL {
@@ -162,6 +184,97 @@ import Testing
                     == LemonSqueezyValidator.requestTimeout)
         }
 
+        // MARK: - Lemon Squeezy deactivation
+
+        @Test func parsesSuccessfulDeactivationForActiveOrInactiveLicenses() throws {
+            for status in ["active", "inactive"] {
+                let json = Data(
+                    """
+                    {"deactivated":true,"error":null,
+                     "license_key":{"id":42,"status":"\(status)","test_mode":false,
+                                    "activation_usage":0},
+                     "meta":{"store_id":408765,"product_id":1156861}}
+                    """.utf8)
+                #expect(
+                    try LemonSqueezyValidator.parseDeactivation(status: 200, data: json)
+                        == LicenseDeactivation(licenseID: "42"))
+            }
+        }
+
+        @Test func parseDeactivationRecognizesOnlyAConclusiveMissingInstance() {
+            let missingInstance = Data(
+                #"{"deactivated":false,"error":"License key instance not found."}"#.utf8)
+            #expect(throws: LicenseDeactivationError.alreadyInactive) {
+                try LemonSqueezyValidator.parseDeactivation(status: 404, data: missingInstance)
+            }
+
+            let missingKey = Data(
+                #"{"deactivated":false,"error":"License key not found."}"#.utf8)
+            #expect(throws: LicenseDeactivationError.refused("License key not found.")) {
+                try LemonSqueezyValidator.parseDeactivation(status: 404, data: missingKey)
+            }
+        }
+
+        @Test func parseDeactivationRejectsForeignTestOrUntraceableResponses() {
+            func response(
+                storeID: Int = LemonSqueezyValidator.expectedStoreID,
+                productID: Int = LemonSqueezyValidator.expectedProductID,
+                licenseID: String = "42",
+                testMode: Bool = false
+            ) -> Data {
+                Data(
+                    """
+                    {"deactivated":true,"error":null,
+                     "license_key":{"id":\(licenseID),"test_mode":\(testMode)},
+                     "meta":{"store_id":\(storeID),"product_id":\(productID)}}
+                    """.utf8)
+            }
+
+            for data in [
+                response(storeID: LemonSqueezyValidator.expectedStoreID + 1),
+                response(productID: LemonSqueezyValidator.expectedProductID + 1),
+                response(testMode: true),
+                response(licenseID: "null"),
+            ] {
+                #expect(throws: LicenseDeactivationError.self) {
+                    try LemonSqueezyValidator.parseDeactivation(status: 200, data: data)
+                }
+            }
+        }
+
+        @Test func parseDeactivationRejectsUnreadableOrNonSuccessBodies() {
+            #expect(throws: LicenseDeactivationError.network("Unreadable response (HTTP 200).")) {
+                try LemonSqueezyValidator.parseDeactivation(
+                    status: 200, data: Data("not json".utf8))
+            }
+            let misleading = Data(
+                """
+                {"deactivated":true,"error":null,
+                 "license_key":{"id":42,"test_mode":false},
+                 "meta":{"store_id":408765,"product_id":1156861}}
+                """.utf8)
+            #expect(throws: LicenseDeactivationError.self) {
+                try LemonSqueezyValidator.parseDeactivation(status: 500, data: misleading)
+            }
+        }
+
+        @Test func deactivationRequestUsesTheDedicatedBoundedFormContract() throws {
+            let endpoint = try #require(
+                URL(string: "https://example.test/v1/licenses/deactivate"))
+            let request = LemonSqueezyValidator.deactivationRequest(
+                licenseKey: "KEY VALUE", instanceID: "instance/1", endpoint: endpoint)
+            #expect(request.url == endpoint)
+            #expect(request.httpMethod == "POST")
+            #expect(
+                request.value(forHTTPHeaderField: "Content-Type")
+                    == "application/x-www-form-urlencoded")
+            #expect(request.value(forHTTPHeaderField: "Accept") == "application/json")
+            #expect(request.timeoutInterval == LemonSqueezyValidator.requestTimeout)
+            #expect(
+                request.httpBody.flatMap { String(data: $0, encoding: .utf8) }
+                    == "instance_id=instance%2F1&license_key=KEY%20VALUE")
+        }
+
         // MARK: - Activation service (local minting)
 
         @Test func serviceMintsAVerifiableTokenOnSuccess() async throws {
@@ -172,12 +285,80 @@ import Testing
                         LicenseActivation(licenseID: "ORD-9", instanceID: "i", status: "active"))),
                 signingKey: key,
                 now: { Date(timeIntervalSince1970: 1_700_000_000) })
-            guard case .activated(let token) = await service.activate(licenseKey: " KEY ") else {
+            guard
+                case .activated(let token, let record) =
+                    await service.activate(licenseKey: " KEY ")
+            else {
                 Issue.record("expected .activated")
                 return
             }
             // The minted token verifies against the matching public key and carries the id.
             #expect(LicenseVerifier(publicKey: key.publicKey).verify(token)?.licenseID == "ORD-9")
+            #expect(
+                record
+                    == LicenseActivationRecord(
+                        licenseKey: "KEY", licenseID: "ORD-9", instanceID: "i"))
+        }
+
+        @Test func activationRecordRejectsEmptyOversizedAndCorruptValues() throws {
+            #expect(
+                LicenseActivationRecord(licenseKey: " ", licenseID: "id", instanceID: "i")
+                    == nil)
+            #expect(
+                LicenseActivationRecord(
+                    licenseKey: String(
+                        repeating: "K", count: LicenseActivationRecord.maximumLicenseKeyLength + 1),
+                    licenseID: "id", instanceID: "i") == nil)
+            #expect(
+                LicenseActivationRecord(
+                    licenseKey: "KEY",
+                    licenseID: String(
+                        repeating: "L", count: LicenseActivationRecord.maximumIdentifierLength + 1),
+                    instanceID: "i") == nil)
+
+            let valid = try #require(
+                LicenseActivationRecord(
+                    licenseKey: " KEY ", licenseID: " 42 ", instanceID: " inst "))
+            let roundTrip = try JSONDecoder().decode(
+                LicenseActivationRecord.self,
+                from: JSONEncoder().encode(valid))
+            #expect(
+                roundTrip
+                    == LicenseActivationRecord(
+                        licenseKey: "KEY", licenseID: "42", instanceID: "inst"))
+
+            let corrupt = Data(
+                #"{"licenseKey":"","licenseID":"42","instanceID":"inst"}"#.utf8)
+            #expect(throws: DecodingError.self) {
+                try JSONDecoder().decode(LicenseActivationRecord.self, from: corrupt)
+            }
+        }
+
+        @Test func deactivationServiceRequiresTheSameTraceableLicense() async throws {
+            let record = try #require(
+                LicenseActivationRecord(
+                    licenseKey: "KEY", licenseID: "42", instanceID: "inst"))
+            let success = LicenseDeactivationService(
+                deactivator: StubDeactivator(
+                    result: .success(LicenseDeactivation(licenseID: "42"))))
+            #expect(await success.deactivate(record: record) == .deactivated)
+
+            let mismatch = LicenseDeactivationService(
+                deactivator: StubDeactivator(
+                    result: .success(LicenseDeactivation(licenseID: "99"))))
+            #expect(await mismatch.deactivate(record: record) == .refused)
+
+            let absent = LicenseDeactivationService(
+                deactivator: StubDeactivator(result: .failure(.alreadyInactive)))
+            #expect(await absent.deactivate(record: record) == .alreadyInactive)
+
+            let offline = LicenseDeactivationService(
+                deactivator: StubDeactivator(result: .failure(.network("offline"))))
+            #expect(await offline.deactivate(record: record) == .network)
+
+            let refused = LicenseDeactivationService(
+                deactivator: StubDeactivator(result: .failure(.refused("no"))))
+            #expect(await refused.deactivate(record: record) == .refused)
         }
 
         @Test func serviceRejectsBlankKeysWithoutCallingTheNetwork() async {
@@ -271,7 +452,9 @@ import Testing
             let verifier = LicenseVerifier(publicKey: key.publicKey)
             let tokenURL = tempTokenURL()
             let provider = LicenseKeyProvider(
-                store: InMemoryTokenStore(), verifier: verifier,
+                store: InMemoryTokenStore(),
+                activationRecordStore: InMemoryActivationRecordStore(),
+                verifier: verifier,
                 cliTokenFile: CLITokenFile(url: tokenURL))
             let service = LicenseActivationService(
                 validator: StubValidator(
@@ -280,11 +463,14 @@ import Testing
                 signingKey: key,
                 now: { Date(timeIntervalSince1970: 1_700_000_000) })
 
-            guard case .activated(let token) = await service.activate(licenseKey: "KEY") else {
+            guard
+                case .activated(let token, let record) =
+                    await service.activate(licenseKey: "KEY")
+            else {
                 Issue.record("expected activation")
                 return
             }
-            provider.setToken(token)
+            #expect(provider.setActivation(signedToken: token, record: record))
             #expect(provider.cachedIsPro)
             // The CLI's check, pointed at the written file + the dev key, unlocks — with the env
             // bypass empty so it is the signature that grants PRO, not the Debug override.
@@ -292,7 +478,7 @@ import Testing
                 CLIEntitlement.isProUnlocked(
                     tokenURL: tokenURL, verifier: verifier, environment: [:]))
 
-            provider.setToken(nil)
+            #expect(provider.clearActivation(ifMatching: record) == .cleared)
             #expect(
                 !CLIEntitlement.isProUnlocked(
                     tokenURL: tokenURL, verifier: verifier, environment: [:]))

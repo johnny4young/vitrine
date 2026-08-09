@@ -98,7 +98,9 @@ struct SettingsRootView: View {
         case .input:
             InputSettingsView(settings: environment.appSettings)
         case .about:
-            AboutSettingsView(settings: environment.appSettings)
+            AboutSettingsView(
+                settings: environment.appSettings,
+                entitlements: environment.entitlements)
         }
     }
 }

@@ -330,29 +330,345 @@ struct LicenseKeyTests {
         /// An in-memory token store so the provider round-trip is tested without touching the
         /// real Keychain (the Keychain store itself is exercised manually).
         final class InMemoryTokenStore: LicenseTokenStore {
-            private var token: String?
+            private(set) var token: String?
+            var rejectsClear = false
+
+            init(token: String? = nil) {
+                self.token = token
+            }
+
             func read() -> String? { token }
-            func write(_ token: String?) { self.token = token }
+            func write(_ token: String?) -> Bool {
+                if token == nil, rejectsClear { return false }
+                self.token = token
+                return true
+            }
+        }
+
+        final class InMemoryActivationRecordStore: LicenseActivationRecordStore {
+            private(set) var record: LicenseActivationRecord?
+            var rejectsClear = false
+
+            init(record: LicenseActivationRecord? = nil) {
+                self.record = record
+            }
+
+            func read() -> LicenseActivationRecord? { record }
+            func write(_ record: LicenseActivationRecord?) -> Bool {
+                if record == nil, rejectsClear { return false }
+                self.record = record
+                return true
+            }
+        }
+
+        nonisolated struct StubDeactivator: LicenseKeyDeactivator {
+            let result: Result<LicenseDeactivation, LicenseDeactivationError>
+
+            func deactivate(
+                licenseKey: String, instanceID: String
+            ) async throws -> LicenseDeactivation {
+                try result.get()
+            }
+        }
+
+        actor RecordingValidator: LicenseKeyValidator {
+            private(set) var callCount = 0
+            let result: Result<LicenseActivation, LicenseActivationError>
+
+            init(result: Result<LicenseActivation, LicenseActivationError>) {
+                self.result = result
+            }
+
+            func activate(
+                licenseKey: String, instanceName: String
+            ) async throws -> LicenseActivation {
+                callCount += 1
+                return try result.get()
+            }
+        }
+
+        actor ControlledDeactivator: LicenseKeyDeactivator {
+            private var didStart = false
+            private var startWaiter: CheckedContinuation<Void, Never>?
+            private var response: CheckedContinuation<LicenseDeactivation, Error>?
+
+            func deactivate(
+                licenseKey: String, instanceID: String
+            ) async throws -> LicenseDeactivation {
+                didStart = true
+                startWaiter?.resume()
+                startWaiter = nil
+                return try await withCheckedThrowingContinuation { continuation in
+                    response = continuation
+                }
+            }
+
+            func waitUntilStarted() async {
+                if didStart { return }
+                await withCheckedContinuation { continuation in
+                    startWaiter = continuation
+                }
+            }
+
+            func succeed(licenseID: String) {
+                response?.resume(returning: LicenseDeactivation(licenseID: licenseID))
+                response = nil
+            }
         }
 
         @Test func providerUnlocksWithAValidTokenAndClearsOnDeactivation() throws {
             let key = Curve25519.Signing.PrivateKey()
-            // Inject a temp CLI-token file so `setToken` does not write the real container path.
-            let cliTokenURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("vitrine-provider-test-\(UUID().uuidString)")
-                .appendingPathComponent("pro-license.token", isDirectory: false)
+            let recordStore = InMemoryActivationRecordStore()
+            let cliTokenURL = tempTokenURL()
             let provider = LicenseKeyProvider(
                 store: InMemoryTokenStore(),
+                activationRecordStore: recordStore,
                 verifier: LicenseVerifier(publicKey: key.publicKey),
                 cliTokenFile: CLITokenFile(url: cliTokenURL))
             #expect(!provider.cachedIsPro)
             let token = try LicenseSigner.sign(
                 LicenseToken(licenseID: "L1", issuedAt: Date(timeIntervalSince1970: 1_700_000_000)),
                 with: key)
-            provider.setToken(token)
+            let record = try #require(
+                LicenseActivationRecord(
+                    licenseKey: "KEY", licenseID: "L1", instanceID: "instance-1"))
+            #expect(provider.setActivation(signedToken: token, record: record))
             #expect(provider.cachedIsPro)
-            provider.setToken(nil)
+            #expect(provider.activationRecordForDeactivation == record)
+            #expect(FileManager.default.fileExists(atPath: cliTokenURL.path))
+            #expect(provider.clearActivation(ifMatching: record) == .cleared)
             #expect(!provider.cachedIsPro)
+            #expect(recordStore.record == nil)
+            #expect(!FileManager.default.fileExists(atPath: cliTokenURL.path))
+        }
+
+        @Test func providerRejectsATokenFromAnotherLicense() throws {
+            let key = Curve25519.Signing.PrivateKey()
+            let recordStore = InMemoryActivationRecordStore()
+            let provider = LicenseKeyProvider(
+                store: InMemoryTokenStore(),
+                activationRecordStore: recordStore,
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: tempTokenURL()))
+            let token = try LicenseSigner.sign(
+                LicenseToken(licenseID: "OTHER", issuedAt: .now), with: key)
+            let record = try #require(
+                LicenseActivationRecord(
+                    licenseKey: "KEY", licenseID: "L1", instanceID: "instance-1"))
+
+            #expect(!provider.setActivation(signedToken: token, record: record))
+            #expect(!provider.cachedIsPro)
+            #expect(recordStore.record == nil)
+        }
+
+        @Test func recoverableSeatRecordCannotBeOverwrittenOrConsumeAnotherSeat() async throws {
+            let key = Curve25519.Signing.PrivateKey()
+            let oldRecord = try #require(
+                LicenseActivationRecord(
+                    licenseKey: "OLD-KEY", licenseID: "OLD", instanceID: "old-instance"))
+            let recordStore = InMemoryActivationRecordStore(record: oldRecord)
+            let provider = LicenseKeyProvider(
+                store: InMemoryTokenStore(),
+                activationRecordStore: recordStore,
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: tempTokenURL()))
+            let entitlements = Entitlements(provider: provider)
+            let validator = RecordingValidator(
+                result: .success(
+                    LicenseActivation(
+                        licenseID: "NEW", instanceID: "new-instance", status: "active")))
+            let service = LicenseActivationService(
+                validator: validator,
+                signingKey: key)
+
+            #expect(!entitlements.isPro)
+            #expect(entitlements.directLicenseManagementState == .cleanupNeeded)
+            let activationSucceeded = await entitlements.activate(
+                licenseKey: "NEW-KEY", using: service)
+            #expect(!activationSucceeded)
+            #expect(await validator.callCount == 0)
+            #expect(provider.activationRecordForDeactivation == oldRecord)
+
+            let newToken = try LicenseSigner.sign(
+                LicenseToken(licenseID: "NEW", issuedAt: .now), with: key)
+            let newRecord = try #require(
+                LicenseActivationRecord(
+                    licenseKey: "NEW-KEY", licenseID: "NEW", instanceID: "new-instance"))
+            #expect(!provider.setActivation(signedToken: newToken, record: newRecord))
+            #expect(provider.activationRecordForDeactivation == oldRecord)
+        }
+
+        @Test func legacyTokenRemainsProWithoutInventingASeatRecord() async throws {
+            let key = Curve25519.Signing.PrivateKey()
+            let token = try LicenseSigner.sign(
+                LicenseToken(licenseID: "LEGACY", issuedAt: .now), with: key)
+            let provider = LicenseKeyProvider(
+                store: InMemoryTokenStore(token: token),
+                activationRecordStore: InMemoryActivationRecordStore(),
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: tempTokenURL()))
+            let entitlements = Entitlements(provider: provider)
+
+            #expect(entitlements.isPro)
+            #expect(provider.hasLegacyActivation)
+            #expect(entitlements.directLicenseManagementState == .legacy)
+            #expect(
+                await entitlements.deactivateLicense(
+                    using: LicenseDeactivationService(
+                        deactivator: StubDeactivator(
+                            result: .success(LicenseDeactivation(licenseID: "LEGACY")))))
+                    == .notActivated)
+            #expect(entitlements.isPro)
+        }
+
+        @Test(arguments: [
+            LicenseDeactivationError.network("offline"),
+            .refused("provider refusal"),
+        ])
+        func inconclusiveDeactivationPreservesEveryLocalCredential(
+            failure: LicenseDeactivationError
+        ) async throws {
+            let fixture = try activeFixture(licenseID: "L1")
+            let entitlements = Entitlements(provider: fixture.provider)
+
+            let outcome = await entitlements.deactivateLicense(
+                using: LicenseDeactivationService(
+                    deactivator: StubDeactivator(result: .failure(failure))))
+
+            #expect(outcome == (failure == .network("offline") ? .network : .refused))
+            #expect(entitlements.isPro)
+            #expect(fixture.provider.activationRecordForDeactivation == fixture.record)
+            #expect(FileManager.default.fileExists(atPath: fixture.cliTokenURL.path))
+        }
+
+        @Test(arguments: [false, true])
+        func conclusiveDeactivationRelocksAppAndCLI(alreadyInactive: Bool) async throws {
+            let fixture = try activeFixture(licenseID: "L1")
+            let entitlements = Entitlements(provider: fixture.provider)
+            let result: Result<LicenseDeactivation, LicenseDeactivationError> =
+                alreadyInactive
+                ? .failure(.alreadyInactive)
+                : .success(LicenseDeactivation(licenseID: "L1"))
+
+            let outcome = await entitlements.deactivateLicense(
+                using: LicenseDeactivationService(
+                    deactivator: StubDeactivator(result: result)))
+
+            #expect(outcome == (alreadyInactive ? .alreadyInactive : .deactivated))
+            #expect(!entitlements.isPro)
+            #expect(fixture.provider.activationRecordForDeactivation == nil)
+            #expect(!FileManager.default.fileExists(atPath: fixture.cliTokenURL.path))
+        }
+
+        @Test func localCleanupFailurePreservesARecoverableRecord() async throws {
+            let fixture = try activeFixture(licenseID: "L1")
+            fixture.tokenStore.rejectsClear = true
+            let entitlements = Entitlements(provider: fixture.provider)
+
+            let outcome = await entitlements.deactivateLicense(
+                using: LicenseDeactivationService(
+                    deactivator: StubDeactivator(
+                        result: .success(LicenseDeactivation(licenseID: "L1")))))
+
+            #expect(outcome == .localCleanupFailed)
+            #expect(entitlements.isPro)
+            #expect(fixture.provider.activationRecordForDeactivation == fixture.record)
+            #expect(FileManager.default.fileExists(atPath: fixture.cliTokenURL.path))
+        }
+
+        @Test func suspendedDeactivationCannotClearANewerActivation() async throws {
+            let fixture = try activeFixture(licenseID: "OLD")
+            let entitlements = Entitlements(provider: fixture.provider)
+            let controlled = ControlledDeactivator()
+            let task = Task {
+                await entitlements.deactivateLicense(
+                    using: LicenseDeactivationService(deactivator: controlled))
+            }
+            await controlled.waitUntilStarted()
+
+            let key = fixture.key
+            let newToken = try LicenseSigner.sign(
+                LicenseToken(licenseID: "NEW", issuedAt: .now), with: key)
+            let newRecord = try #require(
+                LicenseActivationRecord(
+                    licenseKey: "NEW-KEY", licenseID: "NEW", instanceID: "new-instance"))
+            // Simulate an out-of-band recovery removing the old record while its request is
+            // suspended. The provider can then accept a genuinely newer activation, and the
+            // stale response must still compare-and-refuse rather than clearing it.
+            #expect(fixture.recordStore.write(nil))
+            #expect(
+                fixture.provider.setActivation(
+                    signedToken: newToken,
+                    record: newRecord))
+
+            await controlled.succeed(licenseID: "OLD")
+            #expect(await task.value == .superseded)
+            #expect(fixture.provider.cachedIsPro)
+            #expect(fixture.provider.activationRecordForDeactivation == newRecord)
+        }
+
+        @Test func aboutPaneUsesAConfirmingCancellableLicenseJourney() throws {
+            let root = try String(
+                contentsOf: Self.repoFile("Vitrine", "Settings", "SettingsRootView.swift"),
+                encoding: .utf8)
+            let about = try String(
+                contentsOf: Self.repoFile("Vitrine", "Settings", "AboutSettingsView.swift"),
+                encoding: .utf8)
+            #expect(root.contains("entitlements: environment.entitlements"))
+            #expect(about.contains(".confirmationDialog("))
+            #expect(about.contains(".task(id: deactivationRequestID)"))
+            #expect(about.contains("deactivate-license-button"))
+            #expect(about.contains("SecureField") == false)
+        }
+
+        private struct ActiveFixture {
+            let key: Curve25519.Signing.PrivateKey
+            let tokenStore: InMemoryTokenStore
+            let recordStore: InMemoryActivationRecordStore
+            let provider: LicenseKeyProvider
+            let record: LicenseActivationRecord
+            let cliTokenURL: URL
+        }
+
+        private func activeFixture(licenseID: String) throws -> ActiveFixture {
+            let key = Curve25519.Signing.PrivateKey()
+            let tokenStore = InMemoryTokenStore()
+            let recordStore = InMemoryActivationRecordStore()
+            let cliTokenURL = tempTokenURL()
+            let provider = LicenseKeyProvider(
+                store: tokenStore,
+                activationRecordStore: recordStore,
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: cliTokenURL))
+            let token = try LicenseSigner.sign(
+                LicenseToken(licenseID: licenseID, issuedAt: .now), with: key)
+            let record = try #require(
+                LicenseActivationRecord(
+                    licenseKey: "KEY-\(licenseID)",
+                    licenseID: licenseID,
+                    instanceID: "instance-\(licenseID)"))
+            #expect(provider.setActivation(signedToken: token, record: record))
+            return ActiveFixture(
+                key: key,
+                tokenStore: tokenStore,
+                recordStore: recordStore,
+                provider: provider,
+                record: record,
+                cliTokenURL: cliTokenURL)
+        }
+
+        private func tempTokenURL() -> URL {
+            FileManager.default.temporaryDirectory
+                .appendingPathComponent("vitrine-provider-test-\(UUID().uuidString)")
+                .appendingPathComponent("pro-license.token", isDirectory: false)
+        }
+
+        private static func repoFile(_ components: String...) -> URL {
+            components.reduce(
+                URL(fileURLWithPath: #filePath)
+                    .deletingLastPathComponent()
+                    .deletingLastPathComponent()
+            ) { $0.appendingPathComponent($1) }
         }
     #endif
 }

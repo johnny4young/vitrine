@@ -29,6 +29,11 @@ final class Entitlements {
 
     private let provider: EntitlementProvider
 
+    #if VITRINE_DIRECT_DOWNLOAD
+        /// Invalidates older suspended license operations when a newer user action begins.
+        private var licenseOperationGeneration = 0
+    #endif
+
     /// Seeds `isPro` from the provider's cached flag — instant and offline, so the first
     /// frame already reflects the last known state with no flash.
     init(provider: EntitlementProvider) {
@@ -79,6 +84,15 @@ final class Entitlements {
     }
 
     #if VITRINE_DIRECT_DOWNLOAD
+        /// The direct-download license state Settings can manage without revealing secrets.
+        var directLicenseManagementState: DirectLicenseManagementState {
+            guard let provider = provider as? LicenseKeyProvider else { return .unavailable }
+            if provider.activationRecordForDeactivation != nil {
+                return isPro ? .active : .cleanupNeeded
+            }
+            return provider.hasLegacyActivation ? .legacy : .unavailable
+        }
+
         /// Activates a Lemon Squeezy license key on the direct-download build (
         /// embedded-key activation model), returning whether PRO is unlocked afterward.
         ///
@@ -90,11 +104,63 @@ final class Entitlements {
         func activate(licenseKey: String) async -> Bool {
             let service = LicenseActivationService(
                 validator: LemonSqueezyValidator(), signingKey: LicenseSigningKey.embedded)
-            if case .activated(let signedToken) = await service.activate(licenseKey: licenseKey) {
-                (provider as? LicenseKeyProvider)?.setToken(signedToken)
+            return await activate(licenseKey: licenseKey, using: service)
+        }
+
+        /// Injectable form used by deterministic tests. A recoverable record always wins over
+        /// a new activation attempt: contacting the provider first could consume another seat
+        /// before the old instance is released.
+        func activate(
+            licenseKey: String,
+            using service: LicenseActivationService
+        ) async -> Bool {
+            guard let licenseProvider = provider as? LicenseKeyProvider,
+                licenseProvider.activationRecordForDeactivation == nil
+            else { return isPro }
+
+            licenseOperationGeneration += 1
+            let generation = licenseOperationGeneration
+            let outcome = await service.activate(licenseKey: licenseKey)
+            guard generation == licenseOperationGeneration else { return isPro }
+            if case .activated(let signedToken, let record) = outcome {
+                _ = licenseProvider.setActivation(
+                    signedToken: signedToken,
+                    record: record)
             }
             await refresh()
             return isPro
+        }
+
+        /// Releases this machine's direct-download seat and clears entitlement state only
+        /// after a conclusive provider verdict. Network and refusal outcomes preserve PRO.
+        func deactivateLicense() async -> LicenseDeactivationOutcome {
+            await deactivateLicense(
+                using: LicenseDeactivationService(deactivator: LemonSqueezyValidator()))
+        }
+
+        /// Injectable form used by deterministic tests. The full record is captured before
+        /// suspension and compared again during cleanup, because actor state may change at
+        /// every `await`.
+        func deactivateLicense(
+            using service: LicenseDeactivationService
+        ) async -> LicenseDeactivationOutcome {
+            guard let provider = provider as? LicenseKeyProvider,
+                let record = provider.activationRecordForDeactivation
+            else { return .notActivated }
+
+            licenseOperationGeneration += 1
+            let generation = licenseOperationGeneration
+            let remoteOutcome = await service.deactivate(record: record)
+            guard generation == licenseOperationGeneration else { return .superseded }
+            guard remoteOutcome.permitsLocalCleanup else { return remoteOutcome }
+
+            let cleanup = provider.clearActivation(ifMatching: record)
+            await refresh()
+            switch cleanup {
+            case .cleared: return remoteOutcome
+            case .superseded: return .superseded
+            case .failed: return .localCleanupFailed
+            }
         }
     #endif
 
@@ -129,6 +195,18 @@ final class Entitlements {
         #endif
     }
 }
+
+#if VITRINE_DIRECT_DOWNLOAD
+    /// Secret-free state for the About pane's direct-download license section.
+    enum DirectLicenseManagementState: Equatable {
+        case unavailable
+        case active
+        /// A valid token issued before instance records were introduced.
+        case legacy
+        /// A provider seat exists but local entitlement persistence/cleanup needs retrying.
+        case cleanupNeeded
+    }
+#endif
 
 /// A gated PRO capability. Each case carries its own paywall copy so the
 /// `PaywallSheet` reads its title and blurb straight from the feature the user
