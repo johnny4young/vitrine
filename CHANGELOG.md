@@ -37,7 +37,9 @@ can never drift.
 - **Basic `vgrab` terminal capture is now free.** Its dedicated CLI capability can copy
   a terminal capture or open it in the editor with optional width and context. General
   file/Git rendering, multi-size, batch, `vpane`, sidecars, and styling automation remain
-  PRO behind the offline signed-token gate.
+  PRO behind the offline signed-token gate. The exhaustive command policy is evaluated
+  lazily, so `vgrab` never reads the PRO token and locked automation exits before AppKit,
+  font registration, or input work.
 - **Visual UI evidence is now a strict CI gate.** The complete 53-state screenshot
   tour fails on missing surfaces, foreground-app contamination, invalid or duplicate
   captures, and manifest drift, then publishes stable PNG artifacts for review.

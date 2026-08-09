@@ -91,19 +91,49 @@ struct CLIEntitlementTests: CLITestSupport {
         #expect(!free.command.requiresPro)
         #expect(free.language == .terminal)
 
-        for command in CLIOptions.Command.allProCommands {
-            #expect(command.requiresPro, "\(command.rawValue) must stay behind PRO")
-        }
+        #expect(CLIOptions.Command.allCases.filter { !$0.requiresPro } == [.terminalCapture])
+        #expect(
+            CLIOptions.Command.allCases.filter(\.requiresPro) == [.render, .multiSize, .batch])
     }
 
-    @Test func executableChecksTheCapabilityBeforeReadingTheProToken() throws {
+    @Test func freeTerminalCaptureNeverEvaluatesTheProUnlockCheck() throws {
+        var checkCount = 0
+
+        try CLIEntitlement.authorize(.terminalCapture) {
+            checkCount += 1
+            return false
+        }
+
+        #expect(checkCount == 0)
+    }
+
+    @Test(arguments: CLIOptions.Command.allCases.filter(\.requiresPro))
+    func everyAdvancedCommandRequiresProAndChecksOnlyOnce(_ command: CLIOptions.Command) throws {
+        var lockedCheckCount = 0
+        #expect(throws: CLIError.proRequired) {
+            try CLIEntitlement.authorize(command) {
+                lockedCheckCount += 1
+                return false
+            }
+        }
+        #expect(lockedCheckCount == 1)
+
+        var unlockedCheckCount = 0
+        try CLIEntitlement.authorize(command) {
+            unlockedCheckCount += 1
+            return true
+        }
+        #expect(unlockedCheckCount == 1)
+    }
+
+    @Test func executableAuthorizesBeforeInitializingAppKit() throws {
         let source = try String(
             contentsOf: repoFile("VitrineCLI", "main.swift"), encoding: .utf8)
-        #expect(source.contains("options.command.requiresPro"))
-        #expect(source.contains("CLIEntitlement.isProUnlocked()"))
-    }
-}
+        let authorization = try #require(
+            source.range(of: "try CLIEntitlement.authorize(options.command)"))
+        let appInitialization = try #require(source.range(of: "NSApplication.shared"))
 
-extension CLIOptions.Command {
-    fileprivate static let allProCommands: [Self] = [.render, .multiSize, .batch]
+        #expect(authorization.lowerBound < appInitialization.lowerBound)
+        #expect(!source.contains("options.command.requiresPro"))
+    }
 }

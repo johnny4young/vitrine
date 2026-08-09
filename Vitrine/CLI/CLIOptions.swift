@@ -26,7 +26,7 @@ struct CLIOptions: Equatable {
 
     /// The CLI subcommand. `terminal-capture` is the narrow local operation generated
     /// by `vgrab`; the general automation commands remain PRO.
-    enum Command: String, Equatable, Sendable {
+    nonisolated enum Command: String, CaseIterable, Equatable, Sendable {
         case terminalCapture = "terminal-capture"
         case render
         case multiSize = "multi-size"

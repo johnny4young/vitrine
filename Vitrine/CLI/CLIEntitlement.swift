@@ -15,6 +15,22 @@ import Foundation
 /// binary — the shipped CLI has no path to PRO except a signature-valid token. This is
 /// the "bypass locally, never in releases" rule the app's `DebugUnlockProvider` follows.
 enum CLIEntitlement {
+    /// Enforces the free-versus-PRO command policy before the executable initializes
+    /// AppKit, registers fonts, or reads an automation input.
+    ///
+    /// The unlock check is a closure rather than a precomputed Boolean on purpose:
+    /// `terminal-capture` returns without evaluating it, so everyday `vgrab` never
+    /// touches the PRO token. General automation evaluates it once and fails before
+    /// doing product work when no valid offline entitlement is present.
+    static func authorize(
+        _ command: CLIOptions.Command,
+        proUnlockCheck: () -> Bool = { CLIEntitlement.isProUnlocked() }
+    ) throws {
+        guard !command.requiresPro || proUnlockCheck() else {
+            throw CLIError.proRequired
+        }
+    }
+
     /// Whether PRO automation is unlocked for this CLI invocation.
     ///
     /// `tokenURL`, `verifier`, and `environment` are injectable so the verification is
