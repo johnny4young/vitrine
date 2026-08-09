@@ -577,6 +577,37 @@ struct WorkflowConfigurationTests {
         )
     }
 
+    /// A second macOS XCUITest runner can steal focus and TestManager ownership,
+    /// producing failures that look like product regressions. Both executable UI
+    /// lanes must fail before deleting prior evidence or launching xcodebuild, and
+    /// the parser must remain covered by the normal lint gate.
+    @Test func makefilePreflightsUITestIsolation() throws {
+        let make = try Self.makefile()
+        let script = try Self.text("scripts", "check-ui-test-environment.py")
+
+        let ordinaryStart = try #require(make.range(of: "\ntest-ui: project"))
+        let ordinaryEnd = try #require(make.range(of: "\n## ui-test-preflight-check:"))
+        let ordinary = String(make[ordinaryStart.lowerBound..<ordinaryEnd.lowerBound])
+        let ordinaryPreflight = try #require(
+            ordinary.range(of: "python3 scripts/check-ui-test-environment.py"))
+        let ordinaryCleanup = try #require(ordinary.range(of: "rm -rf"))
+        #expect(ordinaryPreflight.lowerBound < ordinaryCleanup.lowerBound)
+
+        let visualStart = try #require(make.range(of: "\ntest-visual: project"))
+        let visualEnd = try #require(make.range(of: "\n## perf:"))
+        let visual = String(make[visualStart.lowerBound..<visualEnd.lowerBound])
+        let visualPreflight = try #require(
+            visual.range(of: "python3 scripts/check-ui-test-environment.py"))
+        let visualCleanup = try #require(visual.range(of: "rm -rf"))
+        #expect(visualPreflight.lowerBound < visualCleanup.lowerBound)
+
+        #expect(make.contains("ui-test-preflight-check:"))
+        #expect(make.contains("scripts/check-ui-test-environment.py --self-test"))
+        #expect(script.contains("ps\", \"-ww\", \"-axo\", \"pid=,command="))
+        #expect(script.contains("UITests-Runner.app/Contents/MacOS"))
+        #expect(script.contains("does not terminate test processes automatically"))
+    }
+
     // MARK: - Contract: the UI-test execution policy is documented
 
     @Test func releasingDocExplainsTheUITestPolicy() throws {
@@ -597,6 +628,9 @@ struct WorkflowConfigurationTests {
             doc.localizedCaseInsensitiveContains("automation permission"),
             "RELEASING.md must explain the automation-permission requirement (interactive locally, pre-authorized in CI)"
         )
+        #expect(
+            doc.localizedCaseInsensitiveContains("active macOS UI-test runner"),
+            "RELEASING.md must explain the foreign-runner isolation preflight")
     }
 
     // MARK: - Contract: CI is documented as a release gate

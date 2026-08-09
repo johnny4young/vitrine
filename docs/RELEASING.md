@@ -185,6 +185,15 @@ IDE on another display) even when the app itself is healthy. If a local run fail
 only with interrupting-window diagnostics, close or hide those windows and rerun
 the focused test before treating it as a product regression.
 
+Both `make test-ui` and `make test-visual` now inspect the process table before
+deleting old result bundles or launching Xcode. An active macOS UI-test runner —
+including a stale Vitrine runner or a runner from another checkout — fails the
+preflight with its PID and executable name. Concurrent runners can steal focus and
+TestManager ownership, so their failures are not trustworthy product evidence.
+Finish or stop the existing suite explicitly, then rerun; the preflight never
+terminates another process automatically. `make ui-test-preflight-check` exercises
+the parser with deterministic fixtures and is part of `make lint`.
+
 **The display-geometry-sensitive tests run on CI too.** Four tests
 (`testEditorExposesMakeDefaultToolbarAction`,
 `testEditorExposesFormatCodeToolbarAction`,

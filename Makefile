@@ -55,7 +55,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage build-ui-tests test-ui test-visual screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -147,9 +147,14 @@ build-ui-tests: project
 ## editor's minimum supported display; CI runs the full suite unskipped).
 TEST_UI_SKIP_FLAGS = $(foreach t,$(TEST_UI_SKIP),-skip-testing:VitrineUITests/VitrineUITests/$(t))
 test-ui: project
+	python3 scripts/check-ui-test-environment.py
 	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(UI_SCHEME) -configuration Debug \
 		-destination 'platform=macOS' $(RESULT_BUNDLE_FLAG) $(TEST_UI_SKIP_FLAGS) test
+
+## ui-test-preflight-check: validate foreign-runner detection without inspecting live processes
+ui-test-preflight-check:
+	python3 scripts/check-ui-test-environment.py --self-test
 
 ## screenshot-tour-check: validate the required screenshot manifest and source contract
 screenshot-tour-check:
@@ -162,6 +167,7 @@ screenshot-tour-check:
 ## and source/manifest drift all fail this gate. Friendly PNGs land in
 ## VISUAL_OUTPUT; override VISUAL_RESULT_BUNDLE to retain the raw bundle elsewhere.
 test-visual: project screenshot-tour-check
+	python3 scripts/check-ui-test-environment.py
 	@rm -rf "$(VISUAL_OUTPUT)" "$(VISUAL_RESULT_BUNDLE)"
 	@status=0; \
 		env TEST_RUNNER_VITRINE_SCREENSHOT_DIR="$(abspath $(VISUAL_OUTPUT))" \
@@ -249,7 +255,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene build-boundaries-check memory-smoke-check screenshot-tour-check
+lint: hygiene build-boundaries-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
