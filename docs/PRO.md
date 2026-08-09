@@ -10,27 +10,32 @@ output and unlocks *new* surfaces.
 
 | Concern | Files |
 | --- | --- |
-| Entitlement state | `Vitrine/Pro/Entitlements.swift` — `Entitlements` (`@MainActor @Observable`, `isPro`), `ProFeature`, `EntitlementProvider`, `FreeProvider`, `#if DEBUG DebugUnlockProvider` |
+| Entitlement state | `Vitrine/Pro/Entitlements.swift` — `Entitlements` (`@MainActor @Observable`, `isPro`), `ProFeature`, `EntitlementProvider`, `FreeProvider`, `#if DEBUG DebugUnlockProvider`; `Vitrine/App/AppEnvironment.swift` owns the app-wide instance |
 | App Store provider | `Vitrine/Pro/StoreKitProvider.swift` — non-consumable IAP `com.johnny4young.vitrine.pro` |
-| Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — Ed25519 `LicenseToken`/`LicenseVerifier`/`LicenseSigner`, `#if VITRINE_DIRECT_DOWNLOAD LicenseKeyProvider` |
+| Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — Ed25519 `LicenseToken`/`LicenseVerifier`/`LicenseSigner`, device-only `LicenseActivationRecord`, `#if VITRINE_DIRECT_DOWNLOAD LicenseKeyProvider` |
 | CLI entitlement (out-of-process) | `Vitrine/CLI/CLIEntitlement.swift` — offline token verify + Debug bypass |
 | Gating UI | `Vitrine/Pro/ProGate.swift` — `View.proGated(_:action:)`, `ProBadge`, `PaywallSheet` |
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `Vitrine/Models/SnapshotConfig.swift` (`Watermark`), `Vitrine/Canvas/WatermarkBadge.swift` |
 | Feature: multi-size export | `Vitrine/Export/ExportManager+Batch.swift` (`exportPresetSizes`), `Vitrine/Export/MultiSizeExportView.swift` |
 | Feature: carousel export | `Vitrine/Export/ExportManager+Batch.swift` (`exportCarousel`), `Vitrine/Export/CarouselExportView.swift`, `Vitrine/Export/CarouselPaginator.swift` |
 | Feature: automation gating | `VitrineCLI/main.swift`, `Vitrine/CLI/CLIOptions.swift` (`Command.requiresPro`), `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
-| Tests | `Tests/EntitlementsTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLIAutomationTests.swift` |
+| Tests | `Tests/EntitlementsTests.swift`, `Tests/LicenseActivationTests.swift`, `Tests/ProDocumentationTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLIAutomationTests.swift`, `UITests/VitrineUITests.swift` |
 
 ## Entitlement resolution
 
-`Entitlements.shared` is a `@MainActor @Observable` reference; `isPro` is seeded synchronously from
-the active provider's `cachedIsPro` at boot (no flicker, no network) and updated by `refresh()`.
-The provider is chosen per build in `defaultProvider()`:
+`AppEnvironment` owns the app-wide `Entitlements` instance and injects that same reference into
+settings, editor, menu-bar, Services, and other in-process surfaces. `Entitlements.shared` is a
+thin forwarder to that composition root for framework adapters that the system instantiates.
+`isPro` is seeded synchronously from the active provider's `cachedIsPro` at boot (no flicker, no
+network) and updated by `refresh()`. `Entitlements.makeDefault(environment:)` selects a complete
+Debug UI fixture when explicitly requested; every normal launch chooses its provider in
+`defaultProvider(environment:)`:
 
 ```
-#if DEBUG && VITRINE_PRO_UNLOCK==1  → DebugUnlockProvider   (local QA only; see "Local unlock")
-#if VITRINE_DIRECT_DOWNLOAD         → LicenseKeyProvider     (DMG: offline Ed25519 token)
-#else                               → StoreKitProvider       (App Store: non-consumable IAP)
+#if DEBUG && managed UI markers     → isolated managed fixture (UI automation only)
+#if DEBUG && VITRINE_PRO_UNLOCK==1  → DebugUnlockProvider    (local QA only; see "Local unlock")
+#if VITRINE_DIRECT_DOWNLOAD         → LicenseKeyProvider      (DMG: offline Ed25519 token)
+#else                               → StoreKitProvider        (App Store: non-consumable IAP)
 ```
 
 `ProFeature` (`brandKit`, `multiSizeExport`, `carouselExport`, `automation`, `advancedFrames`) carries its own paywall copy.
@@ -53,6 +58,13 @@ re-verifies the same token itself via `CLIEntitlement` (no StoreKit↔CLI bridge
 this is why `LicenseVerifier` is compiled unconditionally while `LicenseKeyProvider` is
 `#if VITRINE_DIRECT_DOWNLOAD`.
 
+New activations also store the validated raw key, license id, and Lemon Squeezy instance id in a
+separate device-only Keychain `LicenseActivationRecord`. That record never enters defaults, the
+CLI token mirror, diagnostics, logs, or screenshots. Settings uses it only after an explicit
+confirmation to release the exact provider seat. Remote refusal or network failure preserves
+PRO; only a conclusive provider result permits matching-record cleanup, and successful cleanup
+re-locks the app and CLI together.
+
 ## The export seam — how Brand Kit reaches output without touching the core
 
 `Watermark` is a small, self-contained value (text + resolved logo bytes + tint + placement) so
@@ -67,7 +79,7 @@ the single seam `AppSettings.exportConfig`:
 ```swift
 var exportConfig: SnapshotConfig {
     var resolved = config
-    resolved.watermark = BrandKitStore.shared.resolvedWatermark(isPro: Entitlements.shared.isPro)
+    resolved.watermark = brandKit.resolvedWatermark(isPro: entitlements.isPro)
     return resolved
 }
 ```
@@ -90,7 +102,7 @@ unlock path (StoreKit buy + Restore, or a license-key field).
 
 ## Automation gating
 
-In-process surfaces gate on `Entitlements.shared.isUnlocked(.automation)`:
+In-process surfaces gate on their injected `environment.entitlements.isUnlocked(.automation)`:
 `RenderCodeImageIntent.perform()` (→ `IntentRenderError`), `CodeImageService.process()`
 (→ `.failed`, injectable for tests). The CLI is out-of-process and applies capability policy
 before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
@@ -119,6 +131,16 @@ absent from any Release binary. `EntitlementsTests.debugUnlockProviderIsCompiled
 and `CLIAutomationTests.theEnvBypassIsCompiledOutOfRelease` source-scan guardrail that the unlock
 can never ship.
 
+**Managed-license UI automation:** the direct-download Debug app can construct a complete active
+license graph only when both `VITRINE_MANAGED_LICENSE_UI_TEST=1` and a non-empty
+`VITRINE_USER_DEFAULTS_SUITE` are present. `ManagedLicenseUITestFixture` uses an ephemeral Ed25519
+key, in-memory stores, a nonexistent temporary CLI path, and a local deactivator. It never reads a
+real Keychain item, carries a production credential, mutates the user's CLI entitlement, or
+contacts the network. The entire file is guarded by `#if DEBUG && VITRINE_DIRECT_DOWNLOAD`, and
+`EntitlementsTests` source-scan those isolation and compile-guard contracts. Release validation
+must additionally build the optimized product and inspect it for the fixture's environment and
+key marker strings.
+
 ## Release/account status and certification
 
 The direct-download production path is wired: the app and website point at the live Vitrine PRO
@@ -136,11 +158,13 @@ license key, private signing key, or token contents.
 The App Store channel remains separate: its StoreKit non-consumable and real purchase/restore
 journey must be certified before that channel is distributed.
 
-**Known direct-download lifecycle boundary:** v1 has no in-app Restore or Deactivate control and
-does not retain the Lemon Squeezy `instanceID` after minting the offline token. Upgrades and
-offline relaunches preserve the local entitlement; moving to a clean Mac requires activating the
-license again. Do not claim remote seat deactivation, periodic refund revocation, or a restore
-workflow until those contracts are deliberately designed and tested.
+**Known direct-download lifecycle boundary:** Settings → About can deactivate seats created by
+current builds because activation retains the exact Lemon Squeezy instance identity. Tokens
+minted before activation records existed remain valid offline, but the app cannot reconstruct
+their provider instance; those users must release the seat through the purchase portal or
+support. Moving to a clean Mac still requires activating again. Automatic cross-device Restore,
+periodic refund revocation, and background provider validation are not implemented and must not
+be claimed as supported.
 
 ## Invariants to preserve
 
@@ -149,8 +173,8 @@ workflow until those contracts are deliberately designed and tested.
 2. New PRO visuals are additive + default-off on `SnapshotConfig` (like `annotations`/`metadata`)
    so goldens stay byte-identical.
 3. Any local unlock stays `#if DEBUG` with a source-scan guardrail test.
-4. Advanced CLI commands verify tokens themselves; they must never depend on
-   `Entitlements.shared` (which resolves via StoreKit in a CLI process). The free
+4. Advanced CLI commands verify tokens themselves; they must never depend on the app's
+   `Entitlements` graph (which resolves via StoreKit in an App Store process). The free
    `terminal-capture` command must stay constrained by an explicit parser allowlist.
 5. A successful provider response is not enough: direct-download activation must match the
    pinned Lemon Squeezy store/product and reject test-mode, foreign, incomplete, or inactive keys.
