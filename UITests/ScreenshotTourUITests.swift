@@ -837,6 +837,7 @@ final class ScreenshotTourUITests: XCTestCase {
         persist(screenshot, as: slug, note: note)
     }
 
+    @MainActor
     private func persist(_ screenshot: XCUIScreenshot, as slug: String, note: String) {
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = slug
@@ -894,6 +895,7 @@ final class ScreenshotTourUITests: XCTestCase {
             "Inspector control \(identifier) is not reachable after scrolling")
     }
 
+    @MainActor
     private func assertToggleIsOn(_ toggle: XCUIElement, named name: String) {
         let value = toggle.value
         let numericValue = (value as? NSNumber)?.boolValue
