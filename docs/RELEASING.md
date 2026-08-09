@@ -47,23 +47,25 @@ the reviewed version section in `CHANGELOG.md`.
 CI is a release gate, not just a compile check.
 
 - **`.github/workflows/ci.yml`** runs on every push to `main` and every pull
-  request. Before building, it records the exact toolchain — macOS image, Xcode,
-  and Swift versions — into the job summary, so a green or red result is always
-  tied to a known environment. It validates every workflow's YAML, then runs
-  `make lint`, `make build`, `make build-ui-tests`, and `make test`. The Swift
+  request. Its macOS gates are an explicit two-row runtime matrix:
+  `macos-15` (Sequoia) and `macos-26` (Tahoe). Before building, each row records
+  the exact image, Xcode, and Swift versions into the job summary, so a green or
+  red result is always tied to a known environment. CI validates every workflow's
+  YAML, then runs `make lint`, `make build`, `make build-ui-tests`, and `make test`.
+  The Swift
   Package Manager download cache is restored between runs (keyed on `project.yml`,
   the dependency source of truth) to cut build time without risking a stale build.
   A parallel **`UI tests` job** executes the full XCUITest suite (`make test-ui`)
-  plus the strict visual evidence tour (`make test-visual`) on the same triggers —
-  see *Running the UI tests* below.
+  plus the strict visual evidence tour (`make test-visual`) on both OS rows and the
+  same triggers — see *Running the UI tests* below.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
   without re-running CI.
 - **Weekly drift watch.** A scheduled run (Mondays 08:00 UTC, also available via
-  *Run workflow*) re-runs the full gate against the current `macos-latest` image.
-  GitHub rolls that image and the bundled Xcode/SDK on its own cadence, which can
-  break the build with no code change; the scheduled run surfaces that drift on a
+  *Run workflow*) re-runs the full Sequoia + Tahoe matrix. GitHub rolls both
+  explicit images and their bundled Xcode/SDKs on its own cadence, which can break
+  the build with no code change; the scheduled run surfaces that drift on a
   predictable day instead of on the next unrelated PR.
 - **Pinned release tooling and dependency inventory.** CI downloads XcodeGen's official
   universal release archive, verifies its pinned SHA-256 digest, and installs it into a
@@ -76,11 +78,34 @@ CI is a release gate, not just a compile check.
   `needs:`. A tag therefore cannot publish a DMG unless lint, build, the unit
   suite, and the UI-test compile all pass on the tagged commit.
 
+### Supported macOS matrix
+
+`project.yml` remains the source of truth and keeps a macOS 14.0 deployment target;
+this band does not remove the existing Sonoma-compatible binary floor. Active runtime
+certification starts with the versions requested for current support:
+
+| Runtime | GitHub label | Required gates |
+| --- | --- | --- |
+| macOS 15 Sequoia | `macos-15` | Build, unit/integration, performance, golden rendering, full UI suite, strict visual tour |
+| macOS 26 Tahoe | `macos-26` | Build, unit/integration, performance, golden rendering, full UI suite, strict visual tour |
+
+Both are standard arm64 GitHub-hosted labels. `setup-xcode` selects the newest stable
+Xcode installed on each image, and the workflow logs the resolved versions instead of
+assuming they match. `fail-fast: false` ensures a failure on one OS never cancels the
+evidence from the other. Artifact names include `sequoia-15` or `tahoe-26`, preventing
+parallel matrix uploads from colliding.
+
+An unreleased future macOS major is not silently claimed as supported. Add its explicit
+runner label to both matrices, obtain a green build/UI/visual run, and update this table
+before calling that runtime certified.
+
 ### Running the UI tests
 
 **The full UI suite (`make test-ui`) runs in CI on every PR and push to `main`**,
 as the dedicated `UI tests` job in `ci.yml`, alongside the compile-only
 `make build-ui-tests` step that also remains in the build job and the release gate.
+Both `macos-15` Sequoia and `macos-26` Tahoe must finish; the matrix does not cancel
+one runtime merely because the other failed.
 
 Driving the menu-bar app through XCUIAutomation requires the macOS
 "automation permission" — the interactive UI-automation consent that the first
@@ -90,7 +115,9 @@ no prompt: the images are provisioned for headless UI automation
 enable-automationmode-without-authentication`, SIP disabled — see
 `images/macos/scripts/build/configure-machine.sh` in `actions/runner-images`),
 verified empirically on the `macos-15-arm64` image (20260527.0100.1): the suite
-executes end to end. One sharp edge from that verification: `automationmodetool`
+executes end to end. The explicit `macos-26` row applies the same gate and captures
+the same diagnostics on Tahoe. One sharp edge from the Sequoia verification:
+`automationmodetool`
 *reports* "Automation Mode is disabled" on that image even though automation
 works, so the CI job records the authorization state as a diagnostic instead of
 gating on it. When the job fails because the XCUITest session could not

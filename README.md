@@ -650,8 +650,9 @@ in [`docs/`](docs/):
 the signed direct-download build and is driven by one design-token system
 ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in light and dark. The product is
 covered by a Swift Testing unit suite plus XCTest UI smokes; CI
-runs lint, build, the unit tests, and the full UI suite on GitHub's hosted macOS runners
-(which pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md)).
+runs lint, build, unit/performance/golden tests, the full UI suite, and the strict visual
+tour on an explicit macOS 15 Sequoia + macOS 26 Tahoe matrix (GitHub's hosted runners
+pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md)).
 The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release
 also ships an in-app **What's New**.
 

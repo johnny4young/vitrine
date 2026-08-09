@@ -90,9 +90,8 @@ struct WorkflowConfigurationTests {
     // MARK: - Contract: log exact macOS / Xcode versions before building
 
     /// The CI workflow must record the exact toolchain (macOS image, Xcode, Swift)
-    /// before it builds, since it runs on the moving `macos-latest` image rather than a
-    /// pinned one. The contract is satisfied by *logging* the versions; assert the
-    /// version-probe commands are present and that the step runs before the build.
+    /// before it builds. The explicit OS labels still receive rolling image/toolchain
+    /// updates, so each result must remain traceable to the versions it exercised.
     @Test func ciLogsExactToolchainVersionsBeforeBuilding() throws {
         let ci = try Self.ci()
         #expect(ci.contains("sw_vers"), "CI must log the macOS version (sw_vers)")
@@ -105,6 +104,50 @@ struct WorkflowConfigurationTests {
         #expect(
             toolchainMarker.lowerBound < buildMarker.lowerBound,
             "Toolchain versions must be logged before building")
+    }
+
+    // MARK: - Contract: certify Sequoia and Tahoe explicitly
+
+    @Test func ciCertifiesSequoiaAndTahoeAcrossBuildAndUIJobs() throws {
+        let ci = try Self.ci()
+        let buildMarker = try #require(ci.range(of: "\n  build:"))
+        let uiMarker = try #require(ci.range(of: "\n  ui-test:"))
+        let buildJob = String(ci[buildMarker.lowerBound..<uiMarker.lowerBound])
+        let uiJob = String(ci[uiMarker.lowerBound...])
+
+        for (name, job) in [("build", buildJob), ("UI", uiJob)] {
+            #expect(job.contains("runner: macos-15"), "\(name) matrix must exercise Sequoia")
+            #expect(job.contains("runner: macos-26"), "\(name) matrix must exercise Tahoe")
+            #expect(
+                job.contains("runs-on: ${{ matrix.runner }}"),
+                "\(name) job must run on its explicit matrix label")
+            #expect(
+                job.contains("fail-fast: false"),
+                "\(name) matrix must finish both OS rows even when one fails")
+        }
+
+        #expect(!ci.contains("runs-on: macos-latest"))
+        #expect(buildJob.contains("make test RESULT_BUNDLE="))
+        #expect(buildJob.contains("make perf"))
+        #expect(buildJob.contains("GoldenImageTests"))
+        #expect(uiJob.contains("make test-ui RESULT_BUNDLE="))
+        #expect(uiJob.contains("make test-visual"))
+
+        // Matrix jobs can upload concurrently. Every artifact name needs an OS suffix,
+        // otherwise upload-artifact rejects the second writer for the same name.
+        for artifact in [
+            "xcresults", "launch-gallery", "golden-diffs", "ui-test-xcresult",
+            "screenshot-tour",
+        ] {
+            #expect(
+                ci.contains("name: \(artifact)-${{ matrix.artifact }}"),
+                "\(artifact) must be unique per compatibility row")
+        }
+
+        let doc = try Self.releasingDoc()
+        for term in ["Sequoia", "Tahoe", "macos-15", "macos-26"] {
+            #expect(doc.contains(term), "RELEASING.md must document \(term)")
+        }
     }
 
     // MARK: - Contract: cache SPM dependencies where safe
@@ -350,9 +393,9 @@ struct WorkflowConfigurationTests {
 
     // MARK: - Contract: the release gate logs the exact toolchain before building
 
-    /// The release `verify` job runs on the same moving `macos-latest` image as CI, so
-    /// the "log exact macOS/Xcode/Swift versions before building" contract applies to
-    /// it too: a DMG must be traceable to the toolchain it was validated against. Assert
+    /// The release `verify` job still runs on the moving `macos-latest` image, so the
+    /// "log exact macOS/Xcode/Swift versions before building" contract applies to it:
+    /// a DMG must be traceable to the toolchain it was validated against. Assert
     /// the version-probe commands are present in `release.yml` and run before its first
     /// build, so a future edit that drops toolchain logging from the release gate fails
     /// the suite rather than shipping an untraceable artifact.
