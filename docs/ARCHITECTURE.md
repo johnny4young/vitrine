@@ -49,6 +49,10 @@ The helper watches the exact containing app process and exits with it. The main 
 monitors the helper and relaunches it if needed, retaining a stable in-process
 `NSStatusItem` only as a launch fallback and for UI automation. This keeps one source of
 truth for every command and prevents a second menu implementation from drifting.
+Argument parsing, exact PID/bundle owner matching, watchdog decisions, and historical
+status-item visibility repair live in a pure contract shared by both targets. Unit tests
+therefore exercise the helper's lifecycle policy without launching a second process or
+painting an item into the developer's real menu bar.
 Fallback-item teardown does not own the shared panel lifecycle. The external positioning
 window also remains visible while the main app is inactive because the initiating click
 belongs to the helper process. Vitrine therefore owns popover dismissal and monitors

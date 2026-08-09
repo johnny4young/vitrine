@@ -307,6 +307,7 @@ targets:
         excludes:
           - "VitrineMenuBarHelper.entitlements"
       - path: Vitrine/MenuBar/MenuBarAnchor.swift
+      - path: Vitrine/MenuBar/MenuBarHelperContract.swift
     settings:
       base:
         PRODUCT_NAME: VitrineMenuBarHelper

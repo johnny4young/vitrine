@@ -19,6 +19,10 @@ can never drift.
 
 ### Changed
 
+- **The menu-bar helper lifecycle contract is now directly testable.** Its PID/token
+  parser, exact owner identity, watchdog decision, executable name, and historical
+  visibility repair are shared with the main app instead of living as private duplicated
+  entry-point logic.
 - **Direct-download artifacts now fail closed on partial architecture support.** DMG
   packaging explicitly builds arm64 and x86_64, then inspects every executable Mach-O in the app
   before signing. Clean-Mac release QA independently repeats the check against the

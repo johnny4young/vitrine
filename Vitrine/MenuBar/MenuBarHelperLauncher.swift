@@ -8,7 +8,7 @@ import AppKit
 /// data and self-exits when its exact containing Vitrine process disappears.
 @MainActor
 enum MenuBarHelperLauncher {
-    static let executableName = "VitrineMenuBarHelper"
+    static let executableName = MenuBarHelperContract.executableName
 
     private static var launchedProcess: Process?
     private static var sessionToken: String?
