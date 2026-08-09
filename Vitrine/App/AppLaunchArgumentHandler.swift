@@ -7,8 +7,11 @@ import CryptoKit
 /// focused on process lifecycle while still resolving every seeded setting and store from
 /// the same environment as the running app.
 final class AppLaunchArgumentHandler {
+    static let automationMenuPanelHost = "automation-menu-panel"
+    static let automationSourceProcessIDQuery = "source-pid"
+
     let environment: AppEnvironment
-    private let showMenuBarPanel: () -> Void
+    private let showMenuBarPanel: (pid_t?) -> Void
     private var memoryImageCycleTask: Task<Void, Never>?
 
     isolated deinit {
@@ -17,12 +20,52 @@ final class AppLaunchArgumentHandler {
 
     init(
         environment: AppEnvironment,
-        showMenuBarPanel: @escaping () -> Void = {
-            StatusItemController.shared.showPanelForAutomation()
+        showMenuBarPanel: @escaping (pid_t?) -> Void = { sourceProcessID in
+            StatusItemController.shared.showPanelForAutomation(
+                sourceProcessID: sourceProcessID)
         }
     ) {
         self.environment = environment
         self.showMenuBarPanel = showMenuBarPanel
+    }
+
+    /// Handles the post-launch panel trigger used by UI automation.
+    ///
+    /// `XCUIApplication.launch()` returns only after XCTest has attached. Sending this
+    /// handoff afterwards avoids opening `NSPopover` while Sequoia is still injecting
+    /// XCTAutomationSupport, and avoids relying on status-item geometry that can be
+    /// outside XCUIAutomation's logical display space on Retina or multi-display Macs.
+    /// A normal app process ignores the route completely.
+    func handleAutomationHandoff(
+        _ url: URL,
+        processEnvironment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Bool {
+        guard
+            processEnvironment["VITRINE_USER_DEFAULTS_SUITE"] != nil,
+            url.scheme?.lowercased() == SnapshotShareLink.scheme,
+            url.host?.lowercased() == Self.automationMenuPanelHost,
+            url.user == nil,
+            url.password == nil,
+            url.port == nil,
+            url.path.isEmpty,
+            url.fragment == nil,
+            let sourceProcessID = Self.automationSourceProcessID(from: url)
+        else { return false }
+
+        showMenuBarPanel(sourceProcessID)
+        return true
+    }
+
+    private static func automationSourceProcessID(from url: URL) -> pid_t? {
+        guard
+            let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+            queryItems.count == 1,
+            queryItems[0].name == automationSourceProcessIDQuery,
+            let value = queryItems[0].value,
+            let processID = pid_t(value),
+            processID > 0
+        else { return nil }
+        return processID
     }
 
     /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
@@ -199,7 +242,7 @@ final class AppLaunchArgumentHandler {
             didOpenWindow = true
         }
         if arguments.contains("--open-menu-panel") {
-            showMenuBarPanel()
+            showMenuBarPanel(nil)
             didOpenWindow = true
         }
         if arguments.contains("--show-about") {

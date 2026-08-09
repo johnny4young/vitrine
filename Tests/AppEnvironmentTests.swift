@@ -217,12 +217,79 @@ struct AppEnvironmentTests {
         var presentations = 0
         let handler = AppLaunchArgumentHandler(
             environment: environment,
-            showMenuBarPanel: { presentations += 1 })
+            showMenuBarPanel: { _ in presentations += 1 })
 
         let didOpenWindow = handler.handle(["Vitrine", "--open-menu-panel"])
 
         #expect(didOpenWindow)
         #expect(presentations == 1)
+    }
+
+    @Test func automationHandoffOpensTheMenuPanelOnlyUnderUITests() throws {
+        let suite = testDefaults()
+        let environment = AppEnvironment(defaults: suite)
+        var presentations = 0
+        var receivedProcessID: pid_t?
+        let handler = AppLaunchArgumentHandler(
+            environment: environment,
+            showMenuBarPanel: { sourceProcessID in
+                presentations += 1
+                receivedProcessID = sourceProcessID
+            })
+        let url = try #require(
+            URL(
+                string: "vitrine://\(AppLaunchArgumentHandler.automationMenuPanelHost)"
+                    + "?\(AppLaunchArgumentHandler.automationSourceProcessIDQuery)=123"))
+
+        #expect(!handler.handleAutomationHandoff(url, processEnvironment: [:]))
+        #expect(presentations == 0)
+        #expect(
+            handler.handleAutomationHandoff(
+                url,
+                processEnvironment: ["VITRINE_USER_DEFAULTS_SUITE": "ui-tests"]))
+        #expect(presentations == 1)
+        #expect(receivedProcessID == 123)
+
+        let foreign = try #require(URL(string: "https://automation-menu-panel"))
+        #expect(
+            !handler.handleAutomationHandoff(
+                foreign,
+                processEnvironment: ["VITRINE_USER_DEFAULTS_SUITE": "ui-tests"]))
+        #expect(presentations == 1)
+
+        let missingProcess = try #require(URL(string: "vitrine://automation-menu-panel"))
+        #expect(
+            !handler.handleAutomationHandoff(
+                missingProcess,
+                processEnvironment: ["VITRINE_USER_DEFAULTS_SUITE": "ui-tests"]))
+        #expect(presentations == 1)
+    }
+
+    @Test func automationHandoffRejectsMalformedRoutes() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        var presentations = 0
+        let handler = AppLaunchArgumentHandler(
+            environment: environment,
+            showMenuBarPanel: { _ in presentations += 1 })
+        let processEnvironment = ["VITRINE_USER_DEFAULTS_SUITE": "ui-tests"]
+        let malformedRoutes = [
+            "vitrine://automation-menu-panel/extra?source-pid=123",
+            "vitrine://automation-menu-panel?source-pid=0",
+            "vitrine://automation-menu-panel?source-pid=-1",
+            "vitrine://automation-menu-panel?source-pid=invalid",
+            "vitrine://automation-menu-panel?source-pid=123&source-pid=456",
+            "vitrine://automation-menu-panel?source-pid=123#fragment",
+        ]
+
+        for route in malformedRoutes {
+            let url = try #require(URL(string: route))
+            #expect(
+                !handler.handleAutomationHandoff(
+                    url,
+                    processEnvironment: processEnvironment),
+                "Unexpectedly accepted \(route)")
+        }
+        #expect(presentations == 0)
     }
 
     @Test func lifecycleAdaptersDoNotEscapeToGlobalDataStores() throws {
