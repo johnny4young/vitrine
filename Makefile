@@ -17,9 +17,10 @@ XCODEBUILD := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcodebuild
 SWIFTFORMAT := env DEVELOPER_DIR="$(XCODE_DEVELOPER)" xcrun swift-format
 
 # Optional .xcresult capture. Set RESULT_BUNDLE=<path> on the `make`
-# command line and the `build`, `build-ui-tests`, `test`, and `test-ui` targets
-# append `-resultBundlePath` so CI can upload the bundle on failure. xcodebuild requires
-# the path to not already exist, so each target removes a stale bundle first.
+# command line and the `build`, `build-ui-tests`, `test`, `test-coverage`, and
+# `test-ui` targets append `-resultBundlePath` so CI can upload the bundle on
+# failure. xcodebuild requires the path to not already exist, so each target
+# removes a stale bundle first.
 # Unset (a normal local `make`), RESULT_BUNDLE_FLAG expands to nothing and the
 # invocation is unchanged.
 RESULT_BUNDLE_FLAG := $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)")
@@ -46,7 +47,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build cli test build-ui-tests test-ui test-visual screenshot-tour-check perf build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build cli test test-coverage build-ui-tests test-ui test-visual screenshot-tour-check perf build-boundaries build-boundaries-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -80,7 +81,7 @@ cli: project
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(CLI_SCHEME) -configuration Debug \
 		-destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
 
-## test: run the unit test suite (Swift Testing)
+## test: run the unit test suite without coverage (fast local feedback)
 ## Swift Testing parallelizes suites across threads by default. Several suites
 ## measure and rasterize text through CoreText (NSString.size(withAttributes:),
 ## ImageRenderer), and CoreText's typesetter is not safe to drive concurrently
@@ -91,13 +92,25 @@ cli: project
 ## in how the harness schedules tests, not in product code. Pinning the
 ## parallelization width to 1 serializes the run and removes the race; the suite
 ## is dominated by serial main-actor rendering, so wall-clock cost is negligible.
-## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle, which CI
-## uploads on failure for offline triage.
+## Xcode 26 can occasionally hang while finalizing coverage after every test has
+## passed. Keep the default developer loop deterministic by disabling coverage
+## explicitly; `test-coverage` is the CI parity lane that retains it.
+## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.
 test: project
 	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'platform=macOS' $(RESULT_BUNDLE_FLAG) test
+		-destination 'platform=macOS' -enableCodeCoverage NO $(RESULT_BUNDLE_FLAG) test
+
+## test-coverage: run the complete unit suite with coverage (CI parity)
+## This intentionally uses the same serial scheduling as `test`, but overrides
+## the scheme explicitly so a future project setting cannot silently disable CI
+## coverage. CI captures the .xcresult and reports per-target coverage from it.
+test-coverage: project
+	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
+		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+		-destination 'platform=macOS' -enableCodeCoverage YES $(RESULT_BUNDLE_FLAG) test
 
 ## build-ui-tests: compile UI tests without requiring local automation permission
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.

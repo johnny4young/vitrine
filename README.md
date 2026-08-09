@@ -411,7 +411,8 @@ make project    # xcodegen generate  → Vitrine.xcodeproj
 make open       # open Vitrine.xcodeproj in Xcode
 make build      # headless xcodebuild (Debug)
 make cli        # build the `vitrine` command-line renderer
-make test       # run the Swift Testing suite
+make test          # run the Swift Testing suite without coverage (fast local feedback)
+make test-coverage # run the same suite with coverage (CI parity)
 make build-ui-tests # compile UI tests without automation permission
 make test-ui    # run UI smoke tests (first local run prompts for automation permission)
 make gallery    # (re)generate the launch-gallery design-QA samples

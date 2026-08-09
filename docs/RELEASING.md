@@ -51,9 +51,9 @@ CI is a release gate, not just a compile check.
   `macos-15` (Sequoia) and `macos-26` (Tahoe). Before building, each row records
   the exact image, Xcode, and Swift versions into the job summary, so a green or
   red result is always tied to a known environment. CI validates every workflow's
-  YAML, then runs `make lint`, `make build`, `make build-ui-tests`, and `make test`.
-  The Swift
-  Package Manager download cache is restored between runs (keyed on `project.yml`,
+  YAML, then runs `make lint`, `make build`, `make build-ui-tests`, and
+  `make test-coverage`. The Swift Package Manager download cache is restored between
+  runs (keyed on `project.yml`,
   the dependency source of truth) to cut build time without risking a stale build.
   A parallel **`UI tests` job** executes the full XCUITest suite (`make test-ui`)
   plus the strict visual evidence tour (`make test-visual`) on both OS rows and the
@@ -98,6 +98,19 @@ parallel matrix uploads from colliding.
 An unreleased future macOS major is not silently claimed as supported. Add its explicit
 runner label to both matrices, obtain a green build/UI/visual run, and update this table
 before calling that runtime certified.
+
+### Unit-test lanes
+
+`make test` is the default local feedback lane. It runs the complete Swift Testing
+suite with coverage explicitly disabled, avoiding an Xcode 26 failure mode where the
+test process finishes successfully but `xcodebuild` stalls while finalizing coverage.
+This changes instrumentation only; it does not select or skip tests.
+
+`make test-coverage` runs the same complete suite with coverage explicitly enabled.
+CI uses this lane on both supported macOS rows, retains the `.xcresult`, and publishes
+per-target `xccov` output in the job summary. Keep the lanes separate: local feedback
+must not depend on coverage finalization, and CI coverage must not depend implicitly on
+the Xcode scheme default.
 
 ### Running the UI tests
 

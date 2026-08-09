@@ -374,7 +374,10 @@ schemes:
       config: Debug
     test:
       config: Debug
-      gatherCoverageData: true
+      # Coverage is intentionally opt-in through `make test-coverage`. Keeping the
+      # scheme default off prevents Xcode 26 coverage finalization from stalling
+      # ordinary local, performance, golden, and generator test invocations.
+      gatherCoverageData: false
       # Pin the unit-test host to English so the suite is deterministic regardless of the
       # developer's app-language preference. The app persists its UI language in
       # `AppleLanguages` under its own domain ( language switcher) and the XCTest

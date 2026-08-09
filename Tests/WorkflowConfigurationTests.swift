@@ -127,7 +127,7 @@ struct WorkflowConfigurationTests {
         }
 
         #expect(!ci.contains("runs-on: macos-latest"))
-        #expect(buildJob.contains("make test RESULT_BUNDLE="))
+        #expect(buildJob.contains("make test-coverage RESULT_BUNDLE="))
         #expect(buildJob.contains("make perf"))
         #expect(buildJob.contains("GoldenImageTests"))
         #expect(uiJob.contains("make test-ui RESULT_BUNDLE="))
@@ -148,6 +148,29 @@ struct WorkflowConfigurationTests {
         for term in ["Sequoia", "Tahoe", "macos-15", "macos-26"] {
             #expect(doc.contains(term), "RELEASING.md must document \(term)")
         }
+    }
+
+    // MARK: - Contract: fast local tests and explicit CI coverage
+
+    @Test func unitTestLanesSeparateFastFeedbackFromCoverageCollection() throws {
+        let make = try Self.makefile()
+        let project = try Self.text("project.yml")
+        let testMarker = try #require(make.range(of: "\ntest: project"))
+        let coverageMarker = try #require(make.range(of: "\ntest-coverage: project"))
+        let uiMarker = try #require(make.range(of: "\n## build-ui-tests:"))
+        let fastLane = String(make[testMarker.lowerBound..<coverageMarker.lowerBound])
+        let coverageLane = String(make[coverageMarker.lowerBound..<uiMarker.lowerBound])
+
+        #expect(fastLane.contains("-enableCodeCoverage NO"))
+        #expect(coverageLane.contains("-enableCodeCoverage YES"))
+        #expect(fastLane.contains("$(RESULT_BUNDLE_FLAG)"))
+        #expect(coverageLane.contains("$(RESULT_BUNDLE_FLAG)"))
+        #expect(project.contains("gatherCoverageData: false"))
+
+        let ci = try Self.ci()
+        #expect(ci.contains("make test-coverage RESULT_BUNDLE="))
+        #expect(!ci.contains("run: make test RESULT_BUNDLE="))
+        #expect(ci.contains("xcrun xccov view --report --only-targets"))
     }
 
     // MARK: - Contract: cache SPM dependencies where safe
