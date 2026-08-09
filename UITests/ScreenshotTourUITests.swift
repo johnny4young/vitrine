@@ -634,11 +634,11 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarPanelTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        if panel.waitForExistence(timeout: 3) {
+        let panel = openMenuBarPanel(in: app)
+        if panel.exists {
             Thread.sleep(forTimeInterval: 0.5)
             save(panel, as: "50-menubar-panel", note: "Menu-bar panel (.window)")
 
@@ -688,11 +688,11 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarSurpriseStyleTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        guard panel.waitForExistence(timeout: 3) else {
+        let panel = openMenuBarPanel(in: app)
+        guard panel.exists else {
             miss("52-menubar-surprise-style", reason: "status panel did not open")
             return
         }
@@ -716,12 +716,11 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarRecentSourceActionsTour() throws {
-        let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recents", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        guard panel.waitForExistence(timeout: 3) else {
+        let panel = openMenuBarPanel(in: app)
+        guard panel.exists else {
             miss("55-menubar-recent-copy-actions", reason: "status panel did not open")
             return
         }

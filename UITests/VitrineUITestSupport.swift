@@ -82,6 +82,42 @@ extension XCTestCase {
         return false
     }
 
+    /// Opens the real menu-bar panel only after XCUIAutomation has attached.
+    ///
+    /// Opening an `NSPopover` from a launch argument is too early for a UI test:
+    /// Sequoia can inject XCTAutomationSupport after `applicationDidFinishLaunching`
+    /// and abort the app with a private libdispatch main-queue assertion. Clicking the
+    /// in-process status item exercises the production interaction after the automation
+    /// handshake, without retrying or hiding an unexpected process exit.
+    @MainActor
+    @discardableResult
+    func openMenuBarPanel(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let panel = element("menubar-panel", in: app)
+        guard waitForHittableElement("menubar-status-item", in: app, timeout: 8) else {
+            assertHittable(
+                "menubar-status-item",
+                in: app,
+                "The in-process menu-bar item is not reachable",
+                timeout: 0,
+                file: file,
+                line: line)
+            return panel
+        }
+
+        hittableElement("menubar-status-item", in: app).click()
+
+        XCTAssertTrue(
+            panel.waitForExistence(timeout: 5),
+            "The menu-bar panel did not open after clicking the status item",
+            file: file,
+            line: line)
+        return panel
+    }
+
     /// Reveals a Welcome control that may sit below the fold on a compact display.
     /// Tall windows expose it immediately; on short windows this helper advances the
     /// adaptive scroll surface until the control is usable.

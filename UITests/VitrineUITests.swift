@@ -1367,13 +1367,9 @@ final class VitrineUITests: XCTestCase {
             pasteboard.clearContents()
         }
 
-        // Preserve one end-to-end check through the painted status item. Panel-specific
-        // smokes below use the deterministic launch hook so display geometry cannot skip them.
-        let statusItem = app.statusItems.firstMatch
-        try XCTSkipUnless(
-            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
-            "The status item is not reachable on this display arrangement")
-        statusItem.click()
+        // Preserve an end-to-end check through the painted status item. Opening the
+        // panel after launch also keeps the XCTest automation handshake ahead of AppKit.
+        openMenuBarPanel(in: app)
 
         assertHittable(
             "menu-capture-preset-picker", in: app,
@@ -1406,15 +1402,13 @@ final class VitrineUITests: XCTestCase {
         pasteboard.clearContents()
         XCTAssertTrue(pasteboard.setString("sentinel", forType: .string))
 
-        let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recents", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
         defer {
             app.terminate()
             pasteboard.clearContents()
         }
 
-        let panel = element("menubar-panel", in: app)
-        XCTAssertTrue(panel.waitForExistence(timeout: 3))
+        openMenuBarPanel(in: app)
         let row = app.descendants(matching: .any).matching(identifier: "menu-recent-row")
             .firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 3))
@@ -1442,11 +1436,10 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMenuBarSurpriseStyleUpdatesThemeWithoutClosingThePanel() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        XCTAssertTrue(panel.waitForExistence(timeout: 3))
+        let panel = openMenuBarPanel(in: app)
         assertHittable(
             "menu-surprise-style-button", in: app,
             "The curated style action should be reachable from the menu-bar panel")
@@ -1467,11 +1460,10 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMenuBarPanelClosesWithEscape() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        XCTAssertTrue(panel.waitForExistence(timeout: 3))
+        let panel = openMenuBarPanel(in: app)
 
         app.typeKey(.escape, modifierFlags: [])
 
