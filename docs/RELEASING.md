@@ -626,6 +626,36 @@ from. Sparkle compares the appcast entries to the installed bundle's `CFBundleVe
 remember to bump `CURRENT_PROJECT_VERSION` (and `MARKETING_VERSION`) in `project.yml` for
 every release, or Sparkle will not see the new build as newer.
 
+### Reaching hosts whose updater cannot install
+
+Builds before the one that added `SUEnableInstallerLauncherService` to `Info.plist` cannot
+install an update at all. They are sandboxed but never opted into Sparkle's Installer XPC
+service, so Sparkle falls back to submitting a privileged installer job, the sandbox denies
+it (`errAuthorizationDenied`), and the user gets *"An error occurred while launching the
+installer."* every time.
+
+Shipping the fix does not repair them: the updater doing the work is the broken one already
+on disk. What those builds can still do is fetch the appcast and show an alert. So after
+`generate_appcast` runs, `release.yml` calls
+[`scripts/mark-informational-update.py`](../scripts/mark-informational-update.py), which adds
+
+```xml
+<sparkle:informationalUpdate><sparkle:belowVersion>34</sparkle:belowVersion></sparkle:informationalUpdate>
+```
+
+to every entry. Those hosts then get a **download link** instead of an install that is
+guaranteed to fail; hosts at or above that build are unaffected and keep updating in place.
+
+The bound is compared against the host's `CFBundleVersion`, so it is a **build number**, not
+a marketing version. It records when the updater started working and must not be raised to
+track the current release — lowering or removing it silently strands everyone still running
+one of those builds. `make lint` runs the script's `--self-test`, and
+`SoftwareUpdateChannelTests` asserts the release applies it *before* staging the appcast for
+Pages (otherwise the feed the installed base polls is the unmarked copy).
+
+Retire it only once the affected builds are gone from the installed base — the DMG download
+counts on those releases are the evidence for that, not a guess.
+
 ### Testing an update from N to N+1
 
 1. Build and install version *N* from its DMG (`VERSION=N ./scripts/build-dmg.sh`).

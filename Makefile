@@ -222,6 +222,10 @@ build-boundaries: project
 build-boundaries-check:
 	python3 scripts/measure-build-boundaries.py --self-test
 
+## informational-update-check: validate the appcast rewrite that reaches hosts whose updater cannot install
+informational-update-check:
+	python3 scripts/mark-informational-update.py --self-test
+
 ## record-goldens: (re)generate the golden-image fixtures + manifest
 ## The single command that refreshes the visual baseline. It runs only the
 ## opt-in recorder test (gated by VITRINE_RECORD_GOLDENS) through the same render
@@ -255,7 +259,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene build-boundaries-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: hygiene build-boundaries-check informational-update-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts

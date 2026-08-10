@@ -246,6 +246,38 @@ struct SoftwareUpdateChannelTests {
             "release.yml must deploy the appcast to GitHub Pages (the SUFeedURL host)")
     }
 
+    /// Hosts built before Sparkle's Installer Launcher was enabled cannot install an
+    /// update at all — sandboxed, they never reach the Installer XPC service and fail with
+    /// "An error occurred while launching the installer." Shipping a fixed build cannot
+    /// repair them, because the updater doing the work is the broken one already on disk.
+    /// The release marks each entry informational for exactly those hosts, so their alert
+    /// offers a download link instead of an install that cannot succeed.
+    ///
+    /// Ordering is the substance here, not the mention: the rewrite has to happen before
+    /// the appcast is staged for Pages, or the feed the installed base actually polls is
+    /// the unmarked copy and the marker changes nothing.
+    @Test func releaseMarksTheAppcastInformationalBeforePublishingIt() throws {
+        let release = try Self.release()
+
+        let rewrite = try #require(
+            release.range(of: "scripts/mark-informational-update.py"),
+            "release.yml must mark the generated appcast informational for stranded hosts")
+        let staged = try #require(
+            release.range(of: "cp dist/appcast.xml _site/appcast.xml"),
+            "release.yml must stage the appcast for the Pages deploy")
+        #expect(
+            rewrite.lowerBound < staged.lowerBound,
+            "the marker must be applied before the appcast is staged, or Pages serves the unmarked feed"
+        )
+
+        let generated = try #require(
+            release.range(of: "generate_appcast"),
+            "release.yml must generate the appcast before rewriting it")
+        #expect(
+            generated.lowerBound < rewrite.lowerBound,
+            "the rewrite operates on generate_appcast's output, so it must run after it")
+    }
+
     /// The appcast feed host in `Info.plist` must be the place the workflow deploys to.
     /// `SUFeedURL` points at GitHub Pages, and the workflow deploys the appcast via the Pages
     /// actions — assert both, so the feed the app polls is the feed the release refreshes.

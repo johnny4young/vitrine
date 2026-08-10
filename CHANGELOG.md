@@ -50,6 +50,12 @@ can never drift.
 
 ### Fixed
 
+- **Installs that cannot auto-update now get a download link instead of a dead end.**
+  Builds before Sparkle's Installer Launcher service was enabled cannot install an update
+  at all, and shipping the fix does not repair them — the updater doing the work is the
+  one already on disk. Each appcast entry is now marked informational for exactly those
+  builds, so their update alert offers a download rather than an installer that always
+  fails. Newer builds are unaffected and keep updating in place.
 - **Welcome and Recents remain usable on compact macOS displays.** Welcome can shrink
   from its 700-point ideal width and clamps itself in AppKit's own screen coordinate
   space. Recents now owns an adaptive in-content action bar instead of depending on
