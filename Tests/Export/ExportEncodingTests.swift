@@ -32,8 +32,15 @@ struct ExportEncodingTests {
         #expect(decoded.height == reference.height)
     }
 
-    @Test("AVIF export encodes a decodable alpha-capable AVIF container")
+    @Test("AVIF export follows the active ImageIO writer capability")
     func avifEncodesTheRenderedImage() throws {
+        if !ExportFormat.avif.isEncodingAvailable {
+            let image = try #require(
+                ExportManager.renderCGImage(
+                    ExportTestFixtures.sampleConfig { $0.background = .transparent }, scale: 1))
+            #expect(ExportManager.avifData(from: image) == nil)
+            return
+        }
         let payload = try #require(
             ExportManager.encodedPayload(
                 .avif,

@@ -7,7 +7,7 @@ import Testing
 @testable import Vitrine
 
 private func freshDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrineMetadataTests-\(UUID().uuidString)")!
+    testDefaults()
 }
 
 // MARK: - Value model

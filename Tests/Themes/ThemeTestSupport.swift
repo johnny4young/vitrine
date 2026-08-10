@@ -6,7 +6,7 @@ enum ThemeTestFixtures {
     /// An isolated defaults suite so a store test never touches the real app container
     /// or another test's state, mirroring the preset test fixtures.
     static func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineThemeTests-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     /// A complete, legible dark palette used as the canonical sample custom theme.

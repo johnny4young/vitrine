@@ -50,7 +50,7 @@ struct DiagnosticsRedactionTests {
     @Test func bundleNeverContainsUserCode() {
         // A deliberately distinctive secret that would be unmistakable if it leaked.
         let secret = "SUPER_SECRET_TOKEN_d3adb33f_let_x_=_42"
-        let settings = AppSettings(defaults: UserDefaults(suiteName: "DiagRedaction-\(UUID())")!)
+        let settings = AppSettings(defaults: testDefaults())
         settings.config.code = """
             // \(secret)
             func leak() { print("\(secret)") }
@@ -104,7 +104,7 @@ struct DiagnosticsRedactionTests {
     /// the snapshot copies only behavioral knobs, so nothing free-form rides along.
     @Test func bundleNeverContainsAFilePathFromUserCode() {
         let path = "/Users/janedoe/Secret Project/credentials.env"
-        let settings = AppSettings(defaults: UserDefaults(suiteName: "DiagPaths-\(UUID())")!)
+        let settings = AppSettings(defaults: testDefaults())
         settings.config.code = """
             let key = loadKey(from: "\(path)")
             """
@@ -201,7 +201,7 @@ struct DiagnosticsSchemaTests {
     }
 
     @Test func settingsSnapshotIncludesCopyableTextSidecarKnob() {
-        let defaults = UserDefaults(suiteName: "DiagTextSidecar-\(UUID())")!
+        let defaults = testDefaults()
         let settings = AppSettings(defaults: defaults)
         settings.export.textSidecar = true
 

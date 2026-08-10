@@ -10,6 +10,75 @@ enum PurchaseOutcome: Equatable {
     case failed
 }
 
+/// The StoreKit operations the entitlement provider needs, separated from the provider's
+/// caching and outcome policy so every purchase/restore path can be exercised without an
+/// App Store account or an Xcode StoreKit session.
+///
+/// ``live`` is the only production implementation. Tests inject deterministic closures,
+/// while the provider remains responsible for caching, mapping StoreKit states to the
+/// paywall's ``PurchaseOutcome``, and owning the transaction-update task.
+struct StoreKitClient {
+    enum PurchaseResult: Equatable, Sendable {
+        /// StoreKit completed the purchase sheet. The provider still re-reads verified
+        /// current entitlements before unlocking; an unverified transaction therefore
+        /// cannot grant PRO by itself.
+        case completed
+        case userCancelled
+        case pending
+        case failed
+    }
+
+    let currentIsPro: @MainActor (String) async -> Bool
+    let purchase: @MainActor (String) async throws -> PurchaseResult
+    let sync: @MainActor () async throws -> Void
+    let observeUpdates: @MainActor (@escaping @MainActor () -> Void) -> Task<Void, Never>
+
+    static let live = Self(
+        currentIsPro: { productID in
+            for await result in Transaction.currentEntitlements {
+                guard case .verified(let transaction) = result else { continue }
+                if transaction.productID == productID, transaction.revocationDate == nil {
+                    return true
+                }
+            }
+            return false
+        },
+        purchase: { productID in
+            guard let product = try await Product.products(for: [productID]).first else {
+                return .failed
+            }
+            switch try await product.purchase() {
+            case .success(let verification):
+                if case .verified(let transaction) = verification {
+                    await transaction.finish()
+                }
+                return .completed
+            case .userCancelled:
+                return .userCancelled
+            case .pending:
+                return .pending
+            @unknown default:
+                return .failed
+            }
+        },
+        sync: {
+            try await AppStore.sync()
+        },
+        observeUpdates: { onChange in
+            Task {
+                for await result in Transaction.updates {
+                    if case .verified(let transaction) = result {
+                        await transaction.finish()
+                    }
+                    // Replacing or destroying a provider cancels this task. Do not let a
+                    // value already delivered by StoreKit notify a stale owner afterward.
+                    guard !Task.isCancelled else { return }
+                    onChange()
+                }
+            }
+        })
+}
+
 /// The App Store entitlement provider: PRO is a single **non-consumable** IAP
 /// ("Vitrine PRO", lifetime). It reads `Transaction.currentEntitlements` for the live
 /// state, exposes purchase and the required **Restore Purchases**, and can observe
@@ -33,11 +102,17 @@ final class StoreKitProvider: LiveEntitlementProvider {
     static let productID = "com.johnny4young.vitrine.pro"
 
     private let defaults: UserDefaults
+    private let client: StoreKitClient
     private let cacheKey = "proStoreKitCachedIsPro"
     private var updatesTask: Task<Void, Never>?
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, client: StoreKitClient = .live) {
         self.defaults = defaults
+        self.client = client
+    }
+
+    isolated deinit {
+        updatesTask?.cancel()
     }
 
     /// The last resolved PRO state, persisted so boot is instant and offline.
@@ -46,13 +121,7 @@ final class StoreKitProvider: LiveEntitlementProvider {
     /// Resolves PRO from the current App Store entitlements: `true` when a non-revoked,
     /// verified transaction for the product is present. Caches the result for the next boot.
     func currentIsPro() async -> Bool {
-        var unlocked = false
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
-            if transaction.productID == Self.productID, transaction.revocationDate == nil {
-                unlocked = true
-            }
-        }
+        let unlocked = await client.currentIsPro(Self.productID)
         defaults.set(unlocked, forKey: cacheKey)
         return unlocked
     }
@@ -63,21 +132,14 @@ final class StoreKitProvider: LiveEntitlementProvider {
     /// only the error's domain and code — never a receipt, product, or account detail.
     func purchase() async -> PurchaseOutcome {
         do {
-            guard let product = try await Product.products(for: [Self.productID]).first else {
-                return .failed
-            }
-            switch try await product.purchase() {
-            case .success(let verification):
-                if case .verified(let transaction) = verification {
-                    await transaction.finish()
-                }
+            switch try await client.purchase(Self.productID) {
+            case .completed:
+                // Never trust a purchase-sheet result directly. Only a verified,
+                // non-revoked current entitlement can unlock the cached state.
                 return await currentIsPro() ? .unlocked : .failed
-            case .userCancelled:
+            case .userCancelled, .pending:
                 return .cancelled
-            case .pending:
-                // Deferred (e.g. Ask to Buy) — not a failure; resolves later via updates.
-                return .cancelled
-            @unknown default:
+            case .failed:
                 return .failed
             }
         } catch {
@@ -94,7 +156,7 @@ final class StoreKitProvider: LiveEntitlementProvider {
     /// Restore Purchases (an App Store requirement): syncs with the App Store, then
     /// re-resolves the entitlement so a clean install re-grants a prior purchase.
     func restore() async -> Bool {
-        try? await AppStore.sync()
+        try? await client.sync()
         return await currentIsPro()
     }
 
@@ -103,15 +165,6 @@ final class StoreKitProvider: LiveEntitlementProvider {
     /// provider's lifetime (the app's, for the shared instance).
     func startObservingUpdates(onChange: @escaping @MainActor () -> Void) {
         updatesTask?.cancel()
-        updatesTask = Task {
-            for await result in Transaction.updates {
-                // Finish every delivered transaction so StoreKit stops re-delivering it on
-                // each launch; then let the owner re-resolve the entitlement.
-                if case .verified(let transaction) = result {
-                    await transaction.finish()
-                }
-                onChange()
-            }
-        }
+        updatesTask = client.observeUpdates(onChange)
     }
 }

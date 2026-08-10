@@ -9,10 +9,11 @@ import Testing
 /// and smoke-tested in the UI suite; here we unit-test the *pure* pieces the spec
 /// calls out: the version-gating logic (seen/unseen), the numeric version ordering
 /// it relies on, the persisted last-seen flag, and the schema migration. Like the
-/// onboarding tests, persistence is exercised against a fresh, isolated defaults
-/// suite per test (the same isolation UI tests get from `VITRINE_USER_DEFAULTS_SUITE`).
+/// onboarding tests, persistence is exercised against a fresh in-memory defaults
+/// store per test. UI tests separately isolate the launched app through
+/// `VITRINE_USER_DEFAULTS_SUITE`.
 private func freshDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrineHelpTests-\(UUID().uuidString)")!
+    testDefaults()
 }
 
 @Suite("Semantic version ordering")
@@ -136,7 +137,7 @@ struct WhatsNewGateTests {
 @Suite("Last-seen What's New version persistence")
 struct WhatsNewVersionPersistenceTests {
     @Test func freshInstallHasNoLastSeenVersion() {
-        // A brand-new suite has no value, which the gate reads as a clean first run.
+        // A brand-new store has no value, which the gate reads as a clean first run.
         let settings = AppSettings(defaults: freshDefaults())
         #expect(settings.lastSeenWhatsNewVersion == nil)
     }

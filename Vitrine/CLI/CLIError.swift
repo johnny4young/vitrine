@@ -38,10 +38,14 @@ nonisolated enum CLIError: Error, Equatable {
     case gitDiffEmpty
     /// The generated diff exceeded the shared bounded source-input limit.
     case gitDiffTooLarge
-    /// `--image` input decoded as bytes but is not an image supported by AppKit.
+    /// A local image input exceeds the shared encoded-byte or decoded-pixel budget.
+    case inputImageTooLarge(path: String)
+    /// `--image` input decoded as bytes but is not an image supported by ImageIO/AppKit.
     case inputNotImage(path: String)
     /// Rendering produced no image (an internal renderer failure).
     case renderFailed
+    /// The requested format is valid, but this macOS ImageIO stack has no writer for it.
+    case unsupportedOutputFormat(String)
     /// An output path already exists and `--no-overwrite` requested a safe run.
     case outputExists(path: String)
     /// Encoding or writing the output file failed.
@@ -55,8 +59,10 @@ nonisolated enum CLIError: Error, Equatable {
     /// `vitrine://` scheme, or a Launch Services failure). Surfaced so a script sees a
     /// non-zero exit instead of a false success.
     case editorOpenFailed
-    /// The PRO tier is required for command-line/automation rendering but is not
-    /// active. Reported before any file work so a free build never renders.
+    /// The private pasteboard payload could not be paired with a valid local handoff URL.
+    case editorHandoffFailed
+    /// The PRO tier is required for an advanced command-line automation capability but
+    /// is not active. Reported before any file work; basic `vgrab` capture stays free.
     case proRequired
 
     /// A short, human-readable explanation suitable for stderr.
@@ -65,7 +71,7 @@ nonisolated enum CLIError: Error, Equatable {
         case .helpRequested:
             CLIUsage.text
         case .unknownCommand(let command):
-            "Unknown command \"\(command)\". The commands are \"render\", \"multi-size\", \"batch\", \"recipe\", \"list\", \"shell-init\", and \"version\"."
+            "Unknown command \"\(command)\". The commands are \"terminal-capture\", \"render\", \"multi-size\", \"batch\", \"recipe\", \"list\", \"shell-init\", and \"version\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
         case .missingValue(let flag):
@@ -90,10 +96,14 @@ nonisolated enum CLIError: Error, Equatable {
             "The selected Git revision and paths produced an empty diff."
         case .gitDiffTooLarge:
             "The generated Git diff is too large to render (maximum 5 MB)."
+        case .inputImageTooLarge(let path):
+            "The image at \"\(path)\" is too large (maximum 25 MB and 64 total megapixels)."
         case .inputNotImage(let path):
             "The input file at \"\(path)\" is not a supported image."
         case .renderFailed:
             "Rendering failed to produce an image."
+        case .unsupportedOutputFormat(let format):
+            "This Mac's ImageIO stack cannot encode \(format). Choose PNG, PDF, or HEIC instead."
         case .outputExists(let path):
             "The output already exists at \"\(path)\". Remove it or omit --no-overwrite."
         case .writeFailed(let path):
@@ -107,9 +117,12 @@ nonisolated enum CLIError: Error, Equatable {
                 + "\(skipped) file\(skipped == 1 ? "" : "s")."
         case .editorOpenFailed:
             "Could not open Vitrine to receive the output. Is Vitrine installed?"
+        case .editorHandoffFailed:
+            "Could not prepare the local Vitrine editor handoff."
         case .proRequired:
-            "Vitrine PRO is required for command-line and automation rendering. "
-                + "Activate PRO in the Vitrine app to unlock it."
+            "Vitrine PRO is required for advanced command-line automation. "
+                + "Basic vgrab terminal capture is free; activate PRO in the Vitrine app "
+                + "to unlock render, multi-size, batch, and vpane."
         }
     }
 

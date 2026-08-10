@@ -3,6 +3,14 @@ import Foundation
 /// Mutable state for one CLI invocation. It owns token consumption and records
 /// syntactically valid flag values; semantic compatibility is resolved separately.
 struct CLIArgumentParser {
+    /// The complete public surface of the constrained operation emitted by `vgrab`.
+    /// All future general CLI flags stay PRO by default because they are rejected here
+    /// until deliberately reviewed for this free capability.
+    private static let terminalCaptureFlags: Set<String> = [
+        "--help", "-h", "--copy", "--edit", "-e", "--terminal-width", "--filename",
+        "--title",
+    ]
+
     var remaining: ArraySlice<String>
     let mode: CLIOptions.Command
 
@@ -111,6 +119,7 @@ struct CLIArgumentParser {
 
         let mode: CLIOptions.Command
         switch command {
+        case "terminal-capture": mode = .terminalCapture
         case "render": mode = .render
         case "multi-size": mode = .multiSize
         case "batch": mode = .batch
@@ -136,6 +145,11 @@ struct CLIArgumentParser {
     mutating func parseTokens() throws {
         while let token = remaining.first {
             remaining = remaining.dropFirst()
+            if mode == .terminalCapture, token.hasPrefix("-"),
+                !Self.terminalCaptureFlags.contains(token)
+            {
+                throw CLIError.unknownFlag(token)
+            }
             switch token {
             case "--help", "-h":
                 throw CLIError.helpRequested

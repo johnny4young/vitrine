@@ -10,24 +10,18 @@ import AppKit
 @MainActor
 private final class MenuBarHelperDelegate: NSObject, NSApplicationDelegate {
     private static let mainAppBundleID = "com.johnny4young.vitrine"
-    private static let statusItemAutosaveName = "VitrineMenuBarHelperStatusItem"
+    private static let statusItemAutosaveName =
+        MenuBarStatusItemVisibility.helperAutosaveName
 
-    private let appProcessID: pid_t
-    private let sessionToken: String
+    private let configuration: MenuBarHelperConfiguration
     private var statusItem: NSStatusItem?
     private var watchdog: Timer?
 
     init?(arguments: [String] = CommandLine.arguments) {
-        guard
-            arguments.count == 3,
-            let appProcessID = pid_t(arguments[1]),
-            appProcessID > 0,
-            !arguments[2].isEmpty,
-            arguments[2].count <= 128
-        else { return nil }
-
-        self.appProcessID = appProcessID
-        sessionToken = arguments[2]
+        guard let configuration = MenuBarHelperConfiguration(arguments: arguments) else {
+            return nil
+        }
+        self.configuration = configuration
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -40,7 +34,8 @@ private final class MenuBarHelperDelegate: NSObject, NSApplicationDelegate {
         ProcessInfo.processInfo.disableAutomaticTermination(
             "Vitrine keeps a resident menu-bar helper")
 
-        repairHistoricalVisibility()
+        MenuBarStatusItemVisibility.repair(
+            currentAutosaveName: Self.statusItemAutosaveName)
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.autosaveName = Self.statusItemAutosaveName
@@ -63,15 +58,6 @@ private final class MenuBarHelperDelegate: NSObject, NSApplicationDelegate {
             repeats: true)
     }
 
-    private func repairHistoricalVisibility() {
-        let defaults = UserDefaults.standard
-        for name in [Self.statusItemAutosaveName, "Item-0", "Item-1", "Item-2"] {
-            defaults.set(true, forKey: "NSStatusItem VisibleCC \(name)")
-            defaults.set(true, forKey: "NSStatusItem Visible \(name)")
-        }
-        defaults.synchronize()
-    }
-
     private func menuBarImage() -> NSImage {
         let image =
             NSImage(named: "vitrine-menubar")
@@ -90,15 +76,19 @@ private final class MenuBarHelperDelegate: NSObject, NSApplicationDelegate {
             return
         }
         MenuBarAnchor(
-            appProcessID: appProcessID,
+            appProcessID: configuration.appProcessID,
             helperProcessID: ProcessInfo.processInfo.processIdentifier,
-            sessionToken: sessionToken,
+            sessionToken: configuration.sessionToken,
             clickLocation: NSEvent.mouseLocation
         ).post()
     }
 
     @objc private func checkOwner() {
-        guard statusItem?.isVisible == true, mainApp != nil else {
+        guard
+            MenuBarHelperContract.shouldRemainRunning(
+                statusItemVisible: statusItem?.isVisible == true,
+                ownerExists: mainApp != nil)
+        else {
             NSApp.terminate(nil)
             return
         }
@@ -112,11 +102,13 @@ private final class MenuBarHelperDelegate: NSObject, NSApplicationDelegate {
         return NSRunningApplication.runningApplications(
             withBundleIdentifier: Self.mainAppBundleID
         ).first { application in
-            application.processIdentifier != currentProcessID
-                && application.processIdentifier == appProcessID
-                && application.executableURL?.lastPathComponent != "VitrineMenuBarHelper"
-                && application.bundleURL?.standardizedFileURL
-                    == Bundle.main.bundleURL.standardizedFileURL
+            MenuBarHelperContract.isExpectedOwner(
+                candidateProcessID: application.processIdentifier,
+                candidateExecutableURL: application.executableURL,
+                candidateBundleURL: application.bundleURL,
+                expectedProcessID: configuration.appProcessID,
+                currentProcessID: currentProcessID,
+                expectedBundleURL: Bundle.main.bundleURL)
         }
     }
 }

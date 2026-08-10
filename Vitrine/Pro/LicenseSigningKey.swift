@@ -31,7 +31,7 @@ import Foundation
         /// malformed value by returning `nil` (→ a free build) rather than trapping — the same
         /// defensive posture as the rest of the settings reads.
         static func key(fromBase64 base64: String?) -> Curve25519.Signing.PrivateKey? {
-            guard let base64,
+            guard let base64 = base64?.trimmingCharacters(in: .whitespacesAndNewlines),
                 !base64.isEmpty,
                 // The unexpanded "$(VITRINE_LICENSE_SIGNING_KEY)" literal survives when the
                 // variable is unset on some toolchains; treat it as "not injected".

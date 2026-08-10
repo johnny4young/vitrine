@@ -7,6 +7,7 @@ nonisolated enum CLIUsage {
         vitrine — render code to an image from the command line.
 
         USAGE:
+          vitrine terminal-capture <capture-file> (--copy | --edit) [--terminal-width <n>] [--filename <text> --title <text>]
           vitrine render <input-file> --out <image> [options]
           vitrine render --image <input-image> --out <image> [options]
           vitrine render --stdin --copy [options]
@@ -21,6 +22,10 @@ nonisolated enum CLIUsage {
           vitrine --version [--json]
           vitrine version [--json]
           vitrine shell-init [zsh|bash|fish]   Print the terminal-capture shell helpers.
+
+        ACCESS:
+          `vgrab` uses the constrained terminal-capture command and is free. General
+          render, multi-size, batch, vpane, and other automation capabilities require PRO.
 
         OPTIONS:
           -o, --out <path>       Output image path, or folder for multi-size/batch.

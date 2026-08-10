@@ -28,6 +28,7 @@
 #     MACOS_NOTARY_TEAM_ID       — Developer Team ID
 #
 # Verification always runs against whatever was produced:
+#   lipo -archs                                      (every executable Mach-O)
 #   codesign --verify --deep --strict --verbose=2   (Developer ID builds)
 #   spctl -a -vv                                     on the final artifact.
 #
@@ -83,7 +84,10 @@ if [ "$SIGNED" -eq 1 ]; then
 		-project Vitrine.xcodeproj \
 		-scheme Vitrine \
 		-configuration Release \
+		-destination 'generic/platform=macOS' \
 		-derivedDataPath "$DERIVED" \
+		ONLY_ACTIVE_ARCH=NO \
+		ARCHS="arm64 x86_64" \
 		CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
 		CODE_SIGN_STYLE=Manual \
 		CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
@@ -97,7 +101,10 @@ else
 		-project Vitrine.xcodeproj \
 		-scheme Vitrine \
 		-configuration Release \
+		-destination 'generic/platform=macOS' \
 		-derivedDataPath "$DERIVED" \
+		ONLY_ACTIVE_ARCH=NO \
+		ARCHS="arm64 x86_64" \
 		CODE_SIGN_IDENTITY="-" \
 		CODE_SIGN_STYLE=Manual \
 		build
@@ -107,6 +114,47 @@ if [ ! -d "$APP" ]; then
 	echo "error: $APP not found" >&2
 	exit 1
 fi
+
+verify_universal_macho_bundle() {
+	local candidate architectures required_arch relative_path
+	local macho_count=0
+	local invalid_count=0
+	local required_architectures=(arm64 x86_64)
+
+	echo "==> Verifying universal Mach-O payloads (arm64 + x86_64)"
+	while IFS= read -r -d '' candidate; do
+		if ! architectures="$(/usr/bin/lipo -archs "$candidate" 2>/dev/null)"; then
+			continue
+		fi
+
+		macho_count=$((macho_count + 1))
+		relative_path="${candidate#"$APP"/}"
+		for required_arch in "${required_architectures[@]}"; do
+			if [[ " $architectures " != *" $required_arch "* ]]; then
+				echo "error: $relative_path is not universal (architectures: $architectures; missing: $required_arch)" >&2
+				invalid_count=$((invalid_count + 1))
+				break
+			fi
+		done
+	done < <(find "$APP" -type f -perm -111 -print0)
+
+	if [ "$macho_count" -eq 0 ]; then
+		echo "error: no Mach-O payloads found in $APP" >&2
+		return 1
+	fi
+	if [ "$invalid_count" -ne 0 ]; then
+		echo "error: $invalid_count of $macho_count Mach-O payloads are not universal" >&2
+		return 1
+	fi
+
+	echo "    Verified $macho_count Mach-O payloads: arm64 + x86_64"
+}
+
+# The tag packaging path performs its own Xcode build, so the earlier CI
+# `make build-release` result cannot prove what this app bundle contains. Inspect
+# every executable Mach-O before signing or notarization; a thin nested helper is a broken
+# Intel artifact even when the outer app executable is universal.
+verify_universal_macho_bundle
 
 resign_sparkle_for_distribution() {
 	local sparkle="$APP/Contents/Frameworks/Sparkle.framework"
@@ -192,6 +240,52 @@ assert_distribution_entitlements() {
 	fi
 }
 
+assert_sparkle_sandbox_contract() {
+	local info_plist="$APP/Contents/Info.plist"
+	local installer_xpc="$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+	local entitlements="$DERIVED/Vitrine-sparkle-entitlements.plist"
+	local bundle_id installer_enabled downloader_enabled mach_lookups
+
+	bundle_id="$("$PLIST_BUDDY" -c "Print :CFBundleIdentifier" "$info_plist" 2>/dev/null || true)"
+	installer_enabled="$("$PLIST_BUDDY" -c "Print :SUEnableInstallerLauncherService" "$info_plist" 2>/dev/null || true)"
+	downloader_enabled="$("$PLIST_BUDDY" -c "Print :SUEnableDownloaderService" "$info_plist" 2>/dev/null || true)"
+
+	if [ "$installer_enabled" != "true" ]; then
+		echo "error: sandboxed Sparkle builds require SUEnableInstallerLauncherService=YES" >&2
+		return 1
+	fi
+	if [ "$downloader_enabled" = "true" ]; then
+		echo "error: SUEnableDownloaderService must stay disabled when the app has network.client" >&2
+		return 1
+	fi
+	if [ ! -d "$installer_xpc" ]; then
+		echo "error: Sparkle Installer.xpc is missing from the embedded framework" >&2
+		return 1
+	fi
+	if [ -z "$bundle_id" ]; then
+		echo "error: packaged app is missing CFBundleIdentifier" >&2
+		return 1
+	fi
+
+	if ! codesign -d --entitlements :- "$APP" > "$entitlements" 2>/dev/null; then
+		echo "error: could not inspect packaged app entitlements for Sparkle" >&2
+		return 1
+	fi
+	if [ "$("$PLIST_BUDDY" -c "Print :com.apple.security.app-sandbox" "$entitlements" 2>/dev/null || true)" != "true" ] \
+		|| [ "$("$PLIST_BUDDY" -c "Print :com.apple.security.network.client" "$entitlements" 2>/dev/null || true)" != "true" ]; then
+		echo "error: direct-download app must carry app-sandbox + network.client entitlements" >&2
+		return 1
+	fi
+	mach_lookups="$("$PLIST_BUDDY" -c "Print :com.apple.security.temporary-exception.mach-lookup.global-name" "$entitlements" 2>/dev/null || true)"
+	if [[ "$mach_lookups" != *"$bundle_id-spks"* ]] || [[ "$mach_lookups" != *"$bundle_id-spki"* ]]; then
+		echo "error: packaged app is missing Sparkle -spks/-spki mach-lookup exceptions" >&2
+		return 1
+	fi
+
+	echo "==> Verified sandboxed Sparkle installer contract"
+	echo "    Installer Launcher enabled; framework XPC embedded; network + -spks/-spki entitlements present"
+}
+
 # This script uses Xcode's build action instead of Archive/Export so the CI job can
 # produce a signed DMG directly from the tag. Compensate for the distribution work
 # Archive/Export normally performs: sign the embedded CLI and menu-bar helper,
@@ -203,6 +297,12 @@ if [ "$SIGNED" -eq 1 ]; then
 	resign_sparkle_for_distribution
 	assert_distribution_entitlements
 fi
+
+# A valid signature and embedded framework are insufficient for a sandboxed updater:
+# Sparkle's Installer Launcher must be enabled in the packaged Info.plist and the final
+# app signature must expose the matching network/XPC entitlements. Run this for signed
+# and ad-hoc artifacts so local packaging catches the same integration drift as release CI.
+assert_sparkle_sandbox_contract
 
 # --- Signature verification (Developer ID builds only) ----------------------
 # Gatekeeper rejects an app whose code signature does not verify, so prove it

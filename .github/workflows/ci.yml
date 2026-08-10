@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Weekly drift watch: GitHub rolls the macOS runner image and the
-  # bundled Xcode/SDK on its own schedule, which can break the build with no code
-  # change. A scheduled run on the default branch exercises the full gate against
-  # whatever the current image ships, so drift surfaces here instead of on the
-  # next unrelated PR. Mondays 08:00 UTC.
+  # Weekly drift watch: GitHub rolls both supported macOS runner images and their
+  # bundled Xcode/SDKs on its own schedule, which can break the build with no code
+  # change. A scheduled run on the default branch re-exercises the full Sequoia +
+  # Tahoe matrix, so drift surfaces here instead of on the next unrelated PR.
+  # Mondays 08:00 UTC.
   schedule:
     - cron: "0 8 * * 1"
   # Allow re-running the gate (including the drift check) on demand.
@@ -47,6 +47,9 @@ jobs:
 
       - name: Check repository hygiene
         run: make hygiene
+
+      - name: Check strict screenshot-tour contract
+        run: make screenshot-tour-check
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
@@ -153,12 +156,22 @@ jobs:
           EOF
 
   build:
-    name: Lint & build
-    # macos-latest is the moving "current" image; the drift job above is what
-    # catches it rolling. The "Toolchain versions" step records the exact
-    # macOS/Xcode/Swift this run built against, keeping every build traceable to
-    # its exact toolchain.
-    runs-on: macos-latest
+    name: Build & test · ${{ matrix.platform }}
+    # Runtime compatibility is an explicit product gate, not an inference from
+    # whichever OS `macos-latest` happens to select. Both rows use GitHub's
+    # standard arm64 labels; setup-xcode chooses the newest stable Xcode available
+    # on each image, so the matrix also catches older-host/newer-toolchain drift.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            platform: Sequoia 15
+            artifact: sequoia-15
+          - runner: macos-26
+            platform: Tahoe 26
+            artifact: tahoe-26
+    runs-on: ${{ matrix.runner }}
     # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
     timeout-minutes: 60
@@ -183,6 +196,7 @@ jobs:
             echo "### Toolchain"
             echo '```'
             echo "Event: ${GITHUB_EVENT_NAME}"
+            echo "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
             echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
             sw_vers
             echo "DEVELOPER_DIR=${DEVELOPER_DIR}"
@@ -205,27 +219,33 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
+          key: ${{ matrix.runner }}-spm-${{ hashFiles('project.yml') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ matrix.runner }}-spm-
 
       - name: Lint (swift-format)
         run: make lint
 
       # Capture an .xcresult bundle for each xcodebuild phase so a failure
       # can be triaged offline from the uploaded artifact. RESULT_BUNDLE is honored
-      # by the build/test/build-ui-tests make targets.
+      # by the build/build-release/test/build-ui-tests make targets.
       - name: Build (Debug)
         run: make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult"
+
+      # Debug does not exercise Swift's optimizing pipeline. Compile a universal
+      # Release product on both compatibility rows so optimizer and cross-architecture
+      # failures surface on the PR instead of during packaging.
+      - name: Build (universal Release)
+        run: make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult"
 
       - name: Build UI tests
         run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
 
-      - name: Test (Swift Testing)
-        run: make test RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
+      - name: Test with code coverage (Swift Testing)
+        run: make test-coverage RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
 
-      # Surface per-target code coverage in the job summary. The scheme already
-      # gathers coverage (project.yml: gatherCoverageData); without this step the
+      # Surface per-target code coverage in the job summary. The CI-only
+      # `test-coverage` lane enables collection explicitly; without this step the
       # numbers exist only inside an .xcresult nobody downloads on green runs.
       # Best-effort: a reporting hiccup must never fail the gate.
       - name: Report code coverage
@@ -246,9 +266,10 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: xcresults
+          name: xcresults-${{ matrix.artifact }}
           path: |
             ${{ runner.temp }}/build.xcresult
+            ${{ runner.temp }}/build-release.xcresult
             ${{ runner.temp }}/build-ui-tests.xcresult
             ${{ runner.temp }}/test.xcresult
           if-no-files-found: ignore
@@ -282,7 +303,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: launch-gallery
+          name: launch-gallery-${{ matrix.artifact }}
           path: ${{ runner.temp }}/vitrine-gallery-review
           if-no-files-found: ignore
 
@@ -338,7 +359,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: golden-diffs
+          name: golden-diffs-${{ matrix.artifact }}
           path: ${{ runner.temp }}/vitrine-golden-diffs
           if-no-files-found: ignore
 
@@ -376,13 +397,24 @@ jobs:
   # macOS automation authorization, which is interactive on a dev machine — but
   # GitHub's hosted macOS images are provisioned for headless UI automation
   # (DevToolsSecurity, automation mode without authentication, SIP disabled), so
-  # the suite executes here, verified empirically on the macos-15-arm64 image
-  # (20260527) — see docs/RELEASING.md (Running the UI tests).
+  # the suite executes here across the explicit Sequoia and Tahoe runtime matrix;
+  # the Sequoia runner was verified empirically on image 20260527, and the same
+  # authorization diagnostics are retained per row — see docs/RELEASING.md.
   # A separate job so it parallelizes with the build gate and a UI flake never
   # blocks the build job's artifacts.
   ui-test:
-    name: UI tests
-    runs-on: macos-latest
+    name: UI tests · ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            platform: Sequoia 15
+            artifact: sequoia-15
+          - runner: macos-26
+            platform: Tahoe 26
+            artifact: tahoe-26
+    runs-on: ${{ matrix.runner }}
     # The suite hangs (rather than fails) if automation init wedges; cap the job
     # so a wedged run surfaces in minutes, not after the 6-hour default.
     timeout-minutes: 60
@@ -404,6 +436,7 @@ jobs:
           {
             echo "### Toolchain — UI tests"
             echo '```'
+            echo "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
             echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
             sw_vers
             xcodebuild -version
@@ -434,9 +467,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
+          key: ${{ matrix.runner }}-spm-${{ hashFiles('project.yml') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ matrix.runner }}-spm-
 
       # The whole suite runs here, including the four display-geometry-sensitive
       # tests that used to be skipped on the runner's 1024x768 virtual display:
@@ -447,6 +480,18 @@ jobs:
         run: |
           set -o pipefail
           make test-ui RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
+
+      # The ordinary UI suite intentionally skips the expensive screenshot tour.
+      # Run it separately with its opt-in environment, retain every image in the
+      # xcresult, and reject missing/duplicate/invalid evidence before publishing
+      # friendly PNGs for review.
+      - name: Run strict visual evidence tour
+        run: |
+          set -o pipefail
+          make test-visual \
+            VISUAL_OUTPUT="${RUNNER_TEMP}/screenshot-tour" \
+            VISUAL_RESULT_BUNDLE="${RUNNER_TEMP}/screenshot-tour.xcresult" \
+            2>&1 | tee test-visual.log
 
       # Tell an automation-authorization failure apart from an ordinary test
       # failure: the former is a runner-image regression (it has happened —
@@ -463,6 +508,16 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: ui-test-xcresult
-          path: ${{ runner.temp }}/test-ui.xcresult
+          name: ui-test-xcresult-${{ matrix.artifact }}
+          path: |
+            ${{ runner.temp }}/test-ui.xcresult
+            ${{ runner.temp }}/screenshot-tour.xcresult
+          if-no-files-found: ignore
+
+      - name: Upload strict visual evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: screenshot-tour-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/screenshot-tour
           if-no-files-found: ignore

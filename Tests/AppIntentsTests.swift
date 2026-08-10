@@ -13,8 +13,7 @@ private struct AutomationProProvider: EntitlementProvider {
 
 @MainActor
 private func makeAutomationEnvironment(isPro: Bool) throws -> AppEnvironment {
-    let defaults = try #require(
-        UserDefaults(suiteName: "VitrineAutomation-\(UUID().uuidString)"))
+    let defaults = testDefaults()
     let entitlements: Entitlements
     if isPro {
         entitlements = Entitlements(provider: AutomationProProvider())

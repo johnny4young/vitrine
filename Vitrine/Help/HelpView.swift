@@ -157,11 +157,13 @@ struct HelpView: View {
 
     private var footer: some View {
         HStack(spacing: Brand.Spacing.sm) {
-            Link(
-                "View documentation on GitHub",
-                destination: VitrineLinks.githubRepository
-            )
-            .help("Open the Vitrine documentation on GitHub")
+            if let repository = VitrineLinks.githubRepository {
+                Link(
+                    "View documentation on GitHub",
+                    destination: repository
+                )
+                .help("Open the Vitrine documentation on GitHub")
+            }
             Spacer()
             Button("Done") { onDismiss() }
                 .buttonStyle(.borderedProminent)

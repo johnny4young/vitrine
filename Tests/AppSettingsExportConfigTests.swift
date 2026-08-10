@@ -19,7 +19,7 @@ struct AppSettingsExportConfigTests {
     }
 
     private func defaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineExportConfig-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     private func brandKit(enabled: Bool) -> BrandKitStore {

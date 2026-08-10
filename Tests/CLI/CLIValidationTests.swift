@@ -66,6 +66,46 @@ struct CLIValidationTests: CLITestSupport {
         #expect(both.copyToClipboard && both.outputPath == "x.png")
     }
 
+    @Test func terminalCaptureAcceptsOnlyTheBasicVgrabContract() throws {
+        let copied = try CLIArguments.parse([
+            "terminal-capture", "/tmp/capture.log", "--terminal-width", "100",
+            "--filename", "project · branch", "--title", "$ npm test", "--copy",
+        ])
+        #expect(copied.command == .terminalCapture)
+        #expect(copied.inputPath == "/tmp/capture.log")
+        #expect(copied.language == .terminal)
+        #expect(copied.terminalColumns == 100)
+        #expect(copied.copyToClipboard)
+
+        let editor = try CLIArguments.parse([
+            "terminal-capture", "/tmp/capture.log", "--edit",
+        ])
+        #expect(editor.openInEditor)
+        #expect(editor.language == .terminal)
+
+        #expect(throws: CLIError.missingRequired("--copy or --edit")) {
+            try CLIArguments.parse(["terminal-capture", "/tmp/capture.log"])
+        }
+    }
+
+    @Test func terminalCaptureRejectsEveryAdvancedOptionAtTheParserBoundary() {
+        let advancedArguments: [[String]] = [
+            ["--out", "capture.png"], ["--stdin"], ["--language", "swift"],
+            ["--theme", "dracula"], ["--preset", "twitter"], ["--scale", "3"],
+            ["--background", "night"], ["--watermark", "Vitrine"],
+            ["--callout", "note"], ["--redact-secrets"], ["--text-sidecar"],
+            ["--quiet"], ["--json"], ["--no-overwrite"],
+        ]
+
+        for arguments in advancedArguments {
+            let flag = arguments[0]
+            #expect(throws: CLIError.unknownFlag(flag)) {
+                try CLIArguments.parse(
+                    ["terminal-capture", "/tmp/capture.log", "--copy"] + arguments)
+            }
+        }
+    }
+
     @Test func imageInputParsesAsARenderOnlyLocalSource() throws {
         let options = try CLIArguments.parse([
             "render", "--image", "Screenshot.png", "--out", "card.png",
@@ -433,7 +473,8 @@ struct CLIValidationTests: CLITestSupport {
         #expect(summary.contains("editor"))
         #expect(captured?.scheme == "vitrine" && captured?.host == "edit")
         // The staged content is reachable through the captured URL's token.
-        #expect(EditorHandoff.consume(url: captured!)?.content == "\u{1B}[31merror\u{1B}[0m")
+        let capturedURL = try #require(captured)
+        #expect(EditorHandoff.consume(url: capturedURL)?.content == "\u{1B}[31merror\u{1B}[0m")
     }
 
     @Test func editThrowsWhenTheAppCannotBeOpened() throws {
@@ -448,6 +489,23 @@ struct CLIValidationTests: CLITestSupport {
                         text: "x", language: .terminal, filename: "session.log")
                 },
                 open: { _ in false })
+        }
+    }
+
+    @Test func editThrowsWhenTheLocalHandoffCannotBePrepared() throws {
+        let options = try CLIArguments.parse(["render", "session.log", "--edit"])
+        #expect(throws: CLIError.editorHandoffFailed) {
+            try CLIRenderer.openInEditor(
+                options,
+                fileLoader: { _ in
+                    FileInputLoader.LoadedFile(
+                        text: "x", language: .terminal, filename: "session.log")
+                },
+                stage: { _, _ in nil },
+                open: { _ in
+                    Issue.record("open must not run without a handoff URL")
+                    return true
+                })
         }
     }
 
@@ -729,10 +787,15 @@ struct CLIValidationTests: CLITestSupport {
         let errors: [CLIError] = [
             .helpRequested, .unknownCommand("x"), .unknownFlag("-x"),
             .missingValue(flag: "--out"), .missingRequired("input file"),
-            .invalidValue(flag: "--theme", value: "x"), .inputUnreadable(path: "/x"),
+            .invalidValue(flag: "--theme", value: "x"), .incompatibleOptions("conflict"),
+            .inputUnreadable(path: "/x"), .recipeUnreadable(path: "/recipe"),
+            .invalidRecipe("invalid recipe"),
             .inputNotText(path: "/x"), .gitDiffFailed, .gitDiffEmpty, .gitDiffTooLarge,
-            .renderFailed, .outputExists(path: "/x"),
-            .writeFailed(path: "/x"), .batchSkipped(rendered: 1, skipped: 1),
+            .inputImageTooLarge(path: "/x"), .inputNotImage(path: "/x"),
+            .renderFailed, .unsupportedOutputFormat("AVIF"), .outputExists(path: "/x"),
+            .writeFailed(path: "/x"), .batchEmpty(skipped: 1),
+            .batchSkipped(rendered: 1, skipped: 1), .editorOpenFailed,
+            .editorHandoffFailed, .proRequired,
         ]
         for error in errors {
             #expect(!error.message.isEmpty)

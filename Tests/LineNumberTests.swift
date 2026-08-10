@@ -7,7 +7,7 @@ import Testing
 @testable import Vitrine
 
 private func freshDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrineLineNumberTests-\(UUID().uuidString)")!
+    testDefaults()
 }
 
 // MARK: - Line-range parser

@@ -76,6 +76,23 @@ struct WelcomeView: View {
     }
 
     var body: some View {
+        ScrollView(.vertical) {
+            welcomeContent
+        }
+        // Preserve the spacious 700 pt desktop treatment while allowing AppKit to
+        // shrink the first-run window on compact displays and in split-screen. A
+        // fixed width can put the trailing actions outside the interactive screen.
+        .frame(minWidth: 480, idealWidth: 700, maxWidth: 700)
+        .frame(minHeight: 360, idealHeight: 770)
+        .background(VitrineTokens.Surface.window)
+        .tint(VitrineTokens.Accent.system)
+        .accessibilityContainerIdentifier("welcome-view")
+    }
+
+    /// The complete first-run journey. The enclosing scroll view remains visually
+    /// unchanged when the content fits and keeps every action reachable when AppKit
+    /// constrains the window below its ideal height.
+    private var welcomeContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             hero
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
@@ -93,10 +110,6 @@ struct WelcomeView: View {
             .padding(.top, VitrineTokens.Spacing.lg)
             .padding(.bottom, VitrineTokens.Spacing.xl)
         }
-        .frame(width: 700)
-        .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
-        .accessibilityContainerIdentifier("welcome-view")
         .onAppear {
             if case .gradient(let preset) = settings.config.background {
                 selectedBackground = preset
@@ -445,8 +458,9 @@ final class WelcomeWindowController {
                 rootView: makeRootView(settings: settings))
             let window = NSWindow(contentViewController: hosting)
             window.title = String(localized: "Welcome to Vitrine")
-            // No resize/minimize: the quick-start is a fixed, compact first-run
-            // surface, not a working window. The title bar merges into the
+            // No resize/minimize: the quick-start is an adaptive first-run surface,
+            // not a working window. Its content scrolls when the available display is
+            // shorter than the ideal layout. The title bar merges into the
             // hero so the card reads as one surface; the
             // hero's 44 pt top padding clears the traffic lights.
             window.styleMask = [.titled, .closable, .fullSizeContentView]
@@ -458,14 +472,36 @@ final class WelcomeWindowController {
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
-        if let window, let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
-            // Keep the fixed quick-start surface fully inside the visible screen after
-            // AppKit assigns it to a display. Mixed-display setups and menu-bar/Dock
-            // insets can otherwise leave the footer actions just off-screen even
-            // though the window exists.
-            window.setFrame(
-                WindowFrameSolver.clamp(window.frame, into: visibleFrame), display: true)
-            window.makeKeyAndOrderFront(nil)
+        if let window {
+            if let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
+                var availableFrame = visibleFrame
+                #if DEBUG
+                    // Deterministic compact-display seams for UI validation. They are
+                    // compiled out of release builds and let the suite prove the adaptive
+                    // layout without depending on the attached display dimensions.
+                    if let rawWidth = ProcessInfo.processInfo.environment[
+                        "VITRINE_WELCOME_TEST_MAX_WIDTH"
+                    ], let requestedWidth = Double(rawWidth), requestedWidth > 0 {
+                        let width = min(CGFloat(requestedWidth), visibleFrame.width)
+                        availableFrame.origin.x = visibleFrame.midX - width / 2
+                        availableFrame.size.width = width
+                    }
+                    if let rawHeight = ProcessInfo.processInfo.environment[
+                        "VITRINE_WELCOME_TEST_MAX_HEIGHT"
+                    ], let requestedHeight = Double(rawHeight), requestedHeight > 0 {
+                        let height = min(CGFloat(requestedHeight), visibleFrame.height)
+                        availableFrame.origin.y = visibleFrame.midY - height / 2
+                        availableFrame.size.height = height
+                    }
+                #endif
+                // Keep the adaptive quick-start surface fully inside the visible screen after
+                // AppKit assigns it to a display. Mixed-display setups and menu-bar/Dock
+                // insets can otherwise leave the footer actions just off-screen even
+                // though the window exists.
+                window.setFrame(
+                    WindowFrameSolver.clamp(window.frame, into: availableFrame), display: true)
+                window.makeKeyAndOrderFront(nil)
+            }
         }
         NSApp.activate(ignoringOtherApps: true)
     }

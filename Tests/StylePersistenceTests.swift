@@ -15,7 +15,7 @@ import Testing
 @Suite("Style codec completeness")
 struct StyleCodecCompletenessTests {
     private func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineStylePersistence-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     /// A config whose every *persisted* field is non-default, so a key that stops

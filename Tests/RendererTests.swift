@@ -114,7 +114,7 @@ struct CodeRenderingNoNetworkTests {
 @Suite("QuickCapture classification · ", .serialized)
 struct QuickCaptureClassificationTests {
     private func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineRenderer-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     // These tests target the exact seams `QuickCapture.capture` calls —
@@ -226,7 +226,7 @@ struct LineWrapTests {
     /// `wrapColumns` round-trips through the settings codec, is cleared when off (so a
     /// later read restores "no wrap"), and a hand-edited out-of-range value is clamped.
     @Test func wrapColumnsPersistAndClampThroughTheCodec() {
-        let defaults = UserDefaults(suiteName: "VitrineLineWrapTests-\(UUID().uuidString)")!
+        let defaults = testDefaults()
 
         #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.wrapColumns))
         #expect(SettingsCodec.Keys.editorSessionSeed.contains(SettingsCodec.Keys.wrapColumns))

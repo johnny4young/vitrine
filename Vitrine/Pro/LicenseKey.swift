@@ -26,15 +26,28 @@ struct LicenseToken: Codable, Equatable {
 /// Verifies a signed `LicenseToken` offline against an embedded Ed25519 public key.
 /// Shared by the app and the CLI so both reach the same verdict from the same token bytes.
 struct LicenseVerifier {
-    /// The signing public key, embedded in the build. This value is safe to ship in source;
-    /// only the matching private key is secret and injected into the official
-    /// direct-download build.
-    let publicKey: Curve25519.Signing.PublicKey
+    /// The signing public key, or `nil` when an embedded representation is malformed. This
+    /// value is safe to ship in source; only the matching private key is secret and injected
+    /// into the official direct-download build.
+    let publicKey: Curve25519.Signing.PublicKey?
+
+    init(publicKey: Curve25519.Signing.PublicKey) {
+        self.publicKey = publicKey
+    }
+
+    /// Builds a verifier from shipped configuration. Invalid bytes produce an unconfigured
+    /// verifier that rejects every token rather than terminating app or CLI startup.
+    init(publicKeyBase64: String) {
+        publicKey = Data(base64Encoded: publicKeyBase64).flatMap {
+            try? Curve25519.Signing.PublicKey(rawRepresentation: $0)
+        }
+    }
 
     /// Decodes and verifies a `"<base64 payload>.<base64 signature>"` token, returning the
     /// payload only when the signature checks out. Any malformed, tampered, or
     /// wrongly-signed token returns `nil` — never a partial trust.
     func verify(_ token: String) -> LicenseToken? {
+        guard let publicKey else { return nil }
         let parts = token.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
         guard parts.count == 2,
             let payload = Data(base64Encoded: String(parts[0])),
@@ -54,22 +67,11 @@ struct LicenseVerifier {
     /// `embeddedPublicKeyIsThePinnedProductionKey`, so a forgotten swap to a throwaway key cannot
     /// silently lock out paying users. `embeddedVerifierRejectsForeignTokens` guards against
     /// accepting a token signed by a foreign key.
-    static let embedded = LicenseVerifier(
-        publicKey: LicensePublicKeys.production
-    )
+    static let embedded = LicenseVerifier(publicKeyBase64: LicensePublicKeys.productionBase64)
 }
 
 private enum LicensePublicKeys {
     nonisolated static let productionBase64 = "GBiLsURlP+jwJGvfAJUAxTACaZbObIVBnBurkOQ+Fd0="
-
-    nonisolated static let production: Curve25519.Signing.PublicKey = {
-        guard let raw = Data(base64Encoded: productionBase64),
-            let key = try? Curve25519.Signing.PublicKey(rawRepresentation: raw)
-        else {
-            preconditionFailure("Invalid embedded production license public key")
-        }
-        return key
-    }()
 }
 
 /// Mints a signed token from a private key. Under embedded-key activation model the **app** runs this
@@ -106,6 +108,59 @@ extension JSONDecoder {
 }
 
 #if VITRINE_DIRECT_DOWNLOAD
+    /// Secret provider data needed to release exactly one machine seat later.
+    ///
+    /// The raw key intentionally lives outside `LicenseToken`: the signed token is mirrored to
+    /// a CLI-readable file, while this record stays device-only in the Keychain. The custom
+    /// decoder rejects empty or unbounded values before they reach networking or UI state.
+    struct LicenseActivationRecord: Codable, Equatable, Sendable {
+        nonisolated static let maximumLicenseKeyLength = 512
+        nonisolated static let maximumIdentifierLength = 128
+
+        let licenseKey: String
+        let licenseID: String
+        let instanceID: String
+
+        init?(licenseKey: String, licenseID: String, instanceID: String) {
+            let key = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            let license = licenseID.trimmingCharacters(in: .whitespacesAndNewlines)
+            let instance = instanceID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty,
+                key.count <= Self.maximumLicenseKeyLength,
+                !license.isEmpty,
+                license.count <= Self.maximumIdentifierLength,
+                !instance.isEmpty,
+                instance.count <= Self.maximumIdentifierLength
+            else { return nil }
+            self.licenseKey = key
+            self.licenseID = license
+            self.instanceID = instance
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case licenseKey, licenseID, instanceID
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let key = try container.decode(String.self, forKey: .licenseKey)
+            let license = try container.decode(String.self, forKey: .licenseID)
+            let instance = try container.decode(String.self, forKey: .instanceID)
+            guard
+                let validated = Self(
+                    licenseKey: key,
+                    licenseID: license,
+                    instanceID: instance)
+            else {
+                throw DecodingError.dataCorrupted(
+                    .init(
+                        codingPath: decoder.codingPath,
+                        debugDescription: "Invalid activation record bounds."))
+            }
+            self = validated
+        }
+    }
+
     /// Where the signed PRO license token is persisted. The default is the
     /// **Keychain** (device-only, no iCloud sync) rather than `UserDefaults`, whose plist is
     /// world-readable by any process running as the user — making the token trivial to copy
@@ -113,15 +168,22 @@ extension JSONDecoder {
     /// store without touching the real Keychain.
     protocol LicenseTokenStore {
         func read() -> String?
-        func write(_ token: String?)
+        @discardableResult func write(_ token: String?) -> Bool
     }
 
-    /// Persists the token as a device-only generic-password Keychain item under the app's own
-    /// default access group. Not a hard DRM boundary (a determined user can still export their
-    /// own item), but it raises seat-sharing well above `cat`-ing a preferences plist.
-    struct KeychainLicenseStore: LicenseTokenStore {
+    /// Device-only storage for the raw activation credential and provider instance id.
+    protocol LicenseActivationRecordStore {
+        func read() -> LicenseActivationRecord?
+        @discardableResult func write(_ record: LicenseActivationRecord?) -> Bool
+    }
+
+    /// Shared Keychain byte primitive for the separate token and secret-record accounts.
+    /// Updating in place avoids the delete-before-add window that could discard a working
+    /// entitlement if `SecItemAdd` later failed.
+    private struct KeychainLicenseDataStore {
+        let account: String
+
         private let service = "com.johnny4young.vitrine.pro"
-        private let account = "license-token"
 
         private var baseQuery: [String: Any] {
             [
@@ -131,25 +193,72 @@ extension JSONDecoder {
             ]
         }
 
-        func read() -> String? {
+        func read() -> Data? {
             var query = baseQuery
             query[kSecReturnData as String] = true
             query[kSecMatchLimit as String] = kSecMatchLimitOne
             var item: CFTypeRef?
-            guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-                let data = item as? Data
+            guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess
             else { return nil }
-            return String(data: data, encoding: .utf8)
+            return item as? Data
         }
 
-        func write(_ token: String?) {
-            // Replace any existing item: delete then (if a token) add, so write is idempotent.
-            SecItemDelete(baseQuery as CFDictionary)
-            guard let token, let data = token.data(using: .utf8) else { return }
+        @discardableResult
+        func write(_ data: Data?) -> Bool {
+            guard let data else {
+                let status = SecItemDelete(baseQuery as CFDictionary)
+                return status == errSecSuccess || status == errSecItemNotFound
+            }
+
+            let attributes: [String: Any] = [
+                kSecValueData as String: data,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            ]
+            let updateStatus = SecItemUpdate(
+                baseQuery as CFDictionary,
+                attributes as CFDictionary)
+            if updateStatus == errSecSuccess { return true }
+            guard updateStatus == errSecItemNotFound else { return false }
+
             var add = baseQuery
-            add[kSecValueData as String] = data
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            SecItemAdd(add as CFDictionary, nil)
+            for (key, value) in attributes {
+                add[key] = value
+            }
+            return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
+        }
+    }
+
+    /// Persists the token as a device-only generic-password Keychain item under the app's own
+    /// default access group. Not a hard DRM boundary (a determined user can still export their
+    /// own item), but it raises seat-sharing well above `cat`-ing a preferences plist.
+    struct KeychainLicenseStore: LicenseTokenStore {
+        private let dataStore = KeychainLicenseDataStore(account: "license-token")
+
+        func read() -> String? {
+            dataStore.read().flatMap { String(data: $0, encoding: .utf8) }
+        }
+
+        @discardableResult
+        func write(_ token: String?) -> Bool {
+            dataStore.write(token?.data(using: .utf8))
+        }
+    }
+
+    /// Stores the credential record under a separate device-only Keychain account. It is
+    /// neither synced through iCloud nor mirrored to disk.
+    struct KeychainLicenseActivationRecordStore: LicenseActivationRecordStore {
+        private let dataStore = KeychainLicenseDataStore(account: "activation-record")
+
+        func read() -> LicenseActivationRecord? {
+            guard let data = dataStore.read() else { return nil }
+            return try? JSONDecoder().decode(LicenseActivationRecord.self, from: data)
+        }
+
+        @discardableResult
+        func write(_ record: LicenseActivationRecord?) -> Bool {
+            guard let record else { return dataStore.write(nil) }
+            guard let data = try? JSONEncoder().encode(record) else { return false }
+            return dataStore.write(data)
         }
     }
 
@@ -175,19 +284,38 @@ extension JSONDecoder {
         var url: URL = CLITokenFile.appContainerURL
 
         /// Writes the token `0600` (creating the directory), or removes the file on `nil` —
-        /// so deactivation re-locks the CLI too. Failures are swallowed: the CLI mirror is a
-        /// convenience, never a gate on the app's own (Keychain-backed) entitlement.
-        func write(_ token: String?) {
+        /// so deactivation re-locks the CLI too. The result lets the provider avoid declaring
+        /// a new activation complete while app and CLI entitlement state disagree.
+        @discardableResult
+        func write(_ token: String?) -> Bool {
             let fileManager = FileManager.default
             guard let token else {
-                try? fileManager.removeItem(at: url)
-                return
+                guard fileManager.fileExists(atPath: url.path) else { return true }
+                do {
+                    try fileManager.removeItem(at: url)
+                    return true
+                } catch {
+                    return false
+                }
             }
-            try? fileManager.createDirectory(
-                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try? token.data(using: .utf8)?.write(to: url, options: [.atomic])
-            try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            do {
+                try fileManager.createDirectory(
+                    at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                guard let data = token.data(using: .utf8) else { return false }
+                try data.write(to: url, options: [.atomic])
+                try fileManager.setAttributes(
+                    [.posixPermissions: 0o600], ofItemAtPath: url.path)
+                return true
+            } catch {
+                return false
+            }
         }
+    }
+
+    enum LicenseActivationCleanupResult: Equatable {
+        case cleared
+        case superseded
+        case failed
     }
 
     /// The direct-download entitlement provider: PRO is unlocked by a locally-stored,
@@ -197,15 +325,19 @@ extension JSONDecoder {
     @MainActor
     final class LicenseKeyProvider: EntitlementProvider {
         private let store: LicenseTokenStore
+        private let activationRecordStore: LicenseActivationRecordStore
         private let verifier: LicenseVerifier
         private let cliTokenFile: CLITokenFile
 
         init(
             store: LicenseTokenStore = KeychainLicenseStore(),
+            activationRecordStore: LicenseActivationRecordStore =
+                KeychainLicenseActivationRecordStore(),
             verifier: LicenseVerifier = .embedded,
             cliTokenFile: CLITokenFile = CLITokenFile()
         ) {
             self.store = store
+            self.activationRecordStore = activationRecordStore
             self.verifier = verifier
             self.cliTokenFile = cliTokenFile
         }
@@ -218,17 +350,63 @@ extension JSONDecoder {
         /// the fast path and the CLI's only path.
         func currentIsPro() async -> Bool { storedValidToken != nil }
 
-        /// Stores a freshly-issued signed token after a successful activation (and mirrors it
-        /// to the CLI file), or clears both on deactivation. Validated before storing, so a
-        /// bad token never sticks and never reaches the CLI.
-        func setToken(_ token: String?) {
-            if let token, verifier.verify(token) != nil {
-                store.write(token)
-                cliTokenFile.write(token)
-            } else {
-                store.write(nil)
-                cliTokenFile.write(nil)
+        /// The currently manageable seat record. A record can survive a partial local write,
+        /// allowing the user to release a remotely-consumed seat instead of orphaning it.
+        var activationRecordForDeactivation: LicenseActivationRecord? {
+            activationRecordStore.read()
+        }
+
+        /// A valid pre-record activation remains PRO for compatibility, but cannot claim to
+        /// know the provider instance id required for in-app seat release.
+        var hasLegacyActivation: Bool {
+            cachedIsPro && activationRecordStore.read() == nil
+        }
+
+        /// Persists the secret record before the signed entitlement. Every value is validated
+        /// and the token's traceable license id must match the provider record. A different
+        /// recoverable record is never overwritten, because doing so would lose the only data
+        /// capable of releasing its already-consumed remote seat.
+        @discardableResult
+        func setActivation(signedToken: String, record: LicenseActivationRecord) -> Bool {
+            guard verifier.verify(signedToken)?.licenseID == record.licenseID else { return false }
+            guard activationRecordStore.read().map({ $0 == record }) ?? true else { return false }
+            guard activationRecordStore.write(record),
+                activationRecordStore.read() == record
+            else { return false }
+            guard store.write(signedToken), storedValidToken?.licenseID == record.licenseID
+            else { return false }
+            guard cliTokenFile.write(signedToken) else {
+                // Keep the record for remote seat recovery, but never leave app and CLI
+                // entitlement state disagreeing after a newly activated seat.
+                _ = store.write(nil)
+                return false
             }
+            return true
+        }
+
+        /// Clears only the exact record that initiated the remote request. After an `await`,
+        /// a newer activation may exist; comparing the full record prevents the old response
+        /// from deleting it. Token and CLI cleanup happen before the credential record so a
+        /// failed cleanup can be retried without losing the provider instance id.
+        func clearActivation(
+            ifMatching expected: LicenseActivationRecord
+        ) -> LicenseActivationCleanupResult {
+            guard activationRecordStore.read() == expected else { return .superseded }
+            let originalToken = store.read()
+            if let token = originalToken,
+                let currentLicenseID = verifier.verify(token)?.licenseID,
+                currentLicenseID != expected.licenseID
+            {
+                return .superseded
+            }
+
+            guard cliTokenFile.write(nil) else { return .failed }
+            guard store.write(nil) else {
+                if let originalToken { _ = cliTokenFile.write(originalToken) }
+                return .failed
+            }
+            guard activationRecordStore.write(nil) else { return .failed }
+            return .cleared
         }
 
         private var storedValidToken: LicenseToken? {

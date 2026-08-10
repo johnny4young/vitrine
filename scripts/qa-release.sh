@@ -10,7 +10,8 @@
 # catches that before a release reaches users.
 #
 # It is deliberately SELF-CONTAINED: it needs only the artifact and the macOS
-# command-line tools (codesign, spctl, stapler, hdiutil, plutil, sw_vers, uname),
+# command-line tools (codesign, spctl, stapler, hdiutil, plutil, lipo, base64,
+# sw_vers, uname, stat),
 # all present on a stock Mac. It does NOT read project.yml, the .xcodeproj, or any
 # DerivedData, so you can copy this one file (or download it from the release) onto
 # a freshly imaged Mac that has never seen the repository and run the same checks a
@@ -28,7 +29,11 @@
 #     starts from a written record of WHERE it ran and WHAT it tested.
 #   * Runs the signing / notarization assessment a user's Gatekeeper runs on first
 #     launch: codesign --verify --deep --strict, spctl -a, stapler validate, and an
-#     Info.plist sanity check (plutil), on both the DMG and the app inside it.
+#     Info.plist sanity check (plutil), on both the DMG and the app inside it. The
+#     every executable Mach-O payload must contain both arm64 and x86_64; checking
+#     only the outer executable would miss a thin CLI, helper, or framework.
+#     direct-download PRO signing key must be present and decode to exactly 32 bytes;
+#     the script never prints or logs that private value.
 #   * Classifies every result so a FAILURE distinguishes an *app bug* from a
 #     *signing / notarization* failure — the two have completely different fixes
 #     (code change vs. certificate / notarytool / stapling), and conflating them
@@ -37,8 +42,9 @@
 # What stays MANUAL (a human at the clean Mac, guided by the printed checklist):
 #   DMG open, drag-to-Applications, first launch past Gatekeeper, the menu-bar icon
 #   appearing with NO Dock icon, quick capture, editor export, settings,
-#   launch-at-login, and a clean uninstall. These are interactive behaviors no
-#   headless check can prove; the script prints them as a numbered log to walk
+#   launch-at-login, a real PRO activation, offline relaunch, PRO-only CLI output,
+#   token-file permissions, a real Sparkle N-to-N+1 install, and a clean uninstall. These are interactive behaviors
+#   no headless check can prove; the script prints them as a numbered log to walk
 #   through and record per release (see docs/RELEASING.md).
 #
 # Exit status:
@@ -123,11 +129,25 @@ fi
 MOUNT_POINT=""
 DMG=""
 HELPER_ENTITLEMENTS_FILE=""
+APP_ENTITLEMENTS_FILE=""
+LICENSE_KEY_BASE64_FILE=""
+LICENSE_KEY_RAW_FILE=""
 # Invoked indirectly via `trap … EXIT` below, so shellcheck cannot see the call.
 # shellcheck disable=SC2329
 cleanup() {
 	if [ -n "$HELPER_ENTITLEMENTS_FILE" ]; then
 		rm -f "$HELPER_ENTITLEMENTS_FILE"
+	fi
+	if [ -n "$APP_ENTITLEMENTS_FILE" ]; then
+		rm -f "$APP_ENTITLEMENTS_FILE"
+	fi
+	# These files hold the private activation signer only long enough to validate its
+	# encoded shape. Never print, inspect, or retain either file.
+	if [ -n "$LICENSE_KEY_BASE64_FILE" ]; then
+		rm -f "$LICENSE_KEY_BASE64_FILE"
+	fi
+	if [ -n "$LICENSE_KEY_RAW_FILE" ]; then
+		rm -f "$LICENSE_KEY_RAW_FILE"
 	fi
 	if [ -n "$MOUNT_POINT" ] && [ -d "$MOUNT_POINT" ]; then
 		hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
@@ -185,6 +205,8 @@ APP_VERSION="$(plist_value CFBundleShortVersionString)"
 BUILD_VERSION="$(plist_value CFBundleVersion)"
 BUNDLE_ID="$(plist_value CFBundleIdentifier)"
 LSUIELEMENT="$(plist_value LSUIElement)"
+SPARKLE_INSTALLER_ENABLED="$(plist_value SUEnableInstallerLauncherService)"
+SPARKLE_DOWNLOADER_ENABLED="$(plist_value SUEnableDownloaderService)"
 
 # Signing identity: the Developer ID "Authority" line from the app's signature, or
 # a clear marker when the bundle is unsigned / ad-hoc. Capture the output once so
@@ -231,6 +253,76 @@ else
 	fail_app "LSUIElement is not set — the app would show a Dock icon"
 fi
 
+# Sparkle keeps Installer.xpc inside its framework, but every sandboxed host must
+# explicitly enable that service and expose its matching -spks/-spki mach names.
+# Vitrine already owns network.client for its direct channel, so the optional
+# Downloader service must remain disabled.
+if [ "$SPARKLE_INSTALLER_ENABLED" = "true" ] \
+	|| [ "$SPARKLE_INSTALLER_ENABLED" = "1" ] \
+	|| [ "$SPARKLE_INSTALLER_ENABLED" = "YES" ]; then
+	pass "Sparkle Installer Launcher service is enabled for the sandboxed app"
+else
+	fail_app "SUEnableInstallerLauncherService is not enabled — Sparkle updates cannot install"
+fi
+
+if [ "$SPARKLE_DOWNLOADER_ENABLED" = "true" ] \
+	|| [ "$SPARKLE_DOWNLOADER_ENABLED" = "1" ] \
+	|| [ "$SPARKLE_DOWNLOADER_ENABLED" = "YES" ]; then
+	fail_app "SUEnableDownloaderService must stay disabled when network.client is present"
+else
+	pass "Sparkle Downloader service is disabled; the app uses network.client directly"
+fi
+
+SPARKLE_INSTALLER_XPC="$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+if [ -d "$SPARKLE_INSTALLER_XPC" ]; then
+	pass "Sparkle Installer.xpc is embedded inside Sparkle.framework"
+else
+	fail_app "Sparkle Installer.xpc is missing from the embedded framework"
+fi
+
+APP_ENTITLEMENTS_FILE="$(mktemp /tmp/vitrine-app-entitlements.XXXXXX)"
+if codesign -d --entitlements :- "$APP" > "$APP_ENTITLEMENTS_FILE" 2>/dev/null; then
+	APP_SANDBOX="$(/usr/libexec/PlistBuddy -c \
+		'Print :com.apple.security.app-sandbox' "$APP_ENTITLEMENTS_FILE" 2>/dev/null || true)"
+	NETWORK_CLIENT="$(/usr/libexec/PlistBuddy -c \
+		'Print :com.apple.security.network.client' "$APP_ENTITLEMENTS_FILE" 2>/dev/null || true)"
+	MACH_LOOKUPS="$(/usr/libexec/PlistBuddy -c \
+		'Print :com.apple.security.temporary-exception.mach-lookup.global-name' \
+		"$APP_ENTITLEMENTS_FILE" 2>/dev/null || true)"
+	if [ "$APP_SANDBOX" = "true" ] \
+		&& [ "$NETWORK_CLIENT" = "true" ] \
+		&& [[ "$MACH_LOOKUPS" == *"$BUNDLE_ID-spks"* ]] \
+		&& [[ "$MACH_LOOKUPS" == *"$BUNDLE_ID-spki"* ]]; then
+		pass "Sparkle sandbox entitlements include network.client and matching -spks/-spki names"
+	else
+		fail_app "Sparkle sandbox entitlements are incomplete or do not match $BUNDLE_ID"
+	fi
+else
+	fail_app "could not inspect app entitlements for the Sparkle sandbox contract"
+fi
+
+# The public direct-download app sells PRO activation, so a published artifact without
+# the injected Ed25519 private key is functionally broken even when it is perfectly
+# signed and notarized. Read the sensitive value straight into mode-0600 temporary files,
+# decode it with stock macOS base64, and validate only the raw byte count. No command ever
+# writes the value to stdout/stderr or the QA log.
+LICENSE_KEY_BASE64_FILE="$(mktemp /tmp/vitrine-license-key-base64.XXXXXX)"
+LICENSE_KEY_RAW_FILE="$(mktemp /tmp/vitrine-license-key-raw.XXXXXX)"
+chmod 600 "$LICENSE_KEY_BASE64_FILE" "$LICENSE_KEY_RAW_FILE"
+if plutil -extract VitrineLicenseSigningKey raw \
+	-o "$LICENSE_KEY_BASE64_FILE" "$INFO_PLIST" 2>/dev/null \
+	&& /usr/bin/base64 -D < "$LICENSE_KEY_BASE64_FILE" \
+		> "$LICENSE_KEY_RAW_FILE" 2>/dev/null; then
+	LICENSE_KEY_BYTES="$(wc -c < "$LICENSE_KEY_RAW_FILE" | tr -d '[:space:]')"
+	if [ "$LICENSE_KEY_BYTES" = "32" ]; then
+		pass "PRO activation signer is embedded and structurally valid (secret not printed)"
+	else
+		fail_app "VitrineLicenseSigningKey must decode to exactly 32 bytes — published PRO activation is broken"
+	fi
+else
+	fail_app "VitrineLicenseSigningKey is missing or invalid — published PRO activation is broken"
+fi
+
 EXECUTABLE="$(plist_value CFBundleExecutable)"
 if [ -n "$EXECUTABLE" ] && [ -x "$APP/Contents/MacOS/$EXECUTABLE" ]; then
 	pass "Main executable present and executable: $EXECUTABLE"
@@ -256,6 +348,40 @@ if [ -x "$MENU_BAR_HELPER" ]; then
 	fi
 else
 	fail_app "menu-bar helper missing or not executable (Contents/MacOS/VitrineMenuBarHelper)"
+fi
+
+# A universal outer executable is insufficient when an embedded CLI, helper, framework,
+# or XPC service is thin. Enumerate every executable Mach-O in the bundle so clean-Mac
+# QA independently verifies the exact artifact rather than trusting the build log.
+MACHO_COUNT=0
+THIN_MACHO_COUNT=0
+while IFS= read -r -d '' candidate; do
+	if ! architectures="$(/usr/bin/lipo -archs "$candidate" 2>/dev/null)"; then
+		continue
+	fi
+
+	MACHO_COUNT=$((MACHO_COUNT + 1))
+	relative_path="${candidate#"$APP"/}"
+	missing_architecture=""
+	for required_architecture in arm64 x86_64; do
+		if [[ " $architectures " != *" $required_architecture "* ]]; then
+			missing_architecture="$required_architecture"
+			break
+		fi
+	done
+
+	if [ -n "$missing_architecture" ]; then
+		THIN_MACHO_COUNT=$((THIN_MACHO_COUNT + 1))
+		fail_app "$relative_path is not universal (architectures: $architectures; missing: $missing_architecture)"
+	fi
+done < <(find "$APP" -type f -perm -111 -print0)
+
+if [ "$MACHO_COUNT" -eq 0 ]; then
+	fail_app "no Mach-O payloads found in the app bundle"
+elif [ "$THIN_MACHO_COUNT" -eq 0 ]; then
+	pass "All $MACHO_COUNT Mach-O payloads contain arm64 + x86_64"
+else
+	note "$THIN_MACHO_COUNT of $MACHO_COUNT Mach-O payloads are not universal"
 fi
 
 # --- Automated signing / notarization checks (signing failures) -------------
@@ -357,7 +483,24 @@ cat <<'CHECKLIST'
     [ ] 10. Launch at login   — toggle "Launch at login" on; log out and back in
                                   (or reboot) and confirm Vitrine starts. Toggle it
                                   off and confirm it no longer auto-starts.
-    [ ] 11. Uninstall         — quit Vitrine, move it to the Trash (or
+    [ ] 11. PRO activation    — while online, open a PRO-gated feature and paste
+                                  the dedicated LIVE QA license. Activate it; the
+                                  masked field must never expose the key in the log
+                                  or screenshots, the sheet closes, and PRO unlocks.
+    [ ] 12. Offline relaunch  — quit Vitrine, disconnect the Mac from every network,
+                                  relaunch, and confirm PRO remains unlocked and a
+                                  PRO-only multi-size export still completes.
+    [ ] 13. PRO CLI           — still offline, run the bundled CLI's `multi-size`
+                                  command and confirm it writes the requested images;
+                                  this proves the out-of-process signed-token handoff.
+    [ ] 14. Token permissions — without printing its contents, confirm the non-empty
+                                  pro-license.token mirror has POSIX mode exactly 0600.
+    [ ] 15. N to N+1 update  — install the previous published direct-download
+                                  version on a disposable QA path, choose Check for
+                                  Updates…, click Install Update, and confirm Vitrine
+                                  relaunches on the candidate version without an
+                                  installer or authorization error.
+    [ ] 16. Uninstall         — quit Vitrine, move it to the Trash (or
                                   `brew uninstall --cask vitrine`); it leaves no
                                   menu-bar icon and no login item behind.
 CHECKLIST

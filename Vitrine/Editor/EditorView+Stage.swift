@@ -73,11 +73,16 @@ extension EditorView {
                 .frame(width: Brand.Stroke.hairline)
         }
         // Accept a dropped source file or selected text. `.onDrop` with UTType
-        // payloads is the current API; the read happens off the closure via a
-        // main-actor Task so the handler stays synchronous.
+        // payloads is the current API; the bounded item-provider bridge runs in one
+        // owned task so a replacement drop or disappearing editor cancels it.
         .onDrop(of: [.image, .fileURL, .text], isTargeted: $isDropTargeted) { providers in
-            Task { await handleDrop(providers) }
+            dropTask?.cancel()
+            dropTask = Task { await handleDrop(providers) }
             return true
+        }
+        .onDisappear {
+            dropTask?.cancel()
+            dropTask = nil
         }
         .overlay { dropAffordance }
         .accessibilityContainerIdentifier("editor-drop-target")

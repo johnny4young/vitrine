@@ -243,7 +243,7 @@ struct EditorWindowStateTests {
         // A window editing a *custom* theme restores it by resolving the id through a
         // custom-theme store, proving the bridge is not limited to built-ins.
         let store = CustomThemeStore(
-            defaults: UserDefaults(suiteName: "WindowStateThemeTests-\(UUID().uuidString)")!)
+            defaults: testDefaults())
         let custom = store.addTheme(
             named: "My Theme",
             palette: ThemePalette(
@@ -378,11 +378,24 @@ struct WindowFrameSolverTests {
 @Suite("Editor session independence")
 struct EditorSessionIndependenceTests {
     private func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "EditorSessionTests-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     private func makeEnvironment(defaults: UserDefaults) -> AppEnvironment {
         AppEnvironment(defaults: defaults)
+    }
+
+    private func makeSession(
+        defaults: UserDefaults,
+        store: InMemoryUserDefaults
+    ) -> AppSettings {
+        let environment = makeEnvironment(defaults: defaults)
+        return AppSettings.makeEditorSession(
+            seededFrom: defaults,
+            store: store,
+            brandKit: environment.brandKit,
+            entitlements: environment.entitlements
+        )
     }
 
     @Test func aSessionSeedsTheDefaultStyleFromTheSource() {
@@ -406,7 +419,7 @@ struct EditorSessionIndependenceTests {
 
     @Test func editingASessionDoesNotClobberTheGlobalDefault() {
         // The core isolation guarantee: a window's edits never touch the app-wide default
-        // store — only its own volatile suite.
+        // store — only its own ephemeral memory store.
         let defaults = freshDefaults()
         let source = AppSettings(defaults: defaults)
         source.config.theme = .oneDark
@@ -471,8 +484,8 @@ struct EditorSessionIndependenceTests {
         #expect(reloaded.export.scale == 3)
     }
 
-    @Test func discardingAVolatileStoreLeavesTheSourceUntouched() {
-        // Closing a window tears down its throwaway suite; the app-wide default store
+    @Test func discardingAnEphemeralStoreLeavesTheSourceUntouched() {
+        // Closing a window clears its memory store; the app-wide default store
         // is never affected by the teardown.
         let defaults = freshDefaults()
         let source = AppSettings(defaults: defaults)
@@ -480,47 +493,73 @@ struct EditorSessionIndependenceTests {
 
         let session = makeEnvironment(defaults: defaults).makeEditorSessionSettings()
         session.config.code = "scratch"
-        session.discardVolatileStore()
+        session.discardEphemeralStore()
 
         let reloadedSource = AppSettings(defaults: defaults)
         #expect(reloadedSource.config.theme.id == "monokai")
     }
 
-    @Test func theSharedInstanceHasNoVolatileStoreToDiscard() {
-        // A persistent (non-session) instance never reports a volatile suite, so a
+    @Test func theSharedInstanceHasNoEphemeralStoreToDiscard() {
+        // A persistent (non-session) instance never reports an ephemeral store, so a
         // stray discard on it is a harmless no-op.
         let settings = AppSettings(defaults: freshDefaults())
-        #expect(settings.volatileSuiteName == nil)
-        settings.discardVolatileStore()  // no crash, no effect
-        #expect(settings.volatileSuiteName == nil)
+        #expect(!settings.isEphemeralSession)
+        settings.discardEphemeralStore()  // no crash, no effect
+        #expect(!settings.isEphemeralSession)
     }
 
     /// A window can close while an async task it started is still running — the editor's
-    /// image OCR/redaction pass takes seconds on a large screenshot. That task's write to
-    /// `config` used to persist through the observer into the domain the teardown had just
-    /// removed, so `cfprefsd` recreated the per-window plist; with `volatileSuiteName`
-    /// already nil, nothing would ever clean it up again.
-    @Test func aWriteAfterDiscardDoesNotRecreateTheVolatileSuite() throws {
+    /// image OCR/redaction pass can take seconds on a large screenshot. A late config
+    /// write must still update the live model, but it must not repopulate the store whose
+    /// draft objects teardown just released.
+    @Test func writesAfterDiscardDoNotRepopulateTheEphemeralStore() {
         let defaults = freshDefaults()
-        let session = makeEnvironment(defaults: defaults).makeEditorSessionSettings()
-        let suiteName = try #require(session.volatileSuiteName)
+        let store = InMemoryUserDefaults()
+        let session = makeSession(defaults: defaults, store: store)
+        #expect(session.isEphemeralSession)
         session.config.padding = 48
-        session.discardVolatileStore()
+        #expect(store.storedValuesSnapshot[SettingsCodec.Keys.padding] as? Double == 48)
+
+        session.discardEphemeralStore()
+        #expect(!session.isEphemeralSession)
+        #expect(store.storedValuesSnapshot.isEmpty)
 
         // The late write still lands in memory, so what is on screen stays correct…
         session.config.padding = 56
+        session.export.scale = 3
+        session.webCapture.waitSeconds = 2
+        session.hotkeyAction = .openEditor
+        session.socialCard.title = "late card update"
         #expect(session.config.padding == 56)
+        #expect(session.export.scale == 3)
+        #expect(session.webCapture.waitSeconds == 2)
+        #expect(session.socialCard.title == "late card update")
 
-        // …but nothing is written back, so the removed domain stays empty.
-        let reopened = UserDefaults(suiteName: suiteName)
-        #expect(reopened?.dictionaryRepresentation()[SettingsCodec.Keys.padding] == nil)
+        // …but neither direct nor nested settings can retain values in the discarded store.
+        #expect(store.storedValuesSnapshot.isEmpty)
     }
 
-    /// The launch sweep is what actually bounds per-window suites on disk: the primary
-    /// session only dies on a clean quit, a force-quit strands every session, and
-    /// `removePersistentDomain` leaves an empty husk `cfprefsd` owns. All three end up
-    /// as files the next launch must collect — a two-month machine carried 4,667.
-    @Test func sweepCollectsOnlyStaleEditorSessionFiles() throws {
+    @Test func releasingASessionReleasesItsInMemoryStore() {
+        weak var releasedSession: AppSettings?
+        weak var releasedStore: InMemoryUserDefaults?
+
+        do {
+            let defaults = freshDefaults()
+            let store = InMemoryUserDefaults()
+            let session = makeSession(defaults: defaults, store: store)
+            session.config.code = String(repeating: "draft", count: 10_000)
+            releasedSession = session
+            releasedStore = store
+        }
+
+        #expect(releasedSession == nil)
+        #expect(releasedStore == nil)
+    }
+
+    /// Upgrading users may still have per-window suites created by older releases. The
+    /// launch migration keeps the concurrency-age guard while current sessions create no
+    /// such files.
+    @Test func sweepCollectsOnlyStaleLegacyEditorSessionFiles() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("vitrine-sweep-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -537,12 +576,12 @@ struct EditorSessionIndependenceTests {
         }
 
         let staleSession = try plant(
-            "\(AppSettings.editorSessionSuitePrefix)AAAA.plist", ageDays: 30)
+            "\(AppSettings.legacyEditorSessionSuitePrefix)AAAA.plist", ageDays: 30)
         let freshSession = try plant(
-            "\(AppSettings.editorSessionSuitePrefix)BBBB.plist", ageDays: 0)
+            "\(AppSettings.legacyEditorSessionSuitePrefix)BBBB.plist", ageDays: 0)
         let unrelated = try plant("com.johnny4young.vitrine.plist", ageDays: 30)
         let nonPlist = try plant(
-            "\(AppSettings.editorSessionSuitePrefix)CCCC.backup", ageDays: 30)
+            "\(AppSettings.legacyEditorSessionSuitePrefix)CCCC.backup", ageDays: 30)
 
         AppSettings.sweepStaleEditorSessionSuites(preferencesDirectory: directory, now: now)
 
@@ -562,11 +601,11 @@ struct EditorSessionIndependenceTests {
     }
 
     @Test func discardingASessionNeverSilencesTheSharedStore() {
-        // The latch must be scoped to volatile sessions: a stray discard on the shared
+        // The latch must be scoped to ephemeral sessions: a stray discard on the shared
         // instance returns before latching, so app-wide settings keep persisting.
         let defaults = freshDefaults()
         let shared = AppSettings(defaults: defaults)
-        shared.discardVolatileStore()
+        shared.discardEphemeralStore()
         shared.config.padding = 52
 
         #expect(AppSettings(defaults: defaults).config.padding == 52)

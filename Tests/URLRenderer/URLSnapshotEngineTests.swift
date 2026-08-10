@@ -20,7 +20,7 @@ import Testing
 struct URLSnapshotEngineRenderTests {
     @Test func aLocalPageRendersToAnImageOfTheRequestedPixelSize() async throws {
         let engine = URLSnapshotEngine()
-        let config = WebSnapshotConfig(
+        let config = try WebSnapshotConfig(
             localFileURL: try URLFixture.writeLocalPage(),
             viewportPreset: .custom(width: 600, height: 400), scale: 2)
         // The data store is the privacy default even on the live path.
@@ -37,7 +37,7 @@ struct URLSnapshotEngineRenderTests {
         // the same `RenderedAsset` shape a code snapshot yields, so the clipboard and
         // save paths stay uniform across input kinds.
         let engine = URLSnapshotEngine()
-        let config = WebSnapshotConfig(
+        let config = try WebSnapshotConfig(
             localFileURL: try URLFixture.writeLocalPage(),
             viewportPreset: .custom(width: 400, height: 300), scale: 1)
         let image = try await engine.snapshot(of: config)

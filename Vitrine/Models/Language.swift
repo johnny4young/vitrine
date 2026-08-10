@@ -11,7 +11,7 @@ import Foundation
 /// resolve in the bundled engine; `CoverageMatrixTests` enforces that every
 /// advertised language highlights without falling back to plain text, so a typo
 /// or an unsupported id fails the build rather than shipping a dead entry.
-enum Language: String, CaseIterable, Identifiable {
+enum Language: String, CaseIterable, Identifiable, Sendable {
     case swift, python, javascript, typescript, go, rust, ruby, java, kotlin
     case c, cpp, csharp, objectivec, scala, dart, elixir, haskell, lua, r, perl
     case php, html, css, scss, json, yaml, toml, bash, sql, graphql, dockerfile

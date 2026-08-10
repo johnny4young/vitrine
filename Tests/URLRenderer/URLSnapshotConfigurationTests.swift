@@ -89,11 +89,18 @@ struct URLDataStoreModeTests {
             WebSnapshotConfig.ViewportPreset.custom(width: 600, height: 0),
             WebSnapshotConfig.ViewportPreset.custom(width: -10, height: 400),
         ] {
-            let config = WebSnapshotConfig(
+            let config = try WebSnapshotConfig(
                 localFileURL: try URLFixture.writeLocalPage(), viewportPreset: preset)
             await #expect(throws: WebSnapshotError.invalidViewport) {
                 try await engine.snapshot(of: config)
             }
+        }
+    }
+
+    @Test func hermeticFixtureHookRejectsRemoteURLsWithoutTrapping() throws {
+        let remote = try #require(URL(string: "https://example.com"))
+        #expect(throws: WebSnapshotFixtureError.nonFileURL) {
+            try WebSnapshotConfig(localFileURL: remote)
         }
     }
 }
