@@ -18,8 +18,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func buildsAGraphIsolatedFromTheSharedRoot() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let env = AppEnvironment(defaults: suite)
 
         // Every store is a distinct instance from the app-wide shared graph…
@@ -33,8 +32,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func theGraphIsBackedByTheInjectedDefaults() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let env = AppEnvironment(defaults: suite)
 
         // A write through the environment's settings lands in the injected suite, proving
@@ -44,8 +42,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func settingsRootRetainsTheProvidedGraph() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let env = AppEnvironment(defaults: suite)
 
         let root = SettingsRootView(environment: env)
@@ -54,8 +51,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func editorRootResolvesEveryLongLivedStoreFromTheProvidedGraph() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let env = AppEnvironment(defaults: suite)
 
         let root = EditorView(environment: env)
@@ -68,8 +64,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func editorSessionsSeedFromAndRetainTheProvidedGraph() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let env = AppEnvironment(
             defaults: suite, entitlements: Entitlements(provider: ProProvider()))
         env.appSettings.config.theme = .dracula
@@ -102,8 +97,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func auxiliaryWindowsRetainAndExposeTheProvidedGraph() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let env = AppEnvironment(defaults: suite)
         let webModel = WebSnapshotModel()
 
@@ -139,8 +133,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func menuBarRootRetainsAndExposesTheProvidedGraph() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let env = AppEnvironment(
             defaults: suite, entitlements: Entitlements(provider: ProProvider()))
         env.brandKit.isEnabled = true
@@ -173,8 +166,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func appLifecycleRetainsTheProvidedGraphAndFeedbackPresenter() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let env = AppEnvironment(defaults: suite)
         let feedback = CaptureFeedbackPresenter()
         let delegate = AppDelegate(
@@ -193,10 +185,8 @@ struct AppEnvironmentTests {
     }
 
     @Test func launchArgumentsSeedOnlyTheProvidedGraph() throws {
-        let firstDefaults = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
-        let secondDefaults = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let firstDefaults = testDefaults()
+        let secondDefaults = testDefaults()
         let first = AppEnvironment(defaults: firstDefaults)
         let second = AppEnvironment(defaults: secondDefaults)
         let handler = AppLaunchArgumentHandler(environment: first)
@@ -222,8 +212,7 @@ struct AppEnvironmentTests {
     }
 
     @Test func launchArgumentsOpenTheMenuPanelThroughTheInjectedRoute() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "VitrineEnv-\(UUID().uuidString)"))
+        let suite = testDefaults()
         let environment = AppEnvironment(defaults: suite)
         var presentations = 0
         let handler = AppLaunchArgumentHandler(

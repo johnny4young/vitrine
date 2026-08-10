@@ -64,6 +64,11 @@ struct ReleaseQAChecklistTests {
         ("editor export", ["Editor export", "editor export", "export a PNG", "exports a PNG"]),
         ("settings", ["Settings"]),
         ("launch-at-login", ["Launch at login", "launch at login", "login item"]),
+        ("PRO activation", ["PRO activation"]),
+        ("offline PRO relaunch", ["Offline relaunch", "offline relaunch"]),
+        ("PRO CLI", ["PRO CLI", "PRO-only CLI"]),
+        ("token permissions", ["Token permissions", "POSIX mode", "0600"]),
+        ("Sparkle N to N+1 update", ["N to N+1", "N→N+1", "Install Update"]),
         ("uninstall", ["Uninstall", "uninstall"]),
     ]
 
@@ -105,7 +110,7 @@ struct ReleaseQAChecklistTests {
 
     // MARK: - Contract: the checklist covers every required item
 
-    /// The printed checklist in the script must cover all eleven interactive items.
+    /// The printed checklist in the script must cover every interactive item.
     @Test func scriptChecklistCoversEveryRequiredItem() throws {
         let script = try Self.script()
         for item in Self.checklistItems {
@@ -149,7 +154,7 @@ struct ReleaseQAChecklistTests {
                 "qa-release.sh must not invoke `\(command)`; it runs on a clean Mac")
         }
         // It must rely only on stock macOS tools that are present without the repo.
-        for tool in ["codesign", "spctl", "plutil", "sw_vers", "hdiutil"] {
+        for tool in ["codesign", "spctl", "plutil", "lipo", "sw_vers", "hdiutil"] {
             #expect(
                 script.contains(tool),
                 "qa-release.sh should use the stock macOS tool `\(tool)`")
@@ -242,6 +247,77 @@ struct ReleaseQAChecklistTests {
         #expect(script.contains("com.apple.security.app-sandbox"))
         #expect(script.contains("com.apple.security.inherit"))
         #expect(script.contains("Menu-bar helper present and executable"))
+    }
+
+    @Test func scriptValidatesThePackagedSparkleSandboxContract() throws {
+        let script = try Self.script()
+
+        for requirement in [
+            "SUEnableInstallerLauncherService", "Installer.xpc", "network.client", "-spks",
+            "-spki",
+        ] {
+            #expect(
+                script.contains(requirement),
+                "clean-Mac QA must inspect the packaged Sparkle requirement: \(requirement)")
+        }
+        #expect(
+            script.contains("SUEnableDownloaderService"),
+            "clean-Mac QA must reject the unnecessary Downloader service when network.client is present"
+        )
+    }
+
+    @Test func scriptRejectsAnyThinMachOPayloadInTheDownloadedApp() throws {
+        let script = try Self.script()
+
+        #expect(script.contains(#"/usr/bin/lipo -archs "$candidate""#))
+        #expect(script.contains(#"find "$APP" -type f -perm -111 -print0"#))
+        #expect(script.contains("for required_architecture in arm64 x86_64"))
+        #expect(script.contains("is not universal"))
+        #expect(script.contains("All $MACHO_COUNT Mach-O payloads contain arm64 + x86_64"))
+    }
+
+    /// A direct-download artifact that cannot mint the offline token is not saleable,
+    /// even if Gatekeeper accepts it. The QA script must reject a missing/malformed
+    /// build-injected key while proving only its shape and never printing the secret.
+    @Test func scriptValidatesThePROSignerWithoutExposingIt() throws {
+        let script = try Self.script()
+
+        #expect(script.contains("VitrineLicenseSigningKey"))
+        #expect(script.contains("/usr/bin/base64 -D"))
+        #expect(script.contains(#"[ "$LICENSE_KEY_BYTES" = "32" ]"#))
+        #expect(script.contains("secret not printed"))
+
+        let sensitiveOutput = script.components(separatedBy: .newlines).filter { line in
+            (line.contains("echo") || line.contains("note") || line.contains("cat "))
+                && (line.contains("LICENSE_KEY_BASE64_FILE")
+                    || line.contains("LICENSE_KEY_RAW_FILE"))
+        }
+        #expect(
+            sensitiveOutput.isEmpty,
+            "qa-release.sh must never print either temporary license-key file")
+    }
+
+    /// Unit tests prove the crypto with development keys; the release process must also
+    /// preserve the real buyer journey that only a published artifact can exercise.
+    @Test func scriptAndDocsRequireThePublishedPROJourney() throws {
+        for contents in [try Self.script(), try Self.releasingDoc()] {
+            for requirement in [
+                "PRO activation", "offline", "multi-size", "pro-license.token", "0600",
+            ] {
+                #expect(
+                    contents.localizedCaseInsensitiveContains(requirement),
+                    "release QA must cover the published PRO requirement: \(requirement)")
+            }
+        }
+    }
+
+    /// The real license is a credential. The runbook must ban raw-key evidence so a
+    /// screenshot or copied QA log cannot turn release certification into a credential leak.
+    @Test func docsRequireSecretSafePROEvidence() throws {
+        let doc = try Self.releasingDoc()
+        #expect(doc.localizedCaseInsensitiveContains("never record"))
+        #expect(doc.localizedCaseInsensitiveContains("license key"))
+        #expect(doc.localizedCaseInsensitiveContains("redact"))
     }
 
     /// The checks must cover the DMG container the user actually downloads, not only

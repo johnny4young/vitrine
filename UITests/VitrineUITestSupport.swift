@@ -34,32 +34,6 @@ extension XCTestCase {
                 + "(visible frames: \(visible)); hittability cannot be asserted here.")
     }
 
-    /// Skips a first-run quick-start interaction when no attached display is tall
-    /// enough to hold the welcome window without overhanging.
-    ///
-    /// The quick-start is a fixed, non-scrolling surface; on a display shorter than
-    /// the window its bottom controls (Skip / sample capture) fall off the screen and
-    /// can never be hittable, so a click assertion there would be testing the display,
-    /// not the product. The window's own size is read at runtime (rather than
-    /// hard-coding a height) and compared against the tallest display's visible frame,
-    /// mirroring `skipUnlessADisplayFitsTheEditor`. The hosted CI runner's display
-    /// height varies between allocations, which is what made these tests flake.
-    ///
-    /// (That the window overhangs small displays at all is a real product gap, tracked
-    /// separately — the fix is to let the welcome window fit/scroll on short screens.)
-    @MainActor
-    func skipUnlessADisplayFitsTheWelcomeWindow(_ app: XCUIApplication) throws {
-        let window = app.windows["welcome-window"]
-        guard window.waitForExistence(timeout: 8) else { return }
-        let windowHeight = window.frame.height
-        let tallest = NSScreen.screens.map(\.visibleFrame.height).max() ?? 0
-        try XCTSkipUnless(
-            tallest >= windowHeight,
-            "No display is tall enough (\(Int(tallest))pt) to hold the welcome window "
-                + "(\(Int(windowHeight))pt) without overhanging; its bottom controls "
-                + "cannot be hittable here.")
-    }
-
     /// The first AX element carrying `identifier`, of any type — the shared
     /// lookup every smoke and tour assertion goes through.
     @MainActor
@@ -78,6 +52,18 @@ extension XCTestCase {
             .allElementsBoundByIndex
     }
 
+    /// Resolves the actionable node when AppKit gives a wrapper and its control
+    /// the same accessibility identifier.
+    ///
+    /// Keep `element(_:in:)` lazy: eagerly enumerating every match can outlive a
+    /// transient HUD. Use this targeted lookup only for stable controls that need
+    /// wrapper disambiguation.
+    @MainActor
+    func hittableElement(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        matches(identifier, in: app).first(where: { $0.isHittable })
+            ?? element(identifier, in: app)
+    }
+
     /// Returns whether some element carrying `identifier` becomes hittable.
     ///
     /// A single identifier can legitimately match nested AppKit/SwiftUI elements, so
@@ -94,6 +80,70 @@ extension XCTestCase {
             Thread.sleep(forTimeInterval: 0.25)
         } while Date() < deadline
         return false
+    }
+
+    /// Opens the real menu-bar panel only after XCUIAutomation has attached.
+    ///
+    /// Opening an `NSPopover` from a launch argument is too early for a UI test:
+    /// Sequoia can inject XCTAutomationSupport after `applicationDidFinishLaunching`
+    /// and abort the app with a private libdispatch main-queue assertion. Clicking the
+    /// in-process status item exercises the production interaction after the automation
+    /// handshake, without retrying or hiding an unexpected process exit.
+    @MainActor
+    @discardableResult
+    func openMenuBarPanel(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let panel = element("menubar-panel", in: app)
+        guard waitForHittableElement("menubar-status-item", in: app, timeout: 8) else {
+            assertHittable(
+                "menubar-status-item",
+                in: app,
+                "The in-process menu-bar item is not reachable",
+                timeout: 0,
+                file: file,
+                line: line)
+            return panel
+        }
+
+        hittableElement("menubar-status-item", in: app).click()
+
+        XCTAssertTrue(
+            panel.waitForExistence(timeout: 5),
+            "The menu-bar panel did not open after clicking the status item",
+            file: file,
+            line: line)
+        return panel
+    }
+
+    /// Reveals a Welcome control that may sit below the fold on a compact display.
+    /// Tall windows expose it immediately; on short windows this helper advances the
+    /// adaptive scroll surface until the control is usable.
+    @MainActor
+    func revealWelcomeControl(
+        _ identifier: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        if waitForHittableElement(identifier, in: app, timeout: 1) { return }
+
+        let scrollView = app.scrollViews["welcome-view"]
+        if scrollView.waitForExistence(timeout: 2) {
+            for _ in 0..<5 {
+                scrollView.swipeUp()
+                if waitForHittableElement(identifier, in: app, timeout: 0.75) { return }
+            }
+        }
+
+        assertHittable(
+            identifier,
+            in: app,
+            "Welcome control \(identifier) is not reachable after scrolling",
+            file: file,
+            line: line)
     }
 
     /// Reveals a toolbar action that may be direct at wide widths or nested in a
@@ -123,7 +173,7 @@ extension XCTestCase {
             "Toolbar action \(identifier) is not reachable",
             file: file,
             line: line)
-        return element(identifier, in: app)
+        return hittableElement(identifier, in: app)
     }
 
     /// Verifies a group of actions without selecting one. Compact menus stay open
@@ -179,8 +229,10 @@ extension XCTestCase {
             .map { "window \"\($0.title)\" frame=\($0.frame)" }
         let screens = NSScreen.screens
             .map { "screen frame=\($0.frame) visible=\($0.visibleFrame)" }
-        let geometry = (["matches for '\(identifier)': \(found.count)"] + found + windows + screens)
-            .joined(separator: "\n")
+        let automationSize = XCUIScreen.main.screenshot().image.size
+        let geometry =
+            (["matches for '\(identifier)': \(found.count)"] + found + windows + screens)
+            .joined(separator: "\n") + "\nautomation screen size=\(automationSize)"
         let attachment = XCTAttachment(string: geometry + "\n\n" + app.debugDescription)
         attachment.name = "Hittability diagnostics"
         attachment.lifetime = .keepAlways

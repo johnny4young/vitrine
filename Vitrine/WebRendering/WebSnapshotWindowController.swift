@@ -75,18 +75,112 @@ struct CapturedViewport: Identifiable {
     }
 }
 
+/// One viewport's rendering strategy, injected into ``WebSnapshotModel`` so the
+/// document orchestration is testable independently of WebKit's process host.
+/// Production always uses ``live``; UI automation can use the DEBUG-only fixture
+/// because ad-hoc-signed XCTest hosts do not consistently launch WebKit's
+/// out-of-process renderer.
+struct WebSnapshotViewportRenderer {
+    let render:
+        @MainActor (CaptureInput, WebSnapshotConfig.ViewportPreset, AppSettings) async throws ->
+            RenderedAsset
+
+    /// The production strategy: route local HTML through `HTMLRenderer` and URLs
+    /// through `URLRenderer`, preserving the user's viewport, scale, color, wait,
+    /// session, and loopback policies.
+    static let live = Self { input, preset, settings in
+        switch input {
+        case .html:
+            let renderer = HTMLRenderer(
+                viewport: preset.size,
+                scale: CGFloat(settings.export.scale),
+                profile: settings.export.colorProfile)
+            return try await renderer.render(input, config: settings.config)
+        case .url:
+            let renderer = URLRenderer(
+                scale: CGFloat(settings.export.scale),
+                viewportPreset: preset,
+                captureMode: settings.webCapture.captureMode,
+                waitStrategy: settings.webCapture.waitStrategy,
+                profile: settings.export.colorProfile,
+                dataStoreMode: settings.webCapture.dataStoreMode,
+                allowsLoopbackCapture: settings.webCapture.allowsLoopbackCapture)
+            return try await renderer.render(input, config: settings.config)
+        case .code:
+            // The Web Snapshot flow only resolves `.url`/`.html`; keep an impossible
+            // route typed instead of returning a blank image.
+            throw RenderError.noRendererFor(kind: "code")
+        }
+    }
+
+    #if DEBUG
+        /// Deterministic local pixels for the strict UI journey. This substitutes only
+        /// the process boundary that XCTest cannot host; the model still performs the
+        /// real multi-viewport scheduling, responsive-board composition, selection,
+        /// export, clipboard, and feedback paths.
+        static let uiTestFixture = Self { input, preset, settings in
+            guard case .html(let html) = input,
+                !html.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
+                throw RenderError.renderFailed
+            }
+
+            let scale = CGFloat(settings.export.scale)
+            let width = Int((preset.size.width * scale).rounded())
+            let height = Int((preset.size.height * scale).rounded())
+            guard width > 0, height > 0,
+                let colorSpace = settings.export.colorProfile.cgColorSpace,
+                let context = CGContext(
+                    data: nil,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: 0,
+                    space: colorSpace,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else {
+                throw RenderError.renderFailed
+            }
+
+            let canvas = CGRect(x: 0, y: 0, width: width, height: height)
+            context.setFillColor(CGColor(srgbRed: 0.043, green: 0.063, blue: 0.125, alpha: 1))
+            context.fill(canvas)
+
+            let inset = max(24, min(CGFloat(width), CGFloat(height)) * 0.12)
+            context.setFillColor(CGColor(srgbRed: 0.082, green: 0.122, blue: 0.235, alpha: 1))
+            context.fill(canvas.insetBy(dx: inset, dy: inset))
+            context.setFillColor(CGColor(srgbRed: 0.655, green: 0.957, blue: 0.816, alpha: 1))
+            context.fill(
+                CGRect(
+                    x: inset * 1.35,
+                    y: CGFloat(height) * 0.48,
+                    width: max(1, CGFloat(width) - inset * 2.7),
+                    height: max(8, CGFloat(height) * 0.035)))
+
+            guard let image = context.makeImage() else { throw RenderError.renderFailed }
+            return RenderedAsset(cgImage: image, profile: settings.export.colorProfile)
+        }
+    #endif
+}
+
 /// The observable document behind the Web Snapshot window: the chosen input mode, the
 /// URL/HTML the user is composing, the rendered result, and the in-flight/error state.
 ///
 /// The render itself runs here so the view stays declarative: ``render(settings:)``
-/// builds the right renderer (`HTMLRenderer` for HTML, `URLRenderer.configured` for
-/// URL), invokes it, and publishes either the `RenderedAsset` or a typed, non-PII
-/// error message. URL capture stays gated on the network entitlement inside
-/// `URLRenderer`, so a build without it surfaces a clear "only in the direct-download
-/// build" message rather than a blank result.
+/// resolves the input, delegates each viewport to the injected strategy, and publishes
+/// either the `RenderedAsset` or a typed, non-PII error message. The live strategy
+/// routes HTML to `HTMLRenderer` and URLs to `URLRenderer`; URL capture stays gated on
+/// the network entitlement inside `URLRenderer`, so a build without it surfaces a clear
+/// "only in the direct-download build" message rather than a blank result.
 @MainActor
 @Observable
 final class WebSnapshotModel {
+    private let viewportRenderer: WebSnapshotViewportRenderer
+
+    init(viewportRenderer: WebSnapshotViewportRenderer = .live) {
+        self.viewportRenderer = viewportRenderer
+    }
+
     var mode: WebInputMode = .url
     var urlText: String = ""
     var htmlText: String = ""
@@ -390,28 +484,7 @@ final class WebSnapshotModel {
         preset: WebSnapshotConfig.ViewportPreset,
         settings: AppSettings
     ) async throws -> RenderedAsset {
-        switch input {
-        case .html:
-            let renderer = HTMLRenderer(
-                viewport: preset.size,
-                scale: CGFloat(settings.export.scale),
-                profile: settings.export.colorProfile)
-            return try await renderer.render(input, config: settings.config)
-        case .url:
-            let renderer = URLRenderer(
-                scale: CGFloat(settings.export.scale),
-                viewportPreset: preset,
-                captureMode: settings.webCapture.captureMode,
-                waitStrategy: settings.webCapture.waitStrategy,
-                profile: settings.export.colorProfile,
-                dataStoreMode: settings.webCapture.dataStoreMode,
-                allowsLoopbackCapture: settings.webCapture.allowsLoopbackCapture)
-            return try await renderer.render(input, config: settings.config)
-        case .code:
-            // The web snapshot flow only ever resolves `.url`/`.html`; a `.code` input
-            // has no web renderer, so surface it as a typed failure rather than silently.
-            throw RenderError.noRendererFor(kind: "code")
-        }
+        try await viewportRenderer.render(input, preset, settings)
     }
 
     /// Trims and accepts only a single `http`/`https` URL, mirroring the renderer's own
@@ -455,8 +528,18 @@ final class WebSnapshotModel {
 final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSnapshotWindowController(
         environment: .shared,
+        model: makeSharedModel(),
         feedback: .live,
         presentation: .live)
+
+    private static func makeSharedModel() -> WebSnapshotModel {
+        #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--web-snapshot-ui-test-renderer") {
+                return WebSnapshotModel(viewportRenderer: .uiTestFixture)
+            }
+        #endif
+        return WebSnapshotModel()
+    }
 
     /// The window's working document, shared with the hosted SwiftUI view.
     let model: WebSnapshotModel

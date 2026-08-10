@@ -110,12 +110,10 @@ struct WebSnapshotModelTests {
 @MainActor
 struct URLCaptureConsentTests {
     @Test func consentIsOffByDefaultAndRoundTrips() {
-        let suite = "VitrineConsent-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = testDefaults()
 
         let settings = AppSettings(defaults: defaults)
-        // Off on a fresh suite, so the first capture always discloses first.
+        // Off in a fresh store, so the first capture always discloses first.
         #expect(!settings.webCapture.consentGiven)
 
         settings.webCapture.consentGiven = true
@@ -124,9 +122,7 @@ struct URLCaptureConsentTests {
     }
 
     @Test func resetRevokesConsent() {
-        let suite = "VitrineConsentReset-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = testDefaults()
         let settings = AppSettings(defaults: defaults)
         settings.webCapture.consentGiven = true
         settings.resetToDefaults()

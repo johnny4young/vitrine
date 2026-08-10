@@ -5,7 +5,7 @@ import Testing
 @testable import Vitrine
 
 private func freshDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrineTests-\(UUID().uuidString)")!
+    testDefaults()
 }
 
 @Suite("Preferences")
@@ -145,7 +145,7 @@ struct CaptureTests {
     /// (Go pinned) fast enough that the runner's quantized clock stamps equal dates;
     /// "Oldest First" must still show Go (pin), Python, Rust — the insertion order.
     @Test func oldestFirstWithEqualDatesFollowsInsertionOrder() {
-        let defaults = UserDefaults(suiteName: "VitrineRecentsTie-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         let store = RecentsStore(defaults: defaults)
         let sharedDate = Date(timeIntervalSinceReferenceDate: 700)
         let go = Capture(
@@ -174,7 +174,7 @@ struct CaptureTests {
     /// the tie). This is the unit-level reproduction of the flaky
     /// testRecentsCanSortOldestFirstWithoutDisplacingPins CI failure.
     @Test func equalDateAddsKeepLaterAdditionsFirstInTheStore() {
-        let defaults = UserDefaults(suiteName: "VitrineRecentsTie-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         let store = RecentsStore(defaults: defaults)
         let sharedDate = Date(timeIntervalSinceReferenceDate: 500)
         let go = Capture(

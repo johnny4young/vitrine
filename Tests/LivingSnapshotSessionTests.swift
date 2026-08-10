@@ -20,10 +20,9 @@ struct LivingSnapshotSessionTests {
         }
     }
 
-    private func settings() throws -> AppSettings {
-        try AppSettings(
-            defaults: #require(
-                UserDefaults(suiteName: "VitrineLivingSnapshot-\(UUID().uuidString)")))
+    private func settings() -> AppSettings {
+        AppSettings(
+            defaults: testDefaults())
     }
 
     private func loaded(_ text: String, url: URL) -> FileInputLoader.LoadedFile {
@@ -44,7 +43,7 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func explicitSessionRetainsAndReleasesAccessWithoutPersistingAPath() throws {
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Example.swift")
         var starts: [URL] = []
         var stops: [URL] = []
@@ -75,7 +74,7 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func cleanEditorRefreshesAutomatically() throws {
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "let value = 1")
         let session = LivingSnapshotSession(
@@ -99,7 +98,7 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func dirtyEditorRequiresAnExplicitReload() throws {
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "let value = 1")
         let session = LivingSnapshotSession(
@@ -129,7 +128,7 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func keepingLocalEditsDismissesOnlyTheCurrentNotice() throws {
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "one")
         let session = LivingSnapshotSession(
@@ -164,7 +163,7 @@ struct LivingSnapshotSessionTests {
     @Test func transientReadFailureRetriesTheSameFingerprint() throws {
         enum TestError: Error { case unavailable }
 
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "one")
         let session = LivingSnapshotSession(
@@ -200,7 +199,7 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func startReconcilesAChangeMadeDuringReplacementConfirmation() throws {
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         settings.documentCode = "one"
         let session = LivingSnapshotSession(
@@ -222,7 +221,7 @@ struct LivingSnapshotSessionTests {
     @Test func unavailableStatusRequiresARealContentReadToRecover() throws {
         enum TestError: Error { case unavailable }
 
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "one", isReadable: false)
         let session = LivingSnapshotSession(
@@ -252,7 +251,7 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func unchangedContentDoesNotClobberLocalPresentationState() throws {
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "same")
         let session = LivingSnapshotSession(
@@ -276,7 +275,7 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func explicitReloadOfUnchangedContentPreservesContentMarks() throws {
-        let settings = try settings()
+        let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let session = LivingSnapshotSession(
             settings: settings,
@@ -306,7 +305,7 @@ struct LivingSnapshotSessionTests {
         let source = directory.appendingPathComponent("Live.swift")
         try Data("one".utf8).write(to: source)
 
-        let settings = try settings()
+        let settings = settings()
         let initial = try FileInputLoader.load(from: source)
         settings.documentCode = initial.text
         let session = LivingSnapshotSession(

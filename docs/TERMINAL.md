@@ -84,7 +84,8 @@ sandboxed, the file picker's grant is what authorizes the write; a "Copy Command
 button gives the equivalent `echo … >> ~/.zshrc` for any setup the panel can't reach.
 
 (Install the CLI itself from Vitrine ▸ Settings ▸ General ▸ Command-line tool ▸
-Install…. `vgrab` requires Vitrine PRO, like all CLI rendering.)
+Install…. Basic `vgrab` capture is free. General `vitrine render`, `multi-size`, `batch`,
+and `vpane` automation remain PRO.)
 
 Then, in a new shell:
 

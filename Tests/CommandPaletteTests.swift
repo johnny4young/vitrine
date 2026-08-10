@@ -38,19 +38,41 @@ struct CommandPaletteTests {
         #expect(ids(CommandPaletteFilter.rank(catalog, query: "captura")) == ["capture"])
     }
 
+    @Test func matchingIsWidthInsensitive() {
+        let catalog = [command("capture", "Capture")]
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "Ｃａｐｔｕｒｅ")) == ["capture"])
+    }
+
+    @Test func everyTermCanMatchADifferentTargetInAnyOrder() {
+        let catalog = [
+            command("dark", "One Dark", group: "Theme", keywords: ["syntax"]),
+            command("save", "Save image", group: "Export", keywords: ["png"]),
+        ]
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "theme dark")) == ["dark"])
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "dark theme")) == ["dark"])
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "export png")) == ["save"])
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "theme png")).isEmpty)
+    }
+
     @Test func prefixBeatsWordStartBeatsSubstringBeatsSubsequence() {
         let catalog = [
-            command("subseq", "Redcap layers"),  // "rdc" subsequence only
-            command("substr", "Aardvark"),  // contains "rd"
-            command("wordstart", "Show rows"),  // word starts with "r"... use "row"
-            command("prefix", "Rotate"),  // prefix "ro"
+            command("subsequence", "Arrange code"),
+            command("substring", "Marchive"),
+            command("word-start", "Open archive"),
+            command("prefix", "Archive"),
         ]
-        // Query "ro": prefix (Rotate) > word-start (Show rows) > substring (none here).
-        let ranked = ids(CommandPaletteFilter.rank(catalog, query: "ro"))
-        #expect(ranked.first == "prefix")
-        #expect(ranked.contains("wordstart"))
-        // "Aardvark" and "Redcap" don't contain "ro" as a subsequence in order → dropped.
-        #expect(!ranked.contains("substr"))
+        #expect(
+            ids(CommandPaletteFilter.rank(catalog, query: "arc")) == [
+                "prefix", "word-start", "substring", "subsequence",
+            ])
+    }
+
+    @Test func hyphensRemainWordBoundariesButOtherPunctuationDoesNot() {
+        let catalog = [
+            command("slash", "Open/archive"),
+            command("hyphen", "Open-archive"),
+        ]
+        #expect(ids(CommandPaletteFilter.rank(catalog, query: "archive")) == ["hyphen", "slash"])
     }
 
     @Test func aTitleMatchAlwaysOutranksAKeywordOnlyMatch() {

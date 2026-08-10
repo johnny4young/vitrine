@@ -4,7 +4,7 @@ import Testing
 @testable import Vitrine
 
 private func freshDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrineMigrationTests-\(UUID().uuidString)")!
+    testDefaults()
 }
 
 /// A `UserDefaults` that counts value writes routed through `set(_:forKey:)`. Every
@@ -15,7 +15,7 @@ private func freshDefaults() -> UserDefaults {
 /// `nonisolated` so its overrides match the `nonisolated` `UserDefaults` members under
 /// the module's MainActor-default isolation (it is used synchronously on the main
 /// actor by the test).
-private nonisolated final class WriteCountingDefaults: UserDefaults {
+private nonisolated final class WriteCountingDefaults: TestUserDefaults {
     private(set) var writeCount = 0
     override func set(_ value: Any?, forKey defaultName: String) {
         writeCount += 1
@@ -237,7 +237,7 @@ struct AppSettingsMigrationTests {
     }
 
     @Test func typingOnlyCodeDoesNotRepersistTheStyleBlock() {
-        let defaults = WriteCountingDefaults(suiteName: "VitrinePerf-\(UUID().uuidString)")!
+        let defaults = WriteCountingDefaults()
         let settings = AppSettings(defaults: defaults)
         let baseline = defaults.writeCount
 
@@ -492,7 +492,7 @@ struct AppSettingsRoundTripTests {
 /// localization at launch from `AppleLanguages` in its preferences domain, so the
 /// choice is stored both as the raw enum (to drive the picker) and as the
 /// `AppleLanguages` override (to take effect on the next launch). These tests use an
-/// isolated suite, so they never touch the real app's language.
+/// isolated in-memory domain, so they never touch the real app's language.
 @MainActor
 @Suite("App UI language persistence")
 struct AppLanguagePersistenceTests {
@@ -500,11 +500,11 @@ struct AppLanguagePersistenceTests {
     private static let languageKey = "appLanguage"
     private static let appleLanguagesKey = "AppleLanguages"
 
-    /// Creates a named suite for tests that must inspect the suite's persisted domain
+    /// Creates a named in-memory domain for tests that inspect the stored domain
     /// directly, bypassing the host's NSArgumentDomain language pin.
     private static func freshLanguageDefaults() -> (suite: String, defaults: UserDefaults) {
-        let suite = "VitrineMigrationTests-\(UUID().uuidString)"
-        return (suite, UserDefaults(suiteName: suite)!)
+        let suite = "AppLanguagePersistenceTests"
+        return (suite, testDefaults())
     }
 
     /// Reads only what this app stored in its own preferences suite. `array(forKey:)`
@@ -570,7 +570,7 @@ struct AppLanguagePersistenceTests {
         let (suite, defaults) = Self.freshLanguageDefaults()
         defer { defaults.removePersistentDomain(forName: suite) }
         // Read the suite's persisted override directly, bypassing the host-locale pin the
-        // test scheme writes into the NSArgumentDomain (project.yml). A fresh suite has
+        // test scheme writes into the NSArgumentDomain (project.yml). A fresh store has
         // stored no override yet (nil).
         let inherited = Self.persistedAppleLanguages(in: defaults, suite: suite)
         let first = AppSettings(defaults: defaults)

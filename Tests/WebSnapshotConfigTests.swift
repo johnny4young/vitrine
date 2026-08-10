@@ -352,13 +352,10 @@ struct WebCaptureConfigCompositionTests {
         #expect(settings.webCapture.waitStrategy == .domContentLoaded)
     }
 
-    /// A throwaway, uniquely-named defaults suite so a test never touches real app
-    /// data and never collides with another test's settings.
+    /// A throwaway in-memory store so a test never touches real app data or another
+    /// test's settings.
     private static func isolatedDefaults() -> UserDefaults {
-        let suite = "com.johnny4young.vitrine.web-config-tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
-        return defaults
+        testDefaults()
     }
 }
 
@@ -369,9 +366,7 @@ struct WebCaptureSettingsPersistenceTests {
     @Test func theWebCaptureChoicesSurviveAReload() {
         // The user's viewport/mode/wait choices round-trip through `UserDefaults`, so
         // the picker shows the same selection on the next launch.
-        let suite = "com.johnny4young.vitrine.web-persist-tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
+        let defaults = testDefaults()
 
         let first = AppSettings(defaults: defaults)
         first.webCapture.viewportKind = .mobile
@@ -393,9 +388,7 @@ struct WebCaptureSettingsPersistenceTests {
     }
 
     @Test func resetReturnsTheWebCaptureChoicesToTheirDefaults() {
-        let suite = "com.johnny4young.vitrine.web-reset-tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
+        let defaults = testDefaults()
 
         let settings = AppSettings(defaults: defaults)
         settings.webCapture.viewportKind = .fullHD
@@ -415,9 +408,7 @@ struct WebCaptureSettingsPersistenceTests {
     @Test func aGarbagePersistedValueFallsBackToTheDocumentedDefault() {
         // The defensive-read posture: an unrecognized raw value resolves to
         // the default rather than trapping or producing an invalid setting.
-        let suite = "com.johnny4young.vitrine.web-garbage-tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
+        let defaults = testDefaults()
         defaults.set("not-a-real-kind", forKey: "webViewportKind")
         defaults.set("nonsense", forKey: "webCaptureMode")
         defaults.set("bogus", forKey: "webWaitKind")
@@ -441,9 +432,7 @@ struct WebCaptureSettingsPersistenceTests {
         // ceiling reads back as the ceiling, so the picker can never seed a wait that
         // would always blow past the hard timeout cap. The negative case is covered
         // above; this proves the upper bound is enforced on read, not just the lower.
-        let suite = "com.johnny4young.vitrine.web-wait-ceiling-tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
+        let defaults = testDefaults()
         defaults.set(99_999, forKey: "webWaitSeconds")
 
         let settings = AppSettings(defaults: defaults)
@@ -459,9 +448,7 @@ struct WebCaptureSettingsPersistenceTests {
         // can reach the composed preset as a degenerate value. The width path is
         // covered above; this closes the symmetric gap on height.
         let range = WebSnapshotConfig.ViewportPreset.customDimensionRange
-        let suite = "com.johnny4young.vitrine.web-custom-height-tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
+        let defaults = testDefaults()
         defaults.set(-7, forKey: "webCustomViewportHeight")
         #expect(AppSettings(defaults: defaults).webCapture.customViewportHeight == range.lowerBound)
 
@@ -473,9 +460,7 @@ struct WebCaptureSettingsPersistenceTests {
         // The schema adds keys with documented defaults: a store written by the
         // current build reads back at the current schema version, and the new web
         // keys do not disturb an unrelated existing value.
-        let suite = "com.johnny4young.vitrine.web-schema-tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
+        let defaults = testDefaults()
 
         let settings = AppSettings(defaults: defaults)
         settings.export.autoCopy = false
@@ -540,7 +525,7 @@ struct WebFullPageCaptureRenderTests {
 
     @Test func aVisibleViewportCaptureIsExactlyTheViewportSize() async throws {
         let engine = URLSnapshotEngine()
-        let config = WebSnapshotConfig(
+        let config = try WebSnapshotConfig(
             localFileURL: try Self.writeTallPage(contentHeight: 4000),
             viewportPreset: .custom(width: 600, height: 400),
             captureMode: .visibleViewport, scale: 1)
@@ -554,7 +539,7 @@ struct WebFullPageCaptureRenderTests {
     @Test func aFullPageCaptureExtendsToTheContentHeight() async throws {
         let contentHeight = 3000
         let engine = URLSnapshotEngine()
-        let config = WebSnapshotConfig(
+        let config = try WebSnapshotConfig(
             localFileURL: try Self.writeTallPage(contentHeight: contentHeight),
             viewportPreset: .custom(width: 600, height: 400),
             captureMode: .fullPage, scale: 1)
@@ -574,7 +559,7 @@ struct WebFullPageCaptureRenderTests {
         // pixel count is bounded no matter how long the page is.
         let cappedCaps = WebSnapshotConfig.SafetyCaps(maxPageHeight: 1200, maxTimeout: .seconds(60))
         let engine = URLSnapshotEngine()
-        let config = WebSnapshotConfig(
+        let config = try WebSnapshotConfig(
             localFileURL: try Self.writeTallPage(contentHeight: 8000),
             viewportPreset: .custom(width: 500, height: 400),
             captureMode: .fullPage, safetyCaps: cappedCaps, scale: 1)

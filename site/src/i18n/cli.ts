@@ -35,6 +35,16 @@ const both = (en: string, es: string): LocalizedText => ({ en, es });
 
 export const cliCommands: CLICommandDoc[] = [
   {
+    id: 'terminal-capture',
+    name: 'terminal-capture',
+    syntax: 'vitrine terminal-capture <capture-file> (--copy | --edit)',
+    summary: both('Free path behind vgrab', 'Ruta gratuita de vgrab'),
+    detail: both(
+      'The constrained local command emitted by vgrab. It accepts terminal width and context, but no general styling, file output, sidecars, or batch automation.',
+      'El comando local y limitado que usa vgrab. Acepta ancho y contexto de terminal, pero no estilos generales, salida a archivo, archivos auxiliares ni automatización por lotes.',
+    ),
+  },
+  {
     id: 'render',
     name: 'render',
     syntax: 'vitrine render <input> --out <image> [options]',
@@ -152,8 +162,8 @@ export const cliExamples: CLIExample[] = [
     ),
     code: 'vgrab npm test\nvgrab -e git status\nvgrab --no-context env | sort',
     note: both(
-      'Use --no-context whenever arguments, paths, or branch names should stay private.',
-      'Usa --no-context cuando los argumentos, rutas o nombres de rama deban mantenerse privados.',
+      'Basic vgrab capture is free. Use --no-context whenever arguments, paths, or branch names should stay private.',
+      'La captura básica con vgrab es gratis. Usa --no-context cuando los argumentos, rutas o nombres de rama deban mantenerse privados.',
     ),
   },
   {
@@ -239,7 +249,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
     options: [
       { flags: '-o, --out', value: '<path>', description: both('Image path, or output folder for multi-size and batch.', 'Ruta de imagen o carpeta para multi-size y batch.') },
       { flags: '--copy', description: both('Copy the rendered image to the macOS clipboard.', 'Copia la imagen al portapapeles de macOS.') },
-      { flags: '--format', value: '<png|pdf|heic|avif>', description: both('Select output encoding. A known file extension selects it automatically when omitted.', 'Selecciona la codificación. Una extensión conocida la elige automáticamente.') },
+      { flags: '--format', value: '<png|pdf|heic|avif>', description: both('Select output encoding. A known file extension selects it automatically when omitted; AVIF requires a system ImageIO writer (Tahoe or newer).', 'Selecciona la codificación. Una extensión conocida la elige automáticamente; AVIF requiere un codificador ImageIO del sistema (Tahoe o posterior).') },
       { flags: '--profile', value: '<srgb|p3>', description: both('Select the PNG color profile; sRGB is the default.', 'Selecciona el perfil de color PNG; sRGB es el predeterminado.') },
       { flags: '--scale', value: '<1|2|3>', description: both('Multiply logical canvas dimensions into final pixels.', 'Multiplica las dimensiones lógicas para obtener los píxeles finales.') },
       { flags: '--preset', value: '<id>', description: both('Use one destination size from vitrine list presets.', 'Usa un tamaño de destino de la lista de ajustes de Vitrine.') },

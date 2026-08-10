@@ -760,6 +760,20 @@ struct CLIOutputContractTests: CLITestSupport {
         }
     }
 
+    @Test func unavailableImageIOWriterReportsTheRequestedFormat() throws {
+        guard !ExportFormat.avif.isEncodingAvailable else { return }
+
+        let options = try CLIArguments.parse([
+            "render", "/does/not/exist.swift", "--out", "/tmp/out.avif", "--format", "avif",
+        ])
+        #expect(throws: CLIError.unsupportedOutputFormat("AVIF")) {
+            try CLIRenderer.run(options) { _ in
+                FileInputLoader.LoadedFile(
+                    text: "let x = 1", language: .swift, filename: "x.swift")
+            }
+        }
+    }
+
     @Test func injectedLoaderRendersWithoutTouchingTheFileSystem() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -4,8 +4,7 @@ import Foundation
 
 @MainActor
 func makeIsolatedAppMenu() -> AppMenu {
-    let defaults = UserDefaults(
-        suiteName: "VitrineAppMenuTests-\(UUID().uuidString)")!
+    let defaults = testDefaults()
     return AppMenu(
         environment: AppEnvironment(defaults: defaults),
         feedback: CaptureFeedbackPresenter(),

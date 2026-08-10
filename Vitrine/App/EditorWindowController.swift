@@ -6,7 +6,7 @@ import SwiftUI
 /// settings instance seeded from the app-wide defaults, and the live config the
 /// window's `EditorView` edits.
 ///
-/// Each session owns a *volatile* `AppSettings` so a window edits its own document and
+/// Each session owns an *ephemeral* `AppSettings` so a window edits its own document and
 /// style without disturbing the global default; "Make Default" is the explicit action
 /// that promotes a session's look back into the shared settings. The session also
 /// produces the ``EditorWindowState`` archived for state restoration and adopts a
@@ -27,7 +27,7 @@ final class EditorSession {
     let feedback: FeedbackDisplay
     let presentation: EditorPresentation
 
-    /// Creates a session for `identity` with its own volatile settings.
+    /// Creates a session for `identity` with its own ephemeral settings.
     ///
     /// The **primary** window adopts the app's live working document — the
     /// environment's app-wide config, including any code a quick capture, App Intent, or
@@ -90,11 +90,11 @@ final class EditorSession {
             Notifier.confirmation(String(localized: "Set as the default style")))
     }
 
-    /// Tears down the volatile backing store when the window closes so a per-window
-    /// suite never accumulates on disk.
+    /// Clears the ephemeral backing store when the window closes so draft objects are
+    /// released promptly.
     func discard() {
         livingSnapshot.stop()
-        settings.discardVolatileStore()
+        settings.discardEphemeralStore()
     }
 }
 
@@ -397,9 +397,9 @@ final class EditorWindowController: NSObject {
 // MARK: - NSWindowDelegate (lifecycle cleanup)
 
 extension EditorWindowController: NSWindowDelegate {
-    /// Drops the closed window and tears down its volatile session store, so closing
-    /// one window never disturbs the others' state and a per-window suite does not
-    /// linger on disk. The primary window's session is kept so reopening it
+    /// Drops the closed window and tears down its ephemeral session store, so closing
+    /// one window never disturbs the others' state or leaves its draft in memory. The
+    /// primary window's session is kept so reopening it
     /// preserves the user's in-progress document within the same launch; additional
     /// windows are released entirely.
     func windowWillClose(_ notification: Notification) {
@@ -418,21 +418,13 @@ extension EditorWindowController: NSWindowDelegate {
         }
     }
 
-    /// Tears down every session's volatile store, including the primary's.
+    /// Tears down every session's ephemeral store, including the primary's.
     ///
     /// `windowWillClose` deliberately keeps the primary session so a closed-and-reopened
-    /// editor resumes its draft, which means only app termination can discard it — and
-    /// nothing did, so every run of the app stranded one populated per-window plist
-    /// (with the user's annotation text inside) on disk, permanently. Called from
-    /// `applicationWillTerminate`.
-    ///
-    /// Precisely what this guarantees: the suites' *contents* — the user-typed text —
-    /// are removed immediately. `removePersistentDomain` can still leave an empty
-    /// husk file behind (cfprefsd owns it; racing the daemon here is the fragile
-    /// move this design avoids), and a force-quit skips this method entirely. Both
-    /// leftovers are data-free or stale respectively, and the launch sweep in
-    /// `AppSettings.sweepStaleEditorSessionSuites` collects them once they age past
-    /// its concurrent-instance guard.
+    /// editor resumes its draft, which means app termination is its normal teardown.
+    /// Session storage is process-local, so a force-quit also releases it without
+    /// leaving a persistent domain. Called from `applicationWillTerminate` to clear
+    /// values promptly during a clean shutdown.
     func discardAllSessions() {
         for (index, session) in sessions {
             session.discard()

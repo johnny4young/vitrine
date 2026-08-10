@@ -130,45 +130,52 @@ struct WebSnapshotConfig: Equatable {
     }
 }
 
-// MARK: - Hermetic test hook
+#if DEBUG
+    // MARK: - Hermetic test hook
 
-extension WebSnapshotConfig {
-    /// Builds a configuration that loads `localFileURL` **without** the http(s)
-    /// validation, for hermetic offscreen-render tests only.
-    ///
-    /// Production code can build a `WebSnapshotConfig` only through the validating
-    /// initializer, so a shipping URL capture is always an `http`/`https` page that
-    /// passed `validate(captureURL:)`. The live render path, however, must rasterize
-    /// a real page without contacting the network, which means loading a local
-    /// `file:` fixture — a scheme validation deliberately rejects. This hook exists
-    /// solely so the engine's real `load`/`takeSnapshot` path can be exercised
-    /// against a local file; it is never reached by the app or the CLI. It traps if
-    /// handed anything other than a `file:` URL, so it cannot be misused to load a
-    /// remote page behind validation's back.
-    init(
-        localFileURL: URL,
-        viewportPreset: ViewportPreset = .openGraph,
-        captureMode: CaptureMode = .visibleViewport,
-        waitStrategy: WaitStrategy = .domContentLoaded,
-        safetyCaps: SafetyCaps = .standard,
-        scale: CGFloat = 2,
-        profile: ColorProfile = .sRGB
-    ) {
-        precondition(
-            localFileURL.isFileURL,
-            "The hermetic test hook loads only a local file URL; production capture is validated http(s)."
-        )
-        self.url = localFileURL
-        self.viewportPreset = viewportPreset
-        self.captureMode = captureMode
-        self.waitStrategy = waitStrategy
-        self.safetyCaps = safetyCaps
-        self.scale = scale
-        self.profile = profile
-        self.dataStoreMode = .nonPersistent
-        self.allowsLoopbackCapture = false
+    /// A programming error in a hermetic web fixture is reported to its test rather
+    /// than terminating the test host with a precondition trap.
+    enum WebSnapshotFixtureError: Error, Equatable {
+        case nonFileURL
     }
-}
+
+    extension WebSnapshotConfig {
+        /// Builds a configuration that loads `localFileURL` **without** the http(s)
+        /// validation, for hermetic offscreen-render tests only.
+        ///
+        /// Production code can build a `WebSnapshotConfig` only through the validating
+        /// initializer, so a shipping URL capture is always an `http`/`https` page that
+        /// passed `validate(captureURL:)`. The live render path, however, must rasterize
+        /// a real page without contacting the network, which means loading a local
+        /// `file:` fixture — a scheme validation deliberately rejects. This hook exists
+        /// solely so the engine's real `load`/`takeSnapshot` path can be exercised
+        /// against a local file. It is compiled out of Release and throws when a test
+        /// supplies anything other than a `file:` URL, so neither production nor a
+        /// malformed fixture can bypass validation through a process trap.
+        init(
+            localFileURL: URL,
+            viewportPreset: ViewportPreset = .openGraph,
+            captureMode: CaptureMode = .visibleViewport,
+            waitStrategy: WaitStrategy = .domContentLoaded,
+            safetyCaps: SafetyCaps = .standard,
+            scale: CGFloat = 2,
+            profile: ColorProfile = .sRGB
+        ) throws {
+            guard localFileURL.isFileURL else {
+                throw WebSnapshotFixtureError.nonFileURL
+            }
+            self.url = localFileURL
+            self.viewportPreset = viewportPreset
+            self.captureMode = captureMode
+            self.waitStrategy = waitStrategy
+            self.safetyCaps = safetyCaps
+            self.scale = scale
+            self.profile = profile
+            self.dataStoreMode = .nonPersistent
+            self.allowsLoopbackCapture = false
+        }
+    }
+#endif
 
 // MARK: - Viewport presets
 

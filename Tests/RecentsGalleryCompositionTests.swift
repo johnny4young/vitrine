@@ -36,8 +36,7 @@ struct RecentsGalleryCompositionTests {
     }
 
     @Test func controllerSuppliesOneDependencyGraphToItsRoot() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineRecentsComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let display = DisplaySpy()
         let navigation = NavigationSpy()
@@ -91,7 +90,10 @@ struct RecentsGalleryCompositionTests {
                 !code.contains(forbiddenDependency),
                 "RecentsGalleryView must receive \(forbiddenDependency) from its controller")
         }
-        #expect(code.contains("UUID().uuidString"))
+        let persistentSuiteConstructor = "UserDefaults(" + "suiteName:"
+        #expect(code.contains("AppEnvironment(defaults: InMemoryUserDefaults())"))
+        #expect(!code.contains(persistentSuiteConstructor))
+        #expect(!code.contains("preconditionFailure"))
         #expect(!code.contains("?? UserDefaults()"))
     }
 }

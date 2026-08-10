@@ -48,6 +48,7 @@ enum GitDiffInputLoader {
         case gitFailed
         case emptyDiff
         case tooLarge
+        case invalidContextLines(Int)
     }
 
     typealias Executor = @MainActor (Invocation) throws -> ExecutionResult
@@ -60,7 +61,9 @@ enum GitDiffInputLoader {
             fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true),
         executor: Executor = execute
     ) throws -> FileInputLoader.LoadedFile {
-        precondition(contextLinesRange.contains(contextLines))
+        guard contextLinesRange.contains(contextLines) else {
+            throw LoadError.invalidContextLines(contextLines)
+        }
         let invocation = Invocation(
             executableURL: URL(fileURLWithPath: "/usr/bin/git"),
             arguments: [

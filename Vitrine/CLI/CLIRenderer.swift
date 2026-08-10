@@ -182,20 +182,17 @@ enum CLIRenderer {
         watermarkLogo: CLIRenderResources.PreparedWatermarkLogo?
     ) throws -> String {
         let sourceURL = URL(fileURLWithPath: options.inputPath)
-        let data: Data
-        do {
-            data = try Data(contentsOf: sourceURL)
-        } catch {
-            throw CLIError.inputUnreadable(path: options.inputPath)
-        }
         let directory = CLIRenderResources.temporaryImageDirectory()
         let store = BackgroundImageStore(directory: directory)
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let reference: ImageReference
         do {
-            reference = try store.importImage(
-                data: data, preferredExtension: sourceURL.pathExtension)
+            reference = try store.importImage(from: sourceURL)
+        } catch BackgroundImageStore.ImportError.copyFailed {
+            throw CLIError.inputUnreadable(path: options.inputPath)
+        } catch BackgroundImageStore.ImportError.tooLarge {
+            throw CLIError.inputImageTooLarge(path: options.inputPath)
         } catch BackgroundImageStore.ImportError.notAnImage {
             throw CLIError.inputNotImage(path: options.inputPath)
         } catch {
@@ -311,11 +308,16 @@ enum CLIRenderer {
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile = {
             try FileInputLoader.load(from: $0)
         },
+        stage: (String, Language?) -> URL? = {
+            EditorHandoff.stage(content: $0, language: $1)
+        },
         open: (URL) -> Bool = { NSWorkspace.shared.open($0) }
     ) throws -> String {
         let loaded = try loadInput(options, fileLoader: fileLoader)
         let language = options.language ?? loaded.language
-        let url = EditorHandoff.stage(content: loaded.text, language: language)
+        guard let url = stage(loaded.text, language) else {
+            throw CLIError.editorHandoffFailed
+        }
         guard open(url) else { throw CLIError.editorOpenFailed }
         Log.export.notice("CLI handed the source to the editor (--edit)")
         if options.jsonOutput {
@@ -384,6 +386,8 @@ enum CLIRenderer {
                 throw CLIError.gitDiffEmpty
             } catch GitDiffInputLoader.LoadError.tooLarge {
                 throw CLIError.gitDiffTooLarge
+            } catch GitDiffInputLoader.LoadError.invalidContextLines(let value) {
+                throw CLIError.invalidValue(flag: "--git-context", value: String(value))
             } catch {
                 throw CLIError.gitDiffFailed
             }

@@ -132,14 +132,18 @@ struct PaywallSheet: View {
             VStack(spacing: 10) {
                 // The buy path: open the Lemon Squeezy checkout. The license key arrives by
                 // email; pasting it in the field below activates PRO (verified offline after).
-                Link(destination: LemonSqueezyStore.checkoutURL) {
-                    Text("Get Vitrine PRO").frame(maxWidth: .infinity)
+                if let checkout = VitrineLinks.lemonSqueezyCheckout {
+                    Link(destination: checkout) {
+                        Text("Get Vitrine PRO").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .accessibilityIdentifier("pro-get-license-button")
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .accessibilityIdentifier("pro-get-license-button")
 
-                TextField("Enter your license key", text: $licenseKey)
+                // A license key is a credential. Keep it masked so release QA recordings,
+                // screenshots, and shoulder-surfing cannot expose the pasted value.
+                SecureField("Enter your license key", text: $licenseKey)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("pro-license-field")
                 Button {

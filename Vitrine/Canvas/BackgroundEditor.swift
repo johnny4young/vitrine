@@ -338,8 +338,10 @@ struct ImageBackgroundEditor: View {
             let reference = try imageStore.importImage(from: url)
             image.reference = reference
             importError = nil
+        } catch let error as BackgroundImageStore.ImportError {
+            importError = error.message
         } catch {
-            importError = "That file could not be used as a background image."
+            importError = BackgroundImageStore.ImportError.copyFailed.message
         }
     }
 
@@ -363,21 +365,11 @@ struct ImageBackgroundEditor: View {
             do {
                 image.reference = try await imageStore.importImage(downloadedFrom: url)
                 urlText = ""
+            } catch let error as BackgroundImageStore.ImportError {
+                importError = error.message
             } catch {
-                importError = Self.downloadErrorMessage(for: error)
+                importError = BackgroundImageStore.ImportError.downloadFailed.message
             }
-        }
-    }
-
-    /// Maps a download failure to a short, plain-language reason for the inspector.
-    private static func downloadErrorMessage(for error: Error) -> String {
-        switch error {
-        case BackgroundImageStore.ImportError.tooLarge:
-            return String(localized: "That image is too large to use as a background.")
-        case BackgroundImageStore.ImportError.notAnImage:
-            return String(localized: "That URL didn't return a usable image.")
-        default:
-            return String(localized: "Couldn't download an image from that URL.")
         }
     }
 }

@@ -6,8 +6,10 @@
 > runbook. This file assumes those credentials already exist and covers running the
 > pipeline.
 
-Vitrine ships as a Developer ID-signed, notarized DMG attached to a GitHub release,
-installable via a Homebrew cask. The pipeline degrades gracefully: without signing
+Vitrine's canonical distribution channels are a Developer ID-signed, notarized DMG
+attached to a GitHub release and the Homebrew cask that consumes it. The Mac App Store
+is an optional secondary GUI-only channel and never blocks a direct-channel release. The
+pipeline degrades gracefully: without signing
 secrets it still produces an **unsigned** DMG for local development — but that
 unsigned build is **never production-ready** (Gatekeeper rejects it). See
 [Signing, notarization & Gatekeeper](#signing-notarization--gatekeeper).
@@ -47,22 +49,27 @@ the reviewed version section in `CHANGELOG.md`.
 CI is a release gate, not just a compile check.
 
 - **`.github/workflows/ci.yml`** runs on every push to `main` and every pull
-  request. Before building, it records the exact toolchain — macOS image, Xcode,
-  and Swift versions — into the job summary, so a green or red result is always
-  tied to a known environment. It validates every workflow's YAML, then runs
-  `make lint`, `make build`, `make build-ui-tests`, and `make test`. The Swift
-  Package Manager download cache is restored between runs (keyed on `project.yml`,
+  request. Its macOS gates are an explicit two-row runtime matrix:
+  `macos-15` (Sequoia) and `macos-26` (Tahoe). Before building, each row records
+  the exact image, Xcode, and Swift versions into the job summary, so a green or
+  red result is always tied to a known environment. CI validates every workflow's
+  YAML, then runs `make lint`, `make build`, `make build-release`,
+  `make build-ui-tests`, and `make test-coverage`. The Release lane compiles both arm64
+  and x86_64 with optimization on every supported runner, so optimizer-only failures are
+  caught before packaging. The Swift Package Manager download cache is restored between
+  runs (keyed on `project.yml`,
   the dependency source of truth) to cut build time without risking a stale build.
   A parallel **`UI tests` job** executes the full XCUITest suite (`make test-ui`)
-  on the same triggers — see *Running the UI tests* below.
+  plus the strict visual evidence tour (`make test-visual`) on both OS rows and the
+  same triggers — see *Running the UI tests* below.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
   without re-running CI.
 - **Weekly drift watch.** A scheduled run (Mondays 08:00 UTC, also available via
-  *Run workflow*) re-runs the full gate against the current `macos-latest` image.
-  GitHub rolls that image and the bundled Xcode/SDK on its own cadence, which can
-  break the build with no code change; the scheduled run surfaces that drift on a
+  *Run workflow*) re-runs the full Sequoia + Tahoe matrix. GitHub rolls both
+  explicit images and their bundled Xcode/SDKs on its own cadence, which can break
+  the build with no code change; the scheduled run surfaces that drift on a
   predictable day instead of on the next unrelated PR.
 - **Pinned release tooling and dependency inventory.** CI downloads XcodeGen's official
   universal release archive, verifies its pinned SHA-256 digest, and installs it into a
@@ -75,11 +82,92 @@ CI is a release gate, not just a compile check.
   `needs:`. A tag therefore cannot publish a DMG unless lint, build, the unit
   suite, and the UI-test compile all pass on the tagged commit.
 
+### Supported macOS matrix
+
+`project.yml` remains the source of truth and keeps a macOS 14.0 deployment target;
+this band does not remove the existing Sonoma-compatible binary floor. Active runtime
+certification starts with the versions requested for current support:
+
+| Runtime | GitHub label | Required gates |
+| --- | --- | --- |
+| macOS 15 Sequoia | `macos-15` | Build, unit/integration, performance, golden rendering, full UI suite, strict visual tour |
+| macOS 26 Tahoe | `macos-26` | Build, unit/integration, performance, golden rendering, full UI suite, strict visual tour |
+
+Both are standard arm64 GitHub-hosted labels. `setup-xcode` selects the newest stable
+Xcode installed on each image, and the workflow logs the resolved versions instead of
+assuming they match. `fail-fast: false` ensures a failure on one OS never cancels the
+evidence from the other. Artifact names include `sequoia-15` or `tahoe-26`, preventing
+parallel matrix uploads from colliding.
+
+The matrix also proves capability-specific UI rather than pretending both systems ship
+identical codecs. ImageIO exposes PNG, PDF, and HEIC writers on both rows; AVIF is shown
+and restored only when `CGImageDestinationCopyTypeIdentifiers()` reports its writer
+(Tahoe and newer). Sequoia must omit AVIF from interactive pickers and return a typed CLI
+error for an explicit AVIF request instead of surfacing a late generic render failure.
+
+An unreleased future macOS major is not silently claimed as supported. Add its explicit
+runner label to both matrices, obtain a green build/UI/visual run, and update this table
+before calling that runtime certified.
+
+### Unit-test lanes
+
+`make test` is the default local feedback lane. It runs the complete Swift Testing
+suite with coverage explicitly disabled, avoiding an Xcode 26 failure mode where the
+test process finishes successfully but `xcodebuild` stalls while finalizing coverage.
+This changes instrumentation only; it does not select or skip tests.
+
+`make test-coverage` runs the same complete suite with coverage explicitly enabled.
+CI uses this lane on both supported macOS rows, retains the `.xcresult`, and publishes
+per-target `xccov` output in the job summary. Keep the lanes separate: local feedback
+must not depend on coverage finalization, and CI coverage must not depend implicitly on
+the Xcode scheme default.
+
+### Dynamic memory evidence
+
+Run `make memory-smoke` before a release candidate and after changes to window,
+renderer, observer, or asynchronous-task lifecycles. It runs the normal headless Debug
+build, reusing Xcode's already-resolved exact package checkouts, then launches a selected
+isolated journey under Apple's `leaks --atExit`. The default editor journey exercises
+window rendering and repeated snapshot rasterization. The image journey imports and
+decodes a deterministic sequence through the production `BackgroundImageStore`, replaces
+and clears the live foreground image, rejects duplicate window snapshots so disconnected
+UI state cannot pass silently, and removes its synthetic temporary store before reporting
+completion. The raw memgraph, full stack report, launch log, and a machine-readable
+summary are retained below `build/memory-smoke/<timestamp>/`.
+
+```bash
+make memory-smoke
+
+# Exercise distinct foreground-image imports, decodes, replacements, and teardown.
+make memory-smoke MEMORY_JOURNEY=image-import-cycle
+
+# Compare counts and footprints with an earlier run from the same OS, architecture,
+# Xcode, and journey. The report marks either kind of drift instead of pretending the
+# evidence is comparable.
+make memory-smoke \
+  MEMORY_JOURNEY=image-import-cycle \
+  MEMORY_BASELINE=build/memory-smoke/<earlier-run>/report.json
+```
+
+This is deliberately an **evidence lane, not a zero-leak CI gate**. At-exit analysis
+cannot detect every reachable retain cycle or prove a stable long-running footprint;
+Apple frameworks can own reported roots; and a Vitrine frame only proves that the app
+was on an allocation path, not that it owns the leaked object. Snapshot rasterization
+also contributes to the peak footprint. Review the root stacks in `leaks.txt` and the
+memgraph before classifying a regression. The command fails when the build, journey,
+capture, or report is invalid, but it does not silently allowlist framework roots or
+turn their mere presence into an app failure. Keep all generated evidence local and
+untracked. The image journey deliberately uses local bounded fixtures; it does not replace
+the unit coverage for oversized/corrupt inputs and does not simulate an external item
+provider that never calls back.
+
 ### Running the UI tests
 
 **The full UI suite (`make test-ui`) runs in CI on every PR and push to `main`**,
 as the dedicated `UI tests` job in `ci.yml`, alongside the compile-only
 `make build-ui-tests` step that also remains in the build job and the release gate.
+Both `macos-15` Sequoia and `macos-26` Tahoe must finish; the matrix does not cancel
+one runtime merely because the other failed.
 
 Driving the menu-bar app through XCUIAutomation requires the macOS
 "automation permission" — the interactive UI-automation consent that the first
@@ -89,7 +177,9 @@ no prompt: the images are provisioned for headless UI automation
 enable-automationmode-without-authentication`, SIP disabled — see
 `images/macos/scripts/build/configure-machine.sh` in `actions/runner-images`),
 verified empirically on the `macos-15-arm64` image (20260527.0100.1): the suite
-executes end to end. One sharp edge from that verification: `automationmodetool`
+executes end to end. The explicit `macos-26` row applies the same gate and captures
+the same diagnostics on Tahoe. One sharp edge from the Sequoia verification:
+`automationmodetool`
 *reports* "Automation Mode is disabled" on that image even though automation
 works, so the CI job records the authorization state as a diagnostic instead of
 gating on it. When the job fails because the XCUITest session could not
@@ -102,6 +192,15 @@ can report unrelated windows as "interrupting elements" (Slack, browsers, or an
 IDE on another display) even when the app itself is healthy. If a local run fails
 only with interrupting-window diagnostics, close or hide those windows and rerun
 the focused test before treating it as a product regression.
+
+Both `make test-ui` and `make test-visual` now inspect the process table before
+deleting old result bundles or launching Xcode. An active macOS UI-test runner —
+including a stale Vitrine runner or a runner from another checkout — fails the
+preflight with its PID and executable name. Concurrent runners can steal focus and
+TestManager ownership, so their failures are not trustworthy product evidence.
+Finish or stop the existing suite explicitly, then rerun; the preflight never
+terminates another process automatically. `make ui-test-preflight-check` exercises
+the parser with deterministic fixtures and is part of `make lint`.
 
 **The display-geometry-sensitive tests run on CI too.** Four tests
 (`testEditorExposesMakeDefaultToolbarAction`,
@@ -121,10 +220,36 @@ the display again, individual tests can still be excluded with
 `make test-ui TEST_UI_SKIP="<test> <test>"` — if you reintroduce that in `ci.yml`,
 annotate every skipped test on every run so the skip stays visible.
 
+Hosted virtualization can expose different screen coordinate spaces to the XCTest
+process and the launched app. Product windows therefore size and clamp themselves only
+against AppKit's own `NSScreen.visibleFrame`; transferring XCTest coordinates into the
+app would mix incompatible spaces. Welcome accepts a compact width, while Recents uses
+an adaptive in-content action bar so every action remains present when AppKit reports a
+narrow logical display. Failure attachments include both AppKit and XCUIAutomation
+geometry for diagnosis. Targeted UI selectors also choose a hittable match when AppKit
+exposes one identifier on both a wrapper and its nested control, which keeps the same
+assertions valid across Sequoia and Tahoe accessibility trees.
+
 The release gate (`release.yml`) still only *compiles* the UI tests: every commit
 on `main` has already had the full suite executed by `ci.yml`, and a UI-level
 flake should not block an urgent tag. Run `make test-ui` locally before tagging if
 the release includes UI changes that never went through a PR.
+
+### Running the strict visual tour
+
+`make test-visual` runs the 53-state `ScreenshotTourUITests` catalog separately from
+the ordinary UI smoke suite. Every state is a required `.xcresult` attachment: a
+missing state, invalid or duplicate PNG, empty capture frame, source/manifest drift,
+or a capture attempted while another application is frontmost fails the command.
+The validator then exports stable filenames plus a dimension/hash manifest under
+`build/screenshot-tour/`; the raw bundle remains at
+`build/screenshot-tour.xcresult` for offline diagnostics.
+
+CI runs this gate on every pull request and push to `main` and uploads the friendly
+evidence even on success. For a local run, keep Vitrine frontmost and avoid launching
+other applications until the tour finishes. This is intentional: visual evidence
+that contains an interrupting browser, terminal, or IDE must fail rather than be
+mistaken for a valid Vitrine screenshot.
 
 ## Signing, notarization & Gatekeeper
 
@@ -137,7 +262,14 @@ Gatekeeper rejects the artifact.
 
 What the script does for a signed build:
 
-1. **Signs** the app with the Developer ID Application identity.
+Before either the signed or unsigned path can create a DMG, the script builds for a
+generic macOS destination with `ONLY_ACTIVE_ARCH=NO` and `ARCHS="arm64 x86_64"`. It
+then enumerates **every executable Mach-O payload** in the app with `lipo -archs` and requires both
+architectures. This includes the embedded CLI, menu-bar helper, frameworks, and XPC
+services; checking only the outer executable would allow a partially thin app to reach
+Intel users. A missing architecture stops before signing or notarization.
+
+1. **Signs** the already-verified universal app with the Developer ID Application identity.
 2. **Keeps the hardened runtime on** (`ENABLE_HARDENED_RUNTIME=YES`, set in
    `project.yml` and re-asserted on the signed build) — required for notarization.
 3. **Requests secure code-signing timestamps** (`OTHER_CODE_SIGN_FLAGS=--timestamp`)
@@ -425,6 +557,12 @@ mechanism, and a third-party updater is disallowed there) — see
   `CODE_SIGN_ENTITLEMENTS`. The default and App Store builds keep the minimal
   `Vitrine.entitlements` (no network, no Sparkle), so the local rendering "no network" posture in
   [`docs/PERMISSIONS.md`](PERMISSIONS.md) is unchanged.
+- **Sandboxed installer service.** `Info.plist` sets
+  `SUEnableInstallerLauncherService = YES`, which Sparkle requires for every sandboxed host.
+  `Installer.xpc` remains inside `Sparkle.framework`; do not copy or rename it. The app already
+  owns `com.apple.security.network.client`, so `SUEnableDownloaderService` stays disabled.
+  `scripts/build-dmg.sh` rejects a packaged app unless the final Info.plist, embedded service,
+  and expanded `-spks` / `-spki` mach-lookup entitlements agree.
 - **No analytics.** Sparkle's optional system profiling is off (`SUEnableSystemProfiling`
   is `NO`, and no profiling delegate is installed), so an update check sends only the
   requests needed to fetch the appcast and the chosen download — no telemetry.
@@ -524,8 +662,14 @@ counts on those releases are the evidence for that, not a guess.
 2. Tag *N+1* (after bumping the versions in `project.yml`) so the release workflow
    publishes its DMG and the refreshed appcast.
 3. Launch the installed *N* and choose **Check for Updates…** — Sparkle should find *N+1*,
-   verify its EdDSA signature against `SUPublicEDKey`, and install it. A download whose
-   signature does not verify is rejected, which is the man-in-the-middle protection.
+   verify its EdDSA signature against `SUPublicEDKey`, and offer **Install Update**.
+4. Click **Install Update** and require the app to relaunch on *N+1* with no installer or
+   authorization error. Detecting and downloading the update is not a pass: the release gate
+   covers the complete sandboxed Installer Launcher journey.
+
+A download whose signature does not verify is rejected, which is the man-in-the-middle
+protection. Record the installed source/candidate versions and the final relaunched version in
+the QA log. **Do not publish a direct-download release until this N-to-N+1 installation passes.**
 
 ### App Store build excludes Sparkle
 
@@ -563,9 +707,9 @@ the only place this check is meaningful.
 
 `scripts/qa-release.sh` drives it. The script is deliberately self-contained: it needs
 only the artifact and the stock macOS command-line tools (`codesign`, `spctl`,
-`stapler`, `hdiutil`, `plutil`, `sw_vers`, `uname`), so you can copy that one file — or
-download it with the release — onto the clean Mac and run it without checking out the
-repo.
+`stapler`, `hdiutil`, `plutil`, `lipo`, `base64`, `sw_vers`, `uname`, `stat`), so you can copy
+that one file — or download it with the release — onto the clean Mac and run it without
+checking out the repo.
 
 ```bash
 # On the clean Mac, against the downloaded release DMG:
@@ -589,7 +733,15 @@ app inside it: `codesign --verify --deep --strict`, the hardened-runtime flag, `
 `plutil` Info.plist validation (including `LSUIElement`, the no-Dock-icon marker).
 It also requires the embedded `VitrineMenuBarHelper` executable and proves that its
 signature retains `com.apple.security.app-sandbox` plus
-`com.apple.security.inherit`.
+`com.apple.security.inherit`. It enumerates every executable Mach-O in the downloaded app with
+`lipo -archs` and rejects the artifact if the app, embedded CLI, helper, framework, or
+XPC service lacks either arm64 or x86_64. For the direct-download PRO channel, it additionally
+requires `VitrineLicenseSigningKey` to exist and decode to exactly 32 bytes. That check
+uses private mode-`0600` temporary files and reports only pass/fail — it never prints the
+embedded private key. The same artifact check requires
+`SUEnableInstallerLauncherService = YES`, an embedded Sparkle `Installer.xpc`, and final
+`network.client` plus matching `-spks` / `-spki` entitlements; it rejects the unnecessary
+Downloader service because this app already has direct network access.
 
 **App bug vs. signing failure.** A failed check is classified and the **exit code says
 which class** it is, because the two have completely different owners and fixes:
@@ -622,12 +774,40 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
 9. **Settings** — Settings panes load and a changed setting persists across relaunch.
 10. **Launch at login** — toggling it on auto-starts Vitrine after a re-login/reboot;
     toggling it off stops that.
-11. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
+11. **PRO activation** — while online, open a PRO-gated action, paste the dedicated live
+    QA license into the masked field, activate, and confirm the sheet closes and PRO
+    unlocks. Never put the raw license key in a screenshot, shell history, or QA log.
+12. **Offline relaunch** — quit, disconnect every network interface, relaunch, and confirm
+    PRO remains unlocked and a PRO-only multi-size export succeeds.
+13. **PRO CLI** — still offline, run the bundled `vitrine-cli multi-size` path and confirm
+    it writes the requested images. This proves the separate process accepts the app's
+    signed token; a basic render is not sufficient because basic terminal capture may be
+    free in a later tier contract.
+14. **Token permissions** — without reading or printing it, confirm the non-empty
+    `pro-license.token` mirror has POSIX mode exactly `0600`.
+15. **N to N+1 update** — install the previous direct-download release in a disposable QA
+    location, choose **Check for Updates…**, click **Install Update**, and confirm Vitrine
+    relaunches on the candidate version without an installer or authorization error.
+16. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
     leaves no menu-bar icon and no login item behind.
 
-Record one QA log entry per release (environment header + each checklist result). The
-optional `codesign`/`spctl`/`plutil`/`stapler` checks above run automatically; the
-interactive items above are the manual half.
+Record one QA log entry per release (environment header + each checklist result). For PRO,
+record only the dedicated QA license label or a **redacted** order/license identifier and
+the outcome. **Never record** the raw license key, embedded private signing key, or token
+contents. Before the first public sale — and whenever checkout, pricing, fulfillment email,
+or product configuration changes — also complete a production-mode checkout from the public
+website and confirm the license email arrives. The optional
+`codesign`/`spctl`/`plutil`/`stapler` checks above run automatically; the interactive items
+above are the manual half. See [`ACTIVATION.md`](ACTIVATION.md) for exact secret-safe CLI and
+token-permission commands.
+
+The direct-download lifecycle can deactivate seats created by current builds because the
+activation record retains the exact provider instance. Include that explicit Settings →
+About action in buyer-journey QA when activation/deactivation code changes. Activations
+created by older builds without that record still require the purchase portal or support.
+Automatic cross-device Restore and periodic remote seat/refund re-validation remain out of
+scope. Upgrades/offline relaunches preserve the local token; a clean Mac activates the
+license again.
 
 ## Checklist
 
@@ -649,4 +829,6 @@ interactive items above are the manual half.
       `brew install`/`brew uninstall --cask` smoke-tested on a clean Mac
 - [ ] **Release artifact QA on a clean Mac** done: `scripts/qa-release.sh` run against
       the published DMG, its environment header + manual checklist recorded in the
-      release QA log, and any failure triaged as app bug vs. signing/notarization
+      release QA log (including secret-safe online activation, offline relaunch,
+      PRO-only CLI multi-size, and `0600` token proof), and any failure triaged as app bug
+      vs. signing/notarization

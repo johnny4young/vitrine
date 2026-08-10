@@ -26,8 +26,9 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     /// A deterministic identity lets the app repair the exact persistence keys AppKit
     /// applies while Control Center hosts the item. The historical names cover builds
     /// that let AppKit or SwiftUI choose an identity.
-    static let autosaveName = "VitrinePrimaryStatusItem"
-    static let repairedAutosaveNames = [autosaveName, "Item-0", "Item-1", "Item-2"]
+    static let autosaveName = MenuBarStatusItemVisibility.primaryAutosaveName
+    static let repairedAutosaveNames =
+        MenuBarStatusItemVisibility.repairedAutosaveNames(currentAutosaveName: autosaveName)
     /// Vitrine owns dismissal because the helper's opening click comes from another
     /// process. Explicit event monitors reproduce native outside-interaction behavior
     /// without treating that cross-process handoff as an immediate dismissal.
@@ -174,13 +175,9 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     /// Takes the store so a test can assert the repair against an isolated suite instead
     /// of the running app's own defaults.
     static func repairVisibilityDefaults(in defaults: UserDefaults = .standard) {
-        for autosaveName in repairedAutosaveNames {
-            defaults.set(true, forKey: "NSStatusItem VisibleCC \(autosaveName)")
-            defaults.set(true, forKey: "NSStatusItem Visible \(autosaveName)")
-        }
-        // AppKit reads these keys while attaching the out-of-process Control Center
-        // host, so flush the repair before that host finishes materializing the item.
-        defaults.synchronize()
+        MenuBarStatusItemVisibility.repair(
+            in: defaults,
+            currentAutosaveName: autosaveName)
     }
 
     // MARK: - Panel

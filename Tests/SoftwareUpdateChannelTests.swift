@@ -372,6 +372,22 @@ struct SoftwareUpdateChannelTests {
             "the App Store / local rendering entitlements must not carry Sparkle's XPC exceptions")
     }
 
+    /// Sandboxed Sparkle hosts must explicitly enable the Installer Launcher service.
+    /// The service stays inside Sparkle.framework; the app already owns network.client,
+    /// so enabling the optional Downloader service would add a second, unnecessary path.
+    @Test func sandboxedAppEnablesOnlyTheRequiredSparkleInstallerService() throws {
+        let plist = try Self.infoPlist()
+
+        #expect(
+            plist["SUEnableInstallerLauncherService"] as? Bool == true,
+            "sandboxed direct-download builds must enable Sparkle's Installer Launcher XPC service"
+        )
+        #expect(
+            plist["SUEnableDownloaderService"] as? Bool != true,
+            "the app already has network.client, so Sparkle's Downloader XPC service must stay disabled"
+        )
+    }
+
     /// The DMG packaging step selects the direct-download entitlements, so the shipped DMG
     /// actually grants Sparkle its capabilities (rather than the minimal set, which would
     /// leave the updater unable to download under the sandbox).
@@ -383,6 +399,17 @@ struct SoftwareUpdateChannelTests {
         #expect(
             script.contains("VITRINE_ENTITLEMENTS_FILE="),
             "build-dmg.sh must select the entitlements file via VITRINE_ENTITLEMENTS_FILE")
+        #expect(
+            script.contains("assert_sparkle_sandbox_contract"),
+            "build-dmg.sh must validate the final packaged Sparkle sandbox integration")
+        for requirement in [
+            "SUEnableInstallerLauncherService", "Installer.xpc", "network.client", "-spks",
+            "-spki",
+        ] {
+            #expect(
+                script.contains(requirement),
+                "the artifact-level Sparkle gate must inspect \(requirement)")
+        }
     }
 
     // MARK: - Contract: documentation (keys generated + documented; N→N+1; signature; channels)

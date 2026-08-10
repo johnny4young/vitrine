@@ -36,8 +36,7 @@ struct EditorFeedbackTests {
     }
 
     @Test func editorSessionUsesTheInjectedDisplayWhenPromotingItsStyle() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineEditorFeedback-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let display = DisplaySpy()
         let session = EditorSession(
@@ -58,8 +57,7 @@ struct EditorFeedbackTests {
     }
 
     @Test func appMenuSuppliesFeedbackAndPresentationToEditorCommands() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineEditorFeedback-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let display = DisplaySpy()
         let presentation = PresentationSpy()
@@ -84,8 +82,7 @@ struct EditorFeedbackTests {
     }
 
     @Test func windowControllerSuppliesPresentationRoutesToEachSession() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineEditorFeedback-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let presentation = PresentationSpy()
         let controller = EditorWindowController(

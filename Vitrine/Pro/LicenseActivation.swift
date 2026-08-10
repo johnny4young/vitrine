@@ -34,7 +34,9 @@ import Foundation
 
     /// A typed activation failure, so the paywall can tell "wrong key" from "no internet"
     /// instead of one generic message.
-    enum LicenseActivationError: Error, Equatable {
+    enum LicenseActivationError: Error, Equatable, Sendable {
+        /// This build has no valid activation endpoint, so no credential may be sent.
+        case notConfigured
         /// Lemon Squeezy rejected the key (unknown, disabled, or refunded).
         case invalidKey
         /// The key is valid but already activated on its maximum number of machines.
@@ -53,13 +55,50 @@ import Foundation
         func activate(licenseKey: String, instanceName: String) async throws -> LicenseActivation
     }
 
+    /// The traceable result of releasing one activation instance at the provider.
+    struct LicenseDeactivation: Equatable, Sendable {
+        let licenseID: String
+    }
+
+    /// Typed remote failures keep local cleanup policy out of the HTTP client.
+    enum LicenseDeactivationError: Error, Equatable, Sendable {
+        /// This build has no valid deactivation endpoint, so the seat stays active.
+        case notConfigured
+        /// The specific instance is already absent, so local cleanup is safe and idempotent.
+        case alreadyInactive
+        /// The request never reached a provider verdict.
+        case network(String)
+        /// The provider reached a verdict but would not release this instance.
+        case refused(String)
+    }
+
+    /// Releases a previously recorded provider instance. The raw key crosses only this
+    /// boundary and is never exposed to defaults, diagnostics, or the CLI token file.
+    protocol LicenseKeyDeactivator: Sendable {
+        func deactivate(
+            licenseKey: String, instanceID: String
+        ) async throws
+            -> LicenseDeactivation
+    }
+
     /// The production validator: a thin client for the Lemon Squeezy License API
     /// (`POST /v1/licenses/activate`). The license key is itself the credential, so no Lemon
     /// Squeezy API secret is embedded in the app. Response parsing is a pure, testable
     /// function (`parse(status:data:)`) exercised with canned payloads.
-    nonisolated struct LemonSqueezyValidator: LicenseKeyValidator {
+    nonisolated struct LemonSqueezyValidator: LicenseKeyValidator, LicenseKeyDeactivator {
+        /// Public identifiers for the live Vitrine PRO product. A successful License API
+        /// response is not authorization by itself: Lemon Squeezy keys from another product
+        /// use the same endpoint and response shape. Pinning the store + product makes the
+        /// activation boundary fail closed without embedding an API secret. Keep the product
+        /// id stable when adding price variants; update it only when replacing the product.
+        nonisolated static let expectedStoreID = 408_765
+        nonisolated static let expectedProductID = 1_156_861
+
         /// The activation endpoint. Overridable so a test or a self-host can repoint it.
         var endpoint = VitrineLinks.lemonSqueezyActivationEndpoint
+        /// Kept separate from activation so tests and alternate deployments cannot
+        /// accidentally send credentials to the wrong route.
+        var deactivationEndpoint = VitrineLinks.lemonSqueezyDeactivationEndpoint
         /// Bound the one online activation attempt so a stalled network does not leave the
         /// paywall spinner waiting indefinitely.
         nonisolated static let requestTimeout: TimeInterval = 20
@@ -69,6 +108,7 @@ import Foundation
         func activate(
             licenseKey: String, instanceName: String
         ) async throws -> LicenseActivation {
+            guard let endpoint else { throw LicenseActivationError.notConfigured }
             var request = URLRequest(url: endpoint)
             request.httpMethod = "POST"
             request.setValue(
@@ -87,6 +127,27 @@ import Foundation
             }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             return try Self.parse(status: status, data: data)
+        }
+
+        func deactivate(
+            licenseKey: String, instanceID: String
+        ) async throws -> LicenseDeactivation {
+            guard let deactivationEndpoint else {
+                throw LicenseDeactivationError.notConfigured
+            }
+            let request = Self.deactivationRequest(
+                licenseKey: licenseKey,
+                instanceID: instanceID,
+                endpoint: deactivationEndpoint)
+            let data: Data
+            let response: URLResponse
+            do {
+                (data, response) = try await session.data(for: request)
+            } catch {
+                throw LicenseDeactivationError.network(error.localizedDescription)
+            }
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return try Self.parseDeactivation(status: status, data: data)
         }
 
         /// A privacy-scoped session for license activation. The license key is a credential,
@@ -112,6 +173,25 @@ import Foundation
             return pairs.sorted().joined(separator: "&").data(using: .utf8) ?? Data()
         }
 
+        /// Builds the credential-bearing request as a pure value so its route, method,
+        /// headers, timeout, and exact form fields remain regression-tested without network
+        /// interception or shared mutable URL-protocol state.
+        nonisolated static func deactivationRequest(
+            licenseKey: String, instanceID: String, endpoint: URL
+        ) -> URLRequest {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "POST"
+            request.setValue(
+                "application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.httpBody = formBody([
+                "license_key": licenseKey,
+                "instance_id": instanceID,
+            ])
+            request.timeoutInterval = requestTimeout
+            return request
+        }
+
         /// Maps a Lemon Squeezy activation response to a `LicenseActivation` or a typed error.
         /// Pure and `nonisolated` so tests can drive it with canned bytes off the main actor.
         nonisolated static func parse(status: Int, data: Data) throws -> LicenseActivation {
@@ -133,10 +213,58 @@ import Foundation
                     ? LicenseActivationError.invalidKey
                     : LicenseActivationError.server(message)
             }
+
+            // The public License API accepts keys for every Lemon Squeezy product. Never mint
+            // a Vitrine token from a merely-valid foreign or test-mode key. The successful
+            // response must carry the documented license id, active status, and the pinned
+            // Vitrine store/product identity. Missing identity fails closed too.
+            guard let licenseKey = decoded.licenseKey,
+                let licenseID = licenseKey.id,
+                licenseKey.status == "active",
+                licenseKey.testMode != true,
+                decoded.meta?.storeID == expectedStoreID,
+                decoded.meta?.productID == expectedProductID
+            else {
+                throw LicenseActivationError.invalidKey
+            }
             return LicenseActivation(
-                licenseID: decoded.licenseKey?.id.map(String.init) ?? "",
+                licenseID: String(licenseID),
                 instanceID: instance.id,
-                status: decoded.licenseKey?.status ?? "active")
+                status: licenseKey.status ?? "active")
+        }
+
+        /// Maps a deactivation response without trusting a generic success-shaped payload.
+        /// The provider must confirm this Vitrine product and return a traceable license id.
+        nonisolated static func parseDeactivation(
+            status: Int, data: Data
+        ) throws -> LicenseDeactivation {
+            guard let decoded = try? JSONDecoder().decode(LSDeactivateResponse.self, from: data)
+            else {
+                throw LicenseDeactivationError.network(
+                    "Unreadable response (HTTP \(status)).")
+            }
+            guard decoded.deactivated, (200...299).contains(status) else {
+                let message = decoded.error ?? "Deactivation was refused."
+                let normalized = message.lowercased()
+                let namesInstance = normalized.contains("instance")
+                let saysAbsent =
+                    normalized.contains("not found")
+                    || normalized.contains("inactive")
+                    || normalized.contains("already deactivated")
+                if namesInstance && saysAbsent {
+                    throw LicenseDeactivationError.alreadyInactive
+                }
+                throw LicenseDeactivationError.refused(message)
+            }
+            guard let licenseKey = decoded.licenseKey,
+                let licenseID = licenseKey.id,
+                licenseKey.testMode != true,
+                decoded.meta?.storeID == expectedStoreID,
+                decoded.meta?.productID == expectedProductID
+            else {
+                throw LicenseDeactivationError.refused("Untrusted license identity.")
+            }
+            return LicenseDeactivation(licenseID: String(licenseID))
         }
 
         /// The subset of the Lemon Squeezy activation response the app reads.
@@ -145,15 +273,63 @@ import Foundation
             let error: String?
             let licenseKey: LSLicenseKey?
             let instance: LSInstance?
+            let meta: LSMeta?
 
             struct LSLicenseKey: Decodable {
                 let id: Int?
                 let status: String?
+                let testMode: Bool?
+
+                enum CodingKeys: String, CodingKey {
+                    case id, status
+                    case testMode = "test_mode"
+                }
             }
             struct LSInstance: Decodable { let id: String }
+            struct LSMeta: Decodable {
+                let storeID: Int?
+                let productID: Int?
+
+                enum CodingKeys: String, CodingKey {
+                    case storeID = "store_id"
+                    case productID = "product_id"
+                }
+            }
 
             enum CodingKeys: String, CodingKey {
-                case activated, error, instance
+                case activated, error, instance, meta
+                case licenseKey = "license_key"
+            }
+        }
+
+        private struct LSDeactivateResponse: Decodable {
+            let deactivated: Bool
+            let error: String?
+            let licenseKey: LSLicenseKey?
+            let meta: LSMeta?
+
+            struct LSLicenseKey: Decodable {
+                let id: Int?
+                let testMode: Bool?
+
+                enum CodingKeys: String, CodingKey {
+                    case id
+                    case testMode = "test_mode"
+                }
+            }
+
+            struct LSMeta: Decodable {
+                let storeID: Int?
+                let productID: Int?
+
+                enum CodingKeys: String, CodingKey {
+                    case storeID = "store_id"
+                    case productID = "product_id"
+                }
+            }
+
+            enum CodingKeys: String, CodingKey {
+                case deactivated, error, meta
                 case licenseKey = "license_key"
             }
         }
@@ -161,8 +337,8 @@ import Foundation
 
     /// The outcome of an activation attempt, surfaced to the UI.
     enum ActivationOutcome: Equatable {
-        /// Activated; carries the locally-signed token to persist.
-        case activated(signedToken: String)
+        /// Activated; carries the locally-signed token and the secret seat record to persist.
+        case activated(signedToken: String, record: LicenseActivationRecord)
         /// Lemon Squeezy rejected the key.
         case invalidKey
         /// The key is valid but its activation limit is reached.
@@ -201,11 +377,19 @@ import Foundation
                     licenseKey: key, instanceName: instanceName)
                 let token = LicenseToken(licenseID: activation.licenseID, issuedAt: now())
                 let signed = try LicenseSigner.sign(token, with: signingKey)
-                return .activated(signedToken: signed)
+                guard
+                    let record = LicenseActivationRecord(
+                        licenseKey: key,
+                        licenseID: activation.licenseID,
+                        instanceID: activation.instanceID)
+                else { return .invalidKey }
+                return .activated(signedToken: signed, record: record)
             } catch LicenseActivationError.invalidKey {
                 return .invalidKey
             } catch LicenseActivationError.activationLimitReached {
                 return .activationLimitReached
+            } catch LicenseActivationError.notConfigured {
+                return .notConfigured
             } catch LicenseActivationError.server(let message) {
                 // Log a typed reason plus a derived length only — the server-supplied
                 // message is external, untrusted text and must never be logged at
@@ -227,15 +411,51 @@ import Foundation
         }
     }
 
-    /// The public Lemon Squeezy checkout for Vitrine PRO, opened by the paywall's
-    /// purchase button. Direct-download only; the App Store build unlocks through
-    /// StoreKit instead. The early-bird price is set on the product in Lemon Squeezy
-    /// (no discount code), so the link carries no query parameters.
-    enum LemonSqueezyStore {
-        /// Checkout for the one-time PRO license.
-        static let checkoutURL = URL(
-            string: "https://johnny4young.lemonsqueezy.com/checkout/buy/"
-                + "314e7d43-efa1-41be-a319-7474628e5185"
-        )!
+    /// The remote verdict surfaced to entitlement coordination and Settings.
+    enum LicenseDeactivationOutcome: Equatable, Sendable {
+        case deactivated
+        case alreadyInactive
+        case notActivated
+        case network
+        case refused
+        /// A different activation replaced the requested record while the network awaited.
+        case superseded
+        /// The provider released the seat, but local token cleanup must be retried.
+        case localCleanupFailed
+
+        var permitsLocalCleanup: Bool {
+            self == .deactivated || self == .alreadyInactive
+        }
     }
+
+    /// Resolves only the remote half of deactivation. Entitlement coordination owns the
+    /// record comparison and local cleanup so actor reentrancy cannot clear a newer seat.
+    @MainActor
+    struct LicenseDeactivationService {
+        let deactivator: LicenseKeyDeactivator
+
+        func deactivate(record: LicenseActivationRecord) async -> LicenseDeactivationOutcome {
+            do {
+                let result = try await deactivator.deactivate(
+                    licenseKey: record.licenseKey,
+                    instanceID: record.instanceID)
+                guard result.licenseID == record.licenseID else {
+                    return .refused
+                }
+                return .deactivated
+            } catch LicenseDeactivationError.alreadyInactive {
+                return .alreadyInactive
+            } catch LicenseDeactivationError.notConfigured {
+                return .refused
+            } catch LicenseDeactivationError.refused(let message) {
+                Log.settings.error(
+                    "License deactivation refused by server (message length \(message.count, privacy: .public))"
+                )
+                return .refused
+            } catch {
+                return .network
+            }
+        }
+    }
+
 #endif

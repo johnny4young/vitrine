@@ -90,9 +90,8 @@ struct WorkflowConfigurationTests {
     // MARK: - Contract: log exact macOS / Xcode versions before building
 
     /// The CI workflow must record the exact toolchain (macOS image, Xcode, Swift)
-    /// before it builds, since it runs on the moving `macos-latest` image rather than a
-    /// pinned one. The contract is satisfied by *logging* the versions; assert the
-    /// version-probe commands are present and that the step runs before the build.
+    /// before it builds. The explicit OS labels still receive rolling image/toolchain
+    /// updates, so each result must remain traceable to the versions it exercised.
     @Test func ciLogsExactToolchainVersionsBeforeBuilding() throws {
         let ci = try Self.ci()
         #expect(ci.contains("sw_vers"), "CI must log the macOS version (sw_vers)")
@@ -105,6 +104,78 @@ struct WorkflowConfigurationTests {
         #expect(
             toolchainMarker.lowerBound < buildMarker.lowerBound,
             "Toolchain versions must be logged before building")
+    }
+
+    // MARK: - Contract: certify Sequoia and Tahoe explicitly
+
+    @Test func ciCertifiesSequoiaAndTahoeAcrossBuildAndUIJobs() throws {
+        let ci = try Self.ci()
+        let buildMarker = try #require(ci.range(of: "\n  build:"))
+        let uiMarker = try #require(ci.range(of: "\n  ui-test:"))
+        let buildJob = String(ci[buildMarker.lowerBound..<uiMarker.lowerBound])
+        let uiJob = String(ci[uiMarker.lowerBound...])
+
+        for (name, job) in [("build", buildJob), ("UI", uiJob)] {
+            #expect(job.contains("runner: macos-15"), "\(name) matrix must exercise Sequoia")
+            #expect(job.contains("runner: macos-26"), "\(name) matrix must exercise Tahoe")
+            #expect(
+                job.contains("runs-on: ${{ matrix.runner }}"),
+                "\(name) job must run on its explicit matrix label")
+            #expect(
+                job.contains("fail-fast: false"),
+                "\(name) matrix must finish both OS rows even when one fails")
+        }
+
+        #expect(!ci.contains("runs-on: macos-latest"))
+        #expect(buildJob.contains("make test-coverage RESULT_BUNDLE="))
+        #expect(buildJob.contains("make perf"))
+        #expect(buildJob.contains("GoldenImageTests"))
+        #expect(uiJob.contains("make test-ui RESULT_BUNDLE="))
+        #expect(uiJob.contains("make test-visual"))
+
+        // Matrix jobs can upload concurrently. Every artifact name needs an OS suffix,
+        // otherwise upload-artifact rejects the second writer for the same name.
+        for artifact in [
+            "xcresults", "launch-gallery", "golden-diffs", "ui-test-xcresult",
+            "screenshot-tour",
+        ] {
+            #expect(
+                ci.contains("name: \(artifact)-${{ matrix.artifact }}"),
+                "\(artifact) must be unique per compatibility row")
+        }
+
+        let doc = try Self.releasingDoc()
+        for term in ["Sequoia", "Tahoe", "macos-15", "macos-26"] {
+            #expect(doc.contains(term), "RELEASING.md must document \(term)")
+        }
+    }
+
+    // MARK: - Contract: fast local tests and explicit CI coverage
+
+    @Test func unitTestLanesSeparateFastFeedbackFromCoverageCollection() throws {
+        let make = try Self.makefile()
+        let project = try Self.text("project.yml")
+        let testMarker = try #require(make.range(of: "\ntest: project"))
+        let coverageMarker = try #require(make.range(of: "\ntest-coverage: project"))
+        let uiMarker = try #require(make.range(of: "\n## build-ui-tests:"))
+        let fastLane = String(make[testMarker.lowerBound..<coverageMarker.lowerBound])
+        let coverageLane = String(make[coverageMarker.lowerBound..<uiMarker.lowerBound])
+
+        #expect(fastLane.contains("-enableCodeCoverage NO"))
+        #expect(coverageLane.contains("-enableCodeCoverage YES"))
+        #expect(fastLane.contains("$(RESULT_BUNDLE_FLAG)"))
+        #expect(coverageLane.contains("$(RESULT_BUNDLE_FLAG)"))
+        #expect(project.contains("gatherCoverageData: false"))
+
+        let ci = try Self.ci()
+        #expect(ci.contains("make test-coverage RESULT_BUNDLE="))
+        #expect(!ci.contains("run: make test RESULT_BUNDLE="))
+        #expect(ci.contains("xcrun xccov view --report --only-targets"))
+    }
+
+    @Test func swiftWarningsFailEveryAppOwnedTargetBuild() throws {
+        let project = try Self.text("project.yml")
+        #expect(project.contains("SWIFT_TREAT_WARNINGS_AS_ERRORS: YES"))
     }
 
     // MARK: - Contract: cache SPM dependencies where safe
@@ -199,6 +270,33 @@ struct WorkflowConfigurationTests {
             "Makefile must pass -resultBundlePath to xcodebuild when RESULT_BUNDLE is set")
     }
 
+    // MARK: - Contract: compile optimized universal builds before packaging
+
+    @Test func ciAndReleaseCompileAUniversalOptimizedBuild() throws {
+        let make = try Self.makefile()
+        let releaseMarker = try #require(make.range(of: "\nbuild-release: project"))
+        let cliMarker = try #require(make.range(of: "\n## cli:"))
+        let lane = String(make[releaseMarker.lowerBound..<cliMarker.lowerBound])
+        for required in [
+            "-configuration Release",
+            "generic/platform=macOS",
+            "ONLY_ACTIVE_ARCH=NO",
+            "ARCHS='arm64 x86_64'",
+            "$(RESULT_BUNDLE_FLAG)",
+        ] {
+            #expect(lane.contains(required), "universal Release lane must contain \(required)")
+        }
+
+        for (name, workflow) in [("CI", try Self.ci()), ("release", try Self.release())] {
+            #expect(
+                workflow.contains("make build-release RESULT_BUNDLE="),
+                "\(name) must compile the optimized universal app")
+            #expect(
+                workflow.contains("build-release.xcresult"),
+                "\(name) must retain optimized-build diagnostics")
+        }
+    }
+
     // MARK: - Contract: run `make build-ui-tests` on every PR
 
     @Test func ciRunsBuildUITestsOnPullRequests() throws {
@@ -239,9 +337,12 @@ struct WorkflowConfigurationTests {
     @Test func releaseRefusesToPublishWhenAnyGateFails() throws {
         let release = try Self.release()
 
-        // A verify job runs all four gate checks.
+        // A verify job runs every gate check, including both build configurations.
         #expect(release.contains("make lint"), "release gate must run lint")
         #expect(release.contains("make build "), "release gate must run the Debug build")
+        #expect(
+            release.contains("make build-release "),
+            "release gate must run the optimized universal build")
         #expect(
             release.contains("make build-ui-tests"),
             "release gate must compile the UI tests")
@@ -350,9 +451,9 @@ struct WorkflowConfigurationTests {
 
     // MARK: - Contract: the release gate logs the exact toolchain before building
 
-    /// The release `verify` job runs on the same moving `macos-latest` image as CI, so
-    /// the "log exact macOS/Xcode/Swift versions before building" contract applies to
-    /// it too: a DMG must be traceable to the toolchain it was validated against. Assert
+    /// The release `verify` job still runs on the moving `macos-latest` image, so the
+    /// "log exact macOS/Xcode/Swift versions before building" contract applies to it:
+    /// a DMG must be traceable to the toolchain it was validated against. Assert
     /// the version-probe commands are present in `release.yml` and run before its first
     /// build, so a future edit that drops toolchain logging from the release gate fails
     /// the suite rather than shipping an untraceable artifact.
@@ -381,7 +482,9 @@ struct WorkflowConfigurationTests {
         let release = try Self.release()
 
         // Every build/test phase in the gate must request an .xcresult bundle.
-        for phase in ["make build ", "make build-ui-tests ", "make test "] {
+        for phase in [
+            "make build ", "make build-release ", "make build-ui-tests ", "make test ",
+        ] {
             let invocation = try #require(
                 release.components(separatedBy: .newlines).first { $0.contains(phase) },
                 "release gate must invoke `\(phase.trimmingCharacters(in: .whitespaces))`")
@@ -474,6 +577,37 @@ struct WorkflowConfigurationTests {
         )
     }
 
+    /// A second macOS XCUITest runner can steal focus and TestManager ownership,
+    /// producing failures that look like product regressions. Both executable UI
+    /// lanes must fail before deleting prior evidence or launching xcodebuild, and
+    /// the parser must remain covered by the normal lint gate.
+    @Test func makefilePreflightsUITestIsolation() throws {
+        let make = try Self.makefile()
+        let script = try Self.text("scripts", "check-ui-test-environment.py")
+
+        let ordinaryStart = try #require(make.range(of: "\ntest-ui: project"))
+        let ordinaryEnd = try #require(make.range(of: "\n## ui-test-preflight-check:"))
+        let ordinary = String(make[ordinaryStart.lowerBound..<ordinaryEnd.lowerBound])
+        let ordinaryPreflight = try #require(
+            ordinary.range(of: "python3 scripts/check-ui-test-environment.py"))
+        let ordinaryCleanup = try #require(ordinary.range(of: "rm -rf"))
+        #expect(ordinaryPreflight.lowerBound < ordinaryCleanup.lowerBound)
+
+        let visualStart = try #require(make.range(of: "\ntest-visual: project"))
+        let visualEnd = try #require(make.range(of: "\n## perf:"))
+        let visual = String(make[visualStart.lowerBound..<visualEnd.lowerBound])
+        let visualPreflight = try #require(
+            visual.range(of: "python3 scripts/check-ui-test-environment.py"))
+        let visualCleanup = try #require(visual.range(of: "rm -rf"))
+        #expect(visualPreflight.lowerBound < visualCleanup.lowerBound)
+
+        #expect(make.contains("ui-test-preflight-check:"))
+        #expect(make.contains("scripts/check-ui-test-environment.py --self-test"))
+        #expect(script.contains("ps\", \"-ww\", \"-axo\", \"pid=,command="))
+        #expect(script.contains("UITests-Runner.app/Contents/MacOS"))
+        #expect(script.contains("does not terminate test processes automatically"))
+    }
+
     // MARK: - Contract: the UI-test execution policy is documented
 
     @Test func releasingDocExplainsTheUITestPolicy() throws {
@@ -494,6 +628,9 @@ struct WorkflowConfigurationTests {
             doc.localizedCaseInsensitiveContains("automation permission"),
             "RELEASING.md must explain the automation-permission requirement (interactive locally, pre-authorized in CI)"
         )
+        #expect(
+            doc.localizedCaseInsensitiveContains("active macOS UI-test runner"),
+            "RELEASING.md must explain the foreign-runner isolation preflight")
     }
 
     // MARK: - Contract: CI is documented as a release gate

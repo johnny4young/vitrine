@@ -29,11 +29,48 @@ final class Entitlements {
 
     private let provider: EntitlementProvider
 
+    #if VITRINE_DIRECT_DOWNLOAD
+        /// The remote seat-release boundary. Production uses Lemon Squeezy; a Debug-only
+        /// UI fixture injects a deterministic local deactivator so automation never handles
+        /// a real credential or contacts the network.
+        private let licenseDeactivationService: LicenseDeactivationService
+
+        /// Invalidates older suspended license operations when a newer user action begins.
+        private var licenseOperationGeneration = 0
+    #endif
+
     /// Seeds `isPro` from the provider's cached flag — instant and offline, so the first
     /// frame already reflects the last known state with no flash.
-    init(provider: EntitlementProvider) {
-        self.provider = provider
-        self.isPro = provider.cachedIsPro
+    #if VITRINE_DIRECT_DOWNLOAD
+        init(
+            provider: EntitlementProvider,
+            licenseDeactivationService: LicenseDeactivationService = LicenseDeactivationService(
+                deactivator: LemonSqueezyValidator())
+        ) {
+            self.provider = provider
+            self.licenseDeactivationService = licenseDeactivationService
+            self.isPro = provider.cachedIsPro
+        }
+    #else
+        init(provider: EntitlementProvider) {
+            self.provider = provider
+            self.isPro = provider.cachedIsPro
+        }
+    #endif
+
+    /// Builds the app-wide entitlement graph. Debug UI automation can opt into a complete,
+    /// secret-free managed-license fixture; every other launch follows the real build channel.
+    static func makeDefault(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Entitlements {
+        #if DEBUG && VITRINE_DIRECT_DOWNLOAD
+            if let fixture = ManagedLicenseUITestFixture.makeEntitlements(
+                environment: environment)
+            {
+                return fixture
+            }
+        #endif
+        return Entitlements(provider: defaultProvider(environment: environment))
     }
 
     /// Whether `feature` is available. PRO unlocks as a single tier in v1, so every
@@ -79,6 +116,15 @@ final class Entitlements {
     }
 
     #if VITRINE_DIRECT_DOWNLOAD
+        /// The direct-download license state Settings can manage without revealing secrets.
+        var directLicenseManagementState: DirectLicenseManagementState {
+            guard let provider = provider as? LicenseKeyProvider else { return .unavailable }
+            if provider.activationRecordForDeactivation != nil {
+                return isPro ? .active : .cleanupNeeded
+            }
+            return provider.hasLegacyActivation ? .legacy : .unavailable
+        }
+
         /// Activates a Lemon Squeezy license key on the direct-download build (
         /// embedded-key activation model), returning whether PRO is unlocked afterward.
         ///
@@ -90,11 +136,62 @@ final class Entitlements {
         func activate(licenseKey: String) async -> Bool {
             let service = LicenseActivationService(
                 validator: LemonSqueezyValidator(), signingKey: LicenseSigningKey.embedded)
-            if case .activated(let signedToken) = await service.activate(licenseKey: licenseKey) {
-                (provider as? LicenseKeyProvider)?.setToken(signedToken)
+            return await activate(licenseKey: licenseKey, using: service)
+        }
+
+        /// Injectable form used by deterministic tests. A recoverable record always wins over
+        /// a new activation attempt: contacting the provider first could consume another seat
+        /// before the old instance is released.
+        func activate(
+            licenseKey: String,
+            using service: LicenseActivationService
+        ) async -> Bool {
+            guard let licenseProvider = provider as? LicenseKeyProvider,
+                licenseProvider.activationRecordForDeactivation == nil
+            else { return isPro }
+
+            licenseOperationGeneration += 1
+            let generation = licenseOperationGeneration
+            let outcome = await service.activate(licenseKey: licenseKey)
+            guard generation == licenseOperationGeneration else { return isPro }
+            if case .activated(let signedToken, let record) = outcome {
+                _ = licenseProvider.setActivation(
+                    signedToken: signedToken,
+                    record: record)
             }
             await refresh()
             return isPro
+        }
+
+        /// Releases this machine's direct-download seat and clears entitlement state only
+        /// after a conclusive provider verdict. Network and refusal outcomes preserve PRO.
+        func deactivateLicense() async -> LicenseDeactivationOutcome {
+            await deactivateLicense(using: licenseDeactivationService)
+        }
+
+        /// Injectable form used by deterministic tests. The full record is captured before
+        /// suspension and compared again during cleanup, because actor state may change at
+        /// every `await`.
+        func deactivateLicense(
+            using service: LicenseDeactivationService
+        ) async -> LicenseDeactivationOutcome {
+            guard let provider = provider as? LicenseKeyProvider,
+                let record = provider.activationRecordForDeactivation
+            else { return .notActivated }
+
+            licenseOperationGeneration += 1
+            let generation = licenseOperationGeneration
+            let remoteOutcome = await service.deactivate(record: record)
+            guard generation == licenseOperationGeneration else { return .superseded }
+            guard remoteOutcome.permitsLocalCleanup else { return remoteOutcome }
+
+            let cleanup = provider.clearActivation(ifMatching: record)
+            await refresh()
+            switch cleanup {
+            case .cleared: return remoteOutcome
+            case .superseded: return .superseded
+            case .failed: return .localCleanupFailed
+            }
         }
     #endif
 
@@ -104,9 +201,10 @@ final class Entitlements {
     /// succeeds. In a **Debug** build only, `VITRINE_PRO_UNLOCK=1` swaps in
     /// `DebugUnlockProvider` so PRO can be exercised locally — that override is compiled
     /// out of release, so a shipped binary has no path to PRO through it.
-    static func defaultProvider() -> EntitlementProvider {
+    static func defaultProvider(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> EntitlementProvider {
         #if DEBUG
-            let environment = ProcessInfo.processInfo.environment
             if environment["VITRINE_PRO_UNLOCK"] == "1" {
                 return DebugUnlockProvider()
             }
@@ -129,6 +227,18 @@ final class Entitlements {
         #endif
     }
 }
+
+#if VITRINE_DIRECT_DOWNLOAD
+    /// Secret-free state for the About pane's direct-download license section.
+    enum DirectLicenseManagementState: Equatable {
+        case unavailable
+        case active
+        /// A valid token issued before instance records were introduced.
+        case legacy
+        /// A provider seat exists but local entitlement persistence/cleanup needs retrying.
+        case cleanupNeeded
+    }
+#endif
 
 /// A gated PRO capability. Each case carries its own paywall copy so the
 /// `PaywallSheet` reads its title and blurb straight from the feature the user

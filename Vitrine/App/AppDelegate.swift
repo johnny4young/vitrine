@@ -182,10 +182,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
         NSApp.setActivationPolicy(.accessory)
 
-        // Collect per-window suite files stranded by earlier runs (force-quits, and
-        // every run before the terminate-time discard existed). No session of this
-        // process exists yet, so anything old enough to clear the concurrent-instance
-        // guard is garbage.
+        // Collect persistent per-window suites created by earlier releases. Current
+        // sessions are process-local, but existing installs may still carry old files;
+        // anything past the concurrent-instance age guard is safe to migrate away.
         AppSettings.sweepStaleEditorSessionSuites(
             preferencesDirectory: AppSettings.preferencesDirectory)
 
@@ -331,8 +330,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         Log.app.notice("Vitrine terminating")
-        // The primary editor session survives window close by design, so this is the
-        // only place its volatile suite can be discarded.
+        // The primary editor session survives window close by design, so clean shutdown
+        // is its normal opportunity to clear ephemeral draft objects promptly.
         EditorWindowController.shared.discardAllSessions()
         hotkeyTask?.cancel()
         menuBarPresenceTask?.cancel()

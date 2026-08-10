@@ -6,9 +6,7 @@ import Testing
 @Suite("Settings reset coordination")
 struct SettingsResetCoordinatorTests {
     @Test func resetClearsPersistedAndLiveStoreState() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineSettingsResetCoordinatorTests-\(UUID().uuidString)")
-        )
+        let defaults = testDefaults()
         let settings = AppSettings(defaults: defaults)
         let presets = PresetStore(defaults: defaults)
         let themes = CustomThemeStore(defaults: defaults)

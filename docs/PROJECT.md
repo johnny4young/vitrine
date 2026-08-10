@@ -44,14 +44,25 @@ checks when they add meaningful value without fragmenting the codebase.
 ## Distribution and business model
 
 The source and free product are MIT-licensed. Signed, notarized releases are
-available from GitHub and through the Homebrew cask. The same app can also be built
-for App Store distribution.
+available through two canonical channels: the signed, notarized DMG linked by the
+website and GitHub Releases, and the Homebrew cask. Homebrew is the recommended
+developer route because it also places the CLI on `PATH`; the DMG is the direct route
+and can enable its embedded CLI from Settings. The optional App Store build is a
+secondary GUI-only channel rather than a prerequisite or a replacement for either
+canonical route.
 
 An optional one-time PRO purchase funds development. PRO adds Brand Kit,
-multi-size export, carousel workflows, and automation-oriented capabilities. The
-render core and normal editing workflow remain available without PRO. StoreKit is
-used for the App Store channel; the direct-download channel verifies signed license
+multi-size export, carousel workflows, and advanced automation-oriented capabilities.
+Basic `vgrab` terminal capture, the render core, and the normal editing workflow remain
+available without PRO. StoreKit is used for the App Store channel; the direct-download
+channel verifies signed license
 data locally. See [`PRO.md`](PRO.md) and [`ACTIVATION.md`](ACTIVATION.md).
+
+There is **no expiring trial**. The indefinitely usable free core is the product's
+evaluation surface: no watermark, resolution cap, account, or launch-time nag. PRO is
+never temporarily unlocked; its paywall appears only when a user explicitly invokes a
+PRO action. This keeps the promise testable and avoids a second entitlement lifecycle
+whose expiry, clock, offline, and recovery behavior could drift from the real license.
 
 ## Privacy and permissions
 

@@ -83,6 +83,11 @@ The direct-download build updates itself with [Sparkle](https://sparkle-project.
 update mechanism and a third-party updater is not permitted there. The exclusion is enforced,
 not just intended:
 
+- The sandboxed direct-download build enables Sparkle's framework-contained Installer Launcher
+  with `SUEnableInstallerLauncherService`; its packaging gate verifies the embedded service and
+  matching `-spks` / `-spki` entitlements. This direct-channel key is inert once Sparkle is
+  compiled out and stripped from the App Store archive.
+
 - The App Store archive builds with `SWIFT_ACTIVE_COMPILATION_CONDITIONS` overridden to remove
   `VITRINE_DIRECT_DOWNLOAD`, so every `#if VITRINE_DIRECT_DOWNLOAD` block (the whole Sparkle
   integration and the **Check for Updates…** menu item) compiles out — `SoftwareUpdater.isSupported`

@@ -37,6 +37,24 @@ import Foundation
 /// lines inside a JSX open tag, can mis-indent that line; four or more adjacent
 /// quotes (`""""`) can be misread as a triple-quote opener.
 enum CodeFormatter {
+    /// Runs the bounded pure formatter away from the caller's actor. Swift 6.2 keeps
+    /// ordinary async functions on their caller's executor, so the explicit
+    /// `@concurrent` hop is what prevents a large interactive format from blocking
+    /// AppKit's main actor. Cancellation is checked on both sides of the synchronous
+    /// transform: callers can suppress obsolete results even though the formatter's
+    /// one-megabyte input cap already bounds the CPU work itself.
+    @concurrent
+    nonisolated static func tidyConcurrently(
+        _ code: String, language: Language
+    ) async throws
+        -> String
+    {
+        try Task.checkCancellation()
+        let result = tidy(code, language: language)
+        try Task.checkCancellation()
+        return result
+    }
+
     /// Tidies `code` for display by routing on the language's ``Language/formatStrategy``:
     /// brace/tag languages are structurally re-indented, JSON gets its exact re-indent,
     /// whitespace-significant languages are dedented, and formats where leading

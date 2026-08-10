@@ -78,7 +78,7 @@ struct AnnotationTests {
     // MARK: - Persistence
 
     @Test func persistsAndReadsBackThroughTheConfig() {
-        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         var config = SnapshotConfig()
         config.annotations = [
             Annotation(kind: .arrow, start: CGPoint(x: 0.3, y: 0.5), end: CGPoint(x: 0.6, y: 0.5)),
@@ -97,7 +97,7 @@ struct AnnotationTests {
     }
 
     @Test func emptyAnnotationsClearTheStoredKey() {
-        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         var config = SnapshotConfig()
         config.annotations = [
             Annotation(kind: .arrow, start: CGPoint(x: 0.3, y: 0.5), end: CGPoint(x: 0.6, y: 0.5))
@@ -112,7 +112,7 @@ struct AnnotationTests {
     }
 
     @Test func corruptStoreDegradesToNoAnnotations() {
-        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         defaults.set(Data("not json".utf8), forKey: SettingsCodec.Keys.annotations)
         #expect(SettingsCodec.readConfig(from: defaults).annotations.isEmpty)
     }
@@ -180,7 +180,7 @@ struct AnnotationTests {
 
     /// A spotlight survives the persistence round-trip.
     @Test func spotlightRoundTripsThroughPersistence() {
-        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         var config = SnapshotConfig()
         config.annotations = [
             Annotation(
@@ -255,7 +255,7 @@ struct AnnotationTests {
 
     /// A curved arrow survives the persistence round-trip.
     @Test func curvedArrowRoundTripsThroughPersistence() {
-        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         var config = SnapshotConfig()
         config.annotations = [
             Annotation(
@@ -301,7 +301,7 @@ struct AnnotationTests {
 
     /// A sticker survives the persistence round-trip (kind + glyph + anchor).
     @Test func stickerRoundTripsThroughPersistence() {
-        let defaults = UserDefaults(suiteName: "VitrineAnnotationTests-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         var config = SnapshotConfig()
         config.annotations = [
             Annotation(

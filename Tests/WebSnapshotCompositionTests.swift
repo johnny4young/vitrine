@@ -44,8 +44,7 @@ struct WebSnapshotCompositionTests {
     }
 
     @Test func controllerSuppliesOneDependencyGraphToItsRoot() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let model = WebSnapshotModel()
         let display = DisplaySpy()
@@ -83,8 +82,7 @@ struct WebSnapshotCompositionTests {
     }
 
     @Test func signInActionUsesTheInjectedPresentation() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let model = WebSnapshotModel()
         let presentation = PresentationSpy()
@@ -101,8 +99,7 @@ struct WebSnapshotCompositionTests {
     }
 
     @Test func shareActionUsesTheInjectedPresentation() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let model = WebSnapshotModel()
         model.renderedAsset = try Self.tinyRenderedAsset()
@@ -121,8 +118,7 @@ struct WebSnapshotCompositionTests {
     @Test func exportAllUsesTheInjectedDirectoryAndRevealsOnlyACompleteBatch() throws {
         let directory = try Self.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let model = WebSnapshotModel()
         let asset = try Self.tinyRenderedAsset()
@@ -161,8 +157,7 @@ struct WebSnapshotCompositionTests {
         try FileManager.default.createDirectory(
             at: blockedOutput,
             withIntermediateDirectories: false)
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let model = WebSnapshotModel()
         let asset = try Self.tinyRenderedAsset()
@@ -189,8 +184,7 @@ struct WebSnapshotCompositionTests {
     }
 
     @Test func cancelledExportDoesNotWriteOrPresentFeedback() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineWebComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let model = WebSnapshotModel()
         let asset = try Self.tinyRenderedAsset()

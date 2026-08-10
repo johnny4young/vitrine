@@ -3,6 +3,23 @@
 This document mirrors the shipping module layout in [`Vitrine/`](../Vitrine) and the
 runtime boundaries enforced by the test suite.
 
+## Product and distribution boundaries
+
+Vitrine has one open-core product contract, not separate demo and paid render engines.
+There is **no expiring trial**: the indefinitely usable free core is the evaluation
+surface, while PRO gates only additive output and automation at UI/CLI/system edges.
+The render core never reads entitlement state, and the app never manufactures a temporary
+PRO entitlement or a trial clock. This removes an entire expiry/offline/recovery state
+machine and keeps free and PRO pixels on the same deterministic path.
+
+Homebrew and the signed, notarized DMG are the canonical distribution channels. They
+share the direct-download build, Sparkle updater, offline signed-license provider, and
+embedded CLI; Homebrew additionally places the CLI on `PATH`. The optional App Store
+build is a secondary GUI-only variant selected at build boundaries: it removes Sparkle,
+network-backed features, and the CLI, and resolves PRO through StoreKit. Channel-specific
+capabilities are compiled and entitlement-gated explicitly rather than discovered at
+runtime.
+
 ## Experience: menu-bar status item + panel
 
 The app lives behind an AppKit `NSStatusItem`. Clicking the icon opens an
@@ -49,6 +66,10 @@ The helper watches the exact containing app process and exits with it. The main 
 monitors the helper and relaunches it if needed, retaining a stable in-process
 `NSStatusItem` only as a launch fallback and for UI automation. This keeps one source of
 truth for every command and prevents a second menu implementation from drifting.
+Argument parsing, exact PID/bundle owner matching, watchdog decisions, and historical
+status-item visibility repair live in a pure contract shared by both targets. Unit tests
+therefore exercise the helper's lifecycle policy without launching a second process or
+painting an item into the developer's real menu bar.
 Fallback-item teardown does not own the shared panel lifecycle. The external positioning
 window also remains visible while the main app is inactive because the initiating click
 belongs to the helper process. Vitrine therefore owns popover dismissal and monitors
@@ -265,6 +286,15 @@ synchronously on the main actor, and exits — it never shows a window and never
 `app.run()`, so there is no UI and no event loop to get stuck in. This approach has no
 IPC surface and keeps the render in-process where it can reuse the app's exact pipeline.
 
+**Capability boundary.** The shell-generated `vgrab` helper dispatches one deliberately
+constrained `terminal-capture` command. It always resolves terminal language, requires
+clipboard copy or editor handoff, and its parser allowlist accepts only capture width and
+filename/title context. That basic path is free. General `render`, `multi-size`,
+`batch`, and `vpane` remain PRO and verify the signed offline token at the executable
+boundary before file work. `CLIOptions.Command.requiresPro` uses an exhaustive switch
+so every future command must make an explicit product decision; a new general flag
+remains unavailable to the free command until its allowlist is deliberately changed.
+
 **Pixel-identical output.** The CLI does not re-implement rendering. The `VitrineCLI`
 target compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
 `ExportManager`, `HighlightManager`, …) and supplies its own `main.swift`, excluding
@@ -353,6 +383,14 @@ explicit `--format` is present, the extension must match so automation never rec
 mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
 extension-based language inference and default metadata while still reading the source
 only from standard input.
+
+Raster availability is capability-driven rather than version-switched:
+`ExportFormat.availableCases` caches `CGImageDestinationCopyTypeIdentifiers()` once and
+interactive pickers expose only writers the active ImageIO stack actually provides.
+That keeps PNG/PDF/HEIC available on Sequoia while adding AVIF on Tahoe and newer.
+Persisted or imported AVIF settings fall back to PNG on a Mac without the writer; the
+CLI grammar remains stable across OS versions and returns an encoding failure rather
+than ever writing mislabeled bytes.
 `--git-diff <revision-range>` is a bounded local source for `render` and `multi-size`.
 `GitDiffInputLoader` executes `/usr/bin/git` directly with a fixed argument vector,
 disables pagers, external diff drivers, textconv, and color, and puts repeatable
@@ -417,21 +455,22 @@ input extension, so non-colliding legacy output names stay unchanged.
 [--json]` prints the same local catalog ids the parser validates for `--theme`,
 `--language`, `--preset`, `--font`, `--background`, `--format`, and `--profile`;
 `vitrine list all --json` returns one keyed object with every catalog for setup scripts that want a single
-metadata call. It runs before AppKit initialization and before the PRO render gate
+metadata call. It runs before AppKit initialization and before the capability gate
 because it reads only bundled metadata, so scripts can cheaply discover valid options
 without touching user files or rendering images.
 
 **Shell capture context.** `vitrine shell-init` emits opt-in `vgrab` and `vpane`
 functions for zsh, bash, and fish without installing prompt hooks or background
-processes. A normal `vgrab` resolves the local Git root (falling back to the current
-directory), resolves the current attached branch when available, and sends a combined
-project/branch label plus the shell-escaped command through the existing `--filename`
+processes. `vgrab` uses the constrained free `terminal-capture` command; `vpane` uses
+the general PRO renderer. A normal `vgrab` resolves the local Git root (falling back to
+the current directory), resolves the current attached branch when available, and sends
+a combined project/branch label plus the shell-escaped command through the existing `--filename`
 and `--title` metadata options. Context therefore stays outside the ANSI transcript and
 works for both scrolling output and reconstructed full-screen frames. It never reads
 repository status, and `--no-context` omits the header for minimal or sensitive captures.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
-prints the installed CLI version before AppKit initialization and before the PRO render
+prints the installed CLI version before AppKit initialization and before the capability
 gate. The helper prefers runtime bundle metadata, falls back to the enclosing app
 bundle when the CLI is launched from `Vitrine.app/Contents/MacOS`, and finally uses
 project-version constants guarded by tests against `project.yml` for development tool
@@ -562,7 +601,9 @@ gate lives in one place.
   style picker, the hotkey recorder, a launch-at-login toggle, a local-only privacy
   badge, and a clear **Skip / Get Started**. Both buttons mark the flow seen and
   close; skipping unlocks nothing because every feature is already reachable from the
-  menu bar.
+  menu bar. The root has a 700-point ideal width but can shrink to 480 points, and the
+  controller clamps it using AppKit's own visible-frame coordinate space so hosted,
+  split-screen, and compact-display layouts keep their trailing actions reachable.
 - **Sample capture with no clipboard.** "Try a sample capture" renders a built-in
   snippet through `QuickCapture.renderText` — the same exporter path as a real
   capture — so a brand-new user sees the full loop work without copying anything
@@ -786,6 +827,10 @@ cache-key bottleneck.
 
 ### Build boundaries
 
+All app-owned targets inherit `SWIFT_TREAT_WARNINGS_AS_ERRORS`. Compiler diagnostics from
+a new Swift or macOS SDK are compatibility signals that must be resolved deliberately;
+they cannot accumulate silently behind otherwise-green CI results.
+
 `make build-boundaries` measures architectural build costs before a new module or
 package boundary is introduced. It runs clean and no-op builds plus low-fan-out
 Foundation and high-fan-out model changes in disposable DerivedData. It also compares
@@ -891,8 +936,8 @@ back to the shared graph.
 
 `EditorWindowController` is the equivalent composition boundary for editor windows. It
 passes one `AppEnvironment`, one transient-feedback operation, and one closure-backed
-presentation value to each `EditorSession` and `EditorView`. A session still owns volatile
-document/style settings — primary windows adopt the current working document, while
+presentation value to each `EditorSession` and `EditorView`. A session owns ephemeral,
+process-local document/style settings — primary windows adopt the current working document, while
 additional windows seed only the default style — but those settings are constructed with
 the same Brand Kit and entitlement instances the view observes. Toolbar, stage, and
 session actions present outcomes through injected operations rather than discovering the
@@ -930,7 +975,9 @@ editor reaches that lifecycle owner directly. Gallery filtering and mutation the
 observe the controller's Recents store and settings, while editor handoff and copy outcomes
 remain testable without discovering app-owned windows or the HUD. Window ownership lives
 in a separate source file so the gallery view stays a store-and-action surface rather than
-a second composition root.
+a second composition root. The gallery keeps search and all library actions in an adaptive
+in-content bar: `ViewThatFits` uses one row at desktop widths and two rows on compact
+windows. This avoids AppKit toolbar overflow dropping actions from the accessibility tree.
 
 ```swift
 enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }

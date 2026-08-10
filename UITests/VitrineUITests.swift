@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import XCTest
 
 final class VitrineUITests: XCTestCase {
@@ -95,8 +96,11 @@ final class VitrineUITests: XCTestCase {
         let field = element("command-palette-field", in: app)
         assertExists(field, in: app, timeout: 5)
 
-        // Typing filters the list; "dracula" narrows to the Dracula theme command.
-        field.typeText("dracula")
+        // Multi-term input can match the visible group and title independently;
+        // "theme dracula" narrows to the Dracula theme command in either word order.
+        field.typeText("theme dracula")
+        assertExists(
+            element("command-palette-command-theme.dracula", in: app), in: app, timeout: 3)
         Thread.sleep(forTimeInterval: 0.4)  // let the filtered list settle before the shot
         let screenshot = editor.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)
@@ -457,6 +461,9 @@ final class VitrineUITests: XCTestCase {
         for identifier in [
             "annotation-duplicate", "annotation-bring-front", "annotation-send-back",
         ] {
+            XCTAssertTrue(
+                element(identifier, in: app).waitForExistence(timeout: 3),
+                "\(identifier) did not materialize after opening the compact mark-actions menu")
             let matches = app.descendants(matching: .any)
                 .matching(NSPredicate(format: "identifier == %@", identifier))
                 .allElementsBoundByIndex
@@ -643,6 +650,70 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testManagedLicenseDeactivationRelocksProWithoutNetwork() {
+        continueAfterFailure = false
+        let app = launch(
+            arguments: ["--open-settings"],
+            environment: ["VITRINE_MANAGED_LICENSE_UI_TEST": "1"])
+        defer { app.terminate() }
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-about", in: app).click()
+
+        let aboutPane = element("settings-about-pane", in: app)
+        assertExists(aboutPane, in: app, timeout: 3)
+        let licenseSection = element("license-management-section", in: app)
+        assertExists(licenseSection, in: app, timeout: 3)
+        assertExists(
+            app.staticTexts["Vitrine PRO is active on this Mac."], in: app, timeout: 3)
+        assertHittable(
+            "deactivate-license-button",
+            in: app,
+            "An active managed license must expose its deactivation action")
+
+        let activeAttachment = XCTAttachment(screenshot: aboutPane.screenshot())
+        activeAttachment.name = "managed-license-active"
+        activeAttachment.lifetime = .keepAlways
+        add(activeAttachment)
+
+        element("deactivate-license-button", in: app).click()
+        // macOS mirrors confirmation actions into the Touch Bar accessibility tree.
+        // Scope to the visible sheet so automation never chooses that non-clickable duplicate.
+        let confirm = app.sheets.buttons["Deactivate This Mac"].firstMatch
+        assertExists(confirm, in: app, timeout: 3)
+        confirm.click()
+
+        let success = app.staticTexts["Vitrine PRO was deactivated on this Mac."].firstMatch
+        assertExists(success, in: app, timeout: 5)
+        let resultSheet = app.sheets.firstMatch
+        assertExists(resultSheet, in: app, timeout: 3)
+        let resultAttachment = XCTAttachment(screenshot: resultSheet.screenshot())
+        resultAttachment.name = "managed-license-deactivated"
+        resultAttachment.lifetime = .keepAlways
+        add(resultAttachment)
+
+        let acknowledge = app.sheets.buttons["OK"].firstMatch
+        assertExists(acknowledge, in: app, timeout: 3)
+        acknowledge.click()
+        XCTAssertTrue(
+            licenseSection.waitForNonExistence(timeout: 3),
+            "A deactivated managed license must disappear from About")
+
+        element("settings-nav-brandKit", in: app).click()
+        let brandKitPane = element("settings-brandkit-pane", in: app)
+        assertExists(brandKitPane, in: app, timeout: 3)
+        assertExists(element("settings-brand-kit-upsell", in: app), in: app, timeout: 3)
+        XCTAssertTrue(
+            element("settings-brand-kit-controls", in: app).waitForNonExistence(timeout: 2),
+            "Deactivation must re-lock Brand Kit in the same running app")
+
+        let relockedAttachment = XCTAttachment(screenshot: brandKitPane.screenshot())
+        relockedAttachment.name = "managed-license-brand-kit-relocked"
+        relockedAttachment.lifetime = .keepAlways
+        add(relockedAttachment)
+    }
+
+    @MainActor
     func testInputPaneExposesReindentOnPasteToggle() {
         continueAfterFailure = false
         let app = launch(arguments: ["--open-settings"])
@@ -688,6 +759,222 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("metadata-title-field", in: app), in: app)
         assertExists(element("metadata-caption-field", in: app), in: app)
         assertExists(element("metadata-language-badge-toggle", in: app), in: app)
+    }
+
+    // MARK: - Web Snapshot
+
+    @MainActor
+    func testWebSnapshotRendersAndCopiesMultipleLocalHTMLViewports() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        let app = launch(
+            arguments: [
+                "--skip-onboarding", "--web-snapshot-ui-test-renderer", "--open-web-snapshot",
+            ])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        let window = element("web-snapshot-window", in: app)
+        assertExists(window, in: app, timeout: 8)
+        assertExists(element("web-snapshot-inspector", in: app), in: app, timeout: 3)
+        assertExists(element("web-snapshot-preview-stage", in: app), in: app, timeout: 3)
+
+        let htmlMode = element("web-snapshot-mode-html", in: app)
+        assertExists(htmlMode, in: app, timeout: 3)
+        htmlMode.click()
+
+        // SwiftUI exposes both the placeholder StaticText and the editable TextView
+        // with this identifier. Resolve the typed control so actions never face an
+        // ambiguous any-element query.
+        let editor = app.textViews["web-snapshot-html-editor"]
+        assertExists(editor, in: app, timeout: 3)
+        editor.click()
+        let html = """
+            <!doctype html><html><head><meta name="viewport" content="width=device-width">
+            <style>
+            *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;
+            background:#0b1020;color:#f8fafc;font-family:-apple-system}main{text-align:center;
+            padding:48px}h1{margin:0 0 12px;font-size:64px}p{margin:0;color:#a7f3d0;font-size:24px}
+            @media(max-width:600px){h1{font-size:38px}p{font-size:18px}}
+            </style></head><body><main><h1>Vitrine Web Journey</h1><p>Rendered locally.</p>
+            </main></body></html>
+            """
+        XCTAssertTrue(pasteboard.setString(html, forType: .string))
+        editor.typeKey("v", modifierFlags: .command)
+        XCTAssertTrue(
+            (editor.value as? String)?.contains("Vitrine Web Journey") == true,
+            "The local HTML fixture must reach the editable source field")
+
+        let social = element("web-viewport-chip-openGraph", in: app)
+        let desktop = element("web-viewport-chip-desktop", in: app)
+        let mobile = element("web-viewport-chip-mobile", in: app)
+        for chip in [social, desktop, mobile] {
+            assertExists(chip, in: app, timeout: 3)
+        }
+        XCTAssertTrue(social.isSelected, "The default Social viewport must remain selected")
+        desktop.click()
+        mobile.click()
+        XCTAssertTrue(desktop.isSelected, "Desktop must join the capture set")
+        XCTAssertTrue(mobile.isSelected, "Mobile must join the capture set")
+
+        assertHittable(
+            "web-snapshot-capture-button", in: app,
+            "Local HTML should enable the Web Snapshot render action")
+        element("web-snapshot-capture-button", in: app).click()
+
+        let results = element("web-snapshot-results", in: app)
+        assertExists(results, in: app, timeout: 20)
+        for identifier in [
+            "web-snapshot-result-board", "web-snapshot-result-openGraph",
+            "web-snapshot-result-desktop", "web-snapshot-result-mobile",
+        ] {
+            assertHittable(
+                identifier, in: app,
+                "A successful multi-viewport render must expose result \(identifier)",
+                timeout: 5)
+        }
+        XCTAssertTrue(
+            element("web-snapshot-result-board", in: app).isSelected,
+            "The responsive board must be the default multi-viewport result")
+
+        for identifier in [
+            "web-snapshot-export-all-button", "web-snapshot-save-button",
+            "web-snapshot-share-button", "web-snapshot-copy-button",
+        ] {
+            assertHittable(
+                identifier, in: app,
+                "Rendered Web Snapshot action \(identifier) must be enabled",
+                timeout: 5)
+        }
+
+        let mobileResult = element("web-snapshot-result-mobile", in: app)
+        mobileResult.click()
+        let selectedDeadline = Date().addingTimeInterval(3)
+        while !mobileResult.isSelected, Date() < selectedDeadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(mobileResult.isSelected, "Selecting Mobile must update the export target")
+
+        Thread.sleep(forTimeInterval: 0.5)
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "web-snapshot-multi-viewport-render"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        element("web-snapshot-copy-button", in: app).click()
+        assertExists(element("capture-hud", in: app), in: app, timeout: 3)
+
+        let copyDeadline = Date().addingTimeInterval(6)
+        var copiedImage: NSBitmapImageRep?
+        repeat {
+            if let data = pasteboard.data(forType: .png) {
+                copiedImage = NSBitmapImageRep(data: data)
+            }
+            if copiedImage != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < copyDeadline
+
+        let copied = try XCTUnwrap(copiedImage, "Copy image did not place a PNG on the pasteboard")
+        XCTAssertEqual(copied.pixelsWide, 780)
+        XCTAssertEqual(copied.pixelsHigh, 1688)
+    }
+
+    // MARK: - Social Card
+
+    @MainActor
+    func testSocialCardEditsTemplateAndCopiesRenderedPNG() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        let app = launch(arguments: ["--skip-onboarding", "--open-social-card"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+
+        let window = element("social-card-window", in: app)
+        assertExists(window, in: app, timeout: 8)
+        assertExists(element("social-card-inspector", in: app), in: app, timeout: 3)
+        assertExists(element("social-card-preview-stage", in: app), in: app, timeout: 3)
+
+        let copyButton = app.buttons["social-card-copy-button"]
+        let saveButton = app.buttons["social-card-save-button"]
+        let shareButton = app.buttons["social-card-share-button"]
+        for button in [copyButton, saveButton, shareButton] {
+            assertExists(button, in: app, timeout: 3)
+            XCTAssertFalse(button.isEnabled, "An empty card must not enable image export")
+        }
+
+        let title = app.textFields["social-card-title-field"]
+        let subtitle = app.textFields["social-card-subtitle-field"]
+        assertExists(title, in: app, timeout: 3)
+        assertExists(subtitle, in: app, timeout: 3)
+        title.click()
+        title.typeText("Ship reliable macOS visuals")
+        subtitle.click()
+        subtitle.typeText("Local, deterministic, and ready to share")
+
+        // The shared inspector code field exposes a real AppKit TextView. Paste the
+        // multiline fixture in one operation so keyboard-layout differences cannot
+        // alter braces, punctuation, or indentation under automation.
+        let excerpt = app.textViews["social-card-excerpt-editor"]
+        assertExists(excerpt, in: app, timeout: 3)
+        let code = """
+            struct ReleaseGate {
+                let platform = "macOS"
+                let testsAreGreen = true
+            }
+            """
+        XCTAssertTrue(pasteboard.setString(code, forType: .string))
+        excerpt.click()
+        excerpt.typeKey("v", modifierFlags: .command)
+        XCTAssertTrue(
+            (excerpt.value as? String)?.contains("ReleaseGate") == true,
+            "The code fixture must reach the Social Card excerpt editor")
+
+        let standard = app.buttons["social-card-template-standard"]
+        let codeFocus = app.buttons["social-card-template-codeFocus"]
+        assertExists(standard, in: app, timeout: 3)
+        assertExists(codeFocus, in: app, timeout: 3)
+        XCTAssertTrue(standard.isSelected, "A fresh Social Card must start on Standard")
+        codeFocus.click()
+        XCTAssertTrue(codeFocus.isSelected, "Selecting Code focus must update the working card")
+
+        for identifier in [
+            "social-card-copy-button", "social-card-save-button", "social-card-share-button",
+        ] {
+            assertHittable(
+                identifier, in: app,
+                "A renderable Social Card must enable action \(identifier)", timeout: 5)
+        }
+
+        Thread.sleep(forTimeInterval: 0.5)
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "social-card-code-focus-render"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        copyButton.click()
+        assertExists(element("capture-hud", in: app), in: app, timeout: 3)
+
+        let copyDeadline = Date().addingTimeInterval(6)
+        var copiedImage: NSBitmapImageRep?
+        repeat {
+            if let data = pasteboard.data(forType: .png) {
+                copiedImage = NSBitmapImageRep(data: data)
+            }
+            if copiedImage != nil { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < copyDeadline
+
+        let copied = try XCTUnwrap(copiedImage, "Copy card did not place a PNG on the pasteboard")
+        XCTAssertEqual(copied.pixelsWide, 2400)
+        XCTAssertEqual(copied.pixelsHigh, 1260)
     }
 
     @MainActor
@@ -782,7 +1069,9 @@ final class VitrineUITests: XCTestCase {
         try skipUnlessADisplayFitsTheEditor()
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer {
             app.terminate()
             pasteboard.clearContents()
@@ -796,7 +1085,7 @@ final class VitrineUITests: XCTestCase {
         let search = element("recents-search-field", in: app)
         search.click()
         search.typeText("Rust")
-        element("recents-compare-button", in: app).click()
+        hittableElement("recents-compare-button", in: app).click()
         XCTAssertEqual(search.value as? String, "Rust")
         XCTAssertFalse(search.isEnabled)
         element("recents-compare-cancel", in: app).click()
@@ -804,7 +1093,7 @@ final class VitrineUITests: XCTestCase {
         search.click()
         search.typeKey("a", modifierFlags: .command)
         search.typeKey(.delete, modifierFlags: [])
-        element("recents-compare-button", in: app).click()
+        hittableElement("recents-compare-button", in: app).click()
 
         cards.element(boundBy: 0).click()
         cards.element(boundBy: 1).click()
@@ -929,14 +1218,17 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testRecentsCanFilterToPinnedCaptures() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
         XCTAssertEqual(cards.count, 3)
-        let pinnedFilter = element("recents-pinned-filter", in: app)
-        XCTAssertTrue(pinnedFilter.waitForExistence(timeout: 8))
-        XCTAssertTrue(pinnedFilter.isHittable)
+        assertHittable(
+            "recents-pinned-filter", in: app,
+            "Recents should expose the pinned-only filter", timeout: 8)
+        let pinnedFilter = hittableElement("recents-pinned-filter", in: app)
 
         pinnedFilter.click()
         let filteredDeadline = Date().addingTimeInterval(3)
@@ -947,7 +1239,9 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(cards.firstMatch.label.contains("Go"))
         XCTAssertTrue(element("recents-pinned-badge", in: app).exists)
 
-        pinnedFilter.click()
+        // The adaptive action bar can rebuild its compact branch after filtering;
+        // resolve the toggle again instead of reusing the pre-update AX handle.
+        hittableElement("recents-pinned-filter", in: app).click()
         let restoredDeadline = Date().addingTimeInterval(3)
         while cards.count != 3, Date() < restoredDeadline {
             Thread.sleep(forTimeInterval: 0.2)
@@ -958,19 +1252,24 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testRecentsCanClearUnpinnedCaptures() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
         XCTAssertEqual(cards.count, 3)
-        let manage = element("recents-clear-button", in: app)
-        XCTAssertTrue(manage.waitForExistence(timeout: 8))
-        XCTAssertTrue(manage.isHittable)
+        assertHittable(
+            "recents-clear-button", in: app,
+            "Recents should expose capture cleanup actions", timeout: 8)
+        let manage = hittableElement("recents-clear-button", in: app)
         manage.click()
 
         let clearUnpinned = app.menuItems["Clear Unpinned"]
         XCTAssertTrue(clearUnpinned.waitForExistence(timeout: 3))
-        clearUnpinned.click()
+        // The menu item intentionally disappears as soon as it presents the dialog.
+        // A coordinate click avoids XCUI retrying the now-defunct menu element.
+        clearUnpinned.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
 
         let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
@@ -988,7 +1287,9 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testRecentsCanSortOldestFirstWithoutDisplacingPins() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
@@ -1003,9 +1304,10 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
         XCTAssertTrue(cards.element(boundBy: 1).label.contains("Rust"))
 
-        let sort = element("recents-sort-picker", in: app)
-        XCTAssertTrue(sort.waitForExistence(timeout: 8))
-        XCTAssertTrue(sort.isHittable)
+        assertHittable(
+            "recents-sort-picker", in: app,
+            "Recents should expose its sort picker", timeout: 8)
+        let sort = hittableElement("recents-sort-picker", in: app)
         sort.click()
         let oldestFirst = app.menuItems["Oldest First"]
         XCTAssertTrue(oldestFirst.waitForExistence(timeout: 3))
@@ -1065,13 +1367,9 @@ final class VitrineUITests: XCTestCase {
             pasteboard.clearContents()
         }
 
-        // Preserve one end-to-end check through the painted status item. Panel-specific
-        // smokes below use the deterministic launch hook so display geometry cannot skip them.
-        let statusItem = app.statusItems.firstMatch
-        try XCTSkipUnless(
-            statusItem.waitForExistence(timeout: 8) && statusItem.isHittable,
-            "The status item is not reachable on this display arrangement")
-        statusItem.click()
+        // Preserve an end-to-end check through the painted status item. Opening the
+        // panel after launch also keeps the XCTest automation handshake ahead of AppKit.
+        openMenuBarPanel(in: app)
 
         assertHittable(
             "menu-capture-preset-picker", in: app,
@@ -1104,15 +1402,13 @@ final class VitrineUITests: XCTestCase {
         pasteboard.clearContents()
         XCTAssertTrue(pasteboard.setString("sentinel", forType: .string))
 
-        let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recents", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
         defer {
             app.terminate()
             pasteboard.clearContents()
         }
 
-        let panel = element("menubar-panel", in: app)
-        XCTAssertTrue(panel.waitForExistence(timeout: 3))
+        openMenuBarPanel(in: app)
         let row = app.descendants(matching: .any).matching(identifier: "menu-recent-row")
             .firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 3))
@@ -1140,11 +1436,10 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMenuBarSurpriseStyleUpdatesThemeWithoutClosingThePanel() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        XCTAssertTrue(panel.waitForExistence(timeout: 3))
+        let panel = openMenuBarPanel(in: app)
         assertHittable(
             "menu-surprise-style-button", in: app,
             "The curated style action should be reachable from the menu-bar panel")
@@ -1165,11 +1460,10 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMenuBarPanelClosesWithEscape() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        XCTAssertTrue(panel.waitForExistence(timeout: 3))
+        let panel = openMenuBarPanel(in: app)
 
         app.typeKey(.escape, modifierFlags: [])
 
@@ -1179,7 +1473,7 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() throws {
+    func testFirstRunShowsQuickStartWithPrivacyAndSampleCapture() {
         continueAfterFailure = false
         // A fresh defaults suite is a first run, so the quick-start appears on
         // launch with no extra hook.
@@ -1187,9 +1481,6 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("welcome-window", in: app), in: app, timeout: 8)
-        // The bottom controls (sample capture / skip) overhang a display too short to
-        // hold the welcome window, so skip the interaction there rather than flaking.
-        try skipUnlessADisplayFitsTheWelcomeWindow(app)
         assertExists(element("welcome-view", in: app), in: app, timeout: 3)
         // Local-only privacy copy is visible before any capture.
         assertExists(element("welcome-privacy-badge", in: app), in: app)
@@ -1205,15 +1496,41 @@ final class VitrineUITests: XCTestCase {
         // Poll for hittability first: the welcome window can still be settling into
         // place when the button already exists, so an immediate click flakes with
         // "is not hittable" on the hosted CI runner.
-        assertHittable(
-            "welcome-sample-capture-button", in: app,
-            "Sample-capture button should become reachable on the quick-start", timeout: 5)
+        revealWelcomeControl("welcome-sample-capture-button", in: app)
         element("welcome-sample-capture-button", in: app).click()
         assertExists(element("welcome-sample-status", in: app), in: app, timeout: 5)
     }
 
     @MainActor
-    func testForcedQuickStartCanBeSkippedToReachTheEditor() throws {
+    func testQuickStartKeepsPrimaryActionsReachableAtCompactHeight() {
+        continueAfterFailure = false
+        let app = launch(
+            arguments: [],
+            environment: [
+                "VITRINE_WELCOME_TEST_MAX_HEIGHT": "520",
+                "VITRINE_WELCOME_TEST_MAX_WIDTH": "560",
+            ])
+        defer { app.terminate() }
+
+        let window = element("welcome-window", in: app)
+        assertExists(window, in: app, timeout: 8)
+        XCTAssertLessThanOrEqual(
+            window.frame.height, 521,
+            "The deterministic compact-height seam did not constrain the Welcome window")
+        XCTAssertLessThanOrEqual(
+            window.frame.width, 561,
+            "The deterministic compact-width seam did not constrain the Welcome window")
+        assertExists(app.scrollViews["welcome-view"], in: app, timeout: 3)
+
+        revealWelcomeControl("welcome-get-started-button", in: app)
+        element("welcome-get-started-button", in: app).click()
+        XCTAssertTrue(
+            window.waitForNonExistence(timeout: 3),
+            "Get Started should dismiss Welcome after scrolling to the compact footer")
+    }
+
+    @MainActor
+    func testForcedQuickStartCanBeSkippedToReachTheEditor() {
         continueAfterFailure = false
         // Force the quick-start open and also open the editor: skipping the
         // quick-start must not gate access to the rest of the app.
@@ -1221,21 +1538,11 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("welcome-window", in: app), in: app, timeout: 8)
-        // The Skip button overhangs a display too short to hold the welcome window,
-        // so skip the interaction there rather than flaking on hittability.
-        try skipUnlessADisplayFitsTheWelcomeWindow(app)
-        // Wait for the Skip button to be hittable, not just present: the window may
-        // still be animating forward, which flakes an immediate click as
-        // "is not hittable" on the hosted CI runner. If a multi-display run reports
-        // the fixed Welcome footer just outside the active visible frame, the forced
-        // launch has already opened the editor; still prove the user is not gated by
-        // the quick-start instead of failing on host geometry.
-        if waitForHittableElement("welcome-skip-button", in: app, timeout: 5) {
-            element("welcome-skip-button", in: app).click()
-        }
+        revealWelcomeControl("welcome-skip-button", in: app)
+        element("welcome-skip-button", in: app).click()
 
-        // After skipping (or when the forced editor is already reachable), the editor
-        // window is available. This launch deliberately opens Welcome and the editor at
+        // After skipping, the editor window is available. This launch deliberately
+        // opens Welcome and the editor at
         // the same time, so AppKit can briefly reorder windows while Welcome closes;
         // assert the editor surface itself instead of a specific toolbar item whose
         // nested AX node may not realize immediately.
@@ -1354,7 +1661,7 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testOutputFormatPickerOffersAVIF() {
+    func testOutputFormatPickerMatchesSystemAVIFSupport() {
         continueAfterFailure = false
         let app = launch(arguments: ["--open-settings"])
         defer { app.terminate() }
@@ -1363,10 +1670,24 @@ final class VitrineUITests: XCTestCase {
         element("settings-nav-output", in: app).click()
         assertExists(element("settings-output-pane", in: app), in: app, timeout: 3)
         let avif = element("output-format-avif", in: app)
-        assertExists(avif, in: app)
-        XCTAssertTrue(avif.isHittable, "AVIF is present but not reachable in the format picker")
-        avif.click()
-        XCTAssertTrue(avif.isSelected, "Selecting AVIF did not update the output format")
+        let supportsAVIF =
+            Set(CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []).contains("public.avif")
+        if supportsAVIF {
+            assertExists(avif, in: app)
+            XCTAssertTrue(avif.isHittable, "AVIF is present but not reachable in the format picker")
+            avif.click()
+            let selectedDeadline = Date().addingTimeInterval(3)
+            while !element("output-format-avif", in: app).isSelected,
+                Date() < selectedDeadline
+            {
+                Thread.sleep(forTimeInterval: 0.2)
+            }
+            XCTAssertTrue(
+                element("output-format-avif", in: app).isSelected,
+                "Selecting AVIF did not update the output format")
+        } else {
+            XCTAssertFalse(avif.exists, "AVIF must not be offered without an ImageIO writer")
+        }
     }
 
     // MARK: - Localization smoke

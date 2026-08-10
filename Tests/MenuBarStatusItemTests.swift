@@ -13,10 +13,10 @@ import Testing
 @MainActor
 @Suite("Menu-bar status item")
 struct MenuBarStatusItemTests {
-    /// A suite of its own, so the assertions never depend on — or disturb — the defaults
+    /// A store of its own, so the assertions never depend on — or disturb — the defaults
     /// of the app hosting these tests.
-    private func isolatedDefaults(_ name: String) -> UserDefaults {
-        let defaults = UserDefaults(suiteName: "menubar-tests-\(name)")!
+    private func isolatedDefaults() -> UserDefaults {
+        let defaults = testDefaults()
         for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("NSStatusItem") {
             defaults.removeObject(forKey: key)
         }
@@ -24,7 +24,7 @@ struct MenuBarStatusItemTests {
     }
 
     @Test func repairClearsAPersistedHiddenStateForBothKeyForms() {
-        let defaults = isolatedDefaults(#function)
+        let defaults = isolatedDefaults()
         // The exact state macOS persists once the icon is hidden.
         defaults.set(false, forKey: "NSStatusItem VisibleCC Item-0")
         defaults.set(false, forKey: "NSStatusItem Visible Item-0")
@@ -36,7 +36,7 @@ struct MenuBarStatusItemTests {
     }
 
     @Test func repairCoversEveryAutosaveNameTheSceneCouldHavePicked() {
-        let defaults = isolatedDefaults(#function)
+        let defaults = isolatedDefaults()
         StatusItemController.repairVisibilityDefaults(in: defaults)
 
         for autosaveName in StatusItemController.repairedAutosaveNames {
@@ -57,7 +57,7 @@ struct MenuBarStatusItemTests {
 
     @Test func attachInstallsOneVisibleFixedItemAndIsIdempotent() throws {
         let controller = StatusItemController(
-            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            environment: AppEnvironment(defaults: isolatedDefaults()),
             feedback: CaptureFeedbackPresenter(),
             navigation: .noOp)
         #expect(!controller.isAttached)
@@ -86,7 +86,7 @@ struct MenuBarStatusItemTests {
     /// post-materialization pass repairs it.
     @Test func delayedRepairRestoresVisibilityAfterHosting() async throws {
         let controller = StatusItemController(
-            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            environment: AppEnvironment(defaults: isolatedDefaults()),
             feedback: CaptureFeedbackPresenter(),
             navigation: .noOp,
             visibilityRepairDelays: [.milliseconds(10)])
@@ -120,11 +120,150 @@ struct MenuBarStatusItemTests {
                 ]) == .helper)
     }
 
+    @Test func helperConfigurationAcceptsOnlyAPositivePIDAndUUIDToken() throws {
+        let token = UUID().uuidString
+        let configuration = try #require(
+            MenuBarHelperConfiguration(arguments: ["VitrineMenuBarHelper", "123", token]))
+
+        #expect(configuration.appProcessID == 123)
+        #expect(configuration.sessionToken == token)
+
+        for invalidArguments in [
+            ["VitrineMenuBarHelper"],
+            ["VitrineMenuBarHelper", "123"],
+            ["VitrineMenuBarHelper", "123", token, "extra"],
+            ["VitrineMenuBarHelper", "not-a-pid", token],
+            ["VitrineMenuBarHelper", "0", token],
+            ["VitrineMenuBarHelper", "-1", token],
+            ["VitrineMenuBarHelper", "123", ""],
+            ["VitrineMenuBarHelper", "123", "not-a-uuid"],
+            ["VitrineMenuBarHelper", "123", String(repeating: "x", count: 129)],
+        ] {
+            #expect(
+                MenuBarHelperConfiguration(arguments: invalidArguments) == nil,
+                "helper must reject malformed invocation: \(invalidArguments)")
+        }
+    }
+
+    @Test func helperOwnerMustMatchTheExactPIDAndContainingBundle() {
+        let expectedBundle = URL(fileURLWithPath: "/Applications/Vitrine.app")
+        let executable = expectedBundle.appendingPathComponent("Contents/MacOS/Vitrine")
+
+        #expect(
+            MenuBarHelperContract.isExpectedOwner(
+                candidateProcessID: 123,
+                candidateExecutableURL: executable,
+                candidateBundleURL: expectedBundle,
+                expectedProcessID: 123,
+                currentProcessID: 456,
+                expectedBundleURL: expectedBundle))
+
+        let mismatches: [(pid_t, URL?, URL?, pid_t, pid_t, URL)] = [
+            (999, executable, expectedBundle, 123, 456, expectedBundle),
+            (123, executable, expectedBundle, 123, 123, expectedBundle),
+            (
+                123,
+                expectedBundle.appendingPathComponent(
+                    "Contents/MacOS/\(MenuBarHelperContract.executableName)"),
+                expectedBundle,
+                123,
+                456,
+                expectedBundle
+            ),
+            (
+                123, executable, URL(fileURLWithPath: "/Applications/Vitrine Beta.app"),
+                123, 456, expectedBundle
+            ),
+            (123, nil, expectedBundle, 123, 456, expectedBundle),
+            (123, executable, nil, 123, 456, expectedBundle),
+        ]
+        for mismatch in mismatches {
+            #expect(
+                !MenuBarHelperContract.isExpectedOwner(
+                    candidateProcessID: mismatch.0,
+                    candidateExecutableURL: mismatch.1,
+                    candidateBundleURL: mismatch.2,
+                    expectedProcessID: mismatch.3,
+                    currentProcessID: mismatch.4,
+                    expectedBundleURL: mismatch.5))
+        }
+    }
+
+    @Test func helperWatchdogRequiresBothItsIconAndOwner() {
+        #expect(
+            MenuBarHelperContract.shouldRemainRunning(
+                statusItemVisible: true, ownerExists: true))
+        #expect(
+            !MenuBarHelperContract.shouldRemainRunning(
+                statusItemVisible: false, ownerExists: true))
+        #expect(
+            !MenuBarHelperContract.shouldRemainRunning(
+                statusItemVisible: true, ownerExists: false))
+        #expect(
+            !MenuBarHelperContract.shouldRemainRunning(
+                statusItemVisible: false, ownerExists: false))
+    }
+
+    @Test func appAndHelperVisibilityRepairsShareTheHistoricalContract() {
+        #expect(
+            StatusItemController.autosaveName == MenuBarStatusItemVisibility.primaryAutosaveName)
+        #expect(MenuBarHelperLauncher.executableName == MenuBarHelperContract.executableName)
+
+        for currentName in [
+            MenuBarStatusItemVisibility.primaryAutosaveName,
+            MenuBarStatusItemVisibility.helperAutosaveName,
+        ] {
+            let defaults = isolatedDefaults()
+            MenuBarStatusItemVisibility.repair(
+                in: defaults,
+                currentAutosaveName: currentName)
+            let names = MenuBarStatusItemVisibility.repairedAutosaveNames(
+                currentAutosaveName: currentName)
+
+            #expect(names.first == currentName)
+            #expect(Set(names).count == names.count)
+            for name in names {
+                #expect(defaults.bool(forKey: "NSStatusItem VisibleCC \(name)"))
+                #expect(defaults.bool(forKey: "NSStatusItem Visible \(name)"))
+            }
+        }
+    }
+
+    @Test func helperEntrypointAndTargetUseTheSharedTestedContract() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let helperSource = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("VitrineMenuBarHelper/main.swift"),
+            encoding: .utf8)
+        let project = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("project.yml"),
+            encoding: .utf8)
+        let makefile = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Makefile"),
+            encoding: .utf8)
+
+        for required in [
+            "MenuBarHelperConfiguration(arguments: arguments)",
+            "MenuBarStatusItemVisibility.repair(",
+            "MenuBarHelperContract.shouldRemainRunning(",
+            "MenuBarHelperContract.isExpectedOwner(",
+        ] {
+            #expect(
+                helperSource.contains(required),
+                "the production helper must execute the tested contract: \(required)")
+        }
+        #expect(!helperSource.contains("arguments.count == 3"))
+        #expect(project.contains("Vitrine/MenuBar/MenuBarHelperContract.swift"))
+        #expect(makefile.contains("Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests"))
+    }
+
     @Test func helperAnchorRoundTripsAcrossDisplayCoordinates() throws {
+        let token = UUID().uuidString
         let original = MenuBarAnchor(
             appProcessID: 123,
             helperProcessID: 456,
-            sessionToken: "88B0A8F4-1BDD-4555-9C18-0AD8014CE55A",
+            sessionToken: token,
             clickLocation: CGPoint(x: -1_248.5, y: 1_067.25))
 
         let decoded = try #require(MenuBarAnchor(encoded: original.encoded))
@@ -217,7 +356,7 @@ struct MenuBarStatusItemTests {
         let screen = try #require(NSScreen.screens.first)
         let anchor = CGPoint(x: screen.frame.midX, y: screen.frame.maxY - 12)
         let controller = StatusItemController(
-            environment: AppEnvironment(defaults: isolatedDefaults(#function)),
+            environment: AppEnvironment(defaults: isolatedDefaults()),
             feedback: CaptureFeedbackPresenter(),
             navigation: .noOp)
         defer {
@@ -253,7 +392,7 @@ struct MenuBarStatusItemTests {
     @Test func theDefaultDismissActionIsANoOp() {
         var sideEffects = 0
         let observed = MenuBarDismissAction { sideEffects += 1 }
-        let environment = AppEnvironment(defaults: isolatedDefaults(#function))
+        let environment = AppEnvironment(defaults: isolatedDefaults())
 
         MenuBarDismissAction()()
         MenuBarContent(

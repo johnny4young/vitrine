@@ -12,9 +12,9 @@ import Testing
 /// Like `WorkflowConfigurationTests` and `PrivacyManifestTests`, they read
 /// the committed files from the source tree (anchored to this file via `#filePath`)
 /// rather than any built bundle, because the signing pipeline itself cannot run in a
-/// hosted unit test without Developer ID secrets. CI runs an unsigned local dry run of
-/// `build-dmg.sh`; this suite is the structural guard that the *signed* path stays
-/// complete.
+/// hosted unit test without Developer ID secrets. The tag-release workflow runs
+/// `build-dmg.sh`; this suite is the structural guard that its secret-dependent signed
+/// path stays complete before a tag exists.
 @Suite("Release signing & notarization")
 struct ReleaseSigningTests {
 
@@ -149,6 +149,42 @@ struct ReleaseSigningTests {
         #expect(
             script.localizedCaseInsensitiveContains("secure timestamp"),
             "build-dmg.sh should explain why the timestamp flag is required")
+    }
+
+    // MARK: - Contract: the packaged app is universal, including nested payloads
+
+    @Test func packagingBuildsAndVerifiesEveryUniversalMachOPayload() throws {
+        let script = try Self.script()
+
+        for required in [
+            "generic/platform=macOS",
+            "ONLY_ACTIVE_ARCH=NO",
+            #"ARCHS="arm64 x86_64""#,
+            "verify_universal_macho_bundle",
+            #"/usr/bin/lipo -archs "$candidate""#,
+            #"find "$APP" -type f -perm -111 -print0"#,
+        ] {
+            #expect(
+                script.contains(required),
+                "build-dmg.sh must keep the universal packaging contract: \(required)")
+        }
+
+        #expect(
+            script.contains("local required_architectures=(arm64 x86_64)"),
+            "the package verifier must require both supported Mac architectures")
+        #expect(
+            script.contains("no Mach-O payloads found"),
+            "the verifier must fail closed when it cannot inspect any payload")
+
+        let verification = try #require(
+            script.range(of: "\nverify_universal_macho_bundle\n"),
+            "the packaging path must invoke the universal-payload verifier")
+        let distributionSigning = try #require(
+            script.range(of: "sign_embedded_cli_for_distribution\n"),
+            "the signed packaging path must invoke embedded-CLI signing")
+        #expect(
+            verification.lowerBound < distributionSigning.lowerBound,
+            "architecture verification must happen before signing and notarization")
     }
 
     /// The embedded `vitrine` CLI (Contents/MacOS/vitrine-cli) is copied into the

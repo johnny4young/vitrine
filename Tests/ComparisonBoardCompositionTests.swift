@@ -7,8 +7,7 @@ import Testing
 @Suite("Comparison board composition")
 struct ComparisonBoardCompositionTests {
     @Test func controllerSuppliesOneDependencyGraphToItsRoot() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineComparisonComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let feedback = FeedbackDisplay { _, _ in }
         let presentation = ComparisonBoardPresentation.noOp

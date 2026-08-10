@@ -95,6 +95,15 @@ reviewer can eyeball the actual images instead of guessing from a log — the ga
 samples are regenerated into a temp directory and attached as a build artifact. This
 makes a visual regression reviewable from the PR.
 
+### UI-surface evidence
+
+The launch gallery proves exported-image quality; it does not prove that every app
+window, inspector state, menu, sheet, and empty state still composes correctly. The
+complementary `make test-visual` gate drives 53 required UI states through XCUITest,
+retains each crop in the result bundle, validates the complete manifest, and exports
+stable PNG names for review. CI uploads that tour on every run, including green runs,
+so a reviewer can inspect the actual UI rather than infer it from passing assertions.
+
 ## Release checklist
 
 The launch gallery is part of the release gate. Before tagging a release

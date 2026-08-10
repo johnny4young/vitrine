@@ -37,7 +37,7 @@ struct ReferenceToolsTests {
     }
 
     @Test func measureRoundTripsThroughPersistence() {
-        let defaults = UserDefaults(suiteName: "VitrineReferenceTools-\(UUID().uuidString)")!
+        let defaults = testDefaults()
         var config = SnapshotConfig()
         config.annotations = [
             Annotation(

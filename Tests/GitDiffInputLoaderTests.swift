@@ -183,4 +183,21 @@ struct GitDiffInputLoaderTests {
         }
     }
 
+    @Test func loaderRejectsInvalidContextWithoutLaunchingGit() {
+        for contextLines in [-1, 101] {
+            var didExecute = false
+            #expect(throws: GitDiffInputLoader.LoadError.invalidContextLines(contextLines)) {
+                try GitDiffInputLoader.load(
+                    source: .staged, paths: [], contextLines: contextLines,
+                    executor: { _ in
+                        didExecute = true
+                        return GitDiffInputLoader.ExecutionResult(
+                            terminationStatus: 0,
+                            standardOutput: Data("diff --git a/a b/a\n-old\n+new\n".utf8))
+                    })
+            }
+            #expect(!didExecute)
+        }
+    }
+
 }

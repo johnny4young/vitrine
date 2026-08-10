@@ -135,10 +135,7 @@ struct WorkspaceRecipeStoreTests {
         }
 
         func defaults() throws -> UserDefaults {
-            let name = "VitrineWorkspaceRecipes-\(UUID().uuidString)"
-            let defaults = try #require(UserDefaults(suiteName: name))
-            defaults.removePersistentDomain(forName: name)
-            return defaults
+            testDefaults()
         }
 
         func writeRecipe(named filename: String, recipeName: String) throws -> URL {

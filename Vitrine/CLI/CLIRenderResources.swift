@@ -31,9 +31,16 @@ enum CLIRenderResources {
         guard let path = options.watermarkLogoPath else { return nil }
         let data: Data
         do {
-            data = try Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe)
-        } catch {
+            data = try BackgroundImageStore.readValidatedImageData(
+                from: URL(fileURLWithPath: path))
+        } catch BackgroundImageStore.ImportError.copyFailed {
             throw CLIError.inputUnreadable(path: path)
+        } catch BackgroundImageStore.ImportError.tooLarge {
+            throw CLIError.inputImageTooLarge(path: path)
+        } catch BackgroundImageStore.ImportError.notAnImage {
+            throw CLIError.inputNotImage(path: path)
+        } catch {
+            throw CLIError.renderFailed
         }
         guard let image = NSImage(data: data) else {
             throw CLIError.inputNotImage(path: path)
@@ -49,20 +56,18 @@ enum CLIRenderResources {
             return PreparedBackground(reference: nil, store: .container, temporaryDirectory: nil)
         }
         let sourceURL = URL(fileURLWithPath: path)
-        let data: Data
-        do {
-            data = try Data(contentsOf: sourceURL)
-        } catch {
-            throw CLIError.inputUnreadable(path: path)
-        }
-
         let directory = temporaryImageDirectory()
         let store = BackgroundImageStore(directory: directory)
         do {
-            let reference = try store.importImage(
-                data: data, preferredExtension: sourceURL.pathExtension)
+            let reference = try store.importImage(from: sourceURL)
             return PreparedBackground(
                 reference: reference, store: store, temporaryDirectory: directory)
+        } catch BackgroundImageStore.ImportError.copyFailed {
+            try? FileManager.default.removeItem(at: directory)
+            throw CLIError.inputUnreadable(path: path)
+        } catch BackgroundImageStore.ImportError.tooLarge {
+            try? FileManager.default.removeItem(at: directory)
+            throw CLIError.inputImageTooLarge(path: path)
         } catch BackgroundImageStore.ImportError.notAnImage {
             try? FileManager.default.removeItem(at: directory)
             throw CLIError.inputNotImage(path: path)

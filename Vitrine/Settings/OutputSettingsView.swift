@@ -45,11 +45,11 @@ struct OutputSettingsView: View {
                 // supported scalable format; PNG is raster.
                 TokenRow(label: Text("Format"), caption: Text(settings.export.format.summary)) {
                     TokenSegmentedPicker(
-                        options: ExportFormat.allCases.map {
+                        options: ExportFormat.availableCases.map {
                             ($0, Text(verbatim: $0.displayName))
                         },
                         selection: $settings.export.format,
-                        optionIdentifiers: ExportFormat.allCases.map {
+                        optionIdentifiers: ExportFormat.availableCases.map {
                             "output-format-\($0.rawValue)"
                         }
                     )

@@ -10,7 +10,7 @@ import Vision
 @MainActor
 struct BrandChipTests {
     private func isolatedDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineBrandChip-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     // MARK: - QR generation

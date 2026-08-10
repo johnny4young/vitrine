@@ -500,15 +500,15 @@ struct WebSnapshotSizingTests {
                 == (0, 0))
     }
 
-    @Test func realDrawProducesABitmapOfExactlyTheRequestedPixelSize() {
+    @Test func realDrawProducesABitmapOfExactlyTheRequestedPixelSize() throws {
         // Driving the actual bitmap path (the same code the live snapshot uses)
         // against a stand-in image yields a CGImage of exactly source × scale — the
         // determinism guarantee, proven with no web process.
         let engine = WebSnapshotView()
-        let image = engine.cgImage(from: solidImage(width: 300, height: 200), scale: 2)
-        let cg = try? #require(image)
-        #expect(cg?.width == 600)
-        #expect(cg?.height == 400)
+        let cg = try #require(
+            engine.cgImage(from: solidImage(width: 300, height: 200), scale: 2))
+        #expect(cg.width == 600)
+        #expect(cg.height == 400)
     }
 
     @Test func realDrawAtOneXMatchesTheSourcePointSize() {

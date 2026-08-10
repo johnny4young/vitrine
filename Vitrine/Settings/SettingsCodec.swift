@@ -125,7 +125,7 @@ enum SettingsCodec {
         /// the selected destination preset. Deliberately excludes the app-global,
         /// non-per-window state — the onboarding/What's-New flags and the hotkey
         /// action — and the shared preset/theme *catalogs* (those resolve through the
-        /// shared stores, not the window's volatile store). Seeding only these keys is
+        /// shared stores, not the window's ephemeral store). Seeding only these keys is
         /// what lets a new window open looking like the user's default while editing
         /// its own copy.
         static let editorSessionSeed = [

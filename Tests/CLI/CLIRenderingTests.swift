@@ -376,4 +376,39 @@ struct CLIRenderingTests: CLITestSupport {
         }
     }
 
+    @Test func everyLocalImageSurfaceReportsOversizedInputPrecisely() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let oversized = directory.appendingPathComponent("oversized.png")
+        #expect(FileManager.default.createFile(atPath: oversized.path, contents: Data()))
+        let handle = try FileHandle(forWritingTo: oversized)
+        try handle.truncate(atOffset: UInt64(BackgroundImageStore.maxImportBytes + 1))
+        try handle.close()
+
+        let output = directory.appendingPathComponent("out.png").path
+        let imageOptions = try CLIArguments.parse([
+            "render", "--image", oversized.path, "--out", output,
+        ])
+        #expect(throws: CLIError.inputImageTooLarge(path: oversized.path)) {
+            try CLIRenderer.run(imageOptions)
+        }
+
+        let code = try writeInput(named: "Sample.swift", in: directory)
+        let backgroundOptions = try CLIArguments.parse([
+            "render", code, "--out", output, "--background-image", oversized.path,
+        ])
+        #expect(throws: CLIError.inputImageTooLarge(path: oversized.path)) {
+            try CLIRenderer.run(backgroundOptions)
+        }
+
+        let watermarkOptions = try CLIArguments.parse([
+            "render", code, "--out", output, "--watermark-logo", oversized.path,
+        ])
+        #expect(throws: CLIError.inputImageTooLarge(path: oversized.path)) {
+            try CLIRenderer.run(watermarkOptions)
+        }
+        #expect(!FileManager.default.fileExists(atPath: output))
+    }
+
 }

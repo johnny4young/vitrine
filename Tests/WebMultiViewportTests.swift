@@ -11,7 +11,7 @@ import Testing
 @MainActor
 struct WebMultiViewportSelectionTests {
     private func defaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineWebMultiViewport-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     @Test func viewportsDefaultsToTheSingleViewportWhenUnset() {
@@ -102,6 +102,30 @@ struct WebMultiViewportSelectionTests {
         #expect(settings.webCapture.selectedViewportPresets == [.mobile, .desktop])
     }
 
+    @Test func injectedRendererDrivesTheRealMultiViewportModelPipeline() async throws {
+        let settings = AppSettings(defaults: defaults())
+        settings.webCapture.viewports = [.mobile, .desktop]
+        settings.export.scale = 1
+        let source = "<main>Local fixture</main>"
+        let renderer = WebSnapshotViewportRenderer { input, preset, _ in
+            guard case .html(let html) = input, html == source else {
+                throw RenderError.renderFailed
+            }
+            return try Self.fixtureAsset(for: preset.kind)
+        }
+        let model = WebSnapshotModel(viewportRenderer: renderer)
+        model.mode = .html
+        model.htmlText = source
+
+        await model.render(settings: settings)
+
+        #expect(model.errorMessage == nil)
+        #expect(model.results.map(\.kind) == [.mobile, .desktop])
+        #expect(model.results.map(\.asset.cgImage.width) == [39, 144])
+        #expect(model.boardAsset != nil)
+        #expect(model.renderedAsset?.cgImage.width == model.boardAsset?.cgImage.width)
+    }
+
     // MARK: - Prefilled-URL auto-capture
 
     @Test func autoCaptureGatesOnURLModeAndAvailability() {
@@ -163,6 +187,35 @@ struct WebMultiViewportSelectionTests {
         model.beginRender(Task {})
         #expect(model.isCapturing)  // no await between begin and this read
         model.finishRender()
+    }
+
+    private static func fixtureAsset(
+        for kind: WebSnapshotConfig.ViewportPreset.Kind
+    ) throws -> RenderedAsset {
+        let size =
+            switch kind {
+            case .mobile: CGSize(width: 39, height: 84)
+            case .desktop: CGSize(width: 144, height: 90)
+            case .openGraph: CGSize(width: 120, height: 63)
+            case .fullHD: CGSize(width: 192, height: 108)
+            case .custom: CGSize(width: 80, height: 60)
+            }
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+            let context = CGContext(
+                data: nil,
+                width: Int(size.width),
+                height: Int(size.height),
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else {
+            throw RenderError.renderFailed
+        }
+        context.setFillColor(CGColor(red: 0.2, green: 0.3, blue: 0.8, alpha: 1))
+        context.fill(CGRect(origin: .zero, size: size))
+        guard let image = context.makeImage() else { throw RenderError.renderFailed }
+        return RenderedAsset(cgImage: image, profile: .sRGB)
     }
 }
 

@@ -16,7 +16,7 @@ import Testing
 @Suite("RecentsStore")
 struct RecentsStoreTests {
     private func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineRecents-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     /// A fresh, isolated cache directory under the temp dir, removed when the

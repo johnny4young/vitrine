@@ -1,5 +1,21 @@
 import SwiftUI
 
+/// Query-invariant metadata for one command-search field.
+///
+/// Commands are rebuilt only when editor state changes, while the palette ranks the
+/// same catalog on every keystroke. Keeping both the folded text and its word slices
+/// here avoids repeating normalization and tokenization in that hot path.
+private struct CommandSearchTarget {
+    let text: String
+    let wordStarts: [Substring]
+
+    init(_ value: String) {
+        let text = LocalSearch.fold(value)
+        self.text = text
+        self.wordStarts = text.split { $0 == " " || $0 == "-" }
+    }
+}
+
 /// One action the command palette can run: a titled, keyword-tagged command that
 /// fuzzy-search surfaces and Return executes.
 ///
@@ -19,6 +35,10 @@ struct EditorCommand: Identifiable {
     let keywords: [String]
     /// An SF Symbol shown leading.
     let symbol: String
+    /// Search targets folded once when the catalog is built, not again for every
+    /// keystroke. The catalog is rebuilt when editor state changes, so labels remain
+    /// current without making query-time work depend on locale-aware normalization.
+    fileprivate let searchTargets: [CommandSearchTarget]
     /// Run the command. The palette closes first, then invokes this on the main actor.
     let run: () -> Void
 
@@ -31,36 +51,32 @@ struct EditorCommand: Identifiable {
         self.group = group
         self.keywords = keywords
         self.symbol = symbol
+        self.searchTargets = ([title, group] + keywords).map(CommandSearchTarget.init)
         self.run = run
-    }
-
-    /// Searchable title, group, and keywords with locale-aware case and diacritic
-    /// folding applied.
-    var searchTargets: [String] {
-        ([title, group] + keywords).map(CommandPaletteFilter.foldForSearch)
     }
 }
 
 /// The palette's search — pure so its ranking is unit-testable without a view.
 ///
-/// Matching is a case-insensitive **subsequence** test (the classic fuzzy-finder
-/// rule: "clr" matches "Clear"), scored so the most direct matches lead:
-/// a title prefix beats a title word-start beats a title substring beats a
-/// subsequence, and any title match beats a keyword-only match. Ties keep the input
-/// order, so a given catalog + query always ranks identically.
+/// Every whitespace-separated term must match, in any order. Each term uses a
+/// case-/diacritic-/width-insensitive **subsequence** test (the classic fuzzy-finder
+/// rule: "clr" matches "Clear"), scored so the most direct matches lead: a prefix
+/// beats a word-start, which beats a substring, which beats a subsequence. Title and
+/// group hits beat keyword-only hits. Ties keep the input order, so a given catalog +
+/// query always ranks identically.
 enum CommandPaletteFilter {
     /// Ranks `commands` for `query`. An empty/whitespace query returns the catalog
     /// unchanged (the palette opens showing everything in author order); otherwise
     /// only matching commands are returned, best first.
     static func rank(_ commands: [EditorCommand], query: String) -> [EditorCommand] {
-        let needle = foldForSearch(query.trimmingCharacters(in: .whitespacesAndNewlines))
-        guard !needle.isEmpty else { return commands }
+        let needles = LocalSearch.terms(in: query)
+        guard !needles.isEmpty else { return commands }
 
         return
             commands
             .enumerated()
             .compactMap { index, command -> (score: Int, order: Int, command: EditorCommand)? in
-                guard let score = bestScore(for: command, needle: needle) else { return nil }
+                guard let score = bestScore(for: command, needles: needles) else { return nil }
                 return (score, index, command)
             }
             // Higher score first; ties fall back to author order (stable).
@@ -70,53 +86,50 @@ enum CommandPaletteFilter {
             .map(\.command)
     }
 
-    static func foldForSearch(_ value: String) -> String {
-        value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-    }
-
-    /// The best score of `needle` against any of a command's search targets, or `nil`
-    /// when it matches none. The title (target 0) and group (target 1) score higher
-    /// than a keyword (target ≥ 2), so a keyword-only hit never outranks a title hit.
-    private static func bestScore(for command: EditorCommand, needle: String) -> Int? {
-        var best: Int?
-        for (targetIndex, target) in command.searchTargets.enumerated() {
-            guard let base = matchScore(needle: needle, in: target) else { continue }
-            // Title/group hits get the full weight; keyword hits are demoted so they
-            // only surface a command the title couldn't.
-            let weight = targetIndex <= 1 ? base : base / 10
-            best = max(best ?? 0, weight)
+    /// The sum of each term's best target score, or `nil` when any term is absent.
+    /// A term may land in a different field from its neighbors, so "dark theme" can
+    /// match a theme's appearance keyword plus its group even when that exact phrase
+    /// does not appear in one string.
+    private static func bestScore(for command: EditorCommand, needles: [String]) -> Int? {
+        var total = 0
+        for needle in needles {
+            var best: Int?
+            for (targetIndex, target) in command.searchTargets.enumerated() {
+                guard let base = matchScore(needle: needle, in: target) else { continue }
+                // Title/group hits get the full weight; keyword hits are demoted so they
+                // only surface a command the visible copy could not.
+                let weight = targetIndex <= 1 ? base : base / 10
+                best = max(best ?? 0, weight)
+            }
+            guard let best else { return nil }
+            total += best
         }
-        return best
+        return total
     }
 
     /// Scores `needle` against a single `haystack`, or `nil` if it isn't even a
     /// subsequence. The tiers are spaced by 100 so the per-target keyword demotion
     /// (÷10) can never lift a keyword match above a title match of the same tier.
-    private static func matchScore(needle: String, in haystack: String) -> Int? {
-        if haystack.hasPrefix(needle) { return 400 }
-        if wordStarts(of: haystack).contains(where: { $0.hasPrefix(needle) }) { return 300 }
-        if haystack.contains(needle) { return 200 }
-        if isSubsequence(needle, of: haystack) { return 100 }
+    private static func matchScore(needle: String, in target: CommandSearchTarget) -> Int? {
+        if target.text.hasPrefix(needle) { return 400 }
+        if target.wordStarts.contains(where: { $0.hasPrefix(needle) }) { return 300 }
+        if target.text.contains(needle) { return 200 }
+        if isSubsequence(needle, of: target.text) { return 100 }
         return nil
     }
 
-    /// The substrings of `haystack` that begin a word — split on spaces and hyphens —
-    /// so "line" word-start-matches "Show line numbers".
-    private static func wordStarts(of haystack: String) -> [Substring] {
-        haystack.split { $0 == " " || $0 == "-" }
-    }
-
     /// Whether every character of `needle` appears in `haystack` in order (the fuzzy
-    /// rule). Both are already lowercased by the caller.
+    /// rule). Both are already folded by the caller. A single forward scan avoids
+    /// constructing and searching a new suffix for every character in the query.
     private static func isSubsequence(_ needle: String, of haystack: String) -> Bool {
-        var haystackIndex = haystack.startIndex
-        for character in needle {
-            guard let found = haystack[haystackIndex...].firstIndex(of: character) else {
-                return false
-            }
-            haystackIndex = haystack.index(after: found)
+        var needleIterator = needle.makeIterator()
+        guard var expected = needleIterator.next() else { return true }
+
+        for character in haystack where character == expected {
+            guard let next = needleIterator.next() else { return true }
+            expected = next
         }
-        return true
+        return false
     }
 }
 

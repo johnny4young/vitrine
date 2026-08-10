@@ -12,6 +12,42 @@ can never drift.
 
 ## [Unreleased]
 
+- Add a repeatable dynamic-memory evidence lane with selectable editor and isolated image
+  import/decode journeys. It retains raw memgraphs, reports allocation and leak roots
+  without false framework allowlists, and compares only explicitly identified baselines
+  from the same environment and journey.
+
+### Changed
+
+- **The free-core evaluation and distribution contract is now explicit and regression
+  tested.** There is no expiring trial: core capture/editing and basic `vgrab` remain
+  available indefinitely, while advanced automation stays PRO. Homebrew and the signed,
+  notarized DMG are the canonical channels; the App Store remains optional and GUI-only.
+- **Swift compiler warnings now fail every app-owned target build.** The existing test
+  diagnostics were removed, including a redundant optional requirement, an obsolete
+  throwing helper, and unnecessary weak mutability.
+- **The menu-bar helper lifecycle contract is now directly testable.** Its PID/token
+  parser, exact owner identity, watchdog decision, executable name, and historical
+  visibility repair are shared with the main app instead of living as private duplicated
+  entry-point logic.
+- **Direct-download artifacts now fail closed on partial architecture support.** DMG
+  packaging explicitly builds arm64 and x86_64, then inspects every executable Mach-O in the app
+  before signing. Clean-Mac release QA independently repeats the check against the
+  downloaded artifact, including the CLI, menu-bar helper, frameworks, and XPC services.
+- **Local search is more consistent and resilient.** Command Palette queries now accept
+  multiple terms in any order and reuse pre-folded command targets; Recents, theme, and
+  font filters share the same case-, diacritic-, and width-insensitive term matching.
+  A deliberately oversized command catalog has a regression budget in the performance suite.
+- **Basic `vgrab` terminal capture is now free.** Its dedicated CLI capability can copy
+  a terminal capture or open it in the editor with optional width and context. General
+  file/Git rendering, multi-size, batch, `vpane`, sidecars, and styling automation remain
+  PRO behind the offline signed-token gate. The exhaustive command policy is evaluated
+  lazily, so `vgrab` never reads the PRO token and locked automation exits before AppKit,
+  font registration, or input work.
+- **Visual UI evidence is now a strict CI gate.** The complete 53-state screenshot
+  tour fails on missing surfaces, foreground-app contamination, invalid or duplicate
+  captures, and manifest drift, then publishes stable PNG artifacts for review.
+
 ### Fixed
 
 - **Installs that cannot auto-update now get a download link instead of a dead end.**
@@ -20,6 +56,47 @@ can never drift.
   one already on disk. Each appcast entry is now marked informational for exactly those
   builds, so their update alert offers a download rather than an installer that always
   fails. Newer builds are unaffected and keep updating in place.
+- **Welcome and Recents remain usable on compact macOS displays.** Welcome can shrink
+  from its 700-point ideal width and clamps itself in AppKit's own screen coordinate
+  space. Recents now owns an adaptive in-content action bar instead of depending on
+  AppKit toolbar overflow, which could omit search, pin, sort, and cleanup controls on
+  narrow hosted Sequoia windows. UI failures retain XCUIAutomation screen, window, and
+  accessibility geometry, and targeted selectors prefer the hittable control when
+  AppKit exposes the same identifier on nested wrapper nodes.
+- **Output choices now follow the codecs the running macOS can actually write.** AVIF
+  remains available on Tahoe, while Sequoia no longer offers or restores an AVIF choice
+  its ImageIO stack recognizes as a type but cannot encode. PNG, PDF, and HEIC remain
+  available across the supported compatibility matrix.
+- **Sandboxed direct-download builds can install Sparkle updates again.** The app now
+  enables Sparkle's required Installer Launcher XPC service, packaging and clean-Mac QA
+  verify the final Info.plist, embedded service, and matching `-spks`/`-spki` entitlements,
+  and every release must complete a real N-to-N+1 install before publication.
+- **Invalid shipped URLs or license-verifier bytes no longer terminate startup.** Trusted external
+  links now require absolute credential-free HTTPS URLs, license operations stop before networking
+  when an endpoint is unavailable, an invalid embedded public key keeps PRO locked, and a local CLI
+  editor-handoff construction failure exits with a typed error instead of trapping.
+- **Editor drops no longer depend on an item provider calling back forever.** Image,
+  file-URL, and text representations now share one exactly-once bridge with a ten-second
+  timeout, task cancellation, late-callback rejection, and provider-progress teardown.
+  Replacing a drop or closing its editor cancels the owned task instead of leaving
+  fire-and-forget work suspended behind AppKit.
+- **Every image import now has one memory-safety budget.** Picker, drag-and-drop,
+  clipboard, URL, Brand Kit, and CLI inputs reject more than 25 MB, more than 256
+  frames, or more than 64 million decoded pixels before AppKit creates a surface.
+  Local reads remain bounded if a file grows while it is being read, and the editor
+  and CLI now explain the specific rejection instead of falling through to a generic
+  file or render error.
+- **HTML and URL captures now share one bounded WebKit load state machine.** It keeps
+  exactly one continuation, rejects accidental concurrent/repeated waits instead of
+  hanging a render, ignores late delegate callbacks, and resolves timeout/cancellation
+  races through the same deterministic path.
+- **App Store PRO transaction observers now end with their owner.** Replacing or releasing
+  the StoreKit provider cancels its previous update task, while purchase, cancellation,
+  pending, restore, failure, and verified-entitlement cache transitions now have
+  deterministic regression coverage without contacting an App Store account.
+- **Welcome remains usable on shorter displays.** The first-run journey now scrolls
+  when the available screen cannot hold its ideal height, keeping sample capture,
+  setup, Skip, and Get Started controls reachable instead of clipping the footer.
 
 ## [1.0.1] - 2026-08-08
 

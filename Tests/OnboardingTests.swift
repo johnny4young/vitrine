@@ -7,18 +7,18 @@ import Testing
 ///
 /// The quick-start is gated by a single persisted flag, `AppSettings.hasSeenWelcome`,
 /// stored in the app's defaults store. UI tests isolate that store with
-/// `VITRINE_USER_DEFAULTS_SUITE`, so these unit tests use the same pattern (a fresh
-/// suite per test) to prove the flag defaults to "first run", persists across
-/// relaunches, and is cleared by a full reset.
+/// `VITRINE_USER_DEFAULTS_SUITE`; these unit tests use a fresh in-memory store to prove
+/// the flag defaults to "first run", survives settings reconstruction, and is cleared
+/// by a full reset.
 private func freshDefaults() -> UserDefaults {
-    UserDefaults(suiteName: "VitrineOnboardingTests-\(UUID().uuidString)")!
+    testDefaults()
 }
 
 @MainActor
 @Suite("Onboarding first-run flag")
 struct OnboardingFirstRunTests {
     @Test func freshInstallIsTreatedAsFirstRun() {
-        // A brand-new defaults suite has no value for the flag, so the app must
+        // A brand-new defaults store has no value for the flag, so the app must
         // treat it as a first run and offer the quick-start.
         let settings = AppSettings(defaults: freshDefaults())
         #expect(settings.hasSeenWelcome == false)

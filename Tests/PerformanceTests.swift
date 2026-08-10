@@ -75,6 +75,14 @@ struct PerformanceTests {
         /// `PERF WARN`, which is what makes a regression visible before it breaks
         /// CI — the point of adding these fixtures is the trend line, not the gate.
         static let secondaryHardCeiling: Duration = .milliseconds(3000)
+
+        /// Soft target and hard ceiling for ranking a deliberately oversized
+        /// 1,000-command palette.
+        /// The shipped catalog contains only tens of values; this synthetic bound
+        /// catches accidental quadratic or per-keystroke normalization regressions
+        /// while remaining far above the real interaction cost on shared CI hosts.
+        static let searchTarget: Duration = .milliseconds(50)
+        static let searchHardCeiling: Duration = .milliseconds(250)
     }
 
     /// How many timed renders each case samples (after the discarded warm-up).
@@ -319,6 +327,33 @@ struct PerformanceTests {
             "default@3x p95 over the secondary hard ceiling")
     }
 
+    @Test func commandPaletteSearchMeetsBudget() {
+        let catalog = (0..<1_000).map { index in
+            EditorCommand(
+                id: "command.\(index)", title: "Capture command \(index)",
+                group: index.isMultiple(of: 2) ? "Theme" : "Export",
+                keywords: ["snapshot", "automation", "item-\(index)"],
+                symbol: "command", run: {})
+        }
+        let warmResult = CommandPaletteFilter.rank(catalog, query: "theme snapshot 998")
+        #expect(warmResult.map(\.id) == ["command.998"])
+
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+        for _ in 0..<Self.sampleCount {
+            let elapsed = clock.measure {
+                _ = CommandPaletteFilter.rank(catalog, query: "theme snapshot 998")
+            }
+            durations.append(elapsed)
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "command-search-1000", target: PerfBudget.searchTarget)
+        #expect(
+            stats.p95 <= PerfBudget.searchHardCeiling,
+            "oversized command search exceeded its hard ceiling")
+    }
+
     @Test func budgetsAreOrdered() {
         // A guard on the documented thresholds themselves: the target must sit
         // below the hard ceiling, and the default ceiling below the large one, or
@@ -328,6 +363,8 @@ struct PerformanceTests {
         // The secondary paths are ordinary renders, so they share the ordinary
         // ceiling — pinned here so raising one silently doesn't skip the other.
         #expect(PerfBudget.secondaryHardCeiling == PerfBudget.hardCeiling)
+        #expect(PerfBudget.searchTarget < PerfBudget.searchHardCeiling)
+        #expect(PerfBudget.searchHardCeiling < PerfBudget.target)
     }
 }
 

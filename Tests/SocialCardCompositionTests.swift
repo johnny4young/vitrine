@@ -28,8 +28,7 @@ struct SocialCardCompositionTests {
     }
 
     @Test func controllerSuppliesOneDependencyGraphToItsRoot() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineSocialComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let display = DisplaySpy()
         let presentation = PresentationSpy()
@@ -56,8 +55,7 @@ struct SocialCardCompositionTests {
     }
 
     @Test func shareActionUsesTheInjectedPresentation() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineSocialComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         environment.appSettings.socialCard = SocialCardModel(title: "Share this card")
         environment.appSettings.export.scale = 1
@@ -73,8 +71,7 @@ struct SocialCardCompositionTests {
     }
 
     @Test func failedShareUsesTheInjectedFeedback() throws {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineSocialComposition-\(UUID().uuidString)"))
+        let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let display = DisplaySpy()
         let presentation = PresentationSpy()

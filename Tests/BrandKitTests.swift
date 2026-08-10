@@ -15,7 +15,7 @@ struct BrandKitTests {
     /// A throwaway defaults suite so each test's persistence is isolated from the
     /// real app container and from the other tests.
     private func isolatedDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineBrandKit-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     /// A store rooted at an isolated defaults suite and a temporary image directory,

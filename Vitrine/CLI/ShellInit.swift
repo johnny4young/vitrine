@@ -77,9 +77,9 @@ enum ShellInit {
           eval "$(vitrine shell-init zsh)"
 
         Then, in a new shell:
-          vgrab <command>       run a command and copy a contextual terminal image
+          vgrab <command>       free: run a command and copy a contextual terminal image
           vgrab --no-context …  omit the project and command header
-          vpane [pane]          copy a terminal image of a tmux pane's visible contents
+          vpane [pane]          PRO: copy a terminal image of a tmux pane's visible contents
 
         To capture a command you already ran, recall it (↑ or !!) and prepend
         vgrab — e.g. `vgrab !!`. Inside tmux, `vpane` captures what is already on
@@ -148,7 +148,7 @@ enum ShellInit {
           if (( _vcontext )) && [[ "$_vshare" != "--edit" ]]; then
             _vcontextarg=(--filename "$_vlabel" --title "$ $_vcmd")
           fi
-          command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "${_vcontextarg[@]}" "$_vshare"
+          command vitrine terminal-capture "$_vf" "${_vwarg[@]}" "${_vcontextarg[@]}" "$_vshare"
           rm -f -- "$_vf"
           return $_vc
         }
@@ -244,7 +244,7 @@ enum ShellInit {
           if [ "$_vcontext" -eq 1 ] && [ "$_vshare" != "--edit" ]; then
             _vcontextarg=(--filename "$_vlabel" --title "$ $_vcmd")
           fi
-          command vitrine render "$_vf" --language terminal "${_vwarg[@]}" "${_vcontextarg[@]}" "$_vshare"
+          command vitrine terminal-capture "$_vf" "${_vwarg[@]}" "${_vcontextarg[@]}" "$_vshare"
           rm -f -- "$_vf"
           return $_vc
         }
@@ -357,7 +357,7 @@ enum ShellInit {
             if test $_vcontext -eq 1; and test "$_vshare" != '--edit'
                 set _vcontextarg --filename "$_vlabel" --title "$ $_vcmd"
             end
-            command vitrine render $_vf --language terminal $_vwarg $_vcontextarg $_vshare
+            command vitrine terminal-capture $_vf $_vwarg $_vcontextarg $_vshare
             rm -f -- $_vf
             return $_vc
         end

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The out-of-process PRO entitlement check for the `vitrine` CLI.
+/// The out-of-process PRO entitlement check for Vitrine's advanced CLI capabilities.
 ///
 /// The CLI is a separate process from the app and a direct-download/Homebrew feature
 /// (the sandboxed App Store build can't symlink a binary onto PATH), so it cannot read
@@ -15,6 +15,22 @@ import Foundation
 /// binary — the shipped CLI has no path to PRO except a signature-valid token. This is
 /// the "bypass locally, never in releases" rule the app's `DebugUnlockProvider` follows.
 enum CLIEntitlement {
+    /// Enforces the free-versus-PRO command policy before the executable initializes
+    /// AppKit, registers fonts, or reads an automation input.
+    ///
+    /// The unlock check is a closure rather than a precomputed Boolean on purpose:
+    /// `terminal-capture` returns without evaluating it, so everyday `vgrab` never
+    /// touches the PRO token. General automation evaluates it once and fails before
+    /// doing product work when no valid offline entitlement is present.
+    static func authorize(
+        _ command: CLIOptions.Command,
+        proUnlockCheck: () -> Bool = { CLIEntitlement.isProUnlocked() }
+    ) throws {
+        guard !command.requiresPro || proUnlockCheck() else {
+            throw CLIError.proRequired
+        }
+    }
+
     /// Whether PRO automation is unlocked for this CLI invocation.
     ///
     /// `tokenURL`, `verifier`, and `environment` are injectable so the verification is
@@ -39,8 +55,9 @@ enum CLIEntitlement {
     /// place. It therefore resolves that same physical file explicitly under the app's
     /// container from the real home, which is where the app actually wrote it.
     ///
-    /// Without a token signed by the pinned production key, the CLI stays free here except
-    /// under the Debug bypass — the correct "locked until activation" state.
+    /// Without a token signed by the pinned production key, advanced CLI capabilities stay
+    /// locked except under the Debug bypass. The separate basic `vgrab` policy never calls
+    /// this verifier.
     static var defaultTokenURL: URL {
         let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
         return

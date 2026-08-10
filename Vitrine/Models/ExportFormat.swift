@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 
 /// Exported image format (Output).
 ///
@@ -60,10 +61,47 @@ enum ExportFormat: String, CaseIterable, Identifiable, Codable {
     /// maps to a case (documented fallback).
     static let fallback: ExportFormat = .png
 
+    /// Whether the active OS ImageIO stack can faithfully produce this format.
+    ///
+    /// A declared `UTType` is not enough: macOS Sequoia recognizes `public.avif`
+    /// but does not ship an AVIF destination writer, whereas Tahoe does. Querying the
+    /// actual destination identifiers keeps the UI and persisted settings aligned with
+    /// the codec available on the running Mac without brittle OS-version checks.
+    nonisolated var isEncodingAvailable: Bool {
+        switch self {
+        case .png, .pdf:
+            true
+        case .heic:
+            Self.imageIODestinationIdentifiers.contains("public.heic")
+        case .avif:
+            Self.imageIODestinationIdentifiers.contains("public.avif")
+        }
+    }
+
+    /// Formats safe to offer in interactive pickers on the running Mac.
+    nonisolated static var availableCases: [ExportFormat] {
+        allCases.filter(\.isEncodingAvailable)
+    }
+
+    /// Keeps a persisted or imported choice usable on the active OS.
+    nonisolated var availableOrFallback: ExportFormat {
+        isEncodingAvailable ? self : .png
+    }
+
+    /// ImageIO registers writers once for the process; cache the immutable capability
+    /// set instead of rebuilding it on every SwiftUI picker evaluation.
+    private nonisolated static let imageIODestinationIdentifiers = Set(
+        CGImageDestinationCopyTypeIdentifiers() as? [String] ?? [])
+
     /// Decodes a persisted raw value, tolerating `nil` or an unrecognized
     /// string by returning `fallback`.
     static func resolve(_ rawValue: String?) -> ExportFormat {
         ExportFormat(rawValue: rawValue ?? "") ?? fallback
+    }
+
+    /// Decodes a persisted value and falls back when this Mac cannot encode it.
+    static func resolveAvailable(_ rawValue: String?) -> ExportFormat {
+        resolve(rawValue).availableOrFallback
     }
 }
 

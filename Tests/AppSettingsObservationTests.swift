@@ -20,8 +20,7 @@ private nonisolated final class InvalidationProbe: @unchecked Sendable {
 @Suite("App settings observation boundaries")
 struct AppSettingsObservationTests {
     private func settings() -> AppSettings {
-        let name = "AppSettingsObservationTests-\(UUID().uuidString)"
-        return AppSettings(defaults: UserDefaults(suiteName: name)!)
+        AppSettings(defaults: testDefaults())
     }
 
     @Test func documentTextDoesNotInvalidateRenderConfigurationObservers() {

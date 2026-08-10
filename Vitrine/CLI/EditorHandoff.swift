@@ -36,7 +36,7 @@ enum EditorHandoff {
     /// `vitrine://edit` URL to open. The URL carries the random token (so only this open
     /// can consume the payload) and, when known, the language hint (so the app can pick
     /// the renderer without re-detecting; it still falls back to content detection).
-    static func stage(content: String, language: Language?) -> URL {
+    static func stage(content: String, language: Language?) -> URL? {
         let token = UUID().uuidString
         let pasteboard = NSPasteboard(name: pasteboardName(for: token))
         pasteboard.clearContents()
@@ -50,8 +50,13 @@ enum EditorHandoff {
             queryItems.append(URLQueryItem(name: languageKey, value: language.rawValue))
         }
         components.queryItems = queryItems
-        // The components are all well-formed, so the URL is always buildable.
-        return components.url!
+        guard let url = components.url else {
+            // Do not leave the user's content staged when the matching one-shot URL could
+            // not be built. The CLI maps this defensive branch to a typed non-zero error.
+            pasteboard.clearContents()
+            return nil
+        }
+        return url
     }
 
     /// App side: read the content staged for `url` (a `vitrine://edit?token=…` URL) and

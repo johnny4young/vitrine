@@ -194,7 +194,7 @@ struct CaptureHUDBehaviorTests {
 @Suite("Capture result destinations", .serialized)
 struct CaptureResultDestinationTests {
     private func freshDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "VitrineNotifierTests-\(UUID().uuidString)")!
+        testDefaults()
     }
 
     @Test func copyOnlyResultReportsCopiedNotSaved() {

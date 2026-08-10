@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 
 /// Handles explicit development and UI-automation launch arguments.
 ///
@@ -8,6 +9,11 @@ import AppKit
 final class AppLaunchArgumentHandler {
     let environment: AppEnvironment
     private let showMenuBarPanel: () -> Void
+    private var memoryImageCycleTask: Task<Void, Never>?
+
+    isolated deinit {
+        memoryImageCycleTask?.cancel()
+    }
 
     init(
         environment: AppEnvironment,
@@ -31,7 +37,11 @@ final class AppLaunchArgumentHandler {
     /// New through its real version gate; `--skip-onboarding` just marks the
     /// quick-start as seen; the multi-window hooks (`--open-second-editor`,
     /// `--force-offscreen-editor`) drive UI smoke tests; `--demo-brand-kit-free`
-    /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests.
+    /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests;
+    /// `--web-snapshot-ui-test-renderer` keeps that strict UI journey deterministic
+    /// when XCTest cannot launch WebKit's out-of-process renderer;
+    /// `--memory-image-cycle` runs the isolated foreground-image memory journey and
+    /// terminates after recording its live snapshots.
     ///
     /// - Returns: whether a hook opened a window, so the normal first-run surfaces
     ///   (`presentIfFirstRun` / `presentIfNewVersion`) are not stacked on top of one.
@@ -227,7 +237,12 @@ final class AppLaunchArgumentHandler {
             didOpenWindow = true
         }
 
-        if arguments.contains("--snapshot-loop") {
+        if arguments.contains("--memory-image-cycle") {
+            let editor = EditorWindowController.shared
+            editor.show()
+            didOpenWindow = true
+            startMemoryImageCycle(settings: editor.session(for: .primary).settings)
+        } else if arguments.contains("--snapshot-loop") {
             Task {
                 for tick in 0..<14 {
                     try? await Task.sleep(for: .milliseconds(1500))
@@ -240,13 +255,63 @@ final class AppLaunchArgumentHandler {
         return didOpenWindow
     }
 
+    /// Starts the dedicated image-import/decode evidence journey. The temporary root is
+    /// available only when the Debug isolation contract is active; this prevents a
+    /// release or accidental manual launch from writing synthetic images into the user's
+    /// real Application Support container.
+    private func startMemoryImageCycle(settings: AppSettings) {
+        memoryImageCycleTask?.cancel()
+        guard let isolationRoot = BackgroundImageStore.debugIsolatedContainerRoot() else {
+            FileHandle.standardError.write(
+                Data("VITRINE_MEMORY_IMAGE_CYCLE_FAILED missing-isolation\n".utf8))
+            NSApp.terminate(nil)
+            return
+        }
+
+        let store = BackgroundImageStore.foregroundContainer
+        let journey = MemoryImageCycleJourney(
+            settings: settings,
+            store: store,
+            capture: { tick in
+                guard let fingerprint = Self.snapshotOpenWindows(tag: tick) else {
+                    throw MemoryImageCycleJourney.JourneyError.snapshotCaptureFailed
+                }
+                return fingerprint
+            })
+        memoryImageCycleTask = Task {
+            defer { NSApp.terminate(nil) }
+            do {
+                let result = try await journey.run()
+                // A success marker also certifies that synthetic image files were
+                // removed. Failed/cancelled journeys still clean up best-effort below.
+                try FileManager.default.removeItem(at: isolationRoot)
+                let line =
+                    "\(MemoryImageCycleJourney.completionMarker) "
+                    + "iterations=\(result.completedIterations) "
+                    + "unique-references=\(result.uniqueReferences) "
+                    + "unique-snapshots=\(result.uniqueSnapshots)\n"
+                FileHandle.standardOutput.write(Data(line.utf8))
+            } catch is CancellationError {
+                try? FileManager.default.removeItem(at: isolationRoot)
+                FileHandle.standardError.write(
+                    Data("VITRINE_MEMORY_IMAGE_CYCLE_FAILED cancelled\n".utf8))
+            } catch {
+                try? FileManager.default.removeItem(at: isolationRoot)
+                FileHandle.standardError.write(
+                    Data("VITRINE_MEMORY_IMAGE_CYCLE_FAILED \(error)\n".utf8))
+            }
+        }
+    }
+
     /// Dev/CI helper: periodically snapshots every open window's content view via
     /// `cacheDisplay` (the app draws itself — no screen-recording permission needed),
     /// so a UI can be captured while it is being driven (e.g. by AppleScript).
-    private static func snapshotOpenWindows(tag: Int) {
+    @discardableResult
+    private static func snapshotOpenWindows(tag: Int) -> String? {
         let dir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("vitrine-ui", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var snapshotFingerprints: [String] = []
         for window in NSApp.windows {
             guard window.isVisible, let view = window.contentView, view.bounds.width > 40,
                 let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
@@ -256,7 +321,11 @@ final class AppLaunchArgumentHandler {
             let safe = (window.title.isEmpty ? "window" : window.title)
                 .replacingOccurrences(of: " ", with: "-")
             try? png.write(to: dir.appendingPathComponent("ui-\(safe)-\(tag).png"))
+            snapshotFingerprints.append(
+                SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined())
         }
+        guard !snapshotFingerprints.isEmpty else { return nil }
+        return snapshotFingerprints.sorted().joined(separator: ":")
     }
 
     /// Flattens a `cacheDisplay` capture over the window's background color.

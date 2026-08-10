@@ -78,7 +78,62 @@ struct CLIEntitlementTests: CLITestSupport {
     }
 
     @Test func proRequiredReportsAClearMessageAndFailureExitCode() {
-        #expect(!CLIError.proRequired.message.isEmpty)
+        #expect(CLIError.proRequired.message.contains("Basic vgrab terminal capture is free"))
         #expect(CLIError.proRequired.exitCode == 1)
+    }
+
+    @Test func onlyTheConstrainedTerminalCaptureCommandBypassesPro() throws {
+        let free = try CLIArguments.parse([
+            "terminal-capture", "capture.log", "--terminal-width", "120",
+            "--filename", "vitrine · main", "--title", "$ make test", "--copy",
+        ])
+        #expect(free.command == .terminalCapture)
+        #expect(!free.command.requiresPro)
+        #expect(free.language == .terminal)
+
+        #expect(CLIOptions.Command.allCases.filter { !$0.requiresPro } == [.terminalCapture])
+        #expect(
+            CLIOptions.Command.allCases.filter(\.requiresPro) == [.render, .multiSize, .batch])
+    }
+
+    @Test func freeTerminalCaptureNeverEvaluatesTheProUnlockCheck() throws {
+        var checkCount = 0
+
+        try CLIEntitlement.authorize(.terminalCapture) {
+            checkCount += 1
+            return false
+        }
+
+        #expect(checkCount == 0)
+    }
+
+    @Test(arguments: CLIOptions.Command.allCases.filter(\.requiresPro))
+    func everyAdvancedCommandRequiresProAndChecksOnlyOnce(_ command: CLIOptions.Command) throws {
+        var lockedCheckCount = 0
+        #expect(throws: CLIError.proRequired) {
+            try CLIEntitlement.authorize(command) {
+                lockedCheckCount += 1
+                return false
+            }
+        }
+        #expect(lockedCheckCount == 1)
+
+        var unlockedCheckCount = 0
+        try CLIEntitlement.authorize(command) {
+            unlockedCheckCount += 1
+            return true
+        }
+        #expect(unlockedCheckCount == 1)
+    }
+
+    @Test func executableAuthorizesBeforeInitializingAppKit() throws {
+        let source = try String(
+            contentsOf: repoFile("VitrineCLI", "main.swift"), encoding: .utf8)
+        let authorization = try #require(
+            source.range(of: "try CLIEntitlement.authorize(options.command)"))
+        let appInitialization = try #require(source.range(of: "NSApplication.shared"))
+
+        #expect(authorization.lowerBound < appInitialization.lowerBound)
+        #expect(!source.contains("options.command.requiresPro"))
     }
 }

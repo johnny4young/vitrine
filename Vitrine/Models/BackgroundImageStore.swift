@@ -20,22 +20,55 @@ import UniformTypeIdentifiers
 /// is unit-testable without touching the real container.
 struct BackgroundImageStore {
     /// Errors surfaced while importing an image.
-    enum ImportError: Error, Equatable {
-        /// The chosen file or downloaded bytes were not a decodable image.
+    nonisolated enum ImportError: Error, Equatable {
+        /// The chosen source was not a supported image with valid dimensions.
         case notAnImage
         /// The bytes could not be read or written into the container.
         case copyFailed
         /// A remote image could not be downloaded — an unsupported URL scheme, a
         /// network failure, or a non-success HTTP status.
         case downloadFailed
-        /// A downloaded image exceeded `maxRemoteImageBytes`.
+        /// An import exceeded the encoded-byte, frame-count, or decoded-pixel budget.
         case tooLarge
+
+        /// A short, localized explanation suitable for picker and drop feedback.
+        var message: String {
+            switch self {
+            case .notAnImage:
+                String(localized: "That source didn't contain a supported image.")
+            case .copyFailed:
+                String(localized: "Vitrine couldn't read or save that image.")
+            case .downloadFailed:
+                String(localized: "Vitrine couldn't download an image from that URL.")
+            case .tooLarge:
+                String(
+                    localized:
+                        "That image is too large. Choose one up to 25 MB and 64 total megapixels."
+                )
+            }
+        }
     }
 
-    /// The largest remote image Vitrine will download as a background, guarding
-    /// against a pathological or hostile URL. 25 MB comfortably covers a
-    /// high-resolution photo while bounding memory and disk use.
-    nonisolated static let maxRemoteImageBytes = 25 * 1024 * 1024
+    /// The largest encoded image accepted from any source. 25 MB comfortably covers
+    /// a high-resolution photo while bounding read, hash, and disk allocations.
+    nonisolated static let maxImportBytes = 25 * 1024 * 1024
+
+    /// The remote loader shares the universal import limit. Keep this name as the
+    /// streaming API's explicit contract and for source compatibility with callers.
+    nonisolated static let maxRemoteImageBytes = maxImportBytes
+
+    /// The cumulative decoded-pixel ceiling across every frame. At four bytes per
+    /// pixel this bounds a worst-case imported bitmap to roughly 256 MB while keeping
+    /// ordinary 6K/8K photography supported.
+    nonisolated static let maxDecodedPixelCount = 64_000_000
+
+    /// A separate metadata/frame ceiling prevents a tiny-frame animation from carrying
+    /// an effectively unbounded frame table while still allowing normal animated images.
+    nonisolated static let maxImageFrameCount = 256
+
+    /// Bounded local reads grow in modest increments and stop one byte past the limit,
+    /// rather than allocating an entire file that changed after its metadata check.
+    nonisolated private static let localImageReadChunkBytes = 256 * 1024
 
     /// Keep the direct remote fetch from lingering forever on a slow or stalled
     /// host. The cap still comes from `maxRemoteImageBytes`; this only bounds the
@@ -67,7 +100,8 @@ struct BackgroundImageStore {
     /// directory if Application Support is unavailable so the store is always usable.
     private static func appContainer(subdirectory: String) -> BackgroundImageStore {
         let base =
-            (try? FileManager.default.url(
+            debugIsolatedContainerRoot()
+            ?? (try? FileManager.default.url(
                 for: .applicationSupportDirectory, in: .userDomainMask,
                 appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
@@ -75,44 +109,53 @@ struct BackgroundImageStore {
             directory: base.appendingPathComponent(subdirectory, isDirectory: true))
     }
 
+    /// A per-launch temporary root for the opt-in dynamic image-memory journey.
+    ///
+    /// The override exists only in Debug and requires the same isolated-defaults marker
+    /// used by UI/memory automation. A normal app launch — including every Release build
+    /// — therefore continues to use Application Support. Hashing the suite produces a
+    /// plain path component without trusting environment text as a filesystem path.
+    static func debugIsolatedContainerRoot(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        temporaryDirectory: URL = FileManager.default.temporaryDirectory
+    ) -> URL? {
+        #if DEBUG
+            guard environment["VITRINE_MEMORY_IMAGE_STORE_ISOLATED"] == "1",
+                let suite = environment["VITRINE_USER_DEFAULTS_SUITE"], !suite.isEmpty
+            else { return nil }
+            let digest = SHA256.hash(data: Data(suite.utf8))
+                .map { String(format: "%02x", $0) }
+                .joined()
+            return temporaryDirectory.appendingPathComponent(
+                "vitrine-memory-images-\(digest)", isDirectory: true)
+        #else
+            return nil
+        #endif
+    }
+
     /// Copies the user-selected image at `sourceURL` into the container and
     /// returns a stable reference to the copy.
     ///
     /// `sourceURL` is a user-chosen file: access is bracketed by
     /// `startAccessingSecurityScopedResource()` so the read works under the
-    /// sandbox without a broad entitlement. The bytes are validated as a decodable
-    /// image before being written, and the destination name is content-addressed
+    /// sandbox without a broad entitlement. The bytes and decoded dimensions are
+    /// bounded before being written, and the destination name is content-addressed
     /// (a hash of the bytes) so re-importing the same image reuses one file
     /// instead of accumulating duplicates.
     func importImage(from sourceURL: URL) throws -> ImageReference {
         let accessed = sourceURL.startAccessingSecurityScopedResource()
         defer { if accessed { sourceURL.stopAccessingSecurityScopedResource() } }
 
-        let data: Data
-        do {
-            data = try Data(contentsOf: sourceURL)
-        } catch {
-            throw ImportError.copyFailed
-        }
-
-        // Validate it is genuinely an image before storing it; never trust the
-        // extension alone.
-        guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
-
+        let data = try Self.readBoundedImageData(from: sourceURL)
         return try store(data, preferredExtension: sanitizedExtension(for: sourceURL))
     }
 
     /// Imports already-in-memory image `data` — a clipboard paste or an in-app drag that
-    /// carries the image directly rather than as a file. Validates the bytes are a decodable
-    /// image, then writes them through the same content-addressed store as the file path, so
-    /// identical bytes from any source dedupe to one file.
+    /// carries the image directly rather than as a file. Validates the encoded bytes and
+    /// decoded dimensions, then writes them through the same content-addressed store as the
+    /// file path, so identical bytes from any source dedupe to one file.
     func importImage(data: Data, preferredExtension ext: String = "") throws -> ImageReference {
-        guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
-        let preferredExtension = sanitizedExtension(ext)
-        return try store(
-            data,
-            preferredExtension: preferredExtension.isEmpty
-                ? inferredExtension(from: data) : preferredExtension)
+        try store(data, preferredExtension: sanitizedExtension(ext))
     }
 
     /// Downloads the image at a remote `url` and imports it into the container,
@@ -127,8 +170,8 @@ struct BackgroundImageStore {
     /// hides the field). The `load` closure is injectable so the fetch → validate →
     /// store path is unit-testable without a live network.
     ///
-    /// The bytes are validated as a decodable image and capped at
-    /// `maxRemoteImageBytes` before being written through the same content-addressed
+    /// The bytes and decoded dimensions are validated and capped before being written
+    /// through the same content-addressed
     /// store as a user-picked file, so an identical remote and local image dedupe to
     /// one file.
     func importImage(
@@ -160,9 +203,6 @@ struct BackgroundImageStore {
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw ImportError.downloadFailed
         }
-        guard data.count <= Self.maxRemoteImageBytes else { throw ImportError.tooLarge }
-        guard NSImage(data: data) != nil else { throw ImportError.notAnImage }
-
         return try store(
             data, preferredExtension: sanitizedExtension(for: url, mimeType: response.mimeType))
     }
@@ -246,10 +286,145 @@ struct BackgroundImageStore {
         return data
     }
 
-    /// Writes validated image `data` into the container under a content-addressed
+    /// Reads a regular local file without ever retaining more than `maxBytes + 1`.
+    /// The metadata check rejects known-large inputs before opening them; the bounded
+    /// chunk loop remains authoritative if the file grows between that check and read.
+    nonisolated static func readBoundedImageData(
+        from url: URL,
+        maxBytes: Int = maxImportBytes
+    ) throws -> Data {
+        let limit = max(0, maxBytes)
+        let values: URLResourceValues
+        do {
+            values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+        } catch {
+            throw ImportError.copyFailed
+        }
+
+        guard values.isRegularFile == true else { throw ImportError.copyFailed }
+        if let fileSize = values.fileSize, fileSize > limit {
+            throw ImportError.tooLarge
+        }
+
+        let handle: FileHandle
+        do {
+            handle = try FileHandle(forReadingFrom: url)
+        } catch {
+            throw ImportError.copyFailed
+        }
+        defer { try? handle.close() }
+
+        var data = Data()
+        data.reserveCapacity(max(0, min(values.fileSize ?? 0, limit)))
+
+        do {
+            while true {
+                let remaining = limit - data.count
+                let nextRead =
+                    remaining >= localImageReadChunkBytes
+                    ? localImageReadChunkBytes : remaining + 1
+                guard let chunk = try handle.read(upToCount: nextRead), !chunk.isEmpty else {
+                    break
+                }
+                data.append(chunk)
+                guard data.count <= limit else { throw ImportError.tooLarge }
+            }
+        } catch let error as ImportError {
+            throw error
+        } catch {
+            throw ImportError.copyFailed
+        }
+        return data
+    }
+
+    /// Reads and validates one local image for callers that need the original bytes
+    /// rather than a stored reference (for example a CLI watermark logo).
+    nonisolated static func readValidatedImageData(from url: URL) throws -> Data {
+        let data = try readBoundedImageData(from: url)
+        try validateImageData(data)
+        return data
+    }
+
+    /// Recognizes image bytes through ImageIO without decoding their full surfaces,
+    /// then applies cumulative geometry limits before AppKit ever creates an image.
+    /// `kCGImageSourceShouldCache: false` keeps this metadata pass from eagerly caching
+    /// a full-resolution frame.
+    nonisolated static func validateImageData(_ data: Data) throws {
+        guard data.count <= maxImportBytes else { throw ImportError.tooLarge }
+        let options = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, options) else {
+            throw ImportError.notAnImage
+        }
+
+        _ = try validatedImagePixelCount(in: source, options: options)
+    }
+
+    /// Pure geometry validation shared with focused boundary tests. The cumulative
+    /// budget matters for animated images: individually small frames can otherwise
+    /// expand to an unbounded decoded sequence.
+    @discardableResult
+    nonisolated static func validateImageDimensions(
+        _ dimensions: [(width: Int, height: Int)]
+    ) throws -> Int {
+        guard !dimensions.isEmpty else { throw ImportError.notAnImage }
+        guard dimensions.count <= maxImageFrameCount else { throw ImportError.tooLarge }
+
+        var totalPixels = 0
+        for dimension in dimensions {
+            guard dimension.width > 0, dimension.height > 0 else {
+                throw ImportError.notAnImage
+            }
+            let (framePixels, frameOverflow) = dimension.width.multipliedReportingOverflow(
+                by: dimension.height)
+            guard !frameOverflow else { throw ImportError.tooLarge }
+            let (nextTotal, totalOverflow) = totalPixels.addingReportingOverflow(framePixels)
+            guard !totalOverflow, nextTotal <= maxDecodedPixelCount else {
+                throw ImportError.tooLarge
+            }
+            totalPixels = nextTotal
+        }
+        return totalPixels
+    }
+
+    /// Extracts frame dimensions once from an ImageIO source and returns their
+    /// validated cumulative pixel count. Import and later container resolution both
+    /// use this path, so images stored by an older build cannot bypass today's bound.
+    nonisolated private static func validatedImagePixelCount(
+        in source: CGImageSource,
+        options: CFDictionary
+    ) throws -> Int {
+        let frameCount = CGImageSourceGetCount(source)
+        guard frameCount > 0 else { throw ImportError.notAnImage }
+        guard frameCount <= maxImageFrameCount else { throw ImportError.tooLarge }
+
+        var dimensions: [(width: Int, height: Int)] = []
+        dimensions.reserveCapacity(frameCount)
+        for index in 0..<frameCount {
+            guard
+                let properties = CGImageSourceCopyPropertiesAtIndex(source, index, options)
+                    as? [CFString: Any],
+                let width = properties[kCGImagePropertyPixelWidth] as? Int,
+                let height = properties[kCGImagePropertyPixelHeight] as? Int
+            else {
+                throw ImportError.notAnImage
+            }
+            dimensions.append((width: width, height: height))
+        }
+        let pixelCount = try validateImageDimensions(dimensions)
+        for index in 0..<frameCount {
+            guard CGImageSourceCreateImageAtIndex(source, index, options) != nil else {
+                throw ImportError.notAnImage
+            }
+        }
+        return pixelCount
+    }
+
+    /// Validates and writes image `data` into the container under a content-addressed
     /// name and returns its reference. Shared by the file-picker and URL-download
     /// import paths, so identical bytes always collapse to a single stored file.
     private func store(_ data: Data, preferredExtension ext: String) throws -> ImageReference {
+        try Self.validateImageData(data)
+        let ext = ext.isEmpty ? inferredExtension(from: data) : ext
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         let fileName = ext.isEmpty ? digest : "\(digest).\(ext)"
         let destination = directory.appendingPathComponent(fileName, isDirectory: false)
@@ -315,7 +490,8 @@ struct BackgroundImageStore {
         return cache
     }()
 
-    /// The decoded byte cost of `image`, used as its cache cost.
+    /// The decoded byte cost of an in-memory `image`, used as a safe fallback when
+    /// source metadata is unavailable.
     ///
     /// Measured from the largest bitmap representation rather than `size` (which is in
     /// points, so a 2× asset would be under-counted fourfold) and assumes 4 bytes per
@@ -339,8 +515,21 @@ struct BackgroundImageStore {
         guard let url = url(for: reference) else { return nil }
         let key = url.path as NSString
         if let cached = Self.imageCache.object(forKey: key) { return cached }
+        guard
+            let fileSize = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+            fileSize <= Self.maxImportBytes
+        else { return nil }
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions),
+            let pixelCount = try? Self.validatedImagePixelCount(
+                in: source, options: sourceOptions)
+        else { return nil }
         guard let image = NSImage(contentsOf: url) else { return nil }
-        Self.imageCache.setObject(image, forKey: key, cost: Self.decodedByteCost(of: image))
+        let (sourceCost, overflow) = pixelCount.multipliedReportingOverflow(by: 4)
+        Self.imageCache.setObject(
+            image,
+            forKey: key,
+            cost: overflow ? Self.decodedByteCost(of: image) : max(1, sourceCost))
         return image
     }
 

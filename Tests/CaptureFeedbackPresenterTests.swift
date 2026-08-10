@@ -31,14 +31,12 @@ struct CaptureFeedbackPresenterTests {
         }
     }
 
-    private func makeEnvironment() throws -> AppEnvironment {
-        let defaults = try #require(
-            UserDefaults(suiteName: "VitrineFeedback-\(UUID().uuidString)"))
-        return AppEnvironment(defaults: defaults)
+    private func makeEnvironment() -> AppEnvironment {
+        AppEnvironment(defaults: testDefaults())
     }
 
     @Test func presentsFeedbackAndRoutesOpenEditorThroughInjectedPorts() throws {
-        let environment = try makeEnvironment()
+        let environment = makeEnvironment()
         environment.appSettings.config.code = "let answer = 42"
         let display = DisplaySpy()
         let routing = RoutingSpy()
@@ -55,7 +53,7 @@ struct CaptureFeedbackPresenterTests {
     }
 
     @Test func webSnapshotRecoveryConsumesThePendingURL() throws {
-        let environment = try makeEnvironment()
+        let environment = makeEnvironment()
         let display = DisplaySpy()
         let routing = RoutingSpy()
         let presenter = CaptureFeedbackPresenter(
@@ -72,19 +70,23 @@ struct CaptureFeedbackPresenterTests {
 
     @Test func resolvedFeedbackUpdatesTheHUDAndRetainedPanelStatus() {
         let display = DisplaySpy()
+        let routing = RoutingSpy()
         let presenter = CaptureFeedbackPresenter(
             display: display.port,
-            routing: RoutingSpy().port)
+            routing: routing.port)
         let feedback = Notifier.confirmation("Source copied")
 
         presenter.present(feedback)
 
         #expect(display.feedback == [feedback])
         #expect(presenter.lastFeedback == feedback)
+        #expect(routing.loadedConfigs.isEmpty)
+        #expect(routing.editorPresentations == 0)
+        #expect(routing.webSnapshotURLs.isEmpty)
     }
 
     @Test func renderAsTextWithoutPendingURLRoutesToTheEditor() throws {
-        let environment = try makeEnvironment()
+        let environment = makeEnvironment()
         let display = DisplaySpy()
         let routing = RoutingSpy()
         let presenter = CaptureFeedbackPresenter(

@@ -74,7 +74,7 @@ final class ExportSettings {
         alsoSaveToFile = defaults.object(forKey: Keys.alsoSaveToFile) as? Bool ?? false
         closeAfterCopy = defaults.object(forKey: Keys.closeAfterCopy) as? Bool ?? true
         scale = SettingsCodec.readExportScale(from: defaults)
-        format = ExportFormat.resolve(defaults.string(forKey: Keys.exportFormat))
+        format = ExportFormat.resolveAvailable(defaults.string(forKey: Keys.exportFormat))
         colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
         richClipboard = defaults.object(forKey: Keys.richClipboard) as? Bool ?? false
         textSidecar = defaults.object(forKey: Keys.textSidecar) as? Bool ?? false

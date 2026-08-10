@@ -38,6 +38,25 @@ struct CodeFormatterCoreTests {
         #expect(CodeFormatter.tidy(#"{"a":1}"#, language: .json) == "{\n  \"a\": 1\n}")
     }
 
+    /// The interactive large-input path uses Swift 6.2's explicit concurrent executor
+    /// hop but must preserve the synchronous formatter's exact output.
+    @Test func concurrentTidyMatchesTheSynchronousFormatter() async throws {
+        let input = "struct A {\nlet x = 1\n}"
+        let expected = CodeFormatter.tidy(input, language: .swift)
+        #expect(try await CodeFormatter.tidyConcurrently(input, language: .swift) == expected)
+    }
+
+    /// A superseded editor command cancels before its old result can be applied.
+    @Test func concurrentTidyHonorsCancellation() async {
+        let task = Task {
+            try await CodeFormatter.tidyConcurrently("let stale = true", language: .swift)
+        }
+        task.cancel()
+        await #expect(throws: CancellationError.self) {
+            try await task.value
+        }
+    }
+
     /// HTML routes through the structural markup formatter, making minified one-line
     /// pastes readable before they render.
     @Test func tidyPrettyPrintsCompactHTML() {

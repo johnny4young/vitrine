@@ -1,15 +1,18 @@
+import AppKit
 import XCTest
 
-/// A visual screenshot tour (not a regression gate): walks every user-facing
-/// surface and writes window-cropped PNGs to `VITRINE_SCREENSHOT_DIR` (passed through
+/// The strict visual evidence tour: walks every user-facing surface and retains
+/// window-cropped PNGs in the `.xcresult` bundle. When the sandbox permits it, the
+/// same images are also written to `VITRINE_SCREENSHOT_DIR` (passed through
 /// `TEST_RUNNER_VITRINE_SCREENSHOT_DIR`). Each test launches into an isolated defaults
-/// suite, so the tour never touches the real app state. Surfaces that cannot be
-/// captured (e.g. the status-item menu under some automation contexts) are recorded
-/// as misses in `manifest.txt` instead of failing the tour.
+/// suite, so the tour never touches real app state. Missing states, obscured app focus,
+/// or empty capture frames fail the tour instead of producing incomplete evidence.
 final class ScreenshotTourUITests: XCTestCase {
     /// Opt-in only (mirrors the golden/gallery recorders): the tour runs solely when
-    /// `VITRINE_SCREENSHOT_DIR` is provided, so `make test-ui` and CI never pay for it.
+    /// `VITRINE_SCREENSHOT_DIR` is provided. `make test-visual` supplies it and verifies
+    /// the complete attachment set; ordinary `make test-ui` runs skip this class.
     override func setUpWithError() throws {
+        continueAfterFailure = false
         let screenshotDirectory =
             ProcessInfo.processInfo.environment["VITRINE_SCREENSHOT_DIR"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -27,14 +30,14 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let window = element("welcome-window", in: app)
         XCTAssertTrue(window.waitForExistence(timeout: 8))
-        save(window.screenshot(), as: "01-welcome", note: "Onboarding quick-start (first run)")
+        save(window, as: "01-welcome", note: "Onboarding quick-start (first run)")
 
         // Inline sample-capture feedback state. NOTE: performs a real sample capture,
         // which places a PNG on the system clipboard.
         element("welcome-sample-capture-button", in: app).click()
         if element("welcome-sample-status", in: app).waitForExistence(timeout: 6) {
             save(
-                window.screenshot(), as: "02-welcome-sample-status",
+                window, as: "02-welcome-sample-status",
                 note: "Onboarding after running the sample capture (inline status)")
         } else {
             miss("02-welcome-sample-status", reason: "sample status never appeared")
@@ -52,7 +55,7 @@ final class ScreenshotTourUITests: XCTestCase {
         // Let the preview render settle before the hero shot.
         Thread.sleep(forTimeInterval: 1.5)
         save(
-            window.screenshot(), as: "10-editor",
+            window, as: "10-editor",
             note: "Editor: glass toolbar, code pane, ambient-light stage, inspector")
 
         let output = element("inspector-disclosure-output", in: app)
@@ -61,7 +64,7 @@ final class ScreenshotTourUITests: XCTestCase {
             _ = element("editor-destination-preset-picker", in: app).waitForExistence(timeout: 3)
             Thread.sleep(forTimeInterval: 0.5)
             save(
-                window.screenshot(), as: "11-editor-inspector-output",
+                window, as: "11-editor-inspector-output",
                 note: "Editor inspector with the Output disclosure open")
         } else {
             miss("11-editor-inspector-output", reason: "Output disclosure not found")
@@ -77,7 +80,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         Thread.sleep(forTimeInterval: 1.0)
         save(
-            window.screenshot(), as: "12-editor-empty-state",
+            window, as: "12-editor-empty-state",
             note: "Editor empty state (no code loaded)")
     }
 
@@ -105,7 +108,7 @@ final class ScreenshotTourUITests: XCTestCase {
             }
             // Give the pane transition a beat to settle before capturing.
             Thread.sleep(forTimeInterval: 0.8)
-            save(window.screenshot(), as: pane.slug, note: "Settings pane: \(pane.identifier)")
+            save(window, as: pane.slug, note: "Settings pane: \(pane.identifier)")
         }
 
         // The custom-theme editor sheet hangs off the Library pane.
@@ -117,7 +120,7 @@ final class ScreenshotTourUITests: XCTestCase {
             if element("custom-theme-name-field", in: app).waitForExistence(timeout: 4) {
                 Thread.sleep(forTimeInterval: 0.5)
                 save(
-                    window.screenshot(), as: "26-settings-custom-theme-editor",
+                    window, as: "26-settings-custom-theme-editor",
                     note: "Custom theme editor sheet (Library pane)")
                 app.typeKey(.escape, modifierFlags: [])
             } else {
@@ -139,7 +142,7 @@ final class ScreenshotTourUITests: XCTestCase {
             if resetConfirmation.waitForExistence(timeout: 3) {
                 Thread.sleep(forTimeInterval: 0.4)
                 save(
-                    window.screenshot(), as: "27-settings-reset-confirmation",
+                    window, as: "27-settings-reset-confirmation",
                     note: "Reset All confirmation naming every cleared user catalog")
                 app.sheets.firstMatch.buttons["Cancel"].firstMatch.click()
             } else {
@@ -160,7 +163,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(element("recents-gallery", in: app).waitForExistence(timeout: 3))
         Thread.sleep(forTimeInterval: 0.5)
         save(
-            window.screenshot(), as: "30-recents-gallery-empty",
+            window, as: "30-recents-gallery-empty",
             note: "Recents gallery (branded empty state — fresh defaults suite)")
     }
 
@@ -176,7 +179,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 0.5)
         save(
-            window.screenshot(), as: "31-recents-gallery-populated",
+            window, as: "31-recents-gallery-populated",
             note: "Recents gallery with one locally rendered capture and preset action")
 
         if picker.isHittable {
@@ -189,7 +192,7 @@ final class ScreenshotTourUITests: XCTestCase {
             {
                 Thread.sleep(forTimeInterval: 0.3)
                 save(
-                    visibleMenu.screenshot(), as: "32-recents-destination-presets",
+                    visibleMenu, as: "32-recents-destination-presets",
                     note: "One-off destination preset picker for a recent capture")
                 app.typeKey(.escape, modifierFlags: [])
             } else {
@@ -215,7 +218,7 @@ final class ScreenshotTourUITests: XCTestCase {
             app.descendants(matching: .any).matching(identifier: "recents-card").count, 1)
         Thread.sleep(forTimeInterval: 0.4)
         save(
-            window.screenshot(), as: "33-recents-search-filtered",
+            window, as: "33-recents-search-filtered",
             note: "Recents filtered locally by source, language, or theme")
 
         if waitForHittableElement("recents-preset-picker", in: app, timeout: 3) {
@@ -228,7 +231,7 @@ final class ScreenshotTourUITests: XCTestCase {
             {
                 Thread.sleep(forTimeInterval: 0.3)
                 save(
-                    visibleMenu.screenshot(), as: "34-recents-capture-actions",
+                    visibleMenu, as: "34-recents-capture-actions",
                     note: "Destination presets and individual deletion for a recent capture")
                 app.typeKey(.escape, modifierFlags: [])
             } else {
@@ -256,7 +259,7 @@ final class ScreenshotTourUITests: XCTestCase {
         cards.element(boundBy: 1).click()
         Thread.sleep(forTimeInterval: 0.4)
         save(
-            recentsWindow.screenshot(), as: "35-recents-comparison-selection",
+            recentsWindow, as: "35-recents-comparison-selection",
             note: "Ordered, session-only selection of two captures in Recents")
 
         element("recents-create-comparison-button", in: app).click()
@@ -270,7 +273,7 @@ final class ScreenshotTourUITests: XCTestCase {
         preview.click()
         Thread.sleep(forTimeInterval: 1.0)
         save(
-            boardWindow.screenshot(), as: "36-comparison-board",
+            boardWindow, as: "36-comparison-board",
             note: "Comparison board with editable captions, layout, reorder, copy, save, and share")
     }
 
@@ -292,7 +295,7 @@ final class ScreenshotTourUITests: XCTestCase {
         window.click()
         Thread.sleep(forTimeInterval: 0.8)
         save(
-            stage.screenshot(), as: "35-editor-before-surprise",
+            stage, as: "35-editor-before-surprise",
             note: "Editor before applying a curated style")
         XCTAssertTrue(waitForHittableElement("editor-style-preset-picker", in: app, timeout: 5))
         element("editor-style-preset-picker", in: app).click()
@@ -310,7 +313,7 @@ final class ScreenshotTourUITests: XCTestCase {
         window.click()
         Thread.sleep(forTimeInterval: 1.2)
         save(
-            stage.screenshot(), as: "36-editor-surprise-style-applied",
+            stage, as: "36-editor-surprise-style-applied",
             note: "Editor after applying the curated Sunset style without changing code")
     }
 
@@ -328,14 +331,14 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(swatch.waitForExistence(timeout: 3))
         Thread.sleep(forTimeInterval: 0.4)
         save(
-            window.screenshot(), as: "56-editor-sticker-tool-active",
+            window, as: "56-editor-sticker-tool-active",
             note: "Sticker tool active: glyph swatch + size slider, no color swatch")
 
         if swatch.isHittable {
             swatch.click()
             Thread.sleep(forTimeInterval: 0.5)
             save(
-                window.screenshot(), as: "57-editor-sticker-picker-open",
+                window, as: "57-editor-sticker-picker-open",
                 note: "Curated sticker picker popover (👀 🔥 ✅ …)")
             app.typeKey(.escape, modifierFlags: [])
         } else {
@@ -350,21 +353,21 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let window = element("editor-window", in: app)
         XCTAssertTrue(window.waitForExistence(timeout: 8))
+        app.activate()
+        window.click()
         // Open the Output disclosure, pick a fixed-size destination, flip the guides on.
-        XCTAssertTrue(waitForHittableElement("inspector-disclosure-output", in: app, timeout: 5))
+        revealInspectorControl("inspector-disclosure-output", in: app)
         element("inspector-disclosure-output", in: app).click()
         let toggle = element("inspector-safe-area-toggle", in: app)
         XCTAssertTrue(toggle.waitForExistence(timeout: 3))
-        if toggle.isHittable {
-            toggle.click()
-            Thread.sleep(forTimeInterval: 0.6)
-            save(
-                window.screenshot(), as: "58-editor-safe-area-guides",
-                note: "Safe-area guide toggle on: budget chip over the preview")
-            toggle.click()  // leave the isolated defaults as found
-        } else {
-            miss("58-editor-safe-area-guides", reason: "safe-area toggle was not hittable")
-        }
+        revealInspectorControl("inspector-safe-area-toggle", in: app)
+        toggle.click()
+        assertToggleIsOn(toggle, named: "Safe-area guides")
+        Thread.sleep(forTimeInterval: 0.6)
+        save(
+            window, as: "58-editor-safe-area-guides",
+            note: "Safe-area guide toggle on: budget chip over the preview")
+        toggle.click()  // leave the isolated defaults as found
     }
 
     @MainActor
@@ -385,7 +388,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue((editor.value as? String ?? "").contains("\n  <h1>"))
         Thread.sleep(forTimeInterval: 0.8)
         save(
-            window.screenshot(), as: "59-editor-html-pretty-print",
+            window, as: "59-editor-html-pretty-print",
             note: "Format Code expanded compact HTML into a readable element hierarchy")
     }
 
@@ -407,7 +410,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue((editor.value as? String ?? "").contains("\nLEFT JOIN orders"))
         Thread.sleep(forTimeInterval: 0.8)
         save(
-            window.screenshot(), as: "60-editor-sql-pretty-print",
+            window, as: "60-editor-sql-pretty-print",
             note: "Format Code expanded compact SQL into select, join, and predicate lines")
     }
 
@@ -421,7 +424,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(element("recents-pinned-badge", in: app).waitForExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 0.8)
         save(
-            window.screenshot(), as: "37-recents-pinned",
+            window, as: "37-recents-pinned",
             note: "Pinned capture leading the local Recents gallery")
 
         let actions = app.descendants(matching: .any).matching(
@@ -437,7 +440,7 @@ final class ScreenshotTourUITests: XCTestCase {
         {
             Thread.sleep(forTimeInterval: 0.3)
             save(
-                visibleMenu.screenshot(), as: "38-recents-pinned-actions",
+                visibleMenu, as: "38-recents-pinned-actions",
                 note: "Pinned capture actions with a reversible Unpin command")
             app.typeKey(.escape, modifierFlags: [])
         } else {
@@ -465,7 +468,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertEqual(cards.count, 1)
         Thread.sleep(forTimeInterval: 0.6)
         save(
-            window.screenshot(), as: "53-recents-pinned-filter",
+            window, as: "53-recents-pinned-filter",
             note: "Recents gallery filtered to the locally pinned captures")
     }
 
@@ -482,16 +485,26 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(actions.isHittable)
         actions.click()
 
-        if app.menuItems["Copy Source"].waitForExistence(timeout: 3),
-            let visibleMenu = app.menus.allElementsBoundByIndex.first(where: {
+        let copySource = app.menuItems["Copy Source"]
+        if copySource.waitForExistence(timeout: 3) {
+            copySource.hover()
+            if let visibleMenu = app.menus.allElementsBoundByIndex.first(where: {
                 !$0.frame.isEmpty
-            })
-        {
-            Thread.sleep(forTimeInterval: 0.3)
-            save(
-                visibleMenu.screenshot(), as: "54-recents-copy-source-action",
-                note: "Recent capture actions exposing the original-source copy command")
-            app.typeKey(.escape, modifierFlags: [])
+            }) {
+                save(
+                    visibleMenu, as: "54-recents-copy-source-action",
+                    note: "Copy Source highlighted immediately before exercising the action")
+            } else {
+                miss(
+                    "54-recents-copy-source-action",
+                    reason: "source-copy action menu had no visible accessibility frame")
+            }
+
+            copySource.click()
+            let feedback = element("capture-hud", in: app)
+            if !feedback.waitForExistence(timeout: 3) {
+                miss("54-recents-copy-source-action", reason: "source-copy feedback did not appear")
+            }
         } else {
             miss("54-recents-copy-source-action", reason: "source-copy action menu did not open")
         }
@@ -511,12 +524,12 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let clearUnpinned = app.menuItems["Clear Unpinned"]
         XCTAssertTrue(clearUnpinned.waitForExistence(timeout: 3))
-        clearUnpinned.click()
+        clearUnpinned.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
         let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
         Thread.sleep(forTimeInterval: 0.4)
         save(
-            window.screenshot(), as: "56-recents-clear-unpinned-confirmation",
+            window, as: "56-recents-clear-unpinned-confirmation",
             note: "Safe Recents cleanup confirmation that explicitly preserves pinned captures")
     }
 
@@ -537,7 +550,7 @@ final class ScreenshotTourUITests: XCTestCase {
         if let visibleMenu = app.menus.allElementsBoundByIndex.first(where: { !$0.frame.isEmpty }) {
             Thread.sleep(forTimeInterval: 0.3)
             save(
-                visibleMenu.screenshot(), as: "57-recents-sort-options",
+                visibleMenu, as: "57-recents-sort-options",
                 note: "Local Recents ordering choices with newest first selected")
         }
         oldestFirst.click()
@@ -551,7 +564,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(cards.element(boundBy: 1).label.contains("Python"))
         Thread.sleep(forTimeInterval: 0.5)
         save(
-            window.screenshot(), as: "58-recents-oldest-first",
+            window, as: "58-recents-oldest-first",
             note: "Recents sorted oldest-first within pinned and unpinned groups")
     }
 
@@ -564,7 +577,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         XCTAssertTrue(element("help-view", in: app).waitForExistence(timeout: 3))
         Thread.sleep(forTimeInterval: 0.5)
-        save(window.screenshot(), as: "40-help", note: "In-app Help window (offline topics)")
+        save(window, as: "40-help", note: "In-app Help window (offline topics)")
     }
 
     @MainActor
@@ -576,7 +589,7 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         XCTAssertTrue(element("whats-new-highlights", in: app).waitForExistence(timeout: 3))
         Thread.sleep(forTimeInterval: 0.5)
-        save(window.screenshot(), as: "41-whats-new", note: "What's New release-notes window")
+        save(window, as: "41-whats-new", note: "What's New release-notes window")
     }
 
     @MainActor
@@ -611,7 +624,7 @@ final class ScreenshotTourUITests: XCTestCase {
             let menu = item.menus.firstMatch
             if menu.waitForExistence(timeout: 3) {
                 Thread.sleep(forTimeInterval: 0.3)
-                save(menu.screenshot(), as: slug, note: "Main menu: \(title)")
+                save(menu, as: slug, note: "Main menu: \(title)")
             } else {
                 miss(slug, reason: "menu \(title) did not open")
             }
@@ -621,13 +634,13 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarPanelTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        if panel.waitForExistence(timeout: 3) {
+        let panel = openMenuBarPanel(in: app)
+        if panel.exists {
             Thread.sleep(forTimeInterval: 0.5)
-            save(panel.screenshot(), as: "50-menubar-panel", note: "Menu-bar panel (.window)")
+            save(panel, as: "50-menubar-panel", note: "Menu-bar panel (.window)")
 
             let presetPicker = element("menu-capture-preset-picker", in: app)
             if presetPicker.isHittable {
@@ -639,7 +652,7 @@ final class ScreenshotTourUITests: XCTestCase {
                         !$0.frame.isEmpty
                     }) {
                         save(
-                            visibleMenu.screenshot(), as: "51-menubar-destination-presets",
+                            visibleMenu, as: "51-menubar-destination-presets",
                             note: "Menu-bar one-off destination preset picker")
                     } else {
                         miss(
@@ -661,10 +674,10 @@ final class ScreenshotTourUITests: XCTestCase {
         let about = app.buttons["command-about"]
         if about.waitForExistence(timeout: 3) {
             about.click()
-            let aboutWindow = app.windows.firstMatch
+            let aboutWindow = app.dialogs.firstMatch
             if aboutWindow.waitForExistence(timeout: 4) {
                 Thread.sleep(forTimeInterval: 0.5)
-                save(aboutWindow.screenshot(), as: "53-about-panel", note: "Standard About panel")
+                save(aboutWindow, as: "53-about-panel", note: "Standard About panel")
             } else {
                 miss("53-about-panel", reason: "About panel did not appear")
             }
@@ -675,11 +688,11 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarSurpriseStyleTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        guard panel.waitForExistence(timeout: 3) else {
+        let panel = openMenuBarPanel(in: app)
+        guard panel.exists else {
             miss("52-menubar-surprise-style", reason: "status panel did not open")
             return
         }
@@ -697,18 +710,17 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(dracula.isSelected)
         Thread.sleep(forTimeInterval: 0.5)
         save(
-            panel.screenshot(), as: "52-menubar-surprise-style",
+            panel, as: "52-menubar-surprise-style",
             note: "Menu-bar curated style action with the applied theme selected")
     }
 
     @MainActor
     func testMenuBarRecentSourceActionsTour() throws {
-        let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recents", "--open-menu-panel"])
+        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
         defer { app.terminate() }
 
-        let panel = element("menubar-panel", in: app)
-        guard panel.waitForExistence(timeout: 3) else {
+        let panel = openMenuBarPanel(in: app)
+        guard panel.exists else {
             miss("55-menubar-recent-copy-actions", reason: "status panel did not open")
             return
         }
@@ -718,7 +730,7 @@ final class ScreenshotTourUITests: XCTestCase {
         }
         Thread.sleep(forTimeInterval: 0.5)
         save(
-            panel.screenshot(), as: "55-menubar-recent-copy-actions",
+            panel, as: "55-menubar-recent-copy-actions",
             note: "Menu-bar Recents rows with visible image and original-source copy actions")
     }
 
@@ -731,7 +743,7 @@ final class ScreenshotTourUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.0)
         let window = app.windows.firstMatch
         save(
-            window.screenshot(), as: "60-web-snapshot",
+            window, as: "60-web-snapshot",
             note: "Web Snapshot: source picker, viewport chips, branded empty stage")
 
         // HTML mode swaps the input field and the empty-state copy.
@@ -740,7 +752,7 @@ final class ScreenshotTourUITests: XCTestCase {
             html.click()
             Thread.sleep(forTimeInterval: 0.6)
             save(
-                window.screenshot(), as: "61-web-snapshot-html",
+                window, as: "61-web-snapshot-html",
                 note: "Web Snapshot HTML mode (code field + branded empty state)")
         } else {
             miss("61-web-snapshot-html", reason: "HTML segment not found")
@@ -752,7 +764,7 @@ final class ScreenshotTourUITests: XCTestCase {
             advanced.click()
             Thread.sleep(forTimeInterval: 0.4)
             save(
-                window.screenshot(), as: "62-web-snapshot-advanced",
+                window, as: "62-web-snapshot-advanced",
                 note: "Web Snapshot inspector with the Capture options disclosure open")
         } else {
             miss("62-web-snapshot-advanced", reason: "advanced disclosure not found")
@@ -768,7 +780,7 @@ final class ScreenshotTourUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.0)
         let window = app.windows.firstMatch
         save(
-            window.screenshot(), as: "63-social-card",
+            window, as: "63-social-card",
             note: "Social Card: template, content, code, footer, theme; advanced collapsed")
 
         // Typography and Background fold into disclosures so the panel leads with content.
@@ -777,7 +789,7 @@ final class ScreenshotTourUITests: XCTestCase {
             typography.click()
             Thread.sleep(forTimeInterval: 0.4)
             save(
-                window.screenshot(), as: "64-social-card-typography",
+                window, as: "64-social-card-typography",
                 note: "Social Card with the Typography disclosure open")
         } else {
             miss("64-social-card-typography", reason: "typography disclosure not found")
@@ -793,6 +805,10 @@ final class ScreenshotTourUITests: XCTestCase {
         app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
             "VitrineScreenshotTour-\(name)-\(UUID().uuidString)"
         app.launch()
+        app.activate()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: 5),
+            "Vitrine never reached the foreground after launch")
         return app
     }
 
@@ -804,7 +820,29 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
-    private func save(_ screenshot: XCUIScreenshot, as slug: String, note: String) {
+    private func save(_ element: XCUIElement, as slug: String, note: String) {
+        guard assertVitrineIsFrontmost(for: slug) else { return }
+        guard element.exists else {
+            XCTFail("Required screenshot \(slug) has no accessibility element to capture")
+            return
+        }
+        let frame = element.frame
+        guard frame.width >= 64, frame.height >= 64 else {
+            XCTFail("Required screenshot \(slug) has an invalid capture frame: \(frame)")
+            return
+        }
+
+        let screenshot = element.screenshot()
+        persist(screenshot, as: slug, note: note)
+    }
+
+    @MainActor
+    private func persist(_ screenshot: XCUIScreenshot, as slug: String, note: String) {
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = slug
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
         let directory = outputDirectory
         do {
             try FileManager.default.createDirectory(
@@ -813,17 +851,58 @@ final class ScreenshotTourUITests: XCTestCase {
             try screenshot.pngRepresentation.write(to: file)
             log("\(slug).png — \(note)")
         } catch {
-            // Sandboxed runner fallback: keep the image in the result bundle.
-            let attachment = XCTAttachment(screenshot: screenshot)
-            attachment.name = slug
-            attachment.lifetime = .keepAlways
-            add(attachment)
             log("\(slug) (attachment only — disk write failed: \(error.localizedDescription))")
         }
     }
 
     private func miss(_ slug: String, reason: String) {
         log("MISS \(slug) — \(reason)")
+        XCTFail("Required screenshot \(slug) was not captured: \(reason)")
+    }
+
+    @MainActor
+    private func assertVitrineIsFrontmost(for slug: String) -> Bool {
+        let expectedBundleIdentifier = "com.johnny4young.vitrine"
+        let deadline = Date().addingTimeInterval(2)
+        var observedBundleIdentifier: String?
+        repeat {
+            observedBundleIdentifier =
+                NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            if observedBundleIdentifier == expectedBundleIdentifier { return true }
+            Thread.sleep(forTimeInterval: 0.1)
+        } while Date() < deadline
+
+        XCTFail(
+            "Refusing contaminated screenshot \(slug): frontmost application is "
+                + "\(observedBundleIdentifier ?? "unknown"), not \(expectedBundleIdentifier)")
+        return false
+    }
+
+    @MainActor
+    private func revealInspectorControl(_ identifier: String, in app: XCUIApplication) {
+        if waitForHittableElement(identifier, in: app, timeout: 1) { return }
+
+        let inspector = element("editor-inspector", in: app)
+        XCTAssertTrue(inspector.waitForExistence(timeout: 3))
+        for _ in 0..<5 {
+            inspector.swipeUp()
+            if waitForHittableElement(identifier, in: app, timeout: 0.75) { return }
+        }
+
+        assertHittable(
+            identifier, in: app,
+            "Inspector control \(identifier) is not reachable after scrolling")
+    }
+
+    @MainActor
+    private func assertToggleIsOn(_ toggle: XCUIElement, named name: String) {
+        let value = toggle.value
+        let numericValue = (value as? NSNumber)?.boolValue
+        let stringValue = (value as? String)?.lowercased()
+        let stringIsOn = stringValue.map { ["1", "on", "true"].contains($0) } ?? false
+        XCTAssertTrue(
+            numericValue == true || stringIsOn,
+            "\(name) did not turn on (accessibility value: \(value ?? "nil"))")
     }
 
     private func log(_ line: String) {
