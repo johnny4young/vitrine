@@ -51,12 +51,15 @@ struct TestUserDefaultsTests {
 
         defaults.discard()
         defaults.set("late", forKey: "stored")
+        defaults.removeObject(forKey: "stored")
         defaults.register(defaults: ["fallback": "late"])
         defaults.setPersistentDomain(["domain": "late"], forName: "ignored")
+        defaults.removePersistentDomain(forName: "ignored")
+        defaults.removeAllStoredValues()
+        defaults.removeAllValues()
 
         #expect(defaults.dictionaryRepresentation().isEmpty)
 
-        defaults.removeAllValues()
         defaults.set("next", forKey: "stored")
         #expect(defaults.object(forKey: "stored") == nil)
     }

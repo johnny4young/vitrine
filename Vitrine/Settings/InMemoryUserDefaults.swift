@@ -43,7 +43,10 @@ nonisolated class InMemoryUserDefaults: UserDefaults {
     }
 
     override func removeObject(forKey defaultName: String) {
-        lock.withLock { _ = storedValues.removeValue(forKey: defaultName) }
+        lock.withLock {
+            guard acceptsWrites else { return }
+            _ = storedValues.removeValue(forKey: defaultName)
+        }
     }
 
     override func register(defaults registrationDictionary: [String: Any]) {
@@ -79,13 +82,17 @@ nonisolated class InMemoryUserDefaults: UserDefaults {
     /// Removes explicitly stored values while preserving registered fallbacks, matching
     /// `removePersistentDomain` semantics without creating or touching a domain on disk.
     func removeAllStoredValues() {
-        lock.withLock { storedValues.removeAll(keepingCapacity: false) }
+        lock.withLock {
+            guard acceptsWrites else { return }
+            storedValues.removeAll(keepingCapacity: false)
+        }
     }
 
     /// Releases both stored values and registered fallbacks without changing whether the
     /// store accepts writes. Session composition uses this only on a fresh, exclusive store.
     func removeAllValues() {
         lock.withLock {
+            guard acceptsWrites else { return }
             storedValues.removeAll(keepingCapacity: false)
             registeredValues.removeAll(keepingCapacity: false)
         }

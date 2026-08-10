@@ -121,7 +121,7 @@ struct MenuBarStatusItemTests {
     }
 
     @Test func helperConfigurationAcceptsOnlyAPositivePIDAndUUIDToken() throws {
-        let token = "88B0A8F4-1BDD-4555-9C18-0AD8014CE55A"
+        let token = UUID().uuidString
         let configuration = try #require(
             MenuBarHelperConfiguration(arguments: ["VitrineMenuBarHelper", "123", token]))
 
@@ -259,10 +259,11 @@ struct MenuBarStatusItemTests {
     }
 
     @Test func helperAnchorRoundTripsAcrossDisplayCoordinates() throws {
+        let token = UUID().uuidString
         let original = MenuBarAnchor(
             appProcessID: 123,
             helperProcessID: 456,
-            sessionToken: "88B0A8F4-1BDD-4555-9C18-0AD8014CE55A",
+            sessionToken: token,
             clickLocation: CGPoint(x: -1_248.5, y: 1_067.25))
 
         let decoded = try #require(MenuBarAnchor(encoded: original.encoded))
