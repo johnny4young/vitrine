@@ -446,6 +446,7 @@ struct WorkflowConfigurationTests {
         let release = try Self.release()
         let deploySite = try Self.deploySite()
         let doc = try Self.releasingDoc()
+        let normalizedDoc = doc.replacingOccurrences(of: "\n", with: " ")
 
         let jobMarker = try #require(
             release.range(of: "\n  deploy-site:"),
@@ -461,7 +462,20 @@ struct WorkflowConfigurationTests {
             deploySite.contains("workflow_call:"),
             "deploy-site.yml must remain reusable by the release workflow")
         #expect(
-            doc.contains("GITHUB_TOKEN") && doc.contains("does not emit another workflow run"),
+            !deploySite.contains("\n  release:")
+                && deploySite.contains("Verify website version is published")
+                && deploySite.contains("releases/tags/v${VERSION}")
+                && deploySite.contains("if: steps.release.outputs.published == 'true'"),
+            "independent triggers must not deploy candidate website copy before its stable release exists"
+        )
+        #expect(
+            deploySite.contains("Cloudflare Pages secrets are required")
+                && !deploySite.contains("secrets not configured; skipping site deployment"),
+            "an eligible production deployment must fail closed when Cloudflare credentials are missing"
+        )
+        #expect(
+            normalizedDoc.contains("GITHUB_TOKEN")
+                && normalizedDoc.contains("does not emit another workflow run"),
             "the runbook must preserve why an explicit workflow call is required")
     }
 
