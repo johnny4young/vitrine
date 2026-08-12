@@ -6,8 +6,6 @@ on:
     paths:
       - "site/**"
       - ".github/workflows/deploy-site.yml"
-  release:
-    types: [published]
   workflow_dispatch:
   workflow_call:
 
@@ -41,15 +39,46 @@ jobs:
       - name: Validate
         run: npm test
 
+      # A release-preparation merge may contain the next version's website copy before
+      # its candidate has passed external QA. Keep validating that source on every push,
+      # but never expose it in production until the matching stable GitHub Release exists.
+      # The release workflow calls this reusable workflow only after published-artifact
+      # QA and downstream distribution succeed.
+      - name: Verify website version is published
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9]+\.[0-9]+\.[0-9]+)"?[[:space:]]*$/\1/p' ../project.yml | head -n1)"
+          if [ -z "${VERSION}" ]; then
+            echo "::error::Could not read MARKETING_VERSION from project.yml."
+            exit 1
+          fi
+          PUBLISHED_TAG="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION}" \
+            --jq 'select(.draft == false and .prerelease == false) | .tag_name' 2>/dev/null || true)"
+          if [ "${PUBLISHED_TAG}" != "v${VERSION}" ]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Production deployment withheld"
+              echo ""
+              echo "Website version \`${VERSION}\` has no published stable GitHub Release."
+              echo "The source was validated, but production still serves the last released version."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
       - name: Deploy to Cloudflare Pages
+        if: steps.release.outputs.published == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-            echo "Cloudflare Pages secrets not configured; skipping site deployment."
-            exit 0
+            echo "::error::Cloudflare Pages secrets are required for production deployment."
+            exit 1
           fi
           npm exec -- wrangler pages deploy dist \
             --project-name=vitrine-web \
