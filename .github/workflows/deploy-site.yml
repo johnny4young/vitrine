@@ -7,7 +7,17 @@ on:
       - "site/**"
       - ".github/workflows/deploy-site.yml"
   workflow_dispatch:
+    inputs:
+      release_ref:
+        description: "Published stable tag whose exact website source should deploy"
+        required: true
+        type: string
   workflow_call:
+    inputs:
+      release_ref:
+        description: "Published stable tag whose exact website source should deploy"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -26,6 +36,9 @@ jobs:
         working-directory: site
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.release_ref || github.sha }}
+          fetch-depth: 0
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
@@ -39,15 +52,16 @@ jobs:
       - name: Validate
         run: npm test
 
-      # A release-preparation merge may contain the next version's website copy before
-      # its candidate has passed external QA. Keep validating that source on every push,
-      # but never expose it in production until the matching stable GitHub Release exists.
-      # The release workflow calls this reusable workflow only after published-artifact
-      # QA and downstream distribution succeed.
-      - name: Verify website version is published
+      # Main may contain unreleased website copy while project.yml still names the
+      # previous stable version. Version equality alone therefore proves nothing about
+      # provenance: pushes validate only, and production accepts an explicit stable tag
+      # whose checked-out commit is exactly that tag's commit. The release workflow calls
+      # this reusable workflow only after published-artifact QA and distribution succeed.
+      - name: Verify exact website release provenance
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
+          REQUESTED_REF: ${{ inputs.release_ref }}
         run: |
           set -euo pipefail
           VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9]+\.[0-9]+\.[0-9]+)"?[[:space:]]*$/\1/p' ../project.yml | head -n1)"
@@ -55,17 +69,38 @@ jobs:
             echo "::error::Could not read MARKETING_VERSION from project.yml."
             exit 1
           fi
+
+          if [ -z "${REQUESTED_REF}" ]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Source validated; production unchanged"
+              echo ""
+              echo "Pushes to main never deploy because main may contain unreleased copy."
+              echo "Production accepts only an explicit published stable tag."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ "${REQUESTED_REF}" != "v${VERSION}" ]; then
+            echo "::error::Requested website ref ${REQUESTED_REF} does not match MARKETING_VERSION v${VERSION}."
+            exit 1
+          fi
+          if [ "$(git cat-file -t "${REQUESTED_REF}" 2>/dev/null || true)" != "tag" ]; then
+            echo "::error::Website deployment requires the annotated tag ${REQUESTED_REF}."
+            exit 1
+          fi
+          TAG_COMMIT="$(git rev-list -n 1 "${REQUESTED_REF}")"
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          if [ "${HEAD_COMMIT}" != "${TAG_COMMIT}" ]; then
+            echo "::error::Checked-out website commit ${HEAD_COMMIT} does not match ${REQUESTED_REF} at ${TAG_COMMIT}."
+            exit 1
+          fi
+
           PUBLISHED_TAG="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION}" \
             --jq 'select(.draft == false and .prerelease == false) | .tag_name' 2>/dev/null || true)"
           if [ "${PUBLISHED_TAG}" != "v${VERSION}" ]; then
-            echo "published=false" >> "$GITHUB_OUTPUT"
-            {
-              echo "### Production deployment withheld"
-              echo ""
-              echo "Website version \`${VERSION}\` has no published stable GitHub Release."
-              echo "The source was validated, but production still serves the last released version."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::Website tag v${VERSION} has no matching published stable GitHub Release."
+            exit 1
           fi
           echo "published=true" >> "$GITHUB_OUTPUT"
 
