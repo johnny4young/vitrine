@@ -19,6 +19,12 @@ can never drift.
 
 ### Changed
 
+- **Public releases now promote an already-vetted candidate instead of building in
+  public.** Stable tags produce a signed, notarized, attested Actions artifact and stop
+  after an independent runner verifies its manifest, digest, and release QA. A separate
+  manual promotion pins that successful run, annotated-tag commit, clean-Mac confirmation,
+  and DMG SHA-256; it rechecks the same bytes before immutable publication, then requires
+  public-artifact QA before Homebrew, the Sparkle feed, or the website can move.
 - **The free-core evaluation and distribution contract is now explicit and regression
   tested.** There is no expiring trial: core capture/editing and basic `vgrab` remain
   available indefinitely, while advanced automation stays PRO. Homebrew and the signed,

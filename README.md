@@ -658,7 +658,7 @@ in [`docs/`](docs/):
 - [**docs/COMPARISON-BOARDS.md**](docs/COMPARISON-BOARDS.md) — ordered Recents selection, board editing, export behavior, and session-only data ownership.
 - [**docs/PERMISSIONS.md**](docs/PERMISSIONS.md) — every entitlement with its reason, user-facing behavior, and App Store impact by channel.
 - [**docs/DESIGN-QA.md**](docs/DESIGN-QA.md) — the generated launch gallery and the design-QA process.
-- [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized DMG, Homebrew cask, release workflow.
+- [**docs/RELEASING.md**](docs/RELEASING.md) — signed/notarized candidate QA, manual immutable-release promotion, Homebrew, and Sparkle distribution.
 
 ## Status
 
