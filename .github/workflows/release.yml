@@ -3,24 +3,42 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Annotated stable tag to promote (for example v1.1.0)"
+        required: true
+        type: string
+      candidate_run_id:
+        description: "Successful tag-triggered Release workflow run ID"
+        required: true
+        type: string
+      expected_sha256:
+        description: "DMG SHA-256 copied from the candidate run summary"
+        required: true
+        type: string
+      qa_confirmation:
+        description: "Type CLEAN-MAC-QA-PASSED after completing the external checklist"
+        required: true
+        type: string
 
-# Default the workflow token to read-only; the `publish` job below elevates
-# exactly what it needs. The `verify` job (lint/build/test) never writes.
+# Default the workflow token to read-only. The tag-triggered candidate jobs only
+# add attestation access; the manual `publish` job elevates exactly the scopes it
+# needs after validating the successful candidate run and its DMG digest.
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event_name == 'push' && github.ref || inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   # Release gate: the same lint/Debug+Release-build/test/UI-test-build checks CI runs
-  # on every PR, re-run against the tagged commit. `publish` needs this job, so a
-  # tag can never publish a DMG that fails lint, build, the unit suite, or the UI
-  # test compile. This makes a tagged release a true quality gate, not just a
-  # packaging step.
+  # on every PR, re-run against the tagged commit. `candidate` needs this job, so
+  # a tag cannot even produce a promotable DMG when a gate fails.
   verify:
     name: Verify (lint, Debug/Release builds, UI-test build, test)
+    if: github.event_name == 'push'
     runs-on: macos-latest
     # Cap well under the 6-hour default so a wedged SPM resolve or hung
     # xcodebuild surfaces in minutes on the tag run.
@@ -129,22 +147,20 @@ jobs:
             ${{ runner.temp }}/test.xcresult
           if-no-files-found: ignore
 
-  publish:
-    name: Build & publish DMG
+  candidate:
+    name: Build signed release candidate
+    if: github.event_name == 'push'
     needs: verify
+    outputs:
+      version: ${{ steps.checksum.outputs.version }}
+      sha256: ${{ steps.checksum.outputs.sha256 }}
     runs-on: macos-latest
     # Notarization (`notarytool submit --wait`, twice: app + DMG) can stall on
     # Apple-side outages; cap the job instead of waiting out the 6-hour default.
     timeout-minutes: 90
     permissions:
-      # Attach the DMG/appcast/sidecars to the GitHub release.
-      contents: write
-      # Sparkle auto-update: the appcast is deployed to GitHub Pages,
-      # which the SUFeedURL in Info.plist points at. `pages: write` +
-      # `id-token: write` are required by the Pages deploy action.
-      pages: write
+      contents: read
       id-token: write
-      # Signed build-provenance statement for the DMG (attest step below).
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -160,12 +176,63 @@ jobs:
       - name: Install pinned XcodeGen
         run: ./scripts/install-xcodegen.sh
 
+      # A release candidate is intentionally stricter than a local/fork DMG build.
+      # `build-dmg.sh` retains its ad-hoc fallback for local development, but a tag
+      # must never produce a candidate that lacks Developer ID signing, Apple
+      # notarization, the Sparkle signer, or production PRO activation.
+      - name: Require production release secrets
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
+          MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+          MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_KEY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_KEY_ISSUER_ID }}
+          MACOS_NOTARY_KEY_P8: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
+          SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+          VITRINE_LICENSE_SIGNING_KEY: ${{ secrets.VITRINE_LICENSE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            MACOS_CERTIFICATE_P12 \
+            MACOS_CERTIFICATE_PASSWORD \
+            MACOS_CODE_SIGN_IDENTITY \
+            MACOS_NOTARY_TEAM_ID \
+            SPARKLE_EDDSA_PRIVATE_KEY \
+            VITRINE_LICENSE_SIGNING_KEY
+          do
+            if [ -z "${!name:-}" ]; then
+              missing+=("${name}")
+            fi
+          done
+
+          api_key_complete=false
+          if [ -n "${MACOS_NOTARY_KEY_ID:-}" ] \
+            && [ -n "${MACOS_NOTARY_KEY_ISSUER_ID:-}" ] \
+            && [ -n "${MACOS_NOTARY_KEY_P8:-}" ]; then
+            api_key_complete=true
+          fi
+          apple_id_complete=false
+          if [ -n "${MACOS_NOTARY_APPLE_ID:-}" ] \
+            && [ -n "${MACOS_NOTARY_PASSWORD:-}" ]; then
+            apple_id_complete=true
+          fi
+          if [ "${api_key_complete}" != true ] && [ "${apple_id_complete}" != true ]; then
+            missing+=("complete notarization credentials")
+          fi
+
+          if [ "${#missing[@]}" -ne 0 ]; then
+            printf '::error::Release candidate is missing required secret: %s\n' "${missing[@]}"
+            exit 1
+          fi
+          echo "Production signing, notarization, update, and activation inputs are configured." >> "$GITHUB_STEP_SUMMARY"
+
       # Import the Developer ID Application certificate into a temporary keychain
-      # so `codesign` can find it during the build. Gated on the cert
-      # secret: when it is absent (e.g. a fork or a maintainer without the
-      # certificate yet), this step is skipped and the build falls back to the
-      # unsigned, ad-hoc path. The certificate is a base64-encoded .p12 export and
-      # MACOS_CERTIFICATE_PASSWORD is its export password.
+      # so `codesign` can find it during the build. The preflight above makes a
+      # missing credential fatal before any packaging work begins.
       - name: Import Developer ID certificate
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -173,8 +240,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${MACOS_CERTIFICATE_P12:-}" ]; then
-            echo "Developer ID certificate secret not configured; skipping keychain import."
-            exit 0
+            echo "::error::Developer ID certificate disappeared after release preflight."
+            exit 1
           fi
           KEYCHAIN="${RUNNER_TEMP}/vitrine-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
@@ -217,7 +284,7 @@ jobs:
       # script signs with the hardened runtime, notarizes with whichever credential
       # style is present (App Store Connect API key preferred over Apple ID),
       # staples, then runs `codesign --verify --deep --strict --verbose=2` and
-      # `spctl -a -vv` before publishing.
+      # `spctl -a -vv` before the candidate can be uploaded.
       - name: Build DMG
         env:
           CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
@@ -298,15 +365,10 @@ jobs:
 
       # Sparkle auto-update appcast. Sign the DMG with Sparkle's EdDSA tool and
       # (re)generate the signed appcast.xml so direct-download users update from version
-      # N to N+1 without a manual reinstall. The appcast is staged into `dist/` and
-      # `_site/` here; the release publish below attaches it and the Pages deploy
-      # (next step) serves it at the SUFeedURL in Info.plist.
-      #
-      # Gated on the EdDSA private-key secret, like the signing/notarization steps
-      #: without SPARKLE_EDDSA_PRIVATE_KEY this is skipped and the release still
-      # publishes a DMG — it just carries no appcast update entry (a fork, or this repo
-      # before the key pair exists, degrades gracefully). The private key is the secret
-      # half of the SUPublicEDKey embedded in Info.plist; it never leaves the secret.
+      # N to N+1 without a manual reinstall. It stays inside the private candidate
+      # artifact until manual promotion deploys it to the production SUFeedURL.
+      # The preflight makes the EdDSA key mandatory for tag candidates; the private
+      # half of SUPublicEDKey never leaves the secret context.
       - name: Generate signed Sparkle appcast
         id: appcast
         env:
@@ -316,9 +378,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${SPARKLE_EDDSA_PRIVATE_KEY:-}" ]; then
-            echo "generated=false" >> "$GITHUB_OUTPUT"
-            echo "Sparkle EdDSA key secret not configured; skipping appcast generation."
-            exit 0
+            echo "::error::Sparkle EdDSA key disappeared after release preflight."
+            exit 1
           fi
           VERSION="${GITHUB_REF_NAME#v}"
 
@@ -360,16 +421,13 @@ jobs:
           # covers the DMG bytes and is preserved verbatim.
           python3 scripts/mark-informational-update.py dist/appcast.xml
 
-          # Stage the appcast for the GitHub Pages deploy (served at SUFeedURL).
-          mkdir -p _site
-          cp dist/appcast.xml _site/appcast.xml
           echo "generated=true" >> "$GITHUB_OUTPUT"
 
           {
             echo "### Sparkle appcast"
             echo ""
-            echo "Signed appcast generated for \`${VERSION}\` and staged for GitHub Pages."
-            echo "Served at the SUFeedURL in Info.plist; attached to this release as \`appcast.xml\`."
+            echo "Signed appcast generated for \`${VERSION}\` and held in the candidate artifact."
+            echo "Manual promotion attaches it to the release and deploys the exact bytes to the production feed."
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Signed build provenance for the DMG:
@@ -400,7 +458,7 @@ jobs:
           VERSION: ${{ steps.checksum.outputs.version }}
         run: |
           set -euo pipefail
-          NOTES_PATH="${RUNNER_TEMP}/release-notes.md"
+          NOTES_PATH="dist/release-notes.md"
           awk -v heading="## [${VERSION}]" '
             $0 == heading || index($0, heading " - ") == 1 { found = 1; next }
             found && /^## \[/ { exit }
@@ -418,42 +476,319 @@ jobs:
             cat "${NOTES_PATH}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Publish GitHub release
+      # The tag run stops here. Nothing public, no appcast feed, no Homebrew tap,
+      # and no website changes occur until a maintainer promotes this exact artifact.
+      - name: Upload signed release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: release-candidate-${{ github.ref_name }}
+          path: |
+            dist/*.dmg
+            dist/*.dmg.sha256
+            dist/*.spdx.json
+            dist/vitrine-cask-update.txt
+            dist/appcast.xml
+            dist/release-notes.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record promotion inputs
+        env:
+          VERSION: ${{ steps.checksum.outputs.version }}
+          SHA256: ${{ steps.checksum.outputs.sha256 }}
+        run: |
+          {
+            echo "### Candidate ready for external QA"
+            echo ""
+            echo "- Tag: \`${GITHUB_REF_NAME}\`"
+            echo "- Candidate run ID: \`${GITHUB_RUN_ID}\`"
+            echo "- DMG SHA-256: \`${SHA256}\`"
+            echo "- Artifact: \`release-candidate-${GITHUB_REF_NAME}\` (retained for 30 days)"
+            echo ""
+            echo "Download this artifact on clean Sequoia and Tahoe Macs, run the documented"
+            echo "activation and release QA checklist, and only then dispatch this workflow"
+            echo "with the tag, run ID, SHA-256, and \`CLEAN-MAC-QA-PASSED\` confirmation."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Re-download the uploaded candidate on a fresh runner and run the same public
+  # artifact checks a clean Mac will run. The Release tag workflow is successful
+  # only if both the build runner and this independent runner accept the exact DMG.
+  candidate-qa:
+    name: QA uploaded release candidate
+    if: github.event_name == 'push'
+    needs: candidate
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Download uploaded candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download "${GITHUB_RUN_ID}" \
+            --name "release-candidate-${GITHUB_REF_NAME}" \
+            --dir dist
+          ls -l dist
+
+      - name: Verify candidate manifest and checksum
+        env:
+          VERSION: ${{ needs.candidate.outputs.version }}
+          EXPECTED_SHA256: ${{ needs.candidate.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          DMG="dist/Vitrine-${VERSION}.dmg"
+          for file in \
+            "${DMG}" \
+            "${DMG}.sha256" \
+            "dist/Vitrine-${VERSION}.spdx.json" \
+            "dist/vitrine-cask-update.txt" \
+            "dist/appcast.xml" \
+            "dist/release-notes.md"
+          do
+            if [ ! -s "${file}" ]; then
+              echo "::error::Candidate artifact is missing ${file}."
+              exit 1
+            fi
+          done
+          ACTUAL_SHA256="$(shasum -a 256 "${DMG}" | awk '{print $1}')"
+          if [ "${ACTUAL_SHA256}" != "${EXPECTED_SHA256}" ]; then
+            echo "::error::Uploaded candidate digest ${ACTUAL_SHA256} does not match build output ${EXPECTED_SHA256}."
+            exit 1
+          fi
+          (cd dist && shasum -a 256 -c ./*.dmg.sha256)
+
+      - name: Run candidate release QA suite
+        run: ./scripts/qa-release.sh
+
+  # Manual promotion is intentionally a separate workflow_dispatch run. It accepts
+  # only a successful tag-triggered run of this exact workflow and exact tag commit,
+  # then re-downloads and re-validates the candidate before creating any public state.
+  publish:
+    name: Promote vetted candidate to GitHub release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Validate promotion request
+        id: promotion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          QA_CONFIRMATION: ${{ inputs.qa_confirmation }}
+        run: |
+          set -euo pipefail
+          TAG_OBJECT_TYPE="$(git cat-file -t "${RELEASE_TAG}" 2>/dev/null || true)"
+          VERSION="${RELEASE_TAG#v}"
+          MARKETING_VERSION="$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9][0-9A-Za-z.\-]*)"?[[:space:]]*$/\1/p' project.yml | head -n1)"
+          TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_TAG}" 2>/dev/null || true)"
+          RUN_JSON="${RUNNER_TEMP}/candidate-run.json"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CANDIDATE_RUN_ID}" > "${RUN_JSON}"
+          python3 scripts/verify-release-promotion.py \
+            --tag "${RELEASE_TAG}" \
+            --candidate-run-id "${CANDIDATE_RUN_ID}" \
+            --expected-sha256 "${EXPECTED_SHA256}" \
+            --qa-confirmation "${QA_CONFIRMATION}" \
+            --tag-object-type "${TAG_OBJECT_TYPE}" \
+            --tag-commit "${TAG_COMMIT}" \
+            --marketing-version "${MARKETING_VERSION}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --run-json "${RUN_JSON}"
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "::error::Release ${RELEASE_TAG} already exists; immutable releases are never overwritten."
+            exit 1
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "tag_commit=${TAG_COMMIT}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Promotion request validated"
+            echo ""
+            echo "- Tag: \`${RELEASE_TAG}\` at \`${TAG_COMMIT}\`"
+            echo "- Successful candidate run: \`${CANDIDATE_RUN_ID}\`"
+            echo "- Expected DMG SHA-256: \`${EXPECTED_SHA256}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require distribution secrets before publication
+        env:
+          TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in TAP_DEPLOY_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("${name}")
+            fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            printf '::error::Promotion is missing required distribution secret: %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Download vetted candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download "${CANDIDATE_RUN_ID}" \
+            --name "release-candidate-${RELEASE_TAG}" \
+            --dir dist
+          ls -l dist
+
+      - name: Verify exact candidate before publication
+        env:
+          VERSION: ${{ steps.promotion.outputs.version }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+        run: |
+          set -euo pipefail
+          DMG="dist/Vitrine-${VERSION}.dmg"
+          for file in \
+            "${DMG}" \
+            "${DMG}.sha256" \
+            "dist/Vitrine-${VERSION}.spdx.json" \
+            "dist/vitrine-cask-update.txt" \
+            "dist/appcast.xml" \
+            "dist/release-notes.md"
+          do
+            if [ ! -s "${file}" ]; then
+              echo "::error::Promotion candidate is missing ${file}."
+              exit 1
+            fi
+          done
+          ACTUAL_SHA256="$(shasum -a 256 "${DMG}" | awk '{print $1}')"
+          if [ "${ACTUAL_SHA256}" != "${EXPECTED_SHA256}" ]; then
+            echo "::error::Candidate digest ${ACTUAL_SHA256} does not match approved digest ${EXPECTED_SHA256}."
+            exit 1
+          fi
+          (cd dist && shasum -a 256 -c ./*.dmg.sha256)
+
+      - name: Run final pre-publication QA suite
+        run: ./scripts/qa-release.sh
+
+      - name: Publish immutable GitHub release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
         with:
+          tag_name: ${{ inputs.tag }}
           files: |
             dist/*.dmg
             dist/*.dmg.sha256
             dist/*.spdx.json
             dist/vitrine-cask-update.txt
             dist/appcast.xml
-          body_path: ${{ runner.temp }}/release-notes.md
+          body_path: dist/release-notes.md
+          fail_on_unmatched_files: true
 
-      # Keep the Homebrew tap in lockstep with the release: regenerate
-      # the cask from the repo's source template (packaging/Casks/vitrine.rb,
-      # minus its repo-only header comment) with this release's version and
-      # SHA-256, and push it to johnny4young/homebrew-tap over the
-      # TAP_DEPLOY_KEY deploy key (a write-enabled deploy key on the tap,
-      # stored as a repo secret — the default GITHUB_TOKEN is scoped to this
-      # repository only). Fails soft with a warning when the secret is absent,
-      # so a fork can still publish a release; the manual fallback stays
-      # documented in docs/RELEASING.md.
+  # Validate the bytes downloaded from the public release before extending that
+  # release to Homebrew, the production Sparkle feed, or the marketing site.
+  published-qa:
+    name: QA published release artifact
+    if: github.event_name == 'workflow_dispatch'
+    needs: publish
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Download published DMG and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "${RELEASE_TAG}" \
+            --pattern '*.dmg' \
+            --pattern '*.dmg.sha256' \
+            --dir dist
+          ls -l dist
+
+      - name: Verify published DMG is the approved candidate
+        env:
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+        run: |
+          set -euo pipefail
+          DMG="$(find dist -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          if [ -z "${DMG}" ]; then
+            echo "::error::Published release has no DMG."
+            exit 1
+          fi
+          ACTUAL_SHA256="$(shasum -a 256 "${DMG}" | awk '{print $1}')"
+          if [ "${ACTUAL_SHA256}" != "${EXPECTED_SHA256}" ]; then
+            echo "::error::Published DMG digest ${ACTUAL_SHA256} differs from approved candidate ${EXPECTED_SHA256}."
+            exit 1
+          fi
+          (cd dist && shasum -a 256 -c ./*.dmg.sha256)
+
+      - name: Run published release QA suite
+        run: ./scripts/qa-release.sh
+
+  distribute:
+    name: Publish Homebrew, Sparkle feed, and distribution metadata
+    if: github.event_name == 'workflow_dispatch'
+    needs: published-qa
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Download published distribution metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "${RELEASE_TAG}" \
+            --pattern 'appcast.xml' \
+            --pattern 'vitrine-cask-update.txt' \
+            --dir dist
+          test -s dist/appcast.xml
+          test -s dist/vitrine-cask-update.txt
+
       - name: Update the Homebrew tap cask
         env:
           TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
-          CASK_VERSION: ${{ steps.checksum.outputs.version }}
-          CASK_SHA256: ${{ steps.checksum.outputs.sha256 }}
+          CASK_VERSION: ${{ inputs.tag }}
+          CASK_SHA256: ${{ inputs.expected_sha256 }}
         run: |
           set -euo pipefail
-          if [ -z "${TAP_DEPLOY_KEY}" ]; then
-            echo "::warning::TAP_DEPLOY_KEY is not configured; update the tap manually (docs/RELEASING.md)."
-            exit 0
+          CASK_VERSION="${CASK_VERSION#v}"
+          if [ -z "${TAP_DEPLOY_KEY:-}" ]; then
+            echo "::error::TAP_DEPLOY_KEY disappeared after promotion preflight."
+            exit 1
           fi
-          # The reusable bump — validate the version/checksum, regenerate the cask from
-          # the in-repo template, validate the result (substitution applied + `ruby -c`),
-          # then push to the tap over the deploy key — lives in
-          # scripts/update-homebrew-tap.sh so a sibling repo (gos, …) can vendor the same
-          # logic and only change the arguments. It reads TAP_DEPLOY_KEY from the env.
           ./scripts/update-homebrew-tap.sh \
             --kind cask \
             --name vitrine \
@@ -461,13 +796,11 @@ jobs:
             --sha256 "${CASK_SHA256}" \
             --template packaging/Casks/vitrine.rb
 
-      # The marketing site lives on Cloudflare Pages and deploys independently through
-      # deploy-site.yml. GitHub Pages keeps serving ONLY the signed appcast — the SUFeedURL the installed base
-      # polls — plus this tiny redirect stub at the old site root, so anyone who hits
-      # the legacy github.io URL is forwarded to the canonical domain.
-      - name: Stage a redirect stub for the legacy Pages site
-        if: ${{ steps.appcast.outputs.generated == 'true' }}
+      - name: Stage production appcast and legacy redirect
         run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp dist/appcast.xml _site/appcast.xml
           printf '%s\n' \
             '<!doctype html>' \
             '<meta charset="utf-8">' \
@@ -479,59 +812,17 @@ jobs:
             '<p>Vitrine has moved to <a href="https://vitrineframe.app/">vitrineframe.app</a>.</p>' \
             > _site/index.html
 
-      # Deploy the signed appcast to GitHub Pages so the SUFeedURL in Info.plist resolves.
-      # Skipped when no appcast was produced (no EdDSA key secret), so the release still
-      # publishes without it.
       - name: Upload appcast Pages artifact
-        if: ${{ steps.appcast.outputs.generated == 'true' }}
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
         with:
           path: _site
 
       - name: Deploy appcast to GitHub Pages
-        if: ${{ steps.appcast.outputs.generated == 'true' }}
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5.0.0
-
-  # Post-publish distribution QA: download the DMG users will actually get and
-  # run the scripted half of the release QA checklist against it — Gatekeeper's own
-  # codesign/spctl/stapler assessment, version/identity recording, secret-safe PRO
-  # signer presence validation, and the app-vs-signing failure classification
-  # qa-release.sh already encodes. The real online/offline activation journey remains
-  # the documented clean-Mac manual half. Runs after
-  # publish so a failure never blocks the release; it flags the published artifact
-  # for immediate investigation instead.
-  qa:
-    name: QA the published DMG
-    needs: publish
-    runs-on: macos-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      - name: Download the published DMG and checksum
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          gh release download "${GITHUB_REF_NAME}" \
-            --pattern '*.dmg' \
-            --pattern '*.dmg.sha256' \
-            --dir dist
-          ls -l dist
-
-      - name: Verify the published DMG checksum
-        run: (cd dist && shasum -a 256 -c ./*.dmg.sha256)
-
-      # No argument: the script auto-detects dist/*.dmg. Exit codes distinguish an
-      # app failure (3) from a signing/notarization failure (2) in the job log.
-      - name: Run the release QA suite
-        run: ./scripts/qa-release.sh
 
   deploy-site:
     name: Refresh the marketing site
-    needs: publish
+    if: github.event_name == 'workflow_dispatch'
+    needs: distribute
     uses: ./.github/workflows/deploy-site.yml
     secrets: inherit

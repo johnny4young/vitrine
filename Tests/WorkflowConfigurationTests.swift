@@ -65,6 +65,10 @@ struct WorkflowConfigurationTests {
         try text("docs", "RELEASING.md")
     }
 
+    private static func releasePromotionValidator() throws -> String {
+        try text("scripts", "verify-release-promotion.py")
+    }
+
     // MARK: - YAML well-formedness guard (tabs)
 
     /// YAML forbids tab characters for indentation; a stray tab is a syntax error that
@@ -328,12 +332,12 @@ struct WorkflowConfigurationTests {
             "a weekly drift job must constrain the day-of-week field, got: \(quoted)")
     }
 
-    // MARK: - Contract: release refuses to publish if any gate fails
+    // MARK: - Contract: release candidate and manual promotion are fail-closed
 
     /// The release workflow must run lint, build, the unit suite, and the UI-test
-    /// build, and the publish step must depend on that gate so a failing check blocks
-    /// the DMG. Assert the gate job runs all four checks, that publish `needs:` it, and
-    /// that the DMG/publish steps live in the dependent job — never run unconditionally.
+    /// build, and only the candidate step may depend on that gate. Tag pushes must stop
+    /// after uploading + independently QA-checking a private artifact; public release
+    /// creation belongs exclusively to a separately confirmed workflow_dispatch run.
     @Test func releaseRefusesToPublishWhenAnyGateFails() throws {
         let release = try Self.release()
 
@@ -348,31 +352,92 @@ struct WorkflowConfigurationTests {
             "release gate must compile the UI tests")
         #expect(release.contains("make test "), "release gate must run the unit suite")
 
-        // The publish job depends on the gate.
+        // The private candidate build depends on the gate.
         #expect(
             release.contains("needs: verify"),
-            "the publish job must depend on the verify gate so a failure blocks publishing"
+            "the candidate job must depend on the verify gate so a failure blocks packaging"
         )
 
-        // The DMG build and release publish belong to the dependent publish job, which
-        // only runs after `verify` succeeds. Confirm both live after the `publish:` job
-        // marker (i.e. they are not in an unconditional, pre-gate job).
+        let candidateMarker = try #require(
+            release.range(of: "\n  candidate:"),
+            "release.yml must declare a private candidate job")
         let publishMarker = try #require(
             release.range(of: "\n  publish:"),
-            "release.yml must declare a publish job")
+            "release.yml must declare a manual promotion job")
+        let candidate = String(release[candidateMarker.lowerBound..<publishMarker.lowerBound])
         let afterPublish = String(release[publishMarker.lowerBound...])
         #expect(
-            afterPublish.contains("build-dmg.sh"),
-            "the DMG build must run in the gated publish job")
+            candidate.contains("build-dmg.sh")
+                && candidate.contains("Upload signed release candidate")
+                && !candidate.contains("action-gh-release"),
+            "tag pushes must build and upload a private candidate without publishing")
         #expect(
-            afterPublish.contains("action-gh-release"),
-            "the GitHub release publish must run in the gated publish job")
+            afterPublish.contains("github.event_name == 'workflow_dispatch'")
+                && afterPublish.contains("verify-release-promotion.py")
+                && afterPublish.contains("action-gh-release"),
+            "public release creation must require validated manual candidate promotion")
+        #expect(
+            release.contains("candidate-qa:")
+                && release.contains("QA uploaded release candidate")
+                && release.contains("gh run download \"${GITHUB_RUN_ID}\""),
+            "the uploaded candidate must pass QA on a fresh runner before its run succeeds")
 
-        // And the gate must come before publish in the file's job order.
+        // Gate, candidate, and manual promotion remain visibly ordered.
         let verifyMarker = try #require(release.range(of: "\n  verify:"))
         #expect(
-            verifyMarker.lowerBound < publishMarker.lowerBound,
-            "the verify gate must be declared before the publish job")
+            verifyMarker.lowerBound < candidateMarker.lowerBound
+                && candidateMarker.lowerBound < publishMarker.lowerBound,
+            "verify must precede the candidate, which must precede manual promotion")
+    }
+
+    @Test func releasePromotionPinsCandidateProvenanceAndDigest() throws {
+        let release = try Self.release()
+        let validator = try Self.releasePromotionValidator()
+        let makefile = try Self.makefile()
+
+        for input in ["candidate_run_id", "expected_sha256", "qa_confirmation"] {
+            #expect(
+                release.contains(input),
+                "manual promotion must require the \(input) input")
+        }
+        #expect(
+            release.contains("gh api \"repos/${GITHUB_REPOSITORY}/actions/runs/")
+                && release.contains("verify-release-promotion.py")
+                && release.contains("gh run download \"${CANDIDATE_RUN_ID}\""),
+            "promotion must fetch and download the exact declared candidate run")
+
+        for evidence in [
+            #"run.get("event") != "push""#,
+            #"run.get("status") != "completed""#,
+            #"run.get("conclusion") != "success""#,
+            #"run.get("head_sha") != tag_commit"#,
+            #"run.get("path") != workflow_path"#,
+            #"actual_repository != repository"#,
+        ] {
+            #expect(
+                validator.contains(evidence),
+                "the promotion validator must reject mismatched provenance: \(evidence)")
+        }
+        #expect(
+            validator.contains("CLEAN-MAC-QA-PASSED")
+                && validator.contains("^[0-9a-f]{64}$")
+                && validator.contains("run_self_test"),
+            "promotion must require exact QA confirmation, digest syntax, and deterministic tests")
+        #expect(
+            makefile.contains("release-promotion-check")
+                && makefile.contains("verify-release-promotion.py --self-test"),
+            "make lint must execute the promotion validator self-test")
+
+        let preflight = try #require(release.range(of: "Run final pre-publication QA suite"))
+        let publish = try #require(release.range(of: "Publish immutable GitHub release"))
+        let publishedQA = try #require(release.range(of: "QA published release artifact"))
+        let distribute = try #require(release.range(of: "\n  distribute:"))
+        #expect(
+            preflight.lowerBound < publish.lowerBound
+                && publish.lowerBound < publishedQA.lowerBound
+                && publishedQA.lowerBound < distribute.lowerBound,
+            "candidate QA must precede immutable publication, then published QA must precede distribution"
+        )
     }
 
     // MARK: - Contract: a published release refreshes the marketing site
@@ -387,8 +452,8 @@ struct WorkflowConfigurationTests {
             "release.yml must declare a marketing-site deployment job")
         let job = String(release[jobMarker.lowerBound...])
         #expect(
-            job.contains("needs: publish"),
-            "the marketing site must refresh only after the GitHub release is published")
+            job.contains("needs: distribute"),
+            "the marketing site must refresh only after published QA and distribution")
         #expect(
             job.contains("uses: ./.github/workflows/deploy-site.yml"),
             "the release must call the validated Cloudflare deployment workflow directly")
@@ -407,7 +472,7 @@ struct WorkflowConfigurationTests {
         #expect(
             release.contains("Prepare curated release notes")
                 && release.contains("CHANGELOG.md > \"${NOTES_PATH}\"")
-                && release.contains("body_path: ${{ runner.temp }}/release-notes.md"),
+                && release.contains("body_path: dist/release-notes.md"),
             "the immutable GitHub release body must come from the reviewed changelog section"
         )
         #expect(
@@ -507,13 +572,12 @@ struct WorkflowConfigurationTests {
             preceding.contains("if: failure()"),
             "the release gate's .xcresult upload must be gated on failure")
 
-        // The diagnostics upload belongs to the verify gate, not the publish job, so it
-        // captures gate failures (which never reach publish).
+        // The diagnostics upload belongs to the verify gate, before candidate packaging.
         let verifyMarker = try #require(release.range(of: "\n  verify:"))
-        let publishMarker = try #require(release.range(of: "\n  publish:"))
+        let candidateMarker = try #require(release.range(of: "\n  candidate:"))
         #expect(
             verifyMarker.upperBound < uploadName.lowerBound
-                && uploadName.lowerBound < publishMarker.lowerBound,
+                && uploadName.lowerBound < candidateMarker.lowerBound,
             "the .xcresult upload must live in the verify gate")
     }
 

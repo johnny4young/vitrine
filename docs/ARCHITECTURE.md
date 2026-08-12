@@ -493,11 +493,20 @@ so the build stages the resources the renderer needs **next to the binary**:
   fonts with Core Text at launch, so the default JetBrains Mono render matches the app
   instead of falling back to the system font.
 
-To distribute, ship the `vitrine` binary together with its adjacent `Fonts/` folder and
-`Highlightr_Highlightr.bundle` (e.g. copy all three into a single directory on `PATH`,
-or wrap them in a tarball). Build the binary with `make cli`; the staged folder and
-bundle are written into the same `BUILT_PRODUCTS_DIR`. A code-signed, notarized release
-artifact is future work (see RELEASING.md); the current target is local/CI use.
+For direct distribution, the app build embeds the CLI as
+`Vitrine.app/Contents/MacOS/vitrine-cli`; the signed, notarized DMG signs it as nested
+code, and the Homebrew cask exposes that exact embedded executable on `PATH` as
+`vitrine`. `make cli` remains the standalone local build lane and stages its adjacent
+resources in the same `BUILT_PRODUCTS_DIR`.
+
+**Release trust boundary.** A stable annotated tag can build only a private signed,
+notarized candidate: verification, packaging, digest/appcast/SBOM generation, attestation,
+and fresh-runner artifact QA happen without modifying public distribution. Manual
+promotion names the successful candidate run and exact SHA-256 and requires recorded
+clean-Mac QA; it verifies the tag commit and candidate provenance, downloads the same
+artifact, and runs QA again before immutable publication. The public DMG then passes a
+third download QA before Homebrew, the production appcast, or the website moves. See
+[`docs/RELEASING.md`](RELEASING.md) for the operator procedure.
 
 ## Automation: Shortcuts, Services, and App Intents
 

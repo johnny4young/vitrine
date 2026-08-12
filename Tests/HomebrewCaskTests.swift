@@ -165,11 +165,9 @@ struct HomebrewCaskTests {
             "the cask must install Vitrine.app via the `app` stanza")
     }
 
-    /// The release workflow pushes the regenerated cask to the tap right after
-    /// publishing, so the tap can never silently fall behind a release
-    /// again (it sat at 0.1.0 while 0.3.0 shipped). The step must stay wired to
-    /// the deploy-key secret and the template, and must degrade to a warning —
-    /// never a failed release — when the secret is absent.
+    /// The release workflow pushes the regenerated cask only after the promoted
+    /// GitHub artifact passes download QA. Missing distribution credentials must
+    /// fail before immutable publication rather than create channel drift.
     @Test func releaseWorkflowUpdatesTheTapCask() throws {
         let release = try Self.release()
         #expect(
@@ -182,8 +180,9 @@ struct HomebrewCaskTests {
             release.contains("packaging/Casks/vitrine.rb"),
             "the tap update must regenerate the cask from the repo's source template")
         #expect(
-            release.contains("::warning::TAP_DEPLOY_KEY is not configured"),
-            "a missing deploy key must warn, not fail the release")
+            release.contains("Require distribution secrets before publication")
+                && release.contains("Promotion is missing required distribution secret"),
+            "a missing deploy key must fail before immutable publication")
     }
 
     /// The `vitrine` CLI ships embedded in the app bundle under the
@@ -319,29 +318,38 @@ struct HomebrewCaskTests {
         #expect(
             release.contains("vitrine-cask-update.txt"),
             "release.yml must attach the cask-update helper to the release")
-        // These must live in the gated publish job (the one that uploads the DMG), not in
-        // an unconditional pre-gate job.
+        // The private candidate retains them before the manual promotion can publish.
+        let candidateMarker = try #require(
+            release.range(of: "\n  candidate:"),
+            "release.yml must declare a candidate job")
         let publishMarker = try #require(
             release.range(of: "\n  publish:"),
             "release.yml must declare a publish job")
+        let candidate = String(release[candidateMarker.lowerBound..<publishMarker.lowerBound])
         let afterPublish = String(release[publishMarker.lowerBound...])
         #expect(
-            afterPublish.contains("dist/*.dmg.sha256"),
-            "the checksum sidecar upload must run in the gated publish job")
+            candidate.contains("Upload signed release candidate")
+                && candidate.contains("dist/*.dmg.sha256")
+                && candidate.contains("vitrine-cask-update.txt"),
+            "the private candidate must retain checksum and cask metadata")
+        #expect(
+            afterPublish.contains("dist/*.dmg.sha256")
+                && afterPublish.contains("vitrine-cask-update.txt"),
+            "manual promotion must attach the vetted sidecar and cask metadata")
 
         // The checksum is computed before the release is published (order matters: the
         // sidecar must exist when action-gh-release uploads the files).
         let checksumMarker = try #require(release.range(of: "Compute and store DMG SHA-256"))
         let publishStep = try #require(
-            release.range(of: "Publish GitHub release"),
+            release.range(of: "Publish immutable GitHub release"),
             "release.yml must publish the GitHub release")
         #expect(
             checksumMarker.lowerBound < publishStep.lowerBound,
             "the checksum must be computed before the GitHub release is published")
 
         let qaMarker = try #require(
-            release.range(of: "QA the published DMG"),
-            "release.yml must run post-publish artifact QA")
+            release.range(of: "QA published release artifact"),
+            "release.yml must run published-artifact QA")
         let qa = String(release[qaMarker.lowerBound...])
         #expect(
             qa.contains("*.dmg.sha256"),

@@ -11,7 +11,9 @@ attached to a GitHub release and the Homebrew cask that consumes it. The Mac App
 is an optional secondary GUI-only channel and never blocks a direct-channel release. The
 pipeline degrades gracefully: without signing
 secrets it still produces an **unsigned** DMG for local development — but that
-unsigned build is **never production-ready** (Gatekeeper rejects it). See
+unsigned build is **never production-ready** (Gatekeeper rejects it). Tag-triggered
+release candidates do **not** degrade: missing signing, notarization, Sparkle, or PRO
+credentials fail before packaging. See
 [Signing, notarization & Gatekeeper](#signing-notarization--gatekeeper).
 
 ## One command, locally
@@ -21,9 +23,9 @@ VERSION=0.1.0 ./scripts/build-dmg.sh
 # → dist/Vitrine-0.1.0.dmg  (+ prints the SHA-256)
 ```
 
-## Tagged release (CI)
+## Tagged release candidate (CI)
 
-Pushing a tag triggers `.github/workflows/release.yml`:
+Pushing a tag triggers the private candidate half of `.github/workflows/release.yml`:
 
 ```bash
 VERSION=0.1.0
@@ -33,16 +35,58 @@ git tag -a "v${VERSION}" -m "Vitrine v${VERSION}"
 git push origin "v${VERSION}"
 ```
 
-Release tags must be annotated and use stable SemVer with a `v` prefix. The workflow
-rejects lightweight, prerelease, or malformed tags before spending macOS build minutes.
+Release tags must be annotated and use stable SemVer with a `v` prefix. The tag run
+rejects lightweight, prerelease, or malformed tags, executes the release gates, requires
+every production signing/notarization/update/activation secret, and builds the signed,
+notarized DMG. It then generates the checksum, SBOM, signed appcast, Homebrew metadata,
+and curated changelog notes, attests the DMG, and uploads them together as a private
+`release-candidate-vX.Y.Z` Actions artifact retained for 30 days.
+
+The tag run **does not** create a GitHub release, change Homebrew, deploy the production
+appcast, or refresh the website. A fresh runner downloads that candidate, verifies its
+manifest and SHA-256, and runs `scripts/qa-release.sh`; the run is successful only after
+that independent check passes.
+
+## Promote a vetted candidate
+
+1. Download the candidate named in the successful tag run summary:
+
+   ```bash
+   TAG=v1.1.0
+   CANDIDATE_RUN_ID=123456789
+   rm -rf release-candidate
+   gh run download "${CANDIDATE_RUN_ID}" \
+     --name "release-candidate-${TAG}" \
+     --dir release-candidate
+   (cd release-candidate && shasum -a 256 -c ./*.dmg.sha256)
+   ```
+
+2. Copy that exact DMG and `scripts/qa-release.sh` to clean Sequoia and Tahoe Macs.
+   Complete the automated and manual checklist below, including live PRO activation,
+   offline relaunch, deactivation, universal executable inspection, and the supported
+   UI journeys. Record the candidate run ID, tag, DMG SHA-256, machine architecture,
+   and exact macOS versions; never record credentials.
+3. Only after both clean-Mac checks pass, dispatch the same workflow manually:
+
+   ```bash
+   SHA256="$(shasum -a 256 release-candidate/Vitrine-1.1.0.dmg | awk '{print $1}')"
+   gh workflow run release.yml \
+     -f tag="${TAG}" \
+     -f candidate_run_id="${CANDIDATE_RUN_ID}" \
+     -f expected_sha256="${SHA256}" \
+     -f qa_confirmation=CLEAN-MAC-QA-PASSED
+   ```
+
+Promotion fails closed unless the referenced run belongs to this repository and release
+workflow, was triggered by a tag push, completed successfully at the annotated tag's
+exact commit, and contains a DMG matching the approved SHA-256. It re-downloads and
+re-runs release QA **before** creating the immutable GitHub release. A third runner then
+downloads the public DMG and proves it is still the approved candidate before Homebrew,
+the production Sparkle feed, or the marketing site changes.
+
 GitHub immutable releases are enabled: after publication, the tag, release notes, and
 attached artifacts cannot be altered or replaced. If a published artifact is wrong,
 fix the source and publish a new patch version instead of rewriting release history.
-
-The workflow builds the Release app, signs + notarizes it when the signing secrets
-are configured, verifies the signature and runs a Gatekeeper assessment,
-creates the DMG, and publishes a GitHub release whose immutable body is extracted from
-the reviewed version section in `CHANGELOG.md`.
 
 ## Continuous integration
 
@@ -77,10 +121,11 @@ CI is a release gate, not just a compile check.
   compares both the XcodeGen and Sparkle versions and checksums with GitHub's published
   release metadata. Each GitHub release includes a versioned SPDX JSON SBOM alongside the
   DMG and checksum.
-- **The release workflow refuses to publish a broken build.** `release.yml` runs a
-  `verify` job (lint, build, UI-test build, unit tests) that the `publish` job
-  `needs:`. A tag therefore cannot publish a DMG unless lint, build, the unit
-  suite, and the UI-test compile all pass on the tagged commit.
+- **The release workflow refuses to publish an unvetted build.** `release.yml` runs
+  `verify`, builds a private candidate, re-downloads it onto an independent QA runner,
+  and stops. Public promotion is a separate manual dispatch that pins the successful
+  candidate run, tag commit, operator-confirmed clean-Mac checklist, and SHA-256. The
+  published bytes pass QA again before downstream distribution changes.
 
 ### Supported macOS matrix
 
@@ -299,9 +344,11 @@ accepted ticket to attach.
 
 ### Credentials (repository secrets)
 
-Signing and notarization are each gated on their secrets; missing ones simply skip
-that stage. Notarization accepts **either** credential style — the App Store Connect
-API key is preferred for CI (no app-specific password) and wins when both are set.
+Local `build-dmg.sh` runs may omit credentials and produce an explicitly unsigned
+development artifact. A tag candidate is different: the workflow requires Developer ID
+signing, PRO and Sparkle keys, and one complete notarization credential style before it
+builds. The App Store Connect API key is preferred for CI (no app-specific password) and
+wins when both styles are configured.
 
 | Secret | Purpose |
 | --- | --- |
@@ -342,9 +389,12 @@ gh secret set VITRINE_LICENSE_SIGNING_KEY --repo johnny4young/vitrine \
 
 The release workflow imports `MACOS_CERTIFICATE_P12` into a temporary runner keychain
 before building (the **Import Developer ID certificate** step), and stages
-`MACOS_NOTARY_KEY_P8` to a file (the **Stage App Store Connect API key** step). Both
-steps are skipped automatically when their secret is absent, so a fork or a maintainer
-without the certificate still gets a green unsigned build.
+`MACOS_NOTARY_KEY_P8` to a file (the **Stage App Store Connect API key** step). A missing
+certificate, signing identity, Sparkle signer, PRO signer, Team ID, or complete notary
+credential set makes the tag run fail; an unsigned candidate can never become promotable.
+`TAP_DEPLOY_KEY`, `CLOUDFLARE_API_TOKEN`, and `CLOUDFLARE_ACCOUNT_ID` are checked before
+manual promotion creates the immutable release, preventing a known-missing distribution
+credential from creating immediate channel drift.
 
 ### Local dry run (unsigned)
 
@@ -414,10 +464,11 @@ So the checksum is never hand-copied off a terminal: it lives on the release.
 
 ### Updating the cask in the tap — automated
 
-`release.yml`'s **Update the Homebrew tap cask** step runs right after the GitHub
-release publishes: it regenerates the cask from this repo's template (header
-comment stripped, `version`/`sha256` substituted from the just-built DMG) and
-pushes it straight to `johnny4young/homebrew-tap`. It authenticates with the
+`release.yml`'s **Update the Homebrew tap cask** step runs only after the public
+release has been downloaded on a fresh runner, matched to the approved candidate
+SHA-256, and passed release QA again. It regenerates the cask from this repo's template
+(header comment stripped, `version`/`sha256` substituted from the vetted DMG) and pushes
+it straight to `johnny4young/homebrew-tap`. It authenticates with the
 `TAP_DEPLOY_KEY` repo secret — a **write-enabled deploy key on the tap** (the
 default `GITHUB_TOKEN` cannot reach other repositories). To rotate it:
 
@@ -429,12 +480,13 @@ gh secret set TAP_DEPLOY_KEY --repo johnny4young/vitrine < tap_deploy_key
 rm tap_deploy_key tap_deploy_key.pub
 ```
 
-When the secret is absent the step warns and the release still publishes — fall
-back to the manual flow below.
+Promotion checks this secret before creating the immutable GitHub release. Missing
+credentials fail closed; do not bypass the check to publish a knowingly inconsistent
+release.
 
-### Updating the cask in the tap (manual fallback)
+### Repairing the cask in the tap (incident fallback)
 
-If the automated step was skipped or failed, open a PR against
+If the authenticated tap push fails unexpectedly after public release QA, open a PR against
 `johnny4young/homebrew-tap`:
 
 1. In the tap's `Casks/vitrine.rb`, paste the two lines from the release's
@@ -523,10 +575,10 @@ At release time:
 `make changelog-check` asserts the newest `## [x.y.z]` equals `MARKETING_VERSION` and
 that an `[Unreleased]` section still exists, and the `AppStoreReadinessTests` suite pins
 the changelog's newest version to both `MARKETING_VERSION` and `ReleaseNotes.latest` — so
-the three can never drift. The release workflow extracts that version's complete section
-into the GitHub Release body before publishing. The extraction fails closed when the
-section is missing or empty, which matters because GitHub immutable releases cannot be
-edited after publication.
+the three can never drift. The immutable body is extracted from that version's complete
+section in `CHANGELOG.md` and copied into the GitHub Release before publishing. The
+extraction fails closed when the section is missing or empty because GitHub immutable
+release notes cannot be edited after publication.
 
 ## Auto-update (Sparkle)
 
@@ -596,15 +648,16 @@ so back it up securely (e.g. a password manager), exactly like the Developer ID 
 
 ### Appcast published with each release
 
-`release.yml`'s **Generate signed Sparkle appcast** step runs in the gated `publish` job
-after the DMG is built. Gated on `SPARKLE_EDDSA_PRIVATE_KEY` (so a fork or a pre-key repo
-still publishes a DMG, just without an update entry), it:
+`release.yml`'s **Generate signed Sparkle appcast** step runs while building the private
+candidate. `SPARKLE_EDDSA_PRIVATE_KEY` is mandatory for tag runs; a candidate without a
+signed update path is rejected rather than published in a degraded state. The step:
 
 - signs the DMG with Sparkle's EdDSA tooling and runs `generate_appcast` over `dist/` to
   produce a signed `appcast.xml`, with each item's download URL pointing at the release's
   DMG asset;
-- attaches `appcast.xml` to the GitHub release; and
-- deploys it to **GitHub Pages**, which is exactly the `SUFeedURL` the app polls.
+- stores `appcast.xml` inside the candidate so its bytes are reviewed with the DMG;
+- attaches that exact file during manual promotion; and
+- deploys it to **GitHub Pages** only after the public DMG passes post-upload QA.
 
 The marketing site is **not** on GitHub Pages. Its Astro source lives in [`site/`](../site/)
 and deploys to **Cloudflare Pages** (project `vitrine-web`, canonical domain
@@ -621,10 +674,11 @@ GitHub Pages serves only the appcast plus a redirect stub from the legacy
 created once with `cd site && npm exec -- wrangler pages project create vitrine-web
 --production-branch=main`.
 
-So a tagged release both ships the DMG and refreshes the feed the installed base updates
-from. Sparkle compares the appcast entries to the installed bundle's `CFBundleVersion`, so
-remember to bump `CURRENT_PROJECT_VERSION` (and `MARKETING_VERSION`) in `project.yml` for
-every release, or Sparkle will not see the new build as newer.
+So a tag produces evidence, while an approved manual promotion ships the same DMG and
+refreshes the feed the installed base updates from. Sparkle compares appcast entries to the
+installed bundle's `CFBundleVersion`, so remember to bump `CURRENT_PROJECT_VERSION` (and
+`MARKETING_VERSION`) in `project.yml` for every release, or Sparkle will not see the new
+build as newer.
 
 ### Reaching hosts whose updater cannot install
 
@@ -658,18 +712,24 @@ counts on those releases are the evidence for that, not a guess.
 
 ### Testing an update from N to N+1
 
-1. Build and install version *N* from its DMG (`VERSION=N ./scripts/build-dmg.sh`).
-2. Tag *N+1* (after bumping the versions in `project.yml`) so the release workflow
-   publishes its DMG and the refreshed appcast.
-3. Launch the installed *N* and choose **Check for Updates…** — Sparkle should find *N+1*,
+1. Install the currently published version *N* from its real DMG; do not substitute a
+   local build for the updater users actually have.
+2. Complete candidate QA and manually promote *N+1*. The promotion workflow publishes the
+   vetted DMG, verifies its public bytes, then deploys the signed production appcast.
+3. Immediately launch installed *N* and choose **Check for Updates…** — Sparkle should find *N+1*,
    verify its EdDSA signature against `SUPublicEDKey`, and offer **Install Update**.
 4. Click **Install Update** and require the app to relaunch on *N+1* with no installer or
-   authorization error. Detecting and downloading the update is not a pass: the release gate
-   covers the complete sandboxed Installer Launcher journey.
+   authorization error. Detecting and downloading the update is not a pass: this checks the
+   complete sandboxed Installer Launcher journey.
 
 A download whose signature does not verify is rejected, which is the man-in-the-middle
 protection. Record the installed source/candidate versions and the final relaunched version in
-the QA log. **Do not publish a direct-download release until this N-to-N+1 installation passes.**
+the QA log. This exact production-feed journey necessarily happens immediately after promotion:
+version *N* cannot download an asset or appcast that is not yet public. Candidate QA therefore
+proves signing, notarization, embedded Installer XPC, entitlements, and launch behavior before
+publication; the real *N*→*N+1* feed/install check is the final distribution audit. If it fails,
+stop announcements and channel expansion, diagnose from the retained candidate/public evidence,
+and publish a corrective patch — never rewrite the immutable release.
 
 ### App Store build excludes Sparkle
 
@@ -699,8 +759,8 @@ See [DESIGN-QA.md](DESIGN-QA.md) for what the gallery covers and how it is enfor
 
 Local debug success is not distribution success. A build that launches fine from
 DerivedData on the developer's machine can still be rejected by Gatekeeper, ship an
-unsigned bundle, or regress a runtime feature on a user's Mac. Before announcing a
-release, verify the **published artifact** on a **clean, compatible Mac** — one that
+unsigned bundle, or regress a runtime feature on a user's Mac. Before promotion, verify
+the exact **Actions candidate artifact** on a **clean, compatible Mac** — one that
 has never had this repository or any DerivedData on it (a spare machine, a fresh VM,
 or a freshly created user account). That is the environment a user installs into, and
 the only place this check is meaningful.
@@ -708,8 +768,10 @@ the only place this check is meaningful.
 `scripts/qa-release.sh` drives it. The script is deliberately self-contained: it needs
 only the artifact and the stock macOS command-line tools (`codesign`, `spctl`,
 `stapler`, `hdiutil`, `plutil`, `lipo`, `base64`, `sw_vers`, `uname`, `stat`), so you can copy
-that one file — or download it with the release — onto the clean Mac and run it without
-checking out the repo.
+that one file plus the candidate DMG onto the clean Mac and run it without checking out
+the repository. Manual promotion reruns the same suite before publication; the
+`published-qa` job downloads and validates the public bytes once more before downstream
+channels move.
 
 ```bash
 # On the clean Mac, against the downloaded release DMG:
