@@ -12,6 +12,15 @@ can never drift.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-12
+
+Vitrine 1.1 opens the fastest terminal-capture path to everyone and hardens the edges
+around the whole local workflow. Search is more forgiving, imported content is bounded,
+compact Macs keep their controls reachable, and release evidence now spans Sequoia and
+Tahoe before the same signed candidate can reach users.
+
+### Added
+
 - Add a repeatable dynamic-memory evidence lane with selectable editor and isolated image
   import/decode journeys. It retains raw memgraphs, reports allocation and leak roots
   without false framework allowlists, and compares only explicitly identified baselines
@@ -1098,7 +1107,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/johnny4young/vitrine/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/johnny4young/vitrine/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/johnny4young/vitrine/compare/v0.25.5...v1.0.0
 [0.25.5]: https://github.com/johnny4young/vitrine/compare/v0.25.4...v0.25.5

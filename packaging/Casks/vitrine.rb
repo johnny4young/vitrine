@@ -11,7 +11,7 @@
 # it with the real DMG checksum before the tap commit. Never publish this
 # placeholder to the tap.
 cask "vitrine" do
-  version "1.0.1"
+  version "1.1.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
   url "https://github.com/johnny4young/vitrine/releases/download/v#{version}/Vitrine-#{version}.dmg"
