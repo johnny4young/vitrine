@@ -1,7 +1,7 @@
 ---
 import { currentVersion } from '~/lib/project';
 
-const releaseVersion = '1.0.1';
+const releaseVersion = '1.1.0';
 
 if (releaseVersion !== currentVersion) {
   throw new Error(
@@ -18,12 +18,12 @@ if (releaseVersion !== currentVersion) {
     <p class="lead" data-i18n="cl.lead">The highlights from the newest Vitrine release, available without waiting for a network request.</p>
     <article class="changelog" data-release-version={releaseVersion}>
       <p class="ver"><span data-i18n="cl.version">Version</span> {releaseVersion}</p>
-      <h3 data-i18n="cl.headline">Steadier everywhere it counts</h3>
+      <h3 data-i18n="cl.headline">Faster capture, safer edges</h3>
       <ul>
-        <li data-i18n="cl.h1"><strong>Reopening a window brings the whole document back.</strong> Restoration kept the style but dropped part of the content; it no longer does, and two crashes on the same path are closed.</li>
-        <li data-i18n="cl.h2"><strong>Terminal captures are more faithful.</strong> A cleared screen stays cleared, control sequences your terminal hides stay hidden, and full-screen apps render the way they look.</li>
-        <li data-i18n="cl.h3"><strong>Your style travels whole.</strong> Shadow depth now moves with every other value through presets, recipes, and restored sessions.</li>
-        <li data-i18n="cl.h4"><strong>Batch exports never overwrite each other.</strong> Two source names differing only in capitalization resolved to one file on macOS; each output is now claimed before anything is written.</li>
+        <li data-i18n="cl.h1"><strong>Basic terminal capture is now free.</strong> Run <code>vgrab</code> to copy one command's output or open it in Vitrine without a PRO license.</li>
+        <li data-i18n="cl.h2"><strong>Search behaves like one system.</strong> Commands, recents, themes, and fonts match multiple words in any order with consistent case and accent handling.</li>
+        <li data-i18n="cl.h3"><strong>Large or stalled inputs fail safely.</strong> Image imports, editor drops, and web captures stop at explicit size or time limits instead of hanging or exhausting memory.</li>
+        <li data-i18n="cl.h4"><strong>Sequoia and Tahoe stay first-class.</strong> Compact displays keep controls reachable, while export choices follow the formats each Mac can actually write.</li>
       </ul>
       <a class="more" href="https://github.com/johnny4young/vitrine/blob/main/CHANGELOG.md" data-i18n="cl.more">Read the full changelog →</a>
     </article>
