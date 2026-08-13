@@ -456,17 +456,28 @@ struct WorkflowConfigurationTests {
             job.contains("needs: distribute"),
             "the marketing site must refresh only after published QA and distribution")
         #expect(
-            job.contains("uses: ./.github/workflows/deploy-site.yml"),
-            "the release must call the validated Cloudflare deployment workflow directly")
+            job.contains("uses: ./.github/workflows/deploy-site.yml")
+                && job.contains("release_ref: ${{ inputs.tag }}"),
+            "the release must deploy the exact promoted tag through the validated Cloudflare workflow"
+        )
         #expect(
-            deploySite.contains("workflow_call:"),
-            "deploy-site.yml must remain reusable by the release workflow")
+            deploySite.contains("workflow_call:")
+                && deploySite.contains("release_ref:")
+                && deploySite.contains("required: true"),
+            "deploy-site.yml must require an explicit release ref from reusable and manual callers"
+        )
         #expect(
             !deploySite.contains("\n  release:")
-                && deploySite.contains("Verify website version is published")
+                && deploySite.contains("ref: ${{ inputs.release_ref || github.sha }}")
+                && deploySite.contains("fetch-depth: 0")
+                && deploySite.contains("Verify exact website release provenance")
+                && deploySite.contains("Pushes to main never deploy")
+                && deploySite.contains("git cat-file -t \"${REQUESTED_REF}\"")
+                && deploySite.contains("TAG_COMMIT=\"$(git rev-list -n 1")
+                && deploySite.contains("HEAD_COMMIT=\"$(git rev-parse HEAD)\"")
                 && deploySite.contains("releases/tags/v${VERSION}")
                 && deploySite.contains("if: steps.release.outputs.published == 'true'"),
-            "independent triggers must not deploy candidate website copy before its stable release exists"
+            "main pushes must only validate, while production requires exact annotated-tag and stable-release provenance"
         )
         #expect(
             deploySite.contains("Cloudflare Pages secrets are required")

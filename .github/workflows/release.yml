@@ -825,4 +825,6 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     needs: distribute
     uses: ./.github/workflows/deploy-site.yml
+    with:
+      release_ref: ${{ inputs.tag }}
     secrets: inherit
