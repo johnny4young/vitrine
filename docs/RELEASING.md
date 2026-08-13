@@ -662,12 +662,18 @@ signed update path is rejected rather than published in a degraded state. The st
 The marketing site is **not** on GitHub Pages. Its Astro source lives in [`site/`](../site/)
 and deploys to **Cloudflare Pages** (project `vitrine-web`, canonical domain
 <https://vitrineframe.app>) through `deploy-site.yml`. Every trigger validates the site,
-but production deployment is withheld until `MARKETING_VERSION` has a matching stable,
-published GitHub Release. This lets a release-preparation merge carry the next website
-copy without announcing an artifact that users cannot download yet. The release workflow
-calls the reusable deploy only after public-artifact QA and downstream distribution. That
-direct call is deliberate: a release created with `GITHUB_TOKEN` does not emit another
-workflow run, and an independent release event would bypass the required ordering. Its
+but a push to `main` **never** changes production: `main` can contain unreleased copy while
+`MARKETING_VERSION` still names the previous release, so version equality is not release
+provenance. Production accepts only an explicit annotated tag whose checked-out commit,
+marketing version, and stable published GitHub Release all agree. This lets ordinary and
+release-preparation merges exercise the complete site without announcing an artifact that
+users cannot download yet.
+
+After public-artifact QA and downstream distribution, the release workflow passes the
+promoted tag to the reusable deploy, which checks out that exact ref rather than mutable
+`main`. That direct call is deliberate: a release created with `GITHUB_TOKEN` does not
+emit another workflow run, and an independent release event would bypass the required
+ordering. A manual recovery deployment must supply the same published stable tag. The
 locked local Wrangler dependency consumes the `CLOUDFLARE_API_TOKEN` /
 `CLOUDFLARE_ACCOUNT_ID` secrets; an eligible production deployment fails rather than
 silently skipping when either credential is absent.
