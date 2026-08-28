@@ -1,0 +1,48 @@
+name: Xcode 27 preview (non-required)
+
+on:
+  # This is an early-warning lane, not a pull-request or release gate. GitHub's
+  # xcode-27 preview image currently uses a macOS 26 host with the preview SDK.
+  schedule:
+    - cron: "0 8 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xcode-27-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compatibility:
+    name: Lint, build & unit test
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Toolchain versions
+        run: |
+          {
+            echo "### Preview toolchain"
+            echo '```'
+            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
+            sw_vers
+            xcodebuild -version
+            swift --version
+            echo '```'
+            echo "This is compile-time preview evidence on a macOS 26 host, not macOS 27 runtime certification."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install pinned XcodeGen
+        run: ./scripts/install-xcodegen.sh
+
+      - name: Lint
+        run: make lint
+
+      - name: Build
+        run: make build
+
+      - name: Unit tests
+        run: make test

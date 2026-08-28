@@ -188,9 +188,13 @@ struct BackgroundImageStore {
         let response: URLResponse
         do {
             (data, response) = try await load(url)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch let importError as ImportError {
+            try Task.checkCancellation()
             throw importError
         } catch {
+            try Task.checkCancellation()
             throw ImportError.downloadFailed
         }
 

@@ -13,6 +13,7 @@ import UniformTypeIdentifiers
 enum CustomThemeFileExchange {
     /// The document type for a Vitrine theme file: plain JSON.
     static let contentType: UTType = .json
+    static let maximumByteCount = 1_048_576
 
     /// Presents a save panel and writes the user's custom themes to the chosen file.
     /// Returns the URL written, or `nil` on cancel/failure.
@@ -74,15 +75,22 @@ enum CustomThemeFileExchange {
         let accessed = url.startAccessingSecurityScopedResource()
         defer { if accessed { url.stopAccessingSecurityScopedResource() } }
 
+        let added = try importFile(at: url, store: store)
+        return added.count
+    }
+
+    /// Imports a selected file after the caller has established any required
+    /// security-scoped access. Kept separate from the panel so file-policy tests do
+    /// not need to drive AppKit.
+    static func importFile(at url: URL, store: CustomThemeStore) throws -> [Theme] {
         let data: Data
         do {
-            data = try Data(contentsOf: url)
+            data = try BoundedFileReader.read(from: url, limit: maximumByteCount)
+        } catch BoundedFileReader.ReadError.tooLarge {
+            throw CustomThemeDocument.ImportError.fileTooLarge
         } catch {
-            // Treat an unreadable file as an invalid theme file so the user sees a
-            // single, clear message rather than a low-level I/O error.
             throw CustomThemeDocument.ImportError.notAThemeFile
         }
-        let added = try store.importThemes(from: data)
-        return added.count
+        return try store.importThemes(from: data)
     }
 }

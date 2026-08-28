@@ -68,6 +68,7 @@ struct TestUserDefaultsTests {
         let projectRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+            .resolvingSymlinksInPath()
         let construction = try NSRegularExpression(
             pattern: #"UserDefaults\s*\(\s*suiteName:"#)
         var offenders: [String] = []
@@ -86,8 +87,13 @@ struct TestUserDefaultsTests {
                 let count = construction.numberOfMatches(
                     in: source, range: NSRange(source.startIndex..., in: source))
                 if count > 0 {
-                    let relativePath = url.path.replacingOccurrences(
-                        of: "\(projectRoot.path)/", with: "")
+                    let directoryMarker = "/\(directoryName)/"
+                    let relativePath: String
+                    if let markerRange = url.path.range(of: directoryMarker, options: .backwards) {
+                        relativePath = directoryName + "/" + url.path[markerRange.upperBound...]
+                    } else {
+                        relativePath = url.lastPathComponent
+                    }
                     offenders.append("\(relativePath): \(count)")
                 }
             }

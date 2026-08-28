@@ -11,7 +11,7 @@
       "hero.h1": "Pon tu código <span class=\"em\">tras el cristal.</span>",
       "hero.tag": "Vitrine convierte el código copiado en imágenes preciosas y listas para compartir — pulsa <b>⇧⌘S</b> y pega. También captura tu terminal: <b>vgrab htop</b> reconstruye el fotograma final de una aplicación a pantalla completa, no una transcripción de códigos de escape. El renderizado permanece en tu Mac.",
       "hero.cta1": "Descargar para macOS", "hero.cta2": "Ver en GitHub",
-      "hero.meta": "Última <b data-version>versión</b> · macOS 14+ · licencia MIT y gratis · el renderizado de código permanece en tu Mac",
+      "hero.meta": "Última <b data-version>versión</b> · macOS 15+ · licencia MIT y gratis · el renderizado de código permanece en tu Mac",
       "bench.eyebrow": "El banco de estilos", "bench.title": "Un snippet. Todos los estilos.",
       "bench.lead": "Elige un degradado y un tema — el mismo código, reestilizado en vivo. En la app son presets guardados que se aplican al instante al pulsar el atajo.",
       "bench.bg": "Fondo (preset)", "bench.theme": "Tema", "bench.lang": "Lenguaje",

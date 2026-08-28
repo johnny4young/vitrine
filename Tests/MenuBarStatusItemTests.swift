@@ -120,6 +120,27 @@ struct MenuBarStatusItemTests {
                 ]) == .helper)
     }
 
+    @Test func uiTestPanelControlRequiresExplicitOptInAndExactLaunchToken() {
+        #expect(!MenuBarUITestControl.isEnabled(arguments: []))
+        let token = UUID().uuidString
+        let arguments = ["Vitrine", MenuBarUITestControl.launchArgumentPrefix + token]
+        #expect(
+            MenuBarUITestControl.isEnabled(arguments: arguments))
+        #expect(
+            !MenuBarUITestControl.isEnabled(
+                arguments: ["Vitrine", MenuBarUITestControl.launchArgumentPrefix + "invalid"]))
+
+        let intended = Notification(name: .init("test"), object: token)
+        #expect(MenuBarUITestControl.accepts(intended, arguments: arguments))
+        #expect(
+            !MenuBarUITestControl.accepts(
+                Notification(name: .init("test"), object: UUID().uuidString),
+                arguments: arguments))
+        #expect(
+            !MenuBarUITestControl.accepts(
+                intended, arguments: ["Vitrine", MenuBarUITestControl.launchArgumentPrefix]))
+    }
+
     @Test func helperConfigurationAcceptsOnlyAPositivePIDAndUUIDToken() throws {
         let token = UUID().uuidString
         let configuration = try #require(
@@ -142,6 +163,25 @@ struct MenuBarStatusItemTests {
             #expect(
                 MenuBarHelperConfiguration(arguments: invalidArguments) == nil,
                 "helper must reject malformed invocation: \(invalidArguments)")
+        }
+    }
+
+    @Test func helperSandboxInheritanceRequiresTheSameRealSigningTeam() {
+        #expect(
+            MenuBarHelperLauncher.signaturesPermitSandboxInheritance(
+                appTeamIdentifier: "TEAM123",
+                helperTeamIdentifier: "TEAM123"))
+        for identifiers in [
+            (nil, "TEAM123"),
+            ("TEAM123", nil),
+            ("", "TEAM123"),
+            ("TEAM123", ""),
+            ("TEAM123", "OTHER"),
+        ] as [(String?, String?)] {
+            #expect(
+                !MenuBarHelperLauncher.signaturesPermitSandboxInheritance(
+                    appTeamIdentifier: identifiers.0,
+                    helperTeamIdentifier: identifiers.1))
         }
     }
 
@@ -255,6 +295,9 @@ struct MenuBarStatusItemTests {
         }
         #expect(!helperSource.contains("arguments.count == 3"))
         #expect(project.contains("Vitrine/MenuBar/MenuBarHelperContract.swift"))
+        #expect(project.contains("CREATE_INFOPLIST_SECTION_IN_BINARY: YES"))
+        #expect(project.contains("GENERATE_INFOPLIST_FILE: YES"))
+        #expect(project.contains("com.johnny4young.vitrine.menubar-helper"))
         #expect(makefile.contains("Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests"))
     }
 

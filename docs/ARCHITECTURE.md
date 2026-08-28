@@ -20,6 +20,14 @@ network-backed features, and the CLI, and resolves PRO through StoreKit. Channel
 capabilities are compiled and entitlement-gated explicitly rather than discovered at
 runtime.
 
+The public binary floor is macOS 15 Sequoia. Required runtime qualification covers both
+Sequoia and macOS 26 Tahoe, while the direct-download artifact remains universal
+(`arm64` + `x86_64`). A separate scheduled Xcode 27 preview lane compiles and unit-tests
+the same source on its macOS 26 host; it is an early toolchain warning, not a claim of
+macOS 27 runtime support. A future runtime becomes supported only after its runner is GA
+and the complete build, UI, visual, performance, and clean-Mac gates are promoted to the
+required matrix.
+
 ## Experience: menu-bar status item + panel
 
 The app lives behind an AppKit `NSStatusItem`. Clicking the icon opens an
@@ -61,6 +69,17 @@ product model, and reads no clipboard, settings, recents, or rendered content. A
 sends only both process identifiers, a per-launch token, and the pointer location over a
 distributed notification. The main process validates all of them and
 `StatusItemController` anchors its existing model-backed SwiftUI popover at that point.
+The helper remains a raw executable in `Contents/MacOS`, but Xcode embeds its generated
+Info.plist in the Mach-O `__TEXT,__info_plist` section. That gives the sandbox initializer
+the stable `com.johnny4young.vitrine.menubar-helper` identity Tahoe requires before
+Swift reaches `main`, without turning the paint-only child into a login item or a second
+application bundle.
+
+Before spawning it, the launcher reads both code signatures through Security.framework
+and requires the same non-empty team identifier. Developer ID, App Store, and properly
+signed development builds satisfy that inheritance boundary. Ad-hoc source builds do
+not; they keep the in-process status item instead of repeatedly launching a child that
+Tahoe would terminate in `libsecinit` before `main`.
 
 The helper watches the exact containing app process and exits with it. The main app
 monitors the helper and relaunches it if needed, retaining a stable in-process

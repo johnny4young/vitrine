@@ -100,6 +100,10 @@ struct EditorView: View {
     /// so the Copy-text button can't be double-fired mid-recognition.
     @State var isExtractingText = false
 
+    /// The current OCR/redaction operation. Replacing the action or closing this
+    /// editor cancels work that must not outlive the image and window it updates.
+    @State var imageProcessingTask: Task<Void, Never>?
+
     /// Whether the stage draws the safe-area guide over the preview:
     /// the margin platforms may crop or cover, plus the live line/column budget.
     /// Editor-only chrome — the export never includes it. Persisted app-wide (it is

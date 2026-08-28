@@ -8,7 +8,7 @@ questions are routed through [SUPPORT.md](SUPPORT.md).
 
 ## Prerequisites
 
-- macOS 14+ and **Xcode 16+**
+- macOS 15+ and **Xcode 26+**
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen), installed from the verified
   release asset with `./scripts/install-xcodegen.sh`
 - Node.js 22.12+ for changes under `site/`

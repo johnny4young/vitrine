@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "candidate": {
+    "tag": "",
+    "version": "",
+    "dmgSHA256": ""
+  },
+  "overallStatus": "not-run",
+  "runs": [
+    {
+      "platform": "macOS 15 Sequoia",
+      "macOSVersion": "",
+      "buildVersion": "",
+      "architecture": "",
+      "hardwareOrVM": "",
+      "testedAtUTC": "",
+      "tester": "",
+      "scenarios": [
+        { "id": "local-html-offline", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "local-html-remote-block", "status": "not-run", "controlBefore": "", "renderedMarker": "", "controlAfter": "", "evidence": "", "notes": "" },
+        { "id": "public-example", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "loopback-rejection", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "private-destination-rejection", "status": "not-run", "evidence": "", "notes": "" }
+      ]
+    },
+    {
+      "platform": "macOS 26 Tahoe",
+      "macOSVersion": "",
+      "buildVersion": "",
+      "architecture": "",
+      "hardwareOrVM": "",
+      "testedAtUTC": "",
+      "tester": "",
+      "scenarios": [
+        { "id": "local-html-offline", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "local-html-remote-block", "status": "not-run", "controlBefore": "", "renderedMarker": "", "controlAfter": "", "evidence": "", "notes": "" },
+        { "id": "public-example", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "loopback-rejection", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "private-destination-rejection", "status": "not-run", "evidence": "", "notes": "" }
+      ]
+    }
+  ],
+  "excludedManualClaims": [
+    {
+      "policy": "public-to-private redirect revalidation",
+      "coverage": "deterministic navigation-delegate tests only"
+    }
+  ]
+}

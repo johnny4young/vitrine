@@ -118,6 +118,8 @@ struct CustomThemeDocumentTests {
         #expect(
             CustomThemeDocument.ImportError.unsupportedSchemaVersion(9).message.contains(
                 "version 9"))
+        #expect(CustomThemeDocument.ImportError.fileTooLarge.message.contains("1 MB"))
+        #expect(CustomThemeDocument.ImportError.tooManyThemes.message.contains("1,000"))
         // A nested palette error carries the precise color message up to the user.
         let nested = CustomThemeDocument.ImportError.invalidPalette(
             .invalidColor(key: "string", value: "qq"))

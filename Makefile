@@ -31,10 +31,21 @@ RESULT_BUNDLE_FLAG := $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)"
 VISUAL_OUTPUT ?= build/screenshot-tour
 VISUAL_RESULT_BUNDLE ?= build/screenshot-tour.xcresult
 
+# Coverage remains separate from the fast `make test` lane. Unlike optional
+# diagnostic result bundles, this bundle is mandatory because the guard parses its
+# xccov report and raw line archive. CI passes the explicit supported-platform key;
+# local runs infer Sequoia/Tahoe from the host major version.
+COVERAGE_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/test-coverage.xcresult)
+COVERAGE_PLATFORM ?= $(shell major=$$(sw_vers -productVersion | cut -d. -f1); \
+	if [ "$$major" = 15 ]; then echo sequoia; \
+	elif [ "$$major" = 26 ]; then echo tahoe; else echo unsupported; fi)
+COVERAGE_BASELINE ?= scripts/coverage-baselines/$(COVERAGE_PLATFORM).json
+COVERAGE_BASE_REF_FLAG := $(if $(COVERAGE_BASE_REF),--base-ref "$(COVERAGE_BASE_REF)",)
+
 # Dynamic-memory evidence is intentionally local and review-driven. It reuses the normal
 # Debug build and resolved exact package checkouts, then launches under `leaks`; optional
 # MEMORY_BASELINE points at an earlier report.json for same-environment/same-journey
-# deltas. MEMORY_JOURNEY selects editor-snapshot or image-import-cycle.
+# deltas. MEMORY_JOURNEY selects one of the four bounded journeys below.
 MEMORY_OUTPUT ?= build/memory-smoke
 MEMORY_JOURNEY ?= editor-snapshot
 MEMORY_BASELINE_FLAG := $(if $(MEMORY_BASELINE),--baseline "$(MEMORY_BASELINE)",)
@@ -55,7 +66,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -120,15 +131,30 @@ test: project
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage NO $(RESULT_BUNDLE_FLAG) test
 
-## test-coverage: run the complete unit suite with coverage (CI parity)
+## test-coverage: run the complete suite and enforce fail-closed coverage policy
 ## This intentionally uses the same serial scheduling as `test`, but overrides
 ## the scheme explicitly so a future project setting cannot silently disable CI
-## coverage. CI captures the .xcresult and reports per-target coverage from it.
+## coverage. The result bundle is mandatory: the guard fails if xccov cannot read
+## it, rejects a production-target drop over one percentage point, and requires
+## 80% coverage for changed executable lines in critical non-visual logic.
 test-coverage: project
-	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	@test -f "$(COVERAGE_BASELINE)" || { \
+		echo "Unsupported coverage platform '$(COVERAGE_PLATFORM)' or missing baseline: $(COVERAGE_BASELINE)" >&2; \
+		exit 1; \
+	}
+	@rm -rf "$(COVERAGE_RESULT_BUNDLE)"
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'platform=macOS' -enableCodeCoverage YES $(RESULT_BUNDLE_FLAG) test
+		-destination 'platform=macOS' -enableCodeCoverage YES \
+		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" test
+	python3 scripts/check-coverage.py \
+		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \
+		--baseline "$(COVERAGE_BASELINE)" \
+		$(COVERAGE_BASE_REF_FLAG)
+
+## coverage-check: validate parser, scope, and fail-closed behavior without Xcode
+coverage-check:
+	python3 scripts/check-coverage.py --self-test
 
 ## build-ui-tests: compile UI tests without requiring local automation permission
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.
@@ -205,6 +231,16 @@ memory-smoke: build memory-smoke-check
 		--output "$(MEMORY_OUTPUT)" --journey "$(MEMORY_JOURNEY)" \
 		$(MEMORY_BASELINE_FLAG)
 
+## memory-smoke-all: capture all four journeys sequentially against one clean build
+## Baselines are intentionally per-journey; use memory-smoke when comparing one report.
+memory-smoke-all: build memory-smoke-check
+	@set -e; for journey in editor-snapshot image-import-cycle window-churn web-snapshot-cycle; do \
+		echo "==> memory smoke: $$journey"; \
+		env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
+			--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
+			--output "$(MEMORY_OUTPUT)" --journey "$$journey"; \
+	done
+
 ## memory-smoke-check: validate the parser and baseline comparison without launching UI
 memory-smoke-check:
 	python3 scripts/run-memory-smoke.py --self-test
@@ -229,6 +265,10 @@ informational-update-check:
 ## release-promotion-check: validate fail-closed candidate provenance and approval rules
 release-promotion-check:
 	python3 scripts/verify-release-promotion.py --self-test
+
+## qa-handoff-check: validate clean-Mac WebKit fixtures and structured log templates
+qa-handoff-check:
+	./scripts/build-qa-handoff.sh --self-test
 
 ## record-goldens: (re)generate the golden-image fixtures + manifest
 ## The single command that refreshes the visual baseline. It runs only the
@@ -263,7 +303,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene build-boundaries-check informational-update-check release-promotion-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: hygiene build-boundaries-check informational-update-check release-promotion-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts

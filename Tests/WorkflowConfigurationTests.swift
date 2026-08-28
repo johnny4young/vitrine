@@ -57,6 +57,10 @@ struct WorkflowConfigurationTests {
         try text(".github", "workflows", "dependency-freshness.yml")
     }
 
+    private static func xcode27Preview() throws -> String {
+        try text(".github", "workflows", "xcode-27-preview.yml")
+    }
+
     private static func makefile() throws -> String {
         try text("Makefile")
     }
@@ -69,6 +73,10 @@ struct WorkflowConfigurationTests {
         try text("scripts", "verify-release-promotion.py")
     }
 
+    private static func coverageGuard() throws -> String {
+        try text("scripts", "check-coverage.py")
+    }
+
     // MARK: - YAML well-formedness guard (tabs)
 
     /// YAML forbids tab characters for indentation; a stray tab is a syntax error that
@@ -79,8 +87,10 @@ struct WorkflowConfigurationTests {
         for (name, body) in try [
             ("ci.yml", Self.ci()),
             ("release.yml", Self.release()),
+            ("appstore.yml", Self.appstore()),
             ("deploy-site.yml", Self.deploySite()),
             ("dependency-freshness.yml", Self.freshness()),
+            ("xcode-27-preview.yml", Self.xcode27Preview()),
         ] {
             for (index, line) in body.components(separatedBy: .newlines).enumerated() {
                 let indentation = line.prefix { $0 == " " || $0 == "\t" }
@@ -131,7 +141,9 @@ struct WorkflowConfigurationTests {
         }
 
         #expect(!ci.contains("runs-on: macos-latest"))
-        #expect(buildJob.contains("make test-coverage RESULT_BUNDLE="))
+        #expect(buildJob.contains("make test-coverage"))
+        #expect(buildJob.contains("COVERAGE_PLATFORM=\"${{ matrix.coverage }}\""))
+        #expect(buildJob.contains("fetch-depth: 0"))
         #expect(buildJob.contains("make perf"))
         #expect(buildJob.contains("GoldenImageTests"))
         #expect(uiJob.contains("make test-ui RESULT_BUNDLE="))
@@ -168,13 +180,41 @@ struct WorkflowConfigurationTests {
         #expect(fastLane.contains("-enableCodeCoverage NO"))
         #expect(coverageLane.contains("-enableCodeCoverage YES"))
         #expect(fastLane.contains("$(RESULT_BUNDLE_FLAG)"))
-        #expect(coverageLane.contains("$(RESULT_BUNDLE_FLAG)"))
+        #expect(coverageLane.contains(#"-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)""#))
+        #expect(coverageLane.contains("scripts/check-coverage.py"))
+        #expect(coverageLane.contains("--baseline \"$(COVERAGE_BASELINE)\""))
+        #expect(coverageLane.contains("$(COVERAGE_BASE_REF_FLAG)"))
+        #expect(make.contains(#"if [ "$$major" = 15 ]"#))
+        #expect(make.contains(#"elif [ "$$major" = 26 ]"#))
         #expect(project.contains("gatherCoverageData: false"))
 
         let ci = try Self.ci()
-        #expect(ci.contains("make test-coverage RESULT_BUNDLE="))
+        #expect(ci.contains("make test-coverage"))
+        #expect(ci.contains("github.event.pull_request.base.sha"))
+        #expect(ci.contains("github.event.before"))
+        #expect(ci.contains("COVERAGE_BASE_REF=\"$change_base\""))
+        #expect(ci.contains("git rev-parse --verify"))
         #expect(!ci.contains("run: make test RESULT_BUNDLE="))
         #expect(ci.contains("xcrun xccov view --report --only-targets"))
+        #expect(!ci.contains("xccov could not read the result bundle"))
+
+        let guardScript = try Self.coverageGuard()
+        for requirement in [
+            "PRODUCTION_TARGETS",
+            "--report",
+            "--archive",
+            "minimum-diff-coverage",
+            "maximum-overall-drop-points",
+            "NONVISUAL_WEB_FILES",
+        ] {
+            #expect(guardScript.contains(requirement))
+        }
+        for platform in ["sequoia", "tahoe"] {
+            let baseline = try Self.text("scripts", "coverage-baselines", "\(platform).json")
+            #expect(baseline.contains(#""schemaVersion": 1"#))
+            #expect(baseline.contains(#""productionLineCoverage""#))
+            #expect(baseline.contains(#""sourceRevision""#))
+        }
     }
 
     @Test func swiftWarningsFailEveryAppOwnedTargetBuild() throws {
@@ -330,6 +370,24 @@ struct WorkflowConfigurationTests {
         #expect(
             fields.last != "*",
             "a weekly drift job must constrain the day-of-week field, got: \(quoted)")
+    }
+
+    @Test func xcode27PreviewIsWeeklyManualAndNeverARequiredRuntimeClaim() throws {
+        let workflow = try Self.xcode27Preview()
+        #expect(workflow.contains("runs-on: xcode-27"))
+        #expect(workflow.contains("schedule:"))
+        #expect(workflow.contains("workflow_dispatch:"))
+        #expect(!workflow.contains("\n  pull_request:"))
+        #expect(!workflow.contains("\n  push:"))
+        for command in ["make lint", "make build", "make test"] {
+            #expect(workflow.contains(command))
+        }
+        #expect(!workflow.contains("make test-ui"))
+        #expect(workflow.contains("not macOS 27 runtime certification"))
+
+        let doc = try Self.releasingDoc()
+        #expect(doc.contains("**Xcode 27 preview**"))
+        #expect(doc.contains("not a claim of macOS 27 runtime support"))
     }
 
     // MARK: - Contract: release candidate and manual promotion are fail-closed
