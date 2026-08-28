@@ -338,20 +338,60 @@ struct PerformanceTests {
         let warmResult = CommandPaletteFilter.rank(catalog, query: "theme snapshot 998")
         #expect(warmResult.map(\.id) == ["command.998"])
 
+        measureCommandSearch(
+            catalog, query: "theme snapshot 998", label: "command-search-1000")
+    }
+
+    @Test func unicodeWorstCaseCommandPaletteSearchMeetsBudget() {
+        // Build-time folding is deliberately outside the timed region: EditorCommand
+        // caches normalized targets when the catalog changes, while this budget guards
+        // the per-keystroke rank performed against that stable catalog.
+        let longSuffix = String(repeating: "漢字かなカナ🙂 ", count: 8)
+        let catalog = (0..<1_000).map { index in
+            EditorCommand(
+                id: "unicode-command.\(index)",
+                title: "Résumé Café command \(index) \(longSuffix)",
+                group: "Thème",
+                keywords: ["naïve façade", "automation-\(index)"],
+                symbol: "command", run: {})
+        }
+
+        let unicodeResult = CommandPaletteFilter.rank(
+            catalog, query: "ＲÉＳＵＭÉ ＴＨÈＭＥ ９９８")
+        #expect(unicodeResult.map(\.id) == ["unicode-command.998"])
+        measureCommandSearch(
+            catalog, query: "ＲÉＳＵＭÉ ＴＨÈＭＥ ９９８",
+            label: "command-search-unicode-1000")
+
+        // The first two terms match every command, while the final long Unicode term
+        // misses every target. This forces the scorer through every field and the full
+        // subsequence scan instead of benefiting from an early catalog or prefix hit.
+        let worstCaseQuery = "ＲÉＳＵＭÉ ＴＨÈＭＥ ΩΩΩΩΩΩΩΩΩΩΩΩ"
+        #expect(CommandPaletteFilter.rank(catalog, query: worstCaseQuery).isEmpty)
+        measureCommandSearch(
+            catalog, query: worstCaseQuery,
+            label: "command-search-unicode-worst-miss-1000")
+    }
+
+    private func measureCommandSearch(
+        _ catalog: [EditorCommand], query: String, label: String
+    ) {
+        _ = CommandPaletteFilter.rank(catalog, query: query)
+
         let clock = ContinuousClock()
         var durations: [Duration] = []
         durations.reserveCapacity(Self.sampleCount)
         for _ in 0..<Self.sampleCount {
             let elapsed = clock.measure {
-                _ = CommandPaletteFilter.rank(catalog, query: "theme snapshot 998")
+                _ = CommandPaletteFilter.rank(catalog, query: query)
             }
             durations.append(elapsed)
         }
         let stats = Statistics(durations)
-        report(stats, label: "command-search-1000", target: PerfBudget.searchTarget)
+        report(stats, label: label, target: PerfBudget.searchTarget)
         #expect(
             stats.p95 <= PerfBudget.searchHardCeiling,
-            "oversized command search exceeded its hard ceiling")
+            "\(label) exceeded the search hard ceiling")
     }
 
     @Test func budgetsAreOrdered() {
