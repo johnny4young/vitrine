@@ -1,0 +1,6 @@
+{
+  "projectId": "2a4531c9-46f8-487a-9b7d-ce44b1794906",
+  "projectName": "Vitrine Design System",
+  "shape": "custom",
+  "notes": "Vitrine is a SwiftUI macOS app, not a JS component package. The design-sync converter (package-build.mjs / esbuild) does NOT apply: there is no bundlable dist/. The remote project is a hand-curated design system whose components are React MIRRORS of the SwiftUI design system, authored against the CSS custom properties in tokens/. Pushes are targeted writes in the project's own conventions, never a converter run."
+}
