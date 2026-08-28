@@ -74,26 +74,43 @@ sitemaps; they are server/crawler files, not design artifacts.
 
 ## Verifying components before a push
 
-There is no Storybook. Bundle the staged `.jsx` with the esbuild that ships in
-`site/node_modules`, serve `docs/design/` over HTTP (relative paths break under
-`file://`), and screenshot the cards:
+There is no Storybook. The recipe below bundles the staged `.jsx` into the
+staging mirror and serves that mirror over HTTP, so the cards resolve
+`../../_ds_bundle.js` and `../../styles.css` exactly as they will in the
+project. `file://` will not do: the cards use relative paths.
 
-```
-site/node_modules/.bin/esbuild entry.js --bundle --format=iife \
-  --global-name=VitrineDesignSystem_2a4531 --alias:react=./react-shim.js \
+**Run every command from `docs/design/`.** The working directory is the whole
+trick here, and getting it wrong fails in two different ways: from the repo
+root, `--outfile=_ds_bundle.js` drops the bundle at the root where no card
+looks for it; from `docs/design/`, `site/node_modules/...` does not exist, which
+is why esbuild is invoked through `../../`.
+
+```bash
+cd docs/design                 # the staging mirror IS the web root
+
+mkdir -p _verify
+printf 'export default window.React;\n' > _verify/react-shim.js
+find components -name '*.jsx' | sort \
+  | sed 's|^|export * from "../|; s|$|";|' > _verify/entry.js
+
+../../site/node_modules/.bin/esbuild _verify/entry.js --bundle --format=iife \
+  --global-name=VitrineDesignSystem_2a4531 --alias:react=./_verify/react-shim.js \
   --jsx=transform --outfile=_ds_bundle.js
-python3 -m http.server 8765
+
+python3 -m http.server 8765    # open /components/<group>/<name>.card.html
 ```
+
+A card that also uses a component which exists only in the **remote** bundle
+(`Switch`, `InspectorRow`, `PopUpButton`, `Slider`, `CodeCard`, `TrafficLights`)
+will not find it locally — add a throwaway `_verify/legacy-stubs.jsx` exporting
+a minimal version of each and re-export it from `entry.js`.
 
 Reconstruct `styles.css` locally from the token list inside `_ds_manifest.json`
-(it carries every name, value and scope). **Delete those local stubs
-(`styles.css`, `_ds_bundle.js`, `ui_kits/appearance-toggle.js`) before uploading**
-— they would overwrite the real remote files.
+(it carries every name, value and scope).
+
+**Delete every local stub before uploading** — `_verify/`, `styles.css`,
+`_ds_bundle.js` and `ui_kits/appearance-toggle.js`. The last three would
+overwrite the real remote files, and `styles.css` in particular is the entry
+point every rendered design depends on.
 
 `esbuild --loader=jsx` only applies to stdin; for files the extension decides.
-
-## Staging directory
-
-`docs/design/` is the working mirror (git-ignored) and is laid out with the
-**exact remote paths**, so `finalize_plan({localDir: "docs/design"})` lets every
-`write_files` entry use `localPath` identical to `path`.
