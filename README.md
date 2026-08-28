@@ -83,7 +83,7 @@ Two modes, one engine:
 
 ## Install
 
-Requires macOS **14.0+** (Sonoma or later). **Homebrew and the signed, notarized DMG are
+Requires macOS **15.0+** (Sequoia or later). **Homebrew and the signed, notarized DMG are
 the canonical distribution channels.** Those builds update through Sparkle. An optional
 App Store build is a secondary GUI-only channel, uses StoreKit for PRO, omits the CLI,
 and is updated by the App Store. Source builds use your local signing configuration.
@@ -398,8 +398,8 @@ entitlement-by-entitlement audit table for each distribution channel is in
 
 ## Requirements
 
-- macOS **14.0+** (Sonoma or later)
-- **Xcode 16+**
+- macOS **15.0+** (Sequoia or later)
+- **Xcode 26+**
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen), installed from the verified
   release asset with `./scripts/install-xcodegen.sh` — the `.xcodeproj` is generated,
   not committed.

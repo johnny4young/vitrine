@@ -129,9 +129,10 @@ CI is a release gate, not just a compile check.
 
 ### Supported macOS matrix
 
-`project.yml` remains the source of truth and keeps a macOS 14.0 deployment target;
-this band does not remove the existing Sonoma-compatible binary floor. Active runtime
-certification starts with the versions requested for current support:
+`project.yml` remains the source of truth and sets the public deployment target to
+macOS 15.0 Sequoia. Every app-owned target uses that same floor, and the Homebrew cask
+declares `:sequoia` so unsupported installations fail before launch. Active runtime
+certification covers:
 
 | Runtime | GitHub label | Required gates |
 | --- | --- | --- |
@@ -153,6 +154,13 @@ error for an explicit AVIF request instead of surfacing a late generic render fa
 An unreleased future macOS major is not silently claimed as supported. Add its explicit
 runner label to both matrices, obtain a green build/UI/visual run, and update this table
 before calling that runtime certified.
+
+The separate **Xcode 27 preview** workflow is a weekly/manual, non-required early-warning
+lane on GitHub's `xcode-27` preview image. That image uses a macOS 26 host and the preview
+Xcode/SDK; the lane runs lint, a Debug build, and unit tests only. It does not run on pull
+requests, does not publish, and is not a claim of macOS 27 runtime support. Promote it to
+the required compatibility matrix only after GitHub provides the corresponding macOS
+runner as GA and the full runtime, UI, visual, performance, and clean-Mac evidence exists.
 
 ### Unit-test lanes
 
@@ -839,7 +847,8 @@ app inside it: `codesign --verify --deep --strict`, the hardened-runtime flag, `
 -a` (Gatekeeper validation), `stapler validate` (so first launch works offline), and
 `plutil` Info.plist validation (including `LSUIElement`, the no-Dock-icon marker).
 It also requires the embedded `VitrineMenuBarHelper` executable and proves that its
-signature retains `com.apple.security.app-sandbox` plus
+signature binds the stable `com.johnny4young.vitrine.menubar-helper` identifier and
+retains `com.apple.security.app-sandbox` plus
 `com.apple.security.inherit`. It enumerates every executable Mach-O in the downloaded app with
 `lipo -archs` and rejects the artifact if the app, embedded CLI, helper, framework, or
 XPC service lacks either arm64 or x86_64. For the direct-download PRO channel, it additionally

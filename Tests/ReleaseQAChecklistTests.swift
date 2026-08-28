@@ -335,6 +335,7 @@ struct ReleaseQAChecklistTests {
         let script = try Self.script()
 
         #expect(script.contains("Contents/MacOS/VitrineMenuBarHelper"))
+        #expect(script.contains("Identifier=com.johnny4young.vitrine.menubar-helper"))
         #expect(script.contains("com.apple.security.app-sandbox"))
         #expect(script.contains("com.apple.security.inherit"))
         #expect(script.contains("Menu-bar helper present and executable"))

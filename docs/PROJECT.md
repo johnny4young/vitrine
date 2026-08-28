@@ -38,8 +38,9 @@ for the decision to avoid arbitrary display and window capture.
 - ImageRenderer and ImageIO for color-managed raster export
 - Swift Testing and XCTest UI automation
 
-The deployment floor is macOS 14. Newer APIs may be adopted behind availability
-checks when they add meaningful value without fragmenting the codebase.
+The deployment floor is macOS 15 Sequoia. Runtime qualification covers Sequoia and
+macOS 26 Tahoe explicitly; newer APIs may be adopted behind availability checks when
+they add meaningful value without fragmenting the codebase.
 
 ## Distribution and business model
 

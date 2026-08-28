@@ -67,6 +67,8 @@ requireText(spanishCli, 'Problemas frecuentes y soluciones', 'Spanish CLI troubl
 requireText(english, 'application/ld+json', 'English structured data');
 requireText(spanish, 'application/ld+json', 'Spanish structured data');
 requireText(english, `"softwareVersion":"${version}"`, 'Project version sync');
+requireText(english, '"operatingSystem":"macOS 15 Sequoia or later"', 'Sequoia metadata floor');
+requireText(english, 'macOS 15+', 'English deployment floor');
 requireText(english, 'id="bench"', 'Style bench');
 requireText(english, 'class="salon"', 'Gallery hero');
 requireText(english, 'id="responsive"', 'Responsive board');
@@ -86,6 +88,9 @@ requireText(siteScript, '33 lenguajes de sintaxis', 'Spanish language catalog cl
 requireText(siteScript, 'puedes activar la CLI desde Ajustes', 'Spanish CLI installation claim');
 requireText(siteScript, 'No hay una prueba que caduque', 'Spanish no-expiry evaluation policy');
 requireText(siteScript, 'son los canales canónicos', 'Spanish canonical distribution policy');
+requireText(siteScript, 'macOS 15+', 'Spanish deployment floor');
+requireAbsent(english, 'macOS 14+', 'Stale English deployment floor');
+requireAbsent(siteScript, 'macOS 14+', 'Stale Spanish deployment floor');
 requireAbsent(english, '160+ languages', 'Stale language catalog claim');
 requireAbsent(siteScript, '160+ lenguajes', 'Stale Spanish language catalog claim');
 requireAbsent(english, 'fully local', 'Overbroad local-rendering claim');

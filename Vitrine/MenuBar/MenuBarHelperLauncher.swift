@@ -1,4 +1,5 @@
 import AppKit
+import Security
 
 /// Owns the lifecycle of the minimal process that paints Vitrine's menu-bar item.
 ///
@@ -12,6 +13,29 @@ enum MenuBarHelperLauncher {
 
     private static var launchedProcess: Process?
     private static var sessionToken: String?
+
+    /// Sandbox inheritance requires the parent and child to carry the same real
+    /// signing team. Ad-hoc source builds have no team identifier, so launching the
+    /// inherited-sandbox helper would trap in libsecinit before `main`; those builds
+    /// deliberately keep the in-process status item instead.
+    static var canLaunchInCurrentBundle: Bool {
+        guard let executableURL else { return false }
+        return signaturesPermitSandboxInheritance(
+            appTeamIdentifier: signingTeamIdentifier(at: Bundle.main.bundleURL),
+            helperTeamIdentifier: signingTeamIdentifier(at: executableURL))
+    }
+
+    static func signaturesPermitSandboxInheritance(
+        appTeamIdentifier: String?, helperTeamIdentifier: String?
+    ) -> Bool {
+        guard
+            let appTeamIdentifier,
+            !appTeamIdentifier.isEmpty,
+            let helperTeamIdentifier,
+            !helperTeamIdentifier.isEmpty
+        else { return false }
+        return appTeamIdentifier == helperTeamIdentifier
+    }
 
     @discardableResult
     static func launch() -> Bool {
@@ -72,6 +96,25 @@ enum MenuBarHelperLauncher {
         }
         let url = directory.appendingPathComponent(executableName, isDirectory: false)
         return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
+    }
+
+    private static func signingTeamIdentifier(at url: URL) -> String? {
+        var staticCode: SecStaticCode?
+        guard
+            SecStaticCodeCreateWithPath(url as CFURL, SecCSFlags(), &staticCode)
+                == errSecSuccess,
+            let staticCode
+        else { return nil }
+
+        var information: CFDictionary?
+        guard
+            SecCodeCopySigningInformation(
+                staticCode,
+                SecCSFlags(rawValue: kSecCSSigningInformation),
+                &information) == errSecSuccess,
+            let dictionary = information as? [String: Any]
+        else { return nil }
+        return dictionary[kSecCodeInfoTeamIdentifier as String] as? String
     }
 
     private static var runningHelpers: [NSRunningApplication] {

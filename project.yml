@@ -7,7 +7,7 @@ name: Vitrine
 options:
   bundleIdPrefix: com.johnny4young.vitrine
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "15.0"
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
@@ -80,7 +80,7 @@ targets:
   Vitrine:
     type: application
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: Vitrine
         excludes:
@@ -213,7 +213,7 @@ targets:
   VitrineCLI:
     type: tool
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: Vitrine
         excludes:
@@ -307,7 +307,7 @@ targets:
   VitrineMenuBarHelper:
     type: tool
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: VitrineMenuBarHelper
         excludes:
@@ -318,6 +318,11 @@ targets:
       base:
         PRODUCT_NAME: VitrineMenuBarHelper
         PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.menubar-helper
+        # A sandboxed raw Mach-O needs an embedded Info.plist section so macOS can
+        # derive its stable bundle identity during libsecinit. Without this, Tahoe
+        # terminates the copied helper before Swift reaches main().
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
         CODE_SIGN_ENTITLEMENTS: VitrineMenuBarHelper/VitrineMenuBarHelper.entitlements
         CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
         ENABLE_HARDENED_RUNTIME: YES
@@ -328,7 +333,7 @@ targets:
   VitrineTests:
     type: bundle.unit-test
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: Tests
         # The golden-image fixtures are read from the source tree via
@@ -357,7 +362,7 @@ targets:
   VitrineUITests:
     type: bundle.ui-testing
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: UITests
     dependencies:

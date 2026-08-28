@@ -337,6 +337,13 @@ fi
 MENU_BAR_HELPER="$APP/Contents/MacOS/VitrineMenuBarHelper"
 if [ -x "$MENU_BAR_HELPER" ]; then
 	pass "Menu-bar helper present and executable"
+	HELPER_SIGNATURE_INFO="$(codesign -dvv "$MENU_BAR_HELPER" 2>&1 || true)"
+	if printf '%s\n' "$HELPER_SIGNATURE_INFO" \
+		| grep -Fqx 'Identifier=com.johnny4young.vitrine.menubar-helper'; then
+		pass "Menu-bar helper has its stable sandbox identity"
+	else
+		fail_app "menu-bar helper is missing its stable com.johnny4young.vitrine.menubar-helper identity"
+	fi
 	HELPER_ENTITLEMENTS_FILE="$(mktemp /tmp/vitrine-helper-entitlements.XXXXXX)"
 	if codesign -d --entitlements :- "$MENU_BAR_HELPER" \
 		> "$HELPER_ENTITLEMENTS_FILE" 2>/dev/null \

@@ -57,6 +57,10 @@ struct WorkflowConfigurationTests {
         try text(".github", "workflows", "dependency-freshness.yml")
     }
 
+    private static func xcode27Preview() throws -> String {
+        try text(".github", "workflows", "xcode-27-preview.yml")
+    }
+
     private static func makefile() throws -> String {
         try text("Makefile")
     }
@@ -83,8 +87,10 @@ struct WorkflowConfigurationTests {
         for (name, body) in try [
             ("ci.yml", Self.ci()),
             ("release.yml", Self.release()),
+            ("appstore.yml", Self.appstore()),
             ("deploy-site.yml", Self.deploySite()),
             ("dependency-freshness.yml", Self.freshness()),
+            ("xcode-27-preview.yml", Self.xcode27Preview()),
         ] {
             for (index, line) in body.components(separatedBy: .newlines).enumerated() {
                 let indentation = line.prefix { $0 == " " || $0 == "\t" }
@@ -357,6 +363,24 @@ struct WorkflowConfigurationTests {
         #expect(
             fields.last != "*",
             "a weekly drift job must constrain the day-of-week field, got: \(quoted)")
+    }
+
+    @Test func xcode27PreviewIsWeeklyManualAndNeverARequiredRuntimeClaim() throws {
+        let workflow = try Self.xcode27Preview()
+        #expect(workflow.contains("runs-on: xcode-27"))
+        #expect(workflow.contains("schedule:"))
+        #expect(workflow.contains("workflow_dispatch:"))
+        #expect(!workflow.contains("\n  pull_request:"))
+        #expect(!workflow.contains("\n  push:"))
+        for command in ["make lint", "make build", "make test"] {
+            #expect(workflow.contains(command))
+        }
+        #expect(!workflow.contains("make test-ui"))
+        #expect(workflow.contains("not macOS 27 runtime certification"))
+
+        let doc = try Self.releasingDoc()
+        #expect(doc.contains("**Xcode 27 preview**"))
+        #expect(doc.contains("not a claim of macOS 27 runtime support"))
     }
 
     // MARK: - Contract: release candidate and manual promotion are fail-closed

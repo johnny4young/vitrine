@@ -166,6 +166,25 @@ struct MenuBarStatusItemTests {
         }
     }
 
+    @Test func helperSandboxInheritanceRequiresTheSameRealSigningTeam() {
+        #expect(
+            MenuBarHelperLauncher.signaturesPermitSandboxInheritance(
+                appTeamIdentifier: "TEAM123",
+                helperTeamIdentifier: "TEAM123"))
+        for identifiers in [
+            (nil, "TEAM123"),
+            ("TEAM123", nil),
+            ("", "TEAM123"),
+            ("TEAM123", ""),
+            ("TEAM123", "OTHER"),
+        ] as [(String?, String?)] {
+            #expect(
+                !MenuBarHelperLauncher.signaturesPermitSandboxInheritance(
+                    appTeamIdentifier: identifiers.0,
+                    helperTeamIdentifier: identifiers.1))
+        }
+    }
+
     @Test func helperOwnerMustMatchTheExactPIDAndContainingBundle() {
         let expectedBundle = URL(fileURLWithPath: "/Applications/Vitrine.app")
         let executable = expectedBundle.appendingPathComponent("Contents/MacOS/Vitrine")
@@ -276,6 +295,9 @@ struct MenuBarStatusItemTests {
         }
         #expect(!helperSource.contains("arguments.count == 3"))
         #expect(project.contains("Vitrine/MenuBar/MenuBarHelperContract.swift"))
+        #expect(project.contains("CREATE_INFOPLIST_SECTION_IN_BINARY: YES"))
+        #expect(project.contains("GENERATE_INFOPLIST_FILE: YES"))
+        #expect(project.contains("com.johnny4young.vitrine.menubar-helper"))
         #expect(makefile.contains("Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests"))
     }
 

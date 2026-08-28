@@ -254,6 +254,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .inProcess:
             StatusItemController.shared.attach()
         case .helper:
+            guard MenuBarHelperLauncher.canLaunchInCurrentBundle else {
+                // Ad-hoc source builds cannot satisfy App Sandbox inheritance because
+                // neither executable has a real team identity. Keep them usable without
+                // repeatedly crashing a child in libsecinit.
+                StatusItemController.shared.attach()
+                return
+            }
             startMenuBarCommandChannel()
             menuBarPresenceTask?.cancel()
             menuBarPresenceTask = Task {
