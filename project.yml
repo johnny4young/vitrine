@@ -198,6 +198,9 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_PREVIEWS: YES
+        # Shared sources also compile into the headless CLI, but real WebKit memory
+        # qualification belongs only to the GUI app that links WebKit.
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_GUI
 
   # Command-line renderer. `vitrine render input.swift --out image.png`.
   #

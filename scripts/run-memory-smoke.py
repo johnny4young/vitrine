@@ -31,6 +31,16 @@ JOURNEYS = {
         "arguments": ["--memory-image-cycle"],
         "completion_marker": "VITRINE_MEMORY_IMAGE_CYCLE_COMPLETE",
     },
+    "window-churn": {
+        "label": "twenty editor window open, render, and close cycles",
+        "arguments": ["--memory-window-churn"],
+        "completion_marker": "VITRINE_MEMORY_WINDOW_CHURN_COMPLETE",
+    },
+    "web-snapshot-cycle": {
+        "label": "ten real local-HTML WebKit session cycles",
+        "arguments": ["--memory-web-snapshot-cycle"],
+        "completion_marker": "VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_COMPLETE",
+    },
 }
 APP_FRAME_MARKER = "Vitrine.debug.dylib"
 ROOT_STACK_PATTERN = re.compile(
@@ -203,9 +213,13 @@ def baseline_comparison(
         raise ValueError("baseline and candidate need environment provenance")
     mismatches = [
         key
-        for key in ("macos", "architecture", "xcode")
+        for key in ("macos", "architecture", "xcode", "commit")
         if baseline_environment.get(key) != candidate_environment.get(key)
     ]
+    if baseline_environment.get("working_tree_clean") is not True:
+        mismatches.append("baseline_working_tree_clean")
+    if candidate_environment.get("working_tree_clean") is not True:
+        mismatches.append("candidate_working_tree_clean")
     baseline_journey = baseline.get("journey_id", baseline.get("journey"))
     candidate_journey = candidate.get("journey_id", candidate.get("journey"))
     comparable_journey = baseline_journey == candidate_journey
@@ -276,7 +290,13 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
     baseline = {
         "journey_id": "editor-snapshot",
         "journey": "editor snapshot loop",
-        "environment": {"macos": "15.0", "architecture": "arm64", "xcode": ["16"]},
+        "environment": {
+            "macos": "15.0",
+            "architecture": "arm64",
+            "xcode": ["16"],
+            "commit": "abc123",
+            "working_tree_clean": True,
+        },
         "metrics": {
             "leak_records": 3,
             "leaked_bytes": 64,
@@ -287,7 +307,13 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
     candidate = {
         "journey_id": "editor-snapshot",
         "journey": "editor snapshot loop",
-        "environment": {"macos": "15.0", "architecture": "arm64", "xcode": ["16"]},
+        "environment": {
+            "macos": "15.0",
+            "architecture": "arm64",
+            "xcode": ["16"],
+            "commit": "abc123",
+            "working_tree_clean": True,
+        },
         "metrics": {
             "leak_records": 4,
             "leaked_bytes": 96,
@@ -300,6 +326,22 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
     require_self_test(comparison["comparable_environment"] is True, "comparable baseline")
     require_self_test(comparison["comparable_journey"] is True, "comparable journey")
     require_self_test(comparison["leaked_bytes_delta"] == 32, "baseline delta")
+    candidate["environment"]["commit"] = "def456"
+    different_commit = baseline_comparison(baseline, candidate)
+    require_self_test(
+        different_commit["comparable"] is False
+        and "commit" in different_commit["environment_mismatches"],
+        "different commits are not comparable",
+    )
+    candidate["environment"]["commit"] = "abc123"
+    candidate["environment"]["working_tree_clean"] = False
+    dirty_candidate = baseline_comparison(baseline, candidate)
+    require_self_test(
+        dirty_candidate["comparable"] is False
+        and "candidate_working_tree_clean" in dirty_candidate["environment_mismatches"],
+        "dirty candidates are not comparable",
+    )
+    candidate["environment"]["working_tree_clean"] = True
     candidate["journey_id"] = "image-import-cycle"
     different_journey = baseline_comparison(baseline, candidate)
     require_self_test(
@@ -385,7 +427,7 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
         suffix += 1
     run_directory.mkdir(parents=True)
 
-    memgraph = run_directory / "editor.memgraph"
+    memgraph = run_directory / f"{arguments.journey}.memgraph"
     launch_log = run_directory / "launch.log"
     leaks_report = run_directory / "leaks.txt"
     suite = f"com.johnny4young.vitrine.memory-smoke.{uuid.uuid4()}"
@@ -478,12 +520,21 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
                 "An application frame identifies an allocation path, not ownership of the leaked root.",
                 "Snapshot rasterization contributes to the recorded peak footprint.",
                 "Framework leaks are reported rather than silently allowlisted or treated as product failures.",
-                (
-                    "The image journey uses deterministic local PNGs; it does not simulate "
-                    "a defective external item provider or a maximum-size image."
-                    if arguments.journey == "image-import-cycle"
-                    else "The editor snapshot journey does not exercise image import or item-provider callbacks."
-                ),
+                {
+                    "image-import-cycle": (
+                        "The image journey uses deterministic local PNGs; it does not simulate "
+                        "a defective external item provider or a maximum-size image."
+                    ),
+                    "window-churn": (
+                        "Window churn covers controller and SwiftUI teardown, not every auxiliary window type."
+                    ),
+                    "web-snapshot-cycle": (
+                        "The WebKit journey uses local HTML and does not qualify public network capture."
+                    ),
+                    "editor-snapshot": (
+                        "The editor snapshot journey does not exercise image import or item-provider callbacks."
+                    ),
+                }[arguments.journey],
             ],
         },
     }

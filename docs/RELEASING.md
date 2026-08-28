@@ -190,13 +190,14 @@ implicitly on the Xcode scheme default.
 Run `make memory-smoke` before a release candidate and after changes to window,
 renderer, observer, or asynchronous-task lifecycles. It runs the normal headless Debug
 build, reusing Xcode's already-resolved exact package checkouts, then launches a selected
-isolated journey under Apple's `leaks --atExit`. The default editor journey exercises
-window rendering and repeated snapshot rasterization. The image journey imports and
-decodes a deterministic sequence through the production `BackgroundImageStore`, replaces
-and clears the live foreground image, rejects duplicate window snapshots so disconnected
-UI state cannot pass silently, and removes its synthetic temporary store before reporting
-completion. The raw memgraph, full stack report, launch log, and a machine-readable
-summary are retained below `build/memory-smoke/<timestamp>/`.
+isolated journey under Apple's `leaks --atExit`. The four journeys cover repeated editor
+snapshot rasterization; deterministic foreground-image import, decode, replacement, and
+teardown; twenty additional editor window open/render/close cycles; and ten distinct real
+local-HTML WebKit session captures. The image and WebKit journeys reject duplicate output,
+while window churn requires a capture from the exact newly-opened editor. The image journey also removes its synthetic
+temporary store before reporting completion. The raw journey-named memgraph, full stack
+report, launch log, and a machine-readable summary are retained below
+`build/memory-smoke/<timestamp>/`.
 
 ```bash
 make memory-smoke
@@ -204,9 +205,18 @@ make memory-smoke
 # Exercise distinct foreground-image imports, decodes, replacements, and teardown.
 make memory-smoke MEMORY_JOURNEY=image-import-cycle
 
-# Compare counts and footprints with an earlier run from the same OS, architecture,
-# Xcode, and journey. The report marks either kind of drift instead of pretending the
-# evidence is comparable.
+# Exercise one additional editor at a time through normal window teardown.
+make memory-smoke MEMORY_JOURNEY=window-churn
+
+# Exercise newly-created non-persistent WebKit sessions with local HTML only.
+make memory-smoke MEMORY_JOURNEY=web-snapshot-cycle
+
+# Run editor, image, window, and WebKit journeys sequentially against one build.
+make memory-smoke-all
+
+# Compare counts and footprints only with an earlier run from the exact same clean
+# commit, OS, architecture, Xcode, and journey. The report marks any provenance drift
+# instead of pretending the evidence is comparable.
 make memory-smoke \
   MEMORY_JOURNEY=image-import-cycle \
   MEMORY_BASELINE=build/memory-smoke/<earlier-run>/report.json
@@ -220,9 +230,12 @@ also contributes to the peak footprint. Review the root stacks in `leaks.txt` an
 memgraph before classifying a regression. The command fails when the build, journey,
 capture, or report is invalid, but it does not silently allowlist framework roots or
 turn their mere presence into an app failure. Keep all generated evidence local and
-untracked. The image journey deliberately uses local bounded fixtures; it does not replace
-the unit coverage for oversized/corrupt inputs and does not simulate an external item
-provider that never calls back.
+untracked. Compare only repeated, same-provenance root or footprint growth; do not change
+ownership based only on allocation-path frames. The image journey deliberately uses local
+bounded fixtures; it does not replace the unit coverage for oversized/corrupt inputs and
+does not simulate an external item provider that never calls back. The local-HTML WebKit
+journey does not qualify public network capture, and the window journey does not cover
+every auxiliary window type.
 
 ### Running the UI tests
 

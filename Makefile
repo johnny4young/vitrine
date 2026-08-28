@@ -43,7 +43,7 @@ COVERAGE_BASELINE ?= scripts/coverage-baselines/$(COVERAGE_PLATFORM).json
 # Dynamic-memory evidence is intentionally local and review-driven. It reuses the normal
 # Debug build and resolved exact package checkouts, then launches under `leaks`; optional
 # MEMORY_BASELINE points at an earlier report.json for same-environment/same-journey
-# deltas. MEMORY_JOURNEY selects editor-snapshot or image-import-cycle.
+# deltas. MEMORY_JOURNEY selects one of the four bounded journeys below.
 MEMORY_OUTPUT ?= build/memory-smoke
 MEMORY_JOURNEY ?= editor-snapshot
 MEMORY_BASELINE_FLAG := $(if $(MEMORY_BASELINE),--baseline "$(MEMORY_BASELINE)",)
@@ -64,7 +64,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -227,6 +227,16 @@ memory-smoke: build memory-smoke-check
 		--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
 		--output "$(MEMORY_OUTPUT)" --journey "$(MEMORY_JOURNEY)" \
 		$(MEMORY_BASELINE_FLAG)
+
+## memory-smoke-all: capture all four journeys sequentially against one clean build
+## Baselines are intentionally per-journey; use memory-smoke when comparing one report.
+memory-smoke-all: build memory-smoke-check
+	@set -e; for journey in editor-snapshot image-import-cycle window-churn web-snapshot-cycle; do \
+		echo "==> memory smoke: $$journey"; \
+		env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
+			--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
+			--output "$(MEMORY_OUTPUT)" --journey "$$journey"; \
+	done
 
 ## memory-smoke-check: validate the parser and baseline comparison without launching UI
 memory-smoke-check:

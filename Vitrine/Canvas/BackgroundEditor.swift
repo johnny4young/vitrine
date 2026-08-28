@@ -243,6 +243,7 @@ struct ImageBackgroundEditor: View {
     @State private var importError: String?
     @State private var urlText = ""
     @State private var isDownloading = false
+    @State private var downloadTask: Task<Void, Never>?
 
     var body: some View {
         Button {
@@ -274,6 +275,11 @@ struct ImageBackgroundEditor: View {
                 .disabled(isDownloading || parsedURL == nil)
                 .accessibilityLabel("Download image")
                 .accessibilityIdentifier("background-image-url-add")
+            }
+            .onDisappear {
+                downloadTask?.cancel()
+                downloadTask = nil
+                isDownloading = false
             }
 
             Text(
@@ -358,13 +364,21 @@ struct ImageBackgroundEditor: View {
 
     private func startDownload() {
         guard let url = parsedURL, !isDownloading else { return }
+        downloadTask?.cancel()
         isDownloading = true
         importError = nil
-        Task {
-            defer { isDownloading = false }
+        downloadTask = Task {
+            defer {
+                downloadTask = nil
+                isDownloading = false
+            }
             do {
-                image.reference = try await imageStore.importImage(downloadedFrom: url)
+                let reference = try await imageStore.importImage(downloadedFrom: url)
+                try Task.checkCancellation()
+                image.reference = reference
                 urlText = ""
+            } catch is CancellationError {
+                return
             } catch let error as BackgroundImageStore.ImportError {
                 importError = error.message
             } catch {

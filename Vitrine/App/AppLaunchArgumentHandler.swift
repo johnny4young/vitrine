@@ -9,10 +9,10 @@ import CryptoKit
 final class AppLaunchArgumentHandler {
     let environment: AppEnvironment
     private let showMenuBarPanel: () -> Void
-    private var memoryImageCycleTask: Task<Void, Never>?
+    private var memoryJourneyTask: Task<Void, Never>?
 
     isolated deinit {
-        memoryImageCycleTask?.cancel()
+        memoryJourneyTask?.cancel()
     }
 
     init(
@@ -40,8 +40,8 @@ final class AppLaunchArgumentHandler {
     /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests;
     /// `--web-snapshot-ui-test-renderer` keeps that strict UI journey deterministic
     /// when XCTest cannot launch WebKit's out-of-process renderer;
-    /// `--memory-image-cycle` runs the isolated foreground-image memory journey and
-    /// terminates after recording its live snapshots.
+    /// the `--memory-*` hooks run bounded lifecycle evidence journeys and terminate
+    /// after recording their live snapshots.
     ///
     /// - Returns: whether a hook opened a window, so the normal first-run surfaces
     ///   (`presentIfFirstRun` / `presentIfNewVersion`) are not stacked on top of one.
@@ -242,6 +242,19 @@ final class AppLaunchArgumentHandler {
             editor.show()
             didOpenWindow = true
             startMemoryImageCycle(settings: editor.session(for: .primary).settings)
+        } else if arguments.contains("--memory-window-churn") {
+            let editor = EditorWindowController.shared
+            editor.show()
+            didOpenWindow = true
+            startMemoryWindowChurn(editor: editor)
+        } else if arguments.contains("--memory-web-snapshot-cycle") {
+            #if VITRINE_GUI
+                startMemoryWebSnapshotCycle()
+            #else
+                FileHandle.standardError.write(
+                    Data("VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_FAILED unavailable\n".utf8))
+                NSApp.terminate(nil)
+            #endif
         } else if arguments.contains("--snapshot-loop") {
             Task {
                 for tick in 0..<14 {
@@ -260,7 +273,7 @@ final class AppLaunchArgumentHandler {
     /// release or accidental manual launch from writing synthetic images into the user's
     /// real Application Support container.
     private func startMemoryImageCycle(settings: AppSettings) {
-        memoryImageCycleTask?.cancel()
+        memoryJourneyTask?.cancel()
         guard let isolationRoot = BackgroundImageStore.debugIsolatedContainerRoot() else {
             FileHandle.standardError.write(
                 Data("VITRINE_MEMORY_IMAGE_CYCLE_FAILED missing-isolation\n".utf8))
@@ -278,7 +291,7 @@ final class AppLaunchArgumentHandler {
                 }
                 return fingerprint
             })
-        memoryImageCycleTask = Task {
+        memoryJourneyTask = Task {
             defer { NSApp.terminate(nil) }
             do {
                 let result = try await journey.run()
@@ -303,6 +316,82 @@ final class AppLaunchArgumentHandler {
         }
     }
 
+    /// Repeatedly opens, renders, and closes an additional editor through the normal
+    /// controller and delegate paths while the primary editor remains alive.
+    private func startMemoryWindowChurn(editor: EditorWindowController) {
+        memoryJourneyTask?.cancel()
+        let journey = MemoryWindowChurnJourney(
+            liveWindowCount: { editor.liveWindowCountForMemoryJourney },
+            openWindow: { editor.openWindowForMemoryJourney() },
+            capture: { identity, tick in
+                guard let window = editor.windowForMemoryJourney(at: identity),
+                    let fingerprint = Self.snapshot(window: window, tag: tick)
+                else { throw MemoryWindowChurnJourney.JourneyError.windowDidNotOpen }
+                return fingerprint
+            },
+            closeWindow: { editor.closeWindowForMemoryJourney(at: $0) })
+        memoryJourneyTask = Task {
+            defer { NSApp.terminate(nil) }
+            do {
+                let result = try await journey.run()
+                let line =
+                    "\(MemoryWindowChurnJourney.completionMarker) "
+                    + "iterations=\(result.completedIterations) "
+                    + "snapshots=\(result.capturedSnapshots)\n"
+                FileHandle.standardOutput.write(Data(line.utf8))
+            } catch is CancellationError {
+                FileHandle.standardError.write(
+                    Data("VITRINE_MEMORY_WINDOW_CHURN_FAILED cancelled\n".utf8))
+            } catch {
+                FileHandle.standardError.write(
+                    Data("VITRINE_MEMORY_WINDOW_CHURN_FAILED \(error)\n".utf8))
+            }
+        }
+    }
+
+    #if VITRINE_GUI
+        /// Loads and snapshots ten distinct local HTML documents. Each render constructs
+        /// and releases a real non-persistent WebKit session through `WebSnapshotView`.
+        private func startMemoryWebSnapshotCycle() {
+            memoryJourneyTask?.cancel()
+            let journey = MemoryWebSnapshotCycleJourney { tick in
+                let html = """
+                    <!doctype html><meta charset="utf-8">
+                    <style>body{font:32px system-ui;padding:48px;background:hsl(\(tick * 31) 62% 42%);color:white}</style>
+                    <main>Vitrine WebKit memory cycle \(tick)</main>
+                    """
+                let image = try await WebSnapshotView().snapshot(
+                    of: .init(
+                        html: html,
+                        viewport: CGSize(width: 640, height: 360),
+                        scale: 1,
+                        allowsNetwork: false,
+                        localBaseURL: nil))
+                guard let png = ExportManager.pngData(from: image) else {
+                    throw RenderError.renderFailed
+                }
+                return SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined()
+            }
+            memoryJourneyTask = Task {
+                defer { NSApp.terminate(nil) }
+                do {
+                    let result = try await journey.run()
+                    let line =
+                        "\(MemoryWebSnapshotCycleJourney.completionMarker) "
+                        + "iterations=\(result.completedIterations) "
+                        + "unique-snapshots=\(result.uniqueSnapshots)\n"
+                    FileHandle.standardOutput.write(Data(line.utf8))
+                } catch is CancellationError {
+                    FileHandle.standardError.write(
+                        Data("VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_FAILED cancelled\n".utf8))
+                } catch {
+                    FileHandle.standardError.write(
+                        Data("VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_FAILED \(error)\n".utf8))
+                }
+            }
+        }
+    #endif
+
     /// Dev/CI helper: periodically snapshots every open window's content view via
     /// `cacheDisplay` (the app draws itself — no screen-recording permission needed),
     /// so a UI can be captured while it is being driven (e.g. by AppleScript).
@@ -313,19 +402,34 @@ final class AppLaunchArgumentHandler {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         var snapshotFingerprints: [String] = []
         for window in NSApp.windows {
-            guard window.isVisible, let view = window.contentView, view.bounds.width > 40,
-                let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
-            else { continue }
-            view.cacheDisplay(in: view.bounds, to: rep)
-            guard let png = flattenedPNG(rep, over: window) else { continue }
-            let safe = (window.title.isEmpty ? "window" : window.title)
-                .replacingOccurrences(of: " ", with: "-")
-            try? png.write(to: dir.appendingPathComponent("ui-\(safe)-\(tag).png"))
-            snapshotFingerprints.append(
-                SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined())
+            if let fingerprint = snapshot(window: window, tag: tag, directory: dir) {
+                snapshotFingerprints.append(fingerprint)
+            }
         }
         guard !snapshotFingerprints.isEmpty else { return nil }
         return snapshotFingerprints.sorted().joined(separator: ":")
+    }
+
+    /// Captures one exact window for the churn journey instead of accepting any other
+    /// visible app window as evidence that the newly-created editor rendered.
+    private static func snapshot(window: NSWindow, tag: Int) -> String? {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("vitrine-ui", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        return snapshot(window: window, tag: tag, directory: directory)
+    }
+
+    private static func snapshot(window: NSWindow, tag: Int, directory: URL) -> String? {
+        guard window.isVisible, let view = window.contentView, view.bounds.width > 40,
+            let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
+        else { return nil }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        guard let png = flattenedPNG(rep, over: window) else { return nil }
+        let safe = (window.title.isEmpty ? "window" : window.title)
+            .replacingOccurrences(of: " ", with: "-")
+        try? png.write(to: directory.appendingPathComponent("ui-\(safe)-\(tag).png"))
+        return SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined()
     }
 
     /// Flattens a `cacheDisplay` capture over the window's background color.
