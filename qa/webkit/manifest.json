@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "local-html-offline",
+      "input": "local-safe.html",
+      "expectedMarker": "VITRINE_LOCAL_SAFE",
+      "network": "disconnected"
+    },
+    {
+      "id": "local-html-remote-block",
+      "input": "remote-resource-blocked.html",
+      "expectedMarker": "REMOTE_BLOCKED",
+      "forbiddenMarker": "REMOTE_LOADED"
+    },
+    {
+      "id": "public-example",
+      "input": "public-url.txt",
+      "expected": "real WebKit capture exported from https://example.com"
+    },
+    {
+      "id": "loopback-rejection",
+      "input": "blocked-destinations.txt#L1",
+      "expected": "rejected before WebKit navigation"
+    },
+    {
+      "id": "private-destination-rejection",
+      "input": "blocked-destinations.txt#L2-L3",
+      "expected": "rejected before WebKit navigation"
+    }
+  ],
+  "excludedManualClaims": [
+    "public-to-private redirect revalidation"
+  ]
+}

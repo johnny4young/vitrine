@@ -64,7 +64,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -253,6 +253,10 @@ informational-update-check:
 release-promotion-check:
 	python3 scripts/verify-release-promotion.py --self-test
 
+## qa-handoff-check: validate clean-Mac WebKit fixtures and structured log templates
+qa-handoff-check:
+	./scripts/build-qa-handoff.sh --self-test
+
 ## record-goldens: (re)generate the golden-image fixtures + manifest
 ## The single command that refreshes the visual baseline. It runs only the
 ## opt-in recorder test (gated by VITRINE_RECORD_GOLDENS) through the same render
@@ -286,7 +290,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene build-boundaries-check informational-update-check release-promotion-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: hygiene build-boundaries-check informational-update-check release-promotion-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts

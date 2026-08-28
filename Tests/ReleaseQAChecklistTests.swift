@@ -48,6 +48,14 @@ struct ReleaseQAChecklistTests {
         try text("docs", "RELEASING.md")
     }
 
+    private static func handoffBuilder() throws -> String {
+        try text("scripts", "build-qa-handoff.sh")
+    }
+
+    private static func releaseWorkflow() throws -> String {
+        try text(".github", "workflows", "release.yml")
+    }
+
     /// The interactive checklist items the checklist enumerates. Both the script
     /// (which prints the checklist) and `RELEASING.md` (which documents it) must
     /// cover every one of them. Each entry is a list of acceptable substrings —
@@ -69,6 +77,14 @@ struct ReleaseQAChecklistTests {
         ("PRO CLI", ["PRO CLI", "PRO-only CLI"]),
         ("token permissions", ["Token permissions", "POSIX mode", "0600"]),
         ("Sparkle N to N+1 update", ["N to N+1", "N→N+1", "Install Update"]),
+        ("local HTML WebKit", ["Local HTML WebKit", "local-safe.html"]),
+        ("remote subresource blocked", ["Remote blocked", "remote-resource-blocked.html"]),
+        ("real public URL WebKit", ["Public URL WebKit", "https://example.com"]),
+        ("loopback rejection", ["Loopback reject", "127.0.0.1"]),
+        (
+            "private destination rejection",
+            ["Private reject", "Private destinations", "private/link-local"]
+        ),
         ("uninstall", ["Uninstall", "uninstall"]),
     ]
 
@@ -78,7 +94,15 @@ struct ReleaseQAChecklistTests {
         let fileManager = FileManager.default
         for path in [
             Self.url("scripts", "qa-release.sh"),
+            Self.url("scripts", "build-qa-handoff.sh"),
             Self.url("docs", "RELEASING.md"),
+            Self.url("qa", "webkit", "README.md"),
+            Self.url("qa", "webkit", "manifest.json"),
+            Self.url("qa", "webkit", "qualification-log.json"),
+            Self.url("qa", "webkit", "local-safe.html"),
+            Self.url("qa", "webkit", "remote-resource-blocked.html"),
+            Self.url("qa", "webkit", "public-url.txt"),
+            Self.url("qa", "webkit", "blocked-destinations.txt"),
         ] {
             #expect(
                 fileManager.fileExists(atPath: path.path),
@@ -89,10 +113,77 @@ struct ReleaseQAChecklistTests {
     /// The QA script must be executable so it can be invoked directly
     /// (`./qa-release.sh …`) on the clean Mac without a shell prefix.
     @Test func theQAScriptIsExecutable() throws {
-        let path = Self.url("scripts", "qa-release.sh").path
+        for name in ["qa-release.sh", "build-qa-handoff.sh"] {
+            let path = Self.url("scripts", name).path
+            #expect(
+                FileManager.default.isExecutableFile(atPath: path),
+                "scripts/\(name) must be executable")
+        }
+    }
+
+    @Test func handoffContainsRealWebKitFixturesAndStructuredEvidence() throws {
+        let local = try Self.text("qa", "webkit", "local-safe.html")
+        #expect(local.contains("VITRINE_LOCAL_SAFE"))
+        #expect(!local.contains("http://") && !local.contains("https://"))
+
+        let remote = try Self.text("qa", "webkit", "remote-resource-blocked.html")
+        for marker in ["https://example.com/favicon.ico", "REMOTE_BLOCKED", "REMOTE_LOADED"] {
+            #expect(remote.contains(marker))
+        }
+        #expect(remote.contains("onerror=") && remote.contains("onload="))
+
+        let destinations = try Self.text("qa", "webkit", "blocked-destinations.txt")
+        #expect(destinations.contains("127.0.0.1"))
+        #expect(destinations.contains("192.168.1.1"))
+        #expect(destinations.contains("169.254.169.254"))
         #expect(
-            FileManager.default.isExecutableFile(atPath: path),
-            "scripts/qa-release.sh must be executable")
+            try Self.text("qa", "webkit", "public-url.txt").trimmingCharacters(
+                in: .whitespacesAndNewlines) == "https://example.com")
+
+        let logData = try Data(contentsOf: Self.url("qa", "webkit", "qualification-log.json"))
+        let log = try #require(
+            try JSONSerialization.jsonObject(with: logData) as? [String: Any])
+        #expect(log["schemaVersion"] as? Int == 1)
+        let runs = try #require(log["runs"] as? [[String: Any]])
+        #expect(runs.map { $0["platform"] as? String } == ["macOS 15 Sequoia", "macOS 26 Tahoe"])
+        for run in runs {
+            let scenarios = try #require(run["scenarios"] as? [[String: Any]])
+            #expect(scenarios.count == 5)
+            #expect(scenarios.allSatisfy { $0["status"] as? String == "not-run" })
+        }
+        #expect(
+            String(data: logData, encoding: .utf8)?.contains("public-to-private redirect") == true)
+    }
+
+    @Test func releasePackagesAndRequiresTheQAHandoff() throws {
+        let builder = try Self.handoffBuilder()
+        for requirement in [
+            "SHA256SUMS", "qa-release.sh", "qualification-log.json", "release-notes.md",
+            "appcast.xml", "spdx.json", "/usr/bin/ditto", "/usr/bin/unzip -tq",
+        ] {
+            #expect(builder.contains(requirement), "QA handoff builder must contain \(requirement)")
+        }
+
+        let workflow = try Self.releaseWorkflow()
+        #expect(workflow.contains("Build clean-Mac QA handoff"))
+        #expect(workflow.contains("./scripts/build-qa-handoff.sh"))
+        #expect(workflow.components(separatedBy: "qa-handoff.zip").count - 1 >= 3)
+
+        let makefile = try Self.text("Makefile")
+        #expect(makefile.contains("qa-handoff-check"))
+        #expect(makefile.contains("./scripts/build-qa-handoff.sh --self-test"))
+    }
+
+    @Test func manualQualificationDoesNotOverclaimRedirectCoverage() throws {
+        for contents in [
+            try Self.script(), try Self.releasingDoc(), try Self.text("qa", "webkit", "README.md"),
+        ] {
+            #expect(contents.localizedCaseInsensitiveContains("public-to-private"))
+            #expect(contents.localizedCaseInsensitiveContains("deterministic"))
+            #expect(
+                contents.localizedCaseInsensitiveContains("not")
+                    || contents.localizedCaseInsensitiveContains("does not"))
+        }
     }
 
     /// Basic shell hygiene matching the repo's other release scripts: a bash

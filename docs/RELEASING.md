@@ -794,15 +794,20 @@ the only place this check is meaningful.
 
 `scripts/qa-release.sh` drives it. The script is deliberately self-contained: it needs
 only the artifact and the stock macOS command-line tools (`codesign`, `spctl`,
-`stapler`, `hdiutil`, `plutil`, `lipo`, `base64`, `sw_vers`, `uname`, `stat`), so you can copy
-that one file plus the candidate DMG onto the clean Mac and run it without checking out
-the repository. Manual promotion reruns the same suite before publication; the
+`stapler`, `hdiutil`, `plutil`, `lipo`, `base64`, `sw_vers`, `uname`, `stat`), so it can run
+without the repository. The candidate artifact also contains
+`Vitrine-<version>-qa-handoff.zip`: the exact DMG, checksum, SBOM, appcast, cask update,
+release notes, QA script, real-WebKit fixtures, and a structured log template in one
+checksummed bundle. Use that ZIP for external qualification rather than assembling files
+by hand. Manual promotion reruns the automated suite before publication; the
 `published-qa` job downloads and validates the public bytes once more before downstream
 channels move.
 
 ```bash
-# On the clean Mac, against the downloaded release DMG:
-./qa-release.sh ~/Downloads/Vitrine-0.1.0.dmg
+# On each clean Mac, after extracting the candidate handoff ZIP:
+cd Vitrine-1.2.0-qa-handoff
+shasum -a 256 -c SHA256SUMS
+./qa-release.sh Vitrine-1.2.0.dmg
 # or, against an already-extracted app:
 ./qa-release.sh /Applications/Vitrine.app
 # with no argument it auto-detects the newest dist/*.dmg.
@@ -877,15 +882,35 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
 15. **N to N+1 update** — install the previous direct-download release in a disposable QA
     location, choose **Check for Updates…**, click **Install Update**, and confirm Vitrine
     relaunches on the candidate version without an installer or authorization error.
-16. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
+16. **Real local HTML WebKit** — disconnect every network interface, copy
+    `webkit/local-safe.html` with `pbcopy`, trigger Vitrine, and export a snapshot that
+    visibly contains `VITRINE_LOCAL_SAFE`. The deterministic UI-test renderer is not
+    acceptable evidence for this step.
+17. **Remote subresource blocked** — reconnect, copy
+    `webkit/remote-resource-blocked.html`, trigger Vitrine, and require the rendered
+    marker `REMOTE_BLOCKED`. `REMOTE_LOADED — FAIL` is a release blocker.
+18. **Real public URL WebKit** — copy `https://example.com`, accept the disclosure when
+    shown, and export a real non-placeholder capture of the page.
+19. **Loopback rejected immediately** — submit the `127.0.0.1` entry from
+    `webkit/blocked-destinations.txt` and require the domain error before WebKit navigation
+    begins; a later timeout is not a pass.
+20. **Private destinations rejected immediately** — repeat with the private and
+    link-local entries and require the same pre-navigation rejection.
+21. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
     leaves no menu-bar icon and no login item behind.
 
-Record one QA log entry per release (environment header + each checklist result). For PRO,
-record only the dedicated QA license label or a **redacted** order/license identifier and
-the outcome. **Never record** the raw license key, embedded private signing key, or token
-contents. Before the first public sale — and whenever checkout, pricing, fulfillment email,
-or product configuration changes — also complete a production-mode checkout from the public
-website and confirm the license email arrives. The optional
+These fixtures intentionally do **not** certify public-to-private redirect revalidation.
+That policy remains protected by deterministic navigation-delegate tests; never mark it as
+clean-Mac validated from this manual journey.
+
+Complete both platform entries in `webkit/qualification-log.json`, change
+`overallStatus` only after every required scenario passes, and keep screenshots/exports in
+the handoff's `evidence/` directory. For PRO, record only the dedicated QA license label or a
+**redacted** order/license identifier and the outcome. **Never record** the raw license key,
+embedded private signing key, token contents, private page data, or cookies. Before the first
+public sale — and whenever checkout, pricing, fulfillment email, or product configuration
+changes — also complete a production-mode checkout from the public website and confirm the
+license email arrives. The optional
 `codesign`/`spctl`/`plutil`/`stapler` checks above run automatically; the interactive items
 above are the manual half. See [`ACTIVATION.md`](ACTIVATION.md) for exact secret-safe CLI and
 token-permission commands.
@@ -919,5 +944,6 @@ license again.
 - [ ] **Release artifact QA on a clean Mac** done: `scripts/qa-release.sh` run against
       the published DMG, its environment header + manual checklist recorded in the
       release QA log (including secret-safe online activation, offline relaunch,
-      PRO-only CLI multi-size, and `0600` token proof), and any failure triaged as app bug
-      vs. signing/notarization
+      PRO-only CLI multi-size, `0600` token proof, and all installed-candidate WebKit
+      fixtures), the structured Sequoia and Tahoe entries completed, and any failure
+      triaged as app bug vs. signing/notarization
