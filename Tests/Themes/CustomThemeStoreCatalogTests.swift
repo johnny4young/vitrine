@@ -36,6 +36,38 @@ struct CustomThemeStoreTests {
         #expect(second.displayName == "Twin 2")
     }
 
+    @Test func importRejectsMoreThanOneThousandDecodedThemes() throws {
+        let themes = (0...CustomThemeDocument.maximumThemeCount).map { index in
+            Theme(
+                id: "custom.test-\(index)",
+                displayName: "Theme \(index)",
+                palette: ThemeTestFixtures.samplePalette())
+        }
+        let data = try CustomThemeDocument(themes: themes).jsonData()
+        let store = CustomThemeStore(defaults: ThemeTestFixtures.freshDefaults())
+
+        #expect(throws: CustomThemeDocument.ImportError.tooManyThemes) {
+            _ = try store.importThemes(from: data)
+        }
+        #expect(store.customThemes.isEmpty)
+    }
+
+    @Test func fileImportRejectsInputsAboveOneMegabyte() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrineThemeImport-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("themes.json")
+        try Data(repeating: 0x20, count: CustomThemeFileExchange.maximumByteCount + 1)
+            .write(to: file)
+
+        let store = CustomThemeStore(defaults: ThemeTestFixtures.freshDefaults())
+        #expect(throws: CustomThemeDocument.ImportError.fileTooLarge) {
+            _ = try CustomThemeFileExchange.importFile(at: file, store: store)
+        }
+        #expect(store.customThemes.isEmpty)
+    }
+
     @Test func emptyNameCollapsesToAFriendlyDefault() {
         let store = CustomThemeStore(defaults: ThemeTestFixtures.freshDefaults())
         let added = store.addTheme(named: "   ", palette: ThemeTestFixtures.samplePalette())

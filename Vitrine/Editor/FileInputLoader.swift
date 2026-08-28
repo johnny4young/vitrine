@@ -132,7 +132,9 @@ enum FileInputLoader {
 
         let data: Data
         do {
-            data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            data = try BoundedFileReader.read(from: url, limit: maximumByteCount)
+        } catch BoundedFileReader.ReadError.tooLarge {
+            throw LoadError.tooLarge
         } catch {
             // Collapse any low-level I/O error into one clear message; never echo
             // the path or the system error (privacy policy).

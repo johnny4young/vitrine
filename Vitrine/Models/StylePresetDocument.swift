@@ -17,6 +17,9 @@ struct StylePresetDocument: Codable, Equatable {
     /// The current preset-file schema version. Bump when the envelope's shape or
     /// meaning changes; older files are migrated or rejected, never misread.
     static let currentSchemaVersion = 1
+    /// Import bound that prevents a compact file from expanding into an unbounded
+    /// number of persisted rows and picker entries.
+    static let maximumPresetCount = 1_000
 
     var format: String
     var schemaVersion: Int
@@ -32,6 +35,11 @@ struct StylePresetDocument: Codable, Equatable {
         case unsupportedSchemaVersion(Int)
         /// The file decoded but contained no usable presets.
         case empty
+        /// The selected file exceeds the bounded preset-file input size.
+        case fileTooLarge
+        /// The file is structurally valid but contains more entries than one import
+        /// may add safely.
+        case tooManyPresets
 
         /// A short, human-readable explanation for an alert.
         var message: String {
@@ -42,6 +50,10 @@ struct StylePresetDocument: Codable, Equatable {
                 "This preset file uses a newer format (version \(version)) this app can't read."
             case .empty:
                 "This preset file does not contain any presets."
+            case .fileTooLarge:
+                "This preset file is larger than 1 MB and was not read."
+            case .tooManyPresets:
+                "This preset file contains more than 1,000 presets."
             }
         }
     }
@@ -96,6 +108,9 @@ struct StylePresetDocument: Codable, Equatable {
             throw ImportError.unsupportedSchemaVersion(document.schemaVersion)
         }
         guard !document.presets.isEmpty else { throw ImportError.empty }
+        guard document.presets.count <= maximumPresetCount else {
+            throw ImportError.tooManyPresets
+        }
         return document.presets
     }
 }

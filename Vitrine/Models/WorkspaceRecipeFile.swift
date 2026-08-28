@@ -27,19 +27,11 @@ enum WorkspaceRecipeFile {
     }
 
     static func load(from url: URL) throws -> WorkspaceRecipe {
-        let values: URLResourceValues
-        do {
-            values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-        } catch {
-            throw ReadError.unreadable
-        }
-        guard values.isRegularFile == true else { throw ReadError.unreadable }
-        guard let fileSize = values.fileSize else { throw ReadError.unreadable }
-        guard fileSize <= maximumByteCount else { throw ReadError.tooLarge }
-
         let data: Data
         do {
-            data = try Data(contentsOf: url, options: .mappedIfSafe)
+            data = try BoundedFileReader.read(from: url, limit: maximumByteCount)
+        } catch BoundedFileReader.ReadError.tooLarge {
+            throw ReadError.tooLarge
         } catch {
             throw ReadError.unreadable
         }
