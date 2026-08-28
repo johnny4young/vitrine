@@ -168,15 +168,21 @@ jobs:
           - runner: macos-15
             platform: Sequoia 15
             artifact: sequoia-15
+            coverage: sequoia
           - runner: macos-26
             platform: Tahoe 26
             artifact: tahoe-26
+            coverage: tahoe
     runs-on: ${{ matrix.runner }}
     # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # Changed-line coverage compares the PR head with the pinned pre-hardening
+          # baseline revision. A shallow checkout would make that comparison fail.
+          fetch-depth: 0
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
@@ -242,22 +248,24 @@ jobs:
         run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
 
       - name: Test with code coverage (Swift Testing)
-        run: make test-coverage RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
+        run: |
+          make test-coverage \
+            COVERAGE_PLATFORM="${{ matrix.coverage }}" \
+            RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
 
       # Surface per-target code coverage in the job summary. The CI-only
       # `test-coverage` lane enables collection explicitly; without this step the
       # numbers exist only inside an .xcresult nobody downloads on green runs.
-      # Best-effort: a reporting hiccup must never fail the gate.
+      # The preceding guard already read the same xccov JSON fail-closed. This
+      # human-readable view is summary-only and may not weaken that gate.
       - name: Report code coverage
         run: |
-          if [ -d "${RUNNER_TEMP}/test.xcresult" ]; then
-            {
-              echo "### Code coverage (per target)"
-              echo '```'
-              xcrun xccov view --report --only-targets "${RUNNER_TEMP}/test.xcresult" || echo "xccov could not read the result bundle"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+          {
+            echo "### Code coverage (per target)"
+            echo '```'
+            xcrun xccov view --report --only-targets "${RUNNER_TEMP}/test.xcresult"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # On any failure above, upload the .xcresult bundles so the exact build/test
       # diagnostics are available without re-running CI. Compressed because an

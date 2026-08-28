@@ -91,6 +91,8 @@ struct StylePresetDocumentTests {
         #expect(!StylePresetDocument.ImportError.notAPresetFile.message.isEmpty)
         #expect(!StylePresetDocument.ImportError.unsupportedSchemaVersion(9).message.isEmpty)
         #expect(!StylePresetDocument.ImportError.empty.message.isEmpty)
+        #expect(StylePresetDocument.ImportError.fileTooLarge.message.contains("1 MB"))
+        #expect(StylePresetDocument.ImportError.tooManyPresets.message.contains("1,000"))
     }
 
     @Test func oneMalformedPresetIsDroppedNotTheWholeFile() throws {

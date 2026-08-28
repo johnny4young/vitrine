@@ -162,10 +162,28 @@ test process finishes successfully but `xcodebuild` stalls while finalizing cove
 This changes instrumentation only; it does not select or skip tests.
 
 `make test-coverage` runs the same complete suite with coverage explicitly enabled.
-CI uses this lane on both supported macOS rows, retains the `.xcresult`, and publishes
-per-target `xccov` output in the job summary. Keep the lanes separate: local feedback
-must not depend on coverage finalization, and CI coverage must not depend implicitly on
-the Xcode scheme default.
+The lane always writes an `.xcresult` and passes its `xccov --json` report and raw line
+archive through `scripts/check-coverage.py`; an absent, empty, or malformed report fails
+the gate rather than becoming a best-effort warning. CI selects the committed baseline
+for its Sequoia or Tahoe row, retains failure bundles, and publishes per-target `xccov`
+output in the job summary. The weighted coverage across `Vitrine.app`, `vitrine-cli`,
+and `VitrineMenuBarHelper` may not fall more than one percentage point below the
+pre-hardening baseline for that OS.
+
+The same guard requires at least 80% of changed executable lines in critical logic to be
+covered. Its unit-coverage scope is `Models`, `CLI`, `Pro`, `Terminal`, `Rendering`, and
+the explicit non-visual policy/renderer files in `WebRendering`. SwiftUI/AppKit views and
+window controllers are deliberately outside that calculation: XCUITest and the strict
+visual tour protect those surfaces. Baselines live under
+`scripts/coverage-baselines/`; they are GitHub-hosted runner baselines because WebKit
+subprocess availability can change which qualification tests execute in a restricted
+local environment. Update one only from a complete passing hosted run on the named
+OS/toolchain, record its exact covered/executable counts, and pin the source revision.
+For a local comparison, override `COVERAGE_BASELINE` with a same-environment baseline;
+do not weaken the committed hosted threshold to accommodate a local skip. Run
+`make coverage-check` for the parser's fast self-test. Keep the lanes separate: local
+feedback must not depend on coverage finalization, and CI coverage must not depend
+implicitly on the Xcode scheme default.
 
 ### Dynamic memory evidence
 

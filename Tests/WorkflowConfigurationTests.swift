@@ -69,6 +69,10 @@ struct WorkflowConfigurationTests {
         try text("scripts", "verify-release-promotion.py")
     }
 
+    private static func coverageGuard() throws -> String {
+        try text("scripts", "check-coverage.py")
+    }
+
     // MARK: - YAML well-formedness guard (tabs)
 
     /// YAML forbids tab characters for indentation; a stray tab is a syntax error that
@@ -131,7 +135,9 @@ struct WorkflowConfigurationTests {
         }
 
         #expect(!ci.contains("runs-on: macos-latest"))
-        #expect(buildJob.contains("make test-coverage RESULT_BUNDLE="))
+        #expect(buildJob.contains("make test-coverage"))
+        #expect(buildJob.contains("COVERAGE_PLATFORM=\"${{ matrix.coverage }}\""))
+        #expect(buildJob.contains("fetch-depth: 0"))
         #expect(buildJob.contains("make perf"))
         #expect(buildJob.contains("GoldenImageTests"))
         #expect(uiJob.contains("make test-ui RESULT_BUNDLE="))
@@ -168,13 +174,34 @@ struct WorkflowConfigurationTests {
         #expect(fastLane.contains("-enableCodeCoverage NO"))
         #expect(coverageLane.contains("-enableCodeCoverage YES"))
         #expect(fastLane.contains("$(RESULT_BUNDLE_FLAG)"))
-        #expect(coverageLane.contains("$(RESULT_BUNDLE_FLAG)"))
+        #expect(coverageLane.contains(#"-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)""#))
+        #expect(coverageLane.contains("scripts/check-coverage.py"))
+        #expect(coverageLane.contains("--baseline \"$(COVERAGE_BASELINE)\""))
         #expect(project.contains("gatherCoverageData: false"))
 
         let ci = try Self.ci()
-        #expect(ci.contains("make test-coverage RESULT_BUNDLE="))
+        #expect(ci.contains("make test-coverage"))
         #expect(!ci.contains("run: make test RESULT_BUNDLE="))
         #expect(ci.contains("xcrun xccov view --report --only-targets"))
+        #expect(!ci.contains("xccov could not read the result bundle"))
+
+        let guardScript = try Self.coverageGuard()
+        for requirement in [
+            "PRODUCTION_TARGETS",
+            "--report",
+            "--archive",
+            "minimum-diff-coverage",
+            "maximum-overall-drop-points",
+            "NONVISUAL_WEB_FILES",
+        ] {
+            #expect(guardScript.contains(requirement))
+        }
+        for platform in ["sequoia", "tahoe"] {
+            let baseline = try Self.text("scripts", "coverage-baselines", "\(platform).json")
+            #expect(baseline.contains(#""schemaVersion": 1"#))
+            #expect(baseline.contains(#""productionLineCoverage""#))
+            #expect(baseline.contains(#""sourceRevision""#))
+        }
     }
 
     @Test func swiftWarningsFailEveryAppOwnedTargetBuild() throws {

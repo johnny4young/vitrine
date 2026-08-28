@@ -31,6 +31,15 @@ RESULT_BUNDLE_FLAG := $(if $(RESULT_BUNDLE),-resultBundlePath "$(RESULT_BUNDLE)"
 VISUAL_OUTPUT ?= build/screenshot-tour
 VISUAL_RESULT_BUNDLE ?= build/screenshot-tour.xcresult
 
+# Coverage remains separate from the fast `make test` lane. Unlike optional
+# diagnostic result bundles, this bundle is mandatory because the guard parses its
+# xccov report and raw line archive. CI passes the explicit supported-platform key;
+# local runs infer Sequoia/Tahoe from the host major version.
+COVERAGE_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/test-coverage.xcresult)
+COVERAGE_PLATFORM ?= $(shell major=$$(sw_vers -productVersion | cut -d. -f1); \
+	case "$$major" in 15) echo sequoia ;; 26) echo tahoe ;; *) echo unsupported ;; esac)
+COVERAGE_BASELINE ?= scripts/coverage-baselines/$(COVERAGE_PLATFORM).json
+
 # Dynamic-memory evidence is intentionally local and review-driven. It reuses the normal
 # Debug build and resolved exact package checkouts, then launches under `leaks`; optional
 # MEMORY_BASELINE points at an earlier report.json for same-environment/same-journey
@@ -55,7 +64,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -120,15 +129,29 @@ test: project
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage NO $(RESULT_BUNDLE_FLAG) test
 
-## test-coverage: run the complete unit suite with coverage (CI parity)
+## test-coverage: run the complete suite and enforce fail-closed coverage policy
 ## This intentionally uses the same serial scheduling as `test`, but overrides
 ## the scheme explicitly so a future project setting cannot silently disable CI
-## coverage. CI captures the .xcresult and reports per-target coverage from it.
+## coverage. The result bundle is mandatory: the guard fails if xccov cannot read
+## it, rejects a production-target drop over one percentage point, and requires
+## 80% coverage for changed executable lines in critical non-visual logic.
 test-coverage: project
-	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	@test -f "$(COVERAGE_BASELINE)" || { \
+		echo "Unsupported coverage platform '$(COVERAGE_PLATFORM)' or missing baseline: $(COVERAGE_BASELINE)" >&2; \
+		exit 1; \
+	}
+	@rm -rf "$(COVERAGE_RESULT_BUNDLE)"
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'platform=macOS' -enableCodeCoverage YES $(RESULT_BUNDLE_FLAG) test
+		-destination 'platform=macOS' -enableCodeCoverage YES \
+		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" test
+	python3 scripts/check-coverage.py \
+		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \
+		--baseline "$(COVERAGE_BASELINE)"
+
+## coverage-check: validate parser, scope, and fail-closed behavior without Xcode
+coverage-check:
+	python3 scripts/check-coverage.py --self-test
 
 ## build-ui-tests: compile UI tests without requiring local automation permission
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.
