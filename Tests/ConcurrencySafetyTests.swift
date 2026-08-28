@@ -86,6 +86,7 @@ struct ConcurrencySafetyTests {
         #expect(background.contains("@State private var downloadTask: Task<Void, Never>?"))
         #expect(background.contains("downloadTask?.cancel()"))
         #expect(background.contains("try Task.checkCancellation()"))
+        #expect(background.components(separatedBy: "guard !Task.isCancelled").count - 1 == 2)
         #expect(carousel.contains(".interactiveDismissDisabled(isExporting)"))
     }
 }

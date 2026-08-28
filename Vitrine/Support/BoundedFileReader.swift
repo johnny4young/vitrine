@@ -1,11 +1,13 @@
+import Darwin
 import Foundation
 
-/// Reads a stable regular file without ever retaining more than `limit + 1` bytes.
+/// Reads one stable regular-file descriptor without retaining more than `limit + 1` bytes.
 ///
 /// Callers remain responsible for security-scoped access and for translating these
-/// transport errors into their domain-specific messages. The reader deliberately
-/// avoids `Data(contentsOf:)`: a metadata preflight alone is racy because a file can
-/// be replaced or grow between the size check and the read.
+/// transport errors into their domain-specific messages. Opening with `O_NONBLOCK`
+/// prevents a path swap to a FIFO from hanging the app, while both type and stability
+/// checks use `fstat` on the descriptor that is actually read rather than re-statting
+/// the pathname.
 enum BoundedFileReader {
     enum ReadError: Error, Equatable {
         case unreadable
@@ -18,19 +20,34 @@ enum BoundedFileReader {
     static func read(from url: URL, limit: Int) throws -> Data {
         guard limit >= 0, limit < Int.max else { throw ReadError.unreadable }
 
-        let initialValues = try resourceValues(for: url)
-        guard initialValues.isRegularFile == true else { throw ReadError.notRegularFile }
-        guard let initialByteCount = initialValues.fileSize, initialByteCount >= 0 else {
-            throw ReadError.unreadable
+        let descriptor = url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return Int32(-1) }
+            return Darwin.open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)
         }
-        guard initialByteCount <= limit else { throw ReadError.tooLarge }
+        guard descriptor >= 0 else { throw ReadError.unreadable }
 
-        let handle: FileHandle
-        do {
-            handle = try FileHandle(forReadingFrom: url)
-        } catch {
+        var initialStatus = stat()
+        guard fstat(descriptor, &initialStatus) == 0 else {
+            Darwin.close(descriptor)
             throw ReadError.unreadable
         }
+        guard Self.isRegular(initialStatus) else {
+            Darwin.close(descriptor)
+            throw ReadError.notRegularFile
+        }
+        guard
+            let initialByteCount = Int(exactly: initialStatus.st_size),
+            initialByteCount >= 0
+        else {
+            Darwin.close(descriptor)
+            throw ReadError.unreadable
+        }
+        guard initialByteCount <= limit else {
+            Darwin.close(descriptor)
+            throw ReadError.tooLarge
+        }
+
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         defer { try? handle.close() }
 
         var data = Data()
@@ -55,9 +72,15 @@ enum BoundedFileReader {
 
         guard data.count <= limit else { throw ReadError.tooLarge }
 
-        let finalValues = try resourceValues(for: url)
-        guard finalValues.isRegularFile == true else { throw ReadError.notRegularFile }
-        guard let finalByteCount = finalValues.fileSize, finalByteCount >= 0 else {
+        var finalStatus = stat()
+        guard fstat(descriptor, &finalStatus) == 0 else { throw ReadError.unreadable }
+        guard Self.isRegular(finalStatus) else { throw ReadError.notRegularFile }
+        guard
+            initialStatus.st_dev == finalStatus.st_dev,
+            initialStatus.st_ino == finalStatus.st_ino,
+            let finalByteCount = Int(exactly: finalStatus.st_size),
+            finalByteCount >= 0
+        else {
             throw ReadError.unreadable
         }
 
@@ -65,16 +88,11 @@ enum BoundedFileReader {
             initialByteCount: initialByteCount,
             finalByteCount: finalByteCount,
             readByteCount: data.count)
-
         return data
     }
 
-    private static func resourceValues(for url: URL) throws -> URLResourceValues {
-        do {
-            return try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-        } catch {
-            throw ReadError.unreadable
-        }
+    private static func isRegular(_ status: stat) -> Bool {
+        status.st_mode & S_IFMT == S_IFREG
     }
 
     /// Keeps the race policy pure and directly testable. Growth is classified as

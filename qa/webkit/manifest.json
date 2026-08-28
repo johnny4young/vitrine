@@ -10,8 +10,15 @@
     {
       "id": "local-html-remote-block",
       "input": "remote-resource-blocked.html",
-      "expectedMarker": "REMOTE_BLOCKED",
-      "forbiddenMarker": "REMOTE_LOADED"
+      "control": "verify-remote-probe.sh evidence before|after",
+      "controlURL": "https://httpbin.org/image/png",
+      "expectedMarker": "REMOTE_REQUEST_FAILED — VERIFY CONTROL",
+      "forbiddenMarker": "REMOTE_LOADED",
+      "requiredEvidence": [
+        "successful before control",
+        "rendered marker",
+        "successful byte-identical after control"
+      ]
     },
     {
       "id": "public-example",

@@ -13,6 +13,22 @@ fail() {
 	exit 1
 }
 
+verify_candidate_digest() {
+	local dmg_path="$1"
+	local sidecar_path="$2"
+	local dmg_name="$3"
+	local declared_digest actual_digest
+	declared_digest="$(awk -v expected="$dmg_name" \
+		'$2 == expected || $2 == "*" expected { print $1; exit }' "$sidecar_path" \
+		| tr '[:upper:]' '[:lower:]')"
+	[[ "$declared_digest" =~ ^[0-9a-f]{64}$ ]] \
+		|| fail "${dmg_name}.sha256 does not contain a valid digest for ${dmg_name}"
+	actual_digest="$(shasum -a 256 "$dmg_path" | awk '{ print $1 }')"
+	[ "$actual_digest" = "$declared_digest" ] \
+		|| fail "${dmg_name}.sha256 does not match the candidate DMG bytes"
+	printf '%s\n' "$declared_digest"
+}
+
 validate_fixtures() {
 	local required
 	for required in \
@@ -21,6 +37,7 @@ validate_fixtures() {
 		qualification-log.json \
 		local-safe.html \
 		remote-resource-blocked.html \
+		verify-remote-probe.sh \
 		public-url.txt \
 		blocked-destinations.txt
 	do
@@ -31,14 +48,37 @@ validate_fixtures() {
 	python3 -m json.tool "${WEBKIT_FIXTURES}/qualification-log.json" >/dev/null
 	grep -q 'VITRINE_LOCAL_SAFE' "${WEBKIT_FIXTURES}/local-safe.html" \
 		|| fail "local-safe.html is missing its qualification marker"
-	grep -q 'REMOTE_BLOCKED' "${WEBKIT_FIXTURES}/remote-resource-blocked.html" \
-		|| fail "remote-resource-blocked.html is missing its blocked marker"
+	[ -x "${WEBKIT_FIXTURES}/verify-remote-probe.sh" ] \
+		|| fail "qa/webkit/verify-remote-probe.sh must be executable"
+	grep -q 'https://httpbin.org/image/png' "${WEBKIT_FIXTURES}/remote-resource-blocked.html" \
+		|| fail "remote-resource-blocked.html is missing the controlled probe URL"
+	grep -q 'REMOTE_REQUEST_FAILED' "${WEBKIT_FIXTURES}/remote-resource-blocked.html" \
+		|| fail "remote-resource-blocked.html is missing its request-failed marker"
 	grep -q 'REMOTE_LOADED' "${WEBKIT_FIXTURES}/remote-resource-blocked.html" \
 		|| fail "remote-resource-blocked.html is missing its failure marker"
+	grep -q 'https://httpbin.org/image/png' "${WEBKIT_FIXTURES}/verify-remote-probe.sh" \
+		|| fail "verify-remote-probe.sh does not validate the fixture probe URL"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
 	validate_fixtures
+	self_test_root="$(mktemp -d "${TMPDIR:-/tmp}/vitrine-qa-handoff-self-test.XXXXXX")"
+	trap 'rm -rf "$self_test_root"' EXIT
+	self_test_dmg="${self_test_root}/Vitrine-0.0.0.dmg"
+	printf 'candidate bytes' > "$self_test_dmg"
+	self_test_digest="$(shasum -a 256 "$self_test_dmg" | awk '{ print $1 }')"
+	printf '%s  %s\n' "$self_test_digest" "$(basename "$self_test_dmg")" \
+		> "${self_test_dmg}.sha256"
+	verified_digest="$(verify_candidate_digest \
+		"$self_test_dmg" "${self_test_dmg}.sha256" "$(basename "$self_test_dmg")")"
+	[ "$verified_digest" = "$self_test_digest" ] \
+		|| fail "candidate digest self-test returned the wrong digest"
+	printf 'changed' >> "$self_test_dmg"
+	if (verify_candidate_digest \
+		"$self_test_dmg" "${self_test_dmg}.sha256" "$(basename "$self_test_dmg")" \
+		>/dev/null 2>&1); then
+		fail "candidate digest self-test accepted mismatched DMG bytes"
+	fi
 	echo "QA handoff fixtures passed self-test."
 	exit 0
 fi
@@ -68,6 +108,10 @@ for candidate_file in "${REQUIRED_CANDIDATE_FILES[@]}"; do
 done
 validate_fixtures
 
+DMG_SHA256="$(verify_candidate_digest \
+	"${SOURCE_DIR}/${DMG}" "${SOURCE_DIR}/${DMG}.sha256" "$DMG")"
+readonly DMG_SHA256
+
 STAGING_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/vitrine-qa-handoff.XXXXXX")"
 readonly STAGING_ROOT
 readonly BUNDLE_NAME="Vitrine-${VERSION}-qa-handoff"
@@ -83,11 +127,6 @@ cp "${REPOSITORY_ROOT}/scripts/qa-release.sh" "${BUNDLE_ROOT}/qa-release.sh"
 chmod 0755 "${BUNDLE_ROOT}/qa-release.sh"
 cp "${REPOSITORY_ROOT}/docs/RELEASING.md" "${BUNDLE_ROOT}/RELEASING.md"
 cp "${WEBKIT_FIXTURES}"/* "${BUNDLE_ROOT}/webkit/"
-
-DMG_SHA256="$(awk -v expected="$DMG" '$2 == expected || $2 == "*" expected { print $1; exit }' \
-	"${SOURCE_DIR}/${DMG}.sha256")"
-[[ "$DMG_SHA256" =~ ^[0-9a-fA-F]{64}$ ]] \
-	|| fail "${DMG}.sha256 does not contain a valid digest for ${DMG}"
 
 python3 - "${BUNDLE_ROOT}/webkit/qualification-log.json" "$VERSION" "$DMG_SHA256" <<'PY'
 import json

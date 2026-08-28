@@ -908,9 +908,13 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
     `webkit/local-safe.html` with `pbcopy`, trigger Vitrine, and export a snapshot that
     visibly contains `VITRINE_LOCAL_SAFE`. The deterministic UI-test renderer is not
     acceptable evidence for this step.
-17. **Remote subresource blocked** — reconnect, copy
-    `webkit/remote-resource-blocked.html`, trigger Vitrine, and require the rendered
-    marker `REMOTE_BLOCKED`. `REMOTE_LOADED — FAIL` is a release blocker.
+17. **Remote subresource blocked** — reconnect, run
+    `webkit/verify-remote-probe.sh evidence before`, copy
+    `webkit/remote-resource-blocked.html`, trigger Vitrine, export the rendered
+    `REMOTE_REQUEST_FAILED — VERIFY CONTROL` marker, and then run
+    `webkit/verify-remote-probe.sh evidence after`. Both controls must succeed and their
+    PNG bytes must be identical. `REMOTE_LOADED — FAIL` is a release blocker. The
+    rendered `onerror` marker alone is not sufficient evidence.
 18. **Real public URL WebKit** — copy `https://example.com`, accept the disclosure when
     shown, and export a real non-placeholder capture of the page.
 19. **Loopback rejected immediately** — submit the `127.0.0.1` entry from

@@ -528,8 +528,11 @@ cat <<'CHECKLIST'
     [ ] 16. Local HTML WebKit — disconnect networking, paste local-safe.html, and
                                   require a real exported snapshot containing
                                   VITRINE_LOCAL_SAFE.
-    [ ] 17. Remote blocked    — paste remote-resource-blocked.html and require
-                                  REMOTE_BLOCKED; REMOTE_LOADED is a release blocker.
+    [ ] 17. Remote blocked    — run verify-remote-probe.sh before and after pasting
+                                  remote-resource-blocked.html; both controls must
+                                  succeed with identical bytes, require the rendered
+                                  REMOTE_REQUEST_FAILED marker, and treat REMOTE_LOADED
+                                  as a release blocker.
     [ ] 18. Public URL WebKit — capture and export the real https://example.com page,
                                   not the deterministic UI-test placeholder.
     [ ] 19. Loopback reject   — submit the 127.0.0.1 fixture and require an immediate

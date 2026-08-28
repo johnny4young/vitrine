@@ -101,6 +101,7 @@ struct ReleaseQAChecklistTests {
             Self.url("qa", "webkit", "qualification-log.json"),
             Self.url("qa", "webkit", "local-safe.html"),
             Self.url("qa", "webkit", "remote-resource-blocked.html"),
+            Self.url("qa", "webkit", "verify-remote-probe.sh"),
             Self.url("qa", "webkit", "public-url.txt"),
             Self.url("qa", "webkit", "blocked-destinations.txt"),
         ] {
@@ -113,11 +114,14 @@ struct ReleaseQAChecklistTests {
     /// The QA script must be executable so it can be invoked directly
     /// (`./qa-release.sh …`) on the clean Mac without a shell prefix.
     @Test func theQAScriptIsExecutable() throws {
-        for name in ["qa-release.sh", "build-qa-handoff.sh"] {
-            let path = Self.url("scripts", name).path
+        for path in [
+            Self.url("scripts", "qa-release.sh").path,
+            Self.url("scripts", "build-qa-handoff.sh").path,
+            Self.url("qa", "webkit", "verify-remote-probe.sh").path,
+        ] {
             #expect(
                 FileManager.default.isExecutableFile(atPath: path),
-                "scripts/\(name) must be executable")
+                "\(path) must be executable")
         }
     }
 
@@ -127,10 +131,20 @@ struct ReleaseQAChecklistTests {
         #expect(!local.contains("http://") && !local.contains("https://"))
 
         let remote = try Self.text("qa", "webkit", "remote-resource-blocked.html")
-        for marker in ["https://example.com/favicon.ico", "REMOTE_BLOCKED", "REMOTE_LOADED"] {
+        for marker in [
+            "https://httpbin.org/image/png",
+            "REMOTE_REQUEST_FAILED",
+            "REMOTE_LOADED",
+        ] {
             #expect(remote.contains(marker))
         }
         #expect(remote.contains("onerror=") && remote.contains("onload="))
+
+        let control = try Self.text("qa", "webkit", "verify-remote-probe.sh")
+        #expect(control.contains("https://httpbin.org/image/png"))
+        #expect(control.contains("sips") && control.contains("cmp"))
+        let instructions = try Self.text("qa", "webkit", "README.md")
+        #expect(instructions.contains("marker alone is insufficient evidence"))
 
         let destinations = try Self.text("qa", "webkit", "blocked-destinations.txt")
         #expect(destinations.contains("127.0.0.1"))
@@ -150,6 +164,11 @@ struct ReleaseQAChecklistTests {
             let scenarios = try #require(run["scenarios"] as? [[String: Any]])
             #expect(scenarios.count == 5)
             #expect(scenarios.allSatisfy { $0["status"] as? String == "not-run" })
+            let remoteScenario = try #require(
+                scenarios.first { $0["id"] as? String == "local-html-remote-block" })
+            #expect(remoteScenario.keys.contains("controlBefore"))
+            #expect(remoteScenario.keys.contains("renderedMarker"))
+            #expect(remoteScenario.keys.contains("controlAfter"))
         }
         #expect(
             String(data: logData, encoding: .utf8)?.contains("public-to-private redirect") == true)
@@ -160,6 +179,7 @@ struct ReleaseQAChecklistTests {
         for requirement in [
             "SHA256SUMS", "qa-release.sh", "qualification-log.json", "release-notes.md",
             "appcast.xml", "spdx.json", "/usr/bin/ditto", "/usr/bin/unzip -tq",
+            "verify_candidate_digest", "actual_digest", "does not match the candidate DMG bytes",
         ] {
             #expect(builder.contains(requirement), "QA handoff builder must contain \(requirement)")
         }

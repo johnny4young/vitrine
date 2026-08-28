@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Testing
 
@@ -35,6 +36,33 @@ struct BoundedFileReaderTests {
             _ = try BoundedFileReader.read(
                 from: directory.appendingPathComponent("missing"), limit: 10)
         }
+    }
+
+    @Test func rejectsAFIFOWithoutWaitingForAWriter() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrineBoundedReader-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fifo = directory.appendingPathComponent("input.fifo")
+        let result = fifo.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return Int32(-1) }
+            return mkfifo(path, 0o600)
+        }
+        #expect(result == 0)
+
+        #expect(throws: BoundedFileReader.ReadError.notRegularFile) {
+            _ = try BoundedFileReader.read(from: fifo, limit: 10)
+        }
+    }
+
+    @Test func followsASymlinkOnlyWhenItsOpenedDescriptorIsRegular() throws {
+        let bytes = Data("hello".utf8)
+        let (directory, target) = try temporaryFile(data: bytes)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let link = directory.appendingPathComponent("linked-input")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+        #expect(try BoundedFileReader.read(from: link, limit: bytes.count) == bytes)
     }
 
     @Test func classifiesGrowingAndShrinkingFilesDeterministically() {

@@ -8,7 +8,7 @@
       :root { font-family: system-ui, sans-serif; }
       body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #111827; color: white; }
       #status { width: min(38rem, 80vw); padding: 3rem; border-radius: 1.5rem; background: #92400e; }
-      #status.blocked { background: #065f46; }
+      #status.failed { background: #065f46; }
       #status.loaded { background: #991b1b; }
       #probe { width: 1px; height: 1px; opacity: 0.01; }
     </style>
@@ -17,9 +17,9 @@
     <main id="status">REMOTE_PENDING</main>
     <img
       id="probe"
-      src="https://example.com/favicon.ico"
+      src="https://httpbin.org/image/png"
       alt="remote probe"
-      onerror="document.getElementById('status').className='blocked';document.getElementById('status').textContent='REMOTE_BLOCKED'"
+      onerror="document.getElementById('status').className='failed';document.getElementById('status').textContent='REMOTE_REQUEST_FAILED — VERIFY CONTROL'"
       onload="document.getElementById('status').className='loaded';document.getElementById('status').textContent='REMOTE_LOADED — FAIL'"
     >
   </body>

@@ -22,12 +22,21 @@ can launch real WebKit and render pasted HTML while offline.
 ## 2. Pasted HTML blocks a remote subresource
 
 1. Reconnect the Mac.
-2. Run `pbcopy < webkit/remote-resource-blocked.html` and trigger Vitrine.
-3. Wait for the visible marker to settle, then export the result.
-4. Pass only if it reads `REMOTE_BLOCKED`. `REMOTE_LOADED — FAIL` is a release blocker.
+2. Run `webkit/verify-remote-probe.sh evidence before`. This must download and validate
+   the exact control PNG successfully.
+3. Run `pbcopy < webkit/remote-resource-blocked.html` and trigger Vitrine.
+4. Wait for the visible marker to settle, then export the result.
+5. Run `webkit/verify-remote-probe.sh evidence after`. This must succeed and confirm the
+   before/after control PNG bytes are identical.
+6. Pass only if both control runs succeeded and the rendered marker reads
+   `REMOTE_REQUEST_FAILED — VERIFY CONTROL`. `REMOTE_LOADED — FAIL` is a release blocker.
 
-The fixture deliberately requests `https://example.com/favicon.ico`. The pasted-HTML
-policy must block it; the marker makes an accidental successful load visible.
+The fixture and control script both request `https://httpbin.org/image/png`. An `onerror`
+marker alone is insufficient evidence because DNS, TLS, HTTP, or image-decoding failures
+could produce the same event. The two successful controls prove the public image was
+available immediately around the installed-candidate run; the rendered failure between
+them is the clean-Mac qualification evidence. Deterministic content-rule tests remain the
+policy proof.
 
 ## 3. Real public URL capture
 

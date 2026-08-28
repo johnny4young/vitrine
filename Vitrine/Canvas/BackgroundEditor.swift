@@ -380,8 +380,10 @@ struct ImageBackgroundEditor: View {
             } catch is CancellationError {
                 return
             } catch let error as BackgroundImageStore.ImportError {
+                guard !Task.isCancelled else { return }
                 importError = error.message
             } catch {
+                guard !Task.isCancelled else { return }
                 importError = BackgroundImageStore.ImportError.downloadFailed.message
             }
         }

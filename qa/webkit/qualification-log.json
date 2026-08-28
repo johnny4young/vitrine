@@ -17,7 +17,7 @@
       "tester": "",
       "scenarios": [
         { "id": "local-html-offline", "status": "not-run", "evidence": "", "notes": "" },
-        { "id": "local-html-remote-block", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "local-html-remote-block", "status": "not-run", "controlBefore": "", "renderedMarker": "", "controlAfter": "", "evidence": "", "notes": "" },
         { "id": "public-example", "status": "not-run", "evidence": "", "notes": "" },
         { "id": "loopback-rejection", "status": "not-run", "evidence": "", "notes": "" },
         { "id": "private-destination-rejection", "status": "not-run", "evidence": "", "notes": "" }
@@ -33,7 +33,7 @@
       "tester": "",
       "scenarios": [
         { "id": "local-html-offline", "status": "not-run", "evidence": "", "notes": "" },
-        { "id": "local-html-remote-block", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "local-html-remote-block", "status": "not-run", "controlBefore": "", "renderedMarker": "", "controlAfter": "", "evidence": "", "notes": "" },
         { "id": "public-example", "status": "not-run", "evidence": "", "notes": "" },
         { "id": "loopback-rejection", "status": "not-run", "evidence": "", "notes": "" },
         { "id": "private-destination-rejection", "status": "not-run", "evidence": "", "notes": "" }

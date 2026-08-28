@@ -37,8 +37,10 @@ VISUAL_RESULT_BUNDLE ?= build/screenshot-tour.xcresult
 # local runs infer Sequoia/Tahoe from the host major version.
 COVERAGE_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/test-coverage.xcresult)
 COVERAGE_PLATFORM ?= $(shell major=$$(sw_vers -productVersion | cut -d. -f1); \
-	case "$$major" in 15) echo sequoia ;; 26) echo tahoe ;; *) echo unsupported ;; esac)
+	if [ "$$major" = 15 ]; then echo sequoia; \
+	elif [ "$$major" = 26 ]; then echo tahoe; else echo unsupported; fi)
 COVERAGE_BASELINE ?= scripts/coverage-baselines/$(COVERAGE_PLATFORM).json
+COVERAGE_BASE_REF_FLAG := $(if $(COVERAGE_BASE_REF),--base-ref "$(COVERAGE_BASE_REF)",)
 
 # Dynamic-memory evidence is intentionally local and review-driven. It reuses the normal
 # Debug build and resolved exact package checkouts, then launches under `leaks`; optional
@@ -147,7 +149,8 @@ test-coverage: project
 		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" test
 	python3 scripts/check-coverage.py \
 		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \
-		--baseline "$(COVERAGE_BASELINE)"
+		--baseline "$(COVERAGE_BASELINE)" \
+		$(COVERAGE_BASE_REF_FLAG)
 
 ## coverage-check: validate parser, scope, and fail-closed behavior without Xcode
 coverage-check:
