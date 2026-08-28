@@ -47,6 +47,16 @@ independently persistent background component: the app launches it, monitors it,
 terminates it on shutdown; the helper also exits when its exact containing app process
 disappears.
 
+The helper's generated Info.plist is embedded in its Mach-O image rather than installed
+as a separate bundle. This binds the stable
+`com.johnny4young.vitrine.menubar-helper` identity into its code signature so Tahoe can
+initialize the inherited sandbox before `main`; it does not add a capability or a new
+background registration mechanism.
+
+The launcher also requires the app and helper signatures to have the same non-empty team
+identifier. Ad-hoc source builds therefore use the in-process status item rather than
+attempting an App Sandbox inheritance relationship their signatures cannot establish.
+
 | Entitlement | Status | Reason and guard |
 | --- | --- | --- |
 | `com.apple.security.app-sandbox` | Required | The child remains inside the App Sandbox. |

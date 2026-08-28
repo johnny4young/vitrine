@@ -88,7 +88,9 @@ extension XCTestCase {
     /// Sequoia can inject XCTAutomationSupport after `applicationDidFinishLaunching`
     /// and abort the app with a private libdispatch main-queue assertion. Clicking the
     /// in-process status item exercises the production interaction after the automation
-    /// handshake, without retrying or hiding an unexpected process exit.
+    /// handshake. On multi-display hosts, XCTest can expose the item at a valid negative
+    /// coordinate yet refuse to click it; explicitly opted-in tests then ask the same app
+    /// process to open the panel at its deterministic on-screen automation anchor.
     @MainActor
     @discardableResult
     func openMenuBarPanel(
@@ -97,22 +99,24 @@ extension XCTestCase {
         line: UInt = #line
     ) -> XCUIElement {
         let panel = element("menubar-panel", in: app)
-        guard waitForHittableElement("menubar-status-item", in: app, timeout: 8) else {
+        if waitForHittableElement("menubar-status-item", in: app, timeout: 8) {
+            hittableElement("menubar-status-item", in: app).click()
+        } else if let token = MenuBarTestControl.token(in: app.launchArguments) {
+            DistributedNotificationCenter.default().postNotificationName(
+                MenuBarTestControl.notificationName,
+                object: token,
+                userInfo: nil,
+                options: [.deliverImmediately])
+        } else {
             assertHittable(
-                "menubar-status-item",
-                in: app,
-                "The in-process menu-bar item is not reachable",
-                timeout: 0,
-                file: file,
-                line: line)
-            return panel
+                "menubar-status-item", in: app,
+                "The in-process menu-bar item is not reachable and the fallback is disabled",
+                timeout: 0, file: file, line: line)
         }
-
-        hittableElement("menubar-status-item", in: app).click()
 
         XCTAssertTrue(
             panel.waitForExistence(timeout: 5),
-            "The menu-bar panel did not open after clicking the status item",
+            "The menu-bar panel did not open after the post-launch interaction",
             file: file,
             line: line)
         return panel

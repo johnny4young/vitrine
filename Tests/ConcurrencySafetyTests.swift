@@ -59,4 +59,34 @@ struct ConcurrencySafetyTests {
         #expect(stage.contains("dropTask?.cancel()"))
         #expect(stage.contains(".onDisappear"))
     }
+
+    /// OCR and network image imports update view-bound state after suspension. Keep
+    /// those operations owned and cancelled on teardown, and prevent a batch-export
+    /// sheet from disappearing while its file writes are still in flight.
+    @Test func viewBoundLongRunningTasksHaveLifecycleOwnership() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let editor = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("Vitrine/Editor/EditorView.swift"),
+            encoding: .utf8)
+        let stage = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Editor/EditorView+Stage.swift"), encoding: .utf8)
+        let background = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Canvas/BackgroundEditor.swift"), encoding: .utf8)
+        let carousel = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Export/CarouselExportView.swift"), encoding: .utf8)
+
+        #expect(editor.contains("@State var imageProcessingTask: Task<Void, Never>?"))
+        #expect(stage.contains("imageProcessingTask?.cancel()"))
+        #expect(stage.contains("catch is CancellationError"))
+        #expect(background.contains("@State private var downloadTask: Task<Void, Never>?"))
+        #expect(background.contains("downloadTask?.cancel()"))
+        #expect(background.contains("try Task.checkCancellation()"))
+        #expect(background.components(separatedBy: "guard !Task.isCancelled").count - 1 == 2)
+        #expect(carousel.contains(".interactiveDismissDisabled(isExporting)"))
+    }
 }

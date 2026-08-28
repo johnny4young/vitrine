@@ -476,6 +476,9 @@ jobs:
             cat "${NOTES_PATH}"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Build clean-Mac QA handoff
+        run: ./scripts/build-qa-handoff.sh "${{ steps.checksum.outputs.version }}"
+
       # The tag run stops here. Nothing public, no appcast feed, no Homebrew tap,
       # and no website changes occur until a maintainer promotes this exact artifact.
       - name: Upload signed release candidate
@@ -489,6 +492,7 @@ jobs:
             dist/vitrine-cask-update.txt
             dist/appcast.xml
             dist/release-notes.md
+            dist/*-qa-handoff.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -505,8 +509,8 @@ jobs:
             echo "- DMG SHA-256: \`${SHA256}\`"
             echo "- Artifact: \`release-candidate-${GITHUB_REF_NAME}\` (retained for 30 days)"
             echo ""
-            echo "Download this artifact on clean Sequoia and Tahoe Macs, run the documented"
-            echo "activation and release QA checklist, and only then dispatch this workflow"
+            echo "Extract the QA handoff ZIP on clean Sequoia and Tahoe Macs, run its"
+            echo "checksummed activation and real-WebKit qualification checklist, and only then dispatch this workflow"
             echo "with the tag, run ID, SHA-256, and \`CLEAN-MAC-QA-PASSED\` confirmation."
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -549,7 +553,8 @@ jobs:
             "dist/Vitrine-${VERSION}.spdx.json" \
             "dist/vitrine-cask-update.txt" \
             "dist/appcast.xml" \
-            "dist/release-notes.md"
+            "dist/release-notes.md" \
+            "dist/Vitrine-${VERSION}-qa-handoff.zip"
           do
             if [ ! -s "${file}" ]; then
               echo "::error::Candidate artifact is missing ${file}."
@@ -670,7 +675,8 @@ jobs:
             "dist/Vitrine-${VERSION}.spdx.json" \
             "dist/vitrine-cask-update.txt" \
             "dist/appcast.xml" \
-            "dist/release-notes.md"
+            "dist/release-notes.md" \
+            "dist/Vitrine-${VERSION}-qa-handoff.zip"
           do
             if [ ! -s "${file}" ]; then
               echo "::error::Promotion candidate is missing ${file}."

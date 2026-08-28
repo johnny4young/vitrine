@@ -196,6 +196,28 @@ final class EditorWindowController: NSObject {
         showWindow(for: EditorWindowIdentity(index: index))
     }
 
+    /// Opens one additional editor for the opt-in dynamic-memory journey and returns
+    /// its stable index so the exact window can be rendered and closed again.
+    func openWindowForMemoryJourney() -> Int {
+        let index = EditorWindowIdentity.nextAvailableIndex(notIn: Set(windows.keys))
+        showWindow(for: EditorWindowIdentity(index: index))
+        return index
+    }
+
+    /// The exact additional editor created by the dynamic-memory journey.
+    func windowForMemoryJourney(at index: Int) -> NSWindow? {
+        windows[index]
+    }
+
+    /// Closes one dynamic-memory editor through the normal delegate teardown path.
+    func closeWindowForMemoryJourney(at index: Int) {
+        windows[index]?.close()
+    }
+
+    /// Current controller-owned editor count, used to prove each churn iteration
+    /// returned to its baseline rather than merely hiding a window.
+    var liveWindowCountForMemoryJourney: Int { windows.count }
+
     /// Shows the editor preloaded with the onboarding sample snippet when the primary
     /// window has no code yet, so a first-run user can explore the flow without external
     /// clipboard content.

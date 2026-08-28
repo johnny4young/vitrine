@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "platform": "macOS 26 Tahoe",
+  "sourceRevision": "9bc4704f41da4d07e31976b755c4709f8eb50335",
+  "productionLineCoverage": 0.46953032286479807,
+  "measuredWith": "GitHub Actions run 33135016933; macOS 26.5.2 (25F84), Xcode 26.6, Swift 6.3.3",
+  "coveredLines": 38378,
+  "executableLines": 81737,
+  "productionTargets": [
+    "Vitrine.app",
+    "VitrineMenuBarHelper",
+    "vitrine-cli"
+  ]
+}

@@ -39,7 +39,7 @@ already-shipping identity of the app, listed here so a submission is reproducibl
 | Marketing version | `1.1.0` | `project.yml` → `MARKETING_VERSION` (the `Info.plist` `CFBundleShortVersionString` expands from it). |
 | Build number | `34` | `project.yml` → `CURRENT_PROJECT_VERSION` (the `Info.plist` `CFBundleVersion` expands from it). |
 | Copyright | `© 2026 johnny4young. MIT-licensed.` | `Info.plist` → `NSHumanReadableCopyright`. |
-| Minimum macOS | 14.0 (Sonoma) | `project.yml` → `deploymentTarget.macOS`; `Info.plist` `LSMinimumSystemVersion` expands from `MACOSX_DEPLOYMENT_TARGET`. |
+| Minimum macOS | 15.0 (Sequoia) | `project.yml` → `deploymentTarget.macOS`; `Info.plist` `LSMinimumSystemVersion` expands from `MACOSX_DEPLOYMENT_TARGET`. |
 | App icon | `AppIcon` asset set | `project.yml` → `ASSETCATALOG_COMPILER_APPICON_NAME`. |
 | Localizations | English (development language), Spanish | `Info.plist` → `CFBundleLocalizations`; strings live in `Localizable.xcstrings`. |
 | Agent (no Dock icon) | `LSUIElement = true` | `Info.plist`. A menu-bar agent; documented in the App Review notes below so a reviewer expects no Dock icon. |
@@ -129,9 +129,13 @@ app to remain reachable. Its entitlement file contains exactly
 `com.apple.security.app-sandbox` and `com.apple.security.inherit`, so it inherits the
 containing app's sandbox and requests no independent file, network, Screen Recording, or
 Accessibility capability. It is not a login item or persistent background service and
+its raw Mach-O embeds a generated Info.plist with the stable
+`com.johnny4young.vitrine.menubar-helper` identity required for Tahoe sandbox startup. It
 exits when the exact containing app process is gone. The App Store dry run verifies that
 the helper remains embedded while removing the direct-download-only CLI and Sparkle
-payloads.
+payloads. At runtime the launcher also requires the app and helper to carry the same
+non-empty signing team before it uses this boundary; ad-hoc source builds retain the
+in-process status item instead.
 
 ## App Sandbox and entitlements (App Store-compatible)
 

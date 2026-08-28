@@ -230,6 +230,23 @@ struct FileInputLoaderLoadTests {
             _ = try FileInputLoader.load(from: url)
         }
     }
+
+    @Test func oversizedFileIsRejectedBeforeDecoding() throws {
+        let url = try temporaryFile(
+            named: "huge.swift",
+            data: Data(repeating: UInt8(ascii: "a"), count: FileInputLoader.maximumByteCount + 1))
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        #expect(throws: FileInputLoader.LoadError.tooLarge) {
+            _ = try FileInputLoader.load(from: url)
+        }
+    }
+
+    @Test func directoryIsUnreadable() {
+        #expect(throws: FileInputLoader.LoadError.unreadable) {
+            _ = try FileInputLoader.load(from: FileManager.default.temporaryDirectory)
+        }
+    }
 }
 
 // MARK: - Applying a drop into the config (replace / append / metadata)

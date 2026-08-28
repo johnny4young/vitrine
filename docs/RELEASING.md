@@ -129,9 +129,10 @@ CI is a release gate, not just a compile check.
 
 ### Supported macOS matrix
 
-`project.yml` remains the source of truth and keeps a macOS 14.0 deployment target;
-this band does not remove the existing Sonoma-compatible binary floor. Active runtime
-certification starts with the versions requested for current support:
+`project.yml` remains the source of truth and sets the public deployment target to
+macOS 15.0 Sequoia. Every app-owned target uses that same floor, and the Homebrew cask
+declares `:sequoia` so unsupported installations fail before launch. Active runtime
+certification covers:
 
 | Runtime | GitHub label | Required gates |
 | --- | --- | --- |
@@ -154,6 +155,13 @@ An unreleased future macOS major is not silently claimed as supported. Add its e
 runner label to both matrices, obtain a green build/UI/visual run, and update this table
 before calling that runtime certified.
 
+The separate **Xcode 27 preview** workflow is a weekly/manual, non-required early-warning
+lane on GitHub's `xcode-27` preview image. That image uses a macOS 26 host and the preview
+Xcode/SDK; the lane runs lint, a Debug build, and unit tests only. It does not run on pull
+requests, does not publish, and is not a claim of macOS 27 runtime support. Promote it to
+the required compatibility matrix only after GitHub provides the corresponding macOS
+runner as GA and the full runtime, UI, visual, performance, and clean-Mac evidence exists.
+
 ### Unit-test lanes
 
 `make test` is the default local feedback lane. It runs the complete Swift Testing
@@ -162,23 +170,42 @@ test process finishes successfully but `xcodebuild` stalls while finalizing cove
 This changes instrumentation only; it does not select or skip tests.
 
 `make test-coverage` runs the same complete suite with coverage explicitly enabled.
-CI uses this lane on both supported macOS rows, retains the `.xcresult`, and publishes
-per-target `xccov` output in the job summary. Keep the lanes separate: local feedback
-must not depend on coverage finalization, and CI coverage must not depend implicitly on
-the Xcode scheme default.
+The lane always writes an `.xcresult` and passes its `xccov --json` report and raw line
+archive through `scripts/check-coverage.py`; an absent, empty, or malformed report fails
+the gate rather than becoming a best-effort warning. CI selects the committed baseline
+for its Sequoia or Tahoe row, retains failure bundles, and publishes per-target `xccov`
+output in the job summary. The weighted coverage across `Vitrine.app`, `vitrine-cli`,
+and `VitrineMenuBarHelper` may not fall more than one percentage point below the
+pre-hardening baseline for that OS.
+
+The same guard requires at least 80% of changed executable lines in critical logic to be
+covered. Its unit-coverage scope is `Models`, `CLI`, `Pro`, `Terminal`, `Rendering`, and
+the explicit non-visual policy/renderer files in `WebRendering`. SwiftUI/AppKit views and
+window controllers are deliberately outside that calculation: XCUITest and the strict
+visual tour protect those surfaces. Baselines live under
+`scripts/coverage-baselines/`; they are GitHub-hosted runner baselines because WebKit
+subprocess availability can change which qualification tests execute in a restricted
+local environment. Update one only from a complete passing hosted run on the named
+OS/toolchain, record its exact covered/executable counts, and pin the source revision.
+For a local comparison, override `COVERAGE_BASELINE` with a same-environment baseline;
+do not weaken the committed hosted threshold to accommodate a local skip. Run
+`make coverage-check` for the parser's fast self-test. Keep the lanes separate: local
+feedback must not depend on coverage finalization, and CI coverage must not depend
+implicitly on the Xcode scheme default.
 
 ### Dynamic memory evidence
 
 Run `make memory-smoke` before a release candidate and after changes to window,
 renderer, observer, or asynchronous-task lifecycles. It runs the normal headless Debug
 build, reusing Xcode's already-resolved exact package checkouts, then launches a selected
-isolated journey under Apple's `leaks --atExit`. The default editor journey exercises
-window rendering and repeated snapshot rasterization. The image journey imports and
-decodes a deterministic sequence through the production `BackgroundImageStore`, replaces
-and clears the live foreground image, rejects duplicate window snapshots so disconnected
-UI state cannot pass silently, and removes its synthetic temporary store before reporting
-completion. The raw memgraph, full stack report, launch log, and a machine-readable
-summary are retained below `build/memory-smoke/<timestamp>/`.
+isolated journey under Apple's `leaks --atExit`. The four journeys cover repeated editor
+snapshot rasterization; deterministic foreground-image import, decode, replacement, and
+teardown; twenty additional editor window open/render/close cycles; and ten distinct real
+local-HTML WebKit session captures. The image and WebKit journeys reject duplicate output,
+while window churn requires a capture from the exact newly-opened editor. The image journey also removes its synthetic
+temporary store before reporting completion. The raw journey-named memgraph, full stack
+report, launch log, and a machine-readable summary are retained below
+`build/memory-smoke/<timestamp>/`.
 
 ```bash
 make memory-smoke
@@ -186,9 +213,18 @@ make memory-smoke
 # Exercise distinct foreground-image imports, decodes, replacements, and teardown.
 make memory-smoke MEMORY_JOURNEY=image-import-cycle
 
-# Compare counts and footprints with an earlier run from the same OS, architecture,
-# Xcode, and journey. The report marks either kind of drift instead of pretending the
-# evidence is comparable.
+# Exercise one additional editor at a time through normal window teardown.
+make memory-smoke MEMORY_JOURNEY=window-churn
+
+# Exercise newly-created non-persistent WebKit sessions with local HTML only.
+make memory-smoke MEMORY_JOURNEY=web-snapshot-cycle
+
+# Run editor, image, window, and WebKit journeys sequentially against one build.
+make memory-smoke-all
+
+# Compare counts and footprints only with an earlier run from the exact same clean
+# commit, OS, architecture, Xcode, and journey. The report marks any provenance drift
+# instead of pretending the evidence is comparable.
 make memory-smoke \
   MEMORY_JOURNEY=image-import-cycle \
   MEMORY_BASELINE=build/memory-smoke/<earlier-run>/report.json
@@ -202,9 +238,12 @@ also contributes to the peak footprint. Review the root stacks in `leaks.txt` an
 memgraph before classifying a regression. The command fails when the build, journey,
 capture, or report is invalid, but it does not silently allowlist framework roots or
 turn their mere presence into an app failure. Keep all generated evidence local and
-untracked. The image journey deliberately uses local bounded fixtures; it does not replace
-the unit coverage for oversized/corrupt inputs and does not simulate an external item
-provider that never calls back.
+untracked. Compare only repeated, same-provenance root or footprint growth; do not change
+ownership based only on allocation-path frames. The image journey deliberately uses local
+bounded fixtures; it does not replace the unit coverage for oversized/corrupt inputs and
+does not simulate an external item provider that never calls back. The local-HTML WebKit
+journey does not qualify public network capture, and the window journey does not cover
+every auxiliary window type.
 
 ### Running the UI tests
 
@@ -776,15 +815,20 @@ the only place this check is meaningful.
 
 `scripts/qa-release.sh` drives it. The script is deliberately self-contained: it needs
 only the artifact and the stock macOS command-line tools (`codesign`, `spctl`,
-`stapler`, `hdiutil`, `plutil`, `lipo`, `base64`, `sw_vers`, `uname`, `stat`), so you can copy
-that one file plus the candidate DMG onto the clean Mac and run it without checking out
-the repository. Manual promotion reruns the same suite before publication; the
+`stapler`, `hdiutil`, `plutil`, `lipo`, `base64`, `sw_vers`, `uname`, `stat`), so it can run
+without the repository. The candidate artifact also contains
+`Vitrine-<version>-qa-handoff.zip`: the exact DMG, checksum, SBOM, appcast, cask update,
+release notes, QA script, real-WebKit fixtures, and a structured log template in one
+checksummed bundle. Use that ZIP for external qualification rather than assembling files
+by hand. Manual promotion reruns the automated suite before publication; the
 `published-qa` job downloads and validates the public bytes once more before downstream
 channels move.
 
 ```bash
-# On the clean Mac, against the downloaded release DMG:
-./qa-release.sh ~/Downloads/Vitrine-0.1.0.dmg
+# On each clean Mac, after extracting the candidate handoff ZIP:
+cd Vitrine-1.2.0-qa-handoff
+shasum -a 256 -c SHA256SUMS
+./qa-release.sh Vitrine-1.2.0.dmg
 # or, against an already-extracted app:
 ./qa-release.sh /Applications/Vitrine.app
 # with no argument it auto-detects the newest dist/*.dmg.
@@ -803,7 +847,8 @@ app inside it: `codesign --verify --deep --strict`, the hardened-runtime flag, `
 -a` (Gatekeeper validation), `stapler validate` (so first launch works offline), and
 `plutil` Info.plist validation (including `LSUIElement`, the no-Dock-icon marker).
 It also requires the embedded `VitrineMenuBarHelper` executable and proves that its
-signature retains `com.apple.security.app-sandbox` plus
+signature binds the stable `com.johnny4young.vitrine.menubar-helper` identifier and
+retains `com.apple.security.app-sandbox` plus
 `com.apple.security.inherit`. It enumerates every executable Mach-O in the downloaded app with
 `lipo -archs` and rejects the artifact if the app, embedded CLI, helper, framework, or
 XPC service lacks either arm64 or x86_64. For the direct-download PRO channel, it additionally
@@ -859,15 +904,39 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
 15. **N to N+1 update** — install the previous direct-download release in a disposable QA
     location, choose **Check for Updates…**, click **Install Update**, and confirm Vitrine
     relaunches on the candidate version without an installer or authorization error.
-16. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
+16. **Real local HTML WebKit** — disconnect every network interface, copy
+    `webkit/local-safe.html` with `pbcopy`, trigger Vitrine, and export a snapshot that
+    visibly contains `VITRINE_LOCAL_SAFE`. The deterministic UI-test renderer is not
+    acceptable evidence for this step.
+17. **Remote subresource blocked** — reconnect, run
+    `webkit/verify-remote-probe.sh evidence before`, copy
+    `webkit/remote-resource-blocked.html`, trigger Vitrine, export the rendered
+    `REMOTE_REQUEST_FAILED — VERIFY CONTROL` marker, and then run
+    `webkit/verify-remote-probe.sh evidence after`. Both controls must succeed and their
+    PNG bytes must be identical. `REMOTE_LOADED — FAIL` is a release blocker. The
+    rendered `onerror` marker alone is not sufficient evidence.
+18. **Real public URL WebKit** — copy `https://example.com`, accept the disclosure when
+    shown, and export a real non-placeholder capture of the page.
+19. **Loopback rejected immediately** — submit the `127.0.0.1` entry from
+    `webkit/blocked-destinations.txt` and require the domain error before WebKit navigation
+    begins; a later timeout is not a pass.
+20. **Private destinations rejected immediately** — repeat with the private and
+    link-local entries and require the same pre-navigation rejection.
+21. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
     leaves no menu-bar icon and no login item behind.
 
-Record one QA log entry per release (environment header + each checklist result). For PRO,
-record only the dedicated QA license label or a **redacted** order/license identifier and
-the outcome. **Never record** the raw license key, embedded private signing key, or token
-contents. Before the first public sale — and whenever checkout, pricing, fulfillment email,
-or product configuration changes — also complete a production-mode checkout from the public
-website and confirm the license email arrives. The optional
+These fixtures intentionally do **not** certify public-to-private redirect revalidation.
+That policy remains protected by deterministic navigation-delegate tests; never mark it as
+clean-Mac validated from this manual journey.
+
+Complete both platform entries in `webkit/qualification-log.json`, change
+`overallStatus` only after every required scenario passes, and keep screenshots/exports in
+the handoff's `evidence/` directory. For PRO, record only the dedicated QA license label or a
+**redacted** order/license identifier and the outcome. **Never record** the raw license key,
+embedded private signing key, token contents, private page data, or cookies. Before the first
+public sale — and whenever checkout, pricing, fulfillment email, or product configuration
+changes — also complete a production-mode checkout from the public website and confirm the
+license email arrives. The optional
 `codesign`/`spctl`/`plutil`/`stapler` checks above run automatically; the interactive items
 above are the manual half. See [`ACTIVATION.md`](ACTIVATION.md) for exact secret-safe CLI and
 token-permission commands.
@@ -901,5 +970,6 @@ license again.
 - [ ] **Release artifact QA on a clean Mac** done: `scripts/qa-release.sh` run against
       the published DMG, its environment header + manual checklist recorded in the
       release QA log (including secret-safe online activation, offline relaunch,
-      PRO-only CLI multi-size, and `0600` token proof), and any failure triaged as app bug
-      vs. signing/notarization
+      PRO-only CLI multi-size, `0600` token proof, and all installed-candidate WebKit
+      fixtures), the structured Sequoia and Tahoe entries completed, and any failure
+      triaged as app bug vs. signing/notarization

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "platform": "macOS 15 Sequoia",
+  "sourceRevision": "9bc4704f41da4d07e31976b755c4709f8eb50335",
+  "productionLineCoverage": 0.46936351055100367,
+  "measuredWith": "GitHub Actions run 33135016933; macOS 15.7.7 (24G720), Xcode 26.3, Swift 6.2.4",
+  "coveredLines": 38324,
+  "executableLines": 81651,
+  "productionTargets": [
+    "Vitrine.app",
+    "VitrineMenuBarHelper",
+    "vitrine-cli"
+  ]
+}

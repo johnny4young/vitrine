@@ -43,8 +43,9 @@
 #   DMG open, drag-to-Applications, first launch past Gatekeeper, the menu-bar icon
 #   appearing with NO Dock icon, quick capture, editor export, settings,
 #   launch-at-login, a real PRO activation, offline relaunch, PRO-only CLI output,
-#   token-file permissions, a real Sparkle N-to-N+1 install, and a clean uninstall. These are interactive behaviors
-#   no headless check can prove; the script prints them as a numbered log to walk
+#   token-file permissions, real installed-candidate WebKit journeys, a real Sparkle
+#   N-to-N+1 install, and a clean uninstall. These are interactive behaviors no
+#   headless check can prove; the script prints them as a numbered log to walk
 #   through and record per release (see docs/RELEASING.md).
 #
 # Exit status:
@@ -56,6 +57,9 @@
 #   1  the artifact could not be found or mounted (usage / environment error).
 #
 set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
 
 # --- Result accounting ------------------------------------------------------
 # Track app-level vs. signing-level failures separately so the final summary —
@@ -333,6 +337,13 @@ fi
 MENU_BAR_HELPER="$APP/Contents/MacOS/VitrineMenuBarHelper"
 if [ -x "$MENU_BAR_HELPER" ]; then
 	pass "Menu-bar helper present and executable"
+	HELPER_SIGNATURE_INFO="$(codesign -dvv "$MENU_BAR_HELPER" 2>&1 || true)"
+	if printf '%s\n' "$HELPER_SIGNATURE_INFO" \
+		| grep -Fqx 'Identifier=com.johnny4young.vitrine.menubar-helper'; then
+		pass "Menu-bar helper has its stable sandbox identity"
+	else
+		fail_app "menu-bar helper is missing its stable com.johnny4young.vitrine.menubar-helper identity"
+	fi
 	HELPER_ENTITLEMENTS_FILE="$(mktemp /tmp/vitrine-helper-entitlements.XXXXXX)"
 	if codesign -d --entitlements :- "$MENU_BAR_HELPER" \
 		> "$HELPER_ENTITLEMENTS_FILE" 2>/dev/null \
@@ -461,6 +472,20 @@ fi
 # The interactive behaviors no headless check can prove. Walk these on the clean
 # Mac and record the result per release (docs/RELEASING.md keeps the log template).
 section "Manual checklist — run these by hand on this clean Mac"
+
+WEBKIT_QUALIFICATION_DIR="${VITRINE_WEBKIT_QUALIFICATION_DIR:-}"
+if [ -z "$WEBKIT_QUALIFICATION_DIR" ] && [ -d "${SCRIPT_DIR}/webkit" ]; then
+	WEBKIT_QUALIFICATION_DIR="${SCRIPT_DIR}/webkit"
+elif [ -z "$WEBKIT_QUALIFICATION_DIR" ] && [ -d "${SCRIPT_DIR}/../qa/webkit" ]; then
+	WEBKIT_QUALIFICATION_DIR="${SCRIPT_DIR}/../qa/webkit"
+fi
+if [ -n "$WEBKIT_QUALIFICATION_DIR" ] && [ -s "${WEBKIT_QUALIFICATION_DIR}/manifest.json" ]; then
+	pass "WebKit qualification fixtures: ${WEBKIT_QUALIFICATION_DIR}"
+	note "Record both platform runs in ${WEBKIT_QUALIFICATION_DIR}/qualification-log.json"
+else
+	warn "WebKit qualification fixtures are missing; use the candidate QA handoff ZIP before promotion"
+fi
+
 cat <<'CHECKLIST'
     Work top to bottom; record pass/fail for each in the release QA log.
 
@@ -500,9 +525,27 @@ cat <<'CHECKLIST'
                                   Updates…, click Install Update, and confirm Vitrine
                                   relaunches on the candidate version without an
                                   installer or authorization error.
-    [ ] 16. Uninstall         — quit Vitrine, move it to the Trash (or
+    [ ] 16. Local HTML WebKit — disconnect networking, paste local-safe.html, and
+                                  require a real exported snapshot containing
+                                  VITRINE_LOCAL_SAFE.
+    [ ] 17. Remote blocked    — run verify-remote-probe.sh before and after pasting
+                                  remote-resource-blocked.html; both controls must
+                                  succeed with identical bytes, require the rendered
+                                  REMOTE_REQUEST_FAILED marker, and treat REMOTE_LOADED
+                                  as a release blocker.
+    [ ] 18. Public URL WebKit — capture and export the real https://example.com page,
+                                  not the deterministic UI-test placeholder.
+    [ ] 19. Loopback reject   — submit the 127.0.0.1 fixture and require an immediate
+                                  domain rejection before WebKit navigation begins.
+    [ ] 20. Private reject    — submit the private/link-local fixtures and require an
+                                  immediate domain rejection before WebKit navigation.
+    [ ] 21. Uninstall         — quit Vitrine, move it to the Trash (or
                                   `brew uninstall --cask vitrine`); it leaves no
                                   menu-bar icon and no login item behind.
+
+    Evidence boundary: this manual journey does NOT validate a public-to-private
+    redirect. That policy remains covered by deterministic navigation-delegate tests;
+    never claim it as clean-Mac evidence from these fixtures.
 CHECKLIST
 
 # --- Summary + exit ---------------------------------------------------------

@@ -202,6 +202,14 @@ struct CLIRecipeTests: CLITestSupport {
                 "render", "in.swift", "--out", "out.png", "--recipe", oversized.path,
             ])
         }
+
+        #expect(
+            throws: CLIError.recipeUnreadable(path: directory.path)
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "out.png", "--recipe", directory.path,
+            ])
+        }
     }
 
     @Test func recipeRejectsImageAndConflictingMultiSizeOutputDefaults() throws {

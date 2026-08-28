@@ -65,6 +65,34 @@ struct PresetStoreImportTests {
         #expect(store.userPresets.first?.name == "Keep")
     }
 
+    @Test func importRejectsMoreThanOneThousandDecodedPresets() throws {
+        let presets = (0...StylePresetDocument.maximumPresetCount).map { index in
+            StylePreset(name: "Preset \(index)", style: PresetTestFixtures.sampleStyle())
+        }
+        let data = try StylePresetDocument(presets: presets).jsonData()
+        let store = PresetStore(defaults: PresetTestFixtures.freshDefaults())
+
+        #expect(throws: StylePresetDocument.ImportError.tooManyPresets) {
+            _ = try store.importPresets(from: data)
+        }
+        #expect(store.userPresets.isEmpty)
+    }
+
+    @Test func fileImportRejectsInputsAboveOneMegabyte() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrinePresetImport-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("presets.json")
+        try Data(repeating: 0x20, count: PresetFileExchange.maximumByteCount + 1).write(to: file)
+
+        let store = PresetStore(defaults: PresetTestFixtures.freshDefaults())
+        #expect(throws: StylePresetDocument.ImportError.fileTooLarge) {
+            _ = try PresetFileExchange.importFile(at: file, store: store)
+        }
+        #expect(store.userPresets.isEmpty)
+    }
+
     @Test func exportedDataIsARecognizablePresetEnvelope() throws {
         // The store exports a full preset *document* (format marker + schema), not a
         // bare preset array, so the bytes are independently recognizable as a Vitrine

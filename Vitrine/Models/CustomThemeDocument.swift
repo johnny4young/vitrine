@@ -18,6 +18,9 @@ struct CustomThemeDocument: Codable, Equatable {
     /// The current theme-file schema version. Bump when the envelope's shape or
     /// meaning changes; older files are migrated or rejected, never misread.
     static let currentSchemaVersion = 1
+    /// Import bound that keeps one compact JSON file from creating an unbounded
+    /// theme catalog.
+    static let maximumThemeCount = 1_000
 
     var format: String
     var schemaVersion: Int
@@ -35,6 +38,11 @@ struct CustomThemeDocument: Codable, Equatable {
         case invalidPalette(ThemePalette.ValidationError)
         /// The file decoded but contained no usable themes.
         case empty
+        /// The selected file exceeds the bounded theme-file input size.
+        case fileTooLarge
+        /// The file is structurally valid but contains more entries than one import
+        /// may add safely.
+        case tooManyThemes
 
         /// A short, human-readable explanation for an alert.
         var message: String {
@@ -47,6 +55,10 @@ struct CustomThemeDocument: Codable, Equatable {
                 error.message
             case .empty:
                 "This theme file does not contain any themes."
+            case .fileTooLarge:
+                "This theme file is larger than 1 MB and was not read."
+            case .tooManyThemes:
+                "This theme file contains more than 1,000 themes."
             }
         }
     }
@@ -102,6 +114,9 @@ struct CustomThemeDocument: Codable, Equatable {
             throw ImportError.unsupportedSchemaVersion(document.schemaVersion)
         }
         guard !document.themes.isEmpty else { throw ImportError.empty }
+        guard document.themes.count <= maximumThemeCount else {
+            throw ImportError.tooManyThemes
+        }
         return document.themes.map(\.theme)
     }
 }

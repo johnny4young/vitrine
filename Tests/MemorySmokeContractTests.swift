@@ -34,12 +34,19 @@ struct MemorySmokeContractTests {
             "--journey",
             "--snapshot-loop",
             "--memory-image-cycle",
+            "--memory-window-churn",
+            "--memory-web-snapshot-cycle",
             "VITRINE_MEMORY_IMAGE_CYCLE_COMPLETE",
+            "VITRINE_MEMORY_WINDOW_CHURN_COMPLETE",
+            "VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_COMPLETE",
             "editor-snapshot",
             "image-import-cycle",
+            "window-churn",
+            "web-snapshot-cycle",
             "journey_id",
             "comparable_journey",
-            "editor.memgraph",
+            "working_tree_clean",
+            "f\"{arguments.journey}.memgraph\"",
             "leaks.txt",
             "report.json",
         ] {
@@ -50,8 +57,12 @@ struct MemorySmokeContractTests {
     @Test func makeBuildsBeforeCaptureAndRunsParserSelfTestInLint() throws {
         let makefile = try Self.text("Makefile")
         #expect(makefile.contains("memory-smoke: build memory-smoke-check"))
+        #expect(makefile.contains("memory-smoke-all: build memory-smoke-check"))
         #expect(makefile.contains("python3 scripts/run-memory-smoke.py --self-test"))
         #expect(makefile.contains(#"--journey "$(MEMORY_JOURNEY)""#))
+        #expect(
+            makefile.contains(
+                "editor-snapshot image-import-cycle window-churn web-snapshot-cycle"))
 
         let lintLine = try #require(
             makefile.components(separatedBy: .newlines).first { $0.hasPrefix("lint:") })
@@ -60,8 +71,8 @@ struct MemorySmokeContractTests {
 
     @Test func imageJourneyOwnsItsTaskAndRequiresDebugIsolation() throws {
         let handler = try Self.text("Vitrine", "App", "AppLaunchArgumentHandler.swift")
-        #expect(handler.contains("private var memoryImageCycleTask: Task<Void, Never>?"))
-        #expect(handler.contains("memoryImageCycleTask?.cancel()"))
+        #expect(handler.contains("private var memoryJourneyTask: Task<Void, Never>?"))
+        #expect(handler.contains("memoryJourneyTask?.cancel()"))
         #expect(handler.contains("debugIsolatedContainerRoot()"))
         #expect(handler.contains("session(for: .primary).settings"))
         #expect(handler.contains("unique-snapshots="))
@@ -86,7 +97,8 @@ struct MemorySmokeContractTests {
 
         let documentation = try Self.text("docs", "RELEASING.md")
         #expect(documentation.contains("evidence lane, not a zero-leak CI gate"))
-        #expect(documentation.contains("same OS, architecture"))
+        #expect(documentation.contains("same clean"))
+        #expect(documentation.contains("commit, OS, architecture, Xcode, and journey"))
         #expect(documentation.contains("generated evidence local"))
         #expect(documentation.contains("untracked"))
     }

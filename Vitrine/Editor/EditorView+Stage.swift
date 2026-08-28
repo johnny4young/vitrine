@@ -83,6 +83,9 @@ extension EditorView {
         .onDisappear {
             dropTask?.cancel()
             dropTask = nil
+            imageProcessingTask?.cancel()
+            imageProcessingTask = nil
+            isExtractingText = false
         }
         .overlay { dropAffordance }
         .accessibilityContainerIdentifier("editor-drop-target")
@@ -262,11 +265,16 @@ extension EditorView {
             let image = foregroundImageStore.image(for: reference),
             let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
+        imageProcessingTask?.cancel()
         isExtractingText = true
-        Task {
-            defer { isExtractingText = false }
+        imageProcessingTask = Task {
+            defer {
+                imageProcessingTask = nil
+                isExtractingText = false
+            }
             do {
                 let text = try await ImageTextExtractor.recognizeText(in: cgImage)
+                try Task.checkCancellation()
                 guard settings.config.foregroundImage == reference else { return }
                 guard !text.isEmpty else {
                     session.feedback(
@@ -280,6 +288,8 @@ extension EditorView {
                     "Copied recognized image text (\(text.count, privacy: .public) chars)")
                 session.feedback(
                     Notifier.confirmation(String(localized: "Text copied from image")))
+            } catch is CancellationError {
+                return
             } catch {
                 guard settings.config.foregroundImage == reference else { return }
                 Log.export.error("Image text recognition failed")
@@ -302,11 +312,16 @@ extension EditorView {
             let image = foregroundImageStore.image(for: reference),
             let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
+        imageProcessingTask?.cancel()
         isExtractingText = true
-        Task {
-            defer { isExtractingText = false }
+        imageProcessingTask = Task {
+            defer {
+                imageProcessingTask = nil
+                isExtractingText = false
+            }
             do {
                 let lines = try await ImageTextExtractor.recognizeLines(in: cgImage)
+                try Task.checkCancellation()
                 guard settings.config.foregroundImage == reference else { return }
                 guard
                     let result = try ImageSecretRedactor.redactSecrets(
@@ -321,12 +336,15 @@ extension EditorView {
                 }
                 let newReference = try foregroundImageStore.importImage(
                     data: data, preferredExtension: "png")
+                try Task.checkCancellation()
                 guard settings.config.foregroundImage == reference else { return }
                 settings.config.foregroundImage = newReference
                 Log.export.notice(
                     "Redacted image secrets (\(result.regionCount, privacy: .public) regions)")
                 session.feedback(
                     Notifier.confirmation(String(localized: "Secrets redacted")))
+            } catch is CancellationError {
+                return
             } catch {
                 guard settings.config.foregroundImage == reference else { return }
                 Log.export.error("Image secret redaction failed")

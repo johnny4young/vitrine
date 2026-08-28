@@ -61,6 +61,7 @@ struct CarouselExportView: View {
                 }
             }
         )
+        .interactiveDismissDisabled(isExporting)
     }
 
     private func exportSlides() {

@@ -7,7 +7,7 @@ name: Vitrine
 options:
   bundleIdPrefix: com.johnny4young.vitrine
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "15.0"
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
@@ -80,7 +80,7 @@ targets:
   Vitrine:
     type: application
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: Vitrine
         excludes:
@@ -198,6 +198,9 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_PREVIEWS: YES
+        # Shared sources also compile into the headless CLI, but real WebKit memory
+        # qualification belongs only to the GUI app that links WebKit.
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_GUI
 
   # Command-line renderer. `vitrine render input.swift --out image.png`.
   #
@@ -210,7 +213,7 @@ targets:
   VitrineCLI:
     type: tool
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: Vitrine
         excludes:
@@ -304,7 +307,7 @@ targets:
   VitrineMenuBarHelper:
     type: tool
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: VitrineMenuBarHelper
         excludes:
@@ -315,6 +318,11 @@ targets:
       base:
         PRODUCT_NAME: VitrineMenuBarHelper
         PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.menubar-helper
+        # A sandboxed raw Mach-O needs an embedded Info.plist section so macOS can
+        # derive its stable bundle identity during libsecinit. Without this, Tahoe
+        # terminates the copied helper before Swift reaches main().
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
         CODE_SIGN_ENTITLEMENTS: VitrineMenuBarHelper/VitrineMenuBarHelper.entitlements
         CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
         ENABLE_HARDENED_RUNTIME: YES
@@ -325,7 +333,7 @@ targets:
   VitrineTests:
     type: bundle.unit-test
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: Tests
         # The golden-image fixtures are read from the source tree via
@@ -354,7 +362,7 @@ targets:
   VitrineUITests:
     type: bundle.ui-testing
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "15.0"
     sources:
       - path: UITests
     dependencies:
@@ -444,8 +452,11 @@ schemes:
       # Spanish) gets localized menu-bar and Settings titles while CI stays green.
       language: en
       region: US
+      # Vitrine is a menu-bar app with process-global defaults, pasteboard, windows,
+      # and status-item state. Keep its journeys serial within each runner process.
       targets:
-        - VitrineUITests
+        - name: VitrineUITests
+          parallelizable: false
       # Forward the opt-in screenshot directory through a build-setting macro. Xcode
       # does not pass arbitrary shell environment values into the UI-test runner.
       environmentVariables:

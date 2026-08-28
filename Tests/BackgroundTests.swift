@@ -673,6 +673,39 @@ struct BackgroundTests {
         }
     }
 
+    @Test func downloadPreservesLoaderCancellation() async {
+        let store = Self.tempStore()
+        await #expect(throws: CancellationError.self) {
+            _ = try await store.importImage(
+                downloadedFrom: URL(string: "https://example.com/cancelled.png")!
+            ) { _ in throw CancellationError() }
+        }
+    }
+
+    @Test func cancelledDownloadDoesNotNormalizeAConcurrentLoaderError() async {
+        struct LoaderFailure: Error {}
+        let store = Self.tempStore()
+        let task = Task {
+            try await store.importImage(
+                downloadedFrom: URL(string: "https://example.com/cancelled.png")!
+            ) { _ in
+                do {
+                    try await Task.sleep(for: .seconds(30))
+                } catch is CancellationError {
+                    // Model a loader that normalizes its own cancellation before
+                    // returning control to BackgroundImageStore.
+                }
+                throw LoaderFailure()
+            }
+        }
+        await Task.yield()
+        task.cancel()
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await task.value
+        }
+    }
+
     @Test func remoteImageByteCollectorRejectsPayloadPastStreamingCap() async {
         // Exercise the default loader's streaming cap with a tiny in-memory stream
         // rather than building a 25 MB network fixture.
