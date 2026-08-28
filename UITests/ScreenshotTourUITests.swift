@@ -46,12 +46,13 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testEditorTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editorTour)
         defer { app.terminate() }
+        let editor = EditorRobot(testCase: self, app: app)
 
-        let window = element("editor-window", in: app)
+        let window = editor.window
         XCTAssertTrue(window.waitForExistence(timeout: 8))
-        XCTAssertTrue(element("editor-preview-stage", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(editor.previewStage.waitForExistence(timeout: 5))
         // Let the preview render settle before the hero shot.
         Thread.sleep(forTimeInterval: 1.5)
         save(
@@ -73,10 +74,11 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testEditorEmptyStateTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.emptyEditorTour)
         defer { app.terminate() }
+        let editor = EditorRobot(testCase: self, app: app)
 
-        let window = element("editor-window", in: app)
+        let window = editor.window
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         Thread.sleep(forTimeInterval: 1.0)
         save(
@@ -86,10 +88,11 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testSettingsTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--open-settings"])
+        let app = launch(arguments: VitrineLaunchArguments.settingsTour)
         defer { app.terminate() }
+        let settings = SettingsRobot(testCase: self, app: app)
 
-        XCTAssertTrue(element("settings-general-pane", in: app).waitForExistence(timeout: 8))
+        XCTAssertTrue(settings.generalPane.waitForExistence(timeout: 8))
         let panes: [(nav: String, identifier: String, slug: String)] = [
             ("settings-nav-general", "settings-general-pane", "20-settings-general"),
             ("settings-nav-style", "settings-style-pane", "21-settings-style"),
@@ -101,8 +104,8 @@ final class ScreenshotTourUITests: XCTestCase {
         ]
         let window = app.windows.firstMatch
         for pane in panes {
-            element(pane.nav, in: app).click()
-            guard element(pane.identifier, in: app).waitForExistence(timeout: 4) else {
+            settings.navigation(pane.nav).click()
+            guard settings.pane(pane.identifier).waitForExistence(timeout: 4) else {
                 miss(pane.slug, reason: "pane \(pane.identifier) did not appear")
                 continue
             }
@@ -155,12 +158,13 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testRecentsGalleryTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.emptyRecents)
         defer { app.terminate() }
+        let recents = RecentsRobot(testCase: self, app: app)
 
-        let window = element("recents-window", in: app)
+        let window = recents.window
         XCTAssertTrue(window.waitForExistence(timeout: 8))
-        XCTAssertTrue(element("recents-gallery", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(recents.gallery.waitForExistence(timeout: 3))
         Thread.sleep(forTimeInterval: 0.5)
         save(
             window, as: "30-recents-gallery-empty",
@@ -170,7 +174,7 @@ final class ScreenshotTourUITests: XCTestCase {
     @MainActor
     func testRecentsPresetRerenderTour() throws {
         let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recent", "--open-recents"])
+            arguments: VitrineLaunchArguments.populatedRecent)
         defer { app.terminate() }
 
         let window = element("recents-window", in: app)
@@ -205,7 +209,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testRecentsSearchAndActionsTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
 
         let window = element("recents-window", in: app)
@@ -244,7 +248,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testComparisonBoardTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
 
         let recentsWindow = element("recents-window", in: app)
@@ -416,7 +420,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testPinnedRecentsTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
 
         let window = element("recents-window", in: app)
@@ -450,7 +454,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testPinnedRecentsFilterTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
 
         let window = element("recents-window", in: app)
@@ -474,7 +478,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testRecentSourceCopyActionTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recent", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.populatedRecent)
         defer { app.terminate() }
 
         let window = element("recents-window", in: app)
@@ -512,7 +516,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testClearUnpinnedRecentsTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
 
         let window = element("recents-window", in: app)
@@ -535,7 +539,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testRecentsSortTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
 
         let window = element("recents-window", in: app)
@@ -634,7 +638,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarPanelTour() throws {
-        let app = launch(arguments: ["--skip-onboarding"])
+        let app = launch(arguments: VitrineLaunchArguments.menuBar)
         defer { app.terminate() }
 
         let panel = openMenuBarPanel(in: app)
@@ -688,7 +692,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarSurpriseStyleTour() throws {
-        let app = launch(arguments: ["--skip-onboarding"])
+        let app = launch(arguments: VitrineLaunchArguments.menuBar)
         defer { app.terminate() }
 
         let panel = openMenuBarPanel(in: app)
@@ -716,7 +720,7 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testMenuBarRecentSourceActionsTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.menuBarRecents)
         defer { app.terminate() }
 
         let panel = openMenuBarPanel(in: app)
@@ -736,10 +740,11 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     func testWebSnapshotTour() throws {
-        let app = launch(arguments: ["--skip-onboarding", "--open-web-snapshot"])
+        let app = launch(arguments: VitrineLaunchArguments.webSnapshot)
         defer { app.terminate() }
+        let web = WebSnapshotRobot(testCase: self, app: app)
 
-        XCTAssertTrue(element("web-snapshot-inspector", in: app).waitForExistence(timeout: 8))
+        XCTAssertTrue(web.inspector.waitForExistence(timeout: 8))
         Thread.sleep(forTimeInterval: 1.0)
         let window = app.windows.firstMatch
         save(
@@ -747,7 +752,7 @@ final class ScreenshotTourUITests: XCTestCase {
             note: "Web Snapshot: source picker, viewport chips, branded empty stage")
 
         // HTML mode swaps the input field and the empty-state copy.
-        let html = element("web-snapshot-mode-html", in: app)
+        let html = web.htmlMode
         if html.waitForExistence(timeout: 3) {
             html.click()
             Thread.sleep(forTimeInterval: 0.6)
@@ -800,16 +805,8 @@ final class ScreenshotTourUITests: XCTestCase {
 
     @MainActor
     private func launch(arguments: [String]) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = arguments
-        app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
-            "VitrineScreenshotTour-\(name)-\(UUID().uuidString)"
-        app.launch()
-        app.activate()
-        XCTAssertTrue(
-            app.wait(for: .runningForeground, timeout: 5),
-            "Vitrine never reached the foreground after launch")
-        return app
+        VitrineAppRobot(testCase: self, suitePrefix: "VitrineScreenshotTour").launch(
+            arguments: arguments, requireForeground: true)
     }
 
     private var outputDirectory: URL {

@@ -193,6 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // items while leaving the app alive. The main app still owns the real panel and
         // every command; the helper sends only a click location back here.
         establishMenuBarPresence()
+        startMenuBarUITestCommandChannelIfEnabled()
 
         // Install the application main menu. An agent app with no `WindowGroup` gets no
         // designed menu bar from SwiftUI; assigning one
@@ -305,6 +306,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             suspensionBehavior: .deliverImmediately)
     }
 
+    /// Registers the deterministic menu-panel fallback only for an explicitly opted-in
+    /// UI-test launch. The sender must also present this launch's random token, so a distributed
+    /// notification cannot control a normal Vitrine instance or a neighboring test run.
+    private func startMenuBarUITestCommandChannelIfEnabled() {
+        guard MenuBarUITestControl.isEnabled() else { return }
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(receiveMenuBarUITestOpen(_:)),
+            name: MenuBarUITestControl.notificationName,
+            object: nil,
+            suspensionBehavior: .deliverImmediately)
+    }
+
+    @objc private func receiveMenuBarUITestOpen(_ notification: Notification) {
+        guard
+            MenuBarUITestControl.isEnabled(),
+            MenuBarUITestControl.accepts(notification)
+        else { return }
+
+        StatusItemController.shared.showPanelForAutomation()
+    }
+
     @objc private func receiveMenuBarToggle(_ notification: Notification) {
         guard
             let encoded = notification.object as? String,
@@ -337,6 +360,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarPresenceTask?.cancel()
         DistributedNotificationCenter.default().removeObserver(
             self, name: MenuBarAnchor.notificationName, object: nil)
+        DistributedNotificationCenter.default().removeObserver(
+            self, name: MenuBarUITestControl.notificationName, object: nil)
         MenuBarHelperLauncher.stop()
     }
 

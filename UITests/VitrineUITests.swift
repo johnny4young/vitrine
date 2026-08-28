@@ -6,11 +6,12 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testEditorLaunchesWithPrimaryControls() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
+        let editor = EditorRobot(testCase: self, app: app)
 
-        assertExists(element("editor-window", in: app), in: app, timeout: 8)
-        assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
+        assertExists(editor.window, in: app, timeout: 8)
+        assertExists(editor.codeTextView, in: app, timeout: 3)
         assertExists(element("language-picker", in: app), in: app)
         assertExists(element("format-button", in: app), in: app)
         assertExists(element("living-snapshot-menu", in: app), in: app)
@@ -34,7 +35,7 @@ final class VitrineUITests: XCTestCase {
     func testCopyOptionsExposeMarkdownExport() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         let editor = element("editor-window", in: app)
@@ -122,7 +123,7 @@ final class VitrineUITests: XCTestCase {
         // The carousel entry is PRO-gated; the debug unlock provider (Debug builds
         // only) opens the real export sheet instead of the paywall.
         let app = launch(
-            arguments: ["--demo", "--open-editor"],
+            arguments: VitrineLaunchArguments.editor,
             environment: ["VITRINE_PRO_UNLOCK": "1"])
         defer { app.terminate() }
 
@@ -261,7 +262,7 @@ final class VitrineUITests: XCTestCase {
         // The editor surfaces an explicit "Make Default" affordance so promoting a
         // window's style to the app default is discoverable in the editor, not only in
         // the menu.
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
@@ -275,7 +276,7 @@ final class VitrineUITests: XCTestCase {
         // Format Code is a primary editor affordance and should be reachable
         // by mouse as well as the Edit-menu shortcut. The pure formatting behavior is
         // covered by CodeFormatterTests; this UI smoke pins the accessible toolbar route.
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
@@ -353,7 +354,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testEditorShowsToolbarInspectorAndPreviewStage() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
@@ -377,7 +378,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testEditorInspectorDisclosesAdvancedControls() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         let inspector = element("editor-inspector", in: app)
@@ -401,7 +402,7 @@ final class VitrineUITests: XCTestCase {
     func testEditorShowsAnnotationToolbar() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         assertExists(element("editor-toolbar", in: app), in: app, timeout: 8)
@@ -445,7 +446,7 @@ final class VitrineUITests: XCTestCase {
     func testAnnotationSelectionActionsStartDisabled() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
@@ -480,7 +481,8 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testAnnotationShortcutsDoNotHijackCodeTyping() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--open-editor"])  // empty editor: typed text is exact
+        // An empty editor keeps the typed text exact.
+        let app = launch(arguments: VitrineLaunchArguments.emptyEditor)
         defer { app.terminate() }
 
         let editor = element("code-editor-text-view", in: app)
@@ -503,7 +505,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testAnnotationShortcutSelectsTheTool() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         XCTAssertTrue(element("editor-toolbar", in: app).waitForExistence(timeout: 8))
@@ -521,7 +523,7 @@ final class VitrineUITests: XCTestCase {
         try skipUnlessADisplayFitsTheEditor()
         // Close-after-copy is on by default, so clicking the primary CTA both
         // copies the image and closes the window.
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
@@ -539,7 +541,7 @@ final class VitrineUITests: XCTestCase {
     func testEditorKeyboardCanReachToolbarAndInspector() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         // The toolbar's style star, the inspector, and the export CTA are all
@@ -557,7 +559,7 @@ final class VitrineUITests: XCTestCase {
     func testSurpriseStyleAppliesACuratedLookWithoutChangingCode() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        let app = launch(arguments: ["--demo", "--open-editor"])
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
 
         let editor = element("code-editor-text-view", in: app)
@@ -583,20 +585,21 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testStylePaneShowsDestinationPresetPicker() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--open-settings"])
+        let app = launch(arguments: VitrineLaunchArguments.settings)
         defer { app.terminate() }
+        let settings = SettingsRobot(testCase: self, app: app)
 
         // The Style pane surfaces the destination preset picker.
-        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
-        element("settings-nav-style", in: app).click()
-        assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
+        assertExists(settings.generalPane, in: app, timeout: 8)
+        _ = settings.open(
+            navigation: "settings-nav-style", pane: "settings-style-pane")
         assertExists(element("destination-preset-picker", in: app), in: app, timeout: 3)
     }
 
     @MainActor
     func testLibraryPaneExposesWorkspaceRecipeControls() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--open-settings"])
+        let app = launch(arguments: VitrineLaunchArguments.settings)
         defer { app.terminate() }
 
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
@@ -636,7 +639,7 @@ final class VitrineUITests: XCTestCase {
     func testBrandKitIsATopLevelSettingsPane() {
         continueAfterFailure = false
         let app = launch(
-            arguments: ["--open-settings"],
+            arguments: VitrineLaunchArguments.settings,
             environment: ["VITRINE_PRO_UNLOCK": "1"])
         defer { app.terminate() }
 
@@ -653,7 +656,7 @@ final class VitrineUITests: XCTestCase {
     func testManagedLicenseDeactivationRelocksProWithoutNetwork() {
         continueAfterFailure = false
         let app = launch(
-            arguments: ["--open-settings"],
+            arguments: VitrineLaunchArguments.settings,
             environment: ["VITRINE_MANAGED_LICENSE_UI_TEST": "1"])
         defer { app.terminate() }
 
@@ -716,7 +719,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testInputPaneExposesReindentOnPasteToggle() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--open-settings"])
+        let app = launch(arguments: VitrineLaunchArguments.settings)
         defer { app.terminate() }
 
         // The Input pane surfaces the paste re-indent preference, the
@@ -730,7 +733,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testInputPaneExposesLoopbackCaptureDefaultingOff() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--open-settings"])
+        let app = launch(arguments: VitrineLaunchArguments.settings)
         defer { app.terminate() }
 
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
@@ -745,7 +748,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testStylePaneExposesAccessibleMetadataControls() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--open-settings"])
+        let app = launch(arguments: VitrineLaunchArguments.settings)
         defer { app.terminate() }
 
         // The Header section's metadata controls are present and carry stable
@@ -769,28 +772,26 @@ final class VitrineUITests: XCTestCase {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
 
-        let app = launch(
-            arguments: [
-                "--skip-onboarding", "--web-snapshot-ui-test-renderer", "--open-web-snapshot",
-            ])
+        let app = launch(arguments: VitrineLaunchArguments.deterministicWebSnapshot)
         defer {
             app.terminate()
             pasteboard.clearContents()
         }
+        let web = WebSnapshotRobot(testCase: self, app: app)
 
-        let window = element("web-snapshot-window", in: app)
+        let window = web.window
         assertExists(window, in: app, timeout: 8)
-        assertExists(element("web-snapshot-inspector", in: app), in: app, timeout: 3)
-        assertExists(element("web-snapshot-preview-stage", in: app), in: app, timeout: 3)
+        assertExists(web.inspector, in: app, timeout: 3)
+        assertExists(web.previewStage, in: app, timeout: 3)
 
-        let htmlMode = element("web-snapshot-mode-html", in: app)
+        let htmlMode = web.htmlMode
         assertExists(htmlMode, in: app, timeout: 3)
         htmlMode.click()
 
         // SwiftUI exposes both the placeholder StaticText and the editable TextView
         // with this identifier. Resolve the typed control so actions never face an
         // ambiguous any-element query.
-        let editor = app.textViews["web-snapshot-html-editor"]
+        let editor = web.htmlEditor
         assertExists(editor, in: app, timeout: 3)
         editor.click()
         let html = """
@@ -809,9 +810,9 @@ final class VitrineUITests: XCTestCase {
             (editor.value as? String)?.contains("Vitrine Web Journey") == true,
             "The local HTML fixture must reach the editable source field")
 
-        let social = element("web-viewport-chip-openGraph", in: app)
-        let desktop = element("web-viewport-chip-desktop", in: app)
-        let mobile = element("web-viewport-chip-mobile", in: app)
+        let social = web.viewport("openGraph")
+        let desktop = web.viewport("desktop")
+        let mobile = web.viewport("mobile")
         for chip in [social, desktop, mobile] {
             assertExists(chip, in: app, timeout: 3)
         }
@@ -824,9 +825,9 @@ final class VitrineUITests: XCTestCase {
         assertHittable(
             "web-snapshot-capture-button", in: app,
             "Local HTML should enable the Web Snapshot render action")
-        element("web-snapshot-capture-button", in: app).click()
+        web.captureButton.click()
 
-        let results = element("web-snapshot-results", in: app)
+        let results = web.results
         assertExists(results, in: app, timeout: 20)
         for identifier in [
             "web-snapshot-result-board", "web-snapshot-result-openGraph",
@@ -851,7 +852,7 @@ final class VitrineUITests: XCTestCase {
                 timeout: 5)
         }
 
-        let mobileResult = element("web-snapshot-result-mobile", in: app)
+        let mobileResult = web.result("mobile")
         mobileResult.click()
         let selectedDeadline = Date().addingTimeInterval(3)
         while !mobileResult.isSelected, Date() < selectedDeadline {
@@ -865,7 +866,7 @@ final class VitrineUITests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
 
-        element("web-snapshot-copy-button", in: app).click()
+        web.exportAction("copy").click()
         assertExists(element("capture-hud", in: app), in: app, timeout: 3)
 
         let copyDeadline = Date().addingTimeInterval(6)
@@ -1021,9 +1022,10 @@ final class VitrineUITests: XCTestCase {
         // open-in-editor behavior are covered by RecentsStoreTests.
         let app = launch(arguments: ["--open-recents"])
         defer { app.terminate() }
+        let recents = RecentsRobot(testCase: self, app: app)
 
-        assertExists(element("recents-window", in: app), in: app, timeout: 8)
-        assertExists(element("recents-gallery", in: app), in: app, timeout: 3)
+        assertExists(recents.window, in: app, timeout: 8)
+        assertExists(recents.gallery, in: app, timeout: 3)
     }
 
     @MainActor
@@ -1032,7 +1034,7 @@ final class VitrineUITests: XCTestCase {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
 
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recent", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.populatedRecent)
         defer {
             app.terminate()
             pasteboard.clearContents()
@@ -1070,7 +1072,7 @@ final class VitrineUITests: XCTestCase {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            arguments: VitrineLaunchArguments.recents,
             environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer {
             app.terminate()
@@ -1139,17 +1141,18 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testRecentsSearchesAndDeletesOneCapture() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
+        let recents = RecentsRobot(testCase: self, app: app)
 
         XCTAssertEqual(
-            app.descendants(matching: .any).matching(identifier: "recents-card").count, 3)
-        let search = element("recents-search-field", in: app)
+            recents.cards.count, 3)
+        let search = recents.searchField
         XCTAssertTrue(search.waitForExistence(timeout: 8))
         search.click()
         search.typeText("Rust")
         XCTAssertEqual(
-            app.descendants(matching: .any).matching(identifier: "recents-card").count, 1)
+            recents.cards.count, 1)
 
         assertHittable(
             "recents-preset-picker", in: app,
@@ -1168,7 +1171,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testRecentsCanUnpinAndRepinACapture() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
@@ -1219,7 +1222,7 @@ final class VitrineUITests: XCTestCase {
     func testRecentsCanFilterToPinnedCaptures() {
         continueAfterFailure = false
         let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            arguments: VitrineLaunchArguments.recents,
             environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
@@ -1253,7 +1256,7 @@ final class VitrineUITests: XCTestCase {
     func testRecentsCanClearUnpinnedCaptures() {
         continueAfterFailure = false
         let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            arguments: VitrineLaunchArguments.recents,
             environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
@@ -1288,7 +1291,7 @@ final class VitrineUITests: XCTestCase {
     func testRecentsCanSortOldestFirstWithoutDisplacingPins() {
         continueAfterFailure = false
         let app = launch(
-            arguments: ["--skip-onboarding", "--demo-recents", "--open-recents"],
+            arguments: VitrineLaunchArguments.recents,
             environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
         defer { app.terminate() }
 
@@ -1330,7 +1333,7 @@ final class VitrineUITests: XCTestCase {
         pasteboard.clearContents()
         XCTAssertTrue(pasteboard.setString("sentinel", forType: .string))
 
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recent", "--open-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.populatedRecent)
         defer {
             app.terminate()
             pasteboard.clearContents()
@@ -1361,7 +1364,7 @@ final class VitrineUITests: XCTestCase {
         pasteboard.clearContents()
         XCTAssertTrue(pasteboard.setString("let answer = 42", forType: .string))
 
-        let app = launch(arguments: ["--skip-onboarding"])
+        let app = launch(arguments: VitrineLaunchArguments.menuBar)
         defer {
             app.terminate()
             pasteboard.clearContents()
@@ -1402,7 +1405,7 @@ final class VitrineUITests: XCTestCase {
         pasteboard.clearContents()
         XCTAssertTrue(pasteboard.setString("sentinel", forType: .string))
 
-        let app = launch(arguments: ["--skip-onboarding", "--demo-recents"])
+        let app = launch(arguments: VitrineLaunchArguments.menuBarRecents)
         defer {
             app.terminate()
             pasteboard.clearContents()
@@ -1436,7 +1439,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMenuBarSurpriseStyleUpdatesThemeWithoutClosingThePanel() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding"])
+        let app = launch(arguments: VitrineLaunchArguments.menuBar)
         defer { app.terminate() }
 
         let panel = openMenuBarPanel(in: app)
@@ -1460,7 +1463,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testMenuBarPanelClosesWithEscape() throws {
         continueAfterFailure = false
-        let app = launch(arguments: ["--skip-onboarding"])
+        let app = launch(arguments: VitrineLaunchArguments.menuBar)
         defer { app.terminate() }
 
         let panel = openMenuBarPanel(in: app)
@@ -1651,7 +1654,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testSettingsLaunchesWithGeneralPane() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--open-settings"])
+        let app = launch(arguments: VitrineLaunchArguments.settings)
         defer { app.terminate() }
 
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
@@ -1663,7 +1666,7 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testOutputFormatPickerMatchesSystemAVIFSupport() {
         continueAfterFailure = false
-        let app = launch(arguments: ["--open-settings"])
+        let app = launch(arguments: VitrineLaunchArguments.settings)
         defer { app.terminate() }
 
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
@@ -1701,7 +1704,7 @@ final class VitrineUITests: XCTestCase {
         // asserting each one's key controls exist *and* remain hittable is the
         // automatable proxy for "no truncation or clipping in Settings panes"
         // .
-        let app = launch(arguments: ["--open-settings"], locale: .accentedPseudo)
+        let app = launch(arguments: VitrineLaunchArguments.settings, locale: .accentedPseudo)
         defer { app.terminate() }
 
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
@@ -1737,7 +1740,7 @@ final class VitrineUITests: XCTestCase {
         // dropped or stranded. Reachability of the toolbar, preview stage,
         // inspector, and export actions is the automatable proxy for "layout is sane
         // under RTL, mirrored where appropriate" .
-        let app = launch(arguments: ["--demo", "--open-editor"], locale: .rightToLeftPseudo)
+        let app = launch(arguments: VitrineLaunchArguments.editor, locale: .rightToLeftPseudo)
         defer { app.terminate() }
 
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
@@ -1758,49 +1761,14 @@ final class VitrineUITests: XCTestCase {
             ["save-button", "share-button"], from: "editor-actions-menu", in: app)
     }
 
-    /// A locale/text-direction override applied to a launch. Passed through
-    /// the app's `NSArgumentDomain` (the standard `-AppleLanguages` / `-AppleLocale`
-    /// / `-AppleTextDirection` overrides), so no app code is needed to force a
-    /// pseudolocale or right-to-left layout under test.
-    private enum LocaleOverride {
-        /// The system locale (no override).
-        case system
-        /// The accented, lengthened pseudolocale that stresses string layout.
-        case accentedPseudo
-        /// A right-to-left locale with forced RTL writing direction.
-        case rightToLeftPseudo
-
-        var launchArguments: [String] {
-            switch self {
-            case .system:
-                []
-            case .accentedPseudo:
-                ["-AppleLanguages", "(en-XA)", "-AppleLocale", "en_XA"]
-            case .rightToLeftPseudo:
-                [
-                    "-AppleLanguages", "(ar)", "-AppleLocale", "ar",
-                    "-AppleTextDirection", "YES", "-NSForceRightToLeftWritingDirection", "YES",
-                ]
-            }
-        }
-    }
-
     @MainActor
     private func launch(
         arguments: [String],
-        locale: LocaleOverride = .system,
+        locale: VitrineLocaleOverride = .system,
         environment: [String: String] = [:]
     ) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = arguments + locale.launchArguments
-        app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
-            "VitrineUITests-\(name)-\(UUID().uuidString)"
-        for (key, value) in environment {
-            app.launchEnvironment[key] = value
-        }
-        app.launch()
-        app.activate()
-        return app
+        VitrineAppRobot(testCase: self, suitePrefix: "VitrineUITests").launch(
+            arguments: arguments, locale: locale, environment: environment)
     }
 
     @MainActor

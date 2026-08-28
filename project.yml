@@ -447,8 +447,11 @@ schemes:
       # Spanish) gets localized menu-bar and Settings titles while CI stays green.
       language: en
       region: US
+      # Vitrine is a menu-bar app with process-global defaults, pasteboard, windows,
+      # and status-item state. Keep its journeys serial within each runner process.
       targets:
-        - VitrineUITests
+        - name: VitrineUITests
+          parallelizable: false
       # Forward the opt-in screenshot directory through a build-setting macro. Xcode
       # does not pass arbitrary shell environment values into the UI-test runner.
       environmentVariables:

@@ -120,6 +120,27 @@ struct MenuBarStatusItemTests {
                 ]) == .helper)
     }
 
+    @Test func uiTestPanelControlRequiresExplicitOptInAndExactLaunchToken() {
+        #expect(!MenuBarUITestControl.isEnabled(arguments: []))
+        let token = UUID().uuidString
+        let arguments = ["Vitrine", MenuBarUITestControl.launchArgumentPrefix + token]
+        #expect(
+            MenuBarUITestControl.isEnabled(arguments: arguments))
+        #expect(
+            !MenuBarUITestControl.isEnabled(
+                arguments: ["Vitrine", MenuBarUITestControl.launchArgumentPrefix + "invalid"]))
+
+        let intended = Notification(name: .init("test"), object: token)
+        #expect(MenuBarUITestControl.accepts(intended, arguments: arguments))
+        #expect(
+            !MenuBarUITestControl.accepts(
+                Notification(name: .init("test"), object: UUID().uuidString),
+                arguments: arguments))
+        #expect(
+            !MenuBarUITestControl.accepts(
+                intended, arguments: ["Vitrine", MenuBarUITestControl.launchArgumentPrefix]))
+    }
+
     @Test func helperConfigurationAcceptsOnlyAPositivePIDAndUUIDToken() throws {
         let token = UUID().uuidString
         let configuration = try #require(
