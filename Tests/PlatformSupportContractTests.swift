@@ -20,6 +20,10 @@ struct PlatformSupportContractTests {
     }
 
     @Test func publicDocumentationAndWebsiteAgreeOnTheSequoiaFloor() throws {
+        let readme = try Self.text("README.md")
+        #expect(readme.contains("platform-macOS%2015%2B"))
+        #expect(!readme.contains("platform-macOS%2014%2B"))
+
         let expected: [(String, String)] = [
             ("README.md", "macOS **15.0+** (Sequoia or later)"),
             ("CONTRIBUTING.md", "macOS 15+"),

@@ -12,6 +12,67 @@ can never drift.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-28
+
+Vitrine 1.2 is the first public successor to 1.0.1. It carries forward the complete
+unpublished 1.1 candidate — including free basic `vgrab`, unified local search, safer image
+and web workloads, compact-display fixes, and reliable Sparkle recovery — then strengthens
+the file, lifecycle, compatibility, qualification, and delivery boundaries around it.
+
+### Added
+
+- Add fail-closed production coverage guardrails with separate hosted Sequoia and Tahoe
+  baselines. Overall coverage may not fall by more than one percentage point, at least 80%
+  of changed executable critical logic must be covered, and malformed or unreadable
+  `xccov` evidence fails the lane.
+- Add clean-Mac WebKit qualification fixtures for offline local HTML, controlled remote
+  subresource blocking, a real public URL, and immediate loopback/private-destination
+  rejection. The QA handoff includes a structured log and verifies its candidate DMG
+  digest before staging any evidence.
+- Add repeatable `window-churn` and `web-snapshot-cycle` memory journeys, plus
+  `make memory-smoke-all` to run editor, image-import, window, and WebKit lifecycle
+  evidence sequentially without committing memgraphs.
+- Add a weekly/manual Xcode 27 preview lane on macOS 26. It is an early toolchain warning,
+  not a macOS 27 runtime-support claim.
+
+### Changed
+
+- Raise the public deployment floor to macOS 15 Sequoia. Required qualification covers
+  macOS 15 Sequoia and macOS 26 Tahoe, while direct-download artifacts remain universal
+  arm64 + x86_64 and AVIF remains runtime-detected on Tahoe and newer.
+- Refactor the UI suite around reusable application, editor, Settings, Web Snapshot, and
+  Recents robots while preserving serial execution, all 84 UI journeys, the 26-test
+  visual tour, and the 53-screenshot evidence contract.
+- Extend command-search performance coverage with Unicode and worst-case full-scan
+  benchmarks without replacing the existing local search architecture.
+- Update Sparkle to 2.9.6 and KeyboardShortcuts to 2.4.0 while retaining Highlightr 2.3.0.
+  The website build pins nanoid 3.3.18.
+
+### Fixed
+
+- Read local source files, workspace recipes, presets, and custom themes through one
+  descriptor-first bounded reader. It accepts only regular files, opens paths
+  non-blockingly, retains at most the public limit plus one byte, detects size changes,
+  and maps failures to existing path-safe domain messages.
+- Limit decoded preset and custom-theme imports to 1,000 entries per file so a small JSON
+  envelope cannot expand into unbounded model allocation.
+- Preserve task cancellation across background-image downloads and prevent cancelled
+  editor work from mutating error state after teardown.
+- Start the external menu-bar helper only when its embedded identity and signing team
+  satisfy the Tahoe sandbox boundary; ad-hoc source builds retain the in-process item.
+- Make multi-display menu-bar automation deterministic through an explicitly opted-in,
+  per-launch authenticated test control while keeping the real status-item click as the
+  primary UI path.
+- Require real before/after network controls around the remote-subresource WebKit fixture;
+  an `onerror` marker alone can no longer qualify the candidate.
+
+### Security
+
+- Verify the QA candidate's actual SHA-256 bytes against its sidecar before copying it into
+  the handoff bundle.
+- Patch the website toolchain's nanoid override to 3.3.18, resolving the affected
+  high-severity advisory.
+
 ## [1.1.0] - 2026-08-12
 
 Vitrine 1.1 opens the fastest terminal-capture path to everyone and hardens the edges
@@ -1107,7 +1168,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/johnny4young/vitrine/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/johnny4young/vitrine/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/johnny4young/vitrine/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/johnny4young/vitrine/compare/v0.25.5...v1.0.0

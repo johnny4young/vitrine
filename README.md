@@ -14,9 +14,9 @@ pasted HTML, entirely on your Mac.
 
 [![Website](https://img.shields.io/badge/website-vitrineframe.app-6E56CF.svg)](https://vitrineframe.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black?logo=apple)](#requirements)
+[![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v1.1.0-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v1.2.0-brightgreen.svg)](#status)
 
 | `vgrab htop` | `vgrab lazygit` | `vgrab nvim` |
 | --- | --- | --- |
@@ -662,7 +662,7 @@ in [`docs/`](docs/):
 
 ## Status
 
-🟢 **v1.1.0 is the current version in source.** Public artifacts are published only
+🟢 **v1.2.0 is the current version in source.** Public artifacts are published only
 through the vetted release workflow; the [Releases page](https://github.com/johnny4young/vitrine/releases)
 is the source of truth for the newest downloadable version. Everything under
 [Features](#features) is driven by one design-token system
@@ -675,7 +675,7 @@ The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every
 also ships an in-app **What's New**.
 
 Anything added under **Unreleased** in the changelog belongs to a future build and is not
-part of the v1.1.0 release line.
+part of the v1.2.0 release line.
 
 Two explicit product boundaries — no arbitrary screen/window capture and no dependency
 on a hosted web-render service — are documented in

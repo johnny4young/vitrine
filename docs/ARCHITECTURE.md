@@ -527,6 +527,13 @@ artifact, and runs QA again before immutable publication. The public DMG then pa
 third download QA before Homebrew, the production appcast, or the website moves. See
 [`docs/RELEASING.md`](RELEASING.md) for the operator procedure.
 
+Release identity remains one reviewable source contract: `MARKETING_VERSION` and
+`CURRENT_PROJECT_VERSION` live in `project.yml`, while the newest changelog section,
+bundled What's New entry, source cask template, App Store metadata, CLI fallback, and
+website release highlights must agree before a candidate is tagged. Public website,
+Homebrew-tap, appcast, and GitHub Release state intentionally remain unchanged until the
+separately authorized promotion verifies the exact candidate bytes.
+
 ## Automation: Shortcuts, Services, and App Intents
 
 Vitrine meets users in the macOS automation surfaces they already use. Two are

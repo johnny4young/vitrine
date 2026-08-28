@@ -42,6 +42,21 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.2.0",
+            headline: "Safer inputs, stronger foundations",
+            highlights: [
+                "Basic vgrab terminal capture is free, and search handles multi-word "
+                    + "Unicode queries consistently across commands, recents, themes, and fonts.",
+                "Local source files, recipes, presets, and custom themes now use bounded "
+                    + "reads, reject non-files, and fail safely if an input changes while loading.",
+                "Cancelled image downloads stop cleanly instead of surfacing a late error after "
+                    + "their editor has closed.",
+                "Vitrine now requires macOS 15 Sequoia or later, remains qualified on Tahoe, "
+                    + "and continues to ship universal Apple silicon and Intel downloads.",
+                "Web captures, update packaging, memory lifecycle checks, and release evidence "
+                    + "have stronger safeguards before the same candidate can reach users.",
+            ]),
+        ReleaseNote(
             version: "1.1.0",
             headline: "Faster capture, safer edges",
             highlights: [
