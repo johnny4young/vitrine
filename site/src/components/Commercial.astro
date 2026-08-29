@@ -1,7 +1,7 @@
 ---
 import { currentVersion } from '~/lib/project';
 
-const releaseVersion = '1.1.0';
+const releaseVersion = '1.2.0';
 
 if (releaseVersion !== currentVersion) {
   throw new Error(
@@ -18,12 +18,12 @@ if (releaseVersion !== currentVersion) {
     <p class="lead" data-i18n="cl.lead">The highlights from the newest Vitrine release, available without waiting for a network request.</p>
     <article class="changelog" data-release-version={releaseVersion}>
       <p class="ver"><span data-i18n="cl.version">Version</span> {releaseVersion}</p>
-      <h3 data-i18n="cl.headline">Faster capture, safer edges</h3>
+      <h3 data-i18n="cl.headline">Safer inputs, stronger foundations</h3>
       <ul>
-        <li data-i18n="cl.h1"><strong>Basic terminal capture is now free.</strong> Run <code>vgrab</code> to copy one command's output or open it in Vitrine without a PRO license.</li>
-        <li data-i18n="cl.h2"><strong>Search behaves like one system.</strong> Commands, recents, themes, and fonts match multiple words in any order with consistent case and accent handling.</li>
-        <li data-i18n="cl.h3"><strong>Large or stalled inputs fail safely.</strong> Image imports, editor drops, and web captures stop at explicit size or time limits instead of hanging or exhausting memory.</li>
-        <li data-i18n="cl.h4"><strong>Sequoia and Tahoe stay first-class.</strong> Compact displays keep controls reachable, while export choices follow the formats each Mac can actually write.</li>
+        <li data-i18n="cl.h1"><strong>Free terminal capture and search move forward together.</strong> Basic <code>vgrab</code> remains free, while commands, recents, themes, and fonts handle multi-word Unicode queries consistently.</li>
+        <li data-i18n="cl.h2"><strong>Local files fail safely.</strong> Source, recipe, preset, and custom-theme imports are bounded, reject non-files, and detect inputs that change while loading.</li>
+        <li data-i18n="cl.h3"><strong>Sequoia is the new floor.</strong> Vitrine supports macOS 15 and later, qualifies Tahoe explicitly, and keeps universal Apple silicon and Intel downloads.</li>
+        <li data-i18n="cl.h4"><strong>Release evidence is harder to fool.</strong> WebKit controls, coverage guardrails, memory journeys, updater packaging, and candidate digests are verified before publication.</li>
       </ul>
       <a class="more" href="https://github.com/johnny4young/vitrine/blob/main/CHANGELOG.md" data-i18n="cl.more">Read the full changelog →</a>
     </article>

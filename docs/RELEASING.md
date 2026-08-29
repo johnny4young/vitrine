@@ -52,7 +52,7 @@ that independent check passes.
 1. Download the candidate named in the successful tag run summary:
 
    ```bash
-   TAG=v1.1.0
+   TAG=v1.2.0
    CANDIDATE_RUN_ID=123456789
    rm -rf release-candidate
    gh run download "${CANDIDATE_RUN_ID}" \
@@ -69,7 +69,7 @@ that independent check passes.
 3. Only after both clean-Mac checks pass, dispatch the same workflow manually:
 
    ```bash
-   SHA256="$(shasum -a 256 release-candidate/Vitrine-1.1.0.dmg | awk '{print $1}')"
+   SHA256="$(shasum -a 256 release-candidate/Vitrine-1.2.0.dmg | awk '{print $1}')"
    gh workflow run release.yml \
      -f tag="${TAG}" \
      -f candidate_run_id="${CANDIDATE_RUN_ID}" \

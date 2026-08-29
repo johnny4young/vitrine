@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Annotated stable tag to promote (for example v1.1.0)"
+        description: "Annotated stable tag to promote (for example v1.2.0)"
         required: true
         type: string
       candidate_run_id:
