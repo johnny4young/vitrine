@@ -11,12 +11,12 @@
 # it with the real DMG checksum before the tap commit. Never publish this
 # placeholder to the tap.
 cask "vitrine" do
-  version "1.1.0"
+  version "1.2.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
   url "https://github.com/johnny4young/vitrine/releases/download/v#{version}/Vitrine-#{version}.dmg"
   name "Vitrine"
-  desc "Menu-bar app that turns code into beautiful images"
+  desc "Menu-bar app for polished terminal and code captures"
   homepage "https://vitrineframe.app/"
 
   # A stable release-URL pattern exists (GitHub release tags), so livecheck can

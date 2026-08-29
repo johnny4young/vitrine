@@ -85,7 +85,7 @@ struct HomebrewCaskTests {
             cask.contains("name \"Vitrine\""),
             "the cask must declare its display name")
         #expect(
-            cask.contains("desc \"Menu-bar app that turns code into beautiful images\""),
+            cask.contains("desc \"Menu-bar app for polished terminal and code captures\""),
             "the cask must carry the product description")
         #expect(
             cask.contains("homepage \"https://vitrineframe.app/\""),

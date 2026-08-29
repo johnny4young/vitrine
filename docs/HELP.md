@@ -48,3 +48,19 @@ this surface is also fully offline. What's New never appears on a clean first ru
 the first-run quick-start owns that — and is skippable. See
 [`docs/RELEASING.md`](RELEASING.md) for how release notes are authored as part of
 the release checklist.
+
+### Version 1.2.0
+
+The current source bundle's newest note is **Safer inputs, stronger foundations**:
+
+- basic `vgrab` remains free and local search handles multi-word Unicode queries
+  consistently;
+- local source, recipe, preset, and custom-theme files use bounded regular-file reads;
+- cancelled image downloads stop without posting a late editor error;
+- the supported floor is macOS 15 Sequoia, with Tahoe qualification and universal direct
+  downloads; and
+- WebKit, updater packaging, memory lifecycle, and release evidence have stronger
+  pre-publication safeguards.
+
+The Releases page remains the authority for what is publicly downloadable; preparing these
+bundled notes in source does not publish or deploy version 1.2.0.
