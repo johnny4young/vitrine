@@ -50,7 +50,7 @@
       "cl.h1": "<strong>La captura gratuita de terminal y la búsqueda avanzan juntas.</strong> <code>vgrab</code> básico sigue siendo gratuito, mientras comandos, recientes, temas y fuentes manejan de forma uniforme consultas Unicode de varias palabras.",
       "cl.h2": "<strong>Los archivos locales fallan de forma segura.</strong> Las importaciones de código fuente, recetas, presets y temas personalizados tienen límites, rechazan lo que no sea un archivo y detectan entradas que cambian durante la lectura.",
       "cl.h3": "<strong>Sequoia es el nuevo mínimo.</strong> Vitrine admite macOS 15 en adelante, valida Tahoe explícitamente y conserva descargas universales para Apple silicon e Intel.",
-      "cl.h4": "<strong>La evidencia de release es más difícil de engañar.</strong> Los controles WebKit, cobertura, recorridos de memoria, empaquetado del actualizador y hashes del candidato se verifican antes de publicar.",
+      "cl.h4": "<strong>La evidencia de cada versión es más difícil de engañar.</strong> Los controles WebKit, cobertura, recorridos de memoria, empaquetado del actualizador y hashes del candidato se verifican antes de publicar.",
       "cl.more": "Leer el changelog completo →",
       "pro.title": "Pásate a PRO cuando lo necesites.",
       "pro.lead": "Con licencia MIT y gratis. La captura y edición principales siguen siendo gratis: sin marca de agua, límite de resolución ni molestias. PRO es una licencia opcional <strong>de pago único</strong> — sin suscripción.",
