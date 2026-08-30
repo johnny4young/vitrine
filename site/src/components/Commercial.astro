@@ -1,7 +1,7 @@
 ---
 import { currentVersion } from '~/lib/project';
 
-const releaseVersion = '1.2.0';
+const releaseVersion = '1.2.1';
 
 if (releaseVersion !== currentVersion) {
   throw new Error(
@@ -18,12 +18,12 @@ if (releaseVersion !== currentVersion) {
     <p class="lead" data-i18n="cl.lead">The highlights from the newest Vitrine release, available without waiting for a network request.</p>
     <article class="changelog" data-release-version={releaseVersion}>
       <p class="ver"><span data-i18n="cl.version">Version</span> {releaseVersion}</p>
-      <h3 data-i18n="cl.headline">Safer inputs, stronger foundations</h3>
+      <h3 data-i18n="cl.headline">Safer rendering, stricter web capture</h3>
       <ul>
-        <li data-i18n="cl.h1"><strong>Free terminal capture and search move forward together.</strong> Basic <code>vgrab</code> remains free, while commands, recents, themes, and fonts handle multi-word Unicode queries consistently.</li>
-        <li data-i18n="cl.h2"><strong>Local files fail safely.</strong> Source, recipe, preset, and custom-theme imports are bounded, reject non-files, and detect inputs that change while loading.</li>
-        <li data-i18n="cl.h3"><strong>Sequoia is the new floor.</strong> Vitrine supports macOS 15 and later, qualifies Tahoe explicitly, and keeps universal Apple silicon and Intel downloads.</li>
-        <li data-i18n="cl.h4"><strong>Release evidence is harder to fool.</strong> WebKit controls, coverage guardrails, memory journeys, updater packaging, and candidate digests are verified before publication.</li>
+        <li data-i18n="cl.h1"><strong>Extreme renders fail safely.</strong> Preview, export, CLI, Shortcuts, batches, social cards, and comparison boards reject unsafe bitmap sizes before allocation and explain how to recover.</li>
+        <li data-i18n="cl.h2"><strong>Full-page capture is bounded.</strong> Web Snapshot limits total pixels and working memory, then rechecks the image WebKit actually produced before composition.</li>
+        <li data-i18n="cl.h3"><strong>Private subresources stay private.</strong> URL snapshots block literal localhost, LAN, link-local, metadata, and reserved subresources unless narrow loopback access is explicitly enabled.</li>
+        <li data-i18n="cl.h4"><strong>Security evidence is repeatable.</strong> CodeQL and focused Address and Thread Sanitizer lanes join the existing Sequoia and Tahoe qualification gates.</li>
       </ul>
       <a class="more" href="https://github.com/johnny4young/vitrine/blob/main/CHANGELOG.md" data-i18n="cl.more">Read the full changelog →</a>
     </article>

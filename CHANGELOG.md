@@ -12,6 +12,49 @@ can never drift.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-08-30
+
+Vitrine 1.2.1 is a focused safety candidate. It bounds every raster allocation before
+rendering, makes failures actionable across app and automation surfaces, and strengthens
+Web Snapshot isolation without changing the supported workflow or public distribution
+contract.
+
+### Added
+
+- Add shared preview and export render budgets with overflow-safe checks for logical
+  dimensions, scale, total pixels, and estimated concurrent buffers.
+- Add typed `tooLarge`, `allocationFailed`, `encodingFailed`, and `cancelled` render
+  failures with consistent user-facing messages and CLI exit behavior.
+- Add CodeQL `security-extended` analysis for Swift and JavaScript/TypeScript, plus
+  focused weekly/manual Address Sanitizer and Thread Sanitizer evidence lanes.
+
+### Changed
+
+- Clamp full-page Web Snapshot height against page, axis, pixel-area, and estimated-memory
+  ceilings before asking WebKit to allocate the snapshot.
+- Preserve the existing macOS 15 Sequoia floor, macOS 26 Tahoe qualification matrix,
+  and universal Apple silicon + Intel direct-download contract.
+
+### Fixed
+
+- Reject extreme editor, CLI, App Intent, batch, social-card, comparison-board, and Web
+  Snapshot renders before bitmap allocation instead of risking process termination or a
+  blank result.
+- Propagate render and encoding failures through copy, save, share, batch, and automation
+  surfaces instead of collapsing them into generic or silent failures.
+- Recheck actual WebKit image dimensions before composition so an engine result cannot
+  bypass the preflight budget.
+
+### Security
+
+- Block literal localhost, LAN, link-local, metadata, reserved, IPv6-private, mapped IPv4,
+  and ambiguous numeric WebKit subresources across images, CSS, scripts, frames, fetch,
+  WebSockets, and other resource types. Explicit loopback opt-in remains narrow and does
+  not allow other private destinations.
+- Compile the production content-rule list in a real WebKit test and add a clean-Mac
+  zero-request loopback probe. Public-host DNS resolution and rebinding remain documented
+  residual risks because WebKit rules match request URLs rather than resolved addresses.
+
 ## [1.2.0] - 2026-08-28
 
 Vitrine 1.2 is the first public successor to 1.0.1. It carries forward the complete
@@ -1168,7 +1211,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/johnny4young/vitrine/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/johnny4young/vitrine/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/johnny4young/vitrine/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/johnny4young/vitrine/compare/v1.0.0...v1.0.1

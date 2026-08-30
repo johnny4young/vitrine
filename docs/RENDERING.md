@@ -19,6 +19,20 @@ Every surface ultimately produces the same rendered image types and uses the sam
 ImageIO/PDF export paths. This keeps app, CLI, automation, and batch output consistent.
 Golden-image fixtures and performance tests protect that contract.
 
+## Resource and failure boundary
+
+Raster output is never allocated from untrusted or naturally derived dimensions without a
+shared `RenderBudget` preflight. Preview and export have separate limits, and each check
+includes logical width/height, scale, total pixels, and an estimate of concurrently live
+buffers. Arithmetic is overflow-safe. Web Snapshot also clamps full-page height before
+asking WebKit for pixels and validates the actual returned image again before composition.
+
+App, CLI, App Intents, batch, social-card, comparison-board, pasteboard, and file adapters
+preserve four typed outcomes: too large, allocation failed, encoding failed, and cancelled.
+This makes an extreme request an actionable error rather than a blank artifact, partial
+success, or abrupt process exit. PDF remains vector output; raster previews and embedded
+images still pass through the applicable bitmap budget.
+
 ## Web capture boundary
 
 A webpage is loaded locally in WebKit. Vitrine does not send the URL or rendered output
