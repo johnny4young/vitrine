@@ -214,6 +214,13 @@ output in the job summary. The weighted coverage across `Vitrine.app`, `vitrine-
 and `VitrineMenuBarHelper` may not fall more than one percentage point below the
 pre-hardening baseline for that OS.
 
+The instrumented app host runs without code-signing entitlements or App Sandbox only
+inside `make test-coverage`. On privacy-hardened macOS hosts, `xcodebuild` otherwise may
+be unable to retrieve its own raw profile from the app container, leaving an unreadable
+coverage archive even though every test passed. These command-line overrides do not
+change `project.yml`, Debug/Release product builds, packaged entitlements, or the tests
+selected by the lane; they only make the local profile transport observable to Xcode.
+
 The same guard requires at least 80% of changed executable lines in critical logic to be
 covered. Its unit-coverage scope is `Models`, `CLI`, `Pro`, `Terminal`, `Rendering`, and
 the explicit non-visual policy/renderer files in `WebRendering`. SwiftUI/AppKit views and

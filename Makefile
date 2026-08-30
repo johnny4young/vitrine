@@ -137,6 +137,10 @@ test: project
 ## coverage. The result bundle is mandatory: the guard fails if xccov cannot read
 ## it, rejects a production-target drop over one percentage point, and requires
 ## 80% coverage for changed executable lines in critical non-visual logic.
+## The instrumented test host runs without the product sandbox only in this lane.
+## Otherwise privacy-hardened macOS hosts can prevent xcodebuild from retrieving
+## the raw profile from the app container, leaving an unreadable coverage archive.
+## These command-line overrides do not change the generated product configuration.
 test-coverage: project
 	@test -f "$(COVERAGE_BASELINE)" || { \
 		echo "Unsupported coverage platform '$(COVERAGE_PLATFORM)' or missing baseline: $(COVERAGE_BASELINE)" >&2; \
@@ -146,6 +150,7 @@ test-coverage: project
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage YES \
+		CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO \
 		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" test
 	python3 scripts/check-coverage.py \
 		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \

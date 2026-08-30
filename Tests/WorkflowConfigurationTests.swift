@@ -189,6 +189,7 @@ struct WorkflowConfigurationTests {
 
         #expect(fastLane.contains("-enableCodeCoverage NO"))
         #expect(coverageLane.contains("-enableCodeCoverage YES"))
+        #expect(coverageLane.contains("CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO"))
         #expect(fastLane.contains("$(RESULT_BUNDLE_FLAG)"))
         #expect(coverageLane.contains(#"-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)""#))
         #expect(coverageLane.contains("scripts/check-coverage.py"))
@@ -197,6 +198,12 @@ struct WorkflowConfigurationTests {
         #expect(make.contains(#"if [ "$$major" = 15 ]"#))
         #expect(make.contains(#"elif [ "$$major" = 26 ]"#))
         #expect(project.contains("gatherCoverageData: false"))
+
+        let releasing = try Self.releasingDoc()
+        let releasingProse = releasing.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        #expect(
+            releasingProse.contains("without code-signing entitlements or App Sandbox only"))
+        #expect(releasingProse.contains("do not change `project.yml`"))
 
         let ci = try Self.ci()
         #expect(ci.contains("make test-coverage"))
