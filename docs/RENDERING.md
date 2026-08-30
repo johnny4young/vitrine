@@ -25,10 +25,18 @@ A webpage is loaded locally in WebKit. Vitrine does not send the URL or rendered
 to a screenshot service. Remote capture is available only in a build with the network
 client entitlement and after a first-use disclosure. The URL pipeline rejects malformed,
 non-HTTP, local, private, and unsafe redirect destinations. A default-off setting may
-allow only this Mac's loopback interface (`localhost`, IPv4 `127/8`, IPv6 `::1`, and
-mapped loopback) for development servers; multicast-DNS `.local`, LAN, link-local,
-metadata, and every other private/reserved destination remain blocked. The same policy
-is applied to the initial URL and redirects. Downloads and decoded data are bounded.
+allow only this Mac's loopback interface (`localhost` and its reserved subdomains,
+IPv4 `127/8`, IPv6 `::1`, and mapped loopback) for development servers;
+multicast-DNS `.local`, LAN, link-local, metadata, and every other private/reserved
+destination remain blocked. The same policy is applied to the initial URL and frame
+redirects. A compiled WebKit content rule separately blocks literal-private image, CSS,
+script, iframe, fetch/XHR, WebSocket, and other subresource URLs before they reach the
+network. Downloads and decoded data are bounded.
+
+This is layered literal-host filtering, not resolver isolation. WebKit content rules see
+the request URL rather than the IP address returned by DNS, so a public hostname that
+resolves or rebinds to a private address remains a DNS/TOCTOU residual. Clean-Mac QA
+proves zero requests to a literal loopback probe and does not claim to close that residual.
 
 Pasted HTML is different: it uses a non-persistent WebKit data store and a compiled
 content rule that blocks remote subresources, navigation, and script-initiated requests.

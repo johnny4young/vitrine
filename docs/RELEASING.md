@@ -917,17 +917,26 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
     rendered `onerror` marker alone is not sufficient evidence.
 18. **Real public URL WebKit** — copy `https://example.com`, accept the disclosure when
     shown, and export a real non-placeholder capture of the page.
-19. **Loopback rejected immediately** — submit the `127.0.0.1` entry from
+19. **Literal-private subresources blocked** — run
+    `webkit/private-subresource-probe.sh evidence prepare`, capture the public URL it puts
+    on the clipboard through the real URL-capture path, export a snapshot containing
+    `PRIVATE_SUBRESOURCE_PROBE_READY`, and run
+    `webkit/private-subresource-probe.sh evidence verify`. Require its structured metadata
+    to report zero private request bytes for the image, stylesheet, script, child frame,
+    fetch, and WebSocket probes. Any observed loopback bytes are a release blocker.
+20. **Loopback rejected immediately** — submit the `127.0.0.1` entry from
     `webkit/blocked-destinations.txt` and require the domain error before WebKit navigation
     begins; a later timeout is not a pass.
-20. **Private destinations rejected immediately** — repeat with the private and
+21. **Private destinations rejected immediately** — repeat with the private and
     link-local entries and require the same pre-navigation rejection.
-21. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
+22. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
     leaves no menu-bar icon and no login item behind.
 
 These fixtures intentionally do **not** certify public-to-private redirect revalidation.
-That policy remains protected by deterministic navigation-delegate tests; never mark it as
-clean-Mac validated from this manual journey.
+That policy remains protected by deterministic navigation-delegate tests. They also do not
+certify public-hostname DNS rebinding or resolution-time private-address detection, because
+WebKit content rules match the request URL rather than its resolved address. Never mark
+either boundary as clean-Mac validated from this manual journey.
 
 Complete both platform entries in `webkit/qualification-log.json`, change
 `overallStatus` only after every required scenario passes, and keep screenshots/exports in

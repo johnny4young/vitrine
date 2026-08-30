@@ -199,7 +199,7 @@ enum WebSnapshotError: Error, Equatable {
     /// The page loaded but snapshotting or bitmap conversion failed.
     case snapshotFailed
 
-    /// Pasted HTML could not obtain its fail-closed remote-block content rule list.
+    /// WebKit could not obtain a required fail-closed content rule list.
     case networkIsolationUnavailable
 }
 

@@ -808,6 +808,7 @@ Vitrine/
 │   ├── URLRenderer.swift      # URL render facade, validation/error mapping
 │   ├── URLSnapshotEngine.swift # bounded offscreen WKWebView rasterization
 │   ├── URLLoadCoordinator.swift # navigation completion + redirect/host policy
+│   ├── PrivateNetworkBlockRules.swift # all-resource literal-private content rules
 │   ├── HTMLRenderer / WebSnapshotView
 │   ├── WebSnapshot{WindowController,EditorView}.swift
 │   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode value type

@@ -71,6 +71,13 @@ struct URLSnapshotEngine {
         // store by default (nothing written to disk, no cookies across renders), or
         // the persistent store only when the user opted in.
         configuration.websiteDataStore = dataStore(for: config.dataStoreMode)
+        // A navigation delegate sees documents and frames, not images, style sheets,
+        // scripts, fonts, media, fetch/XHR, or WebSockets. Install the compiled
+        // literal-private-host rule list before creating the web view so those
+        // requests are blocked inside WebKit. Compilation failure is fail-closed.
+        configuration.userContentController.add(
+            try await Self.privateNetworkBlockList(
+                allowsLoopback: config.allowsLoopbackCapture))
 
         let frame = CGRect(origin: .zero, size: viewport)
         let webView = WKWebView(frame: frame, configuration: configuration)
@@ -78,10 +85,11 @@ struct URLSnapshotEngine {
         // the view's own layer, not the screen.
         webView.frame = frame
 
-        // The delegate reports load completion. Unlike pasted HTML (which blocks all
-        // remote loads), a URL capture is a page the user explicitly asked to load,
-        // so the page itself and its subresources are allowed; the engine still runs
-        // entirely locally and never contacts a remote render service.
+        // The delegate reports load completion and revalidates every frame target.
+        // Public subresources may load because this is an explicit URL capture;
+        // literal private/local destinations are already blocked by the content
+        // rule list above. The engine still runs locally and never uses a remote
+        // rendering service.
         let coordinator = URLLoadCoordinator(allowsLoopbackCapture: config.allowsLoopbackCapture)
         webView.navigationDelegate = coordinator
         defer {
@@ -284,6 +292,42 @@ struct URLSnapshotEngine {
         switch mode {
         case .nonPersistent: .nonPersistent()
         case .persistent: .default()
+        }
+    }
+
+    /// Compiled private-network rule lists, one for each loopback mode. The cache
+    /// is main-actor isolated with the WebKit engine and keyed by the immutable
+    /// policy choice so an opt-in capture cannot accidentally reuse the stricter
+    /// list (or a default capture the permissive one).
+    @MainActor private static var cachedPrivateNetworkBlockLists: [Bool: WKContentRuleList] = [:]
+
+    /// Returns the fail-closed content rule list that blocks private subresources.
+    /// The encoded source is pure and tested separately; this method proves WebKit
+    /// can compile it and keeps compilation off the repeated render path.
+    static func privateNetworkBlockList(allowsLoopback: Bool) async throws -> WKContentRuleList {
+        if let cached = cachedPrivateNetworkBlockLists[allowsLoopback] { return cached }
+        guard let store = WKContentRuleListStore.default() else {
+            throw WebSnapshotError.networkIsolationUnavailable
+        }
+
+        do {
+            let source = try PrivateNetworkBlockRules.encodedContentRuleList(
+                allowsLoopback: allowsLoopback)
+            guard
+                let list = try await store.compileContentRuleList(
+                    forIdentifier: PrivateNetworkBlockRules.identifier(
+                        allowsLoopback: allowsLoopback),
+                    encodedContentRuleList: source)
+            else {
+                throw WebSnapshotError.networkIsolationUnavailable
+            }
+            cachedPrivateNetworkBlockLists[allowsLoopback] = list
+            return list
+        } catch {
+            Log.render.error(
+                "Private-network rule list failed to compile (\((error as NSError).domain, privacy: .public))"
+            )
+            throw WebSnapshotError.networkIsolationUnavailable
         }
     }
 
