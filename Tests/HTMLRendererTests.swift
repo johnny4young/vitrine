@@ -313,6 +313,20 @@ struct WebSnapshotErrorTests {
         }
     }
 
+    @Test func excessivePixelAreaThrowsBeforeLaunchingWebKit() async throws {
+        let engine = WebSnapshotView()
+        await #expect(
+            throws: WebSnapshotError.renderTooLarge(
+                .pixelCount(actual: 225_000_000, maximum: 40_000_000))
+        ) {
+            try await engine.snapshot(
+                of: .init(
+                    html: HTMLFixture.minimal,
+                    viewport: CGSize(width: 5_000, height: 5_000),
+                    scale: 3))
+        }
+    }
+
     @Test func remoteBaseURLIsRejectedAsATypedError() async throws {
         // A non-file base URL would widen what relative references can reach, so it
         // is refused with a typed error before any load — local assets only.
@@ -336,6 +350,7 @@ struct WebSnapshotErrorTests {
     @Test func webSnapshotErrorCasesAreDistinct() {
         // The typed-error contract only holds if the cases are not interchangeable.
         #expect(WebSnapshotError.invalidViewport != .invalidBaseURL)
+        #expect(WebSnapshotError.renderTooLarge(.invalidScale) != .invalidViewport)
         #expect(WebSnapshotError.invalidBaseURL != .loadFailed)
         #expect(WebSnapshotError.loadFailed != .timedOut)
         #expect(WebSnapshotError.timedOut != .snapshotFailed)
@@ -350,6 +365,7 @@ struct WebSnapshotErrorTests {
         // distinct per case so logs are filterable.
         let reasons = [
             WebSnapshotError.invalidViewport.diagnosticReason,
+            WebSnapshotError.renderTooLarge(.invalidScale).diagnosticReason,
             WebSnapshotError.invalidBaseURL.diagnosticReason,
             WebSnapshotError.loadFailed.diagnosticReason,
             WebSnapshotError.timedOut.diagnosticReason,
@@ -476,13 +492,13 @@ struct WebSnapshotSizingTests {
         #expect(threeX.height == 300)
     }
 
-    @Test func pixelDimensionsRoundToTheNearestDevicePixel() {
-        // A fractional point size rounds, so the bitmap is always a whole number of
-        // device pixels (no truncation that would shave a row/column).
+    @Test func pixelDimensionsRoundUpToContainEveryDevicePixel() {
+        // A fractional point size rounds up, so the bitmap is always a whole number
+        // of device pixels without shaving a row or column from the source.
         let rounded = WebSnapshotView.pixelDimensions(
-            forSourceSize: CGSize(width: 100.4, height: 100.6), scale: 1.5)
-        #expect(rounded.width == Int((100.4 * 1.5).rounded()))  // 151
-        #expect(rounded.height == Int((100.6 * 1.5).rounded()))  // 151
+            forSourceSize: CGSize(width: 100.1, height: 100.6), scale: 1.5)
+        #expect(rounded.width == Int((100.1 * 1.5).rounded(.up)))  // 151
+        #expect(rounded.height == Int((100.6 * 1.5).rounded(.up)))  // 151
     }
 
     @Test func nonPositiveSourceSizeYieldsNoDrawableBitmap() {
@@ -490,6 +506,10 @@ struct WebSnapshotSizingTests {
         // into a `snapshotFailed` rather than a zero-pixel image.
         #expect(
             WebSnapshotView.pixelDimensions(forSourceSize: CGSize(width: 0, height: 400), scale: 2)
+                == (0, 0))
+        #expect(
+            WebSnapshotView.pixelDimensions(
+                forSourceSize: CGSize(width: 600, height: 400), scale: .infinity)
                 == (0, 0))
         #expect(
             WebSnapshotView.pixelDimensions(forSourceSize: CGSize(width: 600, height: 0), scale: 2)
@@ -535,6 +555,17 @@ struct WebSnapshotSizingTests {
         let engine = WebSnapshotView()
         #expect(engine.cgImage(from: NSImage(size: .zero), scale: 2) == nil)
     }
+
+    @Test func checkedBitmapConversionRejectsUnsafeAreaBeforeAllocating() {
+        let engine = WebSnapshotView()
+        let oversized = NSImage(size: CGSize(width: 5_000, height: 5_000))
+        #expect(
+            throws: WebSnapshotError.renderTooLarge(
+                .pixelCount(actual: 225_000_000, maximum: 40_000_000))
+        ) {
+            try engine.cgImageChecked(from: oversized, scale: 3)
+        }
+    }
 }
 
 // MARK: - HTMLRenderer routing (pure logic, no web process needed)
@@ -558,6 +589,18 @@ struct HTMLRendererRoutingTests {
         let renderer = HTMLRenderer()
         await #expect(throws: RenderError.noRendererFor(kind: "code")) {
             try await renderer.render(.code("x", languageHint: nil), config: SnapshotConfig())
+        }
+    }
+
+    @Test func oversizedHTMLPreservesTheActionableRenderCategory() async throws {
+        let renderer = HTMLRenderer(
+            viewport: CGSize(width: 5_000, height: 5_000), scale: 3)
+        await #expect(
+            throws: RenderError.renderTooLarge(
+                .pixelCount(actual: 225_000_000, maximum: 40_000_000))
+        ) {
+            try await renderer.render(
+                .html(HTMLFixture.minimal), config: SnapshotConfig())
         }
     }
 }

@@ -34,11 +34,15 @@ struct WebSnapshotModelTests {
         let disabled = WebSnapshotModel.message(for: .urlCaptureDisabled)
         let loopback = WebSnapshotModel.message(for: .loopbackCaptureDisabled)
         let failed = WebSnapshotModel.message(for: .renderFailed)
+        let tooLarge = WebSnapshotModel.message(for: .renderTooLarge(.invalidScale))
         #expect(!disabled.isEmpty)
         #expect(!failed.isEmpty)
         #expect(!loopback.isEmpty)
+        #expect(!tooLarge.isEmpty)
         #expect(disabled != failed)
         #expect(loopback != failed)
+        #expect(tooLarge != failed)
+        #expect(tooLarge.localizedCaseInsensitiveContains("reduce"))
         #expect(loopback.localizedCaseInsensitiveContains("localhost"))
     }
 

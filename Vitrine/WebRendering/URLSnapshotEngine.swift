@@ -22,9 +22,9 @@ import WebKit
 /// In `.visibleViewport` mode the snapshot rect is exactly the preset size, so the
 /// bitmap is `viewport × scale` device pixels — fully deterministic. In `.fullPage`
 /// mode the engine measures the document's content height after the wait, clamps it
-/// to `SafetyCaps.maxPageHeight`, resizes the web view to that height, and snapshots
-/// the whole page. The clamp is what keeps a runaway document from asking for a
-/// multi-gigapixel bitmap.
+/// to the strictest page-height, raster-dimension, pixel-count, and buffer-cost limit,
+/// resizes the web view to that height, and snapshots the whole page. The shared
+/// render budget keeps a runaway document from asking for a multi-gigapixel bitmap.
 ///
 /// ## Lazy-load scroll behavior
 ///
@@ -57,14 +57,14 @@ struct URLSnapshotEngine {
     /// to load the validated URL, and torn down before this returns. After the load
     /// settles it applies the wait strategy (a fixed post-load delay, or a best-effort
     /// network-quiet wait), then — for a full-page capture — runs the bounded
-    /// lazy-load pass and grows the view to the clamped content height before
+    /// lazy-load pass and grows the view to the budget-clamped content height before
     /// snapshotting. A failure at any stage (a load error, a timeout, or a snapshot
     /// that yields no image) throws, so a caller never receives a blank picture.
     func snapshot(of config: WebSnapshotConfig) async throws -> CGImage {
         let viewport = config.viewport
-        guard viewport.width > 0, viewport.height > 0 else {
-            throw WebSnapshotError.invalidViewport
-        }
+        // Validate the visible viewport and scale before creating WebKit. Full-page
+        // mode is checked again after measuring its document-dependent height.
+        _ = try config.captureSize()
 
         let configuration = WKWebViewConfiguration()
         // The data store is the explicit network mode: a per-render nonpersistent
@@ -128,9 +128,12 @@ struct URLSnapshotEngine {
 
         // Reuse the shared, deterministic bitmap path so a URL snapshot is exactly
         // captureRect × scale device pixels, identical to an HTML snapshot.
-        guard let cgImage = WebSnapshotView().cgImage(from: image, scale: config.scale) else {
+        let cgImage: CGImage
+        do throws(WebSnapshotError) {
+            cgImage = try WebSnapshotView().cgImageChecked(from: image, scale: config.scale)
+        } catch let error {
             Log.render.error("URL snapshot produced no CGImage")
-            throw WebSnapshotError.snapshotFailed
+            throw error
         }
         return cgImage
     }
@@ -218,12 +221,11 @@ struct URLSnapshotEngine {
         try await performBoundedLazyLoadPass(on: webView, viewport: viewport, deadline: deadline)
 
         let contentHeight = await documentContentHeight(webView, fallback: viewport.height)
-        let cappedHeight = config.safetyCaps.clampPageHeight(
-            contentHeight, viewportHeight: viewport.height)
+        let captureSize = try config.captureSize(contentHeight: contentHeight)
 
         // Grow the web view to the captured height and lay it out so the whole page is
         // rendered into the layer the snapshot reads.
-        let fullFrame = CGRect(x: 0, y: 0, width: viewport.width, height: cappedHeight)
+        let fullFrame = CGRect(origin: .zero, size: captureSize)
         webView.frame = fullFrame
         webView.layoutSubtreeIfNeeded()
         // A brief settle so the resized layout paints before the snapshot.

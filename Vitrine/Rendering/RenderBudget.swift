@@ -111,6 +111,53 @@ nonisolated struct RenderBudget: Equatable, Sendable {
             estimatedPeakBytes: estimatedPeakBytes)
     }
 
+    /// Clamps a requested logical height to the tallest raster this budget permits
+    /// for `logicalWidth` at `scale`. Full-page WebKit capture uses this before it
+    /// resizes the web view or asks `takeSnapshot` for a bitmap, so the area limit is
+    /// enforced even when neither axis exceeds `maximumDimension` on its own.
+    func clampedLogicalHeight(
+        _ requestedHeight: CGFloat,
+        forLogicalWidth logicalWidth: CGFloat,
+        scale: CGFloat
+    ) throws(RenderBudgetError) -> CGFloat {
+        guard requestedHeight.isFinite, requestedHeight > 0,
+            logicalWidth.isFinite, logicalWidth > 0
+        else {
+            throw .tooLarge(.invalidDimensions)
+        }
+        guard scale.isFinite, scale > 0 else {
+            throw .tooLarge(.invalidScale)
+        }
+
+        let pixelWidth = try pixelDimension(for: logicalWidth, scale: scale)
+        let (bytesPerPixelAcrossBuffers, bufferCostOverflow) =
+            bytesPerPixel
+            .multipliedReportingOverflow(by: concurrentBufferCount)
+        guard !bufferCostOverflow, bytesPerPixelAcrossBuffers > 0 else {
+            throw .tooLarge(.arithmeticOverflow)
+        }
+        let byteBoundPixelCount = maximumEstimatedBytes / bytesPerPixelAcrossBuffers
+        let effectiveMaximumPixelCount = min(maximumPixelCount, byteBoundPixelCount)
+        let areaBoundHeight = effectiveMaximumPixelCount / pixelWidth
+        let maximumPixelHeight = min(maximumDimension, areaBoundHeight)
+        guard maximumPixelHeight > 0 else {
+            throw .tooLarge(
+                .pixelCount(actual: pixelWidth, maximum: effectiveMaximumPixelCount))
+        }
+
+        // Stay infinitesimally below the integer pixel boundary before dividing.
+        // For non-integral scales, floating-point division followed by multiplication
+        // can otherwise land just above the boundary and make `ceil` add one pixel.
+        let maximumLogicalHeight = CGFloat(maximumPixelHeight).nextDown / scale
+        let clampedHeight = min(requestedHeight, maximumLogicalHeight)
+        // Re-run the complete policy at the chosen boundary. This protects against
+        // fractional-point rounding and keeps this helper correct if the policy gains
+        // another constraint later.
+        _ = try allocation(
+            for: CGSize(width: logicalWidth, height: clampedHeight), scale: scale)
+        return clampedHeight
+    }
+
     private func pixelDimension(
         for logicalDimension: CGFloat, scale: CGFloat
     ) throws(RenderBudgetError) -> Int {

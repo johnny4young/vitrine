@@ -126,14 +126,20 @@ struct WebSnapshotViewportRenderer {
             }
 
             let scale = CGFloat(settings.export.scale)
-            let width = Int((preset.size.width * scale).rounded())
-            let height = Int((preset.size.height * scale).rounded())
-            guard width > 0, height > 0,
-                let colorSpace = settings.export.colorProfile.cgColorSpace,
+            let allocation: RenderBudget.Allocation
+            do throws(RenderBudgetError) {
+                allocation = try RenderBudget.export.allocation(
+                    for: preset.size, scale: scale)
+            } catch .tooLarge(let rejection) {
+                throw RenderError.renderTooLarge(rejection)
+            } catch {
+                throw RenderError.renderFailed
+            }
+            guard let colorSpace = settings.export.colorProfile.cgColorSpace,
                 let context = CGContext(
                     data: nil,
-                    width: width,
-                    height: height,
+                    width: allocation.pixelWidth,
+                    height: allocation.pixelHeight,
                     bitsPerComponent: 8,
                     bytesPerRow: 0,
                     space: colorSpace,
@@ -142,6 +148,8 @@ struct WebSnapshotViewportRenderer {
                 throw RenderError.renderFailed
             }
 
+            let width = CGFloat(allocation.pixelWidth)
+            let height = CGFloat(allocation.pixelHeight)
             let canvas = CGRect(x: 0, y: 0, width: width, height: height)
             context.setFillColor(CGColor(srgbRed: 0.043, green: 0.063, blue: 0.125, alpha: 1))
             context.fill(canvas)
@@ -509,6 +517,10 @@ final class WebSnapshotModel {
             )
         case .renderFailed:
             String(localized: "Couldn't load or render that — check the input and try again.")
+        case .renderTooLarge:
+            String(
+                localized:
+                    "The image is too large to render safely. Reduce the canvas size or scale.")
         case .noRendererFor:
             String(localized: "That input can't be rendered here.")
         }

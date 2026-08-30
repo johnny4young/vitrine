@@ -92,6 +92,75 @@ struct RenderBudgetTests {
         }
     }
 
+    @Test("Full-page height clamps to the shared area and buffer ceiling")
+    func fullPageHeightClamp() throws {
+        let width: CGFloat = 1_200
+        let scale: CGFloat = 2
+        let height = try RenderBudget.export.clampedLogicalHeight(
+            20_000, forLogicalWidth: width, scale: scale)
+        let allocation = try RenderBudget.export.allocation(
+            for: CGSize(width: width, height: height), scale: scale)
+
+        #expect(height < 20_000)
+        #expect(allocation.pixelCount <= RenderBudget.export.maximumPixelCount)
+        #expect(allocation.estimatedPeakBytes <= RenderBudget.export.maximumEstimatedBytes)
+        #expect(throws: RenderBudgetError.self) {
+            try RenderBudget.export.allocation(
+                for: CGSize(width: width, height: height + (1 / scale)),
+                scale: scale)
+        }
+    }
+
+    @Test(
+        "Full-page height remains bounded at every supported scale",
+        arguments: [CGFloat(1), CGFloat(2), CGFloat(3)])
+    func fullPageHeightClampAtSupportedScales(scale: CGFloat) throws {
+        let height = try RenderBudget.export.clampedLogicalHeight(
+            CGFloat.greatestFiniteMagnitude,
+            forLogicalWidth: 5_000,
+            scale: scale)
+        let allocation = try RenderBudget.export.allocation(
+            for: CGSize(width: 5_000, height: height), scale: scale)
+
+        #expect(height.isFinite)
+        #expect(allocation.pixelWidth == Int(5_000 * scale))
+        #expect(allocation.estimatedPeakBytes <= RenderBudget.export.maximumEstimatedBytes)
+    }
+
+    @Test("Full-page clamp remains inside a rounded fractional-scale boundary")
+    func fullPageHeightClampAtFractionalScale() throws {
+        let scale: CGFloat = 1.1
+        let height = try RenderBudget.export.clampedLogicalHeight(
+            20_000,
+            forLogicalWidth: 3_333.3,
+            scale: scale)
+        let allocation = try RenderBudget.export.allocation(
+            for: CGSize(width: 3_333.3, height: height), scale: scale)
+
+        #expect(allocation.pixelCount <= RenderBudget.export.maximumPixelCount)
+        #expect(allocation.estimatedPeakBytes <= RenderBudget.export.maximumEstimatedBytes)
+    }
+
+    @Test("Full-page clamp rejects invalid scales without trapping")
+    func fullPageHeightClampRejectsInvalidScale() {
+        for scale in [CGFloat.zero, .infinity, .nan] {
+            #expect(throws: RenderBudgetError.tooLarge(.invalidScale)) {
+                try RenderBudget.export.clampedLogicalHeight(
+                    10_000, forLogicalWidth: 1_200, scale: scale)
+            }
+        }
+    }
+
+    @Test("Full-page clamp rejects invalid widths without trapping")
+    func fullPageHeightClampRejectsInvalidWidth() {
+        for width in [CGFloat.zero, -1, .infinity, .nan] {
+            #expect(throws: RenderBudgetError.tooLarge(.invalidDimensions)) {
+                try RenderBudget.export.clampedLogicalHeight(
+                    10_000, forLogicalWidth: width, scale: 2)
+            }
+        }
+    }
+
     @Test("Every built-in destination preset fits the export budget")
     func builtInPresetsFit() throws {
         for preset in ExportPreset.all {

@@ -16,8 +16,8 @@ import Testing
 ///    capture.
 /// 3. **Wait strategies** — DOM loaded, a fixed delay, and a best-effort
 ///    network-quiet settle.
-/// 4. **Safety caps** — a maximum captured page height and a hard timeout ceiling
-///    bound runaway memory and time use.
+/// 4. **Safety caps** — a page-height ceiling, total raster budget, and hard timeout
+///    ceiling bound runaway memory and time use.
 /// 5. **Bounded lazy-load** — the full-page scroll pass is strictly bounded so an
 ///    infinite-scroll page cannot loop forever.
 ///
@@ -231,6 +231,77 @@ struct WebSafetyCapsTests {
         #expect(caps.clampPageHeight(720, viewportHeight: 720) == 720)
         // A viewport height of zero (degenerate) still yields a drawable 1pt floor.
         #expect(caps.clampPageHeight(0, viewportHeight: 0) == 1)
+    }
+
+    @Test func aPageHeightCapNeverShrinksBelowTheVisibleViewport() {
+        let caps = WebSnapshotConfig.SafetyCaps(
+            maxPageHeight: 300, maxTimeout: .seconds(60))
+        #expect(caps.clampPageHeight(10_000, viewportHeight: 720) == 720)
+    }
+
+    @Test func visibleCaptureRejectsUnsafeTotalPixelAreaBeforeWebKit() throws {
+        let config = try WebSnapshotConfig(
+            captureURL: try #require(URL(string: "https://example.com")),
+            viewportPreset: .custom(width: 5_000, height: 5_000),
+            scale: 3)
+
+        #expect(
+            throws: WebSnapshotError.renderTooLarge(
+                .pixelCount(actual: 225_000_000, maximum: 40_000_000))
+        ) {
+            try config.captureSize()
+        }
+    }
+
+    @Test(
+        "Full-page capture clamps area at every supported scale",
+        arguments: [CGFloat(1), CGFloat(2), CGFloat(3)])
+    func fullPageCaptureClampsArea(scale: CGFloat) throws {
+        let config = try WebSnapshotConfig(
+            captureURL: try #require(URL(string: "https://example.com")),
+            viewportPreset: .custom(width: 1_200, height: 630),
+            captureMode: .fullPage,
+            scale: scale)
+        let size = try config.captureSize(contentHeight: 1_000_000)
+        let allocation = try RenderBudget.export.allocation(for: size, scale: scale)
+
+        #expect(size.width == 1_200)
+        #expect(size.height >= 630)
+        #expect(size.height <= config.safetyCaps.maxPageHeight)
+        #expect(allocation.pixelCount <= RenderBudget.export.maximumPixelCount)
+        #expect(allocation.estimatedPeakBytes <= RenderBudget.export.maximumEstimatedBytes)
+    }
+
+    @Test func aWideFullPageIsClampedByAreaNotOnlyByItsAxes() throws {
+        let config = try WebSnapshotConfig(
+            captureURL: try #require(URL(string: "https://example.com")),
+            viewportPreset: .custom(width: 5_000, height: 100),
+            captureMode: .fullPage,
+            scale: 3)
+        let size = try config.captureSize(contentHeight: 20_000)
+        let allocation = try RenderBudget.export.allocation(for: size, scale: 3)
+
+        #expect(size.height < 1_000)
+        #expect(allocation.pixelWidth == 15_000)
+        #expect(allocation.pixelCount <= RenderBudget.export.maximumPixelCount)
+    }
+
+    @Test func invalidAndOverflowingScaleInputsFailWithoutTrapping() throws {
+        let url = try #require(URL(string: "https://example.com"))
+        for scale in [CGFloat.zero, .infinity, .nan] {
+            let config = try WebSnapshotConfig(captureURL: url, scale: scale)
+            #expect(throws: WebSnapshotError.renderTooLarge(.invalidScale)) {
+                try config.captureSize()
+            }
+        }
+
+        let huge = try WebSnapshotConfig(
+            captureURL: url,
+            viewportPreset: .custom(width: Int.max, height: 100),
+            scale: 3)
+        #expect(throws: WebSnapshotError.self) {
+            try huge.captureSize()
+        }
     }
 
     @Test func theTimeoutClampNeverExceedsTheCeiling() {
