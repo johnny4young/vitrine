@@ -90,8 +90,11 @@ final class ComparisonBoardDraft {
             layout: layout)
     }
 
-    func compose(scale: CGFloat, profile: ColorProfile) throws -> RenderedAsset {
-        try ComparisonBoardComposer.compose(board(), scale: scale, profile: profile)
+    func compose(
+        scale: CGFloat, profile: ColorProfile, budget: RenderBudget = .export
+    ) throws -> RenderedAsset {
+        try ComparisonBoardComposer.compose(
+            board(), scale: scale, profile: profile, budget: budget)
     }
 
     func moveItem(id: Item.ID, offset: Int) {

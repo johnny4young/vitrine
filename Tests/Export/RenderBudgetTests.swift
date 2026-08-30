@@ -1,4 +1,5 @@
 import CoreGraphics
+import SwiftUI
 import Testing
 
 @testable import Vitrine
@@ -190,6 +191,23 @@ struct RenderBudgetTests {
 
         #expect(image.width == 640)
         #expect(image.height == 360)
+    }
+
+    @Test("Preview rendering applies the stricter preview policy before allocation")
+    func checkedPreviewRejectsAnExportSizedCanvas() throws {
+        let size = CGSize(width: 5_000, height: 4_000)
+        _ = try RenderBudget.export.allocation(for: size, scale: 1)
+        #expect(
+            throws: RenderBudgetError.tooLarge(
+                .pixelCount(actual: 20_000_000, maximum: 16_000_000))
+        ) {
+            try ExportManager.renderCGImageChecked(
+                Color.clear.frame(width: size.width, height: size.height),
+                proposedSize: size,
+                scale: 1,
+                profile: .sRGB,
+                budget: .preview)
+        }
     }
 
     @Test("Checked payloads preserve render and encoding failure categories")

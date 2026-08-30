@@ -34,7 +34,8 @@ struct ComparisonBoardEditorView: View {
         .tint(VitrineTokens.Accent.system)
         .task(id: draft.previewKey(profile: settings.export.colorProfile)) {
             await preview.refresh(isValid: draft.isValid) {
-                try draft.compose(scale: 1, profile: settings.export.colorProfile)
+                try draft.compose(
+                    scale: 1, profile: settings.export.colorProfile, budget: .preview)
             }
         }
     }

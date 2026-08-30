@@ -51,7 +51,8 @@ enum ComparisonBoardComposer {
     static func compose(
         _ board: ComparisonBoard,
         scale: CGFloat = 2,
-        profile: ColorProfile = .sRGB
+        profile: ColorProfile = .sRGB,
+        budget: RenderBudget = .export
     ) throws -> RenderedAsset {
         guard scale.isFinite, scale >= 1, scale <= 3 else {
             throw CompositionError.invalidScale
@@ -63,7 +64,7 @@ enum ComparisonBoardComposer {
         do {
             let image = try ExportManager.renderCGImageChecked(
                 content, proposedSize: metrics.pointSize, scale: scale,
-                profile: profile, isOpaque: true)
+                profile: profile, budget: budget, isOpaque: true)
             return RenderedAsset(cgImage: image, profile: profile)
         } catch let error {
             throw CompositionError.renderFailure(error)

@@ -28,21 +28,24 @@ enum ExportManager {
     static func renderCGImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB,
+        budget: RenderBudget = .export,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> CGImage? {
         try? renderCGImageChecked(
             config, scale: scale, fixedSize: fixedSize, profile: profile,
+            budget: budget,
             backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore)
     }
 
-    /// Checked counterpart to `renderCGImage` used by production export surfaces.
-    /// SwiftUI resolves the logical layout first; only after the shared export budget
-    /// accepts that size do we allocate the caller-owned Core Graphics bitmap.
+    /// Checked counterpart to `renderCGImage` used by production raster surfaces.
+    /// SwiftUI resolves the logical layout first; only after the selected preview or
+    /// export budget accepts that size do we allocate the Core Graphics bitmap.
     static func renderCGImageChecked(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB,
+        budget: RenderBudget = .export,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) throws(RenderBudgetError) -> CGImage {
@@ -57,7 +60,8 @@ enum ExportManager {
                 .environment(\.foregroundImageStore, foregroundImageStore),
             proposedSize: fixedSize,
             scale: scale,
-            profile: profile)
+            profile: profile,
+            budget: budget)
         if case .image = config.background {
             guard let opaque = compositedOverBlackChecked(normalizedImage) else {
                 throw .allocationFailed
@@ -75,6 +79,7 @@ enum ExportManager {
         proposedSize: CGSize?,
         scale: CGFloat,
         profile: ColorProfile,
+        budget: RenderBudget = .export,
         isOpaque: Bool = false
     ) throws(RenderBudgetError) -> CGImage {
         let renderer = ImageRenderer(content: content)
@@ -84,8 +89,7 @@ enum ExportManager {
         var result: Result<CGImage, RenderBudgetError>?
         renderer.render(rasterizationScale: scale) { logicalSize, renderInContext in
             do throws(RenderBudgetError) {
-                let allocation = try RenderBudget.export.allocation(
-                    for: logicalSize, scale: scale)
+                let allocation = try budget.allocation(for: logicalSize, scale: scale)
                 guard
                     let colorSpace = profile.cgColorSpace
                         ?? CGColorSpace(name: CGColorSpace.sRGB),
@@ -203,11 +207,13 @@ enum ExportManager {
     static func renderNSImage(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB,
+        budget: RenderBudget = .export,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> NSImage? {
         try? renderNSImageChecked(
             config, scale: scale, fixedSize: fixedSize, profile: profile,
+            budget: budget,
             backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore)
     }
@@ -215,11 +221,13 @@ enum ExportManager {
     static func renderNSImageChecked(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB,
+        budget: RenderBudget = .export,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) throws(RenderBudgetError) -> NSImage {
         let cgImage = try renderCGImageChecked(
             config, scale: scale, fixedSize: fixedSize, profile: profile,
+            budget: budget,
             backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore)
         return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
