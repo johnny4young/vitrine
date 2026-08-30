@@ -31,9 +31,20 @@ enum SocialCardRenderer {
         scale: CGFloat = 2,
         profile: ColorProfile = .sRGB
     ) -> CGImage? {
+        try? renderCGImageChecked(model, size: size, scale: scale, profile: profile)
+    }
+
+    /// Checked social-card raster path. The fixed card layout is evaluated by the
+    /// shared render budget before Core Graphics allocates its scaled bitmap.
+    static func renderCGImageChecked(
+        _ model: SocialCardModel,
+        size: CGSize = SocialCardModel.defaultSize,
+        scale: CGFloat = 2,
+        profile: ColorProfile = .sRGB
+    ) throws(RenderBudgetError) -> CGImage {
         guard model.isRenderable else {
             Log.render.error("Social card render skipped: model is empty")
-            return nil
+            throw .encodingFailed
         }
 
         let signposter = RenderSignpost.signposter
@@ -42,16 +53,9 @@ enum SocialCardRenderer {
             "card template=\(model.template.rawValue) length=\(model.codeExcerpt.count)")
         defer { signposter.endInterval(RenderSignpost.renderName, state) }
 
-        let renderer = ImageRenderer(content: SocialCardCanvas(model: model, size: size))
-        renderer.scale = scale
-        // Pin the layout size so the rendered pixel size is exactly `size × scale`
-        // (1200×630 at 1×), independent of the card's content.
-        renderer.proposedSize = ProposedViewSize(size)
-        guard let cgImage = renderer.cgImage else {
-            Log.render.error("Social card render produced no image")
-            return nil
-        }
-        return ExportManager.normalized(cgImage, to: profile)
+        return try ExportManager.renderCGImageChecked(
+            SocialCardCanvas(model: model, size: size), proposedSize: size,
+            scale: scale, profile: profile)
     }
 
     /// Renders `model` to an `NSImage` (used by the share sheet).
@@ -65,6 +69,17 @@ enum SocialCardRenderer {
             return nil
         }
         return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+    }
+
+    static func renderNSImageChecked(
+        _ model: SocialCardModel,
+        size: CGSize = SocialCardModel.defaultSize,
+        scale: CGFloat = 2,
+        profile: ColorProfile = .sRGB
+    ) throws(RenderBudgetError) -> NSImage {
+        let image = try renderCGImageChecked(model, size: size, scale: scale, profile: profile)
+        return NSImage(
+            cgImage: image, size: NSSize(width: image.width, height: image.height))
     }
 
     /// Renders `model` to single-page PDF data at `size × 1` (PDF is a color-managed
@@ -96,16 +111,35 @@ enum SocialCardRenderer {
         profile: ColorProfile = .sRGB,
         pasteboard: NSPasteboard = .general
     ) -> Bool {
-        guard let cgImage = renderCGImage(model, size: size, scale: scale, profile: profile),
-            let png = ExportManager.pngData(from: cgImage)
-        else {
+        copyToPasteboardOutcome(
+            model, size: size, scale: scale, profile: profile,
+            pasteboard: pasteboard) == .copied
+    }
+
+    @discardableResult
+    static func copyToPasteboardOutcome(
+        _ model: SocialCardModel,
+        size: CGSize = SocialCardModel.defaultSize,
+        scale: CGFloat = 2,
+        profile: ColorProfile = .sRGB,
+        pasteboard: NSPasteboard = .general
+    ) -> ExportManager.CopyOutcome {
+        guard model.isRenderable else { return .failed }
+        let cgImage: CGImage
+        do {
+            cgImage = try renderCGImageChecked(
+                model, size: size, scale: scale, profile: profile)
+        } catch let error {
+            return .renderFailed(error)
+        }
+        guard let png = ExportManager.pngData(from: cgImage) else {
             Log.export.error("Social card copy failed: render or PNG encode returned nil")
-            return false
+            return .renderFailed(.encodingFailed)
         }
         pasteboard.clearContents()
         let copied = pasteboard.setData(png, forType: .png)
         Log.export.info("Copied social card to pasteboard (success \(copied, privacy: .public))")
-        return copied
+        return copied ? .copied : .failed
     }
 
     /// Presents an `NSSavePanel` and writes the card as PNG, PDF, HEIC, or AVIF, returning the
@@ -122,13 +156,19 @@ enum SocialCardRenderer {
         format: ExportFormat = .png,
         profile: ColorProfile = .sRGB
     ) -> ExportManager.SaveOutcome {
-        let payload = ExportManager.encodedPayload(
-            format,
-            png: { renderCGImage(model, size: size, scale: scale, profile: profile) },
-            pdf: { pdfData(model, size: size) })
-        guard let payload else {
+        guard model.isRenderable else { return .failed }
+        let payload: (data: Data, type: UTType, ext: String)
+        do {
+            payload = try ExportManager.encodedPayloadChecked(
+                format,
+                raster: { () throws(RenderBudgetError) -> CGImage in
+                    try renderCGImageChecked(
+                        model, size: size, scale: scale, profile: profile)
+                },
+                pdf: { pdfData(model, size: size) })
+        } catch let error {
             Log.export.error("Social card save failed: render or encode returned nil")
-            return .failed
+            return .renderFailed(error)
         }
         // The shared panel/write path — one logging point for every save flow.
         return ExportManager.saveToFile(payload: payload, suggestedName: "vitrine-card")

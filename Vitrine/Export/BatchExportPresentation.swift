@@ -49,11 +49,16 @@ struct BatchExportCompletion: Equatable {
     let isComplete: Bool
     let failureNote: String?
 
-    init(written: Int, failed: Int, expected: Int) {
+    init(
+        written: Int, failed: Int, expected: Int,
+        renderFailure: RenderBudgetError? = nil
+    ) {
         isComplete = expected > 0 && written == expected && failed == 0
         failureNote =
             if isComplete {
                 nil
+            } else if let renderFailure {
+                "\(written)/\(expected) — \(Notifier.renderFailure(renderFailure).message)"
             } else {
                 "\(written)/\(expected) — "
                     + String(

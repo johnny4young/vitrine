@@ -31,29 +31,98 @@ enum ExportManager {
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> CGImage? {
+        try? renderCGImageChecked(
+            config, scale: scale, fixedSize: fixedSize, profile: profile,
+            backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore)
+    }
+
+    /// Checked counterpart to `renderCGImage` used by production export surfaces.
+    /// SwiftUI resolves the logical layout first; only after the shared export budget
+    /// accepts that size do we allocate the caller-owned Core Graphics bitmap.
+    static func renderCGImageChecked(
+        _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
+        profile: ColorProfile = .sRGB,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+    ) throws(RenderBudgetError) -> CGImage {
         let signposter = RenderSignpost.signposter
         let state = signposter.beginInterval(
             RenderSignpost.renderName, "scale=\(Int(scale)) length=\(config.code.count)")
         defer { signposter.endInterval(RenderSignpost.renderName, state) }
 
-        let renderer = ImageRenderer(
-            content: SnapshotCanvas(config: config, fixedSize: fixedSize)
+        let normalizedImage = try renderCGImageChecked(
+            SnapshotCanvas(config: config, fixedSize: fixedSize)
                 .environment(\.backgroundImageStore, backgroundImageStore)
-                .environment(\.foregroundImageStore, foregroundImageStore))
-        renderer.scale = scale
-        // Pin the layout size for fixed-size presets so the rendered pixel size
-        // is exactly `fixedSize × scale` (e.g. OpenGraph 1200×630 at 1×).
-        if let fixedSize { renderer.proposedSize = ProposedViewSize(fixedSize) }
-        guard let cgImage = renderer.cgImage else {
-            Log.render.error(
-                "Render produced no image (scale \(Int(scale), privacy: .public))")
-            return nil
-        }
-        let normalizedImage = normalized(cgImage, to: profile)
+                .environment(\.foregroundImageStore, foregroundImageStore),
+            proposedSize: fixedSize,
+            scale: scale,
+            profile: profile)
         if case .image = config.background {
-            return compositedOverBlack(normalizedImage)
+            guard let opaque = compositedOverBlackChecked(normalizedImage) else {
+                throw .allocationFailed
+            }
+            return opaque
         }
         return normalizedImage
+    }
+
+    /// Renders arbitrary SwiftUI content through the same pre-allocation budget as
+    /// snapshots. Social cards and comparison boards use this overload so every raster
+    /// surface shares one allocation policy and one typed failure contract.
+    static func renderCGImageChecked<Content: View>(
+        _ content: Content,
+        proposedSize: CGSize?,
+        scale: CGFloat,
+        profile: ColorProfile,
+        isOpaque: Bool = false
+    ) throws(RenderBudgetError) -> CGImage {
+        let renderer = ImageRenderer(content: content)
+        if let proposedSize { renderer.proposedSize = ProposedViewSize(proposedSize) }
+        renderer.isOpaque = isOpaque
+
+        var result: Result<CGImage, RenderBudgetError>?
+        renderer.render(rasterizationScale: scale) { logicalSize, renderInContext in
+            do throws(RenderBudgetError) {
+                let allocation = try RenderBudget.export.allocation(
+                    for: logicalSize, scale: scale)
+                guard
+                    let colorSpace = profile.cgColorSpace
+                        ?? CGColorSpace(name: CGColorSpace.sRGB),
+                    let context = CGContext(
+                        data: nil,
+                        width: allocation.pixelWidth,
+                        height: allocation.pixelHeight,
+                        bitsPerComponent: 8,
+                        bytesPerRow: 0,
+                        space: colorSpace,
+                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+                else {
+                    result = .failure(.allocationFailed)
+                    return
+                }
+                context.scaleBy(x: scale, y: scale)
+                renderInContext(context)
+                guard let image = context.makeImage() else {
+                    result = .failure(.allocationFailed)
+                    return
+                }
+                result = .success(image)
+            } catch let error {
+                result = .failure(error)
+            }
+        }
+
+        switch result {
+        case .success(let image):
+            return image
+        case .failure(let error):
+            Log.render.error("Raster render rejected or failed")
+            throw error
+        case nil:
+            Log.render.error("Raster render produced no image")
+            throw .allocationFailed
+        }
     }
 
     /// Converts a rendered `CGImage` into `profile`'s color space, redrawing it
@@ -107,7 +176,7 @@ enum ExportManager {
     /// `ImageRenderer` composite that layer above selectable text in fit mode;
     /// flattening the finished bitmap preserves the foreground while filling fit
     /// letterboxes and translucent blur edges deterministically.
-    private static func compositedOverBlack(_ cgImage: CGImage) -> CGImage {
+    private static func compositedOverBlackChecked(_ cgImage: CGImage) -> CGImage? {
         guard
             let colorSpace = cgImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB),
             let context = CGContext(
@@ -121,13 +190,13 @@ enum ExportManager {
             )
         else {
             Log.render.error("Opaque image-background context creation failed")
-            return cgImage
+            return nil
         }
         let bounds = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
         context.setFillColor(CGColor(gray: 0, alpha: 1))
         context.fill(bounds)
         context.draw(cgImage, in: bounds)
-        return context.makeImage() ?? cgImage
+        return context.makeImage()
     }
 
     /// Renders the canvas to an `NSImage` (used by the share sheet).
@@ -137,14 +206,22 @@ enum ExportManager {
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> NSImage? {
-        guard
-            let cgImage = renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile,
-                backgroundImageStore: backgroundImageStore,
-                foregroundImageStore: foregroundImageStore)
-        else {
-            return nil
-        }
+        try? renderNSImageChecked(
+            config, scale: scale, fixedSize: fixedSize, profile: profile,
+            backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore)
+    }
+
+    static func renderNSImageChecked(
+        _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
+        profile: ColorProfile = .sRGB,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+    ) throws(RenderBudgetError) -> NSImage {
+        let cgImage = try renderCGImageChecked(
+            config, scale: scale, fixedSize: fixedSize, profile: profile,
+            backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore)
         return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 
@@ -282,6 +359,28 @@ enum ExportManager {
             let data = rasterData(from: cgImage, format: format),
             let metadata = rasterMetadata(for: format)
         else { return nil }
+        return (data, metadata.type, metadata.ext)
+    }
+
+    /// Throwing payload ladder for user-facing and automation surfaces. A safe-size
+    /// rejection, allocation failure, or encoder failure remains distinguishable all
+    /// the way to the caller instead of being collapsed into an ambiguous `nil`.
+    static func encodedPayloadChecked(
+        _ format: ExportFormat,
+        raster: () throws(RenderBudgetError) -> CGImage,
+        pdf: () -> Data?
+    ) throws(RenderBudgetError) -> (data: Data, type: UTType, ext: String) {
+        if case .pdf = format {
+            guard let data = pdf() else { throw .encodingFailed }
+            return (data, .pdf, "pdf")
+        }
+
+        let image = try raster()
+        guard let data = rasterData(from: image, format: format),
+            let metadata = rasterMetadata(for: format)
+        else {
+            throw .encodingFailed
+        }
         return (data, metadata.type, metadata.ext)
     }
 

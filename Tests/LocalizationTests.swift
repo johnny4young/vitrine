@@ -295,7 +295,8 @@ struct LocalizationTests {
         // the catalog; under the test host's English locale they resolve to real
         // copy, never an empty or key-like string.
         let outcomes: [QuickCapture.Outcome] = [
-            .copied, .empty, .url("https://example.com"), .deferredToEditor(blocks: 3),
+            .copied, .empty, .renderFailed(.allocationFailed),
+            .url("https://example.com"), .deferredToEditor(blocks: 3),
         ]
         for outcome in outcomes {
             let message = Notifier.feedback(for: outcome).message

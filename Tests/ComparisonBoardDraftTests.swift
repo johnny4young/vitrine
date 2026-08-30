@@ -18,15 +18,26 @@ struct ComparisonBoardDraftTests {
 
     @Test func renderingFailureIdentifiesTheCapturePosition() {
         let captures = [capture("before"), capture("after")]
+        func render(
+            _ config: SnapshotConfig,
+            _ scale: CGFloat,
+            _ profile: ColorProfile
+        ) throws(RenderBudgetError) -> CGImage {
+            _ = scale
+            _ = profile
+            guard config.code == "before" else { throw .allocationFailed }
+            return solidImage()
+        }
 
-        #expect(throws: ComparisonBoardDraft.CreationError.renderFailed(index: 1)) {
+        #expect(
+            throws: ComparisonBoardDraft.CreationError.renderFailure(
+                index: 1, .allocationFailed)
+        ) {
             try ComparisonBoardDraft(
                 captures: captures,
                 baseConfig: SnapshotConfig(),
                 profile: .sRGB,
-                render: { config, _, _ in
-                    config.code == "before" ? solidImage() : nil
-                })
+                render: render)
         }
     }
 

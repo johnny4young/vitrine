@@ -50,9 +50,9 @@ struct RenderOnceExportTests {
 
     @Test func rasterSaveRejectsPDF() throws {
         // The cgImage save path is raster-only; PDF must go through the vector config path.
-        // With a nil payload it returns `.failed` before ever showing a save panel.
+        // It reports a typed encoding failure before ever showing a save panel.
         let cgImage = try #require(ExportManager.renderCGImage(sampleConfig(), scale: 1))
         let outcome = ExportManager.saveToFile(cgImage: cgImage, format: .pdf, suggestedName: "x")
-        #expect(outcome == .failed)
+        #expect(outcome == .renderFailed(.encodingFailed))
     }
 }

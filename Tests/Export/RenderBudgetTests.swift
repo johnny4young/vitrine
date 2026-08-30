@@ -100,4 +100,56 @@ struct RenderBudgetTests {
                 for: size, scale: CGFloat(preset.scale))
         }
     }
+
+    @Test("Checked snapshot rendering validates layout before bitmap allocation")
+    func checkedSnapshotRejectsOversizedLayout() {
+        let config = ExportTestFixtures.sampleConfig()
+        #expect(
+            throws: RenderBudgetError.tooLarge(
+                .dimension(actual: 16_385, maximum: 16_384))
+        ) {
+            try ExportManager.renderCGImageChecked(
+                config, scale: 1, fixedSize: CGSize(width: 16_385, height: 1))
+        }
+    }
+
+    @Test("Checked snapshot rendering preserves exact fixed pixel dimensions")
+    func checkedSnapshotPreservesFixedPixels() throws {
+        let image = try ExportManager.renderCGImageChecked(
+            ExportTestFixtures.sampleConfig(), scale: 2,
+            fixedSize: CGSize(width: 320, height: 180))
+
+        #expect(image.width == 640)
+        #expect(image.height == 360)
+    }
+
+    @Test("Checked payloads preserve render and encoding failure categories")
+    func checkedPayloadFailureCategories() {
+        #expect(throws: RenderBudgetError.tooLarge(.invalidDimensions)) {
+            try ExportManager.encodedPayloadChecked(
+                .png,
+                raster: { () throws(RenderBudgetError) -> CGImage in
+                    throw .tooLarge(.invalidDimensions)
+                },
+                pdf: { nil })
+        }
+        #expect(throws: RenderBudgetError.encodingFailed) {
+            try ExportManager.encodedPayloadChecked(
+                .pdf,
+                raster: { () throws(RenderBudgetError) -> CGImage in
+                    throw .allocationFailed
+                },
+                pdf: { nil })
+        }
+    }
+
+    @Test("CLI maps renderer failures to actionable stable errors")
+    func cliErrorMapping() {
+        #expect(CLIError.renderFailure(.tooLarge(.arithmeticOverflow)) == .renderTooLarge)
+        #expect(CLIError.renderFailure(.allocationFailed) == .renderAllocationFailed)
+        #expect(CLIError.renderFailure(.encodingFailed) == .renderEncodingFailed)
+        #expect(CLIError.renderFailure(.cancelled) == .renderCancelled)
+        #expect(CLIError.renderTooLarge.exitCode != 0)
+        #expect(CLIError.renderTooLarge.message.contains("Reduce"))
+    }
 }

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// A session-only editor for arranging and exporting two to four recent captures.
 struct ComparisonBoardEditorView: View {
@@ -241,19 +242,25 @@ struct ComparisonBoardEditorView: View {
     private func copyBoard() {
         do {
             let asset = try renderedBoard()
-            feedback(ExportFeedback.copyOutcome(ExportManager.copyPNGToPasteboard(asset.cgImage)))
+            feedback(
+                ExportFeedback.copyOutcome(
+                    ExportManager.copyPNGToPasteboardOutcome(asset.cgImage)))
+        } catch ComparisonBoardComposer.CompositionError.renderFailure(let error) {
+            feedback(ExportFeedback.renderFailure(error))
         } catch {
             feedback(boardFailure)
         }
     }
 
     private func saveBoard() {
-        let payload = ComparisonBoardExporter.encodedPayload(
-            for: draft,
-            format: settings.export.format,
-            profile: settings.export.colorProfile)
-        guard let payload else {
-            feedback(boardFailure)
+        let payload: (data: Data, type: UTType, ext: String)
+        do {
+            payload = try ComparisonBoardExporter.encodedPayloadChecked(
+                for: draft,
+                format: settings.export.format,
+                profile: settings.export.colorProfile)
+        } catch let error {
+            feedback(ExportFeedback.renderFailure(error))
             return
         }
         if let outcome = ExportFeedback.saveOutcome(
@@ -270,6 +277,8 @@ struct ComparisonBoardEditorView: View {
                 NSImage(
                     cgImage: asset.cgImage,
                     size: NSSize(width: asset.pixelWidth, height: asset.pixelHeight)))
+        } catch ComparisonBoardComposer.CompositionError.renderFailure(let error) {
+            feedback(ExportFeedback.renderFailure(error))
         } catch {
             feedback(ExportFeedback.shareFailure)
         }
