@@ -61,6 +61,14 @@ struct WorkflowConfigurationTests {
         try text(".github", "workflows", "xcode-27-preview.yml")
     }
 
+    private static func codeql() throws -> String {
+        try text(".github", "workflows", "codeql.yml")
+    }
+
+    private static func sanitizers() throws -> String {
+        try text(".github", "workflows", "sanitizers.yml")
+    }
+
     private static func makefile() throws -> String {
         try text("Makefile")
     }
@@ -91,6 +99,8 @@ struct WorkflowConfigurationTests {
             ("deploy-site.yml", Self.deploySite()),
             ("dependency-freshness.yml", Self.freshness()),
             ("xcode-27-preview.yml", Self.xcode27Preview()),
+            ("codeql.yml", Self.codeql()),
+            ("sanitizers.yml", Self.sanitizers()),
         ] {
             for (index, line) in body.components(separatedBy: .newlines).enumerated() {
                 let indentation = line.prefix { $0 == " " || $0 == "\t" }
@@ -388,6 +398,60 @@ struct WorkflowConfigurationTests {
         let doc = try Self.releasingDoc()
         #expect(doc.contains("**Xcode 27 preview**"))
         #expect(doc.contains("not a claim of macOS 27 runtime support"))
+    }
+
+    @Test func codeQLAnalyzesSwiftAndJavaScriptWithExtendedSecurityQueries() throws {
+        let workflow = try Self.codeql()
+        for requirement in [
+            "language: swift",
+            "language: javascript-typescript",
+            "build-mode: manual",
+            "build-mode: none",
+            "queries: security-extended",
+            "security-events: write",
+            "github/codeql-action/init@",
+            "github/codeql-action/analyze@",
+            "run: make build",
+        ] {
+            #expect(workflow.contains(requirement), "CodeQL must retain `\(requirement)`")
+        }
+        #expect(workflow.contains("pull_request:"))
+        #expect(workflow.contains("branches: [main]"))
+        #expect(workflow.contains("runs-on: ${{ matrix.runner }}"))
+        #expect(workflow.contains("runner: macos-15"))
+        #expect(workflow.contains("runner: ubuntu-latest"))
+    }
+
+    @Test func sanitizersAreFocusedWeeklyManualEarlyWarnings() throws {
+        let workflow = try Self.sanitizers()
+        let make = try Self.makefile()
+        let doc = try Self.releasingDoc()
+        let sanitizerStart = try #require(make.range(of: "\n# Sanitizers intentionally"))
+        let uiStart = try #require(make.range(of: "\n## build-ui-tests:"))
+        let sanitizerLanes = String(make[sanitizerStart.lowerBound..<uiStart.lowerBound])
+
+        #expect(workflow.contains("schedule:"))
+        #expect(workflow.contains("workflow_dispatch:"))
+        #expect(!workflow.contains("\n  pull_request:"))
+        #expect(!workflow.contains("\n  push:"))
+        #expect(workflow.contains("make ${{ matrix.target }}"))
+        #expect(workflow.contains("target: test-asan"))
+        #expect(workflow.contains("target: test-tsan"))
+        #expect(workflow.contains("if: always()"))
+        #expect(workflow.contains(".xcresult"))
+
+        #expect(make.contains("test-asan: project"))
+        #expect(make.contains("-enableAddressSanitizer YES"))
+        #expect(make.contains("test-tsan: project"))
+        #expect(make.contains("-enableThreadSanitizer YES"))
+        #expect(make.contains("ItemProviderLoadWaiterTests"))
+        #expect(make.contains("MemoryWebSnapshotCycleJourneyTests"))
+        #expect(!sanitizerLanes.contains("-only-testing:VitrineUITests"))
+
+        #expect(doc.contains("CodeQL"))
+        #expect(doc.contains("make test-asan"))
+        #expect(doc.contains("make test-tsan"))
+        #expect(doc.contains("non-required"))
     }
 
     // MARK: - Contract: release candidate and manual promotion are fail-closed
@@ -808,6 +872,8 @@ struct WorkflowConfigurationTests {
             ("release.yml", Self.release()),
             ("appstore.yml", Self.appstore()),
             ("deploy-site.yml", Self.deploySite()),
+            ("codeql.yml", Self.codeql()),
+            ("sanitizers.yml", Self.sanitizers()),
         ] {
             for rawLine in yaml.components(separatedBy: .newlines) {
                 guard let usesRange = rawLine.range(of: "uses:") else { continue }

@@ -121,6 +121,16 @@ CI is a release gate, not just a compile check.
   compares both the XcodeGen and Sparkle versions and checksums with GitHub's published
   release metadata. Each GitHub release includes a versioned SPDX JSON SBOM alongside the
   DMG and checksum.
+- **Static security analysis.** `codeql.yml` analyzes Swift on `macos-15` through a
+  traced manual Xcode build and JavaScript/TypeScript on Linux without a synthetic
+  build. Both use CodeQL's `security-extended` suite on pull requests, pushes to
+  `main`, a weekly schedule, and manual dispatch. Results are uploaded to GitHub code
+  scanning; the workflow has no write permission beyond `security-events`.
+- **Focused sanitizer early warning.** `sanitizers.yml` runs Address Sanitizer over
+  bounded input/parser/allocation logic and Thread Sanitizer over cancellation and
+  waiter lifecycles every week or on manual dispatch. It deliberately excludes the
+  full AppKit/WebKit UI host, retains each `.xcresult`, and is **non-required** while
+  hosted-runner stability is established.
 - **The release workflow refuses to publish an unvetted build.** `release.yml` runs
   `verify`, builds a private candidate, re-downloads it onto an independent QA runner,
   and stops. Public promotion is a separate manual dispatch that pins the successful
@@ -161,6 +171,32 @@ Xcode/SDK; the lane runs lint, a Debug build, and unit tests only. It does not r
 requests, does not publish, and is not a claim of macOS 27 runtime support. Promote it to
 the required compatibility matrix only after GitHub provides the corresponding macOS
 runner as GA and the full runtime, UI, visual, performance, and clean-Mac evidence exists.
+
+### Security-analysis lanes
+
+CodeQL is the deterministic source-analysis lane. Swift uses `build-mode: manual` so
+the database contains exactly the generated Xcode targets compiled by `make build`;
+JavaScript/TypeScript uses buildless extraction for the static Astro site and supporting
+scripts. Both run `security-extended`. Action references are immutable commit-SHA pins
+and remain covered by Dependabot. A CodeQL alert is investigated or dismissed with a
+documented reason; do not exclude the affected path merely to make the workflow green.
+
+The sanitizer commands are also available locally:
+
+```bash
+make test-asan
+make test-tsan
+```
+
+These are focused test-host runs, not replacements for `make test`, XCUITest, memory
+journeys, or clean-Mac qualification. Address Sanitizer covers parsers, terminal state,
+render budgets, bounded file input, redaction, and private-host rules. Thread Sanitizer
+covers debouncing, callback-to-async waiters, cancellation, and repeated Web snapshot
+journey orchestration. The hosted workflow runs only on its weekly/manual triggers, so
+it cannot accidentally become a pull-request branch-protection requirement. Promote a
+sanitizer lane to required CI only after at least four consecutive scheduled runs on the
+same runner family complete without infrastructure-only flakes; expand its focused suite
+when new non-UI concurrent or allocation-heavy components land.
 
 ### Unit-test lanes
 
