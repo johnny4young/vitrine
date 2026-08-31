@@ -140,6 +140,10 @@ struct LineSplitterTests {
         #expect(LineSplitter.lineCount(of: "let x = 1") == 1)
     }
 
+    @Test func unicodeContentCountsOnlyLineFeeds() {
+        #expect(LineSplitter.lineCount(of: "🧪 café\n日本語\n") == 3)
+    }
+
     @Test func attributedLinesPreserveTextAndCount() {
         var attributed = AttributedString("one\ntwo\n\nfour")
         attributed.foregroundColor = .red

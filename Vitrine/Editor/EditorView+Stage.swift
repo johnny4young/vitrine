@@ -37,6 +37,7 @@ extension EditorView {
             } else {
                 VStack(spacing: 0) {
                     livingSnapshotNotice
+                    largeDocumentHighlightNotice
                     CodeEditorView(
                         text: $settings.documentCode,
                         language: settings.config.language,
@@ -173,6 +174,37 @@ extension EditorView {
             .accessibilityIdentifier("living-snapshot-unavailable-notice")
         case .inactive, .watching:
             EmptyView()
+        }
+    }
+
+    /// Makes the intentional large-document fallback visible instead of silently flattening syntax
+    /// colors. The source remains editable and the shared render/export path uses the same legible
+    /// plain-text representation, so this is a capability notice rather than an error.
+    @ViewBuilder var largeDocumentHighlightNotice: some View {
+        if HighlightPolicy.mode(
+            for: settings.documentCode, language: settings.config.language
+        ).usesPlainTextFallback {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "text.badge.minus")
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Syntax colors paused")
+                        .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
+                    Text("This large document stays editable and exportable in plain text.")
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Color.orange.opacity(0.12))
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(VitrineTokens.Line.border).frame(height: Brand.Stroke.hairline)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("large-document-highlight-notice")
         }
     }
 
@@ -360,7 +392,7 @@ extension EditorView {
     var lineCountLabel: String {
         let code = settings.documentCode
         guard !code.isEmpty else { return "—" }
-        let count = code.split(separator: "\n", omittingEmptySubsequences: false).count
+        let count = LineSplitter.lineCount(of: code)
         return String(localized: "\(count) lines")
     }
 
@@ -670,7 +702,7 @@ private struct PreviewCodeSynchronizer: View {
                     synchronize(code)
                     return
                 }
-                try? await Task.sleep(for: EditorPreview.previewCodeDebounce)
+                try? await Task.sleep(for: HighlightPolicy.previewDebounce(for: code))
                 guard !Task.isCancelled else { return }
                 synchronize(code)
             }

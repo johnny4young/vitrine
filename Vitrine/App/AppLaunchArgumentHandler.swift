@@ -27,6 +27,7 @@ final class AppLaunchArgumentHandler {
 
     /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
     /// none of these run on a normal user launch. `--demo` preloads sample code;
+    /// `--demo-large-document` preloads a source just above the interactive-highlighting ceiling;
     /// `--demo-html-format` preloads compact markup for the Format Code smoke test;
     /// `--demo-sql-format` does the same for a compact query;
     /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
@@ -80,6 +81,15 @@ final class AppLaunchArgumentHandler {
                     }
                 }
                 """
+        }
+        if arguments.contains("--demo-large-document") {
+            let comment = String(repeating: "x", count: 480)
+            let line = "let value = compute(42) // \(comment)\n"
+            let repetitions = HighlightPolicy.maximumHighlightedByteCount / line.utf8.count + 1
+            var demo = settings.config
+            demo.code = String(repeating: line, count: repetitions)
+            demo.language = .swift
+            settings.config = demo
         }
         if arguments.contains("--demo-html-format") {
             var demo = settings.config

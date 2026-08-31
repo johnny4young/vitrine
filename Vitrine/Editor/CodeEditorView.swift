@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Code text editor backed by `NSTextView` with live syntax highlighting:
-/// debounced recolor (~100 ms), monospaced font, Tab = 4 spaces, no autocorrect.
+/// adaptive debounced recolor (100–250 ms), monospaced font, Tab = 4 spaces, no autocorrect.
 struct CodeEditorView: NSViewRepresentable {
     @Binding var text: String
     var language: Language
@@ -95,10 +95,11 @@ struct CodeEditorView: NSViewRepresentable {
         private var isHighlighting = false
 
         private var appliedLanguage: Language?
-        private var appliedThemeID: String?
+        private var appliedTheme: Theme?
         private var appliedFontName: String?
         private var appliedFontSize: Double?
         private var appliedFontLigatures: Bool?
+        private var appliedMode: HighlightMode?
 
         init(_ parent: CodeEditorView) { self.parent = parent }
 
@@ -111,7 +112,7 @@ struct CodeEditorView: NSViewRepresentable {
         /// from what was last applied.
         var styleChanged: Bool {
             appliedLanguage != parent.language
-                || appliedThemeID != parent.theme.id
+                || appliedTheme != parent.theme
                 || appliedFontName != parent.fontName
                 || appliedFontSize != parent.fontSize
                 || appliedFontLigatures != parent.fontLigatures
@@ -146,6 +147,7 @@ struct CodeEditorView: NSViewRepresentable {
             isHighlighting = true
             defer { isHighlighting = false }
 
+            let mode = HighlightPolicy.mode(for: textView.string, language: parent.language)
             let attributed = HighlightManager.shared.attributedString(
                 for: textView.string, language: parent.language, theme: parent.theme, font: font)
             let paragraph = textView.defaultParagraphStyle ?? NSParagraphStyle.default
@@ -174,18 +176,40 @@ struct CodeEditorView: NSViewRepresentable {
                 textView.selectedRanges = selection
             }
 
+            if mode.usesPlainTextFallback, attributed.length > 0,
+                let foreground = attributed.attribute(
+                    .foregroundColor, at: 0, effectiveRange: nil)
+            {
+                // New keystrokes in large-document mode must inherit the fallback color rather
+                // than whichever syntax token happened to sit at the caret before the transition.
+                textView.typingAttributes[.foregroundColor] = foreground
+            }
+
             appliedLanguage = parent.language
-            appliedThemeID = parent.theme.id
+            appliedTheme = parent.theme
             appliedFontName = parent.fontName
             appliedFontSize = parent.fontSize
             appliedFontLigatures = parent.fontLigatures
+            appliedMode = mode
         }
 
         func textDidChange(_ notification: Notification) {
             guard !isHighlighting, let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
-            debouncer.schedule { [weak textView] in
-                guard let textView else { return }
+            let mode = HighlightPolicy.mode(for: textView.string, language: parent.language)
+            if mode.usesPlainTextFallback {
+                debouncer.cancel()
+                // Clear existing token colors exactly once when crossing into large-document
+                // mode. Subsequent keystrokes inherit the configured plain typing attributes,
+                // avoiding a whole-document attribute pass for every edit.
+                if appliedMode?.usesPlainTextFallback != true {
+                    applyHighlight(to: textView)
+                }
+                return
+            }
+            debouncer.schedule(after: HighlightPolicy.editorDebounce(for: textView.string)) {
+                [weak self, weak textView] in
+                guard let self, let textView else { return }
                 self.applyHighlight(to: textView)
             }
         }

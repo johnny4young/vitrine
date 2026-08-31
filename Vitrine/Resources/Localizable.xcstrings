@@ -10117,6 +10117,28 @@
           }
         }
       }
+    },
+    "Syntax colors paused" : {
+      "comment" : "Large-document editor notice title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colores de sintaxis en pausa"
+          }
+        }
+      }
+    },
+    "This large document stays editable and exportable in plain text." : {
+      "comment" : "Large-document editor notice explanation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este documento grande sigue siendo editable y exportable como texto sin formato."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

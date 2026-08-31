@@ -354,10 +354,12 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testEditorShowsToolbarInspectorAndPreviewStage() {
         continueAfterFailure = false
-        let app = launch(arguments: VitrineLaunchArguments.editor)
+        let app = launch(
+            arguments: ["--skip-onboarding", "--demo-large-document", "--open-editor"])
         defer { app.terminate() }
 
-        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let editor = element("editor-window", in: app)
+        assertExists(editor, in: app, timeout: 8)
 
         // The glass toolbar leads the editor: the style-preset star and the
         // primary export actions live there.
@@ -373,6 +375,20 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-inspector", in: app), in: app)
         assertExists(element("style-theme-picker", in: app), in: app)
         assertExists(element("style-font-picker", in: app), in: app)
+
+        // The same composition journey pins the large-document mode without increasing the
+        // serial menu-bar app's 58-test smoke contract or adding another full app launch.
+        assertExists(element("large-document-highlight-notice", in: app), in: app, timeout: 5)
+        assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
+        assertExists(element("format-button", in: app), in: app)
+
+        // Real evidence for the intentionally visible fallback. This attachment is not part of
+        // the strict marketing screenshot tour, so adding the reliability state does not churn
+        // the tracked 53-state contract.
+        let attachment = XCTAttachment(screenshot: editor.screenshot())
+        attachment.name = "large-document-mode"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor

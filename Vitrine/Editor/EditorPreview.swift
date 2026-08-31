@@ -28,11 +28,6 @@ enum EditorPreview {
         code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// How long the live preview's code input trails the document's `code`.
-    /// Short enough to feel immediate, long enough that a burst of keystrokes
-    /// coalesces into one re-tokenize instead of one per character.
-    static let previewCodeDebounce = Duration.milliseconds(90)
-
     /// The config the stage should render, with `code` substituted by the debounced
     /// `stagedCode` so a live keystroke doesn't re-tokenize the whole
     /// document on every character.

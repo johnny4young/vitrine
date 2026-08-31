@@ -1,3 +1,4 @@
+import AppKit
 import OSLog
 import SwiftUI
 import Testing
@@ -83,6 +84,12 @@ struct PerformanceTests {
         /// while remaining far above the real interaction cost on shared CI hosts.
         static let searchTarget: Duration = .milliseconds(50)
         static let searchHardCeiling: Duration = .milliseconds(250)
+
+        /// Soft target and hard ceiling for the direct highlighting policy. The medium fixture
+        /// deliberately bypasses caches and the large fixture deliberately bypasses Highlight.js,
+        /// so these numbers expose regressions hidden by warm render-cache hits.
+        static let highlightingTarget: Duration = .milliseconds(250)
+        static let highlightingHardCeiling: Duration = .milliseconds(1500)
     }
 
     /// How many timed renders each case samples (after the discarded warm-up).
@@ -327,6 +334,46 @@ struct PerformanceTests {
             "default@3x p95 over the secondary hard ceiling")
     }
 
+    @Test func uncachedMediumHighlightingMeetsBudget() {
+        let line = "let highlightedValue = compute(42) // bounded performance\n"
+        let code = String(repeating: line, count: 1_600)
+        #expect(!HighlightPolicy.shouldCache(code))
+        #expect(HighlightPolicy.mode(for: code, language: .swift) == .full)
+
+        measureHighlighting(code, label: "highlighting-medium-uncached")
+    }
+
+    @Test func largePlainTextFallbackMeetsBudget() {
+        let code = String(repeating: "x", count: 1024 * 1024)
+        #expect(HighlightPolicy.mode(for: code, language: .swift).usesPlainTextFallback)
+
+        measureHighlighting(code, label: "highlighting-large-fallback")
+    }
+
+    private func measureHighlighting(_ code: String, label: String) {
+        let manager = HighlightManager.shared
+        let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        _ = manager.attributedString(for: code, language: .swift, theme: .oneDark, font: font)
+
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+        for _ in 0..<Self.sampleCount {
+            var output: NSAttributedString?
+            let elapsed = clock.measure {
+                output = manager.attributedString(
+                    for: code, language: .swift, theme: .oneDark, font: font)
+            }
+            #expect(output?.string == code)
+            durations.append(elapsed)
+        }
+        let stats = Statistics(durations)
+        report(stats, label: label, target: PerfBudget.highlightingTarget)
+        #expect(
+            stats.p95 <= PerfBudget.highlightingHardCeiling,
+            "\(label) exceeded the highlighting hard ceiling")
+    }
+
     @Test func commandPaletteSearchMeetsBudget() {
         let catalog = (0..<1_000).map { index in
             EditorCommand(
@@ -405,6 +452,8 @@ struct PerformanceTests {
         #expect(PerfBudget.secondaryHardCeiling == PerfBudget.hardCeiling)
         #expect(PerfBudget.searchTarget < PerfBudget.searchHardCeiling)
         #expect(PerfBudget.searchHardCeiling < PerfBudget.target)
+        #expect(PerfBudget.highlightingTarget < PerfBudget.highlightingHardCeiling)
+        #expect(PerfBudget.highlightingHardCeiling <= PerfBudget.hardCeiling)
     }
 }
 

@@ -85,4 +85,31 @@ struct CodeEditorHighlightTests {
         #expect(first.isEqual(to: second), "re-highlighting the same text is stable")
         #expect(textView.string == code)
     }
+
+    @Test func aPaletteChangeUnderAStableThemeIDRequiresRehighlighting() {
+        let first = Theme(
+            id: "custom.editor", displayName: "Editor",
+            palette: ThemeTestFixtures.samplePalette())
+        let coordinator = CodeEditorView.Coordinator(
+            CodeEditorView(
+                text: .constant("let value = 42"), language: .swift, theme: first,
+                fontName: "SF Mono", fontSize: 13, fontLigatures: false,
+                reindentOnPaste: false))
+        let (window, textView) = makeHostedTextView("let value = 42")
+        defer { window.close() }
+        coordinator.configure(textView)
+        coordinator.applyHighlight(to: textView)
+        #expect(!coordinator.styleChanged)
+
+        let changedPalette = ThemePalette(
+            background: HexColor("#FFFFFF")!, foreground: HexColor("#111111")!,
+            keyword: HexColor("#FF0000")!, string: HexColor("#00AA00")!)
+        coordinator.parent = CodeEditorView(
+            text: .constant("let value = 42"), language: .swift,
+            theme: Theme(id: first.id, displayName: first.displayName, palette: changedPalette),
+            fontName: "SF Mono", fontSize: 13, fontLigatures: false,
+            reindentOnPaste: false)
+
+        #expect(coordinator.styleChanged)
+    }
 }

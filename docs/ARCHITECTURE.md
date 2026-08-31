@@ -207,6 +207,31 @@ fixed number formatting and attribute order), so the same template always produc
 identical bytes. This serializer is intentionally **not** wired up as a general
 export choice for the arbitrary code canvas; it exists for the template path only.
 
+## Syntax-highlighting memory and responsiveness
+
+`HighlightManager` owns one long-lived Highlight.js context, but its derived output is
+disposable. Five deterministic `CostLimitedLRUCache` instances cover the native attributed
+string, SwiftUI bridge, row split, terminal bridge, and terminal row split. Each cache is
+bounded by both count and a conservative four-MiB estimated-cost budget (at most 20 MiB across
+all five estimates); a theme key contains
+the built-in stylesheet name or the complete custom palette rather than a mutable display id.
+This prevents stale custom-theme colors and replaces the former FIFO behavior, where a hot
+document could be evicted by a one-off inspector/render combination.
+
+The accepted source-file ceiling and the interactive-highlighting ceiling are deliberately
+different contracts. A source can still be loaded up to the shared five-MiB safety limit, but:
+
+- syntax sources up to 32 KiB may enter the derived caches;
+- 32–128 KiB sources are highlighted without caching and use a 250 ms trailing editor debounce;
+- sources over 128 KiB remain editable and renderable as theme-legible plain text, with an
+  explicit editor notice instead of a silent visual change.
+
+The ordinary editor and preview debounces remain 100 ms and 90 ms respectively. Entering the
+large-document fallback clears existing token colors once; later keystrokes inherit plain typing
+attributes rather than recoloring the whole document. Terminal captures keep their separate
+parser/emulator semantics and bypass caches above 32 KiB; their deeper large-stream policy belongs
+to the terminal reliability boundary rather than pretending ANSI input is syntax highlighting.
+
 ## Terminal rendering: two engines
 
 Terminal capture is not "syntax highlighting with an ANSI palette". Two structurally
