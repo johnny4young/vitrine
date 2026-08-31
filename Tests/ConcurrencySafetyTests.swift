@@ -91,4 +91,37 @@ struct ConcurrencySafetyTests {
         #expect(background.components(separatedBy: "guard !Task.isCancelled").count - 1 == 4)
         #expect(carousel.contains(".interactiveDismissDisabled(isExporting)"))
     }
+
+    /// Living files combine blocking descriptor reads with window-bound state. Keep filesystem
+    /// work behind an async Sendable client, and keep each picker/poll operation owned, cancelled,
+    /// and generation-guarded so a late result cannot mutate a different or closed editor.
+    @Test func livingSnapshotReadsHaveLifecycleOwnership() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let session = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Editor/LivingSnapshotSession.swift"),
+            encoding: .utf8)
+        let loader = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Editor/FileInputLoader.swift"),
+            encoding: .utf8)
+        let picker = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Vitrine/Editor/EditorView+DragDrop.swift"),
+            encoding: .utf8)
+
+        #expect(session.contains("nonisolated struct FileClient: Sendable"))
+        #expect(session.contains("@concurrent"))
+        #expect(session.contains("private var fileReadTask: Task<Bool, Never>?"))
+        #expect(
+            session.contains("private var openingTask: Task<FileInputLoader.LoadedFile, Error>?"))
+        #expect(session.contains("fileReadTask?.cancel()"))
+        #expect(session.contains("openingTask?.cancel()"))
+        #expect(session.contains("generation == readGeneration"))
+        #expect(session.contains("generation == openingGeneration"))
+        #expect(loader.contains("static func loadConcurrently(from url: URL) async throws"))
+        #expect(picker.contains("session.livingSnapshot.loadForOpening(from: url)"))
+    }
 }

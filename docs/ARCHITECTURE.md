@@ -430,7 +430,10 @@ value. A custom recipe canvas remains CLI-only and is reported as such by Settin
 `EditorSession`, not to `AppEnvironment` or a persistent store. The **Live file** picker
 is the only entry point: it selects one source file, applies the same bounded text loader
 used by drag and drop, and retains that file's security scope only while the editor
-window remains open. A 650 ms task compares file size, modification date, resource
+window remains open. Filesystem access sits behind an async, `Sendable` `FileClient`.
+Swift 6.2 `@concurrent` entry points move metadata lookup and the bounded descriptor read
+off the main actor; decoding policy stays centralized, and editor state is applied only
+on the main actor. A 650 ms task compares file size, modification date, resource
 identifier, and filesystem file/volume numbers; including inode identity detects editors
 that save by atomically replacing the file instead of mutating its original inode.
 Content is read only after the stamp changes.
@@ -442,8 +445,12 @@ visible pending change and requires **Reload** or **Keep**; it never overwrites 
 draft in the background. A transient read failure does not advance the observed stamp,
 so the same atomic save remains retryable. Replacing the document through another input,
 loading an image, closing the window, restoring a draft, or stopping the watcher releases
-the scope and cancels polling. The URL, watcher, and security scope are excluded from
-window restoration and app defaults; ordinary file drops remain one-time imports.
+the scope and cancels polling, picker reads, and content reads. Each replacement also
+invalidates a monotonic generation. That second guard rejects a late filesystem result
+even when cancellation cannot force an in-progress POSIX read to return immediately.
+Only one content read is session-owned at a time. The URL, watcher, tasks, and security
+scope are excluded from window restoration and app defaults; ordinary file drops remain
+one-time imports.
 
 **Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
 suites cover entitlement, version and catalog contracts, argument parsing and
