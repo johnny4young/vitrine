@@ -133,7 +133,7 @@ enum SocialCardRenderer {
             return .renderFailed(error)
         }
         guard let png = ExportManager.pngData(from: cgImage) else {
-            Log.export.error("Social card copy failed: render or PNG encode returned nil")
+            Log.export.error("Social card copy failed: PNG encode failed")
             return .renderFailed(.encodingFailed)
         }
         pasteboard.clearContents()
@@ -167,7 +167,7 @@ enum SocialCardRenderer {
                 },
                 pdf: { pdfData(model, size: size) })
         } catch let error {
-            Log.export.error("Social card save failed: render or encode returned nil")
+            Log.export.error("Social card save failed: render rejected or encode failed")
             return .renderFailed(error)
         }
         // The shared panel/write path — one logging point for every save flow.

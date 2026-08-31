@@ -9,9 +9,9 @@ extension ExportManager {
     /// vector document and is unaffected by the raster color-profile choice.
     ///
     /// Returns the outcome so a caller can give the user precise feedback:
-    /// `.saved` when a file was written, `.cancelled` when the user
-    /// dismissed the panel, and `.failed` when rendering, encoding, or the write
-    /// itself failed. The result is discardable for callers that do not care.
+    /// `.saved` when a file was written, `.cancelled` when the user dismissed the
+    /// panel, `.renderFailed` when rendering or encoding failed, and `.failed` when
+    /// the final write failed. The result is discardable for callers that do not care.
     @discardableResult
     static func saveToFile(
         _ config: SnapshotConfig, scale: CGFloat = 2, format: ExportFormat = .png,
@@ -27,7 +27,7 @@ extension ExportManager {
                 },
                 pdf: { pdfData(config, fixedSize: fixedSize) })
         } catch let error {
-            Log.export.error("Save to file failed: render or encode returned nil")
+            Log.export.error("Save to file failed: render rejected or encode failed")
             return .renderFailed(error)
         }
         return saveToFile(

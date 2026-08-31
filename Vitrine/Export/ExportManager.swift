@@ -51,7 +51,7 @@ enum ExportManager {
     ) throws(RenderBudgetError) -> CGImage {
         let signposter = RenderSignpost.signposter
         let state = signposter.beginInterval(
-            RenderSignpost.renderName, "scale=\(Int(scale)) length=\(config.code.count)")
+            RenderSignpost.renderName, "scale=\(Double(scale)) length=\(config.code.count)")
         defer { signposter.endInterval(RenderSignpost.renderName, state) }
 
         let normalizedImage = try renderCGImageChecked(

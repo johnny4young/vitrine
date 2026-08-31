@@ -73,7 +73,7 @@ extension ExportManager {
                 backgroundImageStore: backgroundImageStore,
                 foregroundImageStore: foregroundImageStore)
         } catch let error {
-            Log.export.error("Copy to pasteboard failed: render returned nil")
+            Log.export.error("Copy to pasteboard failed: render rejected or failed")
             return .renderFailed(error)
         }
         return copyPNGToPasteboardOutcome(cgImage, to: pasteboard)

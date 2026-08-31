@@ -183,6 +183,15 @@ struct RenderBudgetTests {
         }
     }
 
+    @Test("Checked snapshot rendering rejects a non-finite scale without trapping")
+    func checkedSnapshotRejectsNonFiniteScale() {
+        #expect(throws: RenderBudgetError.tooLarge(.invalidScale)) {
+            try ExportManager.renderCGImageChecked(
+                ExportTestFixtures.sampleConfig(), scale: .infinity,
+                fixedSize: CGSize(width: 320, height: 180))
+        }
+    }
+
     @Test("Checked snapshot rendering preserves exact fixed pixel dimensions")
     func checkedSnapshotPreservesFixedPixels() throws {
         let image = try ExportManager.renderCGImageChecked(
