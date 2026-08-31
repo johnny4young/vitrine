@@ -18,7 +18,7 @@ import UniformTypeIdentifiers
 ///
 /// The base directory is injectable so the import/resolve/missing-file behavior
 /// is unit-testable without touching the real container.
-struct BackgroundImageStore {
+nonisolated struct BackgroundImageStore: Sendable {
     /// Errors surfaced while importing an image.
     nonisolated enum ImportError: Error, Equatable {
         /// The chosen source was not a supported image with valid dimensions.
@@ -57,9 +57,9 @@ struct BackgroundImageStore {
     /// streaming API's explicit contract and for source compatibility with callers.
     nonisolated static let maxRemoteImageBytes = maxImportBytes
 
-    /// The cumulative decoded-pixel ceiling across every frame. At four bytes per
-    /// pixel this bounds a worst-case imported bitmap to roughly 256 MB while keeping
-    /// ordinary 6K/8K photography supported.
+    /// The cumulative source-pixel ceiling across every frame. This protects metadata
+    /// inspection from decompression bombs; the actual static first-frame decode is
+    /// independently downsampled to `RenderBudget.preview` by `ImageDecodePolicy`.
     nonisolated static let maxDecodedPixelCount = 64_000_000
 
     /// A separate metadata/frame ceiling prevents a tiny-frame animation from carrying
@@ -158,6 +158,28 @@ struct BackgroundImageStore {
         try store(data, preferredExtension: sanitizedExtension(ext))
     }
 
+    /// Performs bounded local read, metadata validation, hashing, and atomic persistence on the
+    /// concurrent executor. UI import surfaces use this path so large encoded files never block
+    /// the main actor; synchronous CLI and test callers retain the direct API above.
+    @concurrent
+    func importImageConcurrently(from sourceURL: URL) async throws -> ImageReference {
+        try Task.checkCancellation()
+        let reference = try importImage(from: sourceURL)
+        try Task.checkCancellation()
+        return reference
+    }
+
+    /// Concurrent sibling for clipboard and drag providers that already delivered the bytes.
+    @concurrent
+    func importImageConcurrently(
+        data: Data, preferredExtension ext: String = ""
+    ) async throws -> ImageReference {
+        try Task.checkCancellation()
+        let reference = try importImage(data: data, preferredExtension: ext)
+        try Task.checkCancellation()
+        return reference
+    }
+
     /// Downloads the image at a remote `url` and imports it into the container,
     /// returning a stable reference to the copy (image-input polish).
     ///
@@ -207,8 +229,20 @@ struct BackgroundImageStore {
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw ImportError.downloadFailed
         }
-        return try store(
-            data, preferredExtension: sanitizedExtension(for: url, mimeType: response.mimeType))
+        return try await persistImageConcurrently(
+            data,
+            preferredExtension: sanitizedExtension(for: url, mimeType: response.mimeType))
+    }
+
+    /// Moves post-download validation, hashing, and disk persistence off the caller's actor.
+    @concurrent
+    private func persistImageConcurrently(
+        _ data: Data, preferredExtension ext: String
+    ) async throws -> ImageReference {
+        try Task.checkCancellation()
+        let reference = try store(data, preferredExtension: ext)
+        try Task.checkCancellation()
+        return reference
     }
 
     /// Loads a remote background image without ever accumulating more than
@@ -271,9 +305,8 @@ struct BackgroundImageStore {
     }
 
     /// Collects a byte stream up to `maxBytes`, failing as soon as the next byte
-    /// would exceed the cap. Keeping the accumulator in a nonisolated helper means
-    /// the per-byte loop runs off the main actor while the AppKit image decode stays
-    /// in the caller.
+    /// would exceed the cap. This adapter remains isolated from validation and persistence so its
+    /// transport strategy can change without weakening the downstream image bounds.
     nonisolated static func collectRemoteImageBytes<Bytes: AsyncSequence>(
         _ bytes: Bytes,
         maxBytes: Int = maxRemoteImageBytes
@@ -360,7 +393,7 @@ struct BackgroundImageStore {
             throw ImportError.notAnImage
         }
 
-        _ = try validatedImagePixelCount(in: source, options: options)
+        _ = try validatedImageMetadata(in: source)
     }
 
     /// Pure geometry validation shared with focused boundary tests. The cumulative
@@ -390,37 +423,22 @@ struct BackgroundImageStore {
         return totalPixels
     }
 
-    /// Extracts frame dimensions once from an ImageIO source and returns their
-    /// validated cumulative pixel count. Import and later container resolution both
-    /// use this path, so images stored by an older build cannot bypass today's bound.
-    nonisolated private static func validatedImagePixelCount(
-        in source: CGImageSource,
-        options: CFDictionary
-    ) throws -> Int {
-        let frameCount = CGImageSourceGetCount(source)
-        guard frameCount > 0 else { throw ImportError.notAnImage }
-        guard frameCount <= maxImageFrameCount else { throw ImportError.tooLarge }
-
-        var dimensions: [(width: Int, height: Int)] = []
-        dimensions.reserveCapacity(frameCount)
-        for index in 0..<frameCount {
-            guard
-                let properties = CGImageSourceCopyPropertiesAtIndex(source, index, options)
-                    as? [CFString: Any],
-                let width = properties[kCGImagePropertyPixelWidth] as? Int,
-                let height = properties[kCGImagePropertyPixelHeight] as? Int
-            else {
-                throw ImportError.notAnImage
-            }
-            dimensions.append((width: width, height: height))
+    /// Extracts and validates complete metadata without decoding any frame. ImageIO's source and
+    /// per-frame status checks reject truncated inputs; the first and only bitmap allocation then
+    /// happens through the bounded thumbnail path when the image is actually needed.
+    nonisolated private static func validatedImageMetadata(
+        in source: CGImageSource
+    ) throws -> ImageDecodePolicy.Metadata {
+        do {
+            return try ImageDecodePolicy.metadata(
+                in: source,
+                maximumFrameCount: maxImageFrameCount,
+                maximumSourcePixelCount: maxDecodedPixelCount)
+        } catch ImageDecodePolicy.Failure.invalidImage {
+            throw ImportError.notAnImage
+        } catch ImageDecodePolicy.Failure.tooLarge {
+            throw ImportError.tooLarge
         }
-        let pixelCount = try validateImageDimensions(dimensions)
-        for index in 0..<frameCount {
-            guard CGImageSourceCreateImageAtIndex(source, index, options) != nil else {
-                throw ImportError.notAnImage
-            }
-        }
-        return pixelCount
     }
 
     /// Validates and writes image `data` into the container under a content-addressed
@@ -446,7 +464,7 @@ struct BackgroundImageStore {
             throw ImportError.copyFailed
         }
 
-        Log.export.info("Imported an image into the container")
+        Log.export.info("Imported a bounded static-image source into the container")
         return ImageReference(fileName: fileName)
     }
 
@@ -479,15 +497,15 @@ struct BackgroundImageStore {
     /// The cache's memory ceiling, in bytes of decoded bitmap.
     ///
     /// A count limit alone does not bound memory: imports accept files up to
-    /// `maxImportBytes`, and a single 6K photo decodes to ~100 MB of bitmap, so 32
-    /// cached images could pin well over a gigabyte — invisible until a 5K export
-    /// allocates its own full-canvas buffers on top. The cost limit turns the cache
+    /// `maxImportBytes`; even after the ImageIO downsample, one image can occupy up to
+    /// the 64-MiB interactive surface budget, so a count limit alone could still pin excessive
+    /// memory before an export allocates its own canvas buffers. The cost limit turns the cache
     /// into a memory-bounded LRU: browsing a folder of large photos evicts the oldest
     /// instead of growing without limit, while the common case (a handful of ordinary
     /// backgrounds) never evicts at all.
     private static let cacheCostLimit = 256 * 1024 * 1024
 
-    private static let imageCache: NSCache<NSString, NSImage> = {
+    @MainActor private static let imageCache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 32
         cache.totalCostLimit = cacheCostLimit
@@ -502,7 +520,7 @@ struct BackgroundImageStore {
     /// pixel — the RGBA form the renderer draws from. A vector-only image with no
     /// bitmap representation reports the minimum cost of 1: it is cheap to hold, and a
     /// zero cost would exempt it from the limit entirely.
-    static func decodedByteCost(of image: NSImage) -> Int {
+    @MainActor static func decodedByteCost(of image: NSImage) -> Int {
         let pixels = image.representations.reduce(0) { largest, representation in
             let (count, overflow) = representation.pixelsWide.multipliedReportingOverflow(
                 by: representation.pixelsHigh)
@@ -515,25 +533,89 @@ struct BackgroundImageStore {
     /// Loads the referenced image, or `nil` if it cannot be resolved or decoded.
     /// Served from `imageCache` on a hit so an unchanged background/foreground never
     /// re-touches the disk during a live preview.
-    func image(for reference: ImageReference) -> NSImage? {
+    @MainActor func image(for reference: ImageReference) -> NSImage? {
         guard let url = url(for: reference) else { return nil }
         let key = url.path as NSString
         if let cached = Self.imageCache.object(forKey: key) { return cached }
-        guard
-            let fileSize = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
-            fileSize <= Self.maxImportBytes
-        else { return nil }
+        guard let decoded = Self.decodeStaticImage(at: url) else { return nil }
+        return Self.cache(decoded, forKey: key)
+    }
+
+    /// Preloads a newly imported image without blocking the main actor. UI surfaces await this
+    /// before publishing the reference, so their first SwiftUI body pass is a cache hit. Existing
+    /// references retain the synchronous bounded fallback above for launch and CLI compatibility.
+    @MainActor func preloadImage(for reference: ImageReference) async -> NSImage? {
+        guard let url = url(for: reference) else { return nil }
+        let key = url.path as NSString
+        if let cached = Self.imageCache.object(forKey: key) { return cached }
+        guard let decoded = await Self.decodeStaticImageConcurrently(at: url) else { return nil }
+        guard !Task.isCancelled else { return nil }
+        return Self.cache(decoded, forKey: key)
+    }
+
+    /// Produces the same bounded static representation for validated in-memory callers such as
+    /// the CLI watermark option. The metadata pass is intentionally repeated as defense in depth:
+    /// this API must stay safe if a future caller skips `readValidatedImageData(from:)`.
+    @MainActor static func staticImage(from data: Data) -> NSImage? {
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions),
-            let pixelCount = try? Self.validatedImagePixelCount(
-                in: source, options: sourceOptions)
+        guard data.count <= maxImportBytes,
+            let source = CGImageSourceCreateWithData(data as CFData, sourceOptions),
+            let decoded = decodeStaticImage(in: source)
         else { return nil }
-        guard let image = NSImage(contentsOf: url) else { return nil }
-        let (sourceCost, overflow) = pixelCount.multipliedReportingOverflow(by: 4)
-        Self.imageCache.setObject(
-            image,
-            forKey: key,
-            cost: overflow ? Self.decodedByteCost(of: image) : max(1, sourceCost))
+        return makeNSImage(from: decoded.cgImage)
+    }
+
+    private struct DecodedStaticImage: Sendable {
+        let cgImage: CGImage
+        let cost: Int
+    }
+
+    @concurrent
+    private static func decodeStaticImageConcurrently(
+        at url: URL
+    ) async -> DecodedStaticImage? {
+        guard !Task.isCancelled else { return nil }
+        return decodeStaticImage(at: url)
+    }
+
+    /// Resolves legacy/current stored bytes through ImageIO, validates metadata again, and creates
+    /// one transformed/downsampled first frame. `NSImage(contentsOf:)` is deliberately avoided: it
+    /// can retain full-resolution or animated representations that bypass the renderer's budget.
+    private static func decodeStaticImage(at url: URL) -> DecodedStaticImage? {
+        guard let data = try? readBoundedImageData(from: url) else { return nil }
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else {
+            return nil
+        }
+        return decodeStaticImage(in: source)
+    }
+
+    private static func decodeStaticImage(in source: CGImageSource) -> DecodedStaticImage? {
+        guard let metadata = try? validatedImageMetadata(in: source),
+            let cgImage = try? ImageDecodePolicy.decodeStaticFirstFrame(
+                in: source, metadata: metadata)
+        else { return nil }
+        let (pixels, pixelOverflow) = cgImage.width.multipliedReportingOverflow(
+            by: cgImage.height)
+        guard !pixelOverflow else { return nil }
+        let (cost, costOverflow) = pixels.multipliedReportingOverflow(by: 4)
+        return DecodedStaticImage(cgImage: cgImage, cost: costOverflow ? .max : max(1, cost))
+    }
+
+    @MainActor private static func cache(
+        _ decoded: DecodedStaticImage, forKey key: NSString
+    ) -> NSImage {
+        let image = makeNSImage(from: decoded.cgImage)
+        imageCache.setObject(image, forKey: key, cost: decoded.cost)
+        return image
+    }
+
+    /// Wraps the bounded CGImage as one explicit bitmap representation. Constructing an NSImage
+    /// directly from a CGImage can synthesize a backing-scale-dependent representation on a Retina
+    /// display; the explicit bitmap keeps the decoded pixel dimensions deterministic.
+    @MainActor private static func makeNSImage(from cgImage: CGImage) -> NSImage {
+        let image = NSImage(size: NSSize(width: cgImage.width, height: cgImage.height))
+        image.addRepresentation(NSBitmapImageRep(cgImage: cgImage))
         return image
     }
 

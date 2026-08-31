@@ -3287,6 +3287,28 @@
         }
       }
     },
+    "Importing image" : {
+      "comment" : "Accessibility label while a selected background image is being imported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importando imagen"
+          }
+        }
+      }
+    },
+    "Importing logo" : {
+      "comment" : "Accessibility label while a Brand Kit logo is being imported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importando logotipo"
+          }
+        }
+      }
+    },
     "Import…" : {
       "comment" : "Button: import presets or themes from a file.",
       "extractionState" : "stale",

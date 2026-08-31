@@ -83,10 +83,12 @@ struct ConcurrencySafetyTests {
         #expect(editor.contains("@State var imageProcessingTask: Task<Void, Never>?"))
         #expect(stage.contains("imageProcessingTask?.cancel()"))
         #expect(stage.contains("catch is CancellationError"))
+        #expect(background.contains("@State private var importTask: Task<Void, Never>?"))
+        #expect(background.contains("importTask?.cancel()"))
         #expect(background.contains("@State private var downloadTask: Task<Void, Never>?"))
         #expect(background.contains("downloadTask?.cancel()"))
         #expect(background.contains("try Task.checkCancellation()"))
-        #expect(background.components(separatedBy: "guard !Task.isCancelled").count - 1 == 2)
+        #expect(background.components(separatedBy: "guard !Task.isCancelled").count - 1 == 4)
         #expect(carousel.contains(".interactiveDismissDisabled(isExporting)"))
     }
 }

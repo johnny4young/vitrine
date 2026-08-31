@@ -186,10 +186,19 @@ extension EditorView {
         }
 
         if let url = fileURL {
-            return try foregroundImageStore.importImage(from: url)
+            let reference = try await foregroundImageStore.importImageConcurrently(from: url)
+            guard await foregroundImageStore.preloadImage(for: reference) != nil else {
+                throw BackgroundImageStore.ImportError.notAnImage
+            }
+            return reference
         }
         if let (data, ext) = try await readImageData(from: provider) {
-            return try foregroundImageStore.importImage(data: data, preferredExtension: ext)
+            let reference = try await foregroundImageStore.importImageConcurrently(
+                data: data, preferredExtension: ext)
+            guard await foregroundImageStore.preloadImage(for: reference) != nil else {
+                throw BackgroundImageStore.ImportError.notAnImage
+            }
+            return reference
         }
         return nil
     }

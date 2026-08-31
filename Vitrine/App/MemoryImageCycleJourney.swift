@@ -58,8 +58,9 @@ struct MemoryImageCycleJourney {
         for tick in 0..<iterations {
             try Task.checkCancellation()
             let data = try Self.fixturePNG(index: tick)
-            let reference = try store.importImage(data: data, preferredExtension: "png")
-            guard store.image(for: reference) != nil else {
+            let reference = try await store.importImageConcurrently(
+                data: data, preferredExtension: "png")
+            guard await store.preloadImage(for: reference) != nil else {
                 throw JourneyError.fixtureDecodeFailed
             }
             references.insert(reference)

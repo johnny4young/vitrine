@@ -42,7 +42,7 @@ enum CLIRenderResources {
         } catch {
             throw CLIError.renderFailed
         }
-        guard let image = NSImage(data: data) else {
+        guard let image = BackgroundImageStore.staticImage(from: data) else {
             throw CLIError.inputNotImage(path: path)
         }
         return PreparedWatermarkLogo(data: data, image: image)

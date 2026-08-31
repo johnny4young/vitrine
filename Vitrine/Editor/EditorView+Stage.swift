@@ -366,8 +366,11 @@ extension EditorView {
                 guard let data = ExportManager.pngData(from: result.image) else {
                     throw ImageSecretRedactor.RedactionError.renderingFailed
                 }
-                let newReference = try foregroundImageStore.importImage(
+                let newReference = try await foregroundImageStore.importImageConcurrently(
                     data: data, preferredExtension: "png")
+                guard await foregroundImageStore.preloadImage(for: newReference) != nil else {
+                    throw BackgroundImageStore.ImportError.notAnImage
+                }
                 try Task.checkCancellation()
                 guard settings.config.foregroundImage == reference else { return }
                 settings.config.foregroundImage = newReference

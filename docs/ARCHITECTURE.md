@@ -232,6 +232,28 @@ attributes rather than recoloring the whole document. Terminal captures keep the
 parser/emulator semantics and bypass caches above 32 KiB; their deeper large-stream policy belongs
 to the terminal reliability boundary rather than pretending ANSI input is syntax highlighting.
 
+## Bounded static image pipeline
+
+`BackgroundImageStore` applies one contract to backgrounds, foreground screenshots, Brand Kit
+logos, drag/drop, remote downloads, and CLI image inputs. It reads at most 25 MiB, then
+`ImageDecodePolicy` inspects ImageIO source and per-frame status plus dimensions with caching
+disabled. Import validation therefore does not allocate every frame merely to prove that metadata
+is plausible; truncated containers fail the completeness check, frame tables are capped at 256,
+and cumulative source geometry is capped at 64 megapixels.
+
+Vitrine produces static artifacts, so an animated source has an explicit **first-frame** contract.
+The resolver never uses `NSImage(contentsOf:)`, which can retain a full-resolution animated
+representation. It asks ImageIO for one orientation-corrected thumbnail and constrains that decode
+to the interactive `RenderBudget` (16 megapixels and an 8,192-pixel axis ceiling) before creating
+the AppKit image. The process cache is still cost-bounded at 256 MiB, but its cost now reflects the
+actual downsampled surface rather than unbounded source metadata.
+
+Picker, drag/drop, remote, Brand Kit, and image-memory-journey imports run bounded read,
+validation, hashing, atomic persistence, and first decode on Swift 6.2's explicit concurrent
+executor. The main actor publishes the reference and creates/caches the final `NSImage` only after
+that work completes. Existing stored references retain a synchronous bounded fallback so launch,
+CLI, and migration behavior remains compatible.
+
 ## Terminal rendering: two engines
 
 Terminal capture is not "syntax highlighting with an ANSI palette". Two structurally

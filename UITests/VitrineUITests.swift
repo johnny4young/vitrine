@@ -70,7 +70,8 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: ["--demo-beautify-image"])
         defer { app.terminate() }
 
-        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let editor = element("editor-window", in: app)
+        assertExists(editor, in: app, timeout: 8)
         // Both on-device actions live in the image panel. Their behavior is pinned by
         // unit tests, so this smoke only proves the panel surfaces them.
         assertHittable(
@@ -78,6 +79,11 @@ final class VitrineUITests: XCTestCase {
             "The image panel must expose Redact secrets")
         assertExists(element("copy-image-text-button", in: app), in: app, timeout: 3)
         assertExists(element("remove-image-button", in: app), in: app, timeout: 3)
+
+        let attachment = XCTAttachment(screenshot: editor.screenshot())
+        attachment.name = "bounded-static-image-panel"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor

@@ -242,16 +242,28 @@ struct ImageBackgroundEditor: View {
 
     @State private var importError: String?
     @State private var urlText = ""
+    @State private var isImporting = false
+    @State private var importTask: Task<Void, Never>?
     @State private var isDownloading = false
     @State private var downloadTask: Task<Void, Never>?
 
     var body: some View {
-        Button {
-            chooseImage()
-        } label: {
-            Label(hasImage ? "Replace image…" : "Choose image…", systemImage: "photo")
+        Button(action: chooseImage) {
+            if isImporting {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Importing image")
+            } else {
+                Label(hasImage ? "Replace image…" : "Choose image…", systemImage: "photo")
+            }
         }
+        .disabled(isImporting)
         .accessibilityIdentifier("background-choose-image")
+        .onDisappear {
+            importTask?.cancel()
+            importTask = nil
+            isImporting = false
+        }
 
         // Downloading from a URL is a network action, so it appears only in a build
         // that carries the network-client entitlement (the direct-download DMG). In
@@ -340,14 +352,30 @@ struct ImageBackgroundEditor: View {
         panel.canChooseDirectories = false
         panel.message = "Choose an image to use as the background."
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            let reference = try imageStore.importImage(from: url)
-            image.reference = reference
-            importError = nil
-        } catch let error as BackgroundImageStore.ImportError {
-            importError = error.message
-        } catch {
-            importError = BackgroundImageStore.ImportError.copyFailed.message
+        importTask?.cancel()
+        isImporting = true
+        importError = nil
+        importTask = Task {
+            defer {
+                importTask = nil
+                isImporting = false
+            }
+            do {
+                let reference = try await imageStore.importImageConcurrently(from: url)
+                guard await imageStore.preloadImage(for: reference) != nil else {
+                    throw BackgroundImageStore.ImportError.notAnImage
+                }
+                try Task.checkCancellation()
+                image.reference = reference
+            } catch is CancellationError {
+                return
+            } catch let error as BackgroundImageStore.ImportError {
+                guard !Task.isCancelled else { return }
+                importError = error.message
+            } catch {
+                guard !Task.isCancelled else { return }
+                importError = BackgroundImageStore.ImportError.copyFailed.message
+            }
         }
     }
 
@@ -374,6 +402,9 @@ struct ImageBackgroundEditor: View {
             }
             do {
                 let reference = try await imageStore.importImage(downloadedFrom: url)
+                guard await imageStore.preloadImage(for: reference) != nil else {
+                    throw BackgroundImageStore.ImportError.notAnImage
+                }
                 try Task.checkCancellation()
                 image.reference = reference
                 urlText = ""
