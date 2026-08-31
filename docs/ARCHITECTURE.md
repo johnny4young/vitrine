@@ -572,6 +572,24 @@ and `--title` metadata options. Context therefore stays outside the ANSI transcr
 works for both scrolling output and reconstructed full-screen frames. It never reads
 repository status, and `--no-context` omits the header for minimal or sensitive captures.
 
+**Integration installation.** Settings never reads an arbitrary startup file with
+`Data(contentsOf:)`. The granted file is opened once, required to be a regular file,
+locked without waiting, and read in chunks under a 1 MiB ceiling. Vitrine verifies the
+same descriptor identity and size before appending only the small integration suffix with
+`O_APPEND`; it refuses invalid UTF-8, concurrent changes, devices, directories, and large
+files without rewriting their contents. The CLI installer canonicalizes both absolute and
+relative symlink destinations, prefers `/opt/homebrew/bin` on Apple Silicon and
+`/usr/local/bin` on Intel, and retains the other prefix as a fallback. New links are staged
+as unique siblings and installed with `RENAME_EXCL` or `RENAME_SWAP`, so a regular file
+named `vitrine` is never removed and stale links have no unlink/recreate gap. The copyable
+Terminal fallback intentionally omits `ln -f` for the same fail-closed rule.
+
+**Share-link encoding.** `vitrine://open` accepts one bounded, canonical RFC 4648
+base64url representation. The decoder rejects padding, whitespace, standard base64
+characters, impossible lengths, non-ASCII input, and non-zero unused tail bits before
+bounded zlib expansion and JSON decoding. A deterministic seeded adversarial corpus guards
+that contract against future normalization or Foundation decoder changes.
+
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the capability
 gate. The helper prefers runtime bundle metadata, falls back to the enclosing app

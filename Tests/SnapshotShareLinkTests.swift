@@ -253,6 +253,53 @@ struct SnapshotShareLinkTests {
         #expect(Base64URL.decode(encoded) == data)
     }
 
+    @Test func base64URLRejectsEveryNonCanonicalSpelling() {
+        #expect(Base64URL.decode("") == Data())
+        #expect(Base64URL.decode("Zg") == Data("f".utf8))
+        for invalid in [
+            "Zg==",  // padding
+            " Zg", "Zg\n", "Z g",  // whitespace
+            "Zg+", "Zg/",  // standard base64 alphabet
+            "A",  // impossible encoded length
+            "Zh", "Zm9",  // non-zero unused tail bits
+            "💣", "é",  // non-ASCII input
+        ] {
+            #expect(Base64URL.decode(invalid) == nil, "accepted non-canonical token: \(invalid)")
+        }
+    }
+
+    @Test func seededBase64URLCorpusRoundTripsAndMutationsFailClosed() {
+        // Fixed seed and constants make failures exactly reproducible in hosted CI.
+        var state: UInt64 = 0xD1B5_4A32_D192_ED03
+        func next() -> UInt64 {
+            state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return state
+        }
+
+        for sample in 0..<512 {
+            let byteCount = Int(next() % 513)
+            var bytes = [UInt8]()
+            bytes.reserveCapacity(byteCount)
+            for _ in 0..<byteCount { bytes.append(UInt8(truncatingIfNeeded: next() >> 24)) }
+            let data = Data(bytes)
+            let encoded = Base64URL.encode(data)
+            #expect(Base64URL.decode(encoded) == data, "round-trip failed for sample \(sample)")
+
+            let replacedHead = encoded.isEmpty ? "+" : "+" + String(encoded.dropFirst())
+            let mutations = [
+                encoded + "=",
+                "\t" + encoded,
+                encoded + "!",
+                replacedHead,
+            ]
+            for mutation in mutations {
+                #expect(
+                    Base64URL.decode(mutation) == nil,
+                    "accepted mutation for seed sample \(sample): \(mutation)")
+            }
+        }
+    }
+
     @Test func zlibRoundTripsAndShrinksRepetitiveText() throws {
         let text = Data(String(repeating: "let x = 0\n", count: 500).utf8)
         let compressed = try Zlib.compress(text)

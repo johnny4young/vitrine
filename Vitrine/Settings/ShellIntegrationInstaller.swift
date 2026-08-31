@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Foundation
 
 /// Adds the `vgrab` shell helper to the user's shell startup file
@@ -15,6 +16,11 @@ import Foundation
 /// Mirrors `CLIToolInstaller`; the integration depends on the `vitrine` command,
 /// so the Settings row appears alongside it.
 enum ShellIntegrationInstaller {
+    /// Shell startup files should stay small, human-editable configuration. Refuse an
+    /// unexpectedly large selection before allocating a second copy or appending to a
+    /// path that may not be the file the user intended to grant.
+    static let maxStartupFileBytes = 1 * 1_024 * 1_024
+
     /// The line a startup file evaluates to load the helper. zsh/bash use
     /// `eval "$(…)"`; fish has no `$(…)` and sources a pipe instead
     /// (`vitrine shell-init fish | source`).
@@ -75,47 +81,120 @@ enum ShellIntegrationInstaller {
         case failed(String)
     }
 
-    /// Appends the integration block to `file` (a startup file the user just
-    /// granted through the open panel), idempotently. Reads the current contents
-    /// first: if the integration is already present it is a no-op; otherwise the
-    /// block is appended, inserting a leading newline only when the file does not
-    /// already end in one so the eval line never glues onto the previous line.
+    /// Appends the integration block to `file` (a startup file the user just granted
+    /// through the open panel), idempotently and without rebuilding the entire file.
     ///
-    /// The write is **non-atomic on purpose**: a user-selected file grant covers
-    /// that file, not its directory, so an atomic write (temp file + rename in the
-    /// parent) would be refused — writing the bytes in place stays within the grant.
-    static func install(
-        _ shell: ShellInit.Shell, into file: URL, fileManager: FileManager = .default
-    ) -> InstallOutcome {
+    /// One descriptor is opened for the complete read/check/append transaction. A
+    /// non-blocking advisory lock avoids waiting on another cooperative editor, `fstat`
+    /// rejects directories/devices and detects size or identity changes, and the read
+    /// retains at most `maxStartupFileBytes + 1` bytes. `O_APPEND` prevents stale offsets
+    /// from overwriting existing bytes. Atomic replacement is deliberately not used:
+    /// the powerbox grant covers the selected file, not a temporary sibling in its
+    /// parent directory.
+    static func install(_ shell: ShellInit.Shell, into file: URL) -> InstallOutcome {
         let didScope = file.startAccessingSecurityScopedResource()
         defer { if didScope { file.stopAccessingSecurityScopedResource() } }
 
-        // Distinguish a missing file (fine — we create it) from one that exists but
-        // can't be read (e.g. not UTF-8, or a permissions hiccup). Treating the latter
-        // as empty would overwrite the user's startup file with only our block, losing
-        // their content — so refuse rather than clobber.
-        let existing: String
-        if fileManager.fileExists(atPath: file.path) {
-            guard let contents = try? String(contentsOf: file, encoding: .utf8) else {
-                return .failed(
-                    String(
-                        localized:
-                            "Couldn't read the startup file (is it valid UTF-8?). Add the line by hand instead."
-                    ))
-            }
-            existing = contents
-        } else {
-            existing = ""
-        }
-        if isInstalled(in: existing) { return .alreadyInstalled(file) }
+        guard let descriptor = openDescriptor(at: file) else { return .failed(readFailureMessage) }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        defer { try? handle.close() }
 
-        let separator = existing.isEmpty || existing.hasSuffix("\n") ? "" : "\n"
-        let updated = existing + separator + block(for: shell) + "\n"
-        do {
-            try Data(updated.utf8).write(to: file)
-            return .installed(file)
-        } catch {
-            return .failed(error.localizedDescription)
+        guard Darwin.lockf(descriptor, F_TLOCK, 0) == 0 else {
+            return .failed(readFailureMessage)
         }
+        defer { _ = Darwin.lockf(descriptor, F_ULOCK, 0) }
+
+        do {
+            let initialStatus = try regularFileStatus(for: descriptor)
+            let initialByteCount = try boundedByteCount(initialStatus)
+            try handle.seek(toOffset: 0)
+            let existingData = try readBounded(from: handle)
+            let finalStatus = try regularFileStatus(for: descriptor)
+            guard
+                initialStatus.st_dev == finalStatus.st_dev,
+                initialStatus.st_ino == finalStatus.st_ino,
+                finalStatus.st_size == initialStatus.st_size,
+                existingData.count == initialByteCount
+            else {
+                return .failed(readFailureMessage)
+            }
+            guard let existing = String(data: existingData, encoding: .utf8) else {
+                return .failed(readFailureMessage)
+            }
+            if isInstalled(in: existing) { return .alreadyInstalled(file) }
+
+            let separator = existingData.isEmpty || existingData.last == 0x0A ? "" : "\n"
+            let suffix = Data((separator + block(for: shell) + "\n").utf8)
+            guard try handle.seekToEnd() == UInt64(initialByteCount) else {
+                return .failed(readFailureMessage)
+            }
+            try handle.write(contentsOf: suffix)
+            try handle.synchronize()
+            let writtenStatus = try regularFileStatus(for: descriptor)
+            guard writtenStatus.st_size == initialStatus.st_size + off_t(suffix.count) else {
+                throw InstallError.writeFailed
+            }
+            return .installed(file)
+        } catch InstallError.tooLarge {
+            return .failed(
+                String(
+                    localized:
+                        "The startup file is too large to update safely. Add the line by hand instead."
+                ))
+        } catch {
+            return .failed(readFailureMessage)
+        }
+    }
+
+    private enum InstallError: Error {
+        case unreadable
+        case notRegularFile
+        case tooLarge
+        case writeFailed
+    }
+
+    private static var readFailureMessage: String {
+        String(
+            localized:
+                "Couldn't read the startup file (is it valid UTF-8?). Add the line by hand instead."
+        )
+    }
+
+    private static func openDescriptor(at file: URL) -> Int32? {
+        let descriptor = file.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return Int32(-1) }
+            return Darwin.open(
+                path, O_RDWR | O_APPEND | O_CREAT | O_CLOEXEC | O_NONBLOCK,
+                S_IRUSR | S_IWUSR)
+        }
+        return descriptor >= 0 ? descriptor : nil
+    }
+
+    private static func regularFileStatus(for descriptor: Int32) throws -> stat {
+        var status = stat()
+        guard Darwin.fstat(descriptor, &status) == 0 else { throw InstallError.unreadable }
+        guard status.st_mode & S_IFMT == S_IFREG else { throw InstallError.notRegularFile }
+        return status
+    }
+
+    private static func boundedByteCount(_ status: stat) throws -> Int {
+        guard let count = Int(exactly: status.st_size), count >= 0 else {
+            throw InstallError.unreadable
+        }
+        guard count <= maxStartupFileBytes else { throw InstallError.tooLarge }
+        return count
+    }
+
+    private static func readBounded(from handle: FileHandle) throws -> Data {
+        var data = Data()
+        data.reserveCapacity(min(maxStartupFileBytes, 64 * 1_024))
+        while data.count <= maxStartupFileBytes {
+            let remaining = maxStartupFileBytes + 1 - data.count
+            guard let chunk = try handle.read(upToCount: min(64 * 1_024, remaining)), !chunk.isEmpty
+            else { break }
+            data.append(chunk)
+        }
+        guard data.count <= maxStartupFileBytes else { throw InstallError.tooLarge }
+        return data
     }
 }

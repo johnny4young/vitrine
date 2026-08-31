@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Foundation
 
 /// Installs the embedded `vitrine` command-line tool onto the user's PATH
@@ -13,6 +14,20 @@ import Foundation
 /// UI falls back to a copyable Terminal command — the honest, sandbox-true
 /// behavior rather than a privilege prompt the sandbox forbids.
 enum CLIToolInstaller {
+    enum HostArchitecture: String, Equatable {
+        case arm64
+        case x8664 = "x86_64"
+        case other
+
+        init(machine: String) {
+            switch machine.lowercased() {
+            case "arm64", "aarch64": self = .arm64
+            case "x86_64", "amd64": self = .x8664
+            default: self = .other
+            }
+        }
+    }
+
     /// The CLI embedded in the running app bundle
     /// (`Contents/MacOS/vitrine-cli`), or `nil` when this copy of the app does
     /// not carry it (the Settings row hides itself then).
@@ -23,13 +38,21 @@ enum CLIToolInstaller {
         return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
     }
 
-    /// PATH directories probed for an existing `vitrine` link, in order: the
-    /// Apple Silicon Homebrew prefix (user-writable on brew installs), then the
-    /// traditional `/usr/local/bin`.
-    static let knownBinDirectories = [
-        URL(fileURLWithPath: "/opt/homebrew/bin", isDirectory: true),
-        URL(fileURLWithPath: "/usr/local/bin", isDirectory: true),
-    ]
+    /// PATH directories probed for an existing `vitrine` link. Native Homebrew is
+    /// preferred for the running architecture, with the other prefix retained as a
+    /// compatibility fallback for mixed Intel/Apple-Silicon setups.
+    static var knownBinDirectories: [URL] {
+        binDirectories(for: currentArchitecture)
+    }
+
+    static func binDirectories(for architecture: HostArchitecture) -> [URL] {
+        let appleSilicon = URL(fileURLWithPath: "/opt/homebrew/bin", isDirectory: true)
+        let traditional = URL(fileURLWithPath: "/usr/local/bin", isDirectory: true)
+        switch architecture {
+        case .arm64: return [appleSilicon, traditional]
+        case .x8664, .other: return [traditional, appleSilicon]
+        }
+    }
 
     /// Where `vitrine` is already linked to `target`, or `nil` when no probed
     /// directory carries a matching link. Parameterized so tests can point it
@@ -46,16 +69,24 @@ enum CLIToolInstaller {
                 let destination = try? fileManager.destinationOfSymbolicLink(
                     atPath: link.path)
             else { continue }
-            if destination == target.path { return link }
+            let destinationURL = resolvedDestination(destination, relativeTo: link)
+            if canonicalURL(destinationURL) == canonicalURL(target) { return link }
         }
         return nil
     }
 
-    /// The Terminal equivalent of the install, shown (and copyable) when the
-    /// chosen folder refuses the write. `sudo` because `/usr/local/bin` is
-    /// root-owned on a stock macOS.
-    static func terminalCommand(for target: URL) -> String {
-        "sudo ln -sf \(ShellCommandQuoter.singleQuoted(target.path)) /usr/local/bin/vitrine"
+    /// The Terminal equivalent of the install, shown (and copyable) when the chosen
+    /// folder refuses the write. It intentionally omits `-f`: a fallback command must
+    /// never unlink a regular file that happens to be named `vitrine`.
+    static func terminalCommand(
+        for target: URL,
+        architecture: HostArchitecture? = nil
+    ) -> String {
+        let resolvedArchitecture = architecture ?? currentArchitecture
+        let destination = binDirectories(for: resolvedArchitecture)[0]
+            .appendingPathComponent("vitrine")
+        return "sudo ln -s \(ShellCommandQuoter.singleQuoted(canonicalURL(target).path)) "
+            + destination.path
     }
 
     /// The result of an install attempt into a powerbox-granted folder.
@@ -64,9 +95,11 @@ enum CLIToolInstaller {
         case failed(String)
     }
 
-    /// Links `target` as `vitrine` inside `directory` (a folder the user just
-    /// granted through the open panel). An existing entry is replaced only when
-    /// it is itself a symlink — a real file named `vitrine` is never deleted.
+    /// Links the canonical `target` as `vitrine` inside `directory` (a folder the user
+    /// just granted through the open panel). The candidate link is created under a
+    /// unique sibling name and then installed with one kernel rename operation. A
+    /// stale symlink is swapped atomically; a real file or a concurrently-created
+    /// destination is never deleted.
     static func install(
         _ target: URL, into directory: URL, fileManager: FileManager = .default
     ) -> InstallOutcome {
@@ -74,14 +107,110 @@ enum CLIToolInstaller {
         defer { if didScope { directory.stopAccessingSecurityScopedResource() } }
 
         let link = directory.appendingPathComponent("vitrine")
+        let temporaryLink = directory.appendingPathComponent(
+            ".vitrine-link-\(UUID().uuidString)")
+        let destinationState: DestinationState
         do {
-            if (try? fileManager.destinationOfSymbolicLink(atPath: link.path)) != nil {
-                try fileManager.removeItem(at: link)
+            destinationState = try state(of: link)
+        } catch {
+            return .failed(installFailureMessage)
+        }
+
+        guard destinationState != .nonSymlink else {
+            return .failed(
+                String(
+                    localized:
+                        "A regular item named vitrine already exists in the selected folder. Move it before installing the command."
+                )
+            )
+        }
+
+        do {
+            try fileManager.createSymbolicLink(
+                at: temporaryLink, withDestinationURL: canonicalURL(target))
+            defer {
+                // Never let cleanup remove a regular file if an uncooperative writer
+                // races the atomic swap. A leftover unexpected item is safer than data
+                // loss and makes the failed state inspectable.
+                if (try? state(of: temporaryLink)) == .symlink {
+                    try? fileManager.removeItem(at: temporaryLink)
+                }
             }
-            try fileManager.createSymbolicLink(at: link, withDestinationURL: target)
+
+            switch destinationState {
+            case .missing:
+                guard rename(temporaryLink, to: link, flags: UInt32(RENAME_EXCL)) == 0 else {
+                    throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+                }
+            case .symlink:
+                guard rename(temporaryLink, to: link, flags: UInt32(RENAME_SWAP)) == 0 else {
+                    throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+                }
+                // The old link is now at `temporaryLink` and is removed by the defer.
+                // Re-check without following it: if an uncooperative writer raced the
+                // preflight, swap back rather than discard a regular file.
+                guard try state(of: temporaryLink) == .symlink else {
+                    _ = rename(temporaryLink, to: link, flags: UInt32(RENAME_SWAP))
+                    throw POSIXError(.EEXIST)
+                }
+            case .nonSymlink:
+                throw POSIXError(.EEXIST)
+            }
             return .installed(link)
         } catch {
-            return .failed(error.localizedDescription)
+            return .failed(installFailureMessage)
+        }
+    }
+
+    private enum DestinationState: Equatable {
+        case missing
+        case symlink
+        case nonSymlink
+    }
+
+    private static var installFailureMessage: String {
+        String(localized: "Couldn't safely update the command link in the selected folder.")
+    }
+
+    private static var currentArchitecture: HostArchitecture {
+        var value = utsname()
+        guard Darwin.uname(&value) == 0 else { return .other }
+        let machine = withUnsafeBytes(of: &value.machine) { rawBuffer -> String in
+            let bytes = rawBuffer.prefix { $0 != 0 }
+            return String(decoding: bytes, as: UTF8.self)
+        }
+        return HostArchitecture(machine: machine)
+    }
+
+    private static func canonicalURL(_ url: URL) -> URL {
+        url.standardizedFileURL.resolvingSymlinksInPath()
+    }
+
+    private static func resolvedDestination(_ destination: String, relativeTo link: URL) -> URL {
+        if destination.hasPrefix("/") { return URL(fileURLWithPath: destination) }
+        return link.deletingLastPathComponent().appendingPathComponent(destination)
+    }
+
+    private static func state(of url: URL) throws -> DestinationState {
+        var status = stat()
+        let result = url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return Int32(-1) }
+            return Darwin.lstat(path, &status)
+        }
+        if result == 0 {
+            return status.st_mode & S_IFMT == S_IFLNK ? .symlink : .nonSymlink
+        }
+        if errno == ENOENT { return .missing }
+        throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    }
+
+    private static func rename(_ source: URL, to destination: URL, flags: UInt32) -> Int32 {
+        source.withUnsafeFileSystemRepresentation { sourcePath in
+            destination.withUnsafeFileSystemRepresentation { destinationPath in
+                guard let sourcePath, let destinationPath else { return Int32(-1) }
+                return Darwin.renameatx_np(
+                    AT_FDCWD, sourcePath, AT_FDCWD, destinationPath, flags)
+            }
         }
     }
 }

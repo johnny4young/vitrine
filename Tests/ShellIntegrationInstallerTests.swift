@@ -116,6 +116,51 @@ struct ShellIntegrationInstallerTests {
         #expect(try Data(contentsOf: file) == invalidUTF8)
     }
 
+    @Test func installRefusesAnOversizedStartupFileWithoutReadingOrChangingIt() throws {
+        let file = try makeStartupFile()
+        let original = Data(
+            repeating: 0x61, count: ShellIntegrationInstaller.maxStartupFileBytes + 1)
+        try original.write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let outcome = ShellIntegrationInstaller.install(.zsh, into: file)
+
+        guard case .failed(let message) = outcome else {
+            Issue.record("expected .failed, got \(outcome)")
+            return
+        }
+        #expect(!message.isEmpty)
+        #expect(try Data(contentsOf: file) == original)
+    }
+
+    @Test func installRejectsANonRegularSelection() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vitrine-rc-directory-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        guard case .failed = ShellIntegrationInstaller.install(.zsh, into: directory) else {
+            Issue.record("expected a directory selection to fail closed")
+            return
+        }
+        #expect(
+            FileManager.default.fileExists(atPath: directory.path),
+            "the selected directory must remain untouched")
+    }
+
+    @Test func installAppendsOnlyTheSmallIntegrationSuffix() throws {
+        let original = String(repeating: "export VALUE=1\n", count: 4_096)
+        let file = try makeStartupFile(original)
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        #expect(ShellIntegrationInstaller.install(.bash, into: file) == .installed(file))
+
+        let written = try String(contentsOf: file, encoding: .utf8)
+        #expect(written.hasPrefix(original))
+        #expect(
+            written.dropFirst(original.count) == ShellIntegrationInstaller.block(for: .bash) + "\n")
+    }
+
     @Test func terminalCommandAppendsTheEvalLineToTheRCFile() {
         #expect(
             ShellIntegrationInstaller.terminalCommand(for: .zsh)
