@@ -455,17 +455,25 @@ final class WebSnapshotModel {
 
         results = captured
         renderedAsset = captured.first?.asset
+        var boardErrorMessage: String?
         // A multi-size batch also gets a composite "responsive board" as the primary
         // preview/export; a single capture has none.
         if captured.count > 1 {
-            boardAsset = ResponsiveBoardComposer.compose(
-                captured, scale: CGFloat(settings.export.scale),
-                profile: settings.export.colorProfile)
-            if let board = boardAsset {
+            do {
+                let board = try ResponsiveBoardComposer.composeChecked(
+                    captured, scale: CGFloat(settings.export.scale),
+                    profile: settings.export.colorProfile)
+                boardAsset = board
                 boardThumbnailAsset = CapturedViewport.makeThumbnail(from: board)
                 renderedAsset = board
-            } else {
+            } catch .tooLarge(let rejection) {
+                boardAsset = nil
                 boardThumbnailAsset = nil
+                boardErrorMessage = Self.message(for: .renderTooLarge(rejection))
+            } catch {
+                boardAsset = nil
+                boardThumbnailAsset = nil
+                boardErrorMessage = Self.message(for: .renderFailed)
             }
         } else {
             boardAsset = nil
@@ -473,9 +481,14 @@ final class WebSnapshotModel {
         }
         // Note a partial failure when some viewports succeeded and others didn't.
         if captured.count < presets.count {
-            errorMessage = String(
-                localized: "Captured \(captured.count) of \(presets.count) sizes; some didn't load."
-            )
+            errorMessage =
+                boardErrorMessage
+                ?? String(
+                    localized:
+                        "Captured \(captured.count) of \(presets.count) sizes; some didn't load."
+                )
+        } else {
+            errorMessage = boardErrorMessage
         }
     }
 

@@ -14,10 +14,10 @@ can never drift.
 
 ## [1.2.1] - 2026-08-30
 
-Vitrine 1.2.1 is a focused safety candidate. It bounds every raster allocation before
-rendering, makes failures actionable across app and automation surfaces, and strengthens
-Web Snapshot isolation without changing the supported workflow or public distribution
-contract.
+Vitrine 1.2.1 is a focused safety candidate. It bounds every raster render allocation before
+its bitmap is created, makes failures actionable across app and automation surfaces, and
+strengthens Web Snapshot isolation without changing the supported workflow or public
+distribution contract.
 
 ### Added
 
@@ -37,9 +37,9 @@ contract.
 
 ### Fixed
 
-- Reject extreme editor, CLI, App Intent, batch, social-card, comparison-board, and Web
-  Snapshot renders before bitmap allocation instead of risking process termination or a
-  blank result.
+- Reject extreme editor, CLI, App Intent, batch, social-card, comparison-board, Web
+  responsive-board, and Web Snapshot renders before bitmap allocation instead of risking
+  process termination or a blank result.
 - Propagate render and encoding failures through copy, save, share, batch, and automation
   surfaces instead of collapsing them into generic or silent failures.
 - Recheck actual WebKit image dimensions before composition so an engine result cannot

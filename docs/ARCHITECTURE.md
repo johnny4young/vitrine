@@ -148,19 +148,23 @@ page background.
 
 ## Raster resource budgets and failure contract
 
-Every bitmap path preflights `RenderBudget` before constructing `ImageRenderer`, a bitmap
-context, or a WebKit snapshot. The value-only policy accounts for logical dimensions,
-render scale, total pixels, and estimated simultaneously live buffers using overflow-safe
-integer arithmetic. Preview and export use separate ceilings: preview remains responsive,
-while export permits larger intentional output without granting an unbounded allocation.
+Every raster render/export path preflights `RenderBudget` after layout resolves the logical
+canvas but before `ImageRenderer`, Core Graphics, or WebKit creates the potentially large
+bitmap. Small fixed-size sampling/thumbnail operations derive from an already bounded image
+and retain their own hard caps. The value-only render policy accounts for logical
+dimensions, render scale, total pixels, and estimated simultaneously live buffers using
+overflow-safe integer arithmetic. Preview and export use separate ceilings: preview
+remains responsive, while export permits larger intentional output without granting an
+unbounded allocation.
 Full-page Web Snapshot height is clamped from the same axis, pixel, and estimated-byte
 constraints before `WKWebView.takeSnapshot` is called, and the returned image is checked
 again before board composition.
 
 `RenderBudgetError` is the shared typed failure boundary: `tooLarge`, `allocationFailed`,
 `encodingFailed`, and `cancelled`. The app, CLI, App Intents, batch exporters, social cards,
-comparison boards, pasteboard, and file writers preserve those categories instead of
-turning them into a blank image, partial success, or process-level allocation failure.
+comparison boards, Web responsive boards, pasteboard, and file writers preserve those
+categories instead of turning them into a blank image, partial success, or process-level
+allocation failure.
 User-facing adapters own concise recovery copy; the core error never exposes a file path or
 platform allocation detail.
 

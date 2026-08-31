@@ -27,11 +27,11 @@ includes logical width/height, scale, total pixels, and an estimate of concurren
 buffers. Arithmetic is overflow-safe. Web Snapshot also clamps full-page height before
 asking WebKit for pixels and validates the actual returned image again before composition.
 
-App, CLI, App Intents, batch, social-card, comparison-board, pasteboard, and file adapters
-preserve four typed outcomes: too large, allocation failed, encoding failed, and cancelled.
-This makes an extreme request an actionable error rather than a blank artifact, partial
-success, or abrupt process exit. PDF remains vector output; raster previews and embedded
-images still pass through the applicable bitmap budget.
+App, CLI, App Intents, batch, social-card, comparison-board, Web responsive-board,
+pasteboard, and file adapters preserve four typed outcomes: too large, allocation failed,
+encoding failed, and cancelled. This makes an extreme request an actionable error rather
+than a blank artifact, partial success, or abrupt process exit. PDF remains vector output;
+raster previews and embedded images still pass through the applicable bitmap budget.
 
 ## Web capture boundary
 

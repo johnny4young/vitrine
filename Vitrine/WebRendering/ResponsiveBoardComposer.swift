@@ -8,8 +8,9 @@ import SwiftUI
 /// The output size is a pure function of the input set — each card's image is scaled to a
 /// fixed height and its width follows the capture's own aspect ratio, and the board frame
 /// is computed from those — so the result is deterministic and golden-testable. The
-/// composite never touches the network or the render core; it only arranges already-
-/// rendered `CGImage`s, so it stays well clear of the gated export path.
+/// composite never touches the network; it only arranges already-rendered `CGImage`s.
+/// The final board still passes through the shared export budget because its aspect-
+/// derived canvas can be substantially larger than any individual capture.
 enum ResponsiveBoardComposer {
     /// The fixed height each capture's card image is scaled to; the width follows the
     /// capture's aspect ratio, so a tall phone shot and a wide desktop shot sit side by
@@ -39,13 +40,25 @@ enum ResponsiveBoardComposer {
         Color(red: 0.10, green: 0.08, blue: 0.20),
     ]
 
-    /// Composes `captures` into a single board asset, or `nil` when the set is empty or
-    /// the render fails. Main-actor bound (`ImageRenderer` requirement).
+    /// Compatibility wrapper for callers that do not present typed render feedback.
+    /// Production Web Snapshot uses `composeChecked` so an unsafe board size remains
+    /// distinguishable from an ordinary allocation failure.
     @MainActor
     static func compose(
         _ captures: [CapturedViewport], scale: CGFloat, profile: ColorProfile
     ) -> RenderedAsset? {
-        guard !captures.isEmpty else { return nil }
+        try? composeChecked(captures, scale: scale, profile: profile)
+    }
+
+    /// Composes `captures` only after the complete board layout fits the shared
+    /// export budget. A single capture can be safe while its aspect-derived board
+    /// column is not (for example, a very wide custom viewport), so this final
+    /// preflight is required independently of the per-viewport checks.
+    @MainActor
+    static func composeChecked(
+        _ captures: [CapturedViewport], scale: CGFloat, profile: ColorProfile
+    ) throws(RenderBudgetError) -> RenderedAsset {
+        guard !captures.isEmpty else { throw .encodingFailed }
 
         let sized = captures.map { capture -> SizedCapture in
             let width = CGFloat(capture.asset.cgImage.width)
@@ -62,13 +75,12 @@ enum ResponsiveBoardComposer {
             + spacing * CGFloat(max(sized.count - 1, 0))
         let totalHeight = padding * 2 + cardImageHeight + labelGap + labelHeight
 
+        let size = CGSize(width: totalWidth, height: totalHeight)
         let board = BoardView(sized: sized).frame(width: totalWidth, height: totalHeight)
-        let renderer = ImageRenderer(content: board)
-        renderer.scale = scale
-        renderer.isOpaque = true
-        guard let cgImage = renderer.cgImage else { return nil }
-        return RenderedAsset(
-            cgImage: ExportManager.normalized(cgImage, to: profile), profile: profile)
+        let image = try ExportManager.renderCGImageChecked(
+            board, proposedSize: size, scale: scale, profile: profile,
+            budget: .export, isOpaque: true)
+        return RenderedAsset(cgImage: image, profile: profile)
     }
 
     /// One capture paired with its computed image width (aspect-derived from the fixed

@@ -126,6 +126,36 @@ struct WebMultiViewportSelectionTests {
         #expect(model.renderedAsset?.cgImage.width == model.boardAsset?.cgImage.width)
     }
 
+    @Test func oversizedResponsiveBoardKeepsCapturesAndSurfacesTheBudgetError() async throws {
+        let settings = AppSettings(defaults: defaults())
+        settings.webCapture.viewports = [.custom, .mobile]
+        settings.webCapture.customViewportWidth = 5_000
+        settings.webCapture.customViewportHeight = 100
+        settings.export.scale = 1
+        let source = "<main>Wide local fixture</main>"
+        let renderer = WebSnapshotViewportRenderer { input, preset, _ in
+            guard case .html(let html) = input, html == source else {
+                throw RenderError.renderFailed
+            }
+            return try Self.fixtureAsset(
+                width: preset.kind == .custom ? 50 : 200,
+                height: preset.kind == .custom ? 1 : 400)
+        }
+        let model = WebSnapshotModel(viewportRenderer: renderer)
+        model.mode = .html
+        model.htmlText = source
+
+        await model.render(settings: settings)
+
+        #expect(model.results.map(\.kind) == [.custom, .mobile])
+        #expect(model.boardAsset == nil)
+        #expect(model.renderedAsset?.cgImage.width == 50)
+        #expect(
+            model.errorMessage
+                == WebSnapshotModel.message(
+                    for: .renderTooLarge(.dimension(actual: 21_334, maximum: 16_384))))
+    }
+
     // MARK: - Prefilled-URL auto-capture
 
     @Test func autoCaptureGatesOnURLModeAndAvailability() {
@@ -200,11 +230,15 @@ struct WebMultiViewportSelectionTests {
             case .fullHD: CGSize(width: 192, height: 108)
             case .custom: CGSize(width: 80, height: 60)
             }
+        return try fixtureAsset(width: Int(size.width), height: Int(size.height))
+    }
+
+    private static func fixtureAsset(width: Int, height: Int) throws -> RenderedAsset {
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
             let context = CGContext(
                 data: nil,
-                width: Int(size.width),
-                height: Int(size.height),
+                width: width,
+                height: height,
                 bitsPerComponent: 8,
                 bytesPerRow: 0,
                 space: colorSpace,
@@ -213,7 +247,8 @@ struct WebMultiViewportSelectionTests {
             throw RenderError.renderFailed
         }
         context.setFillColor(CGColor(red: 0.2, green: 0.3, blue: 0.8, alpha: 1))
-        context.fill(CGRect(origin: .zero, size: size))
+        context.fill(
+            CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
         guard let image = context.makeImage() else { throw RenderError.renderFailed }
         return RenderedAsset(cgImage: image, profile: .sRGB)
     }
@@ -256,6 +291,19 @@ struct ResponsiveBoardComposerTests {
             ResponsiveBoardComposer.compose(captures, scale: 1, profile: .sRGB))
         #expect(again.cgImage.width == asset.cgImage.width)
         #expect(again.cgImage.height == asset.cgImage.height)
+    }
+
+    @Test func aspectDerivedBoardIsRejectedBeforeBitmapAllocation() {
+        let captures = [capture(.custom, 50, 1), capture(.mobile, 200, 400)]
+
+        #expect(
+            throws: RenderBudgetError.tooLarge(
+                .dimension(actual: 21_334, maximum: 16_384))
+        ) {
+            try ResponsiveBoardComposer.composeChecked(
+                captures, scale: 1, profile: .sRGB)
+        }
+        #expect(ResponsiveBoardComposer.compose(captures, scale: 1, profile: .sRGB) == nil)
     }
 
     @Test func boardCaptionSplitsNameFromDimensions() {
