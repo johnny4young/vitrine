@@ -90,6 +90,12 @@ struct PerformanceTests {
         /// so these numbers expose regressions hidden by warm render-cache hits.
         static let highlightingTarget: Duration = .milliseconds(250)
         static let highlightingHardCeiling: Duration = .milliseconds(1500)
+
+        /// Soft target and hard ceiling for collecting the largest accepted remote image from
+        /// transport-sized chunks. The network is deliberately excluded: this isolates the local
+        /// copy/allocation cost that replaced byte-at-a-time async iteration.
+        static let remoteChunkTarget: Duration = .milliseconds(50)
+        static let remoteChunkHardCeiling: Duration = .milliseconds(250)
     }
 
     /// How many timed renders each case samples (after the discarded warm-up).
@@ -350,6 +356,36 @@ struct PerformanceTests {
         measureHighlighting(code, label: "highlighting-large-fallback")
     }
 
+    @Test func boundedRemoteChunkCollectionMeetsBudget() {
+        let maximumBytes = 25 * 1_024 * 1_024
+        let chunk = Data(repeating: 0x89, count: 64 * 1_024)
+        let chunks = Array(repeating: chunk, count: maximumBytes / chunk.count)
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+
+        for _ in 0..<Self.sampleCount {
+            var collector = BoundedDataCollector(limit: maximumBytes)
+            var succeeded = true
+            let elapsed = clock.measure {
+                do {
+                    for chunk in chunks { try collector.append(chunk) }
+                } catch {
+                    succeeded = false
+                }
+            }
+            #expect(succeeded)
+            #expect(collector.data.count == maximumBytes)
+            durations.append(elapsed)
+        }
+
+        let stats = Statistics(durations)
+        report(stats, label: "remote-chunks-25mb", target: PerfBudget.remoteChunkTarget)
+        #expect(
+            stats.p95 <= PerfBudget.remoteChunkHardCeiling,
+            "remote-chunks-25mb exceeded the transport hard ceiling")
+    }
+
     private func measureHighlighting(_ code: String, label: String) {
         let manager = HighlightManager.shared
         let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
@@ -454,6 +490,8 @@ struct PerformanceTests {
         #expect(PerfBudget.searchHardCeiling < PerfBudget.target)
         #expect(PerfBudget.highlightingTarget < PerfBudget.highlightingHardCeiling)
         #expect(PerfBudget.highlightingHardCeiling <= PerfBudget.hardCeiling)
+        #expect(PerfBudget.remoteChunkTarget < PerfBudget.remoteChunkHardCeiling)
+        #expect(PerfBudget.remoteChunkHardCeiling < PerfBudget.hardCeiling)
     }
 }
 

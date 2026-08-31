@@ -706,19 +706,113 @@ struct BackgroundTests {
         }
     }
 
-    @Test func remoteImageByteCollectorRejectsPayloadPastStreamingCap() async {
-        // Exercise the default loader's streaming cap with a tiny in-memory stream
-        // rather than building a 25 MB network fixture.
-        let stream = AsyncStream<UInt8> { continuation in
-            for _ in 0..<9 {
-                continuation.yield(0x89)
-            }
-            continuation.finish()
+    @Test(arguments: [1, 10, 25])
+    func remoteImageChunkCollectorAcceptsPublicBoundarySizes(megabytes: Int) throws {
+        let byteCount = megabytes * 1_024 * 1_024
+        let chunk = Data(repeating: 0x89, count: 64 * 1_024)
+        var collector = BoundedDataCollector(limit: byteCount)
+
+        for _ in 0..<(byteCount / chunk.count) {
+            try collector.append(chunk)
         }
 
-        await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
-            _ = try await BackgroundImageStore.collectRemoteImageBytes(stream, maxBytes: 8)
+        #expect(collector.data.count == byteCount)
+    }
+
+    @Test func remoteImageChunkCollectorRejectsBeforeRetainingOverflow() throws {
+        var collector = BoundedDataCollector(limit: 8)
+        try collector.append(Data(repeating: 0x89, count: 8))
+
+        #expect(throws: BoundedDataCollector.Failure.tooLarge) {
+            try collector.append(Data([0x50]))
         }
+        #expect(collector.data.count == 8)
+    }
+
+    @Test func remoteImageChunkLoaderCancelsTransportAtTheLimit() async {
+        ChunkedRemoteImageURLProtocol.recorder.reset()
+
+        await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try await BackgroundImageStore.loadBoundedRemoteImage(
+                from: URL(string: "https://chunked.test/overflow")!,
+                maxBytes: 8,
+                configuration: Self.chunkedRemoteConfiguration())
+        }
+
+        #expect(await Self.waitForChunkedProtocolStop())
+        let snapshot = ChunkedRemoteImageURLProtocol.recorder.snapshot()
+        #expect(snapshot.started)
+        #expect(snapshot.deliveredChunks >= 3)
+    }
+
+    @Test func remoteImageChunkLoaderReturnsCompleteChunks() async throws {
+        ChunkedRemoteImageURLProtocol.recorder.reset()
+
+        let (data, response) = try await BackgroundImageStore.loadBoundedRemoteImage(
+            from: URL(string: "https://chunked.test/success")!,
+            maxBytes: 12,
+            configuration: Self.chunkedRemoteConfiguration())
+
+        #expect(
+            data == Data(repeating: 0, count: 4) + Data(repeating: 1, count: 4)
+                + Data(repeating: 2, count: 4))
+        #expect(response.url?.path == "/success")
+        #expect(ChunkedRemoteImageURLProtocol.recorder.snapshot().deliveredChunks == 3)
+    }
+
+    @Test func remoteImageChunkLoaderRejectsKnownLengthBeforeBodyDelivery() async {
+        ChunkedRemoteImageURLProtocol.recorder.reset()
+
+        await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
+            _ = try await BackgroundImageStore.loadBoundedRemoteImage(
+                from: URL(string: "https://chunked.test/known-overflow")!,
+                maxBytes: 8,
+                configuration: Self.chunkedRemoteConfiguration())
+        }
+
+        #expect(await Self.waitForChunkedProtocolStop())
+        #expect(ChunkedRemoteImageURLProtocol.recorder.snapshot().deliveredChunks == 0)
+    }
+
+    @Test func cancellingRemoteImageChunkLoaderCancelsTransport() async {
+        ChunkedRemoteImageURLProtocol.recorder.reset()
+        let task = Task {
+            try await BackgroundImageStore.loadBoundedRemoteImage(
+                from: URL(string: "https://chunked.test/slow")!,
+                maxBytes: 8,
+                configuration: Self.chunkedRemoteConfiguration())
+        }
+
+        #expect(await Self.waitForChunkedProtocolStart())
+        task.cancel()
+        await #expect(throws: CancellationError.self) {
+            _ = try await task.value
+        }
+        #expect(await Self.waitForChunkedProtocolStop())
+    }
+
+    private static func chunkedRemoteConfiguration() -> URLSessionConfiguration {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ChunkedRemoteImageURLProtocol.self]
+        return configuration
+    }
+
+    private static func waitForChunkedProtocolStart() async -> Bool {
+        await waitForChunkedProtocol { $0.started }
+    }
+
+    private static func waitForChunkedProtocolStop() async -> Bool {
+        await waitForChunkedProtocol { $0.stopped }
+    }
+
+    private static func waitForChunkedProtocol(
+        _ predicate: (ChunkedRemoteImageURLProtocol.Recorder.Snapshot) -> Bool
+    ) async -> Bool {
+        for _ in 0..<100 {
+            if predicate(ChunkedRemoteImageURLProtocol.recorder.snapshot()) { return true }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return false
     }
 
     @Test func downloadRejectsNonImageBytes() async {
@@ -905,5 +999,123 @@ extension BackgroundTests {
     @Test func decodedByteCostFloorsAtOneForAVectorImage() {
         let empty = NSImage(size: NSSize(width: 10, height: 10))
         #expect(BackgroundImageStore.decodedByteCost(of: empty) == 1)
+    }
+}
+
+nonisolated private final class ChunkedRemoteImageURLProtocol: URLProtocol,
+    @unchecked Sendable
+{
+    nonisolated final class Recorder: @unchecked Sendable {
+        struct Snapshot {
+            let started: Bool
+            let stopped: Bool
+            let deliveredChunks: Int
+        }
+
+        private let lock = NSLock()
+        private var started = false
+        private var stopped = false
+        private var deliveredChunks = 0
+
+        func reset() {
+            withLock {
+                started = false
+                stopped = false
+                deliveredChunks = 0
+            }
+        }
+
+        func markStarted() {
+            withLock { started = true }
+        }
+
+        func markStopped() {
+            withLock { stopped = true }
+        }
+
+        func markDeliveredChunk() {
+            withLock { deliveredChunks += 1 }
+        }
+
+        func snapshot() -> Snapshot {
+            withLock {
+                Snapshot(
+                    started: started,
+                    stopped: stopped,
+                    deliveredChunks: deliveredChunks)
+            }
+        }
+
+        private func withLock<Result>(_ body: () -> Result) -> Result {
+            lock.lock()
+            defer { lock.unlock() }
+            return body()
+        }
+    }
+
+    static let recorder = Recorder()
+
+    private let stateLock = NSLock()
+    private var isStopped = false
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == "chunked.test"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        Self.recorder.markStarted()
+        guard let url = request.url else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            return
+        }
+        let headers =
+            url.path == "/known-overflow"
+            ? ["Content-Type": "application/octet-stream", "Content-Length": "9"]
+            : ["Content-Type": "application/octet-stream"]
+        guard
+            let response = HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: headers)
+        else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        guard url.path == "/overflow" || url.path == "/success" else { return }
+        deliverChunk(index: 0)
+    }
+
+    override func stopLoading() {
+        stateLock.lock()
+        isStopped = true
+        stateLock.unlock()
+        Self.recorder.markStopped()
+    }
+
+    private func deliverChunk(index: Int) {
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + .milliseconds(5)) {
+            [weak self] in
+            guard let self, !self.stopped else { return }
+            Self.recorder.markDeliveredChunk()
+            self.client?.urlProtocol(
+                self, didLoad: Data(repeating: UInt8(truncatingIfNeeded: index), count: 4))
+            if self.request.url?.path == "/success", index == 2 {
+                self.client?.urlProtocolDidFinishLoading(self)
+                return
+            }
+            self.deliverChunk(index: index + 1)
+        }
+    }
+
+    private var stopped: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return isStopped
     }
 }

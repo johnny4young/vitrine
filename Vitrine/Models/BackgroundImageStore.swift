@@ -75,10 +75,6 @@ nonisolated struct BackgroundImageStore: Sendable {
     /// request's wall-clock time.
     nonisolated private static let remoteImageRequestTimeout: TimeInterval = 20
 
-    /// Avoid preallocating the whole 25 MB ceiling for the common case of a small
-    /// avatar/screenshot while still reducing reallocations during streaming.
-    nonisolated private static let remoteImageInitialCapacity = 256 * 1024
-
     /// The directory holding copied background images. Created on demand.
     let directory: URL
 
@@ -247,35 +243,40 @@ nonisolated struct BackgroundImageStore: Sendable {
 
     /// Loads a remote background image without ever accumulating more than
     /// `maxBytes` in memory. This is the default production loader behind
-    /// `importImage(downloadedFrom:)`; tests can inject a tiny cap through
-    /// `collectRemoteImageBytes` to exercise the streaming boundary without a
-    /// 25 MB fixture.
+    /// `importImage(downloadedFrom:)`; tests can inject a tiny cap and local URL protocol to
+    /// exercise the transport boundary without a live network.
     nonisolated static func loadBoundedRemoteImage(
         from url: URL,
         maxBytes: Int = maxRemoteImageBytes
     ) async throws -> (Data, URLResponse) {
-        let session = remoteImageSession()
-        // Cancel rather than finish: the session is purpose-built and unshared, so on an
-        // early throw (e.g. `.tooLarge` once the cap is hit) the in-flight download must be
-        // torn down instead of allowed to run to completion — that's the "bounded" intent.
-        // On the success path the stream is already fully consumed, so this is a no-op.
-        defer { session.invalidateAndCancel() }
-        return try await loadBoundedRemoteImage(from: url, maxBytes: maxBytes, session: session)
+        try await loadBoundedRemoteImage(
+            from: url,
+            maxBytes: maxBytes,
+            configuration: remoteImageSessionConfiguration())
     }
 
-    /// The lower-level streaming loader, injectable by tests that need a custom
-    /// `URLSession`. Production uses `remoteImageSession()` so redirects are filtered
-    /// before `URLSession` follows them and no shared cookies/cache are consulted.
+    /// The lower-level chunk loader accepts a session configuration so focused tests can use a
+    /// local `URLProtocol`. Production supplies an ephemeral configuration; the purpose-built
+    /// session never shares cookies or cache state and is cancelled after the request completes.
     nonisolated static func loadBoundedRemoteImage(
         from url: URL,
         maxBytes: Int,
-        session: URLSession
+        configuration: URLSessionConfiguration
     ) async throws -> (Data, URLResponse) {
         var request = URLRequest(url: url)
         request.timeoutInterval = remoteImageRequestTimeout
-        let (bytes, response) = try await session.bytes(for: request)
-        let data = try await collectRemoteImageBytes(bytes, maxBytes: maxBytes)
-        return (data, response)
+
+        let delegate = BoundedRemoteImageSessionDelegate(maxBytes: maxBytes)
+        let delegateQueue = OperationQueue()
+        delegateQueue.name = "com.johnny4young.vitrine.remote-image"
+        delegateQueue.maxConcurrentOperationCount = 1
+        delegateQueue.qualityOfService = .utility
+        let session = URLSession(
+            configuration: configuration,
+            delegate: delegate,
+            delegateQueue: delegateQueue)
+        defer { session.invalidateAndCancel() }
+        return try await delegate.load(request, in: session)
     }
 
     /// Whether a URL is safe to request for a remote background image. This mirrors
@@ -293,34 +294,14 @@ nonisolated struct BackgroundImageStore: Sendable {
     /// Builds the privacy-preserving production session for direct image downloads:
     /// ephemeral storage avoids sending/reading shared website cookies, and the redirect
     /// delegate refuses private/local targets before `URLSession` follows them.
-    nonisolated private static func remoteImageSession() -> URLSession {
+    nonisolated private static func remoteImageSessionConfiguration()
+        -> URLSessionConfiguration
+    {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.timeoutIntervalForRequest = remoteImageRequestTimeout
         configuration.timeoutIntervalForResource = remoteImageRequestTimeout
-        return URLSession(
-            configuration: configuration,
-            delegate: RemoteImageRedirectPolicy(),
-            delegateQueue: nil)
-    }
-
-    /// Collects a byte stream up to `maxBytes`, failing as soon as the next byte
-    /// would exceed the cap. This adapter remains isolated from validation and persistence so its
-    /// transport strategy can change without weakening the downstream image bounds.
-    nonisolated static func collectRemoteImageBytes<Bytes: AsyncSequence>(
-        _ bytes: Bytes,
-        maxBytes: Int = maxRemoteImageBytes
-    ) async throws -> Data where Bytes.Element == UInt8 {
-        let limit = max(0, maxBytes)
-        var data = Data()
-        data.reserveCapacity(min(limit, remoteImageInitialCapacity))
-
-        for try await byte in bytes {
-            guard data.count < limit else { throw ImportError.tooLarge }
-            data.append(byte)
-        }
-
-        return data
+        return configuration
     }
 
     /// Reads a regular local file without ever retaining more than `maxBytes + 1`.
@@ -666,10 +647,164 @@ nonisolated struct BackgroundImageStore: Sendable {
     }
 }
 
-/// Refuses private/local redirects for remote background image downloads before
-/// `URLSession` follows them. The entry URL and final response are checked in
-/// `BackgroundImageStore` too; this delegate closes the mid-flight redirect gap.
-nonisolated private final class RemoteImageRedirectPolicy: NSObject, URLSessionTaskDelegate {
+/// Owns one bounded remote-image data task.
+///
+/// `URLSession.AsyncBytes` exposes a byte-at-a-time sequence even though the transport delivers
+/// chunks. Collecting inside `didReceive data` preserves those chunks, rejects a response before
+/// appending the chunk that would cross the cap, and cancels the task immediately. The lock covers
+/// the only cross-executor races: task cancellation versus serial URLSession delegate callbacks.
+nonisolated private final class BoundedRemoteImageSessionDelegate: NSObject,
+    URLSessionDataDelegate, @unchecked Sendable
+{
+    private typealias Output = (Data, URLResponse)
+
+    private struct State {
+        var collector: BoundedDataCollector
+        var response: URLResponse?
+        var continuation: CheckedContinuation<Output, Error>?
+        var task: URLSessionDataTask?
+        var isFinished = false
+    }
+
+    private let lock = NSLock()
+    private var state: State
+
+    init(maxBytes: Int) {
+        state = State(collector: BoundedDataCollector(limit: maxBytes))
+    }
+
+    func load(
+        _ request: URLRequest, in session: URLSession
+    ) async throws -> (Data, URLResponse) {
+        try Task.checkCancellation()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation {
+                (continuation: CheckedContinuation<Output, Error>) in
+                let task = session.dataTask(with: request)
+                let shouldCancel = withLockedState { state in
+                    guard !state.isFinished, !Task.isCancelled else {
+                        state.isFinished = true
+                        return true
+                    }
+                    state.continuation = continuation
+                    state.task = task
+                    return false
+                }
+
+                guard !shouldCancel else {
+                    task.cancel()
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                task.resume()
+            }
+        } onCancel: {
+            self.cancel()
+        }
+    }
+
+    private func cancel() {
+        let completion = withLockedState {
+            state -> (
+                CheckedContinuation<Output, Error>?, URLSessionDataTask?
+            ) in
+            guard !state.isFinished else { return (nil, nil) }
+            state.isFinished = true
+            defer {
+                state.continuation = nil
+                state.task = nil
+            }
+            return (state.continuation, state.task)
+        }
+        completion.1?.cancel()
+        completion.0?.resume(throwing: CancellationError())
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive response: URLResponse,
+        completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void
+    ) {
+        let expectedLength = response.expectedContentLength
+        var continuation: CheckedContinuation<Output, Error>?
+        let disposition = withLockedState { state -> URLSession.ResponseDisposition in
+            guard !state.isFinished else { return .cancel }
+            if expectedLength > Int64(state.collector.limit) {
+                state.isFinished = true
+                continuation = state.continuation
+                state.continuation = nil
+                state.task = nil
+                return .cancel
+            }
+            state.response = response
+            return .allow
+        }
+
+        completionHandler(disposition)
+        if let continuation {
+            dataTask.cancel()
+            continuation.resume(throwing: BackgroundImageStore.ImportError.tooLarge)
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive data: Data
+    ) {
+        var continuation: CheckedContinuation<Output, Error>?
+        let exceededLimit = withLockedState { state -> Bool in
+            guard !state.isFinished else { return false }
+            do {
+                try state.collector.append(data)
+                return false
+            } catch {
+                state.isFinished = true
+                continuation = state.continuation
+                state.continuation = nil
+                state.task = nil
+                return true
+            }
+        }
+
+        guard exceededLimit else { return }
+        dataTask.cancel()
+        continuation?.resume(throwing: BackgroundImageStore.ImportError.tooLarge)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: Error?
+    ) {
+        let completion = withLockedState {
+            state -> (
+                CheckedContinuation<Output, Error>?, Result<Output, Error>?
+            ) in
+            guard !state.isFinished else { return (nil, nil) }
+            state.isFinished = true
+            let continuation = state.continuation
+            state.continuation = nil
+            state.task = nil
+
+            if let error {
+                return (continuation, .failure(error))
+            }
+            guard let response = state.response ?? task.response else {
+                return (
+                    continuation,
+                    .failure(BackgroundImageStore.ImportError.downloadFailed)
+                )
+            }
+            return (continuation, .success((state.collector.data, response)))
+        }
+        guard let continuation = completion.0, let result = completion.1 else { return }
+        continuation.resume(with: result)
+    }
+
+    /// Refuses private/local redirects before URLSession follows them. The entry URL and final
+    /// response remain checked by `BackgroundImageStore`; this closes the mid-flight redirect gap.
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
@@ -684,5 +819,11 @@ nonisolated private final class RemoteImageRedirectPolicy: NSObject, URLSessionT
             return
         }
         completionHandler(request)
+    }
+
+    private func withLockedState<Result>(_ body: (inout State) -> Result) -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        return body(&state)
     }
 }

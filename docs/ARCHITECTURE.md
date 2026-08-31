@@ -254,6 +254,14 @@ executor. The main actor publishes the reference and creates/caches the final `N
 that work completes. Existing stored references retain a synchronous bounded fallback so launch,
 CLI, and migration behavior remains compatible.
 
+Remote image transport does not iterate `URLSession.AsyncBytes` one byte at a time. A dedicated
+ephemeral `URLSessionDataDelegate` feeds the chunks delivered by Foundation into a
+subtraction-safe collector. A known oversized `Content-Length` is rejected before body delivery;
+otherwise the first chunk that would cross 25 MiB is rejected without being appended and the data
+task is cancelled before the typed `tooLarge` error resumes its caller. The same one-shot state
+machine makes caller cancellation authoritative while retaining the public-to-private redirect
+block.
+
 ## Terminal rendering: two engines
 
 Terminal capture is not "syntax highlighting with an ANSI palette". Two structurally
