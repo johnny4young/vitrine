@@ -10,6 +10,7 @@ struct MemoryWindowChurnJourneyTests {
         var nextIdentity = 2
         var captured: [Int] = []
         var closed: [Int] = []
+        var observed: [Int] = []
         let journey = MemoryWindowChurnJourney(
             liveWindowCount: { live.count },
             openWindow: {
@@ -27,13 +28,15 @@ struct MemoryWindowChurnJourneyTests {
                 closed.append($0)
                 live.remove($0)
             },
-            sleep: { _ in })
+            sleep: { _ in },
+            observe: { observed.append($0) })
 
         let result = try await journey.run(iterations: 20)
 
         #expect(result == .init(completedIterations: 20, capturedSnapshots: 20))
         #expect(captured.count == 20)
         #expect(closed == captured)
+        #expect(observed == Array(1...20))
         #expect(live == [1])
     }
 

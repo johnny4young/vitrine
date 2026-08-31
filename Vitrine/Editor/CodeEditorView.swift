@@ -89,6 +89,15 @@ struct CodeEditorView: NSViewRepresentable {
         }
     }
 
+    static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {
+        coordinator.dismantle()
+        guard let textView = nsView.documentView as? CodeTextView else { return }
+        textView.delegate = nil
+        textView.onPaste = nil
+        textView.undoManager?.removeAllActions()
+        nsView.documentView = nil
+    }
+
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CodeEditorView
         private let debouncer = Debouncer(interval: .milliseconds(100))
@@ -102,6 +111,10 @@ struct CodeEditorView: NSViewRepresentable {
         private var appliedMode: HighlightMode?
 
         init(_ parent: CodeEditorView) { self.parent = parent }
+
+        func dismantle() {
+            debouncer.cancel()
+        }
 
         private var font: NSFont {
             CodeFont.resolved(

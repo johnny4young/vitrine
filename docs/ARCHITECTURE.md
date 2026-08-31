@@ -1074,6 +1074,25 @@ feature gates, upgrade sheets, feedback, pinning, sharing, and batch export pres
 therefore cannot fall back to a different process-global graph. Promoting a window's style
 also targets the environment that created that window.
 
+An editor window owns its AppKit hosting controller and SwiftUI tree; the hosted tree must
+not own that same window in return. `WindowAccessor` therefore resolves into a stable weak
+slot used only by concrete window actions such as close-after-copy and sharing. Its
+coordinator invalidates queued resolution during dismantling, while `CodeEditorView`
+cancels delayed highlighting and severs its text delegate, paste callback, undo actions,
+and document view. Closing a window removes the controller's window/session/generation
+entries and lets normal AppKit/ARC teardown release the tree; the primary session alone
+may preserve its in-process draft for reopening.
+
+Opt-in memory qualification records `TASK_VM_INFO.phys_footprint` only after each journey
+has returned to its baseline and completed three bounded main-run-loop/autorelease-pool
+drains. The local harness requires an exact ordered sample sequence and completion count,
+then preserves every sample, full and post-warm-up slopes, `leaks` roots, memgraph, and
+environment provenance. Image, editor-window, local-HTML WebKit, and large-document
+journeys support 20/50/100 profiles. Comparisons require the same clean commit, journey,
+iteration count, macOS, architecture, and Xcode. Slopes and allocation paths are diagnostic
+signals rather than ownership verdicts; WebKit samples cover the Vitrine host process, not
+separate WebContent processes.
+
 `SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
 the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that
 created it and supplies that graph to its SwiftUI root. Social Card resolves the working

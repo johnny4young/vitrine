@@ -251,38 +251,98 @@ final class AppLaunchArgumentHandler {
             let editor = EditorWindowController.shared
             editor.show()
             didOpenWindow = true
-            startMemoryImageCycle(settings: editor.session(for: .primary).settings)
+            guard
+                let iterations = configuredMemoryIterationCount(
+                    default: MemoryImageCycleJourney.defaultIterationCount,
+                    failureMarker: "VITRINE_MEMORY_IMAGE_CYCLE_FAILED")
+            else { return didOpenWindow }
+            startMemoryImageCycle(
+                settings: editor.session(for: .primary).settings,
+                iterations: iterations)
         } else if arguments.contains("--memory-window-churn") {
             let editor = EditorWindowController.shared
             editor.show()
             didOpenWindow = true
-            startMemoryWindowChurn(editor: editor)
+            guard
+                let iterations = configuredMemoryIterationCount(
+                    default: MemoryWindowChurnJourney.defaultIterationCount,
+                    failureMarker: "VITRINE_MEMORY_WINDOW_CHURN_FAILED")
+            else { return didOpenWindow }
+            startMemoryWindowChurn(editor: editor, iterations: iterations)
         } else if arguments.contains("--memory-web-snapshot-cycle") {
             #if VITRINE_GUI
-                startMemoryWebSnapshotCycle()
+                guard
+                    let iterations = configuredMemoryIterationCount(
+                        default: MemoryWebSnapshotCycleJourney.defaultIterationCount,
+                        failureMarker: "VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_FAILED")
+                else { return didOpenWindow }
+                startMemoryWebSnapshotCycle(iterations: iterations)
             #else
                 FileHandle.standardError.write(
                     Data("VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_FAILED unavailable\n".utf8))
                 NSApp.terminate(nil)
             #endif
+        } else if arguments.contains("--memory-large-document-cycle") {
+            let editor = EditorWindowController.shared
+            editor.show()
+            didOpenWindow = true
+            guard
+                let iterations = configuredMemoryIterationCount(
+                    default: MemoryLargeDocumentCycleJourney.defaultIterationCount,
+                    failureMarker: "VITRINE_MEMORY_LARGE_DOCUMENT_CYCLE_FAILED")
+            else { return didOpenWindow }
+            startMemoryLargeDocumentCycle(
+                settings: editor.session(for: .primary).settings,
+                iterations: iterations)
         } else if arguments.contains("--snapshot-loop") {
-            Task {
-                for tick in 0..<14 {
-                    try? await Task.sleep(for: .milliseconds(1500))
-                    Self.snapshotOpenWindows(tag: tick)
+            guard
+                let iterations = configuredMemoryIterationCount(
+                    default: 14,
+                    failureMarker: "VITRINE_MEMORY_EDITOR_SNAPSHOT_FAILED")
+            else { return didOpenWindow }
+            memoryJourneyTask = Task {
+                defer { NSApp.terminate(nil) }
+                do {
+                    for tick in 0..<iterations {
+                        try await Task.sleep(for: .milliseconds(1500))
+                        guard Self.snapshotOpenWindows(tag: tick) != nil else {
+                            throw MemoryLargeDocumentCycleJourney.JourneyError.snapshotCaptureFailed
+                        }
+                        try await MemoryJourneyProbe.record(
+                            journey: "editor-snapshot", completedIteration: tick + 1)
+                    }
+                    FileHandle.standardOutput.write(
+                        Data(
+                            "VITRINE_MEMORY_EDITOR_SNAPSHOT_COMPLETE iterations=\(iterations)\n"
+                                .utf8))
+                } catch {
+                    FileHandle.standardError.write(
+                        Data("VITRINE_MEMORY_EDITOR_SNAPSHOT_FAILED \(error)\n".utf8))
                 }
-                NSApp.terminate(nil)
             }
         }
 
         return didOpenWindow
     }
 
+    private func configuredMemoryIterationCount(
+        default defaultCount: Int,
+        failureMarker: String
+    ) -> Int? {
+        do {
+            return try MemoryJourneyProbe.configuredIterationCount(default: defaultCount)
+        } catch {
+            FileHandle.standardError.write(Data("\(failureMarker) invalid-iterations\n".utf8))
+            NSApp.terminate(nil)
+            return nil
+        }
+    }
+
     /// Starts the dedicated image-import/decode evidence journey. The temporary root is
     /// available only when the Debug isolation contract is active; this prevents a
     /// release or accidental manual launch from writing synthetic images into the user's
     /// real Application Support container.
-    private func startMemoryImageCycle(settings: AppSettings) {
+    private func startMemoryImageCycle(settings: AppSettings, iterations: Int) {
         memoryJourneyTask?.cancel()
         guard let isolationRoot = BackgroundImageStore.debugIsolatedContainerRoot() else {
             FileHandle.standardError.write(
@@ -300,11 +360,16 @@ final class AppLaunchArgumentHandler {
                     throw MemoryImageCycleJourney.JourneyError.snapshotCaptureFailed
                 }
                 return fingerprint
+            },
+            observe: { completedIteration in
+                try await MemoryJourneyProbe.record(
+                    journey: MemoryImageCycleJourney.journeyID,
+                    completedIteration: completedIteration)
             })
         memoryJourneyTask = Task {
             defer { NSApp.terminate(nil) }
             do {
-                let result = try await journey.run()
+                let result = try await journey.run(iterations: iterations)
                 // A success marker also certifies that synthetic image files were
                 // removed. Failed/cancelled journeys still clean up best-effort below.
                 try FileManager.default.removeItem(at: isolationRoot)
@@ -328,7 +393,7 @@ final class AppLaunchArgumentHandler {
 
     /// Repeatedly opens, renders, and closes an additional editor through the normal
     /// controller and delegate paths while the primary editor remains alive.
-    private func startMemoryWindowChurn(editor: EditorWindowController) {
+    private func startMemoryWindowChurn(editor: EditorWindowController, iterations: Int) {
         memoryJourneyTask?.cancel()
         let journey = MemoryWindowChurnJourney(
             liveWindowCount: { editor.liveWindowCountForMemoryJourney },
@@ -339,11 +404,16 @@ final class AppLaunchArgumentHandler {
                 else { throw MemoryWindowChurnJourney.JourneyError.windowDidNotOpen }
                 return fingerprint
             },
-            closeWindow: { editor.closeWindowForMemoryJourney(at: $0) })
+            closeWindow: { editor.closeWindowForMemoryJourney(at: $0) },
+            observe: { completedIteration in
+                try await MemoryJourneyProbe.record(
+                    journey: MemoryWindowChurnJourney.journeyID,
+                    completedIteration: completedIteration)
+            })
         memoryJourneyTask = Task {
             defer { NSApp.terminate(nil) }
             do {
-                let result = try await journey.run()
+                let result = try await journey.run(iterations: iterations)
                 let line =
                     "\(MemoryWindowChurnJourney.completionMarker) "
                     + "iterations=\(result.completedIterations) "
@@ -362,30 +432,37 @@ final class AppLaunchArgumentHandler {
     #if VITRINE_GUI
         /// Loads and snapshots ten distinct local HTML documents. Each render constructs
         /// and releases a real non-persistent WebKit session through `WebSnapshotView`.
-        private func startMemoryWebSnapshotCycle() {
+        private func startMemoryWebSnapshotCycle(iterations: Int) {
             memoryJourneyTask?.cancel()
-            let journey = MemoryWebSnapshotCycleJourney { tick in
-                let html = """
-                    <!doctype html><meta charset="utf-8">
-                    <style>body{font:32px system-ui;padding:48px;background:hsl(\(tick * 31) 62% 42%);color:white}</style>
-                    <main>Vitrine WebKit memory cycle \(tick)</main>
-                    """
-                let image = try await WebSnapshotView().snapshot(
-                    of: .init(
-                        html: html,
-                        viewport: CGSize(width: 640, height: 360),
-                        scale: 1,
-                        allowsNetwork: false,
-                        localBaseURL: nil))
-                guard let png = ExportManager.pngData(from: image) else {
-                    throw RenderError.renderFailed
+            let journey = MemoryWebSnapshotCycleJourney(
+                render: { tick in
+                    let html = """
+                        <!doctype html><meta charset="utf-8">
+                        <style>body{font:32px system-ui;padding:48px;background:hsl(\(tick * 31) 62% 42%);color:white}</style>
+                        <main>Vitrine WebKit memory cycle \(tick)</main>
+                        """
+                    let image = try await WebSnapshotView().snapshot(
+                        of: .init(
+                            html: html,
+                            viewport: CGSize(width: 640, height: 360),
+                            scale: 1,
+                            allowsNetwork: false,
+                            localBaseURL: nil))
+                    guard let png = ExportManager.pngData(from: image) else {
+                        throw RenderError.renderFailed
+                    }
+                    return SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined()
+                },
+                observe: { completedIteration in
+                    try await MemoryJourneyProbe.record(
+                        journey: MemoryWebSnapshotCycleJourney.journeyID,
+                        completedIteration: completedIteration)
                 }
-                return SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined()
-            }
+            )
             memoryJourneyTask = Task {
                 defer { NSApp.terminate(nil) }
                 do {
-                    let result = try await journey.run()
+                    let result = try await journey.run(iterations: iterations)
                     let line =
                         "\(MemoryWebSnapshotCycleJourney.completionMarker) "
                         + "iterations=\(result.completedIterations) "
@@ -401,6 +478,42 @@ final class AppLaunchArgumentHandler {
             }
         }
     #endif
+
+    /// Publishes and tears down distinct sources above the interactive-highlighting
+    /// ceiling through the real editor before each settled footprint sample.
+    private func startMemoryLargeDocumentCycle(settings: AppSettings, iterations: Int) {
+        memoryJourneyTask?.cancel()
+        let journey = MemoryLargeDocumentCycleJourney(
+            settings: settings,
+            capture: { tick in
+                guard let fingerprint = Self.snapshotOpenWindows(tag: tick) else {
+                    throw MemoryLargeDocumentCycleJourney.JourneyError.snapshotCaptureFailed
+                }
+                return fingerprint
+            },
+            observe: { completedIteration in
+                try await MemoryJourneyProbe.record(
+                    journey: MemoryLargeDocumentCycleJourney.journeyID,
+                    completedIteration: completedIteration)
+            })
+        memoryJourneyTask = Task {
+            defer { NSApp.terminate(nil) }
+            do {
+                let result = try await journey.run(iterations: iterations)
+                let line =
+                    "\(MemoryLargeDocumentCycleJourney.completionMarker) "
+                    + "iterations=\(result.completedIterations) "
+                    + "unique-snapshots=\(result.uniqueSnapshots)\n"
+                FileHandle.standardOutput.write(Data(line.utf8))
+            } catch is CancellationError {
+                FileHandle.standardError.write(
+                    Data("VITRINE_MEMORY_LARGE_DOCUMENT_CYCLE_FAILED cancelled\n".utf8))
+            } catch {
+                FileHandle.standardError.write(
+                    Data("VITRINE_MEMORY_LARGE_DOCUMENT_CYCLE_FAILED \(error)\n".utf8))
+            }
+        }
+    }
 
     /// Dev/CI helper: periodically snapshots every open window's content view via
     /// `cacheDisplay` (the app draws itself — no screen-recording permission needed),
