@@ -43,6 +43,10 @@ struct PrivateNetworkBlockRulesTests {
             ("octal-looking private IPv4", "http://012.0.0.1/resource"),
             ("private IPv6", "https://[fd00::1234]/resource"),
             ("mapped IPv6", "https://[::ffff:192.168.1.1]/resource"),
+            ("hex-mapped IPv6", "https://[::ffff:c0a8:101]/resource"),
+            ("full-form hex-mapped IPv6", "https://[0:0:0:0:0:ffff:c0a8:101]/resource"),
+            ("full-form dotted-mapped IPv6", "https://[0:0:0:0:0:ffff:192.168.1.1]/resource"),
+            ("hex-mapped loopback", "https://[::ffff:7f00:1]/resource"),
         ])
     func defaultPolicyBlocksPrivateResource(_ fixture: (kind: String, url: String)) throws {
         #expect(
@@ -63,6 +67,10 @@ struct PrivateNetworkBlockRulesTests {
             "http://2147483647/data",
             "https://[::1]:43127/socket",
             "https://[::ffff:127.0.0.1]/asset",
+            "https://[::ffff:7f00:1]/asset",
+            "https://[::ffff:7fff:ffff]/asset",
+            "https://[0:0:0:0:0:ffff:7f00:1]/asset",
+            "https://[0:0:0:0:0:ffff:127.0.0.1]/asset",
         ] {
             #expect(try !matches(url, allowsLoopback: true), "\(url) is explicit loopback")
             #expect(try matches(url, allowsLoopback: false), "\(url) is blocked by default")
@@ -81,6 +89,9 @@ struct PrivateNetworkBlockRulesTests {
             "http://012.0.0.1/data",
             "https://[fe80::1]/asset",
             "https://[fd00::1]/asset",
+            "https://[::ffff:c0a8:101]/asset",
+            "https://[::ffff:a00:1]/asset",
+            "https://[0:0:0:0:0:ffff:c0a8:101]/asset",
         ] {
             #expect(
                 try matches(url, allowsLoopback: true),
@@ -96,6 +107,8 @@ struct PrivateNetworkBlockRulesTests {
             "https://128.0.0.1/frame",
             "https://example.localhost.example/fetch",
             "wss://socket.example.com/private",
+            "https://[2606:4700::6810:84e5]/asset",
+            "https://[2001:db8::ffff:1:2]/asset",
         ] {
             #expect(try !matches(url, allowsLoopback: false), "\(url) is public")
         }

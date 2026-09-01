@@ -169,22 +169,48 @@ enum QuickCapture {
     /// The rich-clipboard/plain-text copy reuses the same raster and only adds RTF/HTML
     /// derived from the code; a PDF save is a vector document, so it renders its own page
     /// through the `config`-based save rather than the shared raster.
+    /// Whether `copyAndSave` must produce the shared raster: the clipboard copy
+    /// and bitmap file saves consume it, while a PDF save renders its own vector
+    /// page from the config. Pure and exposed so the regression test can pin the
+    /// PDF-only case, where a raster budget preflight must never fail a save
+    /// that does not need the bitmap.
+    nonisolated static func rasterIsRequired(
+        autoCopy: Bool, savesToFile: Bool, format: ExportFormat
+    ) -> Bool {
+        autoCopy || (savesToFile && format != .pdf)
+    }
+
     @MainActor
     private static func copyAndSave(
         _ plan: RenderPlan, settings: AppSettings
     ) -> ExportAttempt {
         let profile = settings.export.colorProfile
-        let cgImage: CGImage
-        do {
-            cgImage = try ExportManager.renderCGImageChecked(
-                plan.config, scale: plan.scale, fixedSize: plan.fixedSize, profile: profile)
-        } catch let error {
-            return .renderFailed(error)
+        // The shared raster feeds the clipboard copy and bitmap file saves; a PDF
+        // save renders its own vector page from `config`. Skip rasterization when
+        // no destination consumes the bitmap, so an over-budget natural layout
+        // cannot fail a PDF-only save that never needed it — the checked PDF
+        // encoder decides that outcome itself.
+        let needsRaster = rasterIsRequired(
+            autoCopy: settings.export.autoCopy,
+            savesToFile: settings.export.alsoSaveToFile,
+            format: settings.export.format)
+        let cgImage: CGImage?
+        if needsRaster {
+            do {
+                cgImage = try ExportManager.renderCGImageChecked(
+                    plan.config, scale: plan.scale, fixedSize: plan.fixedSize, profile: profile)
+            } catch let error {
+                return .renderFailed(error)
+            }
+        } else {
+            cgImage = nil
         }
 
         var didCopy = false
         var deferredRenderFailure: RenderBudgetError?
-        if settings.export.autoCopy {
+        // `autoCopy` implies `needsRaster`, so the binding always succeeds here;
+        // it simply keeps the optional handling explicit.
+        if settings.export.autoCopy, let cgImage {
             if settings.export.richClipboard || settings.export.textSidecar {
                 switch RichPasteboard.copyOutcome(
                     cgImage: cgImage, config: plan.config,
@@ -220,7 +246,7 @@ enum QuickCapture {
                 if case .renderFailed(let error) = outcome {
                     deferredRenderFailure = deferredRenderFailure ?? error
                 }
-            } else {
+            } else if let cgImage {
                 let outcome = ExportManager.saveToFile(
                     cgImage: cgImage, format: settings.export.format,
                     suggestedName: SuggestedFilename.basename(for: plan.config))

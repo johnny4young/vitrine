@@ -149,6 +149,19 @@ enum PrivateNetworkBlockRules {
         #"\[::ffff:23[0-9]\.[0-9]+\.[0-9]+\.[0-9]+\]"#,
         #"\[::ffff:24[0-9]\.[0-9]+\.[0-9]+\.[0-9]+\]"#,
         #"\[::ffff:25[0-5]\.[0-9]+\.[0-9]+\.[0-9]+\]"#,
+
+        // IPv4-mapped IPv6 with hexadecimal tails. WHATWG URL parsing — which
+        // WebKit follows — serializes even a dotted mapped literal back to hex
+        // groups, so `[::ffff:c0a8:101]` (192.168.1.1) is the spelling a request
+        // URL actually carries. Enumerating the private ranges in hex is
+        // error-prone and a public subresource host in this exotic spelling is
+        // vanishingly rare, so block the whole hex-tail family conservatively,
+        // matching the ambiguous-IPv4 stance above. Both canonical spellings are
+        // covered (WHATWG reduces every other compression to the first). The
+        // loopback subset receives its exception only after the user opts in.
+        #"\[::ffff:[0-9a-f]+:[0-9a-f]+\]"#,
+        #"\[0:0:0:0:0:ffff:[0-9a-f]+:[0-9a-f]+\]"#,
+        #"\[0:0:0:0:0:ffff:[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\]"#,
     ]
 
     private static let privateFilters = privateHostPatterns.flatMap { hostFilters($0) }
@@ -184,6 +197,11 @@ enum PrivateNetworkBlockRules {
         #"\[::1(%[a-z0-9._~-]+)?\]"#,
         #"\[0:0:0:0:0:0:0:1(%[a-z0-9._~-]+)?\]"#,
         #"\[::ffff:127\.[0-9]+\.[0-9]+\.[0-9]+\]"#,
+        // Hexadecimal-mapped loopback: 127.0.0.0/8 always maps to a first hex
+        // group of 7f00–7fff, so these exceptions cannot reach past loopback.
+        #"\[::ffff:7f[0-9a-f][0-9a-f]:[0-9a-f]+\]"#,
+        #"\[0:0:0:0:0:ffff:7f[0-9a-f][0-9a-f]:[0-9a-f]+\]"#,
+        #"\[0:0:0:0:0:ffff:127\.[0-9]+\.[0-9]+\.[0-9]+\]"#,
     ]
 
     private static let loopbackFilters = loopbackHostPatterns.flatMap { hostFilters($0) }

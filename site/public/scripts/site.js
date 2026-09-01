@@ -49,7 +49,7 @@
       "cl.version": "Versión", "cl.headline": "Renderizado más seguro, capturas web más estrictas",
       "cl.h1": "<strong>Los renderizados extremos fallan de forma segura.</strong> Vista previa, exportación, CLI, Atajos, lotes, tarjetas sociales y comparaciones rechazan tamaños de bitmap inseguros antes de asignar memoria y explican cómo recuperarse.",
       "cl.h2": "<strong>La captura de página completa tiene límites.</strong> Web Snapshot limita los píxeles totales y la memoria de trabajo, y vuelve a comprobar la imagen que WebKit produjo antes de componerla.",
-      "cl.h3": "<strong>Los subrecursos privados siguen siendo privados.</strong> Las capturas URL bloquean localhost, LAN, link-local, metadata y destinos reservados literales salvo que se habilite explícitamente el acceso limitado a loopback.",
+      "cl.h3": "<strong>Los subrecursos privados siguen siendo privados.</strong> Las capturas URL bloquean localhost, LAN, link-local, metadatos y destinos reservados literales salvo que se habilite explícitamente el acceso limitado a loopback.",
       "cl.h4": "<strong>La evidencia de seguridad es reproducible.</strong> CodeQL y las pruebas enfocadas con Address y Thread Sanitizer se suman a la validación existente en Sequoia y Tahoe.",
       "cl.more": "Leer el changelog completo →",
       "pro.title": "Pásate a PRO cuando lo necesites.",
