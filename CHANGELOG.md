@@ -16,8 +16,8 @@ can never drift.
 
 - Extract portable models, recipes, search, terminal policies, settings defaults, and
   bounded file/transport safety into a hostless `VitrineDomain` module shared by the app
-  and CLI. The CLI now compiles only 87 render-facing Swift sources instead of dragging
-  app lifecycle, windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI.
+  and CLI. The CLI now compiles only its render-facing source set instead of dragging app
+  lifecycle, windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI.
 - Link the app and CLI against one static `VitrineRendering` engine for canvas layout,
   highlighting, image policy, render budgets, and encoding. Direct module tests plus an
   App/CLI normalized-pixel contract protect the shared output from boundary drift.
@@ -27,6 +27,9 @@ can never drift.
   focused portable components, and separate Web Snapshot document lifecycle, capture
   orchestration, window presentation, and authenticated-session ownership without changing
   output or user-facing behavior.
+- Generate CLI parsing, aliases, required-value arity, constrained-command allowlists,
+  mode-only validation, and 80-column help from one dependency-free argument schema while
+  preserving every command, alias, error contract, and render option.
 
 ## [1.2.1] - 2026-08-30
 

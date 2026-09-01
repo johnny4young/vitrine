@@ -398,10 +398,13 @@ App and CLI link the same `VitrineDomain` value/policy module and the same stati
 the image policy/store, and `HighlightManager`. The CLI does not compile app lifecycle,
 windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI. The thin CLI
 layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
-facade; `CLIArgumentParser` owns token consumption and mutable invocation state;
-`CLIArgumentValidation` checks cross-option semantics and materializes `CLIOptions`;
-and `CLIArgumentValues` handles catalog and range conversion. `CLIOptions` then builds
-a `SnapshotConfig` with the **same** preset/theme precedence the GUI uses.
+facade. `CLIArgumentSchema` is the single catalog for parser-owned commands, option
+identities, aliases, value arity, constrained-command availability, mode-only validation,
+and generated help. `CLIArgumentParser` consumes tokens and dispatches those stable
+identities into mutable invocation state; `CLIArgumentValidation` retains cross-option
+semantics and materializes `CLIOptions`; and `CLIArgumentValues` handles catalog and
+range conversion. `CLIOptions` then builds a `SnapshotConfig` with the **same**
+preset/theme precedence the GUI uses.
 `CLIRenderer` is the stable operation facade, `CLIRenderResources` owns temporary
 background and watermark preparation, `CLIBatchRenderer` owns folder discovery and
 batch reporting, and `CLIOutputWriter` owns artifact preflight, shared encoding, and
@@ -886,7 +889,8 @@ Vitrine/
 │   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…"
 ├── CLI/                       # `vitrine render` core, shared with VitrineCLI
 │   ├── CLIArguments.swift     # stable dependency-free parser facade
-│   ├── CLIArgumentParser.swift # command selection, tokens, and invocation state
+│   ├── CLIArgumentSchema.swift # commands, aliases, arity, mode rules, and help
+│   ├── CLIArgumentParser.swift # token consumption and invocation state
 │   ├── CLIArgumentValidation.swift # cross-option rules → immutable CLIOptions
 │   ├── CLIArgumentValues.swift # catalog, range, color, and geometry conversion
 │   ├── CLIError.swift / CLIUsage.swift # process errors and help contract
