@@ -1023,7 +1023,7 @@ definitions, and pass the full unit, performance, golden, and UI gates.
 
 | Library             | How to add                                                   | For                                                   |
 | ------------------- | ------------------------------------------------------------ | ----------------------------------------------------- |
-| `Highlightr`        | SPM ([raspu/Highlightr](https://github.com/raspu/Highlightr)) | Syntax highlighting (Highlight.js — 160+ languages)   |
+| `Highlightr` 2.3.0 | SPM ([raspu/Highlightr](https://github.com/raspu/Highlightr), exact pin) | Syntax highlighting behind `VitrineRendering.HighlightManager` |
 | `KeyboardShortcuts` | SPM ([sindresorhus/KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)) | Configurable global hotkey                             |
 | `Sparkle`           | Vendored framework (`scripts/fetch-sparkle.sh`, checksum-pinned) | Auto-update on the direct-download build only (stripped from the App Store binary) |
 | AppKit / SwiftUI / `ImageRenderer` / `CryptoKit` / `WebKit` | Built-in | `NSStatusItem`, View→PNG, Ed25519 license verify, URL/HTML capture |
@@ -1032,9 +1032,12 @@ definitions, and pass the full unit, performance, golden, and UI gates.
 > the `sindresorhus/Settings` package, which has been removed.
 > The Vitrine PRO monetization subsystem is documented in **`docs/PRO.md`**.
 
-**Why Highlightr and not swift-syntax:** swift-syntax only covers Swift; Highlightr
-supports 160+ languages via Highlight.js (battle-tested). Enough for v0.1; later it
-could be complemented with Tree-sitter.
+Highlightr is isolated behind the rendering adapter because it is no longer actively
+maintained. [ADR 0001](decisions/0001-syntax-highlighting-engine.md) records the measured
+replacement review, rejected candidates, current fail-closed theme contract, and exact
+gates for reconsidering the dependency. `swift-syntax` and Splash cannot replace it
+because they cover Swift rather than Vitrine's 33-language contract; lower-level
+Tree-sitter infrastructure is not treated as a drop-in dependency update.
 
 ## Data model
 

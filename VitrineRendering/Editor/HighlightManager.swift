@@ -18,6 +18,9 @@ import VitrineDomain
 public final class HighlightManager {
     public static let shared = HighlightManager()
 
+    private static let fallbackBuiltInThemeName =
+        VitrineDomain.Theme.oneDark.hlJsTheme ?? "atom-one-dark"
+
     private let highlightr = Highlightr()
     /// Renders custom (user-palette) themes; created lazily so the extra JS context
     /// is only spun up once a custom theme is actually used.
@@ -130,9 +133,9 @@ public final class HighlightManager {
             return result
         }
 
-        guard let highlightr else { return plainText(code, theme: theme, font: font) }
-        highlightr.setTheme(
-            to: theme.hlJsTheme ?? VitrineDomain.Theme.oneDark.hlJsTheme ?? "atom-one-dark")
+        guard let highlightr, selectBuiltInTheme(theme) else {
+            return plainText(code, theme: theme, font: font)
+        }
         highlightr.theme.codeFont = font
         let languageHint = language == .plaintext ? nil : language.hljsName
         let highlighted =
@@ -262,6 +265,7 @@ public final class HighlightManager {
         terminalCache.removeAll()
         lineCache.removeAll()
         terminalLineCache.removeAll()
+        builtInChrome.removeAll()
     }
 
     /// Retains a derived value only for screenshot-sized source. Every representation has an
@@ -287,6 +291,13 @@ public final class HighlightManager {
     /// not listed here, so callers compare against the resolving id.
     public func supportedLanguageNames() -> [String]? {
         highlightr?.supportedLanguages()
+    }
+
+    /// The Highlight.js stylesheet names bundled with the engine, or `nil` if the
+    /// engine is unavailable. This is the authoritative contract for built-in
+    /// themes: `setTheme(to:)` otherwise fails without replacing the current theme.
+    public func supportedThemeNames() -> [String]? {
+        highlightr?.availableThemes()
     }
 
     /// The code-card background for a theme.
@@ -361,10 +372,22 @@ public final class HighlightManager {
         if let palette = theme.palette {
             return NSColor(palette.background.color)
         }
-        guard let highlightr else { return NSColor(Color(hex: "#1E1E1E")) }
-        highlightr.setTheme(
-            to: theme.hlJsTheme ?? VitrineDomain.Theme.oneDark.hlJsTheme ?? "atom-one-dark")
+        guard let highlightr, selectBuiltInTheme(theme) else {
+            return NSColor(Color(hex: "#1E1E1E"))
+        }
         return highlightr.theme.themeBackgroundColor ?? NSColor(Color(hex: "#1E1E1E"))
+    }
+
+    /// Selects a bundled stylesheet without allowing Highlightr's mutable engine
+    /// state to leak across renders. Highlightr returns `false` for an unavailable
+    /// stylesheet and otherwise leaves the previously selected theme active. A bad
+    /// catalog entry must therefore move explicitly to One Dark rather than render
+    /// with whichever theme happened to run immediately before it.
+    private func selectBuiltInTheme(_ theme: VitrineDomain.Theme) -> Bool {
+        guard let highlightr else { return false }
+        let requested = theme.hlJsTheme ?? Self.fallbackBuiltInThemeName
+        if highlightr.setTheme(to: requested) { return true }
+        return highlightr.setTheme(to: Self.fallbackBuiltInThemeName)
     }
 
     /// Whether `color` is dark enough that light overlays/text read best on it,

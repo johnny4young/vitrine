@@ -30,6 +30,15 @@ can never drift.
 - Generate CLI parsing, aliases, required-value arity, constrained-command allowlists,
   mode-only validation, and 80-column help from one dependency-free argument schema while
   preserving every command, alias, error contract, and render option.
+- Retain exact Highlightr 2.3.0 behind the shared rendering adapter after a measured
+  replacement review found incomplete theme compatibility and a 61.8% uncached-medium p95
+  regression in its recommended successor. Record explicit migration gates in ADR 0001.
+
+### Fixed
+
+- Validate every built-in syntax stylesheet against the engine catalog and fall back
+  deterministically to One Dark if a stylesheet cannot load, instead of silently reusing
+  the previously rendered theme.
 
 ## [1.2.1] - 2026-08-30
 

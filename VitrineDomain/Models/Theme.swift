@@ -22,9 +22,9 @@ import Foundation
 /// picked color — a built-in theme stays a pure syntax theme and cannot drift from
 /// its upstream palette. `appearance` records whether the theme reads as dark or
 /// light so menus can group it; it is metadata only and does not change rendering.
-/// `CoverageMatrixTests` verifies every advertised built-in theme resolves to a
-/// real syntax palette and a non-default background, so a misspelled `hlJsTheme`
-/// fails the build instead of silently falling back.
+/// `CoverageMatrixTests` verifies that every advertised stylesheet is present in
+/// the bundled engine and renders syntax colors, so a misspelled `hlJsTheme` fails
+/// the build instead of inheriting the previously selected mutable engine theme.
 public struct Theme: Identifiable, Hashable, Sendable {
     /// Whether a theme reads as dark or light. Curatorial metadata for built-ins
     /// (the rendered background and syntax colors always come from the Highlight.js
