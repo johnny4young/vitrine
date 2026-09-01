@@ -23,6 +23,10 @@ can never drift.
   App/CLI normalized-pixel contract protect the shared output from boundary drift.
 - Measure build boundaries against the real `VitrineDomainTests` target rather than a
   temporary copied-source package, while preserving the matched app-hosted probe.
+- Split terminal-screen scanning, ANSI dispatch, cell operations, and serialization into
+  focused portable components, and separate Web Snapshot document lifecycle, capture
+  orchestration, window presentation, and authenticated-session ownership without changing
+  output or user-facing behavior.
 
 ## [1.2.1] - 2026-08-30
 

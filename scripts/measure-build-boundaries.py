@@ -812,6 +812,10 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
                 "VitrineDomain/Terminal/ANSIParser.swift",
                 "VitrineDomain/Terminal/CharacterWidth.swift",
                 "VitrineDomain/Terminal/TerminalGrid.swift",
+                "VitrineDomain/Terminal/TerminalScreen+Scanner.swift",
+                "VitrineDomain/Terminal/TerminalScreen+Parser.swift",
+                "VitrineDomain/Terminal/TerminalScreen+Operations.swift",
+                "VitrineDomain/Terminal/TerminalScreen+Serialization.swift",
             ],
         },
         "preparation": {

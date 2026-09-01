@@ -267,8 +267,8 @@ block.
 
 Terminal capture is not "syntax highlighting with an ANSI palette". Two structurally
 different programs write to a terminal, and rendering either one the other's way
-produces a wrong image, so `Vitrine/Terminal/` ships **two renderers behind one
-entry point**. The user-facing guide is [TERMINAL.md](TERMINAL.md); this section is
+produces a wrong image, so `VitrineDomain/Terminal/` and `VitrineRendering/Terminal/` ship **two renderers
+behind one entry point**. The user-facing guide is [TERMINAL.md](TERMINAL.md); this section is
 the design rationale behind it.
 
 `ANSIRenderer.styledRuns(_:columns:)` is the router. Both engines return `[ANSIRun]`,
@@ -800,7 +800,12 @@ VitrineDomain/                # static Foundation/CoreGraphics value and policy 
 ├── Policies/                  # pure host/input safety classification
 ├── Settings/                  # typed defaults/schema and pure migrations
 ├── Support/                   # bounded local/transport reads and decode helpers
-└── Terminal/                  # ANSI parser, VT grid, and character-width policy
+└── Terminal/                  # portable ANSI and terminal-screen policy
+    ├── TerminalGrid.swift      # cells and bounded screen state
+    ├── TerminalScreen+Scanner.swift # addressing detection and geometry inference
+    ├── TerminalScreen+Parser.swift # byte-stream and CSI dispatch
+    ├── TerminalScreen+Operations.swift # cursor, drawing, erase, and scrolling
+    └── TerminalScreen+Serialization.swift # final frame and styled runs
 
 VitrineRendering/             # static AppKit/SwiftUI engine linked by App and CLI
 ├── Canvas/                    # shared snapshot/social-card layout and visual adapters
@@ -913,7 +918,13 @@ Vitrine/
 │   ├── URLLoadCoordinator.swift # navigation completion + redirect/host policy
 │   ├── PrivateNetworkBlockRules.swift # all-resource literal-private content rules
 │   ├── HTMLRenderer / WebSnapshotView
-│   ├── WebSnapshot{WindowController,EditorView}.swift
+│   ├── WebSnapshotWindowController.swift # NSWindow presentation and teardown
+│   ├── WebSnapshotModel.swift     # observable document and task lifecycle
+│   ├── WebSnapshotCaptureOrchestration.swift # bounded concurrent capture pipeline
+│   ├── WebSnapshotTypes.swift     # viewport results and injected renderer strategy
+│   ├── WebSnapshotEditorView*.swift # declarative editor regions and actions
+│   ├── WebSessionStore.swift      # authenticated WebKit data ownership
+│   ├── WebSessionWindowController.swift # interactive sign-in lifecycle
 │   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode value type
 │   ├── WebURLValidation.swift        # http(s)-only + SSRF host blocklist (typed errors)
 │   ├── NetworkCapability.swift       # network-entitlement gate for URL capture
@@ -1130,8 +1141,12 @@ presentation operations. Social Card rendering remains independent from the shar
 while Web Snapshot keeps authenticated-session and sharing routes behind a closure-backed
 adapter. Web Snapshot export-all reuses `BatchExportPresentation` for directory selection
 and Finder reveal, plus `BatchExportCompletion` for exact output accounting; partial writes
-remain visible as failures and never trigger a success reveal. The windows remain reusable
-and app-global, but isolated tests no longer create roots that silently observe or mutate
+remain visible as failures and never trigger a success reveal. Capture orchestration lives in a
+model extension separate from the observable document/task lifecycle, while the AppKit controller
+owns only presentation and teardown. Authenticated website-data ownership remains in
+`WebSessionStore`, separate from the short-lived interactive sign-in window; closing that window
+drops its `WKWebView` so timers and network work cannot survive off-screen. The windows remain
+reusable and app-global, but isolated tests no longer create roots that silently observe or mutate
 process-global stores or construct presentation windows.
 
 `RecentsGalleryWindowController` owns the equivalent boundary for capture history. Its
