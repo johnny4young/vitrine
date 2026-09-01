@@ -246,6 +246,12 @@ struct ImageBackgroundEditor: View {
     @State private var importTask: Task<Void, Never>?
     @State private var isDownloading = false
     @State private var downloadTask: Task<Void, Never>?
+    /// One generation shared by the local import and the URL download. Only the
+    /// latest request may commit `image.reference`, surface an error, or clear the
+    /// in-flight state — a slow earlier operation of either kind can therefore
+    /// never overwrite the user's later selection, and a drained stale task cannot
+    /// nil out the handle of the request that superseded it.
+    @State private var imageRequestGeneration = 0
 
     var body: some View {
         Button(action: chooseImage) {
@@ -352,13 +358,20 @@ struct ImageBackgroundEditor: View {
         panel.canChooseDirectories = false
         panel.message = "Choose an image to use as the background."
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        imageRequestGeneration += 1
+        let generation = imageRequestGeneration
         importTask?.cancel()
+        downloadTask?.cancel()
+        downloadTask = nil
+        isDownloading = false
         isImporting = true
         importError = nil
         importTask = Task {
             defer {
-                importTask = nil
-                isImporting = false
+                if generation == imageRequestGeneration {
+                    importTask = nil
+                    isImporting = false
+                }
             }
             do {
                 let reference = try await imageStore.importImageConcurrently(from: url)
@@ -366,14 +379,15 @@ struct ImageBackgroundEditor: View {
                     throw BackgroundImageStore.ImportError.notAnImage
                 }
                 try Task.checkCancellation()
+                guard generation == imageRequestGeneration else { return }
                 image.reference = reference
             } catch is CancellationError {
                 return
             } catch let error as BackgroundImageStore.ImportError {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, generation == imageRequestGeneration else { return }
                 importError = error.message
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, generation == imageRequestGeneration else { return }
                 importError = BackgroundImageStore.ImportError.copyFailed.message
             }
         }
@@ -392,13 +406,20 @@ struct ImageBackgroundEditor: View {
 
     private func startDownload() {
         guard let url = parsedURL, !isDownloading else { return }
+        imageRequestGeneration += 1
+        let generation = imageRequestGeneration
         downloadTask?.cancel()
+        importTask?.cancel()
+        importTask = nil
+        isImporting = false
         isDownloading = true
         importError = nil
         downloadTask = Task {
             defer {
-                downloadTask = nil
-                isDownloading = false
+                if generation == imageRequestGeneration {
+                    downloadTask = nil
+                    isDownloading = false
+                }
             }
             do {
                 let reference = try await imageStore.importImage(downloadedFrom: url)
@@ -406,15 +427,16 @@ struct ImageBackgroundEditor: View {
                     throw BackgroundImageStore.ImportError.notAnImage
                 }
                 try Task.checkCancellation()
+                guard generation == imageRequestGeneration else { return }
                 image.reference = reference
                 urlText = ""
             } catch is CancellationError {
                 return
             } catch let error as BackgroundImageStore.ImportError {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, generation == imageRequestGeneration else { return }
                 importError = error.message
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, generation == imageRequestGeneration else { return }
                 importError = BackgroundImageStore.ImportError.downloadFailed.message
             }
         }

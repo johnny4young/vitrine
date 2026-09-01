@@ -110,11 +110,16 @@ enum ShellIntegrationInstaller {
             try handle.seek(toOffset: 0)
             let existingData = try readBounded(from: handle)
             let finalStatus = try regularFileStatus(for: descriptor)
+            // `fstat` on the same descriptor pins the inode, so comparing the two
+            // stats can only catch size drift; it can never notice an editor
+            // atomically renaming a fresh rc file over the selected pathname.
+            // Re-stat the *path* and require it to still be this descriptor's
+            // device and inode, so the append cannot land in an unlinked file
+            // while the active startup file goes untouched.
             guard
-                initialStatus.st_dev == finalStatus.st_dev,
-                initialStatus.st_ino == finalStatus.st_ino,
                 finalStatus.st_size == initialStatus.st_size,
-                existingData.count == initialByteCount
+                existingData.count == initialByteCount,
+                pathnameResolves(file, toDeviceAndInodeOf: finalStatus)
             else {
                 return .failed(readFailureMessage)
             }
@@ -132,6 +137,15 @@ enum ShellIntegrationInstaller {
             try handle.synchronize()
             let writtenStatus = try regularFileStatus(for: descriptor)
             guard writtenStatus.st_size == initialStatus.st_size + off_t(suffix.count) else {
+                throw InstallError.writeFailed
+            }
+            // Fail closed if the pathname was replaced during the append: the
+            // bytes then live in the unlinked old inode and the file the shell
+            // actually reads was not changed, so reporting `.installed` would be
+            // false. The window between this check and the write is inherently
+            // TOCTOU-residual, but a replacement during the transaction is no
+            // longer reported as success.
+            guard pathnameResolves(file, toDeviceAndInodeOf: writtenStatus) else {
                 throw InstallError.writeFailed
             }
             return .installed(file)
@@ -168,6 +182,28 @@ enum ShellIntegrationInstaller {
                 S_IRUSR | S_IWUSR)
         }
         return descriptor >= 0 ? descriptor : nil
+    }
+
+    /// Whether `file`'s pathname currently resolves to the same device and inode
+    /// as the open descriptor's `status` — i.e. the path was not atomically
+    /// replaced (renamed over) since the descriptor was opened. Internal so the
+    /// rename-over scenario has a deterministic regression test.
+    static func pathnameResolves(_ file: URL, toDeviceAndInodeOf status: stat) -> Bool {
+        // Resolved by re-opening the path and `fstat`ing the probe descriptor:
+        // `Darwin.stat` the function is shadowed by `stat` the struct in Swift,
+        // and the path-following open keeps a startup file that is itself a
+        // symlink (a dotfiles manager's layout) resolving to the real inode the
+        // original descriptor holds, where an `lstat`-style check would not.
+        let probe = file.withUnsafeFileSystemRepresentation { path -> Int32 in
+            guard let path else { return -1 }
+            return Darwin.open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
+        }
+        guard probe >= 0 else { return false }
+        defer { Darwin.close(probe) }
+        var pathStatus = stat()
+        guard Darwin.fstat(probe, &pathStatus) == 0 else { return false }
+        return pathStatus.st_dev == status.st_dev
+            && pathStatus.st_ino == status.st_ino
     }
 
     private static func regularFileStatus(for descriptor: Int32) throws -> stat {

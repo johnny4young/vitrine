@@ -576,11 +576,19 @@ nonisolated struct BackgroundImageStore: Sendable {
             let cgImage = try? ImageDecodePolicy.decodeStaticFirstFrame(
                 in: source, metadata: metadata)
         else { return nil }
-        let (pixels, pixelOverflow) = cgImage.width.multipliedReportingOverflow(
-            by: cgImage.height)
-        guard !pixelOverflow else { return nil }
-        let (cost, costOverflow) = pixels.multipliedReportingOverflow(by: 4)
-        return DecodedStaticImage(cgImage: cgImage, cost: costOverflow ? .max : max(1, cost))
+        let cost = decodedSurfaceCost(
+            bytesPerRow: cgImage.bytesPerRow, height: cgImage.height)
+        return DecodedStaticImage(cgImage: cgImage, cost: cost)
+    }
+
+    /// The cache cost of a decoded surface: its actual backing bytes
+    /// (`bytesPerRow × height`), never an assumed 4 bytes per pixel — a
+    /// 16-bit-per-channel or row-padded surface would otherwise be under-counted
+    /// and the cache's byte bound would retain substantially more decoded memory
+    /// than it reports. Floors at 1 so no surface is exempt from the count limit.
+    static func decodedSurfaceCost(bytesPerRow: Int, height: Int) -> Int {
+        let (cost, overflow) = bytesPerRow.multipliedReportingOverflow(by: height)
+        return overflow ? Int.max : max(1, cost)
     }
 
     @MainActor private static func cache(

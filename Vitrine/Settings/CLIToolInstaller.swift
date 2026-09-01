@@ -78,15 +78,36 @@ enum CLIToolInstaller {
     /// The Terminal equivalent of the install, shown (and copyable) when the chosen
     /// folder refuses the write. It intentionally omits `-f`: a fallback command must
     /// never unlink a regular file that happens to be named `vitrine`.
+    ///
+    /// The command targets the first of the architecture's conventional prefixes
+    /// that actually exists — on an Apple-silicon Mac without Homebrew,
+    /// `/opt/homebrew/bin` is missing and `ln` could not create it, so the
+    /// traditional prefix is the one that works. When neither exists, the command
+    /// creates the traditional prefix first. Pass `directory` to point the command
+    /// at the exact folder a failed in-app install just attempted, so the copied
+    /// command is truly the equivalent action.
     static func terminalCommand(
         for target: URL,
-        architecture: HostArchitecture? = nil
+        into directory: URL? = nil,
+        architecture: HostArchitecture? = nil,
+        directoryExists: (URL) -> Bool = { url in
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+                && isDirectory.boolValue
+        }
     ) -> String {
+        let link = "sudo ln -s \(ShellCommandQuoter.singleQuoted(canonicalURL(target).path)) "
+        if let directory {
+            return link + directory.appendingPathComponent("vitrine").path
+        }
         let resolvedArchitecture = architecture ?? currentArchitecture
-        let destination = binDirectories(for: resolvedArchitecture)[0]
-            .appendingPathComponent("vitrine")
-        return "sudo ln -s \(ShellCommandQuoter.singleQuoted(canonicalURL(target).path)) "
-            + destination.path
+        let candidates = binDirectories(for: resolvedArchitecture)
+        if let existing = candidates.first(where: directoryExists) {
+            return link + existing.appendingPathComponent("vitrine").path
+        }
+        let traditional = candidates.first { $0.path == "/usr/local/bin" } ?? candidates[0]
+        return "sudo mkdir -p \(traditional.path) && "
+            + link + traditional.appendingPathComponent("vitrine").path
     }
 
     /// The result of an install attempt into a powerbox-granted folder.

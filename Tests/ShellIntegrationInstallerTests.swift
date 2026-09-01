@@ -175,3 +175,49 @@ struct ShellIntegrationInstallerTests {
                 + ">> ~/.config/fish/config.fish")
     }
 }
+
+extension ShellIntegrationInstallerTests {
+    /// An editor that saves atomically renames a fresh file over the startup
+    /// file's pathname. The descriptor then still points at the old, unlinked
+    /// inode — the path check is what must notice.
+    @Test func pathnameCheckDetectsAtomicReplacement() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let rcFile = directory.appendingPathComponent(".zshrc")
+        try Data("# original\n".utf8).write(to: rcFile)
+
+        let descriptor = open(rcFile.path, O_RDWR)
+        #expect(descriptor >= 0)
+        defer { close(descriptor) }
+        var status = stat()
+        #expect(fstat(descriptor, &status) == 0)
+
+        // Same inode: the pathname still resolves to the open descriptor.
+        #expect(ShellIntegrationInstaller.pathnameResolves(rcFile, toDeviceAndInodeOf: status))
+
+        // An atomic editor save: a new file renamed over the same pathname.
+        let replacement = directory.appendingPathComponent(".zshrc.new")
+        try Data("# replaced\n".utf8).write(to: replacement)
+        _ = try FileManager.default.replaceItemAt(rcFile, withItemAt: replacement)
+
+        #expect(!ShellIntegrationInstaller.pathnameResolves(rcFile, toDeviceAndInodeOf: status))
+    }
+
+    /// A deleted pathname (no replacement at all) also fails the check.
+    @Test func pathnameCheckFailsForADeletedPath() throws {
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vitrine-\(UUID().uuidString).zshrc")
+        try Data("# original\n".utf8).write(to: file)
+        let descriptor = open(file.path, O_RDWR)
+        #expect(descriptor >= 0)
+        defer { close(descriptor) }
+        var status = stat()
+        #expect(fstat(descriptor, &status) == 0)
+
+        try FileManager.default.removeItem(at: file)
+        #expect(!ShellIntegrationInstaller.pathnameResolves(file, toDeviceAndInodeOf: status))
+    }
+}
