@@ -235,7 +235,8 @@ struct CustomThemeEditor: View {
     /// thumbnail, so scale 1 is ample and halves the pixel work versus the old 2×).
     /// Called only from the debounced `.task(id:)`, never inside `body`.
     private func renderCurrentPreview() -> NSImage? {
-        ExportManager.renderNSImage(previewConfig, scale: 1, profile: settings.export.colorProfile)
+        ExportManager.renderNSImage(
+            previewConfig, scale: 1, profile: settings.export.colorProfile, budget: .preview)
     }
 
     /// The `.task(id:)` key: the render inputs (config + color profile) as an `Equatable`

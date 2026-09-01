@@ -33,26 +33,50 @@ extension ExportManager {
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         pasteboard: NSPasteboard = .general
     ) -> Bool {
+        copyToPasteboardOutcome(
+            config, scale: scale, fixedSize: fixedSize, profile: profile,
+            richText: richText, plainText: plainText,
+            backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore,
+            pasteboard: pasteboard) == .copied
+    }
+
+    /// Checked app/CLI copy surface. Pasteboard failures remain distinct from a safe
+    /// render rejection so callers can present the right recovery action.
+    @discardableResult
+    static func copyToPasteboardOutcome(
+        _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
+        profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
+        pasteboard: NSPasteboard = .general
+    ) -> CopyOutcome {
         // Either opt-in (rich styled text, or the plain-text rider) needs the
         // multi-representation item, so route both through RichPasteboard; the plain
         // image fast-path stays for the default copy that asked for neither.
         if richText || plainText {
-            return RichPasteboard.copy(
-                config, scale: scale, fixedSize: fixedSize, profile: profile,
-                includeRichText: richText, includePlainText: plainText,
-                backgroundImageStore: backgroundImageStore,
-                foregroundImageStore: foregroundImageStore, to: pasteboard)
+            do {
+                return try RichPasteboard.copyChecked(
+                    config, scale: scale, fixedSize: fixedSize, profile: profile,
+                    includeRichText: richText, includePlainText: plainText,
+                    backgroundImageStore: backgroundImageStore,
+                    foregroundImageStore: foregroundImageStore, to: pasteboard)
+                    ? .copied : .failed
+            } catch let error {
+                return .renderFailed(error)
+            }
         }
-        guard
-            let cgImage = renderCGImage(
+        let cgImage: CGImage
+        do {
+            cgImage = try renderCGImageChecked(
                 config, scale: scale, fixedSize: fixedSize, profile: profile,
                 backgroundImageStore: backgroundImageStore,
                 foregroundImageStore: foregroundImageStore)
-        else {
-            Log.export.error("Copy to pasteboard failed: render returned nil")
-            return false
+        } catch let error {
+            Log.export.error("Copy to pasteboard failed: render rejected or failed")
+            return .renderFailed(error)
         }
-        return copyPNGToPasteboard(cgImage, to: pasteboard)
+        return copyPNGToPasteboardOutcome(cgImage, to: pasteboard)
     }
 
     /// Writes a PNG of an already-rendered `cgImage` to the pasteboard (the general
@@ -63,13 +87,28 @@ extension ExportManager {
     static func copyPNGToPasteboard(
         _ cgImage: CGImage, to pasteboard: NSPasteboard = .general
     ) -> Bool {
+        copyPNGToPasteboardOutcome(cgImage, to: pasteboard) == .copied
+    }
+
+    /// Checked variant for callers that already own the raster. A PNG encoder
+    /// failure remains distinct from a pasteboard write failure.
+    @discardableResult
+    static func copyPNGToPasteboardOutcome(
+        _ cgImage: CGImage, to pasteboard: NSPasteboard = .general
+    ) -> CopyOutcome {
         guard let png = pngData(from: cgImage) else {
             Log.export.error("Copy to pasteboard failed: PNG encode returned nil")
-            return false
+            return .renderFailed(.encodingFailed)
         }
         pasteboard.clearContents()
         let copied = pasteboard.setData(png, forType: .png)
         Log.export.info("Copied image to pasteboard (success \(copied, privacy: .public))")
-        return copied
+        return copied ? .copied : .failed
+    }
+
+    enum CopyOutcome: Equatable {
+        case copied
+        case failed
+        case renderFailed(RenderBudgetError)
     }
 }

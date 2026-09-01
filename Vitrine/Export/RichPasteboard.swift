@@ -228,18 +228,38 @@ enum RichPasteboard {
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> Payload? {
+        try? makePayloadChecked(
+            for: config, scale: scale, fixedSize: fixedSize, profile: profile,
+            includeRichText: includeRichText, includePlainText: includePlainText,
+            backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore)
+    }
+
+    /// Throwing payload builder used by export surfaces that present actionable
+    /// render-budget and encoder failures.
+    @MainActor
+    static func makePayloadChecked(
+        for config: SnapshotConfig,
+        scale: CGFloat,
+        fixedSize: CGSize?,
+        profile: ColorProfile,
+        includeRichText: Bool,
+        includePlainText: Bool = false,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+    ) throws(RenderBudgetError) -> Payload {
+        let cgImage = try ExportManager.renderCGImageChecked(
+            config, scale: scale, fixedSize: fixedSize, profile: profile,
+            backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore)
         guard
-            let cgImage = ExportManager.renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile,
-                backgroundImageStore: backgroundImageStore,
-                foregroundImageStore: foregroundImageStore)
+            let payload = makePayload(
+                cgImage: cgImage, for: config, includeRichText: includeRichText,
+                includePlainText: includePlainText)
         else {
-            Log.export.error("Rich payload build failed: render returned nil")
-            return nil
+            throw .encodingFailed
         }
-        return makePayload(
-            cgImage: cgImage, for: config, includeRichText: includeRichText,
-            includePlainText: includePlainText)
+        return payload
     }
 
     /// Builds the payload from an **already-rendered** `cgImage`: the quick-capture
@@ -338,13 +358,32 @@ enum RichPasteboard {
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
-        guard
-            let payload = makePayload(
-                for: config, scale: scale, fixedSize: fixedSize, profile: profile,
-                includeRichText: includeRichText, includePlainText: includePlainText,
-                backgroundImageStore: backgroundImageStore,
-                foregroundImageStore: foregroundImageStore)
-        else { return false }
+        (try? copyChecked(
+            config, scale: scale, fixedSize: fixedSize, profile: profile,
+            includeRichText: includeRichText, includePlainText: includePlainText,
+            backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore, to: pasteboard)) ?? false
+    }
+
+    /// Throwing rich-copy path used by the app and CLI to preserve render failures.
+    @MainActor
+    @discardableResult
+    static func copyChecked(
+        _ config: SnapshotConfig,
+        scale: CGFloat,
+        fixedSize: CGSize?,
+        profile: ColorProfile,
+        includeRichText: Bool,
+        includePlainText: Bool = false,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
+        to pasteboard: NSPasteboard = .general
+    ) throws(RenderBudgetError) -> Bool {
+        let payload = try makePayloadChecked(
+            for: config, scale: scale, fixedSize: fixedSize, profile: profile,
+            includeRichText: includeRichText, includePlainText: includePlainText,
+            backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore)
         return write(payload, to: pasteboard)
     }
 
@@ -359,12 +398,28 @@ enum RichPasteboard {
         includePlainText: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
+        copyOutcome(
+            cgImage: cgImage, config: config, includeRichText: includeRichText,
+            includePlainText: includePlainText, to: pasteboard) == .copied
+    }
+
+    /// Checked rich-copy path for an already-rendered raster. Payload creation can
+    /// still fail during PNG/RTF/HTML encoding or representation-size validation.
+    @MainActor
+    @discardableResult
+    static func copyOutcome(
+        cgImage: CGImage,
+        config: SnapshotConfig,
+        includeRichText: Bool,
+        includePlainText: Bool = false,
+        to pasteboard: NSPasteboard = .general
+    ) -> ExportManager.CopyOutcome {
         guard
             let payload = makePayload(
                 cgImage: cgImage, for: config, includeRichText: includeRichText,
                 includePlainText: includePlainText)
-        else { return false }
-        return write(payload, to: pasteboard)
+        else { return .renderFailed(.encodingFailed) }
+        return write(payload, to: pasteboard) ? .copied : .failed
     }
 
     // MARK: - Explicit single-representation copies
@@ -384,19 +439,38 @@ enum RichPasteboard {
         profile: ColorProfile,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
-        guard
-            let cgImage = ExportManager.renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile),
-            let png = ExportManager.pngData(from: cgImage),
+        copyDataURIOutcome(
+            for: config, scale: scale, fixedSize: fixedSize, profile: profile,
+            to: pasteboard) == .copied
+    }
+
+    @MainActor
+    @discardableResult
+    static func copyDataURIOutcome(
+        for config: SnapshotConfig,
+        scale: CGFloat,
+        fixedSize: CGSize?,
+        profile: ColorProfile,
+        to pasteboard: NSPasteboard = .general
+    ) -> ExportManager.CopyOutcome {
+        let cgImage: CGImage
+        do {
+            cgImage = try ExportManager.renderCGImageChecked(
+                config, scale: scale, fixedSize: fixedSize, profile: profile)
+        } catch let error {
+            Log.export.error("Copy data URI failed: render rejected safely")
+            return .renderFailed(error)
+        }
+        guard let png = ExportManager.pngData(from: cgImage),
             let uri = dataURI(forPNG: png)
         else {
-            Log.export.error("Copy data URI failed: render, encode, or cap")
-            return false
+            Log.export.error("Copy data URI failed: encode or representation cap")
+            return .renderFailed(.encodingFailed)
         }
         pasteboard.clearContents()
         let wrote = pasteboard.setString(uri, forType: .string)
         Log.export.info("Copied PNG data URI to pasteboard (success \(wrote, privacy: .public))")
-        return wrote
+        return wrote ? .copied : .failed
     }
 
     /// Copies a complete Markdown snippet containing the rendered PNG and the
@@ -411,20 +485,39 @@ enum RichPasteboard {
         profile: ColorProfile,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
-        guard
-            let cgImage = ExportManager.renderCGImage(
-                config, scale: scale, fixedSize: fixedSize, profile: profile),
-            let png = ExportManager.pngData(from: cgImage),
+        copyMarkdownOutcome(
+            for: config, scale: scale, fixedSize: fixedSize, profile: profile,
+            to: pasteboard) == .copied
+    }
+
+    @MainActor
+    @discardableResult
+    static func copyMarkdownOutcome(
+        for config: SnapshotConfig,
+        scale: CGFloat,
+        fixedSize: CGSize?,
+        profile: ColorProfile,
+        to pasteboard: NSPasteboard = .general
+    ) -> ExportManager.CopyOutcome {
+        let cgImage: CGImage
+        do {
+            cgImage = try ExportManager.renderCGImageChecked(
+                config, scale: scale, fixedSize: fixedSize, profile: profile)
+        } catch let error {
+            Log.export.error("Copy Markdown failed: render rejected safely")
+            return .renderFailed(error)
+        }
+        guard let png = ExportManager.pngData(from: cgImage),
             let markdown = markdownDocument(forPNG: png, config: config)
         else {
-            Log.export.error("Copy Markdown failed: render, encode, or cap")
-            return false
+            Log.export.error("Copy Markdown failed: encode or representation cap")
+            return .renderFailed(.encodingFailed)
         }
         pasteboard.clearContents()
         let wrote = pasteboard.setString(markdown, forType: .string)
         Log.export.info(
             "Copied Markdown snapshot to pasteboard (success \(wrote, privacy: .public))")
-        return wrote
+        return wrote ? .copied : .failed
     }
 
     /// Copies the highlighted code as styled text (RTF and HTML), preserving the

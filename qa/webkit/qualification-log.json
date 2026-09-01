@@ -19,6 +19,7 @@
         { "id": "local-html-offline", "status": "not-run", "evidence": "", "notes": "" },
         { "id": "local-html-remote-block", "status": "not-run", "controlBefore": "", "renderedMarker": "", "controlAfter": "", "evidence": "", "notes": "" },
         { "id": "public-example", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "public-private-subresource-block", "status": "not-run", "renderedMarker": "", "probeMetadata": "", "evidence": "", "notes": "" },
         { "id": "loopback-rejection", "status": "not-run", "evidence": "", "notes": "" },
         { "id": "private-destination-rejection", "status": "not-run", "evidence": "", "notes": "" }
       ]
@@ -35,6 +36,7 @@
         { "id": "local-html-offline", "status": "not-run", "evidence": "", "notes": "" },
         { "id": "local-html-remote-block", "status": "not-run", "controlBefore": "", "renderedMarker": "", "controlAfter": "", "evidence": "", "notes": "" },
         { "id": "public-example", "status": "not-run", "evidence": "", "notes": "" },
+        { "id": "public-private-subresource-block", "status": "not-run", "renderedMarker": "", "probeMetadata": "", "evidence": "", "notes": "" },
         { "id": "loopback-rejection", "status": "not-run", "evidence": "", "notes": "" },
         { "id": "private-destination-rejection", "status": "not-run", "evidence": "", "notes": "" }
       ]
@@ -44,6 +46,10 @@
     {
       "policy": "public-to-private redirect revalidation",
       "coverage": "deterministic navigation-delegate tests only"
+    },
+    {
+      "policy": "public-hostname DNS rebinding and resolution-time private-address detection",
+      "coverage": "known DNS/TOCTOU residual; not claimed by literal-host content rules"
     }
   ]
 }

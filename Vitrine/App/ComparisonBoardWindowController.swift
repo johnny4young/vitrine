@@ -48,6 +48,9 @@ final class ComparisonBoardWindowController: NSObject, NSWindowDelegate {
         let draft: ComparisonBoardDraft
         do {
             draft = try makeDraft(captures: captures)
+        } catch ComparisonBoardDraft.CreationError.renderFailure(_, let error) {
+            feedback(ExportFeedback.renderFailure(error))
+            return
         } catch {
             feedback(
                 Notifier.failure(

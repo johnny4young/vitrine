@@ -12,6 +12,14 @@ struct ExportFeedbackTests {
         #expect(
             ExportFeedback.copyOutcome(false)
                 == Notifier.failure(String(localized: "Couldn't copy the image")))
+        #expect(
+            ExportFeedback.copyOutcome(
+                .renderFailed(.tooLarge(.arithmeticOverflow)))
+                == Notifier.failure(
+                    String(
+                        localized:
+                            "The image is too large to render safely. Reduce the canvas size or scale."
+                    )))
     }
 
     @Test func mapsSourceCopyOutcomesWithoutCallingTheSourceAnImage() {
@@ -30,6 +38,13 @@ struct ExportFeedbackTests {
         #expect(
             ExportFeedback.saveOutcome(.failed)
                 == Notifier.failure(String(localized: "Couldn't save the image")))
+        #expect(
+            ExportFeedback.saveOutcome(.renderFailed(.allocationFailed))
+                == Notifier.failure(
+                    String(
+                        localized:
+                            "Vitrine couldn't allocate the image buffer. Reduce the canvas size or scale and try again."
+                    )))
         #expect(ExportFeedback.saveOutcome(.cancelled) == nil)
     }
 

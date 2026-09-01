@@ -22,9 +22,9 @@ import WebKit
 /// In `.visibleViewport` mode the snapshot rect is exactly the preset size, so the
 /// bitmap is `viewport × scale` device pixels — fully deterministic. In `.fullPage`
 /// mode the engine measures the document's content height after the wait, clamps it
-/// to `SafetyCaps.maxPageHeight`, resizes the web view to that height, and snapshots
-/// the whole page. The clamp is what keeps a runaway document from asking for a
-/// multi-gigapixel bitmap.
+/// to the strictest page-height, raster-dimension, pixel-count, and buffer-cost limit,
+/// resizes the web view to that height, and snapshots the whole page. The shared
+/// render budget keeps a runaway document from asking for a multi-gigapixel bitmap.
 ///
 /// ## Lazy-load scroll behavior
 ///
@@ -57,20 +57,27 @@ struct URLSnapshotEngine {
     /// to load the validated URL, and torn down before this returns. After the load
     /// settles it applies the wait strategy (a fixed post-load delay, or a best-effort
     /// network-quiet wait), then — for a full-page capture — runs the bounded
-    /// lazy-load pass and grows the view to the clamped content height before
+    /// lazy-load pass and grows the view to the budget-clamped content height before
     /// snapshotting. A failure at any stage (a load error, a timeout, or a snapshot
     /// that yields no image) throws, so a caller never receives a blank picture.
     func snapshot(of config: WebSnapshotConfig) async throws -> CGImage {
         let viewport = config.viewport
-        guard viewport.width > 0, viewport.height > 0 else {
-            throw WebSnapshotError.invalidViewport
-        }
+        // Validate the visible viewport and scale before creating WebKit. Full-page
+        // mode is checked again after measuring its document-dependent height.
+        _ = try config.captureSize()
 
         let configuration = WKWebViewConfiguration()
         // The data store is the explicit network mode: a per-render nonpersistent
         // store by default (nothing written to disk, no cookies across renders), or
         // the persistent store only when the user opted in.
         configuration.websiteDataStore = dataStore(for: config.dataStoreMode)
+        // A navigation delegate sees documents and frames, not images, style sheets,
+        // scripts, fonts, media, fetch/XHR, or WebSockets. Install the compiled
+        // literal-private-host rule list before creating the web view so those
+        // requests are blocked inside WebKit. Compilation failure is fail-closed.
+        configuration.userContentController.add(
+            try await Self.privateNetworkBlockList(
+                allowsLoopback: config.allowsLoopbackCapture))
 
         let frame = CGRect(origin: .zero, size: viewport)
         let webView = WKWebView(frame: frame, configuration: configuration)
@@ -78,10 +85,11 @@ struct URLSnapshotEngine {
         // the view's own layer, not the screen.
         webView.frame = frame
 
-        // The delegate reports load completion. Unlike pasted HTML (which blocks all
-        // remote loads), a URL capture is a page the user explicitly asked to load,
-        // so the page itself and its subresources are allowed; the engine still runs
-        // entirely locally and never contacts a remote render service.
+        // The delegate reports load completion and revalidates every frame target.
+        // Public subresources may load because this is an explicit URL capture;
+        // literal private/local destinations are already blocked by the content
+        // rule list above. The engine still runs locally and never uses a remote
+        // rendering service.
         let coordinator = URLLoadCoordinator(allowsLoopbackCapture: config.allowsLoopbackCapture)
         webView.navigationDelegate = coordinator
         defer {
@@ -128,9 +136,12 @@ struct URLSnapshotEngine {
 
         // Reuse the shared, deterministic bitmap path so a URL snapshot is exactly
         // captureRect × scale device pixels, identical to an HTML snapshot.
-        guard let cgImage = WebSnapshotView().cgImage(from: image, scale: config.scale) else {
+        let cgImage: CGImage
+        do throws(WebSnapshotError) {
+            cgImage = try WebSnapshotView().cgImageChecked(from: image, scale: config.scale)
+        } catch let error {
             Log.render.error("URL snapshot produced no CGImage")
-            throw WebSnapshotError.snapshotFailed
+            throw error
         }
         return cgImage
     }
@@ -218,12 +229,11 @@ struct URLSnapshotEngine {
         try await performBoundedLazyLoadPass(on: webView, viewport: viewport, deadline: deadline)
 
         let contentHeight = await documentContentHeight(webView, fallback: viewport.height)
-        let cappedHeight = config.safetyCaps.clampPageHeight(
-            contentHeight, viewportHeight: viewport.height)
+        let captureSize = try config.captureSize(contentHeight: contentHeight)
 
         // Grow the web view to the captured height and lay it out so the whole page is
         // rendered into the layer the snapshot reads.
-        let fullFrame = CGRect(x: 0, y: 0, width: viewport.width, height: cappedHeight)
+        let fullFrame = CGRect(origin: .zero, size: captureSize)
         webView.frame = fullFrame
         webView.layoutSubtreeIfNeeded()
         // A brief settle so the resized layout paints before the snapshot.
@@ -282,6 +292,42 @@ struct URLSnapshotEngine {
         switch mode {
         case .nonPersistent: .nonPersistent()
         case .persistent: .default()
+        }
+    }
+
+    /// Compiled private-network rule lists, one for each loopback mode. The cache
+    /// is main-actor isolated with the WebKit engine and keyed by the immutable
+    /// policy choice so an opt-in capture cannot accidentally reuse the stricter
+    /// list (or a default capture the permissive one).
+    @MainActor private static var cachedPrivateNetworkBlockLists: [Bool: WKContentRuleList] = [:]
+
+    /// Returns the fail-closed content rule list that blocks private subresources.
+    /// The encoded source is pure and tested separately; this method proves WebKit
+    /// can compile it and keeps compilation off the repeated render path.
+    static func privateNetworkBlockList(allowsLoopback: Bool) async throws -> WKContentRuleList {
+        if let cached = cachedPrivateNetworkBlockLists[allowsLoopback] { return cached }
+        guard let store = WKContentRuleListStore.default() else {
+            throw WebSnapshotError.networkIsolationUnavailable
+        }
+
+        do {
+            let source = try PrivateNetworkBlockRules.encodedContentRuleList(
+                allowsLoopback: allowsLoopback)
+            guard
+                let list = try await store.compileContentRuleList(
+                    forIdentifier: PrivateNetworkBlockRules.identifier(
+                        allowsLoopback: allowsLoopback),
+                    encodedContentRuleList: source)
+            else {
+                throw WebSnapshotError.networkIsolationUnavailable
+            }
+            cachedPrivateNetworkBlockLists[allowsLoopback] = list
+            return list
+        } catch {
+            Log.render.error(
+                "Private-network rule list failed to compile (\((error as NSError).domain, privacy: .public))"
+            )
+            throw WebSnapshotError.networkIsolationUnavailable
         }
     }
 

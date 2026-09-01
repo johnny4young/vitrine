@@ -6,9 +6,11 @@ import WebKit
 /// failed, bounded by a timeout. A fresh instance is used per snapshot, so it holds
 /// no state across renders.
 ///
-/// This shares ``WebLoadWaiter`` with `WebSnapshotView`'s navigation coordinator but
-/// does not enforce the pasted-HTML network block — a URL capture is a page the user
-/// explicitly asked to load, so the page and its subresources are permitted.
+/// This shares ``WebLoadWaiter`` with `WebSnapshotView`'s navigation coordinator.
+/// A URL capture may load public network content because the user explicitly asked
+/// for the page, while `PrivateNetworkBlockRules` blocks literal private/local
+/// subresources that never reach this delegate. This coordinator is the second
+/// layer for top-level and child-frame navigation.
 /// `WKNavigationDelegate` is an
 /// `NSObjectProtocol`, so this is an `NSObject` subclass; its callbacks arrive on the
 /// main actor, matching the module's default isolation.

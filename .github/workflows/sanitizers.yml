@@ -1,0 +1,71 @@
+name: Sanitizers (non-required)
+
+on:
+  # Focused sanitizer runs are an early-warning lane while hosted-runner
+  # stability is established. They deliberately do not run on PRs or pushes.
+  schedule:
+    - cron: "41 9 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sanitizers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  focused:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: test-asan
+            label: Address Sanitizer
+            artifact: asan
+          - target: test-tsan
+            label: Thread Sanitizer
+            artifact: tsan
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
+        with:
+          xcode-version: latest-stable
+
+      - name: Export DEVELOPER_DIR
+        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+
+      - name: Toolchain versions
+        run: |
+          {
+            echo "### ${{ matrix.label }} toolchain"
+            echo '```'
+            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
+            sw_vers
+            xcodebuild -version
+            swift --version
+            echo '```'
+            echo "Focused non-required early warning; this is not full UI qualification."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install pinned XcodeGen
+        run: ./scripts/install-xcodegen.sh
+
+      - name: Run focused sanitizer suite
+        run: >-
+          make ${{ matrix.target }}
+          RESULT_BUNDLE="${RUNNER_TEMP}/${{ matrix.artifact }}.xcresult"
+
+      - name: Upload sanitizer result bundle
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: sanitizer-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/${{ matrix.artifact }}.xcresult
+          if-no-files-found: warn

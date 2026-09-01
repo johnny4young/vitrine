@@ -2,6 +2,18 @@ import AppKit
 import OSLog
 
 extension ExportManager {
+    nonisolated struct BatchExportResult: Equatable, Sendable {
+        let written: Int
+        let failed: Int
+        let firstRenderFailure: RenderBudgetError?
+    }
+
+    nonisolated private enum BatchItemOutcome: Sendable {
+        case written
+        case failed
+        case renderFailed(RenderBudgetError)
+    }
+
     /// Renders `baseConfig` once per preset and writes one file per preset into
     /// `directory` — the PRO multi-size one-pass export.
     ///
@@ -19,9 +31,10 @@ extension ExportManager {
         _ baseConfig: SnapshotConfig, presets: [ExportPreset], to directory: URL,
         format: ExportFormat = .png, profile: ColorProfile = .sRGB, textSidecar: Bool = false,
         onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
-    ) async -> (written: Int, failed: Int) {
+    ) async -> BatchExportResult {
         var written = 0
         var failed = 0
+        var firstRenderFailure: RenderBudgetError?
         let total = presets.count
         // Pipeline the batch: each preset renders on the main actor (`ImageRenderer`
         // requires it), then its CPU-bound encode + disk write run off-main as a child
@@ -30,7 +43,7 @@ extension ExportManager {
         // for one preset's encode before starting the next. Each writes a distinct
         // `vitrine-<preset id>` file, so the concurrent writes never collide.
         var completed = 0
-        await withTaskGroup(of: Bool.self) { group in
+        await withTaskGroup(of: BatchItemOutcome.self) { group in
             for preset in presets {
                 var config = baseConfig
                 preset.apply(to: &config)
@@ -41,8 +54,17 @@ extension ExportManager {
                 let pdf: Data?
                 switch format {
                 case .png, .heic, .avif:
-                    raster = renderCGImage(
-                        config, scale: CGFloat(preset.scale), fixedSize: size, profile: profile)
+                    do throws(RenderBudgetError) {
+                        raster = try renderCGImageChecked(
+                            config, scale: CGFloat(preset.scale), fixedSize: size,
+                            profile: profile)
+                    } catch let error {
+                        Log.export.error(
+                            "Multi-size export rejected a preset before raster allocation")
+                        raster = nil
+                        group.addTask { .renderFailed(error) }
+                        continue
+                    }
                     pdf = nil
                 case .pdf:
                     raster = nil
@@ -62,8 +84,16 @@ extension ExportManager {
                 await Task.yield()
             }
             // Drain results as encodes/writes finish, reporting count-based progress.
-            for await ok in group {
-                if ok { written += 1 } else { failed += 1 }
+            for await outcome in group {
+                switch outcome {
+                case .written:
+                    written += 1
+                case .failed:
+                    failed += 1
+                case .renderFailed(let error):
+                    failed += 1
+                    if firstRenderFailure == nil { firstRenderFailure = error }
+                }
                 completed += 1
                 onProgress?(completed, total)
             }
@@ -71,7 +101,8 @@ extension ExportManager {
         Log.export.notice(
             "Multi-size export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
         )
-        return (written, failed)
+        return BatchExportResult(
+            written: written, failed: failed, firstRenderFailure: firstRenderFailure)
     }
 
     /// Encodes (for raster formats) and writes one multi-size preset off the main
@@ -83,14 +114,14 @@ extension ExportManager {
     @concurrent nonisolated private static func writePreset(
         raster cgImage: CGImage?, pdf pdfData: Data?, format: ExportFormat,
         to url: URL, sidecarText: String
-    ) async -> Bool {
+    ) async -> BatchItemOutcome {
         let data: Data? =
             if case .pdf = format { pdfData } else {
                 cgImage.flatMap { rasterData(from: $0, format: format) }
             }
         guard let data else {
             Log.export.error("Multi-size export: render/encode returned nil for a preset")
-            return false
+            return .renderFailed(.encodingFailed)
         }
         do {
             try data.write(to: url)
@@ -99,13 +130,13 @@ extension ExportManager {
                 // A missing sidecar must not fail the image it accompanies.
                 try? Data(sidecarText.utf8).write(to: sidecarURL)
             }
-            return true
+            return .written
         } catch {
             let nsError = error as NSError
             Log.export.error(
                 "Multi-size export write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
             )
-            return false
+            return .failed
         }
     }
 
@@ -132,19 +163,29 @@ extension ExportManager {
         _ baseConfig: SnapshotConfig, pages: [String], to directory: URL,
         profile: ColorProfile = .sRGB,
         onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
-    ) async -> (written: Int, failed: Int) {
+    ) async -> BatchExportResult {
         var written = 0
         var failed = 0
+        var firstRenderFailure: RenderBudgetError?
         let total = pages.count
         var completed = 0
-        await withTaskGroup(of: Bool.self) { group in
+        await withTaskGroup(of: BatchItemOutcome.self) { group in
             for (index, page) in pages.enumerated() {
                 var config = baseConfig
                 config.clearContentMarks()
                 config.code = page
                 config.fontSize = max(config.fontSize, carouselMinimumFontSize)
-                let raster = renderCGImage(
-                    config, scale: 1, fixedSize: carouselSlideSize, profile: profile)
+                let raster: CGImage?
+                do throws(RenderBudgetError) {
+                    raster = try renderCGImageChecked(
+                        config, scale: 1, fixedSize: carouselSlideSize, profile: profile)
+                } catch let error {
+                    Log.export.error(
+                        "Carousel export rejected a slide before raster allocation")
+                    raster = nil
+                    group.addTask { .renderFailed(error) }
+                    continue
+                }
                 let url = directory.appendingPathComponent(
                     String(format: "carousel-%02d.png", index + 1), isDirectory: false)
                 group.addTask {
@@ -153,8 +194,16 @@ extension ExportManager {
                 }
                 await Task.yield()
             }
-            for await ok in group {
-                if ok { written += 1 } else { failed += 1 }
+            for await outcome in group {
+                switch outcome {
+                case .written:
+                    written += 1
+                case .failed:
+                    failed += 1
+                case .renderFailed(let error):
+                    failed += 1
+                    if firstRenderFailure == nil { firstRenderFailure = error }
+                }
                 completed += 1
                 onProgress?(completed, total)
             }
@@ -162,6 +211,7 @@ extension ExportManager {
         Log.export.notice(
             "Carousel export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
         )
-        return (written, failed)
+        return BatchExportResult(
+            written: written, failed: failed, firstRenderFailure: firstRenderFailure)
     }
 }
