@@ -50,6 +50,9 @@ NONVISUAL_WEB_FILES = {
     "WebURLValidation.swift",
 }
 DATA_ONLY_FILES = {
+    # A declarative help-text wrapper. The executable schema interpolation is
+    # attributed to CLIArgumentSchema.swift, so xccov emits no entry for this file.
+    "Vitrine/CLI/CLIUsage.swift",
     # A three-case input enum with no executable lines; xccov intentionally emits no file entry.
     "VitrineRendering/Rendering/CaptureInput.swift",
     # Static OSLog category/signpost declarations likewise have no executable source lines.
@@ -246,6 +249,7 @@ def self_test() -> None:
     assert is_critical("VitrineDomain/Models/Theme.swift")
     assert is_critical("VitrineRendering/Rendering/RenderBudget.swift")
     assert is_critical("VitrineRendering/Models/SnapshotConfig.swift")
+    assert not is_critical("Vitrine/CLI/CLIUsage.swift")
     assert not is_critical("VitrineRendering/Rendering/CaptureInput.swift")
     assert not is_critical("VitrineRendering/Support/RenderingLog.swift")
     assert not is_critical("VitrineRendering/Canvas/SnapshotCanvas.swift")
