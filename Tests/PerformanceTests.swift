@@ -1,3 +1,4 @@
+import AppKit
 import OSLog
 import SwiftUI
 import Testing
@@ -83,6 +84,18 @@ struct PerformanceTests {
         /// while remaining far above the real interaction cost on shared CI hosts.
         static let searchTarget: Duration = .milliseconds(50)
         static let searchHardCeiling: Duration = .milliseconds(250)
+
+        /// Soft target and hard ceiling for the direct highlighting policy. The medium fixture
+        /// deliberately bypasses caches and the large fixture deliberately bypasses Highlight.js,
+        /// so these numbers expose regressions hidden by warm render-cache hits.
+        static let highlightingTarget: Duration = .milliseconds(250)
+        static let highlightingHardCeiling: Duration = .milliseconds(1500)
+
+        /// Soft target and hard ceiling for collecting the largest accepted remote image from
+        /// transport-sized chunks. The network is deliberately excluded: this isolates the local
+        /// copy/allocation cost that replaced byte-at-a-time async iteration.
+        static let remoteChunkTarget: Duration = .milliseconds(50)
+        static let remoteChunkHardCeiling: Duration = .milliseconds(250)
     }
 
     /// How many timed renders each case samples (after the discarded warm-up).
@@ -327,6 +340,76 @@ struct PerformanceTests {
             "default@3x p95 over the secondary hard ceiling")
     }
 
+    @Test func uncachedMediumHighlightingMeetsBudget() {
+        let line = "let highlightedValue = compute(42) // bounded performance\n"
+        let code = String(repeating: line, count: 1_600)
+        #expect(!HighlightPolicy.shouldCache(code))
+        #expect(HighlightPolicy.mode(for: code, language: .swift) == .full)
+
+        measureHighlighting(code, label: "highlighting-medium-uncached")
+    }
+
+    @Test func largePlainTextFallbackMeetsBudget() {
+        let code = String(repeating: "x", count: 1024 * 1024)
+        #expect(HighlightPolicy.mode(for: code, language: .swift).usesPlainTextFallback)
+
+        measureHighlighting(code, label: "highlighting-large-fallback")
+    }
+
+    @Test func boundedRemoteChunkCollectionMeetsBudget() {
+        let maximumBytes = 25 * 1_024 * 1_024
+        let chunk = Data(repeating: 0x89, count: 64 * 1_024)
+        let chunks = Array(repeating: chunk, count: maximumBytes / chunk.count)
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+
+        for _ in 0..<Self.sampleCount {
+            var collector = BoundedDataCollector(limit: maximumBytes)
+            var succeeded = true
+            let elapsed = clock.measure {
+                do {
+                    for chunk in chunks { try collector.append(chunk) }
+                } catch {
+                    succeeded = false
+                }
+            }
+            #expect(succeeded)
+            #expect(collector.data.count == maximumBytes)
+            durations.append(elapsed)
+        }
+
+        let stats = Statistics(durations)
+        report(stats, label: "remote-chunks-25mb", target: PerfBudget.remoteChunkTarget)
+        #expect(
+            stats.p95 <= PerfBudget.remoteChunkHardCeiling,
+            "remote-chunks-25mb exceeded the transport hard ceiling")
+    }
+
+    private func measureHighlighting(_ code: String, label: String) {
+        let manager = HighlightManager.shared
+        let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        _ = manager.attributedString(for: code, language: .swift, theme: .oneDark, font: font)
+
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+        for _ in 0..<Self.sampleCount {
+            var output: NSAttributedString?
+            let elapsed = clock.measure {
+                output = manager.attributedString(
+                    for: code, language: .swift, theme: .oneDark, font: font)
+            }
+            #expect(output?.string == code)
+            durations.append(elapsed)
+        }
+        let stats = Statistics(durations)
+        report(stats, label: label, target: PerfBudget.highlightingTarget)
+        #expect(
+            stats.p95 <= PerfBudget.highlightingHardCeiling,
+            "\(label) exceeded the highlighting hard ceiling")
+    }
+
     @Test func commandPaletteSearchMeetsBudget() {
         let catalog = (0..<1_000).map { index in
             EditorCommand(
@@ -405,6 +488,10 @@ struct PerformanceTests {
         #expect(PerfBudget.secondaryHardCeiling == PerfBudget.hardCeiling)
         #expect(PerfBudget.searchTarget < PerfBudget.searchHardCeiling)
         #expect(PerfBudget.searchHardCeiling < PerfBudget.target)
+        #expect(PerfBudget.highlightingTarget < PerfBudget.highlightingHardCeiling)
+        #expect(PerfBudget.highlightingHardCeiling <= PerfBudget.hardCeiling)
+        #expect(PerfBudget.remoteChunkTarget < PerfBudget.remoteChunkHardCeiling)
+        #expect(PerfBudget.remoteChunkHardCeiling < PerfBudget.hardCeiling)
     }
 }
 

@@ -27,67 +27,47 @@ final class HighlightManager {
     /// it once per theme avoids re-running `setTheme` (a full CSS reparse) ~5× per canvas
     /// render — `body` re-runs on every keystroke. The cached value is identical to what the
     /// uncached path returns, so output is byte-for-byte unchanged. Only **built-in** themes
-    /// are cached (immutable → the theme id is a stable key); a custom theme's palette can
+    /// are cached (the immutable stylesheet source is a stable key); a custom theme's palette can
     /// change under a stable id, so it resolves directly (and is cheap — no engine call).
     private struct ThemeChrome {
         let background: NSColor
         let isDark: Bool
     }
-    private var builtInChrome: [String: ThemeChrome] = [:]
+    private var builtInChrome: [Theme.Source: ThemeChrome] = [:]
 
-    /// Cache of highlighted output for built-in themes, keyed on every input that affects the
-    /// pixels, so a re-render that did not change the code/theme/font (an inspector tweak —
-    /// padding, background, shadow) does not re-tokenize the whole document. FIFO-bounded.
-    /// Custom themes are not cached (their palette can change under a stable id).
+    /// Cache key for highlighted code. `Theme.Source` captures the immutable stylesheet name for
+    /// a built-in or the complete value-typed palette for a custom theme, so changing a palette
+    /// under a stable user-facing id can never return stale colors.
     private struct HighlightKey: Hashable {
         let code: String
         let language: Language
-        let themeID: String
+        let themeSource: Theme.Source
         let font: NSFont
     }
-    private var highlightCache: [HighlightKey: NSAttributedString] = [:]
-    private var highlightOrder: [HighlightKey] = []
-    private static let highlightCacheLimit = 8
+    private var highlightCache = CostLimitedLRUCache<HighlightKey, NSAttributedString>(
+        totalCostLimit: HighlightPolicy.perRepresentationCostLimit,
+        countLimit: HighlightPolicy.countLimit)
 
-    /// Cache of the **bridged** SwiftUI `AttributedString` for built-in themes. The
+    /// Cache of the **bridged** SwiftUI `AttributedString`. The
     /// `AttributedString(nsAttributedString)` bridge is an O(n) run/attribute
     /// walk, and the canvas re-derives it on every `body` pass (a keystroke or any
-    /// inspector tweak). Keyed identically to `highlightCache`; built-in themes only, since
-    /// a custom palette can change under a stable id. FIFO-bounded.
-    private var swiftUICache: [HighlightKey: AttributedString] = [:]
-    private var swiftUIOrder: [HighlightKey] = []
+    /// inspector tweak). Custom and built-in themes share the value-safe key above.
+    private var swiftUICache = CostLimitedLRUCache<HighlightKey, AttributedString>(
+        totalCostLimit: HighlightPolicy.perRepresentationCostLimit,
+        countLimit: HighlightPolicy.countLimit)
 
     /// Cache of the bridged terminal (ANSI) `AttributedString`. A terminal capture
     /// otherwise gets fully re-parsed and re-emulated on every `body` pass. Custom
-    /// themes include their value-typed palette in the key, so edits cannot return a
-    /// stale render under a stable theme id.
+    /// themes include their value-typed source in the key, so edits cannot return stale output.
     private struct TerminalKey: Hashable {
         let code: String
-        let themeID: String
-        let customPalette: ThemePalette?
+        let themeSource: Theme.Source
         let font: NSFont
         let columns: Int?
     }
-    private var terminalCache: [TerminalKey: AttributedString] = [:]
-    private var terminalOrder: [TerminalKey] = []
-
-    /// Cache for **custom** user-palette themes. These used to bypass
-    /// every cache: a custom palette can change under a stable theme id, so it can't be
-    /// keyed on `themeID` like the built-in caches. Keying on the value-hashable palette
-    /// itself is safe — a changed palette is a different key — and it removes the
-    /// per-`body` re-run of `CustomThemeRenderer`, whose `NSAttributedString(html:)`
-    /// import is one of the slowest text paths on macOS. Two caches mirror the built-in
-    /// pair: the `NSAttributedString` result and its SwiftUI bridge.
-    private struct CustomHighlightKey: Hashable {
-        let code: String
-        let language: Language
-        let palette: ThemePalette
-        let font: NSFont
-    }
-    private var customCache: [CustomHighlightKey: NSAttributedString] = [:]
-    private var customOrder: [CustomHighlightKey] = []
-    private var customSwiftUICache: [CustomHighlightKey: AttributedString] = [:]
-    private var customSwiftUIOrder: [CustomHighlightKey] = []
+    private var terminalCache = CostLimitedLRUCache<TerminalKey, AttributedString>(
+        totalCostLimit: HighlightPolicy.perRepresentationCostLimit,
+        countLimit: HighlightPolicy.countLimit)
 
     /// Cache of the row-split `[AttributedString]`. The gutter/diff
     /// layout slices the highlighted document into one `AttributedString` per line — a
@@ -95,12 +75,12 @@ final class HighlightManager {
     /// the same cheap keys as the bridge above (built-in, custom, and terminal), so a
     /// re-render that didn't change the code/theme/font reuses the split instead of
     /// re-walking. The value is identical to splitting the bridged string by hand.
-    private var lineCache: [HighlightKey: [AttributedString]] = [:]
-    private var lineOrder: [HighlightKey] = []
-    private var customLineCache: [CustomHighlightKey: [AttributedString]] = [:]
-    private var customLineOrder: [CustomHighlightKey] = []
-    private var terminalLineCache: [TerminalKey: [AttributedString]] = [:]
-    private var terminalLineOrder: [TerminalKey] = []
+    private var lineCache = CostLimitedLRUCache<HighlightKey, [AttributedString]>(
+        totalCostLimit: HighlightPolicy.perRepresentationCostLimit,
+        countLimit: HighlightPolicy.countLimit)
+    private var terminalLineCache = CostLimitedLRUCache<TerminalKey, [AttributedString]>(
+        totalCostLimit: HighlightPolicy.perRepresentationCostLimit,
+        countLimit: HighlightPolicy.countLimit)
 
     private init() {}
 
@@ -129,86 +109,60 @@ final class HighlightManager {
         theme: Theme,
         font: NSFont
     ) -> NSAttributedString {
-        let fallback = NSAttributedString(
-            string: code,
-            attributes: [.font: font, .foregroundColor: NSColor.textColor]
-        )
+        guard HighlightPolicy.mode(for: code, language: language) == .full else {
+            return plainText(code, theme: theme, font: font)
+        }
+
+        let shouldCache = HighlightPolicy.shouldCache(code)
+        let key = HighlightKey(
+            code: code, language: language, themeSource: theme.source, font: font)
+        if shouldCache, let cached = highlightCache.value(forKey: key) { return cached }
 
         if let palette = theme.palette {
-            // Custom theme: cache on the palette itself, so a re-render that
-            // didn't change the code/palette/font skips the slow HTML-importer path.
-            let key = CustomHighlightKey(
-                code: code, language: language, palette: palette, font: font)
-            if let cached = customCache[key] { return cached }
+            let fallback = plainText(code, theme: theme, font: font)
             let result =
                 customRenderer?.attributedString(
                     for: code, language: language, palette: palette, font: font) ?? fallback
-            insertFIFO(
-                result, forKey: key, into: &customCache, order: &customOrder,
-                limit: Self.highlightCacheLimit)
+            Self.cache(
+                result, forKey: key, code: code, representation: .attributedString,
+                in: &highlightCache)
             return result
         }
 
-        guard let highlightr else { return fallback }
-        // Built-in theme: serve from cache when nothing affecting the pixels changed, so a
-        // re-render driven by an inspector tweak (padding/background/shadow) does not
-        // re-tokenize the whole document. The cached value is identical to a fresh render.
-        let cacheKey = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
-        if let cached = highlightCache[cacheKey] { return cached }
-
+        guard let highlightr else { return plainText(code, theme: theme, font: font) }
         highlightr.setTheme(to: theme.hlJsTheme ?? Theme.oneDark.hlJsTheme ?? "atom-one-dark")
         highlightr.theme.codeFont = font
         let languageHint = language == .plaintext ? nil : language.hljsName
-        let highlighted = highlightr.highlight(code, as: languageHint, fastRender: true) ?? fallback
-        cacheHighlight(highlighted, for: cacheKey)
+        let highlighted =
+            highlightr.highlight(code, as: languageHint, fastRender: true)
+            ?? plainText(code, theme: theme, font: font)
+        Self.cache(
+            highlighted, forKey: key, code: code, representation: .attributedString,
+            in: &highlightCache)
         return highlighted
     }
 
-    /// Inserts a highlighted result into the FIFO-bounded built-in cache, evicting the
-    /// oldest entry past the limit so a long session never grows without bound.
-    private func cacheHighlight(_ value: NSAttributedString, for key: HighlightKey) {
-        if highlightCache[key] == nil {
-            highlightOrder.append(key)
-            if highlightOrder.count > Self.highlightCacheLimit {
-                highlightCache.removeValue(forKey: highlightOrder.removeFirst())
-            }
-        }
-        highlightCache[key] = value
-    }
-
     /// Highlights `code` and returns it as a SwiftUI `AttributedString`, caching the
-    /// `NSAttributedString`→`AttributedString` bridge for built-in themes so
-    /// the canvas does not repeat the O(n) bridge on every `body` pass. A custom theme is
-    /// bridged fresh (its `NSAttributedString` isn't cached either). The value is identical
-    /// to bridging `attributedString(for:…)` by hand.
+    /// `NSAttributedString`→`AttributedString` bridge for cacheable documents so the canvas does
+    /// not repeat the O(n) bridge on every `body` pass. The value is identical to bridging
+    /// `attributedString(for:…)` by hand.
     func swiftUIAttributedString(
         for code: String, language: Language, theme: Theme, font: NSFont
     ) -> AttributedString {
         let ns = attributedString(for: code, language: language, theme: theme, font: font)
-        // Custom theme: bridge is cached on the palette too, matching the
-        // built-in pair — the O(n) NSAttributedString→AttributedString walk no longer
-        // repeats on every `body` pass for a custom-theme user.
-        if let palette = theme.palette {
-            let key = CustomHighlightKey(
-                code: code, language: language, palette: palette, font: font)
-            if let cached = customSwiftUICache[key] { return cached }
-            let bridged = AttributedString(ns)
-            insertFIFO(
-                bridged, forKey: key, into: &customSwiftUICache, order: &customSwiftUIOrder,
-                limit: Self.highlightCacheLimit)
-            return bridged
-        }
-        let key = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
-        if let cached = swiftUICache[key] { return cached }
+        guard HighlightPolicy.shouldCache(code) else { return AttributedString(ns) }
+        let key = HighlightKey(
+            code: code, language: language, themeSource: theme.source, font: font)
+        if let cached = swiftUICache.value(forKey: key) { return cached }
         let bridged = AttributedString(ns)
-        insertFIFO(
-            bridged, forKey: key, into: &swiftUICache, order: &swiftUIOrder,
-            limit: Self.highlightCacheLimit)
+        Self.cache(
+            bridged, forKey: key, code: code, representation: .swiftUIAttributedString,
+            in: &swiftUICache)
         return bridged
     }
 
     /// Renders terminal (ANSI) `code` as a SwiftUI `AttributedString` in `theme`'s palette,
-    /// caching the parse-emulate-and-bridge result for built-in themes. The
+    /// caching the parse-emulate-and-bridge result for cacheable captures. The
     /// value is identical to bridging `ANSIRenderer.attributedString(…)` by hand.
     func terminalAttributedString(
         for code: String, theme: Theme, font: NSFont, columns: Int?
@@ -220,13 +174,13 @@ final class HighlightManager {
                     code, font: font, palette: palette, columns: columns))
         }
         let key = TerminalKey(
-            code: code, themeID: theme.id, customPalette: theme.palette, font: font,
-            columns: columns)
-        if let cached = terminalCache[key] { return cached }
+            code: code, themeSource: theme.source, font: font, columns: columns)
+        guard HighlightPolicy.shouldCache(code) else { return render() }
+        if let cached = terminalCache.value(forKey: key) { return cached }
         let bridged = render()
-        insertFIFO(
-            bridged, forKey: key, into: &terminalCache, order: &terminalOrder,
-            limit: Self.highlightCacheLimit)
+        Self.cache(
+            bridged, forKey: key, code: code, representation: .terminalAttributedString,
+            in: &terminalCache)
         return bridged
     }
 
@@ -239,22 +193,14 @@ final class HighlightManager {
     ) -> [AttributedString] {
         let bridged = swiftUIAttributedString(
             for: code, language: language, theme: theme, font: font)
-        if let palette = theme.palette {
-            let key = CustomHighlightKey(
-                code: code, language: language, palette: palette, font: font)
-            if let cached = customLineCache[key] { return cached }
-            let lines = Self.splitRows(bridged)
-            insertFIFO(
-                lines, forKey: key, into: &customLineCache, order: &customLineOrder,
-                limit: Self.highlightCacheLimit)
-            return lines
-        }
-        let key = HighlightKey(code: code, language: language, themeID: theme.id, font: font)
-        if let cached = lineCache[key] { return cached }
+        guard HighlightPolicy.shouldCache(code) else { return Self.splitRows(bridged) }
+        let key = HighlightKey(
+            code: code, language: language, themeSource: theme.source, font: font)
+        if let cached = lineCache.value(forKey: key) { return cached }
         let lines = Self.splitRows(bridged)
-        insertFIFO(
-            lines, forKey: key, into: &lineCache, order: &lineOrder,
-            limit: Self.highlightCacheLimit)
+        Self.cache(
+            lines, forKey: key, code: code, representation: .attributedLines,
+            in: &lineCache)
         return lines
     }
 
@@ -266,13 +212,13 @@ final class HighlightManager {
         let bridged = terminalAttributedString(
             for: code, theme: theme, font: font, columns: columns)
         let key = TerminalKey(
-            code: code, themeID: theme.id, customPalette: theme.palette, font: font,
-            columns: columns)
-        if let cached = terminalLineCache[key] { return cached }
+            code: code, themeSource: theme.source, font: font, columns: columns)
+        guard HighlightPolicy.shouldCache(code) else { return Self.splitRows(bridged) }
+        if let cached = terminalLineCache.value(forKey: key) { return cached }
         let lines = Self.splitRows(bridged)
-        insertFIFO(
-            lines, forKey: key, into: &terminalLineCache, order: &terminalLineOrder,
-            limit: Self.highlightCacheLimit)
+        Self.cache(
+            lines, forKey: key, code: code, representation: .terminalAttributedLines,
+            in: &terminalLineCache)
         return lines
     }
 
@@ -283,17 +229,48 @@ final class HighlightManager {
         return split.isEmpty ? [AttributedString()] : split
     }
 
-    /// Inserts `value` into a FIFO-bounded cache, evicting the oldest key past `limit`.
-    /// Shared by the SwiftUI-bridge and terminal caches.
-    private func insertFIFO<Key: Hashable, Value>(
-        _ value: Value, forKey key: Key, into cache: inout [Key: Value],
-        order: inout [Key], limit: Int
-    ) {
-        if cache[key] == nil {
-            order.append(key)
-            if order.count > limit { cache.removeValue(forKey: order.removeFirst()) }
+    /// A legible, one-run fallback for documents too large to tokenize interactively or for an
+    /// unavailable highlighting engine. Custom themes provide their exact foreground; built-ins
+    /// derive a neutral foreground from the actual stylesheet background.
+    private func plainText(_ code: String, theme: Theme, font: NSFont) -> NSAttributedString {
+        let foreground: NSColor
+        if let palette = theme.palette {
+            foreground = NSColor(palette.foreground.color)
+        } else {
+            foreground =
+                themeChrome(for: theme).isDark
+                ? NSColor(white: 0.92, alpha: 1)
+                : NSColor(white: 0.12, alpha: 1)
         }
-        cache[key] = value
+        return NSAttributedString(
+            string: code, attributes: [.font: font, .foregroundColor: foreground])
+    }
+
+    /// Test-only observability without exposing cache contents or coupling behavior to identity.
+    var cachedEntryCountForTesting: Int {
+        highlightCache.metrics.count + swiftUICache.metrics.count + terminalCache.metrics.count
+            + lineCache.metrics.count + terminalLineCache.metrics.count
+    }
+
+    func resetCachesForTesting() {
+        highlightCache.removeAll()
+        swiftUICache.removeAll()
+        terminalCache.removeAll()
+        lineCache.removeAll()
+        terminalLineCache.removeAll()
+    }
+
+    /// Retains a derived value only for screenshot-sized source. Every representation has an
+    /// independent cost budget and deterministic LRU eviction; medium/large documents bypass it.
+    private static func cache<Key: Hashable, Value>(
+        _ value: Value, forKey key: Key, code: String,
+        representation: HighlightPolicy.Representation,
+        in cache: inout CostLimitedLRUCache<Key, Value>
+    ) {
+        guard HighlightPolicy.shouldCache(code) else { return }
+        cache.insert(
+            value, forKey: key,
+            cost: HighlightPolicy.cacheCost(for: code, representation: representation))
     }
 
     /// The Highlight.js language identifiers the bundled engine recognizes, or
@@ -363,10 +340,10 @@ final class HighlightManager {
             let background = backgroundNSColor(for: theme)
             return ThemeChrome(background: background, isDark: isDark(background))
         }
-        if let cached = builtInChrome[theme.id] { return cached }
+        if let cached = builtInChrome[theme.source] { return cached }
         let background = backgroundNSColor(for: theme)
         let chrome = ThemeChrome(background: background, isDark: isDark(background))
-        builtInChrome[theme.id] = chrome
+        builtInChrome[theme.source] = chrome
         return chrome
     }
 

@@ -6,7 +6,9 @@ import Testing
 @MainActor
 @Suite("Living snapshot sessions")
 struct LivingSnapshotSessionTests {
-    private final class TestDisk {
+    private actor TestDisk {
+        enum Failure: Error { case unavailable }
+
         var revision: Int
         var text: String
         var isReadable: Bool
@@ -18,6 +20,87 @@ struct LivingSnapshotSessionTests {
             self.text = text
             self.isReadable = isReadable
         }
+
+        func currentText() -> String { text }
+
+        func update(
+            revision: Int? = nil,
+            text: String? = nil,
+            isReadable: Bool? = nil
+        ) {
+            if let revision { self.revision = revision }
+            if let text { self.text = text }
+            if let isReadable { self.isReadable = isReadable }
+        }
+
+        func failNextRead() {
+            shouldFailNextRead = true
+        }
+
+        func failedAttemptCount() -> Int { failedAttempts }
+
+        func fileStamp() -> LivingSnapshotSession.FileStamp {
+            LivingSnapshotSession.FileStamp(
+                byteCount: revision,
+                modificationDate: Date(timeIntervalSince1970: TimeInterval(revision)),
+                resourceIdentifier: "revision-\(revision)",
+                fileNumber: UInt64(revision),
+                volumeNumber: 1)
+        }
+
+        func loadedFile(for url: URL) throws -> FileInputLoader.LoadedFile {
+            guard isReadable else { throw Failure.unavailable }
+            if shouldFailNextRead {
+                failedAttempts += 1
+                shouldFailNextRead = false
+                throw Failure.unavailable
+            }
+            return FileInputLoader.LoadedFile(
+                text: text,
+                language: .swift,
+                filename: url.lastPathComponent,
+                sourceURL: url)
+        }
+    }
+
+    /// A cancellation-insensitive filesystem double. Production cancellation cannot force a
+    /// blocking POSIX read to return, so these continuations prove the generation guard rejects
+    /// late bytes even after the owning task has been cancelled.
+    private actor ControlledReads {
+        private var requested: Set<URL> = []
+        private var requestWaiters: [URL: [CheckedContinuation<Void, Never>]] = [:]
+        private var loadContinuations:
+            [URL: CheckedContinuation<FileInputLoader.LoadedFile, Never>] = [:]
+
+        func load(_ url: URL) async -> FileInputLoader.LoadedFile {
+            requested.insert(url)
+            for waiter in requestWaiters.removeValue(forKey: url) ?? [] {
+                waiter.resume()
+            }
+            return await withCheckedContinuation { continuation in
+                loadContinuations[url] = continuation
+            }
+        }
+
+        func waitUntilRequested(_ url: URL) async {
+            guard !requested.contains(url) else { return }
+            await withCheckedContinuation { continuation in
+                requestWaiters[url, default: []].append(continuation)
+            }
+        }
+
+        func resume(_ url: URL, text: String) {
+            guard let continuation = loadContinuations.removeValue(forKey: url) else {
+                Issue.record("No suspended read exists for \(url.lastPathComponent)")
+                return
+            }
+            continuation.resume(
+                returning: FileInputLoader.LoadedFile(
+                    text: text,
+                    language: .swift,
+                    filename: url.lastPathComponent,
+                    sourceURL: url))
+        }
     }
 
     private func settings() -> AppSettings {
@@ -25,7 +108,9 @@ struct LivingSnapshotSessionTests {
             defaults: testDefaults())
     }
 
-    private func loaded(_ text: String, url: URL) -> FileInputLoader.LoadedFile {
+    nonisolated private func loaded(
+        _ text: String, url: URL
+    ) -> FileInputLoader.LoadedFile {
         FileInputLoader.LoadedFile(
             text: text,
             language: .swift,
@@ -33,7 +118,7 @@ struct LivingSnapshotSessionTests {
             sourceURL: url)
     }
 
-    private func stamp(_ revision: Int) -> LivingSnapshotSession.FileStamp {
+    nonisolated private func stamp(_ revision: Int) -> LivingSnapshotSession.FileStamp {
         LivingSnapshotSession.FileStamp(
             byteCount: revision,
             modificationDate: Date(timeIntervalSince1970: TimeInterval(revision)),
@@ -42,7 +127,12 @@ struct LivingSnapshotSessionTests {
             volumeNumber: 1)
     }
 
-    @Test func explicitSessionRetainsAndReleasesAccessWithoutPersistingAPath() throws {
+    private func wait(_ task: Task<Bool, Never>?) async -> Bool {
+        guard let task else { return false }
+        return await task.value
+    }
+
+    @Test func explicitSessionRetainsAndReleasesAccessWithoutPersistingAPath() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Example.swift")
         var starts: [URL] = []
@@ -60,7 +150,7 @@ struct LivingSnapshotSessionTests {
             pollingInterval: .seconds(3_600))
 
         settings.documentCode = "let value = 1"
-        session.start(with: loaded("let value = 1", url: source))
+        _ = await wait(session.start(with: loaded("let value = 1", url: source)))
 
         #expect(session.status == .watching)
         #expect(session.displayName == "Example.swift")
@@ -73,7 +163,7 @@ struct LivingSnapshotSessionTests {
         #expect(stops == [source])
     }
 
-    @Test func cleanEditorRefreshesAutomatically() throws {
+    @Test func cleanEditorRefreshesAutomatically() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "let value = 1")
@@ -82,22 +172,21 @@ struct LivingSnapshotSessionTests {
             client: .init(
                 startAccess: { _ in false },
                 stopAccess: { _ in },
-                stamp: { _ in stamp(disk.revision) },
-                load: { _ in loaded(disk.text, url: source) }),
+                stamp: { _ in await disk.fileStamp() },
+                load: { _ in try await disk.loadedFile(for: source) }),
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
-        settings.documentCode = disk.text
-        session.start(with: loaded(disk.text, url: source))
+        settings.documentCode = await disk.currentText()
+        _ = await wait(session.start(with: loaded(await disk.currentText(), url: source)))
 
-        disk.revision = 2
-        disk.text = "let value = 2"
-        session.checkForChanges()
+        await disk.update(revision: 2, text: "let value = 2")
+        _ = await wait(session.checkForChanges())
 
         #expect(settings.documentCode == "let value = 2")
         #expect(session.status == .watching)
     }
 
-    @Test func dirtyEditorRequiresAnExplicitReload() throws {
+    @Test func dirtyEditorRequiresAnExplicitReload() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "let value = 1")
@@ -106,28 +195,27 @@ struct LivingSnapshotSessionTests {
             client: .init(
                 startAccess: { _ in false },
                 stopAccess: { _ in },
-                stamp: { _ in stamp(disk.revision) },
-                load: { _ in loaded(disk.text, url: source) }),
+                stamp: { _ in await disk.fileStamp() },
+                load: { _ in try await disk.loadedFile(for: source) }),
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
-        settings.documentCode = disk.text
-        session.start(with: loaded(disk.text, url: source))
+        settings.documentCode = await disk.currentText()
+        _ = await wait(session.start(with: loaded(await disk.currentText(), url: source)))
 
         settings.documentCode = "let localDraft = true"
-        disk.revision = 2
-        disk.text = "let value = 2"
-        session.checkForChanges()
+        await disk.update(revision: 2, text: "let value = 2")
+        _ = await wait(session.checkForChanges())
 
         #expect(settings.documentCode == "let localDraft = true")
         #expect(session.status == .changeAvailable)
 
-        session.reloadFromDisk()
+        _ = await wait(session.reloadFromDisk())
 
         #expect(settings.documentCode == "let value = 2")
         #expect(session.status == .watching)
     }
 
-    @Test func keepingLocalEditsDismissesOnlyTheCurrentNotice() throws {
+    @Test func keepingLocalEditsDismissesOnlyTheCurrentNotice() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "one")
@@ -136,33 +224,29 @@ struct LivingSnapshotSessionTests {
             client: .init(
                 startAccess: { _ in false },
                 stopAccess: { _ in },
-                stamp: { _ in stamp(disk.revision) },
-                load: { _ in loaded(disk.text, url: source) }),
+                stamp: { _ in await disk.fileStamp() },
+                load: { _ in try await disk.loadedFile(for: source) }),
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
-        settings.documentCode = disk.text
-        session.start(with: loaded(disk.text, url: source))
+        settings.documentCode = await disk.currentText()
+        _ = await wait(session.start(with: loaded(await disk.currentText(), url: source)))
         settings.documentCode = "local"
 
-        disk.revision = 2
-        disk.text = "two"
-        session.checkForChanges()
+        await disk.update(revision: 2, text: "two")
+        _ = await wait(session.checkForChanges())
         session.keepEditing()
 
         #expect(settings.documentCode == "local")
         #expect(session.status == .watching)
 
-        disk.revision = 3
-        disk.text = "three"
-        session.checkForChanges()
+        await disk.update(revision: 3, text: "three")
+        _ = await wait(session.checkForChanges())
 
         #expect(settings.documentCode == "local")
         #expect(session.status == .changeAvailable)
     }
 
-    @Test func transientReadFailureRetriesTheSameFingerprint() throws {
-        enum TestError: Error { case unavailable }
-
+    @Test func transientReadFailureRetriesTheSameFingerprint() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "one")
@@ -171,34 +255,26 @@ struct LivingSnapshotSessionTests {
             client: .init(
                 startAccess: { _ in false },
                 stopAccess: { _ in },
-                stamp: { _ in stamp(disk.revision) },
-                load: { _ in
-                    if disk.shouldFailNextRead {
-                        disk.failedAttempts += 1
-                        disk.shouldFailNextRead = false
-                        throw TestError.unavailable
-                    }
-                    return loaded(disk.text, url: source)
-                }),
+                stamp: { _ in await disk.fileStamp() },
+                load: { _ in try await disk.loadedFile(for: source) }),
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
         settings.documentCode = "one"
-        session.start(with: loaded("one", url: source))
+        _ = await wait(session.start(with: loaded("one", url: source)))
 
-        disk.revision = 2
-        disk.text = "two"
-        disk.shouldFailNextRead = true
-        session.checkForChanges()
+        await disk.update(revision: 2, text: "two")
+        await disk.failNextRead()
+        _ = await wait(session.checkForChanges())
         #expect(session.status == .unavailable)
         #expect(settings.documentCode == "one")
 
-        session.checkForChanges()
-        #expect(disk.failedAttempts == 1)
+        _ = await wait(session.checkForChanges())
+        #expect(await disk.failedAttemptCount() == 1)
         #expect(session.status == .watching)
         #expect(settings.documentCode == "two")
     }
 
-    @Test func startReconcilesAChangeMadeDuringReplacementConfirmation() throws {
+    @Test func startReconcilesAChangeMadeDuringReplacementConfirmation() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         settings.documentCode = "one"
@@ -212,15 +288,13 @@ struct LivingSnapshotSessionTests {
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
 
-        session.start(with: loaded("one", url: source))
+        _ = await wait(session.start(with: loaded("one", url: source)))
 
         #expect(settings.documentCode == "two")
         #expect(session.status == .watching)
     }
 
-    @Test func unavailableStatusRequiresARealContentReadToRecover() throws {
-        enum TestError: Error { case unavailable }
-
+    @Test func unavailableStatusRequiresARealContentReadToRecover() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "one", isReadable: false)
@@ -230,27 +304,24 @@ struct LivingSnapshotSessionTests {
                 startAccess: { _ in false },
                 stopAccess: { _ in },
                 stamp: { _ in stamp(1) },
-                load: { _ in
-                    guard disk.isReadable else { throw TestError.unavailable }
-                    return loaded(disk.text, url: source)
-                }),
+                load: { _ in try await disk.loadedFile(for: source) }),
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
         settings.documentCode = "one"
-        session.start(with: loaded("one", url: source))
+        _ = await wait(session.start(with: loaded("one", url: source)))
 
-        session.reloadFromDisk()
+        _ = await wait(session.reloadFromDisk())
         #expect(session.status == .unavailable)
 
-        session.checkForChanges()
+        _ = await wait(session.checkForChanges())
         #expect(session.status == .unavailable)
 
-        disk.isReadable = true
-        session.checkForChanges()
+        await disk.update(isReadable: true)
+        _ = await wait(session.checkForChanges())
         #expect(session.status == .watching)
     }
 
-    @Test func unchangedContentDoesNotClobberLocalPresentationState() throws {
+    @Test func unchangedContentDoesNotClobberLocalPresentationState() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let disk = TestDisk(text: "same")
@@ -259,22 +330,22 @@ struct LivingSnapshotSessionTests {
             client: .init(
                 startAccess: { _ in false },
                 stopAccess: { _ in },
-                stamp: { _ in stamp(disk.revision) },
+                stamp: { _ in await disk.fileStamp() },
                 load: { _ in loaded("same", url: source) }),
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
         settings.documentCode = "same"
-        session.start(with: loaded("same", url: source))
+        _ = await wait(session.start(with: loaded("same", url: source)))
         settings.config.highlightedLineRanges = [1...1]
 
-        disk.revision = 2
-        session.checkForChanges()
+        await disk.update(revision: 2)
+        _ = await wait(session.checkForChanges())
 
         #expect(settings.config.highlightedLineRanges == [1...1])
         #expect(session.status == .watching)
     }
 
-    @Test func explicitReloadOfUnchangedContentPreservesContentMarks() throws {
+    @Test func explicitReloadOfUnchangedContentPreservesContentMarks() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")
         let session = LivingSnapshotSession(
@@ -287,16 +358,109 @@ struct LivingSnapshotSessionTests {
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
         settings.documentCode = "same"
-        session.start(with: loaded("same", url: source))
+        _ = await wait(session.start(with: loaded("same", url: source)))
         settings.config.highlightedLineRanges = [1...1]
 
-        #expect(session.reloadFromDisk())
+        #expect(await wait(session.reloadFromDisk()))
 
         #expect(settings.config.highlightedLineRanges == [1...1])
         #expect(session.status == .watching)
     }
 
-    @Test func sameSizeAtomicReplacementIsDetectedEndToEnd() throws {
+    @Test func aLateReadFromThePreviousFileCannotOverwriteTheNewGeneration() async throws {
+        let settings = settings()
+        let firstURL = URL(fileURLWithPath: "/tmp/First.swift")
+        let secondURL = URL(fileURLWithPath: "/tmp/Second.swift")
+        let reads = ControlledReads()
+        let session = LivingSnapshotSession(
+            settings: settings,
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in stamp(1) },
+                load: { await reads.load($0) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+
+        settings.documentCode = "first initial"
+        let firstTask = session.start(with: loaded("first initial", url: firstURL))
+        await reads.waitUntilRequested(firstURL)
+
+        settings.documentCode = "second initial"
+        let secondTask = session.start(with: loaded("second initial", url: secondURL))
+        await reads.waitUntilRequested(secondURL)
+        await reads.resume(secondURL, text: "second newest")
+        #expect(await wait(secondTask))
+
+        await reads.resume(firstURL, text: "first stale")
+        #expect(!(await wait(firstTask)))
+        #expect(settings.documentCode == "second newest")
+        #expect(session.displayName == "Second.swift")
+        #expect(session.status == .watching)
+    }
+
+    @Test func stoppingTheSessionRejectsAReadThatFinishesAfterWindowClose() async throws {
+        let settings = settings()
+        let source = URL(fileURLWithPath: "/tmp/Closing.swift")
+        let reads = ControlledReads()
+        var stoppedURLs: [URL] = []
+        let session = LivingSnapshotSession(
+            settings: settings,
+            client: .init(
+                startAccess: { _ in true },
+                stopAccess: { stoppedURLs.append($0) },
+                stamp: { _ in stamp(1) },
+                load: { await reads.load($0) }),
+            pollingInterval: .seconds(3_600))
+
+        settings.documentCode = "window content"
+        let task = session.start(with: loaded("window content", url: source))
+        await reads.waitUntilRequested(source)
+        session.stop()
+
+        await reads.resume(source, text: "late disk content")
+        #expect(!(await wait(task)))
+        #expect(settings.documentCode == "window content")
+        #expect(session.status == .inactive)
+        #expect(session.displayName.isEmpty)
+        #expect(stoppedURLs == [source])
+    }
+
+    @Test func aNewPickerRequestInvalidatesAnOlderOpeningRead() async throws {
+        let settings = settings()
+        let firstURL = URL(fileURLWithPath: "/tmp/OldSelection.swift")
+        let secondURL = URL(fileURLWithPath: "/tmp/NewSelection.swift")
+        let reads = ControlledReads()
+        let session = LivingSnapshotSession(
+            settings: settings,
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in stamp(1) },
+                load: { await reads.load($0) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+
+        let firstTask = Task {
+            try await session.loadForOpening(from: firstURL)
+        }
+        await reads.waitUntilRequested(firstURL)
+        let secondTask = Task {
+            try await session.loadForOpening(from: secondURL)
+        }
+        await reads.waitUntilRequested(secondURL)
+
+        await reads.resume(secondURL, text: "new selection")
+        let secondLoaded = try await secondTask.value
+        #expect(secondLoaded.text == "new selection")
+
+        await reads.resume(firstURL, text: "stale selection")
+        await #expect(throws: CancellationError.self) {
+            try await firstTask.value
+        }
+    }
+
+    @Test func sameSizeAtomicReplacementIsDetectedEndToEnd() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("VitrineLivingSnapshot-\(UUID().uuidString)")
         try FileManager.default.createDirectory(
@@ -312,12 +476,12 @@ struct LivingSnapshotSessionTests {
             settings: settings,
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
-        session.start(with: initial)
+        _ = await wait(session.start(with: initial))
 
         // Atomic writes replace the original inode. The text deliberately keeps the
         // same byte count so resource identity, not file size, proves the change.
         try Data("two".utf8).write(to: source, options: .atomic)
-        session.checkForChanges()
+        _ = await wait(session.checkForChanges())
 
         #expect(settings.documentCode == "two")
         #expect(session.status == .watching)

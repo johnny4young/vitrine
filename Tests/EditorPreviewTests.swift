@@ -104,8 +104,13 @@ extension EditorPreviewTests {
     }
 
     @Test func theDebounceWindowIsShortButNonZero() {
-        #expect(EditorPreview.previewCodeDebounce > .zero)
-        #expect(EditorPreview.previewCodeDebounce <= .milliseconds(150))
+        let ordinary = HighlightPolicy.previewDebounce(for: "let value = 42")
+        let medium = String(
+            repeating: "let value = 42\n",
+            count: HighlightPolicy.maximumCacheableByteCount / 15 + 2)
+        #expect(ordinary > .zero)
+        #expect(ordinary <= .milliseconds(150))
+        #expect(HighlightPolicy.previewDebounce(for: medium) > ordinary)
     }
 
     @Test func equivalentCanvasesCoalesceButRenderedInputsDoNot() {

@@ -140,9 +140,9 @@ final class EditorWindowController: NSObject {
     /// The app-owned presentation routes shared by every editor session.
     let presentation: EditorPresentation
 
-    /// The live editor windows, keyed by their window-index. Reused, non-released
-    /// windows keep reopening cheap and let the controller route the menu to the key
-    /// window's session.
+    /// The live editor windows, keyed by their window-index. Closing a window removes
+    /// and tears down its hosting tree; reopening builds a fresh tree while the primary
+    /// session can still preserve its in-process draft.
     private var windows: [Int: NSWindow] = [:]
 
     /// The session backing each live window, keyed by the same index, so the key

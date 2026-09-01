@@ -8,7 +8,7 @@ import Foundation
 /// prevents a path swap to a FIFO from hanging the app, while both type and stability
 /// checks use `fstat` on the descriptor that is actually read rather than re-statting
 /// the pathname.
-enum BoundedFileReader {
+nonisolated enum BoundedFileReader {
     enum ReadError: Error, Equatable {
         case unreadable
         case notRegularFile

@@ -49,6 +49,7 @@ COVERAGE_BASE_REF_FLAG := $(if $(COVERAGE_BASE_REF),--base-ref "$(COVERAGE_BASE_
 MEMORY_OUTPUT ?= build/memory-smoke
 MEMORY_JOURNEY ?= editor-snapshot
 MEMORY_BASELINE_FLAG := $(if $(MEMORY_BASELINE),--baseline "$(MEMORY_BASELINE)",)
+MEMORY_ITERATIONS_FLAG := $(if $(MEMORY_ITERATIONS),--iterations "$(MEMORY_ITERATIONS)",)
 
 # The entitlements file the Vitrine target signs with, consumed by project.yml as
 # ${VITRINE_ENTITLEMENTS_FILE} (XcodeGen resolves it to a literal at generate time,
@@ -66,7 +67,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -271,16 +272,29 @@ memory-smoke: build memory-smoke-check
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
 		--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
 		--output "$(MEMORY_OUTPUT)" --journey "$(MEMORY_JOURNEY)" \
-		$(MEMORY_BASELINE_FLAG)
+		$(MEMORY_ITERATIONS_FLAG) $(MEMORY_BASELINE_FLAG)
 
-## memory-smoke-all: capture all four journeys sequentially against one clean build
+## memory-smoke-all: capture all five bounded journeys sequentially against one clean build
 ## Baselines are intentionally per-journey; use memory-smoke when comparing one report.
 memory-smoke-all: build memory-smoke-check
-	@set -e; for journey in editor-snapshot image-import-cycle window-churn web-snapshot-cycle; do \
+	@set -e; for journey in editor-snapshot image-import-cycle window-churn web-snapshot-cycle large-document-cycle; do \
 		echo "==> memory smoke: $$journey"; \
 		env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
 			--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
 			--output "$(MEMORY_OUTPUT)" --journey "$$journey"; \
+	done
+
+## memory-soak-matrix: record longitudinal 20/50/100 lifecycle profiles
+## Runs four teardown-heavy journeys sequentially; generated memgraphs and JSON remain ignored.
+memory-soak-matrix: build memory-smoke-check
+	@set -e; for journey in image-import-cycle window-churn web-snapshot-cycle large-document-cycle; do \
+		for iterations in 20 50 100; do \
+			echo "==> memory soak: $$journey ($$iterations iterations)"; \
+			env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
+				--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
+				--output "$(MEMORY_OUTPUT)" --journey "$$journey" \
+				--iterations "$$iterations" --launch-timeout 900 --analysis-timeout 300; \
+		done; \
 	done
 
 ## memory-smoke-check: validate the parser and baseline comparison without launching UI

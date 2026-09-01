@@ -250,7 +250,7 @@ extension EditorView {
                 copied: outcome == .copied,
                 preferenceEnabled: environment.appSettings.export.closeAfterCopy)
         else { return }
-        guard let editorWindow else { return }
+        guard let editorWindow = editorWindow.value else { return }
         DispatchQueue.main.async { editorWindow.close() }
     }
 
@@ -520,7 +520,7 @@ extension EditorView {
             let image = try ExportManager.renderNSImageChecked(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
                 fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
-            session.presentation.share(image, relativeTo: editorWindow?.contentView)
+            session.presentation.share(image, relativeTo: editorWindow.value?.contentView)
         } catch let error {
             session.feedback(ExportFeedback.renderFailure(error))
         }

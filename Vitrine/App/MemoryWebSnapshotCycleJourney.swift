@@ -16,20 +16,24 @@ struct MemoryWebSnapshotCycleJourney {
         case duplicateSnapshot
     }
 
+    static let journeyID = "web-snapshot-cycle"
     static let completionMarker = "VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_COMPLETE"
     static let defaultIterationCount = 10
 
     let render: (Int) async throws -> String
     let sleep: (Duration) async throws -> Void
+    let observe: (Int) async throws -> Void
 
     init(
         render: @escaping (Int) async throws -> String,
         sleep: @escaping (Duration) async throws -> Void = { duration in
             try await Task.sleep(for: duration)
-        }
+        },
+        observe: @escaping (Int) async throws -> Void = { _ in }
     ) {
         self.render = render
         self.sleep = sleep
+        self.observe = observe
     }
 
     func run(iterations: Int = defaultIterationCount) async throws -> Result {
@@ -42,6 +46,7 @@ struct MemoryWebSnapshotCycleJourney {
                 throw JourneyError.duplicateSnapshot
             }
             try await sleep(.milliseconds(150))
+            try await observe(tick + 1)
         }
 
         return Result(

@@ -241,13 +241,19 @@ implicitly on the Xcode scheme default.
 Run `make memory-smoke` before a release candidate and after changes to window,
 renderer, observer, or asynchronous-task lifecycles. It runs the normal headless Debug
 build, reusing Xcode's already-resolved exact package checkouts, then launches a selected
-isolated journey under Apple's `leaks --atExit`. The four journeys cover repeated editor
+isolated journey under Apple's `leaks --atExit`. The five journeys cover repeated editor
 snapshot rasterization; deterministic foreground-image import, decode, replacement, and
-teardown; twenty additional editor window open/render/close cycles; and ten distinct real
-local-HTML WebKit session captures. The image and WebKit journeys reject duplicate output,
-while window churn requires a capture from the exact newly-opened editor. The image journey also removes its synthetic
-temporary store before reporting completion. The raw journey-named memgraph, full stack
-report, launch log, and a machine-readable summary are retained below
+teardown; additional editor window open/render/close cycles; distinct real local-HTML
+WebKit session captures; and large-document publish/render/teardown cycles above the
+interactive-highlighting ceiling. The teardown-heavy journeys support 20-, 50-, and
+100-iteration profiles. After every iteration returns to its baseline state, the app gives
+deferred framework releases three bounded run-loop turns, each inside a fresh autorelease
+pool, and records `TASK_VM_INFO.phys_footprint`. The report retains every sample plus full
+and post-warm-up least-squares slopes; neither slope is an automatic ownership verdict.
+Image, WebKit, and large-document journeys reject duplicate output, while window churn
+requires a capture from the exact newly-opened editor. The image journey also removes its
+synthetic temporary store before reporting completion. The raw journey-named memgraph,
+full stack report, launch log, and a machine-readable summary are retained below
 `build/memory-smoke/<timestamp>/`.
 
 ```bash
@@ -262,12 +268,23 @@ make memory-smoke MEMORY_JOURNEY=window-churn
 # Exercise newly-created non-persistent WebKit sessions with local HTML only.
 make memory-smoke MEMORY_JOURNEY=web-snapshot-cycle
 
-# Run editor, image, window, and WebKit journeys sequentially against one build.
+# Exercise source documents above the interactive-highlighting ceiling.
+make memory-smoke MEMORY_JOURNEY=large-document-cycle
+
+# Override any journey with a bounded iteration count.
+make memory-smoke MEMORY_JOURNEY=window-churn MEMORY_ITERATIONS=50
+
+# Run editor, image, window, WebKit, and large-document journeys against one build.
 make memory-smoke-all
 
+# Run image, window, WebKit, and large-document lifecycle profiles at 20/50/100.
+# This lane carries a larger capture timeout because `leaks` significantly slows the
+# 100-iteration window and WebKit runs; sample/completion validation remains strict.
+make memory-soak-matrix
+
 # Compare counts and footprints only with an earlier run from the exact same clean
-# commit, OS, architecture, Xcode, and journey. The report marks any provenance drift
-# instead of pretending the evidence is comparable.
+# commit, OS, architecture, Xcode, journey, and iteration count. The report marks any
+# provenance drift instead of pretending the evidence is comparable.
 make memory-smoke \
   MEMORY_JOURNEY=image-import-cycle \
   MEMORY_BASELINE=build/memory-smoke/<earlier-run>/report.json
@@ -281,12 +298,17 @@ also contributes to the peak footprint. Review the root stacks in `leaks.txt` an
 memgraph before classifying a regression. The command fails when the build, journey,
 capture, or report is invalid, but it does not silently allowlist framework roots or
 turn their mere presence into an app failure. Keep all generated evidence local and
-untracked. Compare only repeated, same-provenance root or footprint growth; do not change
-ownership based only on allocation-path frames. The image journey deliberately uses local
+untracked. Compare only repeated, same-provenance root, final footprint, or post-warm-up
+slope growth. A single positive slope can reflect cache warm-up or allocator behavior;
+investigate only growth that repeats across the 20/50/100 profiles on the same clean
+commit, macOS, architecture, and Xcode. Do not change ownership based only on
+allocation-path frames. The image journey deliberately uses local
 bounded fixtures; it does not replace the unit coverage for oversized/corrupt inputs and
 does not simulate an external item provider that never calls back. The local-HTML WebKit
-journey does not qualify public network capture, and the window journey does not cover
-every auxiliary window type.
+journey measures the Vitrine host process rather than separate WebContent processes and
+does not qualify public network capture. The window journey does not cover every
+auxiliary window type. The large-document journey covers interactive fallback, not the
+five-megabyte source-import ceiling.
 
 ### Running the UI tests
 

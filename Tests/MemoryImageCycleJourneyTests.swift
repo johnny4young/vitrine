@@ -17,6 +17,7 @@ struct MemoryImageCycleJourneyTests {
         let store = Self.temporaryStore()
         defer { try? FileManager.default.removeItem(at: store.directory) }
         var capturedTicks: [Int] = []
+        var observedIterations: [Int] = []
         let journey = MemoryImageCycleJourney(
             settings: settings,
             store: store,
@@ -24,7 +25,8 @@ struct MemoryImageCycleJourneyTests {
             capture: {
                 capturedTicks.append($0)
                 return "snapshot-\($0)"
-            })
+            },
+            observe: { observedIterations.append($0) })
 
         let result = try await journey.run(iterations: 8)
 
@@ -32,6 +34,7 @@ struct MemoryImageCycleJourneyTests {
         #expect(result.uniqueReferences == 8)
         #expect(result.uniqueSnapshots == 8)
         #expect(capturedTicks == Array(0..<8))
+        #expect(observedIterations == Array(1...8))
         #expect(settings.config.foregroundImage == nil)
         let storedFiles = try FileManager.default.contentsOfDirectory(
             at: store.directory,

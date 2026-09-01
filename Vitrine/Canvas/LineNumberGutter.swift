@@ -292,9 +292,13 @@ enum LineSplitter {
     }
 
     /// The number of rows `text` renders as: one per line, with empty interior
-    /// and trailing lines counted. Empty text counts as a single (empty) row.
+    /// and trailing lines counted. Empty text counts as a single (empty) row. Count
+    /// line-feed bytes directly so status updates for large documents do not allocate
+    /// an array of every line merely to read its count.
     static func lineCount(of text: String) -> Int {
-        max(1, plainLines(of: text).count)
+        var count = 1
+        for byte in text.utf8 where byte == 0x0A { count += 1 }
+        return count
     }
 
     /// The attributed lines, including empty ones, each keeping its run colors.

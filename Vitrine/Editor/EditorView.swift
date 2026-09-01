@@ -136,9 +136,10 @@ struct EditorView: View {
     /// flash on open).
     @State var stagedPreviewCode: String?
 
-    /// This editor's own `NSWindow`, captured via `WindowAccessor`, so actions like
-    /// close-after-copy target it directly instead of guessing at `keyWindow`.
-    @State var editorWindow: NSWindow?
+    /// This editor's own weak `NSWindow` slot, captured via `WindowAccessor`, so actions
+    /// like close-after-copy target it directly without making the hosted SwiftUI tree
+    /// own its AppKit window.
+    @State var editorWindow = WeakWindowReference()
 
     /// The export surface currently presented from either toolbar density. One optional
     /// destination owns multi-size, carousel, and their paywalls so separate toolbar
@@ -210,7 +211,7 @@ struct EditorView: View {
         // A comfortable minimum that still fits the three columns on the smallest
         // supported window; the stage column absorbs all extra width.
         .frame(minWidth: 940, minHeight: 520)
-        .background(WindowAccessor { editorWindow = $0 })
+        .background(WindowAccessor { editorWindow.value = $0 })
         // A zero-size button carries the ⌘K shortcut so the palette opens from
         // anywhere in the editor without stealing a letter the code editor needs.
         .background {
@@ -233,7 +234,7 @@ struct EditorView: View {
         .onReceive(NotificationCenter.default.publisher(for: .vitrineSelectAnnotationTool)) {
             notification in
             guard let targetWindow = notification.object as? NSWindow,
-                targetWindow === editorWindow,
+                targetWindow === editorWindow.value,
                 let rawValue = notification.userInfo?["tool"] as? String,
                 let tool = AnnotationTool(rawValue: rawValue)
             else { return }

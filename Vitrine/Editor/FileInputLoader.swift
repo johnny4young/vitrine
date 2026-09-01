@@ -32,7 +32,7 @@ enum FileInputLoader {
     /// A successfully loaded file: the decoded text, an inferred language, and the
     /// source file's display name (its last path component) for the metadata
     /// header.
-    struct LoadedFile: Equatable {
+    struct LoadedFile: Equatable, Sendable {
         /// The decoded file contents, ready to drop into the editor.
         var text: String
         /// The language inferred from the extension, or from the content when the
@@ -114,7 +114,13 @@ enum FileInputLoader {
     /// The largest file the loader will accept (5 MB). A source file this big is
     /// already far past anything that renders to a usable image; the cap mainly
     /// guards against accidentally dropping a giant or binary file.
-    static let maximumByteCount = 5 * 1024 * 1024
+    nonisolated static let maximumByteCount = 5 * 1024 * 1024
+
+    nonisolated private struct RawFile: Sendable {
+        var data: Data
+        var filename: String
+        var sourceURL: URL
+    }
 
     // MARK: - File loading
 
@@ -127,6 +133,34 @@ enum FileInputLoader {
     /// released immediately afterward. The size cap is checked against the bytes
     /// actually read. Throws a `LoadError` the caller can present verbatim.
     static func load(from url: URL) throws -> LoadedFile {
+        let rawFile: RawFile
+        do {
+            rawFile = try readBoundedFile(from: url)
+        } catch LoadError.tooLarge {
+            throw LoadError.tooLarge
+        } catch {
+            // Collapse any low-level I/O error into one clear message; never echo
+            // the path or the system error (privacy policy).
+            Log.capture.error("File input: read failed")
+            throw error
+        }
+        return try decode(rawFile: rawFile)
+    }
+
+    /// Async sibling for living files. Only the bounded filesystem read hops to the concurrent
+    /// executor; the existing pure interpretation policy remains centralized in `decode`.
+    @concurrent
+    static func loadConcurrently(from url: URL) async throws -> LoadedFile {
+        try Task.checkCancellation()
+        let rawFile = try readBoundedFile(from: url)
+        try Task.checkCancellation()
+        return try await decode(rawFile: rawFile)
+    }
+
+    /// Reads the user-selected source under a balanced security scope on the caller's executor.
+    /// The concurrent living-file API invokes this from the cooperative pool; the synchronous
+    /// drag/drop API retains its existing behavior.
+    nonisolated private static func readBoundedFile(from url: URL) throws -> RawFile {
         let accessed = url.startAccessingSecurityScopedResource()
         defer { if accessed { url.stopAccessingSecurityScopedResource() } }
 
@@ -136,14 +170,18 @@ enum FileInputLoader {
         } catch BoundedFileReader.ReadError.tooLarge {
             throw LoadError.tooLarge
         } catch {
-            // Collapse any low-level I/O error into one clear message; never echo
-            // the path or the system error (privacy policy).
-            Log.capture.error("File input: read failed")
             throw LoadError.unreadable
         }
 
-        var loaded = try decode(data: data, filename: url.lastPathComponent)
-        loaded.sourceURL = url.standardizedFileURL
+        return RawFile(
+            data: data,
+            filename: url.lastPathComponent,
+            sourceURL: url.standardizedFileURL)
+    }
+
+    private static func decode(rawFile: RawFile) throws -> LoadedFile {
+        var loaded = try decode(data: rawFile.data, filename: rawFile.filename)
+        loaded.sourceURL = rawFile.sourceURL
         return loaded
     }
 

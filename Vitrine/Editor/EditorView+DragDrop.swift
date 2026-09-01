@@ -159,14 +159,18 @@ extension EditorView {
         panel.resolvesAliases = true
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            offerLoaded(
-                try FileInputLoader.load(from: url),
-                startsLivingSnapshot: true)
-        } catch let error as FileInputLoader.LoadError {
-            dropError = error
-        } catch {
-            dropError = .unreadable
+        Task(name: "Open living snapshot") { [session] in
+            do {
+                let loaded = try await session.livingSnapshot.loadForOpening(from: url)
+                try Task.checkCancellation()
+                offerLoaded(loaded, startsLivingSnapshot: true)
+            } catch is CancellationError {
+                // Replacing the picker request or closing the window is ordinary lifecycle.
+            } catch let error as FileInputLoader.LoadError {
+                dropError = error
+            } catch {
+                dropError = .unreadable
+            }
         }
     }
 
@@ -186,10 +190,19 @@ extension EditorView {
         }
 
         if let url = fileURL {
-            return try foregroundImageStore.importImage(from: url)
+            let reference = try await foregroundImageStore.importImageConcurrently(from: url)
+            guard await foregroundImageStore.preloadImage(for: reference) != nil else {
+                throw BackgroundImageStore.ImportError.notAnImage
+            }
+            return reference
         }
         if let (data, ext) = try await readImageData(from: provider) {
-            return try foregroundImageStore.importImage(data: data, preferredExtension: ext)
+            let reference = try await foregroundImageStore.importImageConcurrently(
+                data: data, preferredExtension: ext)
+            guard await foregroundImageStore.preloadImage(for: reference) != nil else {
+                throw BackgroundImageStore.ImportError.notAnImage
+            }
+            return reference
         }
         return nil
     }

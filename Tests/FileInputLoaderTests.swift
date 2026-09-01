@@ -210,6 +210,31 @@ struct FileInputLoaderLoadTests {
         #expect(loaded.sourceURL == url.standardizedFileURL)
     }
 
+    @Test func concurrentLoaderUsesTheSameBoundedDecodePolicy() async throws {
+        let source = "actor Repository { let count = 1 }\n"
+        let url = try temporaryFile(named: "Repository.swift", data: Data(source.utf8))
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        let loaded = try await FileInputLoader.loadConcurrently(from: url)
+        #expect(loaded.text == source)
+        #expect(loaded.language == .swift)
+        #expect(loaded.filename == "Repository.swift")
+        #expect(loaded.sourceURL == url.standardizedFileURL)
+    }
+
+    @Test func concurrentLoaderHonorsCancellationBeforeReading() async {
+        let missingURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrineFileInput-cancelled-\(UUID().uuidString).swift")
+        let task = Task {
+            try await FileInputLoader.loadConcurrently(from: missingURL)
+        }
+        task.cancel()
+
+        await #expect(throws: CancellationError.self) {
+            try await task.value
+        }
+    }
+
     /// A real binary file on disk is rejected with the binary error.
     @Test func rejectsBinaryFileFromDisk() throws {
         let url = try temporaryFile(

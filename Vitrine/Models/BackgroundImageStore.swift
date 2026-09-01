@@ -18,7 +18,7 @@ import UniformTypeIdentifiers
 ///
 /// The base directory is injectable so the import/resolve/missing-file behavior
 /// is unit-testable without touching the real container.
-struct BackgroundImageStore {
+nonisolated struct BackgroundImageStore: Sendable {
     /// Errors surfaced while importing an image.
     nonisolated enum ImportError: Error, Equatable {
         /// The chosen source was not a supported image with valid dimensions.
@@ -57,9 +57,9 @@ struct BackgroundImageStore {
     /// streaming API's explicit contract and for source compatibility with callers.
     nonisolated static let maxRemoteImageBytes = maxImportBytes
 
-    /// The cumulative decoded-pixel ceiling across every frame. At four bytes per
-    /// pixel this bounds a worst-case imported bitmap to roughly 256 MB while keeping
-    /// ordinary 6K/8K photography supported.
+    /// The cumulative source-pixel ceiling across every frame. This protects metadata
+    /// inspection from decompression bombs; the actual static first-frame decode is
+    /// independently downsampled to `RenderBudget.preview` by `ImageDecodePolicy`.
     nonisolated static let maxDecodedPixelCount = 64_000_000
 
     /// A separate metadata/frame ceiling prevents a tiny-frame animation from carrying
@@ -74,10 +74,6 @@ struct BackgroundImageStore {
     /// host. The cap still comes from `maxRemoteImageBytes`; this only bounds the
     /// request's wall-clock time.
     nonisolated private static let remoteImageRequestTimeout: TimeInterval = 20
-
-    /// Avoid preallocating the whole 25 MB ceiling for the common case of a small
-    /// avatar/screenshot while still reducing reallocations during streaming.
-    nonisolated private static let remoteImageInitialCapacity = 256 * 1024
 
     /// The directory holding copied background images. Created on demand.
     let directory: URL
@@ -158,6 +154,28 @@ struct BackgroundImageStore {
         try store(data, preferredExtension: sanitizedExtension(ext))
     }
 
+    /// Performs bounded local read, metadata validation, hashing, and atomic persistence on the
+    /// concurrent executor. UI import surfaces use this path so large encoded files never block
+    /// the main actor; synchronous CLI and test callers retain the direct API above.
+    @concurrent
+    func importImageConcurrently(from sourceURL: URL) async throws -> ImageReference {
+        try Task.checkCancellation()
+        let reference = try importImage(from: sourceURL)
+        try Task.checkCancellation()
+        return reference
+    }
+
+    /// Concurrent sibling for clipboard and drag providers that already delivered the bytes.
+    @concurrent
+    func importImageConcurrently(
+        data: Data, preferredExtension ext: String = ""
+    ) async throws -> ImageReference {
+        try Task.checkCancellation()
+        let reference = try importImage(data: data, preferredExtension: ext)
+        try Task.checkCancellation()
+        return reference
+    }
+
     /// Downloads the image at a remote `url` and imports it into the container,
     /// returning a stable reference to the copy (image-input polish).
     ///
@@ -207,41 +225,58 @@ struct BackgroundImageStore {
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw ImportError.downloadFailed
         }
-        return try store(
-            data, preferredExtension: sanitizedExtension(for: url, mimeType: response.mimeType))
+        return try await persistImageConcurrently(
+            data,
+            preferredExtension: sanitizedExtension(for: url, mimeType: response.mimeType))
+    }
+
+    /// Moves post-download validation, hashing, and disk persistence off the caller's actor.
+    @concurrent
+    private func persistImageConcurrently(
+        _ data: Data, preferredExtension ext: String
+    ) async throws -> ImageReference {
+        try Task.checkCancellation()
+        let reference = try store(data, preferredExtension: ext)
+        try Task.checkCancellation()
+        return reference
     }
 
     /// Loads a remote background image without ever accumulating more than
     /// `maxBytes` in memory. This is the default production loader behind
-    /// `importImage(downloadedFrom:)`; tests can inject a tiny cap through
-    /// `collectRemoteImageBytes` to exercise the streaming boundary without a
-    /// 25 MB fixture.
+    /// `importImage(downloadedFrom:)`; tests can inject a tiny cap and local URL protocol to
+    /// exercise the transport boundary without a live network.
     nonisolated static func loadBoundedRemoteImage(
         from url: URL,
         maxBytes: Int = maxRemoteImageBytes
     ) async throws -> (Data, URLResponse) {
-        let session = remoteImageSession()
-        // Cancel rather than finish: the session is purpose-built and unshared, so on an
-        // early throw (e.g. `.tooLarge` once the cap is hit) the in-flight download must be
-        // torn down instead of allowed to run to completion — that's the "bounded" intent.
-        // On the success path the stream is already fully consumed, so this is a no-op.
-        defer { session.invalidateAndCancel() }
-        return try await loadBoundedRemoteImage(from: url, maxBytes: maxBytes, session: session)
+        try await loadBoundedRemoteImage(
+            from: url,
+            maxBytes: maxBytes,
+            configuration: remoteImageSessionConfiguration())
     }
 
-    /// The lower-level streaming loader, injectable by tests that need a custom
-    /// `URLSession`. Production uses `remoteImageSession()` so redirects are filtered
-    /// before `URLSession` follows them and no shared cookies/cache are consulted.
+    /// The lower-level chunk loader accepts a session configuration so focused tests can use a
+    /// local `URLProtocol`. Production supplies an ephemeral configuration; the purpose-built
+    /// session never shares cookies or cache state and is cancelled after the request completes.
     nonisolated static func loadBoundedRemoteImage(
         from url: URL,
         maxBytes: Int,
-        session: URLSession
+        configuration: URLSessionConfiguration
     ) async throws -> (Data, URLResponse) {
         var request = URLRequest(url: url)
         request.timeoutInterval = remoteImageRequestTimeout
-        let (bytes, response) = try await session.bytes(for: request)
-        let data = try await collectRemoteImageBytes(bytes, maxBytes: maxBytes)
-        return (data, response)
+
+        let delegate = BoundedRemoteImageSessionDelegate(maxBytes: maxBytes)
+        let delegateQueue = OperationQueue()
+        delegateQueue.name = "com.johnny4young.vitrine.remote-image"
+        delegateQueue.maxConcurrentOperationCount = 1
+        delegateQueue.qualityOfService = .utility
+        let session = URLSession(
+            configuration: configuration,
+            delegate: delegate,
+            delegateQueue: delegateQueue)
+        defer { session.invalidateAndCancel() }
+        return try await delegate.load(request, in: session)
     }
 
     /// Whether a URL is safe to request for a remote background image. This mirrors
@@ -259,35 +294,14 @@ struct BackgroundImageStore {
     /// Builds the privacy-preserving production session for direct image downloads:
     /// ephemeral storage avoids sending/reading shared website cookies, and the redirect
     /// delegate refuses private/local targets before `URLSession` follows them.
-    nonisolated private static func remoteImageSession() -> URLSession {
+    nonisolated private static func remoteImageSessionConfiguration()
+        -> URLSessionConfiguration
+    {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.timeoutIntervalForRequest = remoteImageRequestTimeout
         configuration.timeoutIntervalForResource = remoteImageRequestTimeout
-        return URLSession(
-            configuration: configuration,
-            delegate: RemoteImageRedirectPolicy(),
-            delegateQueue: nil)
-    }
-
-    /// Collects a byte stream up to `maxBytes`, failing as soon as the next byte
-    /// would exceed the cap. Keeping the accumulator in a nonisolated helper means
-    /// the per-byte loop runs off the main actor while the AppKit image decode stays
-    /// in the caller.
-    nonisolated static func collectRemoteImageBytes<Bytes: AsyncSequence>(
-        _ bytes: Bytes,
-        maxBytes: Int = maxRemoteImageBytes
-    ) async throws -> Data where Bytes.Element == UInt8 {
-        let limit = max(0, maxBytes)
-        var data = Data()
-        data.reserveCapacity(min(limit, remoteImageInitialCapacity))
-
-        for try await byte in bytes {
-            guard data.count < limit else { throw ImportError.tooLarge }
-            data.append(byte)
-        }
-
-        return data
+        return configuration
     }
 
     /// Reads a regular local file without ever retaining more than `maxBytes + 1`.
@@ -360,7 +374,7 @@ struct BackgroundImageStore {
             throw ImportError.notAnImage
         }
 
-        _ = try validatedImagePixelCount(in: source, options: options)
+        _ = try validatedImageMetadata(in: source)
     }
 
     /// Pure geometry validation shared with focused boundary tests. The cumulative
@@ -390,37 +404,22 @@ struct BackgroundImageStore {
         return totalPixels
     }
 
-    /// Extracts frame dimensions once from an ImageIO source and returns their
-    /// validated cumulative pixel count. Import and later container resolution both
-    /// use this path, so images stored by an older build cannot bypass today's bound.
-    nonisolated private static func validatedImagePixelCount(
-        in source: CGImageSource,
-        options: CFDictionary
-    ) throws -> Int {
-        let frameCount = CGImageSourceGetCount(source)
-        guard frameCount > 0 else { throw ImportError.notAnImage }
-        guard frameCount <= maxImageFrameCount else { throw ImportError.tooLarge }
-
-        var dimensions: [(width: Int, height: Int)] = []
-        dimensions.reserveCapacity(frameCount)
-        for index in 0..<frameCount {
-            guard
-                let properties = CGImageSourceCopyPropertiesAtIndex(source, index, options)
-                    as? [CFString: Any],
-                let width = properties[kCGImagePropertyPixelWidth] as? Int,
-                let height = properties[kCGImagePropertyPixelHeight] as? Int
-            else {
-                throw ImportError.notAnImage
-            }
-            dimensions.append((width: width, height: height))
+    /// Extracts and validates complete metadata without decoding any frame. ImageIO's source and
+    /// per-frame status checks reject truncated inputs; the first and only bitmap allocation then
+    /// happens through the bounded thumbnail path when the image is actually needed.
+    nonisolated private static func validatedImageMetadata(
+        in source: CGImageSource
+    ) throws -> ImageDecodePolicy.Metadata {
+        do {
+            return try ImageDecodePolicy.metadata(
+                in: source,
+                maximumFrameCount: maxImageFrameCount,
+                maximumSourcePixelCount: maxDecodedPixelCount)
+        } catch ImageDecodePolicy.Failure.invalidImage {
+            throw ImportError.notAnImage
+        } catch ImageDecodePolicy.Failure.tooLarge {
+            throw ImportError.tooLarge
         }
-        let pixelCount = try validateImageDimensions(dimensions)
-        for index in 0..<frameCount {
-            guard CGImageSourceCreateImageAtIndex(source, index, options) != nil else {
-                throw ImportError.notAnImage
-            }
-        }
-        return pixelCount
     }
 
     /// Validates and writes image `data` into the container under a content-addressed
@@ -446,7 +445,7 @@ struct BackgroundImageStore {
             throw ImportError.copyFailed
         }
 
-        Log.export.info("Imported an image into the container")
+        Log.export.info("Imported a bounded static-image source into the container")
         return ImageReference(fileName: fileName)
     }
 
@@ -479,15 +478,15 @@ struct BackgroundImageStore {
     /// The cache's memory ceiling, in bytes of decoded bitmap.
     ///
     /// A count limit alone does not bound memory: imports accept files up to
-    /// `maxImportBytes`, and a single 6K photo decodes to ~100 MB of bitmap, so 32
-    /// cached images could pin well over a gigabyte — invisible until a 5K export
-    /// allocates its own full-canvas buffers on top. The cost limit turns the cache
+    /// `maxImportBytes`; even after the ImageIO downsample, one image can occupy up to
+    /// the 64-MiB interactive surface budget, so a count limit alone could still pin excessive
+    /// memory before an export allocates its own canvas buffers. The cost limit turns the cache
     /// into a memory-bounded LRU: browsing a folder of large photos evicts the oldest
     /// instead of growing without limit, while the common case (a handful of ordinary
     /// backgrounds) never evicts at all.
     private static let cacheCostLimit = 256 * 1024 * 1024
 
-    private static let imageCache: NSCache<NSString, NSImage> = {
+    @MainActor private static let imageCache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 32
         cache.totalCostLimit = cacheCostLimit
@@ -502,7 +501,7 @@ struct BackgroundImageStore {
     /// pixel — the RGBA form the renderer draws from. A vector-only image with no
     /// bitmap representation reports the minimum cost of 1: it is cheap to hold, and a
     /// zero cost would exempt it from the limit entirely.
-    static func decodedByteCost(of image: NSImage) -> Int {
+    @MainActor static func decodedByteCost(of image: NSImage) -> Int {
         let pixels = image.representations.reduce(0) { largest, representation in
             let (count, overflow) = representation.pixelsWide.multipliedReportingOverflow(
                 by: representation.pixelsHigh)
@@ -515,25 +514,97 @@ struct BackgroundImageStore {
     /// Loads the referenced image, or `nil` if it cannot be resolved or decoded.
     /// Served from `imageCache` on a hit so an unchanged background/foreground never
     /// re-touches the disk during a live preview.
-    func image(for reference: ImageReference) -> NSImage? {
+    @MainActor func image(for reference: ImageReference) -> NSImage? {
         guard let url = url(for: reference) else { return nil }
         let key = url.path as NSString
         if let cached = Self.imageCache.object(forKey: key) { return cached }
-        guard
-            let fileSize = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
-            fileSize <= Self.maxImportBytes
-        else { return nil }
+        guard let decoded = Self.decodeStaticImage(at: url) else { return nil }
+        return Self.cache(decoded, forKey: key)
+    }
+
+    /// Preloads a newly imported image without blocking the main actor. UI surfaces await this
+    /// before publishing the reference, so their first SwiftUI body pass is a cache hit. Existing
+    /// references retain the synchronous bounded fallback above for launch and CLI compatibility.
+    @MainActor func preloadImage(for reference: ImageReference) async -> NSImage? {
+        guard let url = url(for: reference) else { return nil }
+        let key = url.path as NSString
+        if let cached = Self.imageCache.object(forKey: key) { return cached }
+        guard let decoded = await Self.decodeStaticImageConcurrently(at: url) else { return nil }
+        guard !Task.isCancelled else { return nil }
+        return Self.cache(decoded, forKey: key)
+    }
+
+    /// Produces the same bounded static representation for validated in-memory callers such as
+    /// the CLI watermark option. The metadata pass is intentionally repeated as defense in depth:
+    /// this API must stay safe if a future caller skips `readValidatedImageData(from:)`.
+    @MainActor static func staticImage(from data: Data) -> NSImage? {
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions),
-            let pixelCount = try? Self.validatedImagePixelCount(
-                in: source, options: sourceOptions)
+        guard data.count <= maxImportBytes,
+            let source = CGImageSourceCreateWithData(data as CFData, sourceOptions),
+            let decoded = decodeStaticImage(in: source)
         else { return nil }
-        guard let image = NSImage(contentsOf: url) else { return nil }
-        let (sourceCost, overflow) = pixelCount.multipliedReportingOverflow(by: 4)
-        Self.imageCache.setObject(
-            image,
-            forKey: key,
-            cost: overflow ? Self.decodedByteCost(of: image) : max(1, sourceCost))
+        return makeNSImage(from: decoded.cgImage)
+    }
+
+    private struct DecodedStaticImage: Sendable {
+        let cgImage: CGImage
+        let cost: Int
+    }
+
+    @concurrent
+    private static func decodeStaticImageConcurrently(
+        at url: URL
+    ) async -> DecodedStaticImage? {
+        guard !Task.isCancelled else { return nil }
+        return decodeStaticImage(at: url)
+    }
+
+    /// Resolves legacy/current stored bytes through ImageIO, validates metadata again, and creates
+    /// one transformed/downsampled first frame. `NSImage(contentsOf:)` is deliberately avoided: it
+    /// can retain full-resolution or animated representations that bypass the renderer's budget.
+    private static func decodeStaticImage(at url: URL) -> DecodedStaticImage? {
+        guard let data = try? readBoundedImageData(from: url) else { return nil }
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else {
+            return nil
+        }
+        return decodeStaticImage(in: source)
+    }
+
+    private static func decodeStaticImage(in source: CGImageSource) -> DecodedStaticImage? {
+        guard let metadata = try? validatedImageMetadata(in: source),
+            let cgImage = try? ImageDecodePolicy.decodeStaticFirstFrame(
+                in: source, metadata: metadata)
+        else { return nil }
+        let cost = decodedSurfaceCost(
+            bytesPerRow: cgImage.bytesPerRow, height: cgImage.height)
+        return DecodedStaticImage(cgImage: cgImage, cost: cost)
+    }
+
+    /// The cache cost of a decoded surface: its actual backing bytes
+    /// (`bytesPerRow × height`), never an assumed 4 bytes per pixel — a
+    /// 16-bit-per-channel or row-padded surface would otherwise be under-counted
+    /// and the cache's byte bound would retain substantially more decoded memory
+    /// than it reports. Floors at 1 so no surface is exempt from the count limit.
+    static func decodedSurfaceCost(bytesPerRow: Int, height: Int) -> Int {
+        let (cost, overflow) = bytesPerRow.multipliedReportingOverflow(by: height)
+        return overflow ? Int.max : max(1, cost)
+    }
+
+    @MainActor private static func cache(
+        _ decoded: DecodedStaticImage, forKey key: NSString
+    ) -> NSImage {
+        let image = makeNSImage(from: decoded.cgImage)
+        imageCache.setObject(image, forKey: key, cost: decoded.cost)
+        return image
+    }
+
+    /// Wraps the bounded CGImage as one explicit bitmap representation. Constructing an NSImage
+    /// directly from a CGImage can synthesize a backing-scale-dependent representation on a Retina
+    /// display; the explicit bitmap keeps the decoded pixel dimensions deterministic.
+    @MainActor private static func makeNSImage(from cgImage: CGImage) -> NSImage {
+        let image = NSImage(size: NSSize(width: cgImage.width, height: cgImage.height))
+        image.addRepresentation(NSBitmapImageRep(cgImage: cgImage))
         return image
     }
 
@@ -584,10 +655,164 @@ struct BackgroundImageStore {
     }
 }
 
-/// Refuses private/local redirects for remote background image downloads before
-/// `URLSession` follows them. The entry URL and final response are checked in
-/// `BackgroundImageStore` too; this delegate closes the mid-flight redirect gap.
-nonisolated private final class RemoteImageRedirectPolicy: NSObject, URLSessionTaskDelegate {
+/// Owns one bounded remote-image data task.
+///
+/// `URLSession.AsyncBytes` exposes a byte-at-a-time sequence even though the transport delivers
+/// chunks. Collecting inside `didReceive data` preserves those chunks, rejects a response before
+/// appending the chunk that would cross the cap, and cancels the task immediately. The lock covers
+/// the only cross-executor races: task cancellation versus serial URLSession delegate callbacks.
+nonisolated private final class BoundedRemoteImageSessionDelegate: NSObject,
+    URLSessionDataDelegate, @unchecked Sendable
+{
+    private typealias Output = (Data, URLResponse)
+
+    private struct State {
+        var collector: BoundedDataCollector
+        var response: URLResponse?
+        var continuation: CheckedContinuation<Output, Error>?
+        var task: URLSessionDataTask?
+        var isFinished = false
+    }
+
+    private let lock = NSLock()
+    private var state: State
+
+    init(maxBytes: Int) {
+        state = State(collector: BoundedDataCollector(limit: maxBytes))
+    }
+
+    func load(
+        _ request: URLRequest, in session: URLSession
+    ) async throws -> (Data, URLResponse) {
+        try Task.checkCancellation()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation {
+                (continuation: CheckedContinuation<Output, Error>) in
+                let task = session.dataTask(with: request)
+                let shouldCancel = withLockedState { state in
+                    guard !state.isFinished, !Task.isCancelled else {
+                        state.isFinished = true
+                        return true
+                    }
+                    state.continuation = continuation
+                    state.task = task
+                    return false
+                }
+
+                guard !shouldCancel else {
+                    task.cancel()
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                task.resume()
+            }
+        } onCancel: {
+            self.cancel()
+        }
+    }
+
+    private func cancel() {
+        let completion = withLockedState {
+            state -> (
+                CheckedContinuation<Output, Error>?, URLSessionDataTask?
+            ) in
+            guard !state.isFinished else { return (nil, nil) }
+            state.isFinished = true
+            defer {
+                state.continuation = nil
+                state.task = nil
+            }
+            return (state.continuation, state.task)
+        }
+        completion.1?.cancel()
+        completion.0?.resume(throwing: CancellationError())
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive response: URLResponse,
+        completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void
+    ) {
+        let expectedLength = response.expectedContentLength
+        var continuation: CheckedContinuation<Output, Error>?
+        let disposition = withLockedState { state -> URLSession.ResponseDisposition in
+            guard !state.isFinished else { return .cancel }
+            if expectedLength > Int64(state.collector.limit) {
+                state.isFinished = true
+                continuation = state.continuation
+                state.continuation = nil
+                state.task = nil
+                return .cancel
+            }
+            state.response = response
+            return .allow
+        }
+
+        completionHandler(disposition)
+        if let continuation {
+            dataTask.cancel()
+            continuation.resume(throwing: BackgroundImageStore.ImportError.tooLarge)
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive data: Data
+    ) {
+        var continuation: CheckedContinuation<Output, Error>?
+        let exceededLimit = withLockedState { state -> Bool in
+            guard !state.isFinished else { return false }
+            do {
+                try state.collector.append(data)
+                return false
+            } catch {
+                state.isFinished = true
+                continuation = state.continuation
+                state.continuation = nil
+                state.task = nil
+                return true
+            }
+        }
+
+        guard exceededLimit else { return }
+        dataTask.cancel()
+        continuation?.resume(throwing: BackgroundImageStore.ImportError.tooLarge)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: Error?
+    ) {
+        let completion = withLockedState {
+            state -> (
+                CheckedContinuation<Output, Error>?, Result<Output, Error>?
+            ) in
+            guard !state.isFinished else { return (nil, nil) }
+            state.isFinished = true
+            let continuation = state.continuation
+            state.continuation = nil
+            state.task = nil
+
+            if let error {
+                return (continuation, .failure(error))
+            }
+            guard let response = state.response ?? task.response else {
+                return (
+                    continuation,
+                    .failure(BackgroundImageStore.ImportError.downloadFailed)
+                )
+            }
+            return (continuation, .success((state.collector.data, response)))
+        }
+        guard let continuation = completion.0, let result = completion.1 else { return }
+        continuation.resume(with: result)
+    }
+
+    /// Refuses private/local redirects before URLSession follows them. The entry URL and final
+    /// response remain checked by `BackgroundImageStore`; this closes the mid-flight redirect gap.
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
@@ -602,5 +827,11 @@ nonisolated private final class RemoteImageRedirectPolicy: NSObject, URLSessionT
             return
         }
         completionHandler(request)
+    }
+
+    private func withLockedState<Result>(_ body: (inout State) -> Result) -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        return body(&state)
     }
 }
