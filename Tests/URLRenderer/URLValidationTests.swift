@@ -70,6 +70,7 @@ struct URLValidationTests {
         for raw in [
             "http://localhost/admin",
             "http://localhost:3000",
+            "http://dev.localhost:3000",
             "http://127.0.0.1:8080",
             "http://127.5.4.3/",
             "http://[::1]:9000",
@@ -88,7 +89,8 @@ struct URLValidationTests {
 
     @Test func loopbackCanBeAllowedWithoutOpeningLocalNetworks() throws {
         for raw in [
-            "http://localhost:3000", "http://localhost./admin", "http://127.0.0.1:8080",
+            "http://localhost:3000", "http://localhost./admin", "http://dev.localhost:3000",
+            "http://127.0.0.1:8080",
             "http://127.0.0.2:5173", "http://127.1", "http://0177.1",
             "http://0x7f000001", "http://2130706433", "http://[::1]:9000",
             "http://[::ffff:127.0.0.1]",
@@ -117,7 +119,8 @@ struct URLValidationTests {
 
     @Test func loopbackPredicateIsAStrictSubsetOfTheDefaultBlocklist() {
         for host in [
-            "localhost", "localhost.", "127.0.0.1", "127.1", "0177.1", "0x7f000001",
+            "localhost", "localhost.", "dev.localhost", "127.0.0.1", "127.1", "0177.1",
+            "0x7f000001",
             "2130706433", "::1", "[::1]", "::ffff:127.0.0.1", "::ffff:127.1",
         ] {
             #expect(WebSnapshotConfig.isLoopbackHost(host: host), "\(host) must be loopback")
@@ -158,6 +161,7 @@ struct URLValidationTests {
         // the resolver.
         for host in [
             "localhost.",
+            "dev.localhost.",
             "service.local.",
             "127.1",
             "0177.1",

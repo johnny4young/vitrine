@@ -82,7 +82,7 @@ struct SocialCardCompositionTests {
 
         root.shareCard()
 
-        #expect(display.feedback == [ExportFeedback.shareFailure])
+        #expect(display.feedback == [ExportFeedback.renderFailure(.encodingFailed)])
         #expect(presentation.sharedImages.isEmpty)
     }
 

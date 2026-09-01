@@ -49,18 +49,20 @@ the first-run quick-start owns that — and is skippable. See
 [`docs/RELEASING.md`](RELEASING.md) for how release notes are authored as part of
 the release checklist.
 
-### Version 1.2.0
+### Version 1.2.1
 
-The current source bundle's newest note is **Safer inputs, stronger foundations**:
+The current source bundle's newest note is **Safer rendering, stricter web capture**:
 
-- basic `vgrab` remains free and local search handles multi-word Unicode queries
-  consistently;
-- local source, recipe, preset, and custom-theme files use bounded regular-file reads;
-- cancelled image downloads stop without posting a late editor error;
-- the supported floor is macOS 15 Sequoia, with Tahoe qualification and universal direct
-  downloads; and
-- WebKit, updater packaging, memory lifecycle, and release evidence have stronger
-  pre-publication safeguards.
+- extreme canvas and full-page Web Snapshot sizes are rejected before unsafe bitmap
+  allocation, with actionable errors instead of blank output;
+- app, CLI, Shortcuts, batch, social-card, and comparison-board exports preserve the same
+  typed render failures;
+- Web Snapshot blocks literal local and private subresources across images, styles,
+  scripts, frames, and network requests unless loopback is explicitly enabled;
+- CodeQL and focused Address and Thread Sanitizer lanes add repeatable candidate evidence;
+  and
+- the supported floor remains macOS 15 Sequoia, with Tahoe qualification and universal
+  direct downloads.
 
 The Releases page remains the authority for what is publicly downloadable; preparing these
-bundled notes in source does not publish or deploy version 1.2.0.
+bundled notes in source does not publish or deploy version 1.2.1.

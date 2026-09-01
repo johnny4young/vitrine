@@ -66,7 +66,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -137,6 +137,10 @@ test: project
 ## coverage. The result bundle is mandatory: the guard fails if xccov cannot read
 ## it, rejects a production-target drop over one percentage point, and requires
 ## 80% coverage for changed executable lines in critical non-visual logic.
+## The instrumented test host runs without the product sandbox only in this lane.
+## Otherwise privacy-hardened macOS hosts can prevent xcodebuild from retrieving
+## the raw profile from the app container, leaving an unreadable coverage archive.
+## These command-line overrides do not change the generated product configuration.
 test-coverage: project
 	@test -f "$(COVERAGE_BASELINE)" || { \
 		echo "Unsupported coverage platform '$(COVERAGE_PLATFORM)' or missing baseline: $(COVERAGE_BASELINE)" >&2; \
@@ -146,6 +150,7 @@ test-coverage: project
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage YES \
+		CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO \
 		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" test
 	python3 scripts/check-coverage.py \
 		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \
@@ -155,6 +160,43 @@ test-coverage: project
 ## coverage-check: validate parser, scope, and fail-closed behavior without Xcode
 coverage-check:
 	python3 scripts/check-coverage.py --self-test
+
+# Sanitizers intentionally exercise focused model, parser, file-safety, and
+# asynchronous-lifecycle suites instead of the full AppKit/WebKit UI host. The
+# weekly/manual hosted workflow retains each result bundle. These lanes are
+# non-required early warnings until their runner stability has been established.
+ASAN_TEST_SELECTION := \
+	-only-testing:VitrineTests/ANSIParserTests \
+	-only-testing:VitrineTests/TerminalGridTests \
+	-only-testing:VitrineTests/RenderBudgetTests \
+	-only-testing:VitrineTests/BoundedFileReaderTests \
+	-only-testing:VitrineTests/AsciinemaCastTests \
+	-only-testing:VitrineTests/FileInputLoaderDecodeTests \
+	-only-testing:VitrineTests/FileInputLoaderDecodeTextTests \
+	-only-testing:VitrineTests/ImageSecretRedactorTests \
+	-only-testing:VitrineTests/PrivateNetworkBlockRulesTests
+
+TSAN_TEST_SELECTION := \
+	-only-testing:VitrineTests/DebouncerTests \
+	-only-testing:VitrineTests/ItemProviderLoadWaiterTests \
+	-only-testing:VitrineTests/WebLoadWaiterTests \
+	-only-testing:VitrineTests/MemoryWebSnapshotCycleJourneyTests
+
+## test-asan: run focused allocation/input/parser logic under Address Sanitizer
+test-asan: project
+	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+		-destination 'platform=macOS' -enableCodeCoverage NO \
+		-enableAddressSanitizer YES $(RESULT_BUNDLE_FLAG) \
+		$(ASAN_TEST_SELECTION) test
+
+## test-tsan: run focused cancellation/waiter lifecycle logic under Thread Sanitizer
+test-tsan: project
+	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+		-destination 'platform=macOS' -enableCodeCoverage NO \
+		-enableThreadSanitizer YES $(RESULT_BUNDLE_FLAG) \
+		$(TSAN_TEST_SELECTION) test
 
 ## build-ui-tests: compile UI tests without requiring local automation permission
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.

@@ -52,7 +52,7 @@ that independent check passes.
 1. Download the candidate named in the successful tag run summary:
 
    ```bash
-   TAG=v1.2.0
+   TAG=v1.2.1
    CANDIDATE_RUN_ID=123456789
    rm -rf release-candidate
    gh run download "${CANDIDATE_RUN_ID}" \
@@ -69,7 +69,7 @@ that independent check passes.
 3. Only after both clean-Mac checks pass, dispatch the same workflow manually:
 
    ```bash
-   SHA256="$(shasum -a 256 release-candidate/Vitrine-1.2.0.dmg | awk '{print $1}')"
+   SHA256="$(shasum -a 256 release-candidate/Vitrine-1.2.1.dmg | awk '{print $1}')"
    gh workflow run release.yml \
      -f tag="${TAG}" \
      -f candidate_run_id="${CANDIDATE_RUN_ID}" \
@@ -121,6 +121,16 @@ CI is a release gate, not just a compile check.
   compares both the XcodeGen and Sparkle versions and checksums with GitHub's published
   release metadata. Each GitHub release includes a versioned SPDX JSON SBOM alongside the
   DMG and checksum.
+- **Static security analysis.** `codeql.yml` analyzes Swift on `macos-15` through a
+  traced manual Xcode build and JavaScript/TypeScript on Linux without a synthetic
+  build. Both use CodeQL's `security-extended` suite on pull requests, pushes to
+  `main`, a weekly schedule, and manual dispatch. Results are uploaded to GitHub code
+  scanning; the workflow has no write permission beyond `security-events`.
+- **Focused sanitizer early warning.** `sanitizers.yml` runs Address Sanitizer over
+  bounded input/parser/allocation logic and Thread Sanitizer over cancellation and
+  waiter lifecycles every week or on manual dispatch. It deliberately excludes the
+  full AppKit/WebKit UI host, retains each `.xcresult`, and is **non-required** while
+  hosted-runner stability is established.
 - **The release workflow refuses to publish an unvetted build.** `release.yml` runs
   `verify`, builds a private candidate, re-downloads it onto an independent QA runner,
   and stops. Public promotion is a separate manual dispatch that pins the successful
@@ -162,6 +172,32 @@ requests, does not publish, and is not a claim of macOS 27 runtime support. Prom
 the required compatibility matrix only after GitHub provides the corresponding macOS
 runner as GA and the full runtime, UI, visual, performance, and clean-Mac evidence exists.
 
+### Security-analysis lanes
+
+CodeQL is the deterministic source-analysis lane. Swift uses `build-mode: manual` so
+the database contains exactly the generated Xcode targets compiled by `make build`;
+JavaScript/TypeScript uses buildless extraction for the static Astro site and supporting
+scripts. Both run `security-extended`. Action references are immutable commit-SHA pins
+and remain covered by Dependabot. A CodeQL alert is investigated or dismissed with a
+documented reason; do not exclude the affected path merely to make the workflow green.
+
+The sanitizer commands are also available locally:
+
+```bash
+make test-asan
+make test-tsan
+```
+
+These are focused test-host runs, not replacements for `make test`, XCUITest, memory
+journeys, or clean-Mac qualification. Address Sanitizer covers parsers, terminal state,
+render budgets, bounded file input, redaction, and private-host rules. Thread Sanitizer
+covers debouncing, callback-to-async waiters, cancellation, and repeated Web snapshot
+journey orchestration. The hosted workflow runs only on its weekly/manual triggers, so
+it cannot accidentally become a pull-request branch-protection requirement. Promote a
+sanitizer lane to required CI only after at least four consecutive scheduled runs on the
+same runner family complete without infrastructure-only flakes; expand its focused suite
+when new non-UI concurrent or allocation-heavy components land.
+
 ### Unit-test lanes
 
 `make test` is the default local feedback lane. It runs the complete Swift Testing
@@ -177,6 +213,13 @@ for its Sequoia or Tahoe row, retains failure bundles, and publishes per-target 
 output in the job summary. The weighted coverage across `Vitrine.app`, `vitrine-cli`,
 and `VitrineMenuBarHelper` may not fall more than one percentage point below the
 pre-hardening baseline for that OS.
+
+The instrumented app host runs without code-signing entitlements or App Sandbox only
+inside `make test-coverage`. On privacy-hardened macOS hosts, `xcodebuild` otherwise may
+be unable to retrieve its own raw profile from the app container, leaving an unreadable
+coverage archive even though every test passed. These command-line overrides do not
+change `project.yml`, Debug/Release product builds, packaged entitlements, or the tests
+selected by the lane; they only make the local profile transport observable to Xcode.
 
 The same guard requires at least 80% of changed executable lines in critical logic to be
 covered. Its unit-coverage scope is `Models`, `CLI`, `Pro`, `Terminal`, `Rendering`, and
@@ -826,9 +869,9 @@ channels move.
 
 ```bash
 # On each clean Mac, after extracting the candidate handoff ZIP:
-cd Vitrine-1.2.0-qa-handoff
+cd Vitrine-1.2.1-qa-handoff
 shasum -a 256 -c SHA256SUMS
-./qa-release.sh Vitrine-1.2.0.dmg
+./qa-release.sh Vitrine-1.2.1.dmg
 # or, against an already-extracted app:
 ./qa-release.sh /Applications/Vitrine.app
 # with no argument it auto-detects the newest dist/*.dmg.
@@ -917,17 +960,26 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
     rendered `onerror` marker alone is not sufficient evidence.
 18. **Real public URL WebKit** — copy `https://example.com`, accept the disclosure when
     shown, and export a real non-placeholder capture of the page.
-19. **Loopback rejected immediately** — submit the `127.0.0.1` entry from
+19. **Literal-private subresources blocked** — run
+    `webkit/private-subresource-probe.sh evidence prepare`, capture the public URL it puts
+    on the clipboard through the real URL-capture path, export a snapshot containing
+    `PRIVATE_SUBRESOURCE_PROBE_READY`, and run
+    `webkit/private-subresource-probe.sh evidence verify`. Require its structured metadata
+    to report zero private request bytes for the image, stylesheet, script, child frame,
+    fetch, and WebSocket probes. Any observed loopback bytes are a release blocker.
+20. **Loopback rejected immediately** — submit the `127.0.0.1` entry from
     `webkit/blocked-destinations.txt` and require the domain error before WebKit navigation
     begins; a later timeout is not a pass.
-20. **Private destinations rejected immediately** — repeat with the private and
+21. **Private destinations rejected immediately** — repeat with the private and
     link-local entries and require the same pre-navigation rejection.
-21. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
+22. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
     leaves no menu-bar icon and no login item behind.
 
 These fixtures intentionally do **not** certify public-to-private redirect revalidation.
-That policy remains protected by deterministic navigation-delegate tests; never mark it as
-clean-Mac validated from this manual journey.
+That policy remains protected by deterministic navigation-delegate tests. They also do not
+certify public-hostname DNS rebinding or resolution-time private-address detection, because
+WebKit content rules match the request URL rather than its resolved address. Never mark
+either boundary as clean-Mac validated from this manual journey.
 
 Complete both platform entries in `webkit/qualification-log.json`, change
 `overallStatus` only after every required scenario passes, and keep screenshots/exports in

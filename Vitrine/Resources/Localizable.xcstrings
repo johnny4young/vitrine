@@ -7093,6 +7093,50 @@
         }
       }
     },
+    "The image is too large to render safely. Reduce the canvas size or scale." : {
+      "comment" : "Export feedback: the resolved raster exceeds the safe allocation budget.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La imagen es demasiado grande para renderizarla de forma segura. Reduce el tamaño del lienzo o la escala."
+          }
+        }
+      }
+    },
+    "Vitrine couldn't allocate the image buffer. Reduce the canvas size or scale and try again." : {
+      "comment" : "Export feedback: the bounded Core Graphics image buffer could not be allocated.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo asignar el búfer de imagen. Reduce el tamaño del lienzo o la escala e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Vitrine couldn't encode the selected image format." : {
+      "comment" : "Export feedback: ImageIO could not encode the completed raster.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo codificar el formato de imagen seleccionado."
+          }
+        }
+      }
+    },
+    "Rendering was cancelled." : {
+      "comment" : "Export feedback: raster production was cancelled before completion.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se canceló el renderizado."
+          }
+        }
+      }
+    },
     "Add an arrow, text, or blur box, then drag it on the preview." : {
       "comment" : "Annotations inspector: empty-state hint.",
       "extractionState" : "stale",

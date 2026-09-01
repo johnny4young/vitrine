@@ -374,7 +374,7 @@ struct StyleSettingsView: View {
     private func renderCurrentPreview() -> NSImage? {
         ExportManager.renderNSImage(
             previewConfig, scale: previewRenderScale, fixedSize: settings.effectiveFixedSize,
-            profile: settings.export.colorProfile)
+            profile: settings.export.colorProfile, budget: .preview)
     }
 
     /// The inputs the preview render depends on, so `.task(id:)` re-renders exactly when

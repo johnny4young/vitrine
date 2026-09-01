@@ -317,7 +317,7 @@ struct WelcomeView: View {
         config.background = .gradient(selectedBackground)
         config.padding = 24
         config.fontSize = 12.5
-        return ExportManager.renderNSImage(config, scale: 2, profile: .sRGB)
+        return ExportManager.renderNSImage(config, scale: 2, profile: .sRGB, budget: .preview)
     }
 
     /// The local-only privacy promise, shown before the first capture. The

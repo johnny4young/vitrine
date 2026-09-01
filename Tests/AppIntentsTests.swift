@@ -311,6 +311,22 @@ struct SnapshotRenderServiceTests {
         }
     }
 
+    @Test func sharedRenderFailuresKeepActionableAutomationCategories() {
+        #expect(
+            SnapshotRenderService.RenderError.renderFailure(
+                .tooLarge(.arithmeticOverflow)) == .tooLarge)
+        #expect(
+            SnapshotRenderService.RenderError.renderFailure(.allocationFailed)
+                == .allocationFailed)
+        #expect(
+            SnapshotRenderService.RenderError.renderFailure(.encodingFailed)
+                == .encodingFailed)
+        #expect(
+            SnapshotRenderService.RenderError.renderFailure(.cancelled)
+                == .cancelled)
+        #expect(SnapshotRenderService.RenderError.tooLarge.description.contains("Reduce"))
+    }
+
     @Test func renderImageProducesANonEmptyImage() throws {
         let request = SnapshotRenderRequest(code: "print(1)", language: .python)
         let image = try SnapshotRenderService.renderImage(request)

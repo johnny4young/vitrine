@@ -170,11 +170,26 @@ struct URLRendererValidationTests {
         }
     }
 
+    @Test func anOversizedViewportPreservesTheActionableRenderCategory() async throws {
+        let renderer = URLRenderer(
+            scale: 3,
+            viewportPreset: .custom(width: 5_000, height: 5_000),
+            isNetworkCaptureEnabled: true)
+        await #expect(
+            throws: RenderError.renderTooLarge(
+                .pixelCount(actual: 225_000_000, maximum: 40_000_000))
+        ) {
+            try await renderer.render(
+                .url(try URLFixture.valid()), config: SnapshotConfig())
+        }
+    }
+
     @Test func urlCaptureDisabledIsDistinctFromOtherRenderErrors() {
         // The new typed case must not collapse into the existing ones, or a test
         // asserting the disabled gate would pass against an unrelated failure.
         #expect(RenderError.urlCaptureDisabled != .renderFailed)
         #expect(RenderError.loopbackCaptureDisabled != .renderFailed)
+        #expect(RenderError.renderTooLarge(.invalidScale) != .renderFailed)
         #expect(RenderError.urlCaptureDisabled != .noRendererFor(kind: "url"))
         #expect(RenderError.urlCaptureDisabled == .urlCaptureDisabled)
     }

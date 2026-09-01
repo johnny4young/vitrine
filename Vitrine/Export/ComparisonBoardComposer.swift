@@ -19,7 +19,7 @@ enum ComparisonBoardComposer {
 
     enum CompositionError: Error, Equatable {
         case invalidScale
-        case renderFailed
+        case renderFailure(RenderBudgetError)
     }
 
     struct Metrics: Equatable {
@@ -51,7 +51,8 @@ enum ComparisonBoardComposer {
     static func compose(
         _ board: ComparisonBoard,
         scale: CGFloat = 2,
-        profile: ColorProfile = .sRGB
+        profile: ColorProfile = .sRGB,
+        budget: RenderBudget = .export
     ) throws -> RenderedAsset {
         guard scale.isFinite, scale >= 1, scale <= 3 else {
             throw CompositionError.invalidScale
@@ -60,14 +61,14 @@ enum ComparisonBoardComposer {
         let metrics = metrics(for: board)
         let content = BoardView(board: board, columns: metrics.columns)
             .frame(width: metrics.pointSize.width, height: metrics.pointSize.height)
-        let renderer = ImageRenderer(content: content)
-        renderer.scale = scale
-        renderer.proposedSize = ProposedViewSize(metrics.pointSize)
-        renderer.isOpaque = true
-        guard let image = renderer.cgImage else { throw CompositionError.renderFailed }
-        return RenderedAsset(
-            cgImage: ExportManager.normalized(image, to: profile),
-            profile: profile)
+        do {
+            let image = try ExportManager.renderCGImageChecked(
+                content, proposedSize: metrics.pointSize, scale: scale,
+                profile: profile, budget: budget, isOpaque: true)
+            return RenderedAsset(cgImage: image, profile: profile)
+        } catch let error {
+            throw CompositionError.renderFailure(error)
+        }
     }
 
     private static func resolvedColumnCount(for board: ComparisonBoard) -> Int {

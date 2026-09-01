@@ -104,11 +104,11 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         let settings = activeSettings
         // Surface the outcome so a render/encode failure from the menu isn't silent,
         // mirroring the quick-capture HUD path.
-        let copied = ExportManager.copyToPasteboard(
+        let outcome = ExportManager.copyToPasteboardOutcome(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
-        feedback(ExportFeedback.copyOutcome(copied))
+        feedback(ExportFeedback.copyOutcome(outcome))
     }
 
     @objc func saveRenderedImage(_ sender: Any?) {
@@ -126,12 +126,16 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     @objc func shareRenderedImage(_ sender: Any?) {
         let settings = activeSettings
         guard canPerform(.shareImage),
-            let image = ExportManager.renderNSImage(
-                settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-                fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile),
             let view = (NSApp.keyWindow ?? NSApp.mainWindow)?.contentView
         else { return }
-        presentation.share(image, relativeTo: view)
+        do {
+            let image = try ExportManager.renderNSImageChecked(
+                settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
+                fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
+            presentation.share(image, relativeTo: view)
+        } catch let error {
+            feedback(ExportFeedback.renderFailure(error))
+        }
     }
 
     /// Promotes the key editor window's current style to the app-wide default.

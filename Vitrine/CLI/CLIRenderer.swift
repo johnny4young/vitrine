@@ -228,11 +228,18 @@ enum CLIRenderer {
         // `--copy`: put the rendered image on the clipboard (the share-now flow). A
         // `--out` given alongside still writes the file too.
         if options.copyToClipboard {
-            let copied = ExportManager.copyToPasteboard(
+            let copyOutcome = ExportManager.copyToPasteboardOutcome(
                 config, scale: options.effectiveScale, fixedSize: options.fixedSize,
                 profile: options.profile, backgroundImageStore: backgroundStore,
                 foregroundImageStore: foregroundStore)
-            guard copied else { throw CLIError.renderFailed }
+            switch copyOutcome {
+            case .copied:
+                break
+            case .failed:
+                throw CLIError.renderFailed
+            case .renderFailed(let error):
+                throw CLIError.renderFailure(error)
+            }
             Log.export.notice("CLI copied an image to the clipboard")
             if let outputURL = optionalOutputURL {
                 let dimensions = try CLIOutputWriter.renderAndWrite(

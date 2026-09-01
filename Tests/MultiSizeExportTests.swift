@@ -34,6 +34,7 @@ struct MultiSizeExportTests {
 
         #expect(result.written == 3)
         #expect(result.failed == 0)
+        #expect(result.firstRenderFailure == nil)
         for preset in presets {
             let url = dir.appendingPathComponent("vitrine-\(preset.id).png")
             #expect(FileManager.default.fileExists(atPath: url.path))
@@ -107,9 +108,32 @@ struct MultiSizeExportTests {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let result = await ExportManager.exportPresetSizes(baseConfig(), presets: [], to: dir)
-        #expect(result == (written: 0, failed: 0))
+        #expect(result.written == 0)
+        #expect(result.failed == 0)
+        #expect(result.firstRenderFailure == nil)
         let contents = try? FileManager.default.contentsOfDirectory(atPath: dir.path)
         #expect(contents?.isEmpty ?? true)
+    }
+
+    @Test func oversizedPresetReportsTheTypedFailureWithoutCreatingAFile() async {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let preset = ExportPreset(
+            id: "oversized", displayName: "Oversized", summary: "Test only",
+            sizing: .fixed(width: 20_000, height: 100), scale: 1,
+            background: nil, padding: 24)
+
+        let result = await ExportManager.exportPresetSizes(
+            baseConfig(), presets: [preset], to: dir)
+
+        #expect(result.written == 0)
+        #expect(result.failed == 1)
+        #expect(
+            result.firstRenderFailure
+                == .tooLarge(.dimension(actual: 20_000, maximum: 16_384)))
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("vitrine-oversized.png").path))
     }
 
     /// The progress callback reports monotonically increasing completed counts up

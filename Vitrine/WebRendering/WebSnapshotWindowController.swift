@@ -126,14 +126,20 @@ struct WebSnapshotViewportRenderer {
             }
 
             let scale = CGFloat(settings.export.scale)
-            let width = Int((preset.size.width * scale).rounded())
-            let height = Int((preset.size.height * scale).rounded())
-            guard width > 0, height > 0,
-                let colorSpace = settings.export.colorProfile.cgColorSpace,
+            let allocation: RenderBudget.Allocation
+            do throws(RenderBudgetError) {
+                allocation = try RenderBudget.export.allocation(
+                    for: preset.size, scale: scale)
+            } catch .tooLarge(let rejection) {
+                throw RenderError.renderTooLarge(rejection)
+            } catch {
+                throw RenderError.renderFailed
+            }
+            guard let colorSpace = settings.export.colorProfile.cgColorSpace,
                 let context = CGContext(
                     data: nil,
-                    width: width,
-                    height: height,
+                    width: allocation.pixelWidth,
+                    height: allocation.pixelHeight,
                     bitsPerComponent: 8,
                     bytesPerRow: 0,
                     space: colorSpace,
@@ -142,6 +148,8 @@ struct WebSnapshotViewportRenderer {
                 throw RenderError.renderFailed
             }
 
+            let width = CGFloat(allocation.pixelWidth)
+            let height = CGFloat(allocation.pixelHeight)
             let canvas = CGRect(x: 0, y: 0, width: width, height: height)
             context.setFillColor(CGColor(srgbRed: 0.043, green: 0.063, blue: 0.125, alpha: 1))
             context.fill(canvas)
@@ -447,17 +455,25 @@ final class WebSnapshotModel {
 
         results = captured
         renderedAsset = captured.first?.asset
+        var boardErrorMessage: String?
         // A multi-size batch also gets a composite "responsive board" as the primary
         // preview/export; a single capture has none.
         if captured.count > 1 {
-            boardAsset = ResponsiveBoardComposer.compose(
-                captured, scale: CGFloat(settings.export.scale),
-                profile: settings.export.colorProfile)
-            if let board = boardAsset {
+            do {
+                let board = try ResponsiveBoardComposer.composeChecked(
+                    captured, scale: CGFloat(settings.export.scale),
+                    profile: settings.export.colorProfile)
+                boardAsset = board
                 boardThumbnailAsset = CapturedViewport.makeThumbnail(from: board)
                 renderedAsset = board
-            } else {
+            } catch .tooLarge(let rejection) {
+                boardAsset = nil
                 boardThumbnailAsset = nil
+                boardErrorMessage = Self.message(for: .renderTooLarge(rejection))
+            } catch {
+                boardAsset = nil
+                boardThumbnailAsset = nil
+                boardErrorMessage = Self.message(for: .renderFailed)
             }
         } else {
             boardAsset = nil
@@ -465,9 +481,14 @@ final class WebSnapshotModel {
         }
         // Note a partial failure when some viewports succeeded and others didn't.
         if captured.count < presets.count {
-            errorMessage = String(
-                localized: "Captured \(captured.count) of \(presets.count) sizes; some didn't load."
-            )
+            errorMessage =
+                boardErrorMessage
+                ?? String(
+                    localized:
+                        "Captured \(captured.count) of \(presets.count) sizes; some didn't load."
+                )
+        } else {
+            errorMessage = boardErrorMessage
         }
     }
 
@@ -509,6 +530,10 @@ final class WebSnapshotModel {
             )
         case .renderFailed:
             String(localized: "Couldn't load or render that — check the input and try again.")
+        case .renderTooLarge:
+            String(
+                localized:
+                    "The image is too large to render safely. Reduce the canvas size or scale.")
         case .noRendererFor:
             String(localized: "That input can't be rendered here.")
         }

@@ -24,6 +24,7 @@ CRITICAL_PREFIXES = (
 NONVISUAL_WEB_FILES = {
     "HTMLRenderer.swift",
     "NetworkCapability.swift",
+    "PrivateNetworkBlockRules.swift",
     "ResponsiveBoardComposer.swift",
     "URLLoadCoordinator.swift",
     "URLRenderer.swift",
@@ -221,6 +222,7 @@ def self_test() -> None:
     }
     assert production_coverage(report)[:3] == (24, 30, 0.8)
     assert is_critical("Vitrine/Models/Theme.swift")
+    assert is_critical("Vitrine/WebRendering/PrivateNetworkBlockRules.swift")
     assert is_critical("Vitrine/WebRendering/WebURLValidation.swift")
     assert not is_critical("Vitrine/WebRendering/WebSnapshotEditorView.swift")
     assert not is_critical("Vitrine/Editor/EditorView.swift")

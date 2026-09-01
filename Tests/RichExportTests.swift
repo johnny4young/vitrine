@@ -276,6 +276,24 @@ struct RichExportTests {
         #expect(Array(decoded.prefix(4)) == Self.pngSignature)
     }
 
+    @Test func richImageCopiesPreserveOversizedRenderFailures() {
+        let pasteboard = Self.scratchPasteboard()
+        let expected = ExportManager.CopyOutcome.renderFailed(
+            .tooLarge(.dimension(actual: 20_000, maximum: 16_384)))
+
+        #expect(
+            RichPasteboard.copyDataURIOutcome(
+                for: Self.sampleConfig(), scale: 1,
+                fixedSize: CGSize(width: 20_000, height: 100), profile: .sRGB,
+                to: pasteboard) == expected)
+        #expect(
+            RichPasteboard.copyMarkdownOutcome(
+                for: Self.sampleConfig(), scale: 1,
+                fixedSize: CGSize(width: 20_000, height: 100), profile: .sRGB,
+                to: pasteboard) == expected)
+        #expect(pasteboard.types?.isEmpty != false)
+    }
+
     @Test func dataURIIsOmittedWhenItExceedsTheCap() {
         // A blob larger than the cap yields no URI rather than an unbounded string.
         let oversized = Data(count: RichPasteboard.maxRepresentationBytes + 1)

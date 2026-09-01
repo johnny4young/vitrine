@@ -9,21 +9,26 @@ extension ExportManager {
     /// vector document and is unaffected by the raster color-profile choice.
     ///
     /// Returns the outcome so a caller can give the user precise feedback:
-    /// `.saved` when a file was written, `.cancelled` when the user
-    /// dismissed the panel, and `.failed` when rendering, encoding, or the write
-    /// itself failed. The result is discardable for callers that do not care.
+    /// `.saved` when a file was written, `.cancelled` when the user dismissed the
+    /// panel, `.renderFailed` when rendering or encoding failed, and `.failed` when
+    /// the final write failed. The result is discardable for callers that do not care.
     @discardableResult
     static func saveToFile(
         _ config: SnapshotConfig, scale: CGFloat = 2, format: ExportFormat = .png,
         fixedSize: CGSize? = nil, profile: ColorProfile = .sRGB
     ) -> SaveOutcome {
-        let payload = encodedPayload(
-            format,
-            png: { renderCGImage(config, scale: scale, fixedSize: fixedSize, profile: profile) },
-            pdf: { pdfData(config, fixedSize: fixedSize) })
-        guard let payload else {
-            Log.export.error("Save to file failed: render or encode returned nil")
-            return .failed
+        let payload: (data: Data, type: UTType, ext: String)
+        do {
+            payload = try encodedPayloadChecked(
+                format,
+                raster: { () throws(RenderBudgetError) -> CGImage in
+                    try renderCGImageChecked(
+                        config, scale: scale, fixedSize: fixedSize, profile: profile)
+                },
+                pdf: { pdfData(config, fixedSize: fixedSize) })
+        } catch let error {
+            Log.export.error("Save to file failed: render rejected or encode failed")
+            return .renderFailed(error)
         }
         return saveToFile(
             payload: payload, suggestedName: SuggestedFilename.basename(for: config))
@@ -42,7 +47,7 @@ extension ExportManager {
             let metadata = rasterMetadata(for: format)
         else {
             Log.export.error("Save to file failed: raster encode returned nil or PDF via cgImage")
-            return .failed
+            return .renderFailed(.encodingFailed)
         }
         return saveToFile(
             payload: (data, metadata.type, metadata.ext), suggestedName: suggestedName)
@@ -86,5 +91,6 @@ extension ExportManager {
         case saved
         case cancelled
         case failed
+        case renderFailed(RenderBudgetError)
     }
 }

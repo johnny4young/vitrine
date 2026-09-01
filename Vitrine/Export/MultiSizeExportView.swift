@@ -138,7 +138,8 @@ struct MultiSizeExportView: View {
             let completion = BatchExportCompletion(
                 written: result.written,
                 failed: result.failed,
-                expected: total)
+                expected: total,
+                renderFailure: result.firstRenderFailure)
             if completion.isComplete {
                 feedback(Notifier.confirmation(String(localized: "Images exported")))
                 presentation.reveal(directory)

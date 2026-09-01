@@ -44,6 +44,10 @@ enum RenderError: Error, Equatable, Sendable {
     /// underlying `ImageRenderer` returned no `CGImage`). This is a genuine failure.
     case renderFailed
 
+    /// The resolved web viewport or full-page rect exceeds the shared raster budget.
+    /// Carries only allocation arithmetic, never the URL or HTML body.
+    case renderTooLarge(RenderBudget.Rejection)
+
     /// A URL capture was requested in a build that does not carry the network
     /// client entitlement. The App Store build ships without
     /// `com.apple.security.network.client`, so the `URLRenderer` refuses early with

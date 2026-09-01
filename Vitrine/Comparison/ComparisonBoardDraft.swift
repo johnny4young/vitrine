@@ -19,7 +19,7 @@ final class ComparisonBoardDraft {
     enum CreationError: Error, Equatable {
         case invalidSelection(Int)
         case invalidRenderScale(CGFloat)
-        case renderFailed(index: Int)
+        case renderFailure(index: Int, RenderBudgetError)
     }
 
     struct PreviewKey: Hashable {
@@ -38,8 +38,9 @@ final class ComparisonBoardDraft {
         baseConfig: SnapshotConfig,
         profile: ColorProfile,
         renderScale: CGFloat = 1,
-        render: (SnapshotConfig, CGFloat, ColorProfile) -> CGImage? = { config, scale, profile in
-            ExportManager.renderCGImage(config, scale: scale, profile: profile)
+        render: (SnapshotConfig, CGFloat, ColorProfile) throws(RenderBudgetError) -> CGImage = {
+            config, scale, profile in
+            try ExportManager.renderCGImageChecked(config, scale: scale, profile: profile)
         }
     ) throws {
         guard ComparisonBoard.itemCountRange.contains(captures.count) else {
@@ -52,8 +53,11 @@ final class ComparisonBoardDraft {
         exportScale = renderScale
         items = try captures.enumerated().map { index, capture in
             let config = capture.applying(to: baseConfig)
-            guard let image = render(config, renderScale, profile) else {
-                throw CreationError.renderFailed(index: index)
+            let image: CGImage
+            do throws(RenderBudgetError) {
+                image = try render(config, renderScale, profile)
+            } catch let error {
+                throw CreationError.renderFailure(index: index, error)
             }
             return Item(
                 id: UUID(),
@@ -86,8 +90,11 @@ final class ComparisonBoardDraft {
             layout: layout)
     }
 
-    func compose(scale: CGFloat, profile: ColorProfile) throws -> RenderedAsset {
-        try ComparisonBoardComposer.compose(board(), scale: scale, profile: profile)
+    func compose(
+        scale: CGFloat, profile: ColorProfile, budget: RenderBudget = .export
+    ) throws -> RenderedAsset {
+        try ComparisonBoardComposer.compose(
+            board(), scale: scale, profile: profile, budget: budget)
     }
 
     func moveItem(id: Item.ID, offset: Int) {

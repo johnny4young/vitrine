@@ -235,7 +235,10 @@ enum RecentsThumbnail {
         let config = capture.applying(to: SnapshotConfig())
         // Thumbnails are recognition aids, not exports: render at 1× into the fixed
         // frame so the cached file stays small and uniform.
-        guard let cgImage = ExportManager.renderCGImage(config, scale: 1, fixedSize: size) else {
+        guard
+            let cgImage = ExportManager.renderCGImage(
+                config, scale: 1, fixedSize: size, budget: .preview)
+        else {
             return nil
         }
         return ExportManager.pngData(from: cgImage)

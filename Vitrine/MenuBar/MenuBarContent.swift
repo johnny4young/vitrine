@@ -355,11 +355,11 @@ struct MenuBarContent: View {
         // `exportConfig`, not `config`: every export surface renders through it so
         // the PRO Brand Kit watermark is applied at the export seam.
         let config = capture.applying(to: settings.exportConfig)
-        let copied = ExportManager.copyToPasteboard(
+        let outcome = ExportManager.copyToPasteboardOutcome(
             config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
-        feedback.present(ExportFeedback.copyOutcome(copied))
+        feedback.present(ExportFeedback.copyOutcome(outcome))
     }
 
     private func copySource(_ capture: Capture) {

@@ -9,18 +9,34 @@ enum ComparisonBoardExporter {
         format: ExportFormat,
         profile: ColorProfile
     ) -> (data: Data, type: UTType, ext: String)? {
-        ExportManager.encodedPayload(
-            format,
-            png: {
-                try? draft.compose(scale: draft.exportScale, profile: profile).cgImage
-            },
-            pdf: {
-                guard
-                    let image = try? draft.compose(
-                        scale: draft.exportScale,
-                        profile: profile)
-                else { return nil }
-                return ExportManager.pdfData(from: image.cgImage)
-            })
+        try? encodedPayloadChecked(for: draft, format: format, profile: profile)
+    }
+
+    static func encodedPayloadChecked(
+        for draft: ComparisonBoardDraft,
+        format: ExportFormat,
+        profile: ColorProfile
+    ) throws(RenderBudgetError) -> (data: Data, type: UTType, ext: String) {
+        let asset: RenderedAsset
+        do {
+            asset = try draft.compose(scale: draft.exportScale, profile: profile)
+        } catch ComparisonBoardComposer.CompositionError.renderFailure(let error) {
+            throw error
+        } catch {
+            throw .allocationFailed
+        }
+
+        if case .pdf = format {
+            guard let data = ExportManager.pdfData(from: asset.cgImage) else {
+                throw .encodingFailed
+            }
+            return (data, .pdf, "pdf")
+        }
+        guard let data = ExportManager.rasterData(from: asset.cgImage, format: format),
+            let metadata = ExportManager.rasterMetadata(for: format)
+        else {
+            throw .encodingFailed
+        }
+        return (data, metadata.type, metadata.ext)
     }
 }

@@ -44,6 +44,14 @@ nonisolated enum CLIError: Error, Equatable {
     case inputNotImage(path: String)
     /// Rendering produced no image (an internal renderer failure).
     case renderFailed
+    /// The resolved canvas exceeds Vitrine's safe raster allocation budget.
+    case renderTooLarge
+    /// The system could not allocate the bounded render buffer.
+    case renderAllocationFailed
+    /// ImageIO could not encode the completed raster in the selected format.
+    case renderEncodingFailed
+    /// Rendering was cancelled before an artifact was produced.
+    case renderCancelled
     /// The requested format is valid, but this macOS ImageIO stack has no writer for it.
     case unsupportedOutputFormat(String)
     /// An output path already exists and `--no-overwrite` requested a safe run.
@@ -102,6 +110,14 @@ nonisolated enum CLIError: Error, Equatable {
             "The input file at \"\(path)\" is not a supported image."
         case .renderFailed:
             "Rendering failed to produce an image."
+        case .renderTooLarge:
+            "The requested image is too large to render safely. Reduce the canvas size, scale, or source length."
+        case .renderAllocationFailed:
+            "Vitrine could not allocate the image buffer. Reduce the canvas size or scale and try again."
+        case .renderEncodingFailed:
+            "Vitrine rendered the image but could not encode the selected output format."
+        case .renderCancelled:
+            "Rendering was cancelled before an output was produced."
         case .unsupportedOutputFormat(let format):
             "This Mac's ImageIO stack cannot encode \(format). Choose PNG, PDF, or HEIC instead."
         case .outputExists(let path):
@@ -132,6 +148,17 @@ nonisolated enum CLIError: Error, Equatable {
         switch self {
         case .helpRequested: 0
         default: 1
+        }
+    }
+
+    /// Preserves the shared renderer's public failure category without exposing
+    /// allocation details or system errors on stderr.
+    static func renderFailure(_ error: RenderBudgetError) -> CLIError {
+        switch error {
+        case .tooLarge: .renderTooLarge
+        case .allocationFailed: .renderAllocationFailed
+        case .encodingFailed: .renderEncodingFailed
+        case .cancelled: .renderCancelled
         }
     }
 }

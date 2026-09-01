@@ -449,6 +449,23 @@ struct CLIOutputContractTests: CLITestSupport {
         #expect(image2.height == 720)
     }
 
+    @Test func tallNaturalLayoutIsRejectedBeforeWritingAnOutput() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let source = String(repeating: "let bounded = true\n", count: 1_000)
+        let input = try writeInput(source, named: "Tall.swift", in: directory)
+        let output = directory.appendingPathComponent("too-tall.png")
+        let options = try CLIArguments.parse([
+            "render", input, "--out", output.path, "--scale", "3",
+        ])
+
+        #expect(throws: CLIError.renderTooLarge) {
+            try CLIRenderer.run(options)
+        }
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+    }
+
     @Test func multiSizeWritesSelectedPresetDimensionsAndSidecars() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

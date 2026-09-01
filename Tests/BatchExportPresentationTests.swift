@@ -45,6 +45,17 @@ struct BatchExportPresentationTests {
         #expect(note.hasPrefix("2/3 — "))
     }
 
+    @Test func renderFailureProducesActionableRecoveryCopy() throws {
+        let completion = BatchExportCompletion(
+            written: 1, failed: 1, expected: 2,
+            renderFailure: .tooLarge(.arithmeticOverflow))
+        let note = try #require(completion.failureNote)
+
+        #expect(!completion.isComplete)
+        #expect(note.hasPrefix("1/2 — "))
+        #expect(note.localizedCaseInsensitiveContains("reduce"))
+    }
+
     @Test(arguments: [
         (written: 2, failed: 1, expected: 3),
         (written: 3, failed: 1, expected: 3),

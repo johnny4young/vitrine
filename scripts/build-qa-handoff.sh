@@ -38,6 +38,7 @@ validate_fixtures() {
 		local-safe.html \
 		remote-resource-blocked.html \
 		verify-remote-probe.sh \
+		private-subresource-probe.sh \
 		public-url.txt \
 		blocked-destinations.txt
 	do
@@ -50,6 +51,8 @@ validate_fixtures() {
 		|| fail "local-safe.html is missing its qualification marker"
 	[ -x "${WEBKIT_FIXTURES}/verify-remote-probe.sh" ] \
 		|| fail "qa/webkit/verify-remote-probe.sh must be executable"
+	[ -x "${WEBKIT_FIXTURES}/private-subresource-probe.sh" ] \
+		|| fail "qa/webkit/private-subresource-probe.sh must be executable"
 	grep -q 'https://httpbin.org/image/png' "${WEBKIT_FIXTURES}/remote-resource-blocked.html" \
 		|| fail "remote-resource-blocked.html is missing the controlled probe URL"
 	grep -q 'REMOTE_REQUEST_FAILED' "${WEBKIT_FIXTURES}/remote-resource-blocked.html" \
@@ -58,6 +61,8 @@ validate_fixtures() {
 		|| fail "remote-resource-blocked.html is missing its failure marker"
 	grep -q 'https://httpbin.org/image/png' "${WEBKIT_FIXTURES}/verify-remote-probe.sh" \
 		|| fail "verify-remote-probe.sh does not validate the fixture probe URL"
+	grep -q 'observedPrivateBytes: 0' "${WEBKIT_FIXTURES}/private-subresource-probe.sh" \
+		|| fail "private-subresource-probe.sh does not require zero observed private bytes"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
@@ -156,8 +161,9 @@ qualify it on clean Sequoia and Tahoe Macs. It does not certify the candidate by
    macOS 26 Tahoe Mac before entering \`CLEAN-MAC-QA-PASSED\`.
 
 The public-to-private redirect policy is not manually certified by these fixtures.
-It remains a deterministic navigation-delegate test and must not be claimed as clean-Mac
-evidence from this handoff.
+It remains a deterministic navigation-delegate test. Public-hostname DNS rebinding and
+resolution-time private-address detection are also outside the literal-host content-rule
+claim. Neither boundary may be claimed as clean-Mac evidence from this handoff.
 README
 
 (

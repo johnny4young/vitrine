@@ -104,7 +104,7 @@ extension WebSnapshotConfig {
         let bare = normalizedHost(host)
 
         // Hostnames that always resolve to the local machine / link.
-        if bare == "localhost" { return true }
+        if bare == "localhost" || bare.hasSuffix(".localhost") { return true }
         if bare == "local" || bare.hasSuffix(".local") { return true }
 
         // IPv6 loopback / link-local / unique-local literals. Strip a zone id
@@ -137,12 +137,13 @@ extension WebSnapshotConfig {
     }
 
     /// Whether `host` names this Mac's loopback interface specifically. This is a
-    /// strict subset of the default blocklist: `localhost`, IPv4 `127/8`, IPv6 `::1`,
-    /// and IPv4-mapped loopback. Multicast-DNS `.local` names are deliberately not
-    /// included because they can identify other devices on the local network.
+    /// strict subset of the default blocklist: `localhost` and its reserved
+    /// subdomains, IPv4 `127/8`, IPv6 `::1`, and IPv4-mapped loopback.
+    /// Multicast-DNS `.local` names are deliberately not included because they can
+    /// identify other devices on the local network.
     nonisolated static func isLoopbackHost(host: String) -> Bool {
         let bare = normalizedHost(host)
-        if bare == "localhost" { return true }
+        if bare == "localhost" || bare.hasSuffix(".localhost") { return true }
 
         let addressLiteral = bare.split(separator: "%", maxSplits: 1).first.map(String.init) ?? bare
         if let ipv6 = ipv6Bytes(from: addressLiteral) {

@@ -129,7 +129,7 @@ struct SocialCardEditorView: View {
     private func copyCard() {
         feedback(
             ExportFeedback.copyOutcome(
-                SocialCardRenderer.copyToPasteboard(
+                SocialCardRenderer.copyToPasteboardOutcome(
                     card, scale: exportScale, profile: settings.export.colorProfile)))
     }
 
@@ -144,14 +144,13 @@ struct SocialCardEditorView: View {
     }
 
     func shareCard() {
-        guard
-            let image = SocialCardRenderer.renderNSImage(
+        do {
+            let image = try SocialCardRenderer.renderNSImageChecked(
                 card, scale: exportScale, profile: settings.export.colorProfile)
-        else {
-            feedback(ExportFeedback.shareFailure)
-            return
+            presentation.share(image)
+        } catch let error {
+            feedback(ExportFeedback.renderFailure(error))
         }
-        presentation.share(image)
     }
 
     /// The export scale: the user's chosen resolution multiplier, applied to the

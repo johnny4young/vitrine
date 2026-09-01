@@ -83,7 +83,8 @@ struct CarouselExportView: View {
             let completion = BatchExportCompletion(
                 written: result.written,
                 failed: result.failed,
-                expected: pages.count)
+                expected: pages.count,
+                renderFailure: result.firstRenderFailure)
             if completion.isComplete {
                 feedback(Notifier.confirmation(String(localized: "Carousel exported")))
                 presentation.reveal(directory)

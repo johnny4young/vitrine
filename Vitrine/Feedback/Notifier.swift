@@ -102,6 +102,8 @@ enum Notifier {
                 category: .success,
                 message: successMessage(copied: copiedToClipboard, saved: savedToFile),
                 actions: [])
+        case .renderFailed(let error):
+            return renderFailure(error)
         case .url:
             // A raw `.url` outcome normally opens Web Snapshot directly from
             // `QuickCapture.perform`. If another caller surfaces it as feedback, still
@@ -146,6 +148,28 @@ enum Notifier {
     /// output was copied, saved, shared, or blocked").
     static func failure(_ message: String) -> CaptureFeedback {
         CaptureFeedback(category: .failure, message: message, actions: [])
+    }
+
+    /// Actionable, localized feedback shared by quick capture and the explicit
+    /// copy/save/share surfaces for every checked render failure category.
+    static func renderFailure(_ error: RenderBudgetError) -> CaptureFeedback {
+        let message =
+            switch error {
+            case .tooLarge:
+                String(
+                    localized:
+                        "The image is too large to render safely. Reduce the canvas size or scale.")
+            case .allocationFailed:
+                String(
+                    localized:
+                        "Vitrine couldn't allocate the image buffer. Reduce the canvas size or scale and try again."
+                )
+            case .encodingFailed:
+                String(localized: "Vitrine couldn't encode the selected image format.")
+            case .cancelled:
+                String(localized: "Rendering was cancelled.")
+            }
+        return failure(message)
     }
 
     /// Builds the success message from what actually happened to the image, so the

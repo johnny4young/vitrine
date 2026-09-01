@@ -14,6 +14,17 @@ enum ExportFeedback {
             : Notifier.failure(String(localized: "Couldn't copy the image"))
     }
 
+    static func copyOutcome(_ outcome: ExportManager.CopyOutcome) -> Notifier.CaptureFeedback {
+        switch outcome {
+        case .copied:
+            Notifier.confirmation(String(localized: "Image copied to clipboard"))
+        case .failed:
+            Notifier.failure(String(localized: "Couldn't copy the image"))
+        case .renderFailed(let error):
+            renderFailure(error)
+        }
+    }
+
     static func sourceCopyOutcome(_ copied: Bool) -> Notifier.CaptureFeedback {
         copied
             ? Notifier.confirmation(String(localized: "Source copied to clipboard"))
@@ -28,6 +39,8 @@ enum ExportFeedback {
             Notifier.confirmation(String(localized: "Image saved"))
         case .failed:
             Notifier.failure(String(localized: "Couldn't save the image"))
+        case .renderFailed(let error):
+            renderFailure(error)
         case .cancelled:
             nil
         }
@@ -35,6 +48,10 @@ enum ExportFeedback {
 
     static var shareFailure: Notifier.CaptureFeedback {
         Notifier.failure(String(localized: "Couldn't share the image"))
+    }
+
+    static func renderFailure(_ error: RenderBudgetError) -> Notifier.CaptureFeedback {
+        Notifier.renderFailure(error)
     }
 
     /// Presents the copy outcome: a confirmation on success, a failure otherwise.

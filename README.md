@@ -16,7 +16,7 @@ pasted HTML, entirely on your Mac.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v1.2.0-brightgreen.svg)](#status)
+[![Status](https://img.shields.io/badge/status-v1.2.1--candidate-orange.svg)](#status)
 
 | `vgrab htop` | `vgrab lazygit` | `vgrab nvim` |
 | --- | --- | --- |
@@ -295,7 +295,7 @@ Shortcuts and App Intents.
 - ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight and curved), lines, rectangles, text callouts, a highlighter, blur/redaction boxes, numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
 - 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
-- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format, **HEIC** as a compact option for docs sites and wikis, and **AVIF** when the active ImageIO stack can encode it (Tahoe and newer). Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
+- 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format, **HEIC** as a compact option for docs sites and wikis, and **AVIF** when the active ImageIO stack can encode it (Tahoe and newer). Shared preview/export budgets reject unsafe dimensions, pixel counts, or estimated working memory before bitmap allocation and return actionable errors. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
 - 📣 **Post to X / LinkedIn / Bluesky** — compose targets in the share sheet: the image is staged on the clipboard and the network's compose page opens with a paste hint. One paste from posting; Vitrine sends nothing anywhere.
 - 🎠 **Carousel export** *(PRO)* — split a long snippet into numbered 4:5 slides (`carousel-01.png` …) for a LinkedIn/Instagram carousel. Pick the lines per slide; the split balances so the last slide never trails, and every slide carries your style and brand mark.
 - 📌 **Pinned snapshot** — pin the current render in a floating window that stays above every app and follows you across Spaces, so the error or design you're working against stays visible while you code.
@@ -303,7 +303,7 @@ Shortcuts and App Intents.
 - 📐 **Safe-area guides** — an editor-only overlay that draws the margin platforms may crop over a fixed-size destination, with a live "lines × widest column" chip; never part of the export.
 - 📝 **Developer-grade copy formats** — copy highlighted RTF/HTML, a standalone PNG data URI, or one self-contained Markdown block containing the image plus copyable fenced source. Redacted lines stay redacted in every text representation.
 - 🪧 **Social cards** — compose a 1200×630 card from your code (template, theme, background) to copy, save, or share, with **Instagram Story** and **GitHub banner** export presets.
-- 🌐 **Web snapshots** — render pasted **HTML** offline, or capture a **webpage** (direct-download build) after a first-use privacy disclosure. The requested page is fetched and rendered locally in WebKit; there is no remote screenshot service. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
+- 🌐 **Web snapshots** — render pasted **HTML** offline, or capture a **webpage** (direct-download build) after a first-use privacy disclosure. The requested page is fetched and rendered locally in WebKit; there is no remote screenshot service. Full-page output is clamped by total pixels and estimated working memory, and literal private-network subresources are blocked unless narrow loopback access is explicitly enabled. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
 - ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
 - 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar. Enter **Compare** to select two to four captures in order and compose a labelled, path-free board for before/after reviews or release notes. → [`docs/COMPARISON-BOARDS.md`](docs/COMPARISON-BOARDS.md).
@@ -367,9 +367,12 @@ Vitrine is private by design, and that promise does not soften as the product gr
   page loads. Only `http`/`https` URLs are accepted. Private and local-network hosts are
   refused; a separate default-off setting can allow only this Mac's loopback interface
   (`localhost`, `127/8`, and `::1`) for development servers. `.local`, LAN, link-local,
-  metadata, and other private addresses stay blocked. The web view uses a non-persistent
-  data store by default (no cookies or website data persist across captures unless you
-  opt in).
+  metadata, and other private addresses stay blocked. A WebKit content-rule list also
+  blocks literal private hosts in images, styles, scripts, frames, fetches, WebSockets,
+  and other subresources. This is URL-level filtering rather than DNS resolver isolation,
+  so public-host DNS rebinding remains a documented residual risk. The web view uses a
+  non-persistent data store by default (no cookies or website data persist across captures
+  unless you opt in).
 - **PRO activation contacts only the license provider, once.** On the direct-download build,
   activating a PRO license makes a single online check to the license provider (Lemon
   Squeezy) to validate your key; afterward PRO is verified from an offline signed token and
@@ -662,7 +665,7 @@ in [`docs/`](docs/):
 
 ## Status
 
-🟢 **v1.2.0 is the current version in source.** Public artifacts are published only
+🟠 **v1.2.1 (build 36) is the current release candidate in source.** Public artifacts are published only
 through the vetted release workflow; the [Releases page](https://github.com/johnny4young/vitrine/releases)
 is the source of truth for the newest downloadable version. Everything under
 [Features](#features) is driven by one design-token system
@@ -674,8 +677,10 @@ pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md
 The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release
 also ships an in-app **What's New**.
 
-Anything added under **Unreleased** in the changelog belongs to a future build and is not
-part of the v1.2.0 release line.
+Preparing this candidate does not publish it: the production website, Homebrew tap,
+Sparkle appcast, and GitHub Release remain unchanged until the separately authorized
+promotion verifies the exact candidate bytes. Anything added under **Unreleased** in the
+changelog belongs to a future build and is not part of the v1.2.1 release line.
 
 Two explicit product boundaries — no arbitrary screen/window capture and no dependency
 on a hosted web-render service — are documented in

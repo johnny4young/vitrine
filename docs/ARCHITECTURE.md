@@ -146,6 +146,28 @@ true transparency (its empty pixels stay fully clear, `(0,0,0,0)`) and is never
 composited over an opaque matte, so the result drops cleanly onto any slide or
 page background.
 
+## Raster resource budgets and failure contract
+
+Every raster render/export path preflights `RenderBudget` after layout resolves the logical
+canvas but before `ImageRenderer`, Core Graphics, or WebKit creates the potentially large
+bitmap. Small fixed-size sampling/thumbnail operations derive from an already bounded image
+and retain their own hard caps. The value-only render policy accounts for logical
+dimensions, render scale, total pixels, and estimated simultaneously live buffers using
+overflow-safe integer arithmetic. Preview and export use separate ceilings: preview
+remains responsive, while export permits larger intentional output without granting an
+unbounded allocation.
+Full-page Web Snapshot height is clamped from the same axis, pixel, and estimated-byte
+constraints before `WKWebView.takeSnapshot` is called, and the returned image is checked
+again before board composition.
+
+`RenderBudgetError` is the shared typed failure boundary: `tooLarge`, `allocationFailed`,
+`encodingFailed`, and `cancelled`. The app, CLI, App Intents, batch exporters, social cards,
+comparison boards, Web responsive boards, pasteboard, and file writers preserve those
+categories instead of turning them into a blank image, partial success, or process-level
+allocation failure.
+User-facing adapters own concise recovery copy; the core error never exposes a file path or
+platform allocation detail.
+
 ## Vector export
 
 The supported scalable format is **PDF**, not SVG. This is a deliberate decision
@@ -616,7 +638,7 @@ RenderEngine (Product local rendering: code; web capture: URL/HTML/social cards)
     ↓
 Live preview with sliders (padding, radius, scale)  [editor mode only]
     ↓
-ImageRenderer(content:) → PNG @ 2x/3x (perfect retina)
+RenderBudget preflight → ImageRenderer(content:) → PNG @ 2x/3x
     ↓
 ExportEngine
   ├── Copy to clipboard (NSPasteboard) ← primary action
@@ -682,7 +704,7 @@ another application window.
                         ▼
             ┌──────────────────────────┐
             │  ExportManager            │
-            │  ImageRenderer → PNG →    │
+            │  RenderBudget → PNG →     │
             │  NSPasteboard / NSSavePanel│
             └──────────────────────────┘
 ```
@@ -808,6 +830,7 @@ Vitrine/
 │   ├── URLRenderer.swift      # URL render facade, validation/error mapping
 │   ├── URLSnapshotEngine.swift # bounded offscreen WKWebView rasterization
 │   ├── URLLoadCoordinator.swift # navigation completion + redirect/host policy
+│   ├── PrivateNetworkBlockRules.swift # all-resource literal-private content rules
 │   ├── HTMLRenderer / WebSnapshotView
 │   ├── WebSnapshot{WindowController,EditorView}.swift
 │   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode value type
@@ -816,6 +839,7 @@ Vitrine/
 │   └── ResponsiveBoardComposer.swift # multi-viewport board (deterministic)
 ├── SocialCards/               # social-card editor + renderer; Canvas/SocialCardCanvas
 ├── Rendering/                 # shared Renderer / RenderedAsset abstractions
+│   └── RenderBudget.swift     # overflow-safe raster policy + typed failures
 ├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
 ├── State/                     # RecentsStore + pure window-state model
 ├── Recents/ · Updates/ · Help/ # recents selection/navigation; updates; Help/What's New

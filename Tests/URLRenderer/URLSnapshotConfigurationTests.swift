@@ -97,6 +97,22 @@ struct URLDataStoreModeTests {
         }
     }
 
+    @MainActor
+    @Test func theEngineRejectsExcessivePixelAreaBeforeTouchingWebKit() async throws {
+        let engine = URLSnapshotEngine()
+        let config = try WebSnapshotConfig(
+            localFileURL: try URLFixture.writeLocalPage(),
+            viewportPreset: .custom(width: 5_000, height: 5_000),
+            scale: 3)
+
+        await #expect(
+            throws: WebSnapshotError.renderTooLarge(
+                .pixelCount(actual: 225_000_000, maximum: 40_000_000))
+        ) {
+            try await engine.snapshot(of: config)
+        }
+    }
+
     @Test func hermeticFixtureHookRejectsRemoteURLsWithoutTrapping() throws {
         let remote = try #require(URL(string: "https://example.com"))
         #expect(throws: WebSnapshotFixtureError.nonFileURL) {

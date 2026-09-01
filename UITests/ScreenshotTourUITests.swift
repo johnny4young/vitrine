@@ -544,9 +544,10 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let window = element("recents-window", in: app)
         XCTAssertTrue(window.waitForExistence(timeout: 8))
-        let sort = element("recents-sort-picker", in: app)
-        XCTAssertTrue(sort.waitForExistence(timeout: 5))
-        XCTAssertTrue(sort.isHittable)
+        assertHittable(
+            "recents-sort-picker", in: app,
+            "Recents should expose its sort picker", timeout: 5)
+        let sort = hittableElement("recents-sort-picker", in: app)
         sort.click()
 
         let oldestFirst = app.menuItems["Oldest First"]

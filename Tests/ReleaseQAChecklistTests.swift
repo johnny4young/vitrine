@@ -80,6 +80,10 @@ struct ReleaseQAChecklistTests {
         ("local HTML WebKit", ["Local HTML WebKit", "local-safe.html"]),
         ("remote subresource blocked", ["Remote blocked", "remote-resource-blocked.html"]),
         ("real public URL WebKit", ["Public URL WebKit", "https://example.com"]),
+        (
+            "private URL subresources blocked",
+            ["Private resources", "private-subresource-probe.sh", "zero private request"]
+        ),
         ("loopback rejection", ["Loopback reject", "127.0.0.1"]),
         (
             "private destination rejection",
@@ -102,6 +106,7 @@ struct ReleaseQAChecklistTests {
             Self.url("qa", "webkit", "local-safe.html"),
             Self.url("qa", "webkit", "remote-resource-blocked.html"),
             Self.url("qa", "webkit", "verify-remote-probe.sh"),
+            Self.url("qa", "webkit", "private-subresource-probe.sh"),
             Self.url("qa", "webkit", "public-url.txt"),
             Self.url("qa", "webkit", "blocked-destinations.txt"),
         ] {
@@ -118,6 +123,7 @@ struct ReleaseQAChecklistTests {
             Self.url("scripts", "qa-release.sh").path,
             Self.url("scripts", "build-qa-handoff.sh").path,
             Self.url("qa", "webkit", "verify-remote-probe.sh").path,
+            Self.url("qa", "webkit", "private-subresource-probe.sh").path,
         ] {
             #expect(
                 FileManager.default.isExecutableFile(atPath: path),
@@ -143,6 +149,16 @@ struct ReleaseQAChecklistTests {
         let control = try Self.text("qa", "webkit", "verify-remote-probe.sh")
         #expect(control.contains("https://httpbin.org/image/png"))
         #expect(control.contains("sips") && control.contains("cmp"))
+        let privateControl = try Self.text(
+            "qa", "webkit", "private-subresource-probe.sh")
+        for requirement in [
+            "https://httpbin.org/base64", "127.0.0.1", "<img", "rel=stylesheet",
+            "<script src", "<iframe", "fetch(", "new WebSocket", "observedPrivateBytes: 0",
+        ] {
+            #expect(privateControl.contains(requirement))
+        }
+        #expect(privateControl.contains("nc -4 -l"))
+        #expect(privateControl.contains("PRIVATE_SUBRESOURCE_PROBE_READY"))
         let instructions = try Self.text("qa", "webkit", "README.md")
         #expect(instructions.contains("marker alone is insufficient evidence"))
 
@@ -162,16 +178,21 @@ struct ReleaseQAChecklistTests {
         #expect(runs.map { $0["platform"] as? String } == ["macOS 15 Sequoia", "macOS 26 Tahoe"])
         for run in runs {
             let scenarios = try #require(run["scenarios"] as? [[String: Any]])
-            #expect(scenarios.count == 5)
+            #expect(scenarios.count == 6)
             #expect(scenarios.allSatisfy { $0["status"] as? String == "not-run" })
             let remoteScenario = try #require(
                 scenarios.first { $0["id"] as? String == "local-html-remote-block" })
             #expect(remoteScenario.keys.contains("controlBefore"))
             #expect(remoteScenario.keys.contains("renderedMarker"))
             #expect(remoteScenario.keys.contains("controlAfter"))
+            let privateScenario = try #require(
+                scenarios.first { $0["id"] as? String == "public-private-subresource-block" })
+            #expect(privateScenario.keys.contains("renderedMarker"))
+            #expect(privateScenario.keys.contains("probeMetadata"))
         }
         #expect(
             String(data: logData, encoding: .utf8)?.contains("public-to-private redirect") == true)
+        #expect(String(data: logData, encoding: .utf8)?.contains("DNS rebinding") == true)
     }
 
     @Test func releasePackagesAndRequiresTheQAHandoff() throws {
@@ -200,6 +221,17 @@ struct ReleaseQAChecklistTests {
         ] {
             #expect(contents.localizedCaseInsensitiveContains("public-to-private"))
             #expect(contents.localizedCaseInsensitiveContains("deterministic"))
+            #expect(
+                contents.localizedCaseInsensitiveContains("not")
+                    || contents.localizedCaseInsensitiveContains("does not"))
+        }
+    }
+
+    @Test func manualQualificationDoesNotOverclaimResolverIsolation() throws {
+        for contents in [
+            try Self.script(), try Self.releasingDoc(), try Self.text("qa", "webkit", "README.md"),
+        ] {
+            #expect(contents.localizedCaseInsensitiveContains("DNS"))
             #expect(
                 contents.localizedCaseInsensitiveContains("not")
                     || contents.localizedCaseInsensitiveContains("does not"))

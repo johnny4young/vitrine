@@ -252,6 +252,9 @@ struct NotifierTests {
         #expect(Notifier.message(for: .empty)?.localizedCaseInsensitiveContains("empty") == true)
         #expect(Notifier.message(for: .url("x"))?.localizedCaseInsensitiveContains("url") == true)
         #expect(Notifier.message(for: .rendered) != nil)
+        #expect(
+            Notifier.feedback(for: .renderFailed(.tooLarge(.arithmeticOverflow))).category
+                == .failure)
     }
 }
 
@@ -283,6 +286,27 @@ struct QuickCaptureTests {
         let outcome = QuickCapture.run(
             settings: settings, recents: recents, clipboard: { "https://example.com" })
         #expect(outcome == .url("https://example.com"))
+        #expect(recents.captures.isEmpty)
+    }
+
+    @Test func oversizedDestinationFailsBeforeRecordingARecent() {
+        let defaults = freshDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let recents = RecentsStore(defaults: defaults)
+        let oversized = ExportPreset(
+            id: "oversized", displayName: "Oversized", summary: "Test only",
+            sizing: .fixed(width: 20_000, height: 100), scale: 1,
+            background: nil, padding: 24)
+
+        let result = QuickCapture.capture(
+            settings: settings, recents: recents, destinationPreset: oversized,
+            clipboard: { "let value = 42" })
+
+        #expect(
+            result.outcome
+                == .renderFailed(.tooLarge(.dimension(actual: 20_000, maximum: 16_384))))
+        #expect(!result.copiedToClipboard)
+        #expect(!result.savedToFile)
         #expect(recents.captures.isEmpty)
     }
 }
