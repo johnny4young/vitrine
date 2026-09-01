@@ -1,8 +1,8 @@
 # Vitrine — Architecture
 
 This document mirrors the shipping module layout in [`VitrineDomain/`](../VitrineDomain),
-[`Vitrine/`](../Vitrine), and [`VitrineCLI/`](../VitrineCLI), plus the runtime boundaries
-enforced by the test suite.
+[`VitrineRendering/`](../VitrineRendering), [`Vitrine/`](../Vitrine), and
+[`VitrineCLI/`](../VitrineCLI), plus the runtime boundaries enforced by the test suite.
 
 ## Product and distribution boundaries
 
@@ -392,11 +392,12 @@ boundary before file work. `CLIOptions.Command.requiresPro` uses an exhaustive s
 so every future command must make an explicit product decision; a new general flag
 remains unavailable to the free command until its allowlist is deliberately changed.
 
-**Pixel-identical output.** The CLI does not re-implement rendering. App and CLI link the
-same `VitrineDomain` value/policy module, and the CLI compiles an explicit render-facing
-slice containing `SnapshotCanvas`, `ExportManager`, and `HighlightManager`. It does not
-compile app lifecycle, windows, Settings, menu-bar, onboarding, Recents, StoreKit, or
-WebKit UI. The thin CLI layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
+**Pixel-identical output.** The CLI does not re-implement or separately compile rendering.
+App and CLI link the same `VitrineDomain` value/policy module and the same static
+`VitrineRendering` engine containing `SnapshotCanvas`, `ExportManager`, `RenderBudget`,
+the image policy/store, and `HighlightManager`. The CLI does not compile app lifecycle,
+windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI. The thin CLI
+layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
 facade; `CLIArgumentParser` owns token consumption and mutable invocation state;
 `CLIArgumentValidation` checks cross-option semantics and materializes `CLIOptions`;
 and `CLIArgumentValues` handles catalog and range conversion. `CLIOptions` then builds
@@ -406,8 +407,9 @@ background and watermark preparation, `CLIBatchRenderer` owns folder discovery a
 batch reporting, and `CLIOutputWriter` owns artifact preflight, shared encoding, and
 sidecars. The output component still calls the unchanged `ExportManager`; none of these
 boundaries introduces a second render implementation. Because the inputs and pipeline
-are identical, a CLI render is byte-for-byte identical to the app's export for the same
-options — a focused output-contract test asserts exactly that.
+are identical, a CLI render has the same normalized RGBA pixels as the app's export for
+the same options. A focused output-contract test compares those pixels directly, while
+the pinned golden suite protects the shared engine's visual contract.
 
 **Portable workspace recipes.** `WorkspaceRecipeDocument` is a versioned JSON envelope
 over the existing `StyleSnapshot` model. It can add portable header metadata, output
@@ -795,9 +797,20 @@ another application window.
 ```
 VitrineDomain/                # static Foundation/CoreGraphics value and policy module
 ├── Models/                    # portable themes, presets, recipes, search, metadata
+├── Policies/                  # pure host/input safety classification
 ├── Settings/                  # typed defaults/schema and pure migrations
 ├── Support/                   # bounded local/transport reads and decode helpers
 └── Terminal/                  # ANSI parser, VT grid, and character-width policy
+
+VitrineRendering/             # static AppKit/SwiftUI engine linked by App and CLI
+├── Canvas/                    # shared snapshot/social-card layout and visual adapters
+├── DesignSystem/              # render-facing brand tokens and SwiftUI color bridges
+├── Editor/                    # Highlightr adapter, bounded caches, large-document policy
+├── Export/                    # raster/PDF/Markdown/SVG encoding facades
+├── Models/                    # SnapshotConfig, images, fonts, and social-card values
+├── Rendering/                 # RenderBudget, CaptureInput, Renderer, RenderedAsset
+├── Support/                   # rendering-owned logging and cost-limited LRU cache
+└── Terminal/                  # AppKit palette over portable terminal values
 
 Vitrine/
 ├── App/
@@ -829,14 +842,10 @@ Vitrine/
 │   ├── CodeFormatter+Reindent.swift
 │   ├── CodeFormatter+SQL.swift # dependency-free language-family transforms
 │   ├── CodeFormatter+LanguageStrategy.swift # Language → safe formatter route
-│   ├── HighlightManager.swift # Highlightr wrapper
 │   └── LanguageDetector.swift # detection by extension / heuristic
 ├── Canvas/
-│   ├── SnapshotCanvas.swift   # the view that becomes the PNG
-│   ├── WindowChrome.swift     # decorative traffic lights
-│   └── BackgroundView.swift   # solid or gradient background
+│   └── BackgroundEditor.swift # app-owned image/gradient editing controls
 ├── Export/
-│   ├── ExportManager.swift    # stable render-and-encode facade
 │   ├── ExportManager+Pasteboard.swift # source/image clipboard delivery
 │   ├── ExportManager+File.swift # save-panel and file delivery
 │   ├── ExportManager+Batch.swift # multi-size and carousel delivery
@@ -847,16 +856,13 @@ Vitrine/
 │   ├── ComparisonBoard.swift # path-free validated 2–4 item value
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
 │   ├── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
-│   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
-│   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset
+│   └── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
 ├── Comparison/
 │   ├── ComparisonBoardSelection.swift # ordered ephemeral Recents selection
 │   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
 │   ├── ComparisonBoardPreview.swift # debounced preview phase and failure state
 │   ├── ComparisonBoardEditorView.swift # preview, layout, captions, export controls
 │   └── ComparisonBoardPresentation.swift # injected share operation
-├── Terminal/
-│   └── ANSIPalette.swift      # AppKit color bridge over VitrineDomain terminal values
 ├── Settings/
 │   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)
 │   ├── SettingsWindow.swift / SettingsRootView.swift # custom preferences window
@@ -868,9 +874,7 @@ Vitrine/
 │   ├── PresetStore.swift      # reusable-style catalog and persistence
 │   └── PresetFileExchange.swift # user-initiated JSON import/export panels
 ├── Models/
-│   ├── SnapshotConfig.swift   # AppKit/SwiftUI render contract over domain values
-│   ├── *+SnapshotConfig.swift # app-only capture/apply adapters for portable styles
-│   ├── BackgroundImageStore.swift # bounded image persistence/decode adapter
+│   ├── Capture.swift          # recent-capture adapter over shared config
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
@@ -915,14 +919,14 @@ Vitrine/
 │   ├── NetworkCapability.swift       # network-entitlement gate for URL capture
 │   └── ResponsiveBoardComposer.swift # multi-viewport board (deterministic)
 ├── SocialCards/               # social-card editor + renderer; Canvas/SocialCardCanvas
-├── Rendering/                 # shared Renderer / RenderedAsset abstractions
-│   └── RenderBudget.swift     # overflow-safe raster policy + typed failures
 ├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
 ├── State/                     # RecentsStore + pure window-state model
 ├── Recents/ · Updates/ · Help/ # recents selection/navigation; updates; Help/What's New
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
-│   └── Log.swift              # os.Logger per subsystem + render signposts
+│   ├── DomainAliases.swift    # app compatibility names over VitrineDomain
+│   ├── RenderingAliases.swift # app compatibility names over VitrineRendering
+│   └── Log.swift              # app-lifecycle os.Logger categories
 └── Resources/
     ├── Assets.xcassets
     ├── Info.plist
@@ -937,6 +941,7 @@ VitrineCLI/                    # the `vitrine` executable target
 └── CLIEnvironment.swift       # locates the Fonts/ folder staged next to the binary
 
 DomainTests/                  # hostless VitrineDomain contract tests
+RenderingTests/               # direct VitrineRendering facade and policy contracts
 ```
 
 The editor owns batch-export presentation at the toolbar root rather than at an

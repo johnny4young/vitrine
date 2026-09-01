@@ -94,6 +94,29 @@ targets:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
         SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
 
+  # Shared AppKit/SwiftUI rendering engine. App and CLI link the same layouts,
+  # highlighter adapter, image policy, render budget, and encoders so output
+  # contracts cannot drift between two independently compiled implementations.
+  VitrineRendering:
+    type: library.static
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: VitrineRendering
+    dependencies:
+      - target: VitrineDomain
+      - package: Highlightr
+    settings:
+      base:
+        PRODUCT_NAME: VitrineRendering
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.rendering
+        SKIP_INSTALL: YES
+        SWIFT_INSTALL_OBJC_HEADER: NO
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+
   Vitrine:
     type: application
     platform: macOS
@@ -115,6 +138,7 @@ targets:
         buildPhase: resources
     dependencies:
       - target: VitrineDomain
+      - target: VitrineRendering
       - package: Highlightr
       - package: KeyboardShortcuts
       # Sparkle auto-update: embedded as a LOCAL framework fetched by
@@ -284,14 +308,10 @@ targets:
       - path: Vitrine/Editor/CodeFormatter+Reindent.swift
       - path: Vitrine/Editor/CodeFormatter+SQL.swift
       - path: Vitrine/Editor/FileInputLoader.swift
-      - path: Vitrine/Editor/HighlightManager.swift
-      - path: Vitrine/Editor/HighlightPolicy.swift
       - path: Vitrine/Editor/LanguageDetector.swift
       # Render/export primitives required by the headless command surface.
-      - path: Vitrine/Export/ExportManager.swift
       - path: Vitrine/Export/ExportManager+File.swift
       - path: Vitrine/Export/ExportManager+Pasteboard.swift
-      - path: Vitrine/Export/MarkdownExport.swift
       - path: Vitrine/Export/RichPasteboard.swift
       - path: Vitrine/Export/SuggestedFilename.swift
       # Offline verification only; StoreKit, purchase state, and paywall UI remain
@@ -303,6 +323,7 @@ targets:
       - path: VitrineCLI
     dependencies:
       - target: VitrineDomain
+      - target: VitrineRendering
       - package: Highlightr
       - package: KeyboardShortcuts
     # A command-line tool has no Contents/Resources, so a "Copy Bundle Resources"
@@ -434,6 +455,21 @@ targets:
         SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_HOSTLESS_PROBE
 
+  VitrineRenderingTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: RenderingTests
+    dependencies:
+      - target: VitrineDomain
+      - target: VitrineRendering
+      - package: Highlightr
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.VitrineRenderingTests
+
   VitrineUITests:
     type: bundle.ui-testing
     platform: macOS
@@ -458,6 +494,7 @@ schemes:
       targets:
         Vitrine: all
         VitrineDomainTests: [test]
+        VitrineRenderingTests: [test]
         VitrineTests: [test]
     run:
       config: Debug
@@ -480,6 +517,7 @@ schemes:
       region: US
       targets:
         - VitrineDomainTests
+        - VitrineRenderingTests
         - VitrineTests
       # Forward the opt-in generator flags into the test runner's environment.
       # xcodebuild does not pass arbitrary host env vars to the test process, so each
@@ -530,6 +568,16 @@ schemes:
       region: US
       targets:
         - VitrineTests
+
+  VitrineRendering:
+    build:
+      targets:
+        VitrineRendering: all
+        VitrineRenderingTests: [test]
+    test:
+      config: Debug
+      targets:
+        - VitrineRenderingTests
 
   VitrineDomain:
     build:

@@ -356,11 +356,11 @@ site-test:
 
 ## format: format Swift sources in place (Apple swift-format)
 format:
-	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineCLI VitrineMenuBarHelper DomainTests Tests UITests
+	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
 lint: hygiene build-boundaries-check informational-update-check release-promotion-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
-	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineCLI VitrineMenuBarHelper DomainTests Tests UITests
+	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
 hygiene:

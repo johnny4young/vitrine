@@ -18,6 +18,9 @@ can never drift.
   bounded file/transport safety into a hostless `VitrineDomain` module shared by the app
   and CLI. The CLI now compiles only 87 render-facing Swift sources instead of dragging
   app lifecycle, windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI.
+- Link the app and CLI against one static `VitrineRendering` engine for canvas layout,
+  highlighting, image policy, render budgets, and encoding. Direct module tests plus an
+  App/CLI normalized-pixel contract protect the shared output from boundary drift.
 - Measure build boundaries against the real `VitrineDomainTests` target rather than a
   temporary copied-source package, while preserving the matched app-hosted probe.
 

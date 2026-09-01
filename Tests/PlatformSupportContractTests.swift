@@ -11,7 +11,7 @@ struct PlatformSupportContractTests {
         let project = try Self.text("project.yml")
         #expect(project.contains("macOS: \"15.0\""))
         #expect(
-            project.components(separatedBy: "deploymentTarget: \"15.0\"").count - 1 == 7)
+            project.components(separatedBy: "deploymentTarget: \"15.0\"").count - 1 == 9)
         #expect(!project.contains("deploymentTarget: \"14.0\""))
 
         let cask = try Self.text("packaging/Casks/vitrine.rb")

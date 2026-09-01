@@ -656,7 +656,7 @@ struct CLIOutputContractTests: CLITestSupport {
 
     // MARK: - Pixel-identity with the app render path (core promise)
 
-    @Test func cliOutputMatchesTheAppRendererPixelDimensions() throws {
+    @Test func cliOutputMatchesTheAppRendererPixels() throws {
         // Pin the input with an injected loader so both sides render from the exact
         // same code/language: this isolates the *pipeline*, proving the CLI runs the
         // unchanged `ExportManager` path rather than testing file-round-trip details.
@@ -687,26 +687,34 @@ struct CLIOutputContractTests: CLITestSupport {
             return (cli, app)
         }
 
-        // The CLI half wraps the *same* `ExportManager` render the app half calls, so the
-        // two outputs describe the same image and must share pixel dimensions. We compare
-        // decoded dimensions rather than raw bytes: PNG encodings legitimately differ in
-        // non-pixel metadata, and font register/unregister elsewhere in the shared test
-        // host posts an async Core Text fonts-changed notification that can invalidate
-        // glyph caches mid-comparison — making a byte-exact assertion flaky (and, on a cold
-        // cache, pathologically slow) without proving anything the dimensions don't.
-        let (cliBytes, appBytes) = try renderBothSides()
-
-        func pixelDimensions(_ data: Data) -> (width: Int, height: Int)? {
+        // Compare decoded, normalized RGBA pixels rather than PNG container bytes: metadata may
+        // legitimately differ, but the visible App/CLI result may not. Font registration tests in
+        // the same host post asynchronous Core Text notifications, so a mismatch receives the
+        // same bounded settle-and-rerender treatment as the strict golden suite. A real rendering
+        // drift remains different on every attempt and still fails closed.
+        func decodedImage(_ data: Data) -> CGImage? {
             guard let source = CGImageSourceCreateWithData(data as CFData, nil),
                 let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
             else { return nil }
-            return (image.width, image.height)
+            return image
         }
 
-        #expect(Array(cliBytes.prefix(4)) == [0x89, 0x50, 0x4E, 0x47])  // valid PNG
-        let cliSize = try #require(pixelDimensions(cliBytes))
-        let appSize = try #require(pixelDimensions(appBytes))
-        #expect(cliSize == appSize)
+        var matched = false
+        for _ in 0..<GoldenImageTests.strictRenderAttempts {
+            let (cliBytes, appBytes) = try renderBothSides()
+            #expect(Array(cliBytes.prefix(4)) == [0x89, 0x50, 0x4E, 0x47])
+            let cliImage = try #require(decodedImage(cliBytes))
+            let appImage = try #require(decodedImage(appBytes))
+            if cliImage.width == appImage.width,
+                cliImage.height == appImage.height,
+                GoldenComparator.rgba8Bytes(cliImage) == GoldenComparator.rgba8Bytes(appImage)
+            {
+                matched = true
+                break
+            }
+            GoldenImageTests.settleFontCaches()
+        }
+        #expect(matched, "App and CLI must produce identical normalized pixels")
     }
 
     // MARK: - Rendering: input errors

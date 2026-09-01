@@ -300,7 +300,7 @@ struct MenuBarStatusItemTests {
         #expect(project.contains("com.johnny4young.vitrine.menubar-helper"))
         #expect(
             makefile.contains(
-                "Vitrine VitrineDomain VitrineCLI VitrineMenuBarHelper DomainTests Tests UITests"
+                "Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests Tests UITests"
             ))
     }
 

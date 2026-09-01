@@ -30,6 +30,7 @@ typealias ImageBackground = VitrineDomain.ImageBackground
 typealias ImageFrame = VitrineDomain.ImageFrame
 typealias ImageReference = VitrineDomain.ImageReference
 typealias Language = VitrineDomain.Language
+typealias LineHighlight = VitrineDomain.LineHighlight
 typealias LocalSearch = VitrineDomain.LocalSearch
 typealias RGBAColor = VitrineDomain.RGBAColor
 typealias SecretScanner = VitrineDomain.SecretScanner

@@ -1,17 +1,12 @@
 import Foundation
 import Testing
 
-/// The model and terminal layers must stay free of the SwiftUI **view** layer, so the
-/// UI-free boundary cannot silently regress. Every
-/// `SwiftUI.Color`/`LinearGradient`/`Alignment`/environment bridge lives in a
-/// `*+UI.swift` adapter in the UI layer instead of on the model type.
+/// The portable domain must stay free of Apple UI frameworks so command-line policies and
+/// hostless tests cannot silently acquire a window-server or rendering dependency.
 ///
-/// This turns the now-explicit layering into an *enforced* one — the same "docs/config as
-/// tests" muscle the repo already uses for `ARCHITECTURE.md` module drift and the CI
-/// workflow gates — without waiting on the physical `VitrineCore` SwiftPM package (which
-/// would additionally give `swift test` without an app host). `Color+Hex.swift` is the one
-/// intentional exception: it *is* the `RGBAColor` ⇄ `SwiftUI.Color` bridge.
-@Suite("Model layer stays SwiftUI-free")
+/// Rendering-specific AppKit/SwiftUI bridges live in `VitrineRendering`; this source contract
+/// complements the Xcode target dependency by failing if a domain file imports one directly.
+@Suite("Domain layer stays UI-free")
 struct ModelLayerPurityTests {
     /// The repository root, anchored to this file (`<repo>/Tests/…`).
     private static var repositoryRoot: URL {
@@ -20,34 +15,26 @@ struct ModelLayerPurityTests {
             .deletingLastPathComponent()  // repo root
     }
 
-    /// Files allowed to import SwiftUI within the model layer — the documented bridges.
-    private static let allowed: Set<String> = ["Color+Hex.swift"]
-
-    @Test func modelAndTerminalLayersDoNotImportSwiftUI() throws {
+    @Test func domainDoesNotImportUIFrameworks() throws {
         let fileManager = FileManager.default
-        for directory in ["Models", "Terminal"] {
-            let base = Self.repositoryRoot
-                .appendingPathComponent("Vitrine")
-                .appendingPathComponent(directory)
-            let enumerator = fileManager.enumerator(at: base, includingPropertiesForKeys: nil)
-            var swiftFiles: [URL] = []
-            while let url = enumerator?.nextObject() as? URL {
-                if url.pathExtension == "swift" { swiftFiles.append(url) }
-            }
-            #expect(!swiftFiles.isEmpty, "Expected Swift files under Vitrine/\(directory)")
+        let base = Self.repositoryRoot.appendingPathComponent("VitrineDomain")
+        let enumerator = fileManager.enumerator(at: base, includingPropertiesForKeys: nil)
+        var swiftFiles: [URL] = []
+        while let url = enumerator?.nextObject() as? URL {
+            if url.pathExtension == "swift" { swiftFiles.append(url) }
+        }
+        #expect(!swiftFiles.isEmpty, "Expected Swift files under VitrineDomain")
 
-            for file in swiftFiles where !Self.allowed.contains(file.lastPathComponent) {
-                let source = try String(contentsOf: file, encoding: .utf8)
-                let importsSwiftUI =
-                    source
-                    .components(separatedBy: .newlines)
-                    .contains { $0.trimmingCharacters(in: .whitespaces) == "import SwiftUI" }
+        for file in swiftFiles {
+            let source = try String(contentsOf: file, encoding: .utf8)
+            let imports = Set(
+                source.components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { $0.hasPrefix("import ") })
+            for forbidden in ["import SwiftUI", "import AppKit", "import WebKit"] {
                 #expect(
-                    !importsSwiftUI,
-                    """
-                    \(directory)/\(file.lastPathComponent) must not import SwiftUI — the model \
-                    layer stays UI-free; move the bridge to a *+UI.swift adapter in the UI layer.
-                    """
+                    !imports.contains(forbidden),
+                    "\(file.lastPathComponent) must not use \(forbidden); keep UI in VitrineRendering or Vitrine"
                 )
             }
         }
