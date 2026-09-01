@@ -298,7 +298,10 @@ struct MenuBarStatusItemTests {
         #expect(project.contains("CREATE_INFOPLIST_SECTION_IN_BINARY: YES"))
         #expect(project.contains("GENERATE_INFOPLIST_FILE: YES"))
         #expect(project.contains("com.johnny4young.vitrine.menubar-helper"))
-        #expect(makefile.contains("Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests"))
+        #expect(
+            makefile.contains(
+                "Vitrine VitrineDomain VitrineCLI VitrineMenuBarHelper DomainTests Tests UITests"
+            ))
     }
 
     @Test func helperAnchorRoundTripsAcrossDisplayCoordinates() throws {

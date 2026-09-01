@@ -18,7 +18,7 @@ enum CodeFont {
     /// All selectable fonts, bundled first.
     static let all: [String] = bundled + system
 
-    static let `default` = "JetBrains Mono"
+    static let `default` = SettingsDefaults.fontName
 
     /// Families that ship programming ligatures (e.g. `->`, `=>`, `!=`, `>=`),
     /// for which the opt-in ligature toggle has a visible effect.

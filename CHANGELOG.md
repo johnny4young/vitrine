@@ -12,6 +12,15 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Extract portable models, recipes, search, terminal policies, settings defaults, and
+  bounded file/transport safety into a hostless `VitrineDomain` module shared by the app
+  and CLI. The CLI now compiles only 87 render-facing Swift sources instead of dragging
+  app lifecycle, windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI.
+- Measure build boundaries against the real `VitrineDomainTests` target rather than a
+  temporary copied-source package, while preserving the matched app-hosted probe.
+
 ## [1.2.1] - 2026-08-30
 
 Vitrine 1.2.1 is a focused safety candidate. It bounds every raster render allocation before

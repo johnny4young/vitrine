@@ -15,6 +15,7 @@ from typing import Any, Callable
 
 PRODUCTION_TARGETS = {"Vitrine.app", "vitrine-cli", "VitrineMenuBarHelper"}
 CRITICAL_PREFIXES = (
+    "VitrineDomain/",
     "Vitrine/Models/",
     "Vitrine/CLI/",
     "Vitrine/Pro/",
@@ -222,6 +223,7 @@ def self_test() -> None:
     }
     assert production_coverage(report)[:3] == (24, 30, 0.8)
     assert is_critical("Vitrine/Models/Theme.swift")
+    assert is_critical("VitrineDomain/Models/Theme.swift")
     assert is_critical("Vitrine/WebRendering/PrivateNetworkBlockRules.swift")
     assert is_critical("Vitrine/WebRendering/WebURLValidation.swift")
     assert not is_critical("Vitrine/WebRendering/WebSnapshotEditorView.swift")

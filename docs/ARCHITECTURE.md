@@ -1,7 +1,8 @@
 # Vitrine — Architecture
 
-This document mirrors the shipping module layout in [`Vitrine/`](../Vitrine) and the
-runtime boundaries enforced by the test suite.
+This document mirrors the shipping module layout in [`VitrineDomain/`](../VitrineDomain),
+[`Vitrine/`](../Vitrine), and [`VitrineCLI/`](../VitrineCLI), plus the runtime boundaries
+enforced by the test suite.
 
 ## Product and distribution boundaries
 
@@ -391,11 +392,11 @@ boundary before file work. `CLIOptions.Command.requiresPro` uses an exhaustive s
 so every future command must make an explicit product decision; a new general flag
 remains unavailable to the free command until its allowlist is deliberately changed.
 
-**Pixel-identical output.** The CLI does not re-implement rendering. The `VitrineCLI`
-target compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
-`ExportManager`, `HighlightManager`, …) and supplies its own `main.swift`, excluding
-only the SwiftUI `@main` app (`VitrineApp.swift`) so there is a single entry point. The
-thin CLI layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
+**Pixel-identical output.** The CLI does not re-implement rendering. App and CLI link the
+same `VitrineDomain` value/policy module, and the CLI compiles an explicit render-facing
+slice containing `SnapshotCanvas`, `ExportManager`, and `HighlightManager`. It does not
+compile app lifecycle, windows, Settings, menu-bar, onboarding, Recents, StoreKit, or
+WebKit UI. The thin CLI layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
 facade; `CLIArgumentParser` owns token consumption and mutable invocation state;
 `CLIArgumentValidation` checks cross-option semantics and materializes `CLIOptions`;
 and `CLIArgumentValues` handles catalog and range conversion. `CLIOptions` then builds
@@ -792,6 +793,12 @@ another application window.
 ## Module / folder structure
 
 ```
+VitrineDomain/                # static Foundation/CoreGraphics value and policy module
+├── Models/                    # portable themes, presets, recipes, search, metadata
+├── Settings/                  # typed defaults/schema and pure migrations
+├── Support/                   # bounded local/transport reads and decode helpers
+└── Terminal/                  # ANSI parser, VT grid, and character-width policy
+
 Vitrine/
 ├── App/
 │   ├── VitrineApp.swift       # @main + inert Settings scene
@@ -848,11 +855,8 @@ Vitrine/
 │   ├── ComparisonBoardPreview.swift # debounced preview phase and failure state
 │   ├── ComparisonBoardEditorView.swift # preview, layout, captions, export controls
 │   └── ComparisonBoardPresentation.swift # injected share operation
-├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
-│   ├── ANSIParser.swift       # escape-sequence tokenizer
-│   ├── TerminalGrid.swift     # VT screen model (CSI dispatch, scrollback, alt screen)
-│   ├── ANSIPalette.swift      # 16/256-color + truecolor palettes
-│   └── CharacterWidth.swift   # cell-width classification (wide/combining glyphs)
+├── Terminal/
+│   └── ANSIPalette.swift      # AppKit color bridge over VitrineDomain terminal values
 ├── Settings/
 │   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)
 │   ├── SettingsWindow.swift / SettingsRootView.swift # custom preferences window
@@ -864,16 +868,9 @@ Vitrine/
 │   ├── PresetStore.swift      # reusable-style catalog and persistence
 │   └── PresetFileExchange.swift # user-initiated JSON import/export panels
 ├── Models/
-│   ├── Theme.swift
-│   ├── StoredCustomTheme.swift # validated portable theme record
-│   ├── CustomThemeDocument.swift # validated theme JSON exchange envelope
-│   ├── Language.swift
-│   ├── SnapshotConfig.swift
-│   ├── ExportPreset.swift     # fixed destination sizing and presentation guidance
-│   ├── StyleSnapshot.swift / StylePreset.swift
-│   │                         # portable presentation state + reusable catalog entries
-│   ├── StylePresetDocument.swift # validated JSON exchange envelope
-│   ├── WorkspaceRecipe.swift # path-free style/metadata/output exchange envelope
+│   ├── SnapshotConfig.swift   # AppKit/SwiftUI render contract over domain values
+│   ├── *+SnapshotConfig.swift # app-only capture/apply adapters for portable styles
+│   ├── BackgroundImageStore.swift # bounded image persistence/decode adapter
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
@@ -938,6 +935,8 @@ VitrineMenuBarHelper/          # sandbox-inheriting status-item helper target
 VitrineCLI/                    # the `vitrine` executable target
 ├── main.swift                 # minimal accessory NSApplication host → CLIRenderer
 └── CLIEnvironment.swift       # locates the Fonts/ folder staged next to the binary
+
+DomainTests/                  # hostless VitrineDomain contract tests
 ```
 
 The editor owns batch-export presentation at the toolbar root rather than at an
@@ -970,14 +969,19 @@ All app-owned targets inherit `SWIFT_TREAT_WARNINGS_AS_ERRORS`. Compiler diagnos
 a new Swift or macOS SDK are compatibility signals that must be resolved deliberately;
 they cannot accumulate silently behind otherwise-green CI results.
 
-`make build-boundaries` measures architectural build costs before a new module or
-package boundary is introduced. It runs clean and no-op builds plus low-fan-out
-Foundation and high-fan-out model changes in disposable DerivedData. It also compares
-clean focused-test builds and test-runner startup between the app target and a temporary
-hostless package built from the Foundation-only terminal parser. Both test paths compile
+`make build-boundaries` measures architectural build costs before and after module
+boundaries change. It runs clean and no-op builds plus low-fan-out Foundation and
+high-fan-out domain-model changes in disposable DerivedData. It also compares clean
+focused-test builds and test-runner startup between the app target and the real
+hostless `VitrineDomainTests` target. Both test paths compile
 and execute the same tracked Swift Testing suite, and the command rejects results when
 their executed-test counts differ. Exact package downloads are resolved once into a
 shared cache so clean samples measure compilation rather than network variance.
+The app side uses a dedicated `VitrineHostedProbe` scheme so adding another test bundle
+to the full `Vitrine` scheme cannot silently enlarge the historical workload. Schema 3
+records the real Xcode domain-target timings under distinct metric names; it therefore
+does not compare those values directly with schema-2 timings from the former temporary
+SwiftPM package.
 
 The command defaults to seven samples and writes every sample, min/median/max, median
 absolute deviation, hardware/toolchain provenance, and complete relative-path logs beneath
