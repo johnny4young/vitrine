@@ -10,11 +10,14 @@ final class Debouncer {
         self.interval = interval
     }
 
-    /// Runs `action` after `interval` of quiet; a new call restarts the timer.
-    func schedule(_ action: @escaping () -> Void) {
+    /// Runs `action` after the configured interval (or an explicit override) of quiet; a new call
+    /// restarts the timer. The override lets callers adapt the quiet window to bounded input cost
+    /// without keeping multiple independent tasks alive.
+    func schedule(after override: Duration? = nil, _ action: @escaping () -> Void) {
         task?.cancel()
+        let delay = override ?? interval
         task = Task {
-            try? await Task.sleep(for: interval)
+            try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
             action()
         }

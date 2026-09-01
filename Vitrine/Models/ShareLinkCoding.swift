@@ -79,8 +79,9 @@ enum Zlib {
 
 /// base64url (RFC 4648 §5): the URL- and filename-safe base64 alphabet (`-`/`_` for
 /// `+`/`/`) with padding stripped, so the share-link payload rides in a query item
-/// without percent-escaping. `decode` is tolerant of a re-padded or whitespace-wrapped
-/// string and returns `nil` on anything that is not valid base64url.
+/// without percent-escaping. Decoding accepts only that canonical, unpadded spelling:
+/// whitespace, the standard base64 alphabet, padding, impossible lengths, and non-zero
+/// unused tail bits are rejected rather than normalized into a second representation.
 enum Base64URL {
     static func encode(_ data: Data) -> String {
         data.base64EncodedString()
@@ -90,14 +91,25 @@ enum Base64URL {
     }
 
     static func decode(_ string: String) -> Data? {
+        guard
+            string.utf8.allSatisfy({ byte in
+                (65...90).contains(byte) || (97...122).contains(byte)
+                    || (48...57).contains(byte) || byte == 45 || byte == 95
+            }),
+            string.utf8.count % 4 != 1
+        else { return nil }
+
         var base64 =
             string
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
         // Restore the padding base64 needs (its length must be a multiple of four).
-        let remainder = base64.count % 4
+        let remainder = base64.utf8.count % 4
         if remainder > 0 { base64 += String(repeating: "=", count: 4 - remainder) }
-        return Data(base64Encoded: base64)
+        guard let decoded = Data(base64Encoded: base64) else { return nil }
+        // Foundation accepts non-zero unused tail bits. Re-encoding closes that
+        // ambiguity and guarantees each byte sequence has exactly one accepted token.
+        guard encode(decoded) == string else { return nil }
+        return decoded
     }
 }

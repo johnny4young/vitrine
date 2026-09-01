@@ -23,6 +23,7 @@ struct MemoryImageCycleJourney {
         case duplicateSnapshot
     }
 
+    static let journeyID = "image-import-cycle"
     static let completionMarker = "VITRINE_MEMORY_IMAGE_CYCLE_COMPLETE"
     // Exceed BackgroundImageStore's 32-entry decoded-image cache so the runtime
     // evidence includes deterministic count-limit eviction rather than only cache growth.
@@ -32,6 +33,7 @@ struct MemoryImageCycleJourney {
     let store: BackgroundImageStore
     let sleep: (Duration) async throws -> Void
     let capture: (Int) throws -> String
+    let observe: (Int) async throws -> Void
 
     init(
         settings: AppSettings,
@@ -39,12 +41,14 @@ struct MemoryImageCycleJourney {
         sleep: @escaping (Duration) async throws -> Void = { duration in
             try await Task.sleep(for: duration)
         },
-        capture: @escaping (Int) throws -> String
+        capture: @escaping (Int) throws -> String,
+        observe: @escaping (Int) async throws -> Void = { _ in }
     ) {
         self.settings = settings
         self.store = store
         self.sleep = sleep
         self.capture = capture
+        self.observe = observe
     }
 
     /// Runs the bounded image lifecycle and clears the editor reference on every exit.
@@ -58,8 +62,9 @@ struct MemoryImageCycleJourney {
         for tick in 0..<iterations {
             try Task.checkCancellation()
             let data = try Self.fixturePNG(index: tick)
-            let reference = try store.importImage(data: data, preferredExtension: "png")
-            guard store.image(for: reference) != nil else {
+            let reference = try await store.importImageConcurrently(
+                data: data, preferredExtension: "png")
+            guard await store.preloadImage(for: reference) != nil else {
                 throw JourneyError.fixtureDecodeFailed
             }
             references.insert(reference)
@@ -72,13 +77,12 @@ struct MemoryImageCycleJourney {
                 throw JourneyError.duplicateSnapshot
             }
 
-            // Exercise image-view teardown as well as replacement. Every third cycle
-            // visibly returns to code before the next import.
-            if tick.isMultiple(of: 3) {
-                settings.config.foregroundImage = nil
-                try await sleep(.milliseconds(100))
-            }
+            // Tear down the image view before every sample. The process-wide decoded
+            // cache remains bounded independently, while the editor returns to code.
+            settings.config.foregroundImage = nil
+            try await sleep(.milliseconds(100))
             completedIterations += 1
+            try await observe(completedIterations)
         }
 
         return Result(

@@ -17,6 +17,9 @@ struct GeneralSettingsView: View {
     @State private var cliInstalledAt: URL?
     /// A failed install attempt's message; drives the fallback alert.
     @State private var cliInstallError: String?
+    /// The folder the most recent failed in-app CLI install attempted, so the
+    /// failure alert's fallback command targets that exact folder.
+    @State private var cliInstallFailedDirectory: URL?
 
     /// The startup file the shell helpers were just added to, if any. Unlike the
     /// CLI link this can't be detected on appear — the sandbox can't read
@@ -149,7 +152,9 @@ struct GeneralSettingsView: View {
         ) {
             Button("Copy Command") {
                 if let cli = CLIToolInstaller.embeddedCLI {
-                    copyToClipboard(CLIToolInstaller.terminalCommand(for: cli))
+                    copyToClipboard(
+                        CLIToolInstaller.terminalCommand(
+                            for: cli, into: cliInstallFailedDirectory))
                 }
                 cliInstallError = nil
             }
@@ -232,8 +237,12 @@ struct GeneralSettingsView: View {
         case .installed(let link):
             cliInstalledAt = link
             cliInstallError = nil
+            cliInstallFailedDirectory = nil
         case .failed(let message):
             cliInstallError = message
+            // Remembered so the failure alert's "Copy Command" targets the very
+            // folder this install just attempted, not an unrelated default prefix.
+            cliInstallFailedDirectory = directory
         }
     }
 

@@ -32,6 +32,12 @@ distribution contract.
 
 - Clamp full-page Web Snapshot height against page, axis, pixel-area, and estimated-memory
   ceilings before asking WebKit to allocate the snapshot.
+- Bound syntax-highlighting caches by cost, debounce interactive work, and switch very large
+  documents to an explicit plain-text mode instead of retaining duplicate attributed copies.
+- Validate image metadata before decode, normalize supported imports to one static frame, and
+  downsample with ImageIO inside the shared render budget.
+- Move living-file metadata and bounded reads off the main actor, with cancellation and
+  generation guards when a document changes or its window closes.
 - Preserve the existing macOS 15 Sequoia floor, macOS 26 Tahoe qualification matrix,
   and universal Apple silicon + Intel direct-download contract.
 
@@ -44,6 +50,13 @@ distribution contract.
   surfaces instead of collapsing them into generic or silent failures.
 - Recheck actual WebKit image dimensions before composition so an engine result cannot
   bypass the preflight budget.
+- Collect remote image bodies in bounded chunks and cancel the request as soon as its byte
+  ceiling is crossed instead of accumulating an unbounded async byte sequence.
+- Release editor-window and code-editor resources on teardown, backed by comparable
+  20/50/100-iteration image, window, WebKit, and large-document memory journeys.
+- Bound shell startup-file inspection to 1 MiB on one locked regular-file descriptor, append
+  only the helper suffix, canonicalize CLI symlink targets, and atomically replace stale links
+  without deleting regular files.
 
 ### Security
 
@@ -54,6 +67,8 @@ distribution contract.
 - Compile the production content-rule list in a real WebKit test and add a clean-Mac
   zero-request loopback probe. Public-host DNS resolution and rebinding remain documented
   residual risks because WebKit rules match request URLs rather than resolved addresses.
+- Require canonical unpadded base64url for local snapshot links and reject alternate alphabets,
+  whitespace, padding, impossible lengths, and ambiguous tail bits before decompression.
 
 ## [1.2.0] - 2026-08-28
 

@@ -207,6 +207,61 @@ fixed number formatting and attribute order), so the same template always produc
 identical bytes. This serializer is intentionally **not** wired up as a general
 export choice for the arbitrary code canvas; it exists for the template path only.
 
+## Syntax-highlighting memory and responsiveness
+
+`HighlightManager` owns one long-lived Highlight.js context, but its derived output is
+disposable. Five deterministic `CostLimitedLRUCache` instances cover the native attributed
+string, SwiftUI bridge, row split, terminal bridge, and terminal row split. Each cache is
+bounded by both count and a conservative four-MiB estimated-cost budget (at most 20 MiB across
+all five estimates); a theme key contains
+the built-in stylesheet name or the complete custom palette rather than a mutable display id.
+This prevents stale custom-theme colors and replaces the former FIFO behavior, where a hot
+document could be evicted by a one-off inspector/render combination.
+
+The accepted source-file ceiling and the interactive-highlighting ceiling are deliberately
+different contracts. A source can still be loaded up to the shared five-MiB safety limit, but:
+
+- syntax sources up to 32 KiB may enter the derived caches;
+- 32–128 KiB sources are highlighted without caching and use a 250 ms trailing editor debounce;
+- sources over 128 KiB remain editable and renderable as theme-legible plain text, with an
+  explicit editor notice instead of a silent visual change.
+
+The ordinary editor and preview debounces remain 100 ms and 90 ms respectively. Entering the
+large-document fallback clears existing token colors once; later keystrokes inherit plain typing
+attributes rather than recoloring the whole document. Terminal captures keep their separate
+parser/emulator semantics and bypass caches above 32 KiB; their deeper large-stream policy belongs
+to the terminal reliability boundary rather than pretending ANSI input is syntax highlighting.
+
+## Bounded static image pipeline
+
+`BackgroundImageStore` applies one contract to backgrounds, foreground screenshots, Brand Kit
+logos, drag/drop, remote downloads, and CLI image inputs. It reads at most 25 MiB, then
+`ImageDecodePolicy` inspects ImageIO source and per-frame status plus dimensions with caching
+disabled. Import validation therefore does not allocate every frame merely to prove that metadata
+is plausible; truncated containers fail the completeness check, frame tables are capped at 256,
+and cumulative source geometry is capped at 64 megapixels.
+
+Vitrine produces static artifacts, so an animated source has an explicit **first-frame** contract.
+The resolver never uses `NSImage(contentsOf:)`, which can retain a full-resolution animated
+representation. It asks ImageIO for one orientation-corrected thumbnail and constrains that decode
+to the interactive `RenderBudget` (16 megapixels and an 8,192-pixel axis ceiling) before creating
+the AppKit image. The process cache is still cost-bounded at 256 MiB, but its cost now reflects the
+actual downsampled surface rather than unbounded source metadata.
+
+Picker, drag/drop, remote, Brand Kit, and image-memory-journey imports run bounded read,
+validation, hashing, atomic persistence, and first decode on Swift 6.2's explicit concurrent
+executor. The main actor publishes the reference and creates/caches the final `NSImage` only after
+that work completes. Existing stored references retain a synchronous bounded fallback so launch,
+CLI, and migration behavior remains compatible.
+
+Remote image transport does not iterate `URLSession.AsyncBytes` one byte at a time. A dedicated
+ephemeral `URLSessionDataDelegate` feeds the chunks delivered by Foundation into a
+subtraction-safe collector. A known oversized `Content-Length` is rejected before body delivery;
+otherwise the first chunk that would cross 25 MiB is rejected without being appended and the data
+task is cancelled before the typed `tooLarge` error resumes its caller. The same one-shot state
+machine makes caller cancellation authoritative while retaining the public-to-private redirect
+block.
+
 ## Terminal rendering: two engines
 
 Terminal capture is not "syntax highlighting with an ANSI palette". Two structurally
@@ -375,7 +430,10 @@ value. A custom recipe canvas remains CLI-only and is reported as such by Settin
 `EditorSession`, not to `AppEnvironment` or a persistent store. The **Live file** picker
 is the only entry point: it selects one source file, applies the same bounded text loader
 used by drag and drop, and retains that file's security scope only while the editor
-window remains open. A 650 ms task compares file size, modification date, resource
+window remains open. Filesystem access sits behind an async, `Sendable` `FileClient`.
+Swift 6.2 `@concurrent` entry points move metadata lookup and the bounded descriptor read
+off the main actor; decoding policy stays centralized, and editor state is applied only
+on the main actor. A 650 ms task compares file size, modification date, resource
 identifier, and filesystem file/volume numbers; including inode identity detects editors
 that save by atomically replacing the file instead of mutating its original inode.
 Content is read only after the stamp changes.
@@ -387,8 +445,12 @@ visible pending change and requires **Reload** or **Keep**; it never overwrites 
 draft in the background. A transient read failure does not advance the observed stamp,
 so the same atomic save remains retryable. Replacing the document through another input,
 loading an image, closing the window, restoring a draft, or stopping the watcher releases
-the scope and cancels polling. The URL, watcher, and security scope are excluded from
-window restoration and app defaults; ordinary file drops remain one-time imports.
+the scope and cancels polling, picker reads, and content reads. Each replacement also
+invalidates a monotonic generation. That second guard rejects a late filesystem result
+even when cancellation cannot force an in-progress POSIX read to return immediately.
+Only one content read is session-owned at a time. The URL, watcher, tasks, and security
+scope are excluded from window restoration and app defaults; ordinary file drops remain
+one-time imports.
 
 **Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
 suites cover entitlement, version and catalog contracts, argument parsing and
@@ -509,6 +571,24 @@ a combined project/branch label plus the shell-escaped command through the exist
 and `--title` metadata options. Context therefore stays outside the ANSI transcript and
 works for both scrolling output and reconstructed full-screen frames. It never reads
 repository status, and `--no-context` omits the header for minimal or sensitive captures.
+
+**Integration installation.** Settings never reads an arbitrary startup file with
+`Data(contentsOf:)`. The granted file is opened once, required to be a regular file,
+locked without waiting, and read in chunks under a 1 MiB ceiling. Vitrine verifies the
+same descriptor identity and size before appending only the small integration suffix with
+`O_APPEND`; it refuses invalid UTF-8, concurrent changes, devices, directories, and large
+files without rewriting their contents. The CLI installer canonicalizes both absolute and
+relative symlink destinations, prefers `/opt/homebrew/bin` on Apple Silicon and
+`/usr/local/bin` on Intel, and retains the other prefix as a fallback. New links are staged
+as unique siblings and installed with `RENAME_EXCL` or `RENAME_SWAP`, so a regular file
+named `vitrine` is never removed and stale links have no unlink/recreate gap. The copyable
+Terminal fallback intentionally omits `ln -f` for the same fail-closed rule.
+
+**Share-link encoding.** `vitrine://open` accepts one bounded, canonical RFC 4648
+base64url representation. The decoder rejects padding, whitespace, standard base64
+characters, impossible lengths, non-ASCII input, and non-zero unused tail bits before
+bounded zlib expansion and JSON decoding. A deterministic seeded adversarial corpus guards
+that contract against future normalization or Foundation decoder changes.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the capability
@@ -1011,6 +1091,25 @@ the lifecycle-owned menu. Reusable styles, custom-theme resolution, watermark pr
 feature gates, upgrade sheets, feedback, pinning, sharing, and batch export presentation
 therefore cannot fall back to a different process-global graph. Promoting a window's style
 also targets the environment that created that window.
+
+An editor window owns its AppKit hosting controller and SwiftUI tree; the hosted tree must
+not own that same window in return. `WindowAccessor` therefore resolves into a stable weak
+slot used only by concrete window actions such as close-after-copy and sharing. Its
+coordinator invalidates queued resolution during dismantling, while `CodeEditorView`
+cancels delayed highlighting and severs its text delegate, paste callback, undo actions,
+and document view. Closing a window removes the controller's window/session/generation
+entries and lets normal AppKit/ARC teardown release the tree; the primary session alone
+may preserve its in-process draft for reopening.
+
+Opt-in memory qualification records `TASK_VM_INFO.phys_footprint` only after each journey
+has returned to its baseline and completed three bounded main-run-loop/autorelease-pool
+drains. The local harness requires an exact ordered sample sequence and completion count,
+then preserves every sample, full and post-warm-up slopes, `leaks` roots, memgraph, and
+environment provenance. Image, editor-window, local-HTML WebKit, and large-document
+journeys support 20/50/100 profiles. Comparisons require the same clean commit, journey,
+iteration count, macOS, architecture, and Xcode. Slopes and allocation paths are diagnostic
+signals rather than ownership verdicts; WebKit samples cover the Vitrine host process, not
+separate WebContent processes.
 
 `SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
 the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that

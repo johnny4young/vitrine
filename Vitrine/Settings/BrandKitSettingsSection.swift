@@ -17,6 +17,11 @@ struct BrandKitSettingsSection: View {
     /// True when the last brand-kit logo pick failed to import.
     @State private var logoImportFailed = false
 
+    /// Logo metadata/hash/decode work runs away from the main actor and is cancelled with the
+    /// settings section so a dismissed picker result cannot update a stale view.
+    @State private var isImportingLogo = false
+    @State private var logoImportTask: Task<Void, Never>?
+
     var body: some View {
         if entitlements.isUnlocked(.brandKit) {
             controls
@@ -103,14 +108,28 @@ struct BrandKitSettingsSection: View {
                 .foregroundStyle(VitrineTokens.Text.secondary)
                 .accessibilityIdentifier("brand-kit-remove-logo-button")
             }
-            Button(brandKit.logoImage == nil ? "Choose…" : "Replace…") { pickLogo() }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("brand-kit-choose-logo-button")
+            Button(action: pickLogo) {
+                if isImportingLogo {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("Importing logo")
+                } else {
+                    Text(brandKit.logoImage == nil ? "Choose…" : "Replace…")
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isImportingLogo)
+            .accessibilityIdentifier("brand-kit-choose-logo-button")
             if logoImportFailed {
                 Text("Couldn't load that image")
                     .font(.system(size: VitrineTokens.FontSize.caption))
                     .foregroundStyle(.red)
             }
+        }
+        .onDisappear {
+            logoImportTask?.cancel()
+            logoImportTask = nil
+            isImportingLogo = false
         }
     }
 
@@ -159,7 +178,18 @@ struct BrandKitSettingsSection: View {
         panel.message = String(localized: "Choose a logo image for your brand kit.")
         panel.prompt = String(localized: "Choose")
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        logoImportFailed = !brandKit.importLogo(from: url)
+        logoImportTask?.cancel()
+        isImportingLogo = true
+        logoImportFailed = false
+        logoImportTask = Task {
+            defer {
+                logoImportTask = nil
+                isImportingLogo = false
+            }
+            let imported = await brandKit.importLogo(from: url)
+            guard !Task.isCancelled else { return }
+            logoImportFailed = !imported
+        }
     }
 
     // Bindings into the injected Brand Kit graph; mutating a field reassigns the

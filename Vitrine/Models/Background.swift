@@ -366,7 +366,7 @@ struct ImageBackground: Equatable, Hashable, Codable {
 /// entitlement. `BackgroundImageStore` resolves a reference to a concrete URL and
 /// handles the missing-file case by reporting `nil`, which callers degrade to a
 /// safe default background (graceful degradation).
-struct ImageReference: Equatable, Hashable, Codable {
+struct ImageReference: Equatable, Hashable, Codable, Sendable {
     /// The file name within the app's background-images directory (no path).
     let fileName: String
 }

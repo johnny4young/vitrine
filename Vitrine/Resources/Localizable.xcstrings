@@ -403,6 +403,57 @@
         }
       }
     },
+    "The startup file is too large to update safely. Add the line by hand instead." : {
+      "comment" : "Settings General: shell-integration install failure when the selected startup file exceeds the bounded read limit.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The startup file is too large to update safely. Add the line by hand instead."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo de inicio es demasiado grande para actualizarlo de forma segura. Agrega la línea a mano."
+          }
+        }
+      }
+    },
+    "A regular item named vitrine already exists in the selected folder. Move it before installing the command." : {
+      "comment" : "Settings General: CLI install failure when the selected PATH folder already contains a non-symlink item named vitrine.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A regular item named vitrine already exists in the selected folder. Move it before installing the command."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya existe un elemento normal llamado vitrine en la carpeta seleccionada. Muévelo antes de instalar el comando."
+          }
+        }
+      }
+    },
+    "Couldn't safely update the command link in the selected folder." : {
+      "comment" : "Settings General: generic fail-closed CLI link installation error.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't safely update the command link in the selected folder."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo actualizar de forma segura el enlace del comando en la carpeta seleccionada."
+          }
+        }
+      }
+    },
     "%@ Run the copied command in Terminal to add it by hand." : {
       "comment" : "Settings General: shell-integration install failure alert message.",
       "localizations" : {
@@ -3283,6 +3334,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Importar temas"
+          }
+        }
+      }
+    },
+    "Importing image" : {
+      "comment" : "Accessibility label while a selected background image is being imported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importando imagen"
+          }
+        }
+      }
+    },
+    "Importing logo" : {
+      "comment" : "Accessibility label while a Brand Kit logo is being imported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importando logotipo"
           }
         }
       }
@@ -10114,6 +10187,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "El cupo se liberó, pero la limpieza local de la licencia no terminó. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Syntax colors paused" : {
+      "comment" : "Large-document editor notice title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colores de sintaxis en pausa"
+          }
+        }
+      }
+    },
+    "This large document stays editable and exportable in plain text." : {
+      "comment" : "Large-document editor notice explanation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este documento grande sigue siendo editable y exportable como texto sin formato."
           }
         }
       }

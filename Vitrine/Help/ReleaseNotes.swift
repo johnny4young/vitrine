@@ -53,6 +53,12 @@ enum ReleaseNotes {
                     + "images, styles, scripts, frames, and requests; loopback remains explicit.",
                 "CodeQL and focused Address and Thread Sanitizer lanes add repeatable security "
                     + "and lifecycle evidence before a candidate can be promoted.",
+                "Large code and image inputs now use bounded caches, metadata-first decoding, "
+                    + "and explicit fallbacks that keep editing responsive.",
+                "Living files, remote images, and closed editor windows now cancel and release "
+                    + "their work through measured lifecycle paths.",
+                "Shell and CLI setup now bounds startup-file reads, preserves existing files, "
+                    + "and installs canonical command links for Apple silicon or Intel.",
                 "Vitrine continues to require macOS 15 Sequoia or later and qualifies Tahoe "
                     + "while direct downloads remain universal for Apple silicon and Intel.",
             ]),

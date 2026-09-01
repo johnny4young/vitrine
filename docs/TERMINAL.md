@@ -82,6 +82,9 @@ Or one-click it: **Vitrine ▸ Settings ▸ General ▸ Shell integration ▸ Se
 your startup file and appends that line for you (idempotently). Because the app is
 sandboxed, the file picker's grant is what authorizes the write; a "Copy Command"
 button gives the equivalent `echo … >> ~/.zshrc` for any setup the panel can't reach.
+The one-click path accepts only regular UTF-8 startup files up to 1 MiB, verifies the
+same open file before mutation, and appends only the helper block; it never reconstructs
+or replaces the user's startup file.
 
 (Install the CLI itself from Vitrine ▸ Settings ▸ General ▸ Command-line tool ▸
 Install…. Basic `vgrab` capture is free. General `vitrine render`, `multi-size`, `batch`,

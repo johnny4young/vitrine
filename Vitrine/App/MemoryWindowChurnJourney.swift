@@ -19,6 +19,7 @@ struct MemoryWindowChurnJourney {
         case snapshotCaptureFailed
     }
 
+    static let journeyID = "window-churn"
     static let completionMarker = "VITRINE_MEMORY_WINDOW_CHURN_COMPLETE"
     static let defaultIterationCount = 20
 
@@ -27,6 +28,7 @@ struct MemoryWindowChurnJourney {
     let capture: (Int, Int) throws -> String
     let closeWindow: (Int) -> Void
     let sleep: (Duration) async throws -> Void
+    let observe: (Int) async throws -> Void
 
     init(
         liveWindowCount: @escaping () -> Int,
@@ -35,13 +37,15 @@ struct MemoryWindowChurnJourney {
         closeWindow: @escaping (Int) -> Void,
         sleep: @escaping (Duration) async throws -> Void = { duration in
             try await Task.sleep(for: duration)
-        }
+        },
+        observe: @escaping (Int) async throws -> Void = { _ in }
     ) {
         self.liveWindowCount = liveWindowCount
         self.openWindow = openWindow
         self.capture = capture
         self.closeWindow = closeWindow
         self.sleep = sleep
+        self.observe = observe
     }
 
     /// Runs the bounded lifecycle and closes an in-flight window on every exit.
@@ -75,6 +79,7 @@ struct MemoryWindowChurnJourney {
             }
             openIdentity = nil
             completedIterations += 1
+            try await observe(completedIterations)
         }
 
         return Result(
