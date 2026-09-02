@@ -67,9 +67,27 @@ jobs:
 
       # Swift extraction traces the same generated-project Debug build developers
       # use. JavaScript/TypeScript is interpreted and needs no manual build step.
+      # The traced build is bimodal on hosted runners: ~40 minutes most of the time,
+      # but some jobs never finish inside 60 or 90 minutes on identical code. A job-level
+      # timeout kills everything and leaves no log to read. Bound the STEP instead, so a
+      # stuck extraction still hands its logs to the upload below.
       - name: Build Swift database
         if: matrix.language == 'swift'
+        timeout-minutes: 75
         run: make build
+
+      # Preserve the extractor's own logs whether the build finished, failed, or was
+      # stopped by the step timeout — the only way to see where a slow run stalls.
+      - name: Upload CodeQL Swift extraction logs
+        if: always() && matrix.language == 'swift'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: codeql-swift-extraction-logs
+          path: |
+            ${{ runner.temp }}/codeql_databases/**/log/**
+            ${{ runner.temp }}/codeql_databases/**/diagnostic/**
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Analyze
         uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
