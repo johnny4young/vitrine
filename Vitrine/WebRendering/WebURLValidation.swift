@@ -1,8 +1,5 @@
 import Foundation
-
-#if canImport(Darwin)
-    import Darwin
-#endif
+import VitrineDomain
 
 // MARK: - URL validation
 
@@ -101,39 +98,14 @@ extension WebSnapshotConfig {
     /// disclosure is the primary mitigation for that vector, and the page is loaded locally
     /// in WebKit with a compiled content-rule blocklist.
     nonisolated static func isPrivateLocalhost(host: String) -> Bool {
-        let bare = normalizedHost(host)
-
-        // Hostnames that always resolve to the local machine / link.
-        if bare == "localhost" || bare.hasSuffix(".localhost") { return true }
-        if bare == "local" || bare.hasSuffix(".local") { return true }
-
-        // IPv6 loopback / link-local / unique-local literals. Strip a zone id
-        // (`fe80::1%lo0`) before parsing; it names an interface, not a remote host.
-        let addressLiteral = bare.split(separator: "%", maxSplits: 1).first.map(String.init) ?? bare
-        if let ipv6 = ipv6Bytes(from: addressLiteral) {
-            if isLoopbackIPv6(ipv6) { return true }
-            if isPrivateIPv6(ipv6) { return true }
-            if isIPv4MappedIPv6(ipv6) {
-                return isPrivateIPv4(Array(ipv6.suffix(4)))
-            }
-        }
-
-        // IPv4-mapped IPv6 with a legacy IPv4 tail (`::ffff:127.1`) is not accepted
-        // by `inet_pton(AF_INET6)` on every platform, so reduce it manually too. Use the
-        // zone-stripped `addressLiteral` so `::ffff:127.1%lo0` still reduces to its IPv4 tail.
-        let ipv4 =
-            addressLiteral.hasPrefix("::ffff:")
-            ? String(addressLiteral.dropFirst("::ffff:".count)) : addressLiteral
-        guard let octets = ipv4Octets(from: ipv4) else { return false }
-        return isPrivateIPv4(octets)
+        PrivateHostPolicy.isPrivateLocalhost(host: host)
     }
 
     /// The single host policy shared by entry validation and redirect guards.
     /// Opting in removes the refusal only for this Mac's loopback interface; `.local`,
     /// LAN, link-local, CGNAT, metadata, and reserved addresses remain blocked.
     nonisolated static func isRefusedHost(_ host: String, allowLoopback: Bool) -> Bool {
-        guard isPrivateLocalhost(host: host) else { return false }
-        return !(allowLoopback && isLoopbackHost(host: host))
+        PrivateHostPolicy.isRefusedHost(host, allowLoopback: allowLoopback)
     }
 
     /// Whether `host` names this Mac's loopback interface specifically. This is a
@@ -142,105 +114,6 @@ extension WebSnapshotConfig {
     /// Multicast-DNS `.local` names are deliberately not included because they can
     /// identify other devices on the local network.
     nonisolated static func isLoopbackHost(host: String) -> Bool {
-        let bare = normalizedHost(host)
-        if bare == "localhost" || bare.hasSuffix(".localhost") { return true }
-
-        let addressLiteral = bare.split(separator: "%", maxSplits: 1).first.map(String.init) ?? bare
-        if let ipv6 = ipv6Bytes(from: addressLiteral) {
-            if isLoopbackIPv6(ipv6) { return true }
-            if isIPv4MappedIPv6(ipv6) {
-                return isLoopbackIPv4(Array(ipv6.suffix(4)))
-            }
-            return false
-        }
-
-        let ipv4 =
-            addressLiteral.hasPrefix("::ffff:")
-            ? String(addressLiteral.dropFirst("::ffff:".count)) : addressLiteral
-        guard let octets = ipv4Octets(from: ipv4) else { return false }
-        return isLoopbackIPv4(octets)
-    }
-
-    /// Applies identical normalization to the blocklist and its loopback subset.
-    nonisolated private static func normalizedHost(_ host: String) -> String {
-        var bare = host.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
-        while bare.count > 1, bare.hasSuffix(".") { bare.removeLast() }
-        return bare
-    }
-
-    nonisolated private static func isLoopbackIPv4(_ octets: [UInt8]) -> Bool {
-        octets.count == 4 && octets[0] == 127
-    }
-
-    /// Parses strict and legacy resolver-equivalent IPv4 literals without DNS.
-    ///
-    /// `inet_aton` intentionally accepts the same shorthand/numeric forms macOS will
-    /// resolve for WebKit (`127.1`, `0177.1`, `0x7f000001`, `2130706433`). That keeps
-    /// the pre-load SSRF guard aligned with the resolver without issuing a network
-    /// lookup for public hostnames.
-    nonisolated private static func ipv4Octets(from host: String) -> [UInt8]? {
-        #if canImport(Darwin)
-            var address = in_addr()
-            guard host.withCString({ inet_aton($0, &address) }) != 0 else { return nil }
-            let value = UInt32(bigEndian: address.s_addr)
-            return [
-                UInt8((value >> 24) & 0xff),
-                UInt8((value >> 16) & 0xff),
-                UInt8((value >> 8) & 0xff),
-                UInt8(value & 0xff),
-            ]
-        #else
-            let octets = host.split(separator: ".").compactMap { UInt8($0) }
-            return octets.count == 4 ? octets : nil
-        #endif
-    }
-
-    nonisolated private static func ipv6Bytes(from host: String) -> [UInt8]? {
-        #if canImport(Darwin)
-            var address = in6_addr()
-            guard host.withCString({ inet_pton(AF_INET6, $0, &address) }) == 1 else {
-                return nil
-            }
-            return withUnsafeBytes(of: address) { Array($0) }
-        #else
-            return nil
-        #endif
-    }
-
-    nonisolated private static func isLoopbackIPv6(_ bytes: [UInt8]) -> Bool {
-        bytes.count == 16 && bytes.dropLast().allSatisfy { $0 == 0 } && bytes.last == 1
-    }
-
-    nonisolated private static func isPrivateIPv6(_ bytes: [UInt8]) -> Bool {
-        guard bytes.count == 16 else { return false }
-        // Unspecified, multicast, link-local/site-local, and unique-local addresses
-        // never identify a public web origin.
-        if bytes.allSatisfy({ $0 == 0 }) { return true }
-        if bytes[0] == 0xff { return true }
-        if bytes[0] == 0xfe, (bytes[1] & 0xc0) >= 0x80 { return true }
-        if (bytes[0] & 0xfe) == 0xfc { return true }
-        return false
-    }
-
-    nonisolated private static func isIPv4MappedIPv6(_ bytes: [UInt8]) -> Bool {
-        bytes.count == 16
-            && bytes.prefix(10).allSatisfy { $0 == 0 }
-            && bytes[10] == 0xff
-            && bytes[11] == 0xff
-    }
-
-    nonisolated private static func isPrivateIPv4(_ octets: [UInt8]) -> Bool {
-        guard octets.count == 4 else { return false }
-        switch (octets[0], octets[1]) {
-        case (0, _): return true  // 0.0.0.0/8 "this host" (a 0.x address can route locally)
-        case (10, _): return true  // 10.0.0.0/8 private
-        case (100, 64...127): return true  // 100.64.0.0/10 CGNAT / Tailscale (RFC 6598)
-        case (127, _): return true  // 127.0.0.0/8 loopback
-        case (169, 254): return true  // 169.254/16 link-local + cloud metadata
-        case (172, 16...31): return true  // 172.16.0.0/12 private
-        case (192, 168): return true  // 192.168.0.0/16 private
-        case (224...255, _): return true  // multicast, reserved, and limited broadcast
-        default: return false
-        }
+        PrivateHostPolicy.isLoopbackHost(host: host)
     }
 }

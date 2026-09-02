@@ -426,7 +426,7 @@ struct AutomationCompositionTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         for relativePath in [
-            "Vitrine/Models/SnapshotConfig.swift",
+            "VitrineRendering/Models/SnapshotConfig.swift",
             "Vitrine/AppIntents/SnapshotRenderRequest.swift",
             "Vitrine/AppIntents/SnapshotRenderService.swift",
         ] {

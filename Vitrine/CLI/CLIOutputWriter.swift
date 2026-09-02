@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import OSLog
 import UniformTypeIdentifiers
+import VitrineRendering
 
 /// Owns artifact preflight, shared encoding, sidecar generation, and file output.
 enum CLIOutputWriter {

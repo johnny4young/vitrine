@@ -45,18 +45,6 @@ struct BrandKitTests {
         #expect(BrandKit().watermarkText.isEmpty)
     }
 
-    @Test func everyPlacementHasALabelAndAlignment() {
-        for placement in Watermark.Placement.allCases {
-            #expect(!placement.label.isEmpty)
-        }
-        // The four corner placements map to a real corner alignment; `.free` has no
-        // corner anchor — it is positioned by `freePosition`, so `.center` is just its
-        // exhaustive fallback.
-        for placement in Watermark.Placement.allCases where placement != .free {
-            #expect(placement.alignment != .center)
-        }
-    }
-
     // MARK: - Free placement
 
     @Test func freePlacementPersistsItsPositionAndResolvesIntoTheMark() {

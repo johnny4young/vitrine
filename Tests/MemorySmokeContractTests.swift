@@ -88,7 +88,7 @@ struct MemorySmokeContractTests {
         #expect(handler.contains("session(for: .primary).settings"))
         #expect(handler.contains("unique-snapshots="))
 
-        let store = try Self.text("Vitrine", "Models", "BackgroundImageStore.swift")
+        let store = try Self.text("VitrineRendering", "Models", "BackgroundImageStore.swift")
         #expect(store.contains("#if DEBUG"))
         #expect(store.contains("VITRINE_MEMORY_IMAGE_STORE_ISOLATED"))
         #expect(store.contains("SHA256.hash"))

@@ -1,0 +1,303 @@
+import CoreGraphics
+import Foundation
+
+/// Draw-order operations for annotations painted in the regular marks layer. Moving
+/// one mark preserves every other mark's relative order.
+extension Array where Element == Annotation {
+    /// The index the mark with `id` would need to occupy to become frontmost, or
+    /// `nil` when the mark is absent, fixed-depth, or already frontmost.
+    public func frontmostMove(for id: UUID) -> Int? {
+        reorderTarget(for: id, front: true)
+    }
+
+    public func backmostMove(for id: UUID) -> Int? {
+        reorderTarget(for: id, front: false)
+    }
+
+    /// Moves a regular mark to the front or back of the visible draw order. Fixed-depth
+    /// compositing effects do not participate and keep their existing list positions.
+    public mutating func moveMark(_ id: UUID, toFront front: Bool) {
+        guard let target = reorderTarget(for: id, front: front),
+            let index = firstIndex(where: { $0.id == id })
+        else { return }
+        let mark = remove(at: index)
+        insert(mark, at: target)
+    }
+
+    private func reorderTarget(for id: UUID, front: Bool) -> Int? {
+        guard let index = firstIndex(where: { $0.id == id }),
+            self[index].kind.participatesInZOrder
+        else { return nil }
+
+        let drawn = indices.filter { self[$0].kind.participatesInZOrder }
+        guard let firstDrawn = drawn.first, let lastDrawn = drawn.last else { return nil }
+        let target = front ? lastDrawn : firstDrawn
+        return target == index ? nil : target
+    }
+}
+
+/// A single annotation drawn over the code snapshot: an arrow,
+/// line, rectangle, text callout, highlighter, blur/redaction box, or a numbered
+/// counter badge.
+///
+/// Coordinates are **normalized** to the canvas (`0...1` of width and height), so an
+/// annotation keeps its relative position when the canvas is re-sized — the
+/// content-hugging editor preview and a fixed-size export preset frame the same
+/// annotation identically. `start`/`end` define an arrow/line's two ends, a box's
+/// opposite corners, or (for `.text` and `.counter`) the anchor point (`start`).
+public struct Annotation: Identifiable, Equatable, Codable, Sendable {
+    /// The kind of mark. A raw string keeps the persisted JSON stable and lets a
+    /// future kind be added without breaking older stores.
+    public enum Kind: String, Codable, CaseIterable, Identifiable, Sendable {
+        case arrow
+        case curvedArrow
+        case line
+        case rectangle
+        case text
+        case highlighter
+        case blur
+        case counter
+        case sticker
+        case spotlight
+        case measure
+        public var id: String { rawValue }
+
+        /// Whether dragging defines two free points (a shaft/box) versus a single
+        /// anchor that is clicked into place (text, counters, and stickers).
+        public var isPointPlaced: Bool { self == .text || self == .counter || self == .sticker }
+
+        /// Whether list position determines this annotation's visible depth. Blur and
+        /// spotlight are compositing effects rendered at fixed depths beneath the
+        /// regular marks layer, so reordering them would not change the canvas.
+        public var participatesInZOrder: Bool { self != .blur && self != .spotlight }
+    }
+
+    public var id: UUID
+    public var kind: Kind
+    /// Normalized `0...1` anchor — the arrow/line tail, a box corner, or the text /
+    /// counter origin.
+    public var start: CGPoint
+    /// Normalized `0...1` second point — the arrow/line head or the box's opposite
+    /// corner. Unused by `.text` and `.counter`.
+    public var end: CGPoint
+    /// The callout text: the label for `.text`, the emoji glyph for `.sticker`.
+    public var text: String
+    /// The mark's color (stroke / fill / badge). Blur boxes ignore it.
+    public var color: RGBAColor
+    /// The stroke/size weight in canvas points: line width for arrow/line/rectangle,
+    /// font size driver for text, badge size driver for counter.
+    public var thickness: Double
+    /// The badge number. Only `.counter` uses it.
+    public var number: Int
+
+    public init(
+        id: UUID = UUID(), kind: Kind, start: CGPoint, end: CGPoint,
+        text: String = "", color: RGBAColor = Annotation.defaultColor,
+        thickness: Double = Annotation.defaultThickness, number: Int = 0
+    ) {
+        self.id = id
+        self.kind = kind
+        self.start = start
+        self.end = end
+        self.text = text
+        self.color = color
+        self.thickness = thickness
+        self.number = number
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, start, end, text, color, thickness, number
+    }
+
+    /// Decodes tolerantly: the fields added after the first version (`thickness`,
+    /// `number`, and even `text`/`color`) default when absent, so an annotation
+    /// saved by an earlier build still loads.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        kind = try container.decode(Kind.self, forKey: .kind)
+        start = try container.decode(CGPoint.self, forKey: .start)
+        end = try container.decode(CGPoint.self, forKey: .end)
+        text = (try? container.decode(String.self, forKey: .text)) ?? ""
+        color = (try? container.decode(RGBAColor.self, forKey: .color)) ?? Annotation.defaultColor
+        thickness =
+            (try? container.decode(Double.self, forKey: .thickness)) ?? Annotation.defaultThickness
+        number = (try? container.decode(Int.self, forKey: .number)) ?? 0
+    }
+}
+
+extension Annotation {
+    /// The default mark color — a vivid red that reads on light and dark code alike.
+    public static let defaultColor = RGBAColor(hex: "#FF453A") ?? .fallbackBlack
+    /// The default stroke/size weight, in canvas points.
+    public static let defaultThickness: Double = 5
+    /// The supported weight range for the toolbar slider.
+    public static let thicknessRange: ClosedRange<Double> = 2...28
+
+    /// Denormalizes a `0...1` point to a point in a canvas of `size`.
+    public static func denormalize(_ point: CGPoint, in size: CGSize) -> CGPoint {
+        CGPoint(x: point.x * size.width, y: point.y * size.height)
+    }
+
+    public func startPoint(in size: CGSize) -> CGPoint { Self.denormalize(start, in: size) }
+    public func endPoint(in size: CGSize) -> CGPoint { Self.denormalize(end, in: size) }
+
+    /// The rect spanned by `start`→`end` in `size` points — a box, or the bounding
+    /// box of a line/arrow.
+    public func rect(in size: CGSize) -> CGRect {
+        let a = startPoint(in: size)
+        let b = endPoint(in: size)
+        return CGRect(
+            x: min(a.x, b.x), y: min(a.y, b.y),
+            width: abs(a.x - b.x), height: abs(a.y - b.y))
+    }
+
+    /// Clamps a normalized point to `0...1` so a drag can never push an annotation
+    /// off the canvas.
+    public static func clampNormalized(_ point: CGPoint) -> CGPoint {
+        CGPoint(x: min(max(point.x, 0), 1), y: min(max(point.y, 0), 1))
+    }
+
+    /// Keyboard movement in canvas points: one point normally and ten with Shift.
+    public static let nudgeStep: Double = 1
+    public static let coarseNudgeStep: Double = 10
+
+    /// Distance between an original mark and a duplicate in canvas points.
+    public static let duplicateOffset: Double = 16
+
+    /// Returns a fresh copy offset from the original. A counter receives the next
+    /// number supplied by the owning collection.
+    public func duplicated(in canvasSize: CGSize, counterNumber: Int) -> Annotation {
+        var copy = self
+        copy.id = UUID()
+        if kind == .counter { copy.number = counterNumber }
+
+        let offset = CGSize(width: Self.duplicateOffset, height: Self.duplicateOffset)
+        copy.nudge(by: offset, in: canvasSize)
+        if copy.start == start, copy.end == end {
+            copy.nudge(by: CGSize(width: -offset.width, height: -offset.height), in: canvasSize)
+        }
+        return copy
+    }
+
+    /// Moves the whole mark by a canvas-space delta without shearing it at an edge.
+    /// The permitted delta is clamped against the mark's complete bounding extent.
+    public mutating func nudge(by points: CGSize, in canvasSize: CGSize) {
+        guard canvasSize.width > 0, canvasSize.height > 0 else { return }
+        let requested = CGSize(
+            width: points.width / canvasSize.width, height: points.height / canvasSize.height)
+        let dx = min(max(requested.width, -min(start.x, end.x)), 1 - max(start.x, end.x))
+        let dy = min(max(requested.height, -min(start.y, end.y)), 1 - max(start.y, end.y))
+        start = CGPoint(x: start.x + dx, y: start.y + dy)
+        end = CGPoint(x: end.x + dx, y: end.y + dy)
+    }
+
+    /// A stable, **id-independent** serialization of the annotation's visual state,
+    /// for deterministic config fingerprints (golden + gallery). The random `id`
+    /// never affects a pixel, so it is deliberately excluded.
+    public var fingerprint: String {
+        func f(_ point: CGPoint) -> String { String(format: "%.3f,%.3f", point.x, point.y) }
+        return [
+            kind.rawValue, f(start), f(end), text, String(format: "%.2f", thickness),
+            String(number),
+            String(
+                format: "%.3f,%.3f,%.3f,%.3f", color.red, color.green, color.blue, color.opacity),
+        ].joined(separator: "|")
+    }
+
+    /// Builds a new annotation for `tool` spanning `start`→`end`, inheriting the
+    /// toolbar's current `color`/`thickness`. Point-placed kinds (text/counter) use
+    /// `start` as the anchor; `number` is assigned by the caller for counters.
+    ///
+    /// Text callouts start **empty**: the editor opens a focused inline field (with a
+    /// "Note" placeholder) so the user types the content, instead of dropping a literal
+    /// "Note" they then have to clear. An empty callout that is never filled is removed.
+    public static func make(
+        kind: Kind, from start: CGPoint, to end: CGPoint, color: RGBAColor, thickness: Double,
+        number: Int = 0, text: String = ""
+    ) -> Annotation {
+        Annotation(
+            kind: kind, start: start, end: end, text: text,
+            color: color, thickness: thickness, number: number)
+    }
+
+    /// Whether this is a text callout with no visible content — an empty field the
+    /// editor drops on commit rather than leaving as an invisible mark.
+    public var isBlankText: Bool {
+        kind == .text && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+/// A tool in the annotation toolbar. `select` is the move/resize pointer;
+/// every other case draws its matching `Annotation.Kind`.
+public enum AnnotationTool: String, CaseIterable, Identifiable, Sendable {
+    case select
+    case arrow
+    case curvedArrow
+    case line
+    case rectangle
+    case text
+    case highlighter
+    case blur
+    case counter
+    case sticker
+    case spotlight
+    case measure
+
+    public var id: String { rawValue }
+
+    /// The annotation kind this tool draws, or `nil` for the select pointer.
+    public var kind: Annotation.Kind? {
+        switch self {
+        case .select: return nil
+        case .arrow: return .arrow
+        case .curvedArrow: return .curvedArrow
+        case .line: return .line
+        case .rectangle: return .rectangle
+        case .text: return .text
+        case .highlighter: return .highlighter
+        case .blur: return .blur
+        case .counter: return .counter
+        case .sticker: return .sticker
+        case .spotlight: return .spotlight
+        case .measure: return .measure
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .select: return "cursorarrow"
+        case .arrow: return "arrow.up.left"
+        case .curvedArrow: return "arrow.up.right.circle"
+        case .line: return "line.diagonal"
+        case .rectangle: return "rectangle"
+        case .text: return "textformat"
+        case .highlighter: return "highlighter"
+        case .blur: return "drop.fill"
+        case .counter: return "1.circle.fill"
+        case .sticker: return "face.smiling"
+        case .spotlight: return "rectangle.center.inset.filled"
+        case .measure: return "ruler"
+        }
+    }
+
+    /// Whether this tool exposes a thickness/size slider (the fill-only highlighter
+    /// and blur do not).
+    public var usesThickness: Bool {
+        switch self {
+        case .select, .highlighter, .blur, .spotlight: return false
+        default: return true
+        }
+    }
+
+    /// Whether this tool exposes the color swatch. Blur is a fill of the underlying
+    /// pixels and a sticker is an emoji with its own colors, so neither has one.
+    public var usesColor: Bool {
+        self != .select && self != .blur && self != .sticker && self != .spotlight
+    }
+
+    /// The curated sticker set the sticker tool places — the dev-social reaction
+    /// vocabulary. A fixed set keeps the picker one click and the render deterministic
+    /// (every glyph ships with the OS emoji font).
+    public static let stickerChoices: [String] = ["👀", "🔥", "✅", "⚠️", "💡", "🚀", "❌", "💯", "🎉", "🤯"]
+}

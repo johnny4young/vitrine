@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import VitrineDomain
 
 @testable import Vitrine
 
@@ -47,6 +48,13 @@ struct PrivateNetworkBlockRulesTests {
             ("full-form hex-mapped IPv6", "https://[0:0:0:0:0:ffff:c0a8:101]/resource"),
             ("full-form dotted-mapped IPv6", "https://[0:0:0:0:0:ffff:192.168.1.1]/resource"),
             ("hex-mapped loopback", "https://[::ffff:7f00:1]/resource"),
+            ("IETF protocol assignments", "https://192.0.0.8/resource"),
+            ("TEST-NET-1", "https://192.0.2.1/resource"),
+            ("6to4 relay anycast", "https://192.88.99.1/resource"),
+            ("benchmarking /15", "https://198.19.0.1/resource"),
+            ("TEST-NET-2", "https://198.51.100.7/resource"),
+            ("TEST-NET-3", "https://203.0.113.9/resource"),
+            ("mapped TEST-NET-2", "https://[::ffff:198.51.100.7]/resource"),
         ])
     func defaultPolicyBlocksPrivateResource(_ fixture: (kind: String, url: String)) throws {
         #expect(
@@ -109,6 +117,15 @@ struct PrivateNetworkBlockRulesTests {
             "wss://socket.example.com/private",
             "https://[2606:4700::6810:84e5]/asset",
             "https://[2001:db8::ffff:1:2]/asset",
+            // Neighbours of the RFC 6890 blocks: the rules must stop exactly at the edges.
+            "https://192.0.1.1/asset",
+            "https://192.0.3.1/asset",
+            "https://192.88.98.1/asset",
+            "https://198.17.255.255/asset",
+            "https://198.20.0.1/asset",
+            "https://198.51.99.1/asset",
+            "https://203.0.112.1/asset",
+            "https://203.0.114.1/asset",
         ] {
             #expect(try !matches(url, allowsLoopback: false), "\(url) is public")
         }
@@ -157,5 +174,47 @@ struct PrivateNetworkBlockRuleCompilationTests {
         #expect(strict.identifier == PrivateNetworkBlockRules.identifier(allowsLoopback: false))
         #expect(loopback.identifier == PrivateNetworkBlockRules.identifier(allowsLoopback: true))
         #expect(strict.identifier != loopback.identifier)
+    }
+}
+
+extension PrivateNetworkBlockRulesTests {
+    /// The domain classifier (`PrivateHostPolicy`, used for the navigation URL) and
+    /// these content rules (used for every subresource) encode the same address
+    /// space twice — once as Swift, once as Safari content-blocker regexes — so they
+    /// can drift silently. Walk one representative literal per range, plus the
+    /// boundary neighbours, and require both layers to agree.
+    @Test func contentRulesAgreeWithTheDomainClassifierForCanonicalIPv4Literals() throws {
+        let privateLiterals = [
+            "0.1.2.3", "10.1.2.3", "100.64.1.2", "100.127.254.1", "127.0.0.1",
+            "169.254.169.254", "172.16.1.2", "172.31.254.1", "192.0.0.8", "192.0.2.1",
+            "192.88.99.1", "192.168.1.2", "198.18.1.2", "198.19.1.2", "198.51.100.1",
+            "203.0.113.1", "224.0.0.1", "239.255.255.250", "240.0.0.1", "255.255.255.255",
+        ]
+        let publicLiterals = [
+            "1.1.1.1", "8.8.8.8", "93.184.216.34", "100.63.255.255", "100.128.0.1",
+            "128.0.0.1", "172.15.255.255", "172.32.0.1", "192.0.1.1", "192.0.3.1",
+            "192.88.98.1", "192.167.255.255", "192.169.0.1", "198.17.255.255",
+            "198.20.0.1", "198.51.99.1", "198.51.101.1", "203.0.112.1", "203.0.114.1",
+            "223.255.255.255",
+        ]
+        for literal in privateLiterals {
+            #expect(
+                PrivateHostPolicy.isPrivateLocalhost(host: literal),
+                "classifier must treat \(literal) as private")
+            #expect(
+                try matches("https://\(literal)/asset", allowsLoopback: false),
+                "content rules must block \(literal)")
+            #expect(
+                try matches("https://[::ffff:\(literal)]/asset", allowsLoopback: false),
+                "content rules must block the mapped form of \(literal)")
+        }
+        for literal in publicLiterals {
+            #expect(
+                !PrivateHostPolicy.isPrivateLocalhost(host: literal),
+                "classifier must treat \(literal) as public")
+            #expect(
+                try !matches("https://\(literal)/asset", allowsLoopback: false),
+                "content rules must not block \(literal)")
+        }
     }
 }

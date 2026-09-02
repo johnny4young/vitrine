@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import VitrineRendering
 
 /// The image-output settings (Output), extracted from `AppSettings` into a
 /// focused sub-store so the main settings object stays cohesive rather than

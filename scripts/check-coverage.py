@@ -13,8 +13,21 @@ from pathlib import Path
 from typing import Any, Callable
 
 
-PRODUCTION_TARGETS = {"Vitrine.app", "vitrine-cli", "VitrineMenuBarHelper"}
+PRODUCTION_TARGETS = {
+    "Vitrine.app",
+    "libVitrineDomain.a",
+    "libVitrineRendering.a",
+    "vitrine-cli",
+    "VitrineMenuBarHelper",
+}
 CRITICAL_PREFIXES = (
+    "VitrineDomain/",
+    "VitrineRendering/Editor/",
+    "VitrineRendering/Export/",
+    "VitrineRendering/Models/",
+    "VitrineRendering/Rendering/",
+    "VitrineRendering/Support/",
+    "VitrineRendering/Terminal/",
     "Vitrine/Models/",
     "Vitrine/CLI/",
     "Vitrine/Pro/",
@@ -35,6 +48,15 @@ NONVISUAL_WEB_FILES = {
     "WebSnapshotConfig.swift",
     "WebSnapshotPresentation.swift",
     "WebURLValidation.swift",
+}
+DATA_ONLY_FILES = {
+    # A declarative help-text wrapper. The executable schema interpolation is
+    # attributed to CLIArgumentSchema.swift, so xccov emits no entry for this file.
+    "Vitrine/CLI/CLIUsage.swift",
+    # A three-case input enum with no executable lines; xccov intentionally emits no file entry.
+    "VitrineRendering/Rendering/CaptureInput.swift",
+    # Static OSLog category/signpost declarations likewise have no executable source lines.
+    "VitrineRendering/Support/RenderingLog.swift",
 }
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
@@ -125,6 +147,8 @@ def load_baseline(path: Path) -> dict[str, Any]:
 
 def is_critical(path: str) -> bool:
     if not path.endswith(".swift"):
+        return False
+    if path in DATA_ONLY_FILES:
         return False
     if path.startswith(CRITICAL_PREFIXES):
         return True
@@ -220,8 +244,16 @@ def self_test() -> None:
             for name in sorted(PRODUCTION_TARGETS)
         ]
     }
-    assert production_coverage(report)[:3] == (24, 30, 0.8)
+    assert production_coverage(report)[:3] == (40, 50, 0.8)
     assert is_critical("Vitrine/Models/Theme.swift")
+    assert is_critical("VitrineDomain/Models/Theme.swift")
+    assert is_critical("VitrineRendering/Rendering/RenderBudget.swift")
+    assert is_critical("VitrineRendering/Models/SnapshotConfig.swift")
+    assert not is_critical("Vitrine/CLI/CLIUsage.swift")
+    assert not is_critical("VitrineRendering/Rendering/CaptureInput.swift")
+    assert not is_critical("VitrineRendering/Support/RenderingLog.swift")
+    assert not is_critical("VitrineRendering/Canvas/SnapshotCanvas.swift")
+    assert not is_critical("VitrineRendering/DesignSystem/BrandMark.swift")
     assert is_critical("Vitrine/WebRendering/PrivateNetworkBlockRules.swift")
     assert is_critical("Vitrine/WebRendering/WebURLValidation.swift")
     assert not is_critical("Vitrine/WebRendering/WebSnapshotEditorView.swift")

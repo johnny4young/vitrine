@@ -1,17 +1,17 @@
 import Foundation
 import Testing
 
-/// The model and terminal layers must stay free of the SwiftUI **view** layer, so the
-/// UI-free boundary cannot silently regress. Every
-/// `SwiftUI.Color`/`LinearGradient`/`Alignment`/environment bridge lives in a
-/// `*+UI.swift` adapter in the UI layer instead of on the model type.
+/// The portable domain must stay free of platform and UI frameworks so command-line
+/// policies and hostless tests cannot silently acquire a window-server, rendering, or
+/// codec dependency.
 ///
-/// This turns the now-explicit layering into an *enforced* one — the same "docs/config as
-/// tests" muscle the repo already uses for `ARCHITECTURE.md` module drift and the CI
-/// workflow gates — without waiting on the physical `VitrineCore` SwiftPM package (which
-/// would additionally give `swift test` without an app host). `Color+Hex.swift` is the one
-/// intentional exception: it *is* the `RGBAColor` ⇄ `SwiftUI.Color` bridge.
-@Suite("Model layer stays SwiftUI-free")
+/// This is an **allowlist**, not a blocklist. A blocklist of three UI frameworks let
+/// `import ImageIO` (a runtime codec-capability probe) live in the domain unnoticed;
+/// naming what *is* allowed means any new framework has to be argued for here.
+/// Rendering-specific AppKit/SwiftUI/ImageIO bridges live in `VitrineRendering`; this
+/// source contract complements the Xcode target dependency by failing when a domain
+/// file imports anything else.
+@Suite("Domain layer stays UI-free")
 struct ModelLayerPurityTests {
     /// The repository root, anchored to this file (`<repo>/Tests/…`).
     private static var repositoryRoot: URL {
@@ -20,36 +20,56 @@ struct ModelLayerPurityTests {
             .deletingLastPathComponent()  // repo root
     }
 
-    /// Files allowed to import SwiftUI within the model layer — the documented bridges.
-    private static let allowed: Set<String> = ["Color+Hex.swift"]
+    /// Frameworks a domain file may import, and why each earns its place:
+    /// - Foundation: the module's baseline.
+    /// - CoreGraphics: `CGFloat`/`CGSize`/`CGPoint`/`CGRect` geometry and
+    ///   `CGColorSpace` names are value vocabulary, not rendering.
+    /// - Compression: share-link payload codec (pure bytes in, bytes out).
+    /// - Darwin: `inet_aton`/`inet_pton` address parsing and descriptor-level bounded
+    ///   file reads (`open`/`fstat`) — POSIX, not Apple UI.
+    private static let allowedImports: Set<String> = [
+        "Foundation", "CoreGraphics", "Compression", "Darwin",
+    ]
 
-    @Test func modelAndTerminalLayersDoNotImportSwiftUI() throws {
+    @Test func domainImportsOnlyAllowlistedFrameworks() throws {
         let fileManager = FileManager.default
-        for directory in ["Models", "Terminal"] {
-            let base = Self.repositoryRoot
-                .appendingPathComponent("Vitrine")
-                .appendingPathComponent(directory)
-            let enumerator = fileManager.enumerator(at: base, includingPropertiesForKeys: nil)
-            var swiftFiles: [URL] = []
-            while let url = enumerator?.nextObject() as? URL {
-                if url.pathExtension == "swift" { swiftFiles.append(url) }
-            }
-            #expect(!swiftFiles.isEmpty, "Expected Swift files under Vitrine/\(directory)")
+        let base = Self.repositoryRoot.appendingPathComponent("VitrineDomain")
+        let enumerator = fileManager.enumerator(at: base, includingPropertiesForKeys: nil)
+        var swiftFiles: [URL] = []
+        while let url = enumerator?.nextObject() as? URL {
+            if url.pathExtension == "swift" { swiftFiles.append(url) }
+        }
+        #expect(!swiftFiles.isEmpty, "Expected Swift files under VitrineDomain")
 
-            for file in swiftFiles where !Self.allowed.contains(file.lastPathComponent) {
-                let source = try String(contentsOf: file, encoding: .utf8)
-                let importsSwiftUI =
-                    source
-                    .components(separatedBy: .newlines)
-                    .contains { $0.trimmingCharacters(in: .whitespaces) == "import SwiftUI" }
-                #expect(
-                    !importsSwiftUI,
-                    """
-                    \(directory)/\(file.lastPathComponent) must not import SwiftUI — the model \
-                    layer stays UI-free; move the bridge to a *+UI.swift adapter in the UI layer.
-                    """
-                )
+        var offenders: [String] = []
+        for file in swiftFiles {
+            let source = try String(contentsOf: file, encoding: .utf8)
+            for line in source.components(separatedBy: .newlines) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard trimmed.hasPrefix("import ") else { continue }
+                // `import Foo` / `import struct Foo.Bar` / `@testable import Foo`
+                let module =
+                    trimmed.dropFirst("import ".count)
+                    .split(whereSeparator: { $0 == " " || $0 == "." })
+                    .filter {
+                        !["struct", "class", "enum", "func", "var", "let", "protocol", "typealias"]
+                            .contains(String($0))
+                    }
+                    .first.map(String.init) ?? ""
+                if !Self.allowedImports.contains(module) {
+                    offenders.append("\(file.lastPathComponent): \(trimmed)")
+                }
             }
         }
+        let allowed = Self.allowedImports.sorted().joined(separator: ", ")
+        let listed = offenders.sorted().joined(separator: "\n")
+        #expect(
+            offenders.isEmpty,
+            """
+            VitrineDomain may import only \(allowed). Move platform/UI work to \
+            VitrineRendering or Vitrine, or add the framework to the allowlist with a reason:
+            \(listed)
+            """
+        )
     }
 }
