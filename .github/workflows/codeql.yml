@@ -33,7 +33,11 @@ jobs:
             runner: macos-15
             build-mode: manual
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    # The Swift database build traces a full app+CLI compile and normally takes
+    # 33-45 minutes on hosted runners, but a slow runner has crossed 60 twice
+    # (PRs #150 and #151), killing the job before analysis with nothing to show.
+    # 90 keeps a real hang bounded while leaving the observed tail room to finish.
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
