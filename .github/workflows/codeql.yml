@@ -85,6 +85,16 @@ jobs:
       # variables explicitly cleared.
       - name: Summarize CodeQL Swift extraction
         if: always() && matrix.language == 'swift'
+        # Bounded and run OUTSIDE the tracer: after a build-step timeout the tracer's
+        # runner can be wedged by orphaned extractor processes, and every child this
+        # step spawns (uname, tail, cp) would otherwise be injected into that wedged
+        # tracer and hang until the job limit — which is how the first version of this
+        # step consumed 15 minutes and produced nothing.
+        timeout-minutes: 5
+        env:
+          DYLD_INSERT_LIBRARIES: ""
+          SEMMLE_PRELOAD_libtrace: ""
+          CODEQL_RUNNER: ""
         run: |
           set +e
           echo "host arch: $(uname -m)"
@@ -103,6 +113,7 @@ jobs:
       - name: Upload CodeQL Swift extraction logs
         if: always() && matrix.language == 'swift'
         continue-on-error: true
+        timeout-minutes: 5
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         env:
           DYLD_INSERT_LIBRARIES: ""
