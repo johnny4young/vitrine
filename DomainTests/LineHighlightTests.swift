@@ -79,6 +79,20 @@ struct LineHighlightParserTests {
         #expect(LineHighlight.parse("\(huge),\(huge)") == [Int.max...Int.max])
     }
 
+    /// `normalize` is public and takes arbitrary ranges, so the lower edge is reachable
+    /// too: a second range starting at `Int.min` used to trap on `lowerBound - 1`.
+    @Test func extremeLowerBoundMergesInsteadOfTrapping() {
+        let floor = Int.min
+        #expect(LineHighlight.normalize([floor...floor, floor...floor]) == [floor...floor])
+        #expect(LineHighlight.normalize([floor...floor, (floor + 1)...5]) == [floor...5])
+        #expect(
+            LineHighlight.normalize([floor...floor, (floor + 2)...5]) == [
+                floor...floor, (floor + 2)...5,
+            ])
+        #expect(LineHighlight.normalize([1...Int.max, 1...Int.max]) == [1...Int.max])
+        #expect(LineHighlight.normalize([floor...Int.max, 3...4]) == [floor...Int.max])
+    }
+
     @Test func mergeSemanticsAreUnchangedByTheOverflowGuard() {
         // The rewritten comparison must keep adjacency and gaps behaving exactly as before.
         #expect(LineHighlight.parse("1-2, 3-3") == [1...3])  // adjacent: merges

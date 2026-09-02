@@ -85,18 +85,25 @@ public enum LineHighlight {
         let sorted = ranges.sorted { $0.lowerBound < $1.lowerBound }
         var merged: [ClosedRange<Int>] = []
         for range in sorted {
-            // Adjacency is tested as `lowerBound - 1 <= upperBound` rather than
-            // `lowerBound <= upperBound + 1`: the bounds come from user text (a
-            // `--highlight-lines` spec, or the inspector field parsed on every keystroke),
-            // so an upper bound of `Int.max` overflows the increment and traps the process.
-            // Every bound here is `>= 1` (`positiveLine` rejects the rest), so decrementing
-            // the lower bound cannot underflow. The merge semantics are unchanged.
-            if let last = merged.last, range.lowerBound - 1 <= last.upperBound {
+            if let last = merged.last, isOverlappingOrAdjacent(range, after: last) {
                 merged[merged.count - 1] = last.lowerBound...max(last.upperBound, range.upperBound)
             } else {
                 merged.append(range)
             }
         }
         return merged
+    }
+
+    /// Whether `range` overlaps or immediately follows `last`, decided without
+    /// arithmetic on either bound. `parse` only ever produces bounds `>= 1`, but
+    /// `normalize` is public and accepts any `ClosedRange<Int>`, so both edges are
+    /// reachable: an upper bound of `Int.max` overflows `upperBound + 1`, and a lower
+    /// bound of `Int.min` overflows `lowerBound - 1`. Either would trap the process on
+    /// input that ultimately comes from user text.
+    private static func isOverlappingOrAdjacent(
+        _ range: ClosedRange<Int>, after last: ClosedRange<Int>
+    ) -> Bool {
+        if range.lowerBound <= last.upperBound { return true }
+        return last.upperBound < Int.max && range.lowerBound == last.upperBound + 1
     }
 }

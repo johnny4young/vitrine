@@ -494,8 +494,10 @@ extension-based language inference and default metadata while still reading the 
 only from standard input.
 
 Raster availability is capability-driven rather than version-switched:
-`ExportFormat.availableCases` caches `CGImageDestinationCopyTypeIdentifiers()` once and
-interactive pickers expose only writers the active ImageIO stack actually provides.
+`ExportFormat.availableCases` (`VitrineRendering/Export/ExportFormat+Encoding.swift`) caches
+`CGImageDestinationCopyTypeIdentifiers()` once and interactive pickers expose only writers
+the active ImageIO stack actually provides. The probe lives in the rendering layer because
+encodability is a property of the running host, not of the portable `ExportFormat` value.
 That keeps PNG/PDF/HEIC available on Sequoia while adding AVIF on Tahoe and newer.
 Persisted or imported AVIF settings fall back to PNG on a Mac without the writer; the
 CLI grammar remains stable across OS versions and returns an encoding failure rather

@@ -45,13 +45,19 @@ struct DocumentationPathTests {
         let rootDocuments = ["README.md", "CONTRIBUTING.md"].map {
             repositoryRoot.appending(path: $0)
         }
+        // Recursive on purpose: ADRs live under `docs/decisions/`, and a flat listing
+        // would silently exempt every nested document from the path contract.
         let documentationDirectory = repositoryRoot.appending(path: "docs")
-        let documentation = try FileManager.default.contentsOfDirectory(
+        var documentation: [URL] = []
+        if let enumerator = FileManager.default.enumerator(
             at: documentationDirectory,
             includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        )
-        .filter { $0.pathExtension == "md" }
-        return rootDocuments + documentation
+            options: [.skipsHiddenFiles])
+        {
+            while let url = enumerator.nextObject() as? URL {
+                if url.pathExtension == "md" { documentation.append(url) }
+            }
+        }
+        return rootDocuments + documentation.sorted { $0.path < $1.path }
     }
 }

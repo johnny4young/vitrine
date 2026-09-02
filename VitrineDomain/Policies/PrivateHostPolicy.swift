@@ -121,15 +121,25 @@ nonisolated public enum PrivateHostPolicy {
 
     private static func isPrivateIPv4(_ octets: [UInt8]) -> Bool {
         guard octets.count == 4 else { return false }
+        // RFC 6890 special-purpose space. Every range below is non-global: it is
+        // either unroutable on the public Internet or routes to local/special-use
+        // infrastructure, so a literal must never pass as a public origin. The
+        // WebKit content rules in `PrivateNetworkBlockRules` encode the same set for
+        // subresources; a parity test keeps the two in step.
         switch (octets[0], octets[1]) {
-        case (0, _): return true
-        case (10, _): return true
-        case (100, 64...127): return true
-        case (127, _): return true
-        case (169, 254): return true
-        case (172, 16...31): return true
-        case (192, 168): return true
-        case (224...255, _): return true
+        case (0, _): return true  // "this" network
+        case (10, _): return true  // private
+        case (100, 64...127): return true  // shared address space (CGNAT)
+        case (127, _): return true  // loopback
+        case (169, 254): return true  // link-local
+        case (172, 16...31): return true  // private
+        case (192, 0): return octets[2] == 0 || octets[2] == 2  // IETF assignments, TEST-NET-1
+        case (192, 88): return octets[2] == 99  // 6to4 relay anycast (deprecated, non-global)
+        case (192, 168): return true  // private
+        case (198, 18...19): return true  // benchmarking
+        case (198, 51): return octets[2] == 100  // TEST-NET-2
+        case (203, 0): return octets[2] == 113  // TEST-NET-3
+        case (224...255, _): return true  // multicast, reserved, broadcast
         default: return false
         }
     }

@@ -193,4 +193,31 @@ extension TerminalScreen {
         }
     }
 
+    // MARK: - Parameter parsing
+
+    /// Splits a CSI parameter string (`"2;10"`) into integers; a missing or non-numeric
+    /// field is `0`. An empty string yields `[]`.
+    static func parseParams(_ params: String) -> [Int] {
+        guard !params.isEmpty else { return [] }
+        return params.split(separator: ";", omittingEmptySubsequences: false).map { Int($0) ?? 0 }
+    }
+
+    /// The largest CSI parameter this emulator will act on.
+    ///
+    /// Callers add this value to a cursor position *before* clamping
+    /// (`clampRow(cursorRow + at(...))`), so an unbounded parameter overflows `Int` and
+    /// traps the process rather than saturating — a stream containing
+    /// `ESC[9223372036854775807C` is enough, and terminal capture is fed by whatever a
+    /// program decided to print. Capping the operand rather than the sum keeps every
+    /// call site's arithmetic in range. The ceiling is two orders of magnitude above the
+    /// screen bounds (`screenRows` caps at 1000, `inferColumns` at 1000), so clamping is
+    /// still what decides the final position and no real capture changes.
+    static let maxParameter = 100_000
+
+    /// The parameter at `index`, treating a missing or zero value as `default` — the CSI
+    /// convention where an omitted or `0` count means `1` for cursor moves and positions.
+    static func at(_ nums: [Int], _ index: Int, default fallback: Int) -> Int {
+        guard index < nums.count, nums[index] > 0 else { return fallback }
+        return min(nums[index], maxParameter)
+    }
 }
