@@ -76,16 +76,41 @@ jobs:
         timeout-minutes: 75
         run: make build
 
-      # Preserve the extractor's own logs whether the build finished, failed, or was
-      # stopped by the step timeout — the only way to see where a slow run stalls.
+      # Every step after `init` inherits the tracer's injection environment
+      # (DYLD_INSERT_LIBRARIES / SEMMLE_PRELOAD_libtrace / CODEQL_RUNNER). The tracer
+      # library is the x86_64 `osx64` build, so a Node-based action launched with it
+      # dies before printing anything — which is exactly how the first version of this
+      # diagnostics step failed. Print the evidence from bash (it tolerates the
+      # injection, as the traced build itself proves), then upload with the tracer
+      # variables explicitly cleared.
+      - name: Summarize CodeQL Swift extraction
+        if: always() && matrix.language == 'swift'
+        run: |
+          set +e
+          echo "host arch: $(uname -m)"
+          echo "tracer log: ${CODEQL_TRACER_LOG:-unset}"
+          if [ -f "${CODEQL_TRACER_LOG:-/nonexistent}" ]; then
+            echo "--- last 60 tracer lines ---"; tail -n 60 "$CODEQL_TRACER_LOG"
+          fi
+          if [ -d "${CODEQL_TRACER_DIAGNOSTICS_DIR:-/nonexistent}" ]; then
+            echo "--- diagnostics ---"; ls -la "$CODEQL_TRACER_DIAGNOSTICS_DIR"
+          fi
+          mkdir -p "$RUNNER_TEMP/codeql-swift-diagnostics"
+          cp -R "$RUNNER_TEMP/codeql_databases/log" "$RUNNER_TEMP/codeql-swift-diagnostics/" 2>/dev/null || true
+          cp -R "$RUNNER_TEMP/codeql_databases/diagnostic" "$RUNNER_TEMP/codeql-swift-diagnostics/" 2>/dev/null || true
+          exit 0
+
       - name: Upload CodeQL Swift extraction logs
         if: always() && matrix.language == 'swift'
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        env:
+          DYLD_INSERT_LIBRARIES: ""
+          SEMMLE_PRELOAD_libtrace: ""
+          CODEQL_RUNNER: ""
         with:
           name: codeql-swift-extraction-logs
-          path: |
-            ${{ runner.temp }}/codeql_databases/**/log/**
-            ${{ runner.temp }}/codeql_databases/**/diagnostic/**
+          path: ${{ runner.temp }}/codeql-swift-diagnostics
           if-no-files-found: warn
           retention-days: 14
 
