@@ -58,10 +58,8 @@ extension CLIArgumentParser {
             throw CLIError.incompatibleOptions(
                 "--git-context requires --git-diff or --git-staged.")
         }
-        if mode != .multiSize, !multiSizePresetIDs.isEmpty {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --presets.")
-        }
+        try CLIArgumentSchema.validateAvailability(
+            command: mode, seen: seenOptionIDs, group: .multiSizeOnly)
         if mode == .multiSize {
             if presetID != nil {
                 throw CLIError.incompatibleOptions(
@@ -224,38 +222,8 @@ extension CLIArgumentParser {
         if gitDiffSource != nil, diffDecorations == nil {
             diffDecorations = true
         }
-        if mode != .batch, recursiveBatch {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --recursive.")
-        }
-        if mode != .batch, failOnSkipped {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --fail-on-skipped.")
-        }
-        if mode != .batch, failOnEmpty {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --fail-on-empty.")
-        }
-        if mode != .batch, skippedReportPath != nil {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --skipped-report.")
-        }
-        if mode != .batch, batchManifestPath != nil {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --manifest.")
-        }
-        if mode != .batch, dryRunBatch {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --dry-run.")
-        }
-        if mode != .batch, !batchIncludeExtensions.isEmpty {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --include-ext.")
-        }
-        if mode != .batch, !batchExcludeExtensions.isEmpty {
-            throw CLIError.incompatibleOptions(
-                "Cannot combine \(mode.rawValue) with --exclude-ext.")
-        }
+        try CLIArgumentSchema.validateAvailability(
+            command: mode, seen: seenOptionIDs, group: .batchOnly)
         let recipeHeaderRequested =
             recipe?.metadata.windowTitle != nil || recipe?.metadata.header.isEmpty == false
         let metadataHeaderRequested =

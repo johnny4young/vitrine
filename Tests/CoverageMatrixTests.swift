@@ -174,6 +174,33 @@ struct ThemeCoverageTests {
     /// its own background, never this sentinel.
     private static let fallbackBackground = RGBAColor(Color(hex: "#1E1E1E"))
 
+    /// Every catalog entry names a stylesheet that ships in the dependency. This
+    /// direct availability check is required because Highlightr otherwise returns
+    /// `false` and silently keeps the previously selected theme.
+    @Test func everyBuiltInThemeIsRecognizedByTheEngine() throws {
+        let supported = Set(try #require(HighlightManager.shared.supportedThemeNames()))
+        #expect(!supported.isEmpty)
+        for theme in Theme.builtIns {
+            let name = try #require(theme.hlJsTheme)
+            #expect(
+                supported.contains(name),
+                "Highlightr does not bundle '\(name)' for \(theme.displayName)")
+        }
+    }
+
+    /// An unavailable stylesheet falls back deterministically to One Dark instead
+    /// of inheriting the previous render's mutable engine state.
+    @Test func unavailableThemeCannotReuseThePreviouslySelectedTheme() {
+        let expected = RGBAColor(HighlightManager.shared.backgroundColor(for: .oneDark))
+        _ = highlight(.swift, theme: .github)
+        let unavailable = Theme(
+            id: "unavailable-test-theme",
+            displayName: "Unavailable Test Theme",
+            hlJsTheme: "vitrine-theme-that-does-not-exist")
+        let actual = RGBAColor(HighlightManager.shared.backgroundColor(for: unavailable))
+        #expect(actual == expected)
+    }
+
     /// Every built-in theme resolves to a real, theme-derived card background. If a
     /// theme's `hlJsTheme` were misspelled, Highlightr would yield the sentinel
     /// fallback for it — so a background equal to the fallback for *all* themes

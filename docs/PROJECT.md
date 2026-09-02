@@ -32,7 +32,9 @@ for the decision to avoid arbitrary display and window capture.
 
 - Swift 6.2, SwiftUI, and focused AppKit integration
 - XcodeGen, with `project.yml` as the project source of truth
-- Highlightr for syntax highlighting
+- Highlightr behind a narrow rendering adapter for syntax highlighting; the maintenance
+  tradeoff and replacement gates are recorded in
+  [ADR 0001](decisions/0001-syntax-highlighting-engine.md)
 - WebKit for local HTML and user-requested webpage rendering
 - Vision for on-device OCR
 - ImageRenderer and ImageIO for color-managed raster export

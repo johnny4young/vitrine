@@ -12,6 +12,34 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Extract portable models, recipes, search, terminal policies, settings defaults, and
+  bounded file/transport safety into a hostless `VitrineDomain` module shared by the app
+  and CLI. The CLI now compiles only its render-facing source set instead of dragging app
+  lifecycle, windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI.
+- Link the app and CLI against one static `VitrineRendering` engine for canvas layout,
+  highlighting, image policy, render budgets, and encoding. Direct module tests plus an
+  App/CLI normalized-pixel contract protect the shared output from boundary drift.
+- Measure build boundaries against the real `VitrineDomainTests` target rather than a
+  temporary copied-source package, while preserving the matched app-hosted probe.
+- Split terminal-screen scanning, ANSI dispatch, cell operations, and serialization into
+  focused portable components, and separate Web Snapshot document lifecycle, capture
+  orchestration, window presentation, and authenticated-session ownership without changing
+  output or user-facing behavior.
+- Generate CLI parsing, aliases, required-value arity, constrained-command allowlists,
+  mode-only validation, and 80-column help from one dependency-free argument schema while
+  preserving every command, alias, error contract, and render option.
+- Retain exact Highlightr 2.3.0 behind the shared rendering adapter after a measured
+  replacement review found incomplete theme compatibility and a 61.8% uncached-medium p95
+  regression in its recommended successor. Record explicit migration gates in ADR 0001.
+
+### Fixed
+
+- Validate every built-in syntax stylesheet against the engine catalog and fall back
+  deterministically to One Dark if a stylesheet cannot load, instead of silently reusing
+  the previously rendered theme.
+
 ## [1.2.1] - 2026-08-30
 
 Vitrine 1.2.1 is a focused safety candidate. It bounds every raster render allocation before

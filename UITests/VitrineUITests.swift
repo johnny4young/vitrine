@@ -1699,16 +1699,18 @@ final class VitrineUITests: XCTestCase {
             Set(CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []).contains("public.avif")
         if supportsAVIF {
             assertExists(avif, in: app)
-            XCTAssertTrue(avif.isHittable, "AVIF is present but not reachable in the format picker")
-            avif.click()
+            assertHittable(
+                "output-format-avif", in: app,
+                "AVIF is present but not reachable in the format picker")
+            hittableElement("output-format-avif", in: app).click()
             let selectedDeadline = Date().addingTimeInterval(3)
-            while !element("output-format-avif", in: app).isSelected,
+            while !hittableElement("output-format-avif", in: app).isSelected,
                 Date() < selectedDeadline
             {
                 Thread.sleep(forTimeInterval: 0.2)
             }
             XCTAssertTrue(
-                element("output-format-avif", in: app).isSelected,
+                hittableElement("output-format-avif", in: app).isSelected,
                 "Selecting AVIF did not update the output format")
         } else {
             XCTAssertFalse(avif.exists, "AVIF must not be offered without an ImageIO writer")

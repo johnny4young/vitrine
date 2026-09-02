@@ -1,7 +1,7 @@
 import Testing
 
 #if VITRINE_HOSTLESS_PROBE
-    @testable import VitrineCoreProbe
+    @testable import VitrineDomain
 #else
     @testable import Vitrine
 #endif

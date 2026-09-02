@@ -55,19 +55,3 @@ nonisolated enum Log {
         Logger(subsystem: subsystem, category: category.rawValue)
     }
 }
-
-/// Signposting for the render path, which feeds the performance budget.
-///
-/// `OSSignposter` emits interval markers visible in Instruments' os_signpost track
-/// and in the unified log, so render latency can be measured without a stopwatch in
-/// production code. Like everything in `Log`, signpost arguments stay non-PII: we
-/// name the interval and attach only derived measures (e.g. code length), never the
-/// code itself.
-enum RenderSignpost {
-    /// The signposter bound to the render category, so its intervals line up with
-    /// the `Log.render` text log.
-    static let signposter = OSSignposter(logger: Log.render)
-
-    /// The interval name shown in Instruments for a single canvas render.
-    static let renderName: StaticString = "Render snapshot"
-}

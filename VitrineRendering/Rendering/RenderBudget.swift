@@ -1,0 +1,190 @@
+import CoreGraphics
+import VitrineDomain
+
+/// A pre-allocation safety policy for raster rendering.
+///
+/// File-size limits do not bound the size of a laid-out canvas: a small text file can
+/// still produce a very tall image, and scale multiplies both axes. Callers evaluate the
+/// resolved logical size before asking SwiftUI, WebKit, or Core Graphics for a bitmap.
+/// The peak estimate deliberately includes concurrent full-size buffers rather than
+/// treating the final RGBA image as the whole allocation cost.
+nonisolated public struct RenderBudget: Equatable, Sendable {
+    nonisolated public struct Allocation: Equatable, Sendable {
+        public let pixelWidth: Int
+        public let pixelHeight: Int
+        public let pixelCount: Int
+        public let estimatedPeakBytes: Int
+
+        public var pixelSize: CGSize {
+            CGSize(width: pixelWidth, height: pixelHeight)
+        }
+    }
+
+    nonisolated public enum Rejection: Equatable, Sendable {
+        case invalidDimensions
+        case invalidScale
+        case dimension(actual: Int, maximum: Int)
+        case pixelCount(actual: Int, maximum: Int)
+        case estimatedBytes(actual: Int, maximum: Int)
+        case arithmeticOverflow
+    }
+
+    /// Preview keeps interactive edits responsive even on an 8 GB Mac. Three buffers
+    /// cover the rendered image plus the common display/conversion copies.
+    public static let preview = RenderBudget(
+        maximumDimension: 8_192,
+        maximumPixelCount: 16_000_000,
+        maximumEstimatedBytes: 256 * 1_024 * 1_024,
+        bytesPerPixel: 4,
+        concurrentBufferCount: 3)
+
+    /// Export allows substantially larger artifacts while bounding the worst common
+    /// path: ImageRenderer output, color normalization, opaque compositing, and encoder
+    /// input. The byte ceiling becomes stricter than the pixel ceiling when all four
+    /// buffers are required.
+    public static let export = RenderBudget(
+        maximumDimension: 16_384,
+        maximumPixelCount: 40_000_000,
+        maximumEstimatedBytes: 512 * 1_024 * 1_024,
+        bytesPerPixel: 4,
+        concurrentBufferCount: 4)
+
+    public let maximumDimension: Int
+    public let maximumPixelCount: Int
+    public let maximumEstimatedBytes: Int
+    public let bytesPerPixel: Int
+    public let concurrentBufferCount: Int
+
+    private init(
+        maximumDimension: Int,
+        maximumPixelCount: Int,
+        maximumEstimatedBytes: Int,
+        bytesPerPixel: Int,
+        concurrentBufferCount: Int
+    ) {
+        self.maximumDimension = maximumDimension
+        self.maximumPixelCount = maximumPixelCount
+        self.maximumEstimatedBytes = maximumEstimatedBytes
+        self.bytesPerPixel = bytesPerPixel
+        self.concurrentBufferCount = concurrentBufferCount
+    }
+
+    /// Resolves a logical canvas into its bounded raster allocation. Dimensions round
+    /// up so the budget never underestimates a fractional point after scaling.
+    public func allocation(
+        for logicalSize: CGSize, scale: CGFloat
+    ) throws(RenderBudgetError)
+        -> Allocation
+    {
+        guard logicalSize.width.isFinite, logicalSize.height.isFinite,
+            logicalSize.width > 0, logicalSize.height > 0
+        else {
+            throw .tooLarge(.invalidDimensions)
+        }
+        guard scale.isFinite, scale > 0 else {
+            throw .tooLarge(.invalidScale)
+        }
+
+        let pixelWidth = try pixelDimension(for: logicalSize.width, scale: scale)
+        let pixelHeight = try pixelDimension(for: logicalSize.height, scale: scale)
+        let (pixelCount, pixelOverflow) = pixelWidth.multipliedReportingOverflow(by: pixelHeight)
+        guard !pixelOverflow else { throw .tooLarge(.arithmeticOverflow) }
+        guard pixelCount <= maximumPixelCount else {
+            throw .tooLarge(.pixelCount(actual: pixelCount, maximum: maximumPixelCount))
+        }
+
+        let (bytesPerBuffer, byteOverflow) = pixelCount.multipliedReportingOverflow(
+            by: bytesPerPixel)
+        guard !byteOverflow else { throw .tooLarge(.arithmeticOverflow) }
+        let (estimatedPeakBytes, peakOverflow) = bytesPerBuffer.multipliedReportingOverflow(
+            by: concurrentBufferCount)
+        guard !peakOverflow else { throw .tooLarge(.arithmeticOverflow) }
+        guard estimatedPeakBytes <= maximumEstimatedBytes else {
+            throw .tooLarge(
+                .estimatedBytes(
+                    actual: estimatedPeakBytes, maximum: maximumEstimatedBytes))
+        }
+
+        return Allocation(
+            pixelWidth: pixelWidth,
+            pixelHeight: pixelHeight,
+            pixelCount: pixelCount,
+            estimatedPeakBytes: estimatedPeakBytes)
+    }
+
+    /// Clamps a requested logical height to the tallest raster this budget permits
+    /// for `logicalWidth` at `scale`. Full-page WebKit capture uses this before it
+    /// resizes the web view or asks `takeSnapshot` for a bitmap, so the area limit is
+    /// enforced even when neither axis exceeds `maximumDimension` on its own.
+    public func clampedLogicalHeight(
+        _ requestedHeight: CGFloat,
+        forLogicalWidth logicalWidth: CGFloat,
+        scale: CGFloat
+    ) throws(RenderBudgetError) -> CGFloat {
+        guard requestedHeight.isFinite, requestedHeight > 0,
+            logicalWidth.isFinite, logicalWidth > 0
+        else {
+            throw .tooLarge(.invalidDimensions)
+        }
+        guard scale.isFinite, scale > 0 else {
+            throw .tooLarge(.invalidScale)
+        }
+
+        let pixelWidth = try pixelDimension(for: logicalWidth, scale: scale)
+        let (bytesPerPixelAcrossBuffers, bufferCostOverflow) =
+            bytesPerPixel
+            .multipliedReportingOverflow(by: concurrentBufferCount)
+        guard !bufferCostOverflow, bytesPerPixelAcrossBuffers > 0 else {
+            throw .tooLarge(.arithmeticOverflow)
+        }
+        let byteBoundPixelCount = maximumEstimatedBytes / bytesPerPixelAcrossBuffers
+        let effectiveMaximumPixelCount = min(maximumPixelCount, byteBoundPixelCount)
+        let areaBoundHeight = effectiveMaximumPixelCount / pixelWidth
+        let maximumPixelHeight = min(maximumDimension, areaBoundHeight)
+        guard maximumPixelHeight > 0 else {
+            throw .tooLarge(
+                .pixelCount(actual: pixelWidth, maximum: effectiveMaximumPixelCount))
+        }
+
+        // Stay infinitesimally below the integer pixel boundary before dividing.
+        // For non-integral scales, floating-point division followed by multiplication
+        // can otherwise land just above the boundary and make `ceil` add one pixel.
+        let maximumLogicalHeight = CGFloat(maximumPixelHeight).nextDown / scale
+        let clampedHeight = min(requestedHeight, maximumLogicalHeight)
+        // Re-run the complete policy at the chosen boundary. This protects against
+        // fractional-point rounding and keeps this helper correct if the policy gains
+        // another constraint later.
+        _ = try allocation(
+            for: CGSize(width: logicalWidth, height: clampedHeight), scale: scale)
+        return clampedHeight
+    }
+
+    private func pixelDimension(
+        for logicalDimension: CGFloat, scale: CGFloat
+    ) throws(RenderBudgetError) -> Int {
+        let scaled = logicalDimension * scale
+        guard scaled.isFinite, scaled > 0 else {
+            throw .tooLarge(.arithmeticOverflow)
+        }
+        guard scaled <= CGFloat(maximumDimension) else {
+            let actual =
+                if scaled < CGFloat(Int.max) {
+                    Int(scaled.rounded(.up))
+                } else {
+                    Int.max
+                }
+            throw .tooLarge(.dimension(actual: actual, maximum: maximumDimension))
+        }
+        return Int(scaled.rounded(.up))
+    }
+}
+
+/// Typed failures shared by raster rendering surfaces. The budget currently produces
+/// only `tooLarge`; the remaining cases let the next pipeline layer preserve allocation,
+/// encoding, and cancellation failures instead of collapsing them into `nil`.
+nonisolated public enum RenderBudgetError: Error, Equatable, Sendable {
+    case tooLarge(RenderBudget.Rejection)
+    case allocationFailed
+    case encodingFailed
+    case cancelled
+}

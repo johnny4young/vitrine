@@ -109,6 +109,10 @@ struct URLValidationTests {
             "http://169.254.169.254/latest/meta-data/", "http://[fe80::1]/",
             "http://[fec0::1]/", "http://[fd00::1]/", "http://[ff02::1]/", "http://[::]/",
             "http://0.0.0.0:5000/", "http://224.0.0.251/", "http://240.0.0.1/",
+            // RFC 6890 special-purpose space that is non-global without being RFC 1918.
+            "http://192.0.0.8/", "http://192.0.2.1/", "http://192.88.99.1/",
+            "http://198.18.0.1/", "http://198.19.255.254/", "http://198.51.100.7/",
+            "http://203.0.113.9/", "http://[::ffff:198.18.0.1]/",
         ] {
             let url = try #require(URL(string: raw), "fixture \(raw) must parse")
             #expect(throws: URLValidationError.privateLocalhost, "\(raw) must stay blocked") {

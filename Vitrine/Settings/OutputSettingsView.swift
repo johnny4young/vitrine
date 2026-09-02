@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineRendering
 
 /// Output pane: clipboard/save behavior, resolution, format.
 struct OutputSettingsView: View {
