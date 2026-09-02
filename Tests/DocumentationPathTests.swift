@@ -42,6 +42,53 @@ struct DocumentationPathTests {
     }
 
     private static func documentsToCheck() throws -> [URL] {
+        if let tracked = trackedDocuments() { return tracked }
+        return enumeratedDocuments()
+    }
+
+    /// Only tracked documentation is under contract. Enumerating the filesystem also
+    /// picks up gitignored, untracked files (a local design-sync mirror under
+    /// `docs/design/`, for example) whose stale paths fail locally while CI stays green.
+    private static func trackedDocuments() -> [URL]? {
+        guard let gitExecutable = gitExecutable() else { return nil }
+        let git = Process()
+        git.executableURL = gitExecutable
+        git.arguments = ["ls-files", "-z", "--", "README.md", "CONTRIBUTING.md", "docs"]
+        git.currentDirectoryURL = repositoryRoot
+        let stdout = Pipe()
+        git.standardOutput = stdout
+        git.standardError = FileHandle.nullDevice
+        do { try git.run() } catch { return nil }
+        let data = stdout.fileHandleForReading.readDataToEndOfFile()
+        git.waitUntilExit()
+        guard git.terminationStatus == 0,
+            let listing = String(data: data, encoding: .utf8)
+        else { return nil }
+        let paths = listing.split(separator: "\0").map(String.init)
+            .filter { $0.hasSuffix(".md") }
+        guard !paths.isEmpty else { return nil }
+        return paths.sorted().map { repositoryRoot.appending(path: $0) }
+    }
+
+    /// `/usr/bin/git` is an xcrun shim that refuses to run inside the App Sandbox the
+    /// test host inherits, so resolve a real binary from the developer tools instead.
+    private static func gitExecutable() -> URL? {
+        var candidates: [String] = []
+        if let developerDirectory = ProcessInfo.processInfo.environment["DEVELOPER_DIR"] {
+            candidates.append(developerDirectory + "/usr/bin/git")
+        }
+        candidates += [
+            "/Applications/Xcode.app/Contents/Developer/usr/bin/git",
+            "/Library/Developer/CommandLineTools/usr/bin/git",
+            "/opt/homebrew/bin/git",
+            "/usr/local/bin/git",
+        ]
+        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+            .map { URL(filePath: $0) }
+    }
+
+    /// Fallback when git is unavailable (or refuses to run): every `.md` on disk.
+    private static func enumeratedDocuments() -> [URL] {
         let rootDocuments = ["README.md", "CONTRIBUTING.md"].map {
             repositoryRoot.appending(path: $0)
         }
