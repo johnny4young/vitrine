@@ -18,21 +18,39 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # JavaScript/TypeScript extraction is buildless and finishes in minutes, so it runs
+  # on every event including pull requests. The Swift lane traces a full Xcode build
+  # on a hosted macOS runner: 40 minutes when it finishes and, on identical code, an
+  # intermittent extractor stall that only a timeout ends. In the repository's whole
+  # history it has produced one alert, so it does not gate pull requests: it runs on
+  # pushes to main, on the weekly schedule, and on manual dispatch, where a slow or
+  # stalled job costs nobody a review cycle.
   analyze:
-    name: Analyze · ${{ matrix.label }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - language: javascript-typescript
-            label: JavaScript and TypeScript
-            runner: ubuntu-latest
-            build-mode: none
-          - language: swift
-            label: Swift
-            runner: macos-15
-            build-mode: manual
-    runs-on: ${{ matrix.runner }}
+    name: Analyze · JavaScript and TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          queries: security-extended
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
+        with:
+          category: /language:javascript-typescript
+
+  analyze-swift:
+    name: Analyze · Swift
+    if: github.event_name != 'pull_request'
+    runs-on: macos-15
     # The Swift database build traces a full app+CLI compile and normally takes
     # 33-45 minutes on hosted runners, but a slow runner has crossed 60 twice
     # (PRs #150 and #151), killing the job before analysis with nothing to show.
@@ -45,55 +63,63 @@ jobs:
           fetch-depth: 0
 
       - name: Select latest stable Xcode
-        if: matrix.language == 'swift'
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
         with:
           xcode-version: latest-stable
 
       - name: Export DEVELOPER_DIR
-        if: matrix.language == 'swift'
         run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
 
       - name: Install pinned XcodeGen
-        if: matrix.language == 'swift'
         run: ./scripts/install-xcodegen.sh
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
         with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          languages: swift
+          build-mode: manual
           queries: security-extended
 
-      # Swift extraction traces the same generated-project Debug build developers
-      # use. JavaScript/TypeScript is interpreted and needs no manual build step.
+      # Swift extraction traces the same generated-project Debug build developers use.
       # The traced build is bimodal on hosted runners: ~40 minutes most of the time,
       # but some jobs never finish inside 60 or 90 minutes on identical code. A job-level
       # timeout kills everything and leaves no log to read. Bound the STEP instead, so a
       # stuck extraction still hands its logs to the upload below.
       # The 75-minute limit is the outer bound. Inside it, a watchdog distinguishes a
-      # SLOW build from a STALLED one: the Swift extractor has been observed to go
-      # silent for the rest of the budget right after emitting "Unexpected
-      # MacroExpansion" errors while starting the app module, whereas a healthy run
-      # finishes that module in minutes. If nothing under the CodeQL database
-      # directory changes for 15 minutes, the build is killed and the step fails
-      # with "STALLED" in its log, keeping the evidence and returning the runner.
+      # SLOW build from a STALLED one by watching for new files under the CodeQL
+      # database: a progressing extraction writes TRAP files continuously, a stalled
+      # one writes nothing for the rest of the budget (50 minutes observed). The
+      # tracer's own log and diagnostics are excluded from that check because the
+      # tracer intercepts the watchdog's `sleep` and `find` too and appends to
+      # build-tracer.log on every tick, which once made the directory look busy
+      # forever. On a stall the watchdog kills the extractor and compiler processes
+      # by exact name (they otherwise survive a step timeout and wedge every later
+      # step), then the build tree, and exits 124. The build runs directly in the
+      # step's process tree with no pipes or environment wrappers: an attempt that
+      # mirrored its output through `tee` under a cleared tracer environment left
+      # the hosted runner unable to upload logs or enforce its own step timeout.
       - name: Build Swift database
-        if: matrix.language == 'swift'
         timeout-minutes: 75
         run: |
-          set -o pipefail
           db="$RUNNER_TEMP/codeql_databases"
-          newest() { find "$db" -type f -newer "$1" -print -quit 2>/dev/null; }
+          marker="$RUNNER_TEMP/codeql-activity-marker"
+          touch "$marker"
           make build & build=$!
-          marker="$RUNNER_TEMP/.codeql-progress"; touch "$marker"
           quiet=0
           while kill -0 "$build" 2>/dev/null; do
             sleep 60
-            if [ -n "$(newest "$marker")" ]; then touch "$marker"; quiet=0; else quiet=$((quiet + 1)); fi
+            if [ -n "$(find "$db" -type f -newer "$marker" -not -path '*/log/*' -not -path '*/diagnostic/*' -print -quit 2>/dev/null)" ]; then
+              quiet=0; touch "$marker"
+            else
+              quiet=$((quiet + 1))
+            fi
             if [ "$quiet" -ge 15 ]; then
-              echo "::error::STALLED: no CodeQL extraction activity under $db for 15 minutes; killing the build."
-              pkill -TERM -P "$build" 2>/dev/null; kill -TERM "$build" 2>/dev/null; sleep 5
+              echo "::error::STALLED: no CodeQL extraction activity for 15 minutes; killing the build."
+              echo "processes to terminate:"; pgrep -lx 'extractor\.real|swift-frontend|xcodebuild' || echo "  (none)"
+              pkill -TERM -x 'extractor\.real|swift-frontend|xcodebuild' 2>/dev/null
+              pkill -TERM -P "$build" 2>/dev/null; kill -TERM "$build" 2>/dev/null
+              sleep 5
+              pkill -KILL -x 'extractor\.real|swift-frontend|xcodebuild' 2>/dev/null
               pkill -KILL -P "$build" 2>/dev/null; kill -KILL "$build" 2>/dev/null
               wait "$build" 2>/dev/null
               exit 124
@@ -101,20 +127,16 @@ jobs:
           done
           wait "$build"
 
-      # Every step after `init` inherits the tracer's injection environment
-      # (DYLD_INSERT_LIBRARIES / SEMMLE_PRELOAD_libtrace / CODEQL_RUNNER). The tracer
-      # library is the x86_64 `osx64` build, so a Node-based action launched with it
-      # dies before printing anything — which is exactly how the first version of this
-      # diagnostics step failed. Print the evidence from bash (it tolerates the
-      # injection, as the traced build itself proves), then upload with the tracer
-      # variables explicitly cleared.
+      # Diagnostics for a stalled run. Lessons from three failed attempts: a Node
+      # action inherits the tracer injection and dies silently; a bash step tolerates
+      # the injection only while the tracer is healthy; and after a build-step
+      # timeout three orphaned `extractor.real` processes keep the tracer wedged, so
+      # even `ls` and `cp` on the database directory can block until the job limit.
+      # So: run with the tracer variables cleared, kill the orphans first, write the
+      # cheapest and most valuable evidence before anything else, and bound every
+      # command individually so no single hang can consume the step.
       - name: Summarize CodeQL Swift extraction
-        if: always() && matrix.language == 'swift'
-        # Bounded and run OUTSIDE the tracer: after a build-step timeout the tracer's
-        # runner can be wedged by orphaned extractor processes, and every child this
-        # step spawns (uname, tail, cp) would otherwise be injected into that wedged
-        # tracer and hang until the job limit — which is how the first version of this
-        # step consumed 15 minutes and produced nothing.
+        if: always()
         timeout-minutes: 5
         env:
           DYLD_INSERT_LIBRARIES: ""
@@ -122,29 +144,25 @@ jobs:
           CODEQL_RUNNER: ""
         run: |
           set +e
-          echo "host arch: $(uname -m)"
-          echo "tracer log: ${CODEQL_TRACER_LOG:-unset}"
-          if [ -f "${CODEQL_TRACER_LOG:-/nonexistent}" ]; then
-            echo "--- last 60 tracer lines ---"; tail -n 60 "$CODEQL_TRACER_LOG"
-          fi
-          if [ -d "${CODEQL_TRACER_DIAGNOSTICS_DIR:-/nonexistent}" ]; then
-            echo "--- diagnostics ---"; ls -la "$CODEQL_TRACER_DIAGNOSTICS_DIR"
-          fi
-          # Stage the tracer logs and every per-language extractor log/diagnostic dir
-          # (the Swift extractor writes under codeql_databases/swift/log), then list
-          # what was staged so the job log shows it even if the upload misbehaves.
+          bounded() { perl -e 'alarm shift; exec @ARGV' "$@"; }   # bounded <seconds> <command…>
+          pkill -KILL -x 'extractor\.real|swift-frontend|xcodebuild' 2>/dev/null && echo "killed orphaned build/extractor processes"
+          db="$RUNNER_TEMP/codeql_databases"
           stage="$RUNNER_TEMP/codeql-swift-diagnostics"; mkdir -p "$stage"
-          for dir in "$RUNNER_TEMP"/codeql_databases/log "$RUNNER_TEMP"/codeql_databases/diagnostic \
-                     "$RUNNER_TEMP"/codeql_databases/*/log "$RUNNER_TEMP"/codeql_databases/*/diagnostic; do
-            [ -d "$dir" ] || continue
-            rel="${dir#"$RUNNER_TEMP"/codeql_databases/}"
-            mkdir -p "$stage/$rel" && cp -R "$dir"/. "$stage/$rel/" 2>/dev/null || true
+          echo "host arch: $(uname -m)"
+          echo "--- last 60 tracer lines ---"
+          bounded 30 tail -n 60 "${CODEQL_TRACER_LOG:-$db/log/build-tracer.log}" 2>/dev/null | tee "$stage/tracer-tail.log"
+          # Per-language extractor logs are the evidence for a stall (codeql_databases/*/log);
+          # the tracer log is the largest file, so it is staged last and only if time allows.
+          for rel in swift/log swift/diagnostic diagnostic log; do
+            [ -d "$db/$rel" ] || continue
+            mkdir -p "$stage/$rel"
+            bounded 60 tar -C "$db/$rel" -cf - . 2>/dev/null | bounded 60 tar -C "$stage/$rel" -xf - 2>/dev/null
           done
-          echo "--- staged for upload ---"; find "$stage" -type f | head -40
+          echo "--- staged for upload ---"; bounded 20 find "$stage" -type f | head -40
           exit 0
 
       - name: Upload CodeQL Swift extraction logs
-        if: always() && matrix.language == 'swift'
+        if: always()
         continue-on-error: true
         timeout-minutes: 5
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -161,4 +179,4 @@ jobs:
       - name: Analyze
         uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:swift
