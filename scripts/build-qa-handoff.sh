@@ -65,6 +65,27 @@ validate_fixtures() {
 		|| fail "private-subresource-probe.sh does not require zero observed private bytes"
 }
 
+# Zip entries that macOS tooling can inject next to the real files: AppleDouble
+# sidecars (`._name`, carrying resource forks / extended attributes) and the
+# Finder-style `__MACOSX/` tree. Neither belongs in a QA bundle: they double the
+# listing, confuse `shasum -c` runs against SHA256SUMS, and are unreadable noise on
+# the clean Mac that unpacks the archive.
+appledouble_entries() {
+	/usr/bin/unzip -Z1 "$1" | grep -E '(^|/)(\._[^/]+|__MACOSX)(/|$)' || true
+}
+
+# Archive a staged bundle as a plain zip. `--norsrc` keeps resource forks out and
+# `--noextattr` keeps extended attributes out, so ditto never emits AppleDouble
+# entries; the listing is then checked so a future flag change cannot reintroduce them.
+archive_bundle() {
+	local root="$1" output="$2" stray
+	rm -f "$output"
+	/usr/bin/ditto -c -k --keepParent --norsrc --noextattr "$root" "$output"
+	/usr/bin/unzip -tq "$output" >/dev/null
+	stray="$(appledouble_entries "$output")"
+	[ -z "$stray" ] || fail "archive contains AppleDouble/__MACOSX entries: $(printf '%s ' $stray)"
+}
+
 if [ "${1:-}" = "--self-test" ]; then
 	validate_fixtures
 	self_test_root="$(mktemp -d "${TMPDIR:-/tmp}/vitrine-qa-handoff-self-test.XXXXXX")"
@@ -83,6 +104,25 @@ if [ "${1:-}" = "--self-test" ]; then
 		"$self_test_dmg" "${self_test_dmg}.sha256" "$(basename "$self_test_dmg")" \
 		>/dev/null 2>&1); then
 		fail "candidate digest self-test accepted mismatched DMG bytes"
+	fi
+	if [ -x /usr/bin/ditto ] && [ -x /usr/bin/unzip ]; then
+		archive_root="${self_test_root}/bundle"
+		mkdir -p "$archive_root"
+		printf 'payload\n' > "${archive_root}/payload.txt"
+		# Give the file an extended attribute: plain ditto would then emit an
+		# AppleDouble `._payload.txt` sidecar, which is exactly what the flags must
+		# suppress.
+		/usr/bin/xattr -w com.johnny4young.vitrine.qa-self-test 1 "${archive_root}/payload.txt"
+		archive_bundle "$archive_root" "${self_test_root}/clean.zip"
+		[ "$(/usr/bin/unzip -Z1 "${self_test_root}/clean.zip" | grep -c 'payload.txt$')" -eq 1 ] \
+			|| fail "archive self-test lost the payload file"
+		# Negative control: without the flags the sidecar appears and the detector
+		# must catch it, otherwise the check above proves nothing.
+		/usr/bin/ditto -c -k --keepParent "$archive_root" "${self_test_root}/dirty.zip"
+		[ -n "$(appledouble_entries "${self_test_root}/dirty.zip")" ] \
+			|| fail "archive self-test detector did not flag an AppleDouble entry"
+	else
+		echo "note: ditto/unzip unavailable; archive self-test skipped on this platform."
 	fi
 	echo "QA handoff fixtures passed self-test."
 	exit 0
@@ -172,7 +212,5 @@ README
 		| while IFS= read -r file; do shasum -a 256 "$file"; done > SHA256SUMS
 )
 
-rm -f "$OUTPUT"
-/usr/bin/ditto -c -k --keepParent "$BUNDLE_ROOT" "$OUTPUT"
-/usr/bin/unzip -tq "$OUTPUT" >/dev/null
+archive_bundle "$BUNDLE_ROOT" "$OUTPUT"
 echo "QA handoff created: $OUTPUT"
