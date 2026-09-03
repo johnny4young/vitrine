@@ -42,7 +42,7 @@ can never drift.
 
 ## [1.2.1] - 2026-08-30
 
-Vitrine 1.2.1 is a focused safety candidate. It bounds every raster render allocation before
+Vitrine 1.2.1 is a focused safety release. It bounds every raster render allocation before
 its bitmap is created, makes failures actionable across app and automation surfaces, and
 strengthens Web Snapshot isolation without changing the supported workflow or public
 distribution contract.
