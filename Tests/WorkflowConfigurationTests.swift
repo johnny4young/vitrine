@@ -410,8 +410,8 @@ struct WorkflowConfigurationTests {
     @Test func codeQLAnalyzesSwiftAndJavaScriptWithExtendedSecurityQueries() throws {
         let workflow = try Self.codeql()
         for requirement in [
-            "language: swift",
-            "language: javascript-typescript",
+            "languages: swift",
+            "languages: javascript-typescript",
             "build-mode: manual",
             "build-mode: none",
             "queries: security-extended",
@@ -438,9 +438,25 @@ struct WorkflowConfigurationTests {
 
         #expect(workflow.contains("pull_request:"))
         #expect(workflow.contains("branches: [main]"))
-        #expect(workflow.contains("runs-on: ${{ matrix.runner }}"))
-        #expect(workflow.contains("runner: macos-15"))
-        #expect(workflow.contains("runner: ubuntu-latest"))
+        #expect(workflow.contains("runs-on: macos-15"))
+        #expect(workflow.contains("runs-on: ubuntu-latest"))
+
+        // The traced Swift build takes 40 minutes when it finishes and stalls
+        // intermittently on identical code, so it must not gate pull requests. It
+        // keeps running on pushes to main, the weekly schedule, and manual dispatch;
+        // the buildless JavaScript/TypeScript lane stays on every event.
+        let swiftJob = try #require(workflow.range(of: "\n  analyze-swift:"))
+        let swiftJobBody = String(workflow[swiftJob.lowerBound...])
+        #expect(
+            swiftJobBody.contains("if: github.event_name != 'pull_request'"),
+            "The Swift CodeQL job must be gated off pull requests")
+        let javascriptJob = try #require(workflow.range(of: "\n  analyze:"))
+        let javascriptJobBody = String(workflow[javascriptJob.lowerBound..<swiftJob.lowerBound])
+        #expect(
+            !javascriptJobBody.contains("if: github.event_name"),
+            "The JavaScript/TypeScript CodeQL job must run on every event")
+        #expect(javascriptJobBody.contains("languages: javascript-typescript"))
+        #expect(swiftJobBody.contains("languages: swift"))
     }
 
     @Test func codeQLSwiftExtractionStallFailsClosedAndKeepsDiagnostics() throws {
@@ -451,7 +467,7 @@ struct WorkflowConfigurationTests {
             "[ \"$quiet\" -ge 15 ]",
             "STALLED: no CodeQL extraction activity",
             "exit 124",
-            "if: always() && matrix.language == 'swift'",
+            "if: always()",
             "DYLD_INSERT_LIBRARIES: \"\"",
             "SEMMLE_PRELOAD_libtrace: \"\"",
             "CODEQL_RUNNER: \"\"",
