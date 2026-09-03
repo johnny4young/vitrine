@@ -27,15 +27,7 @@ jobs:
   # stalled job costs nobody a review cycle.
   analyze:
     name: Analyze · JavaScript and TypeScript
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - language: javascript-typescript
-            label: JavaScript and TypeScript
-            runner: ubuntu-latest
-            build-mode: none
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
@@ -46,29 +38,19 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
         with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          languages: javascript-typescript
+          build-mode: none
           queries: security-extended
 
       - name: Analyze
         uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:javascript-typescript
 
   analyze-swift:
-    # A job skipped by its `if` never expands its matrix, so an expression here would
-    # surface on pull requests as the raw template. The name is static instead.
     name: Analyze · Swift
     if: github.event_name != 'pull_request'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - language: swift
-            label: Swift
-            runner: macos-15
-            build-mode: manual
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-15
     # The Swift database build traces a full app+CLI compile and normally takes
     # 33-45 minutes on hosted runners, but a slow runner has crossed 60 twice
     # (PRs #150 and #151), killing the job before analysis with nothing to show.
@@ -81,28 +63,24 @@ jobs:
           fetch-depth: 0
 
       - name: Select latest stable Xcode
-        if: matrix.language == 'swift'
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
         with:
           xcode-version: latest-stable
 
       - name: Export DEVELOPER_DIR
-        if: matrix.language == 'swift'
         run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
 
       - name: Install pinned XcodeGen
-        if: matrix.language == 'swift'
         run: ./scripts/install-xcodegen.sh
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
         with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          languages: swift
+          build-mode: manual
           queries: security-extended
 
-      # Swift extraction traces the same generated-project Debug build developers
-      # use. JavaScript/TypeScript is interpreted and needs no manual build step.
+      # Swift extraction traces the same generated-project Debug build developers use.
       # The traced build is bimodal on hosted runners: ~40 minutes most of the time,
       # but some jobs never finish inside 60 or 90 minutes on identical code. A job-level
       # timeout kills everything and leaves no log to read. Bound the STEP instead, so a
@@ -121,7 +99,6 @@ jobs:
       # mirrored its output through `tee` under a cleared tracer environment left
       # the hosted runner unable to upload logs or enforce its own step timeout.
       - name: Build Swift database
-        if: matrix.language == 'swift'
         timeout-minutes: 75
         run: |
           db="$RUNNER_TEMP/codeql_databases"
@@ -159,7 +136,7 @@ jobs:
       # cheapest and most valuable evidence before anything else, and bound every
       # command individually so no single hang can consume the step.
       - name: Summarize CodeQL Swift extraction
-        if: always() && matrix.language == 'swift'
+        if: always()
         timeout-minutes: 5
         env:
           DYLD_INSERT_LIBRARIES: ""
@@ -185,7 +162,7 @@ jobs:
           exit 0
 
       - name: Upload CodeQL Swift extraction logs
-        if: always() && matrix.language == 'swift'
+        if: always()
         continue-on-error: true
         timeout-minutes: 5
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -202,4 +179,4 @@ jobs:
       - name: Analyze
         uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:swift
