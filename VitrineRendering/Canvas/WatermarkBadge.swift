@@ -1,0 +1,168 @@
+import SwiftUI
+import VitrineDomain
+
+/// Composites the PRO Brand Kit watermark onto a snapshot canvas.
+///
+/// Applied by `SnapshotCanvas` to its finished output. When `watermark` is `nil`
+/// it returns the content **unchanged** — the exact same view tree — so the
+/// default render and every golden image stay byte-for-byte identical; the overlay
+/// only ever appears when the brand kit resolved a watermark at the export/preview
+/// seam. Because it is an `.overlay`, it never changes the canvas's measured size,
+/// so the editor's annotation coordinate space is unaffected.
+struct WatermarkOverlay: ViewModifier {
+    let watermark: Watermark?
+
+    func body(content: Content) -> some View {
+        if let watermark, watermark.hasContent {
+            if watermark.placement == .footerBar {
+                // Signature footer: a full-width attribution bar pinned
+                // to the bottom edge — logo + handle line left, QR chip right — instead
+                // of a floating corner chip.
+                content.overlay(alignment: .bottom) {
+                    WatermarkFooterBar(watermark: watermark)
+                        .allowsHitTesting(false)
+                }
+            } else if watermark.placement == .free {
+                // Free placement: center the mark on the normalized point. A
+                // GeometryReader maps it to the canvas; `.fixedSize` keeps the badge at
+                // its natural size so `.position` does not stretch it. The mark is
+                // purely decorative, so the full-canvas GeometryReader must not take
+                // hit testing — interaction is the separate `FreeWatermarkDragHandle`
+                // layer (mirrors the annotation overlay's decorative marks).
+                content.overlay {
+                    GeometryReader { geo in
+                        WatermarkBadge(watermark: watermark)
+                            .fixedSize()
+                            .position(
+                                x: geo.size.width * watermark.freePosition.x,
+                                y: geo.size.height * watermark.freePosition.y)
+                    }
+                    .allowsHitTesting(false)
+                }
+            } else {
+                content.overlay(alignment: watermark.placement.alignment) {
+                    WatermarkBadge(watermark: watermark)
+                        .padding(Self.inset)
+                        .allowsHitTesting(false)
+                }
+            }
+        } else {
+            content
+        }
+    }
+
+    /// The gap between the mark and the canvas edge.
+    private static let inset: CGFloat = 18
+}
+
+/// The brand mark drawn in a snapshot's corner: the optional logo and the
+/// handle/project line on a subtle scrim that keeps it legible over any background.
+///
+/// It draws only solid colors and a system font (no materials/blurs), so it renders
+/// deterministically through `ImageRenderer` and looks the same on every machine.
+struct WatermarkBadge: View {
+    let watermark: Watermark
+    private let logoImage: NSImage?
+
+    init(watermark: Watermark) {
+        self.watermark = watermark
+        self.logoImage = watermark.logoImage ?? watermark.logoImageData.flatMap(NSImage.init(data:))
+    }
+
+    var body: some View {
+        HStack(spacing: 7) {
+            if let logo = logoImage {
+                Image(nsImage: logo)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(height: Self.logoHeight)
+                    .accessibilityHidden(true)
+            }
+            if !watermark.text.isEmpty {
+                Text(verbatim: watermark.text)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(watermark.tint?.color ?? .white)
+            }
+            if let qr = watermark.qrImage {
+                QRChip(image: qr, side: Self.qrSide)
+            }
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(Color.black.opacity(0.30))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+        )
+        .opacity(0.96)
+    }
+
+    /// The drawn height of the logo; the text sits beside it at a matched weight.
+    private static let logoHeight: CGFloat = 20
+    /// The QR chip's drawn side in the corner badge — small but scannable at 2×.
+    private static let qrSide: CGFloat = 34
+}
+
+/// The QR chip: the pregenerated code on a white quiet-zone tile —
+/// scanners need the light margin — drawn with **no interpolation smoothing** so the
+/// integer-scaled modules stay hard-edged and scannable at any export scale.
+struct QRChip: View {
+    let image: NSImage
+    let side: CGFloat
+
+    var body: some View {
+        Image(nsImage: image)
+            .resizable()
+            .interpolation(.none)
+            .frame(width: side, height: side)
+            .padding(4)
+            .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Color.white))
+            .accessibilityHidden(true)
+    }
+}
+
+/// The signature footer bar: a full-width, edge-to-edge attribution
+/// strip — logo and handle line on the left, the QR chip on the right — on the same
+/// deterministic scrim treatment as the corner badge (solid colors, no materials).
+struct WatermarkFooterBar: View {
+    let watermark: Watermark
+    private let logoImage: NSImage?
+
+    init(watermark: Watermark) {
+        self.watermark = watermark
+        self.logoImage = watermark.logoImage ?? watermark.logoImageData.flatMap(NSImage.init(data:))
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if let logo = logoImage {
+                Image(nsImage: logo)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(height: 18)
+                    .accessibilityHidden(true)
+            }
+            if !watermark.text.isEmpty {
+                Text(verbatim: watermark.text)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(watermark.tint?.color ?? .white)
+            }
+            Spacer(minLength: 0)
+            if let qr = watermark.qrImage {
+                QRChip(image: qr, side: 30)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.black.opacity(0.38))
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+        }
+    }
+}

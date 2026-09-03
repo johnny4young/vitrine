@@ -52,7 +52,7 @@ that independent check passes.
 1. Download the candidate named in the successful tag run summary:
 
    ```bash
-   TAG=v1.2.0
+   TAG=v1.2.1
    CANDIDATE_RUN_ID=123456789
    rm -rf release-candidate
    gh run download "${CANDIDATE_RUN_ID}" \
@@ -69,7 +69,7 @@ that independent check passes.
 3. Only after both clean-Mac checks pass, dispatch the same workflow manually:
 
    ```bash
-   SHA256="$(shasum -a 256 release-candidate/Vitrine-1.2.0.dmg | awk '{print $1}')"
+   SHA256="$(shasum -a 256 release-candidate/Vitrine-1.2.1.dmg | awk '{print $1}')"
    gh workflow run release.yml \
      -f tag="${TAG}" \
      -f candidate_run_id="${CANDIDATE_RUN_ID}" \
@@ -121,6 +121,19 @@ CI is a release gate, not just a compile check.
   compares both the XcodeGen and Sparkle versions and checksums with GitHub's published
   release metadata. Each GitHub release includes a versioned SPDX JSON SBOM alongside the
   DMG and checksum.
+- **Static security analysis.** `codeql.yml` analyzes Swift on `macos-15` through a
+  traced manual Xcode build and JavaScript/TypeScript on Linux without a synthetic
+  build. Both use CodeQL's `security-extended` suite. The JavaScript/TypeScript lane
+  runs on pull requests, pushes to `main`, a weekly schedule, and manual dispatch; the
+  Swift lane runs on everything except pull requests, because its traced build takes
+  about 40 minutes when it finishes and stalls intermittently on identical code, and it
+  is not a required check. Results are uploaded to GitHub code scanning; the workflow
+  has no write permission beyond `security-events`.
+- **Focused sanitizer early warning.** `sanitizers.yml` runs Address Sanitizer over
+  bounded input/parser/allocation logic and Thread Sanitizer over cancellation and
+  waiter lifecycles every week or on manual dispatch. It deliberately excludes the
+  full AppKit/WebKit UI host, retains each `.xcresult`, and is **non-required** while
+  hosted-runner stability is established.
 - **The release workflow refuses to publish an unvetted build.** `release.yml` runs
   `verify`, builds a private candidate, re-downloads it onto an independent QA runner,
   and stops. Public promotion is a separate manual dispatch that pins the successful
@@ -162,6 +175,34 @@ requests, does not publish, and is not a claim of macOS 27 runtime support. Prom
 the required compatibility matrix only after GitHub provides the corresponding macOS
 runner as GA and the full runtime, UI, visual, performance, and clean-Mac evidence exists.
 
+### Security-analysis lanes
+
+CodeQL is the deterministic source-analysis lane. Swift uses `build-mode: manual` so
+the database contains exactly the generated Xcode targets compiled by `make build`;
+JavaScript/TypeScript uses buildless extraction for the static Astro site and supporting
+scripts. Both run `security-extended`; only the JavaScript/TypeScript lane runs on pull
+requests, and a Swift finding therefore surfaces on `main` or on the weekly run rather
+than blocking a review. Action references are immutable commit-SHA pins
+and remain covered by Dependabot. A CodeQL alert is investigated or dismissed with a
+documented reason; do not exclude the affected path merely to make the workflow green.
+
+The sanitizer commands are also available locally:
+
+```bash
+make test-asan
+make test-tsan
+```
+
+These are focused test-host runs, not replacements for `make test`, XCUITest, memory
+journeys, or clean-Mac qualification. Address Sanitizer covers parsers, terminal state,
+render budgets, bounded file input, redaction, and private-host rules. Thread Sanitizer
+covers debouncing, callback-to-async waiters, cancellation, and repeated Web snapshot
+journey orchestration. The hosted workflow runs only on its weekly/manual triggers, so
+it cannot accidentally become a pull-request branch-protection requirement. Promote a
+sanitizer lane to required CI only after at least four consecutive scheduled runs on the
+same runner family complete without infrastructure-only flakes; expand its focused suite
+when new non-UI concurrent or allocation-heavy components land.
+
 ### Unit-test lanes
 
 `make test` is the default local feedback lane. It runs the complete Swift Testing
@@ -177,6 +218,13 @@ for its Sequoia or Tahoe row, retains failure bundles, and publishes per-target 
 output in the job summary. The weighted coverage across `Vitrine.app`, `vitrine-cli`,
 and `VitrineMenuBarHelper` may not fall more than one percentage point below the
 pre-hardening baseline for that OS.
+
+The instrumented app host runs without code-signing entitlements or App Sandbox only
+inside `make test-coverage`. On privacy-hardened macOS hosts, `xcodebuild` otherwise may
+be unable to retrieve its own raw profile from the app container, leaving an unreadable
+coverage archive even though every test passed. These command-line overrides do not
+change `project.yml`, Debug/Release product builds, packaged entitlements, or the tests
+selected by the lane; they only make the local profile transport observable to Xcode.
 
 The same guard requires at least 80% of changed executable lines in critical logic to be
 covered. Its unit-coverage scope is `Models`, `CLI`, `Pro`, `Terminal`, `Rendering`, and
@@ -198,13 +246,19 @@ implicitly on the Xcode scheme default.
 Run `make memory-smoke` before a release candidate and after changes to window,
 renderer, observer, or asynchronous-task lifecycles. It runs the normal headless Debug
 build, reusing Xcode's already-resolved exact package checkouts, then launches a selected
-isolated journey under Apple's `leaks --atExit`. The four journeys cover repeated editor
+isolated journey under Apple's `leaks --atExit`. The five journeys cover repeated editor
 snapshot rasterization; deterministic foreground-image import, decode, replacement, and
-teardown; twenty additional editor window open/render/close cycles; and ten distinct real
-local-HTML WebKit session captures. The image and WebKit journeys reject duplicate output,
-while window churn requires a capture from the exact newly-opened editor. The image journey also removes its synthetic
-temporary store before reporting completion. The raw journey-named memgraph, full stack
-report, launch log, and a machine-readable summary are retained below
+teardown; additional editor window open/render/close cycles; distinct real local-HTML
+WebKit session captures; and large-document publish/render/teardown cycles above the
+interactive-highlighting ceiling. The teardown-heavy journeys support 20-, 50-, and
+100-iteration profiles. After every iteration returns to its baseline state, the app gives
+deferred framework releases three bounded run-loop turns, each inside a fresh autorelease
+pool, and records `TASK_VM_INFO.phys_footprint`. The report retains every sample plus full
+and post-warm-up least-squares slopes; neither slope is an automatic ownership verdict.
+Image, WebKit, and large-document journeys reject duplicate output, while window churn
+requires a capture from the exact newly-opened editor. The image journey also removes its
+synthetic temporary store before reporting completion. The raw journey-named memgraph,
+full stack report, launch log, and a machine-readable summary are retained below
 `build/memory-smoke/<timestamp>/`.
 
 ```bash
@@ -219,12 +273,23 @@ make memory-smoke MEMORY_JOURNEY=window-churn
 # Exercise newly-created non-persistent WebKit sessions with local HTML only.
 make memory-smoke MEMORY_JOURNEY=web-snapshot-cycle
 
-# Run editor, image, window, and WebKit journeys sequentially against one build.
+# Exercise source documents above the interactive-highlighting ceiling.
+make memory-smoke MEMORY_JOURNEY=large-document-cycle
+
+# Override any journey with a bounded iteration count.
+make memory-smoke MEMORY_JOURNEY=window-churn MEMORY_ITERATIONS=50
+
+# Run editor, image, window, WebKit, and large-document journeys against one build.
 make memory-smoke-all
 
+# Run image, window, WebKit, and large-document lifecycle profiles at 20/50/100.
+# This lane carries a larger capture timeout because `leaks` significantly slows the
+# 100-iteration window and WebKit runs; sample/completion validation remains strict.
+make memory-soak-matrix
+
 # Compare counts and footprints only with an earlier run from the exact same clean
-# commit, OS, architecture, Xcode, and journey. The report marks any provenance drift
-# instead of pretending the evidence is comparable.
+# commit, OS, architecture, Xcode, journey, and iteration count. The report marks any
+# provenance drift instead of pretending the evidence is comparable.
 make memory-smoke \
   MEMORY_JOURNEY=image-import-cycle \
   MEMORY_BASELINE=build/memory-smoke/<earlier-run>/report.json
@@ -238,12 +303,17 @@ also contributes to the peak footprint. Review the root stacks in `leaks.txt` an
 memgraph before classifying a regression. The command fails when the build, journey,
 capture, or report is invalid, but it does not silently allowlist framework roots or
 turn their mere presence into an app failure. Keep all generated evidence local and
-untracked. Compare only repeated, same-provenance root or footprint growth; do not change
-ownership based only on allocation-path frames. The image journey deliberately uses local
+untracked. Compare only repeated, same-provenance root, final footprint, or post-warm-up
+slope growth. A single positive slope can reflect cache warm-up or allocator behavior;
+investigate only growth that repeats across the 20/50/100 profiles on the same clean
+commit, macOS, architecture, and Xcode. Do not change ownership based only on
+allocation-path frames. The image journey deliberately uses local
 bounded fixtures; it does not replace the unit coverage for oversized/corrupt inputs and
 does not simulate an external item provider that never calls back. The local-HTML WebKit
-journey does not qualify public network capture, and the window journey does not cover
-every auxiliary window type.
+journey measures the Vitrine host process rather than separate WebContent processes and
+does not qualify public network capture. The window journey does not cover every
+auxiliary window type. The large-document journey covers interactive fallback, not the
+five-megabyte source-import ceiling.
 
 ### Running the UI tests
 
@@ -826,9 +896,9 @@ channels move.
 
 ```bash
 # On each clean Mac, after extracting the candidate handoff ZIP:
-cd Vitrine-1.2.0-qa-handoff
+cd Vitrine-1.2.1-qa-handoff
 shasum -a 256 -c SHA256SUMS
-./qa-release.sh Vitrine-1.2.0.dmg
+./qa-release.sh Vitrine-1.2.1.dmg
 # or, against an already-extracted app:
 ./qa-release.sh /Applications/Vitrine.app
 # with no argument it auto-detects the newest dist/*.dmg.
@@ -917,17 +987,26 @@ interactive behaviors — walk each on the clean Mac and record pass/fail per re
     rendered `onerror` marker alone is not sufficient evidence.
 18. **Real public URL WebKit** — copy `https://example.com`, accept the disclosure when
     shown, and export a real non-placeholder capture of the page.
-19. **Loopback rejected immediately** — submit the `127.0.0.1` entry from
+19. **Literal-private subresources blocked** — run
+    `webkit/private-subresource-probe.sh evidence prepare`, capture the public URL it puts
+    on the clipboard through the real URL-capture path, export a snapshot containing
+    `PRIVATE_SUBRESOURCE_PROBE_READY`, and run
+    `webkit/private-subresource-probe.sh evidence verify`. Require its structured metadata
+    to report zero private request bytes for the image, stylesheet, script, child frame,
+    fetch, and WebSocket probes. Any observed loopback bytes are a release blocker.
+20. **Loopback rejected immediately** — submit the `127.0.0.1` entry from
     `webkit/blocked-destinations.txt` and require the domain error before WebKit navigation
     begins; a later timeout is not a pass.
-20. **Private destinations rejected immediately** — repeat with the private and
+21. **Private destinations rejected immediately** — repeat with the private and
     link-local entries and require the same pre-navigation rejection.
-21. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
+22. **Uninstall** — quitting and trashing the app (or `brew uninstall --cask vitrine`)
     leaves no menu-bar icon and no login item behind.
 
 These fixtures intentionally do **not** certify public-to-private redirect revalidation.
-That policy remains protected by deterministic navigation-delegate tests; never mark it as
-clean-Mac validated from this manual journey.
+That policy remains protected by deterministic navigation-delegate tests. They also do not
+certify public-hostname DNS rebinding or resolution-time private-address detection, because
+WebKit content rules match the request URL rather than its resolved address. Never mark
+either boundary as clean-Mac validated from this manual journey.
 
 Complete both platform entries in `webkit/qualification-log.json`, change
 `overallStatus` only after every required scenario passes, and keep screenshots/exports in

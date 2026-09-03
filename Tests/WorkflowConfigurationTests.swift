@@ -61,6 +61,14 @@ struct WorkflowConfigurationTests {
         try text(".github", "workflows", "xcode-27-preview.yml")
     }
 
+    private static func codeql() throws -> String {
+        try text(".github", "workflows", "codeql.yml")
+    }
+
+    private static func sanitizers() throws -> String {
+        try text(".github", "workflows", "sanitizers.yml")
+    }
+
     private static func makefile() throws -> String {
         try text("Makefile")
     }
@@ -91,6 +99,8 @@ struct WorkflowConfigurationTests {
             ("deploy-site.yml", Self.deploySite()),
             ("dependency-freshness.yml", Self.freshness()),
             ("xcode-27-preview.yml", Self.xcode27Preview()),
+            ("codeql.yml", Self.codeql()),
+            ("sanitizers.yml", Self.sanitizers()),
         ] {
             for (index, line) in body.components(separatedBy: .newlines).enumerated() {
                 let indentation = line.prefix { $0 == " " || $0 == "\t" }
@@ -179,6 +189,7 @@ struct WorkflowConfigurationTests {
 
         #expect(fastLane.contains("-enableCodeCoverage NO"))
         #expect(coverageLane.contains("-enableCodeCoverage YES"))
+        #expect(coverageLane.contains("CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO"))
         #expect(fastLane.contains("$(RESULT_BUNDLE_FLAG)"))
         #expect(coverageLane.contains(#"-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)""#))
         #expect(coverageLane.contains("scripts/check-coverage.py"))
@@ -187,6 +198,12 @@ struct WorkflowConfigurationTests {
         #expect(make.contains(#"if [ "$$major" = 15 ]"#))
         #expect(make.contains(#"elif [ "$$major" = 26 ]"#))
         #expect(project.contains("gatherCoverageData: false"))
+
+        let releasing = try Self.releasingDoc()
+        let releasingProse = releasing.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        #expect(
+            releasingProse.contains("without code-signing entitlements or App Sandbox only"))
+        #expect(releasingProse.contains("do not change `project.yml`"))
 
         let ci = try Self.ci()
         #expect(ci.contains("make test-coverage"))
@@ -388,6 +405,111 @@ struct WorkflowConfigurationTests {
         let doc = try Self.releasingDoc()
         #expect(doc.contains("**Xcode 27 preview**"))
         #expect(doc.contains("not a claim of macOS 27 runtime support"))
+    }
+
+    @Test func codeQLAnalyzesSwiftAndJavaScriptWithExtendedSecurityQueries() throws {
+        let workflow = try Self.codeql()
+        for requirement in [
+            "languages: swift",
+            "languages: javascript-typescript",
+            "build-mode: manual",
+            "build-mode: none",
+            "queries: security-extended",
+            "security-events: write",
+            "github/codeql-action/init@",
+            "github/codeql-action/analyze@",
+        ] {
+            #expect(workflow.contains(requirement), "CodeQL must retain `\(requirement)`")
+        }
+
+        // The Swift build is intentionally a multiline shell block so a watchdog can
+        // terminate a wedged extractor without losing its diagnostics. Inspect only
+        // executable lines: a comment that merely mentions `make build` must not satisfy
+        // the contract.
+        let executableLines =
+            workflow
+            .components(separatedBy: .newlines)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
+            .joined(separator: "\n")
+        #expect(
+            executableLines.contains("make build & build=$!"),
+            "CodeQL must trace the project build and retain its process for the watchdog"
+        )
+
+        #expect(workflow.contains("pull_request:"))
+        #expect(workflow.contains("branches: [main]"))
+        #expect(workflow.contains("runs-on: macos-15"))
+        #expect(workflow.contains("runs-on: ubuntu-latest"))
+
+        // The traced Swift build takes 40 minutes when it finishes and stalls
+        // intermittently on identical code, so it must not gate pull requests. It
+        // keeps running on pushes to main, the weekly schedule, and manual dispatch;
+        // the buildless JavaScript/TypeScript lane stays on every event.
+        let swiftJob = try #require(workflow.range(of: "\n  analyze-swift:"))
+        let swiftJobBody = String(workflow[swiftJob.lowerBound...])
+        #expect(
+            swiftJobBody.contains("if: github.event_name != 'pull_request'"),
+            "The Swift CodeQL job must be gated off pull requests")
+        let javascriptJob = try #require(workflow.range(of: "\n  analyze:"))
+        let javascriptJobBody = String(workflow[javascriptJob.lowerBound..<swiftJob.lowerBound])
+        #expect(
+            !javascriptJobBody.contains("if: github.event_name"),
+            "The JavaScript/TypeScript CodeQL job must run on every event")
+        #expect(javascriptJobBody.contains("languages: javascript-typescript"))
+        #expect(swiftJobBody.contains("languages: swift"))
+    }
+
+    @Test func codeQLSwiftExtractionStallFailsClosedAndKeepsDiagnostics() throws {
+        let workflow = try Self.codeql()
+
+        for requirement in [
+            "timeout-minutes: 75",
+            "[ \"$quiet\" -ge 15 ]",
+            "STALLED: no CodeQL extraction activity",
+            "exit 124",
+            "if: always()",
+            "DYLD_INSERT_LIBRARIES: \"\"",
+            "SEMMLE_PRELOAD_libtrace: \"\"",
+            "CODEQL_RUNNER: \"\"",
+            "codeql_databases/*/log",
+            "codeql-swift-extraction-logs",
+        ] {
+            #expect(
+                workflow.contains(requirement),
+                "CodeQL Swift stall handling must retain `\(requirement)`")
+        }
+    }
+
+    @Test func sanitizersAreFocusedWeeklyManualEarlyWarnings() throws {
+        let workflow = try Self.sanitizers()
+        let make = try Self.makefile()
+        let doc = try Self.releasingDoc()
+        let sanitizerStart = try #require(make.range(of: "\n# Sanitizers intentionally"))
+        let uiStart = try #require(make.range(of: "\n## build-ui-tests:"))
+        let sanitizerLanes = String(make[sanitizerStart.lowerBound..<uiStart.lowerBound])
+
+        #expect(workflow.contains("schedule:"))
+        #expect(workflow.contains("workflow_dispatch:"))
+        #expect(!workflow.contains("\n  pull_request:"))
+        #expect(!workflow.contains("\n  push:"))
+        #expect(workflow.contains("make ${{ matrix.target }}"))
+        #expect(workflow.contains("target: test-asan"))
+        #expect(workflow.contains("target: test-tsan"))
+        #expect(workflow.contains("if: always()"))
+        #expect(workflow.contains(".xcresult"))
+
+        #expect(make.contains("test-asan: project"))
+        #expect(make.contains("-enableAddressSanitizer YES"))
+        #expect(make.contains("test-tsan: project"))
+        #expect(make.contains("-enableThreadSanitizer YES"))
+        #expect(make.contains("ItemProviderLoadWaiterTests"))
+        #expect(make.contains("MemoryWebSnapshotCycleJourneyTests"))
+        #expect(!sanitizerLanes.contains("-only-testing:VitrineUITests"))
+
+        #expect(doc.contains("CodeQL"))
+        #expect(doc.contains("make test-asan"))
+        #expect(doc.contains("make test-tsan"))
+        #expect(doc.contains("non-required"))
     }
 
     // MARK: - Contract: release candidate and manual promotion are fail-closed
@@ -808,6 +930,8 @@ struct WorkflowConfigurationTests {
             ("release.yml", Self.release()),
             ("appstore.yml", Self.appstore()),
             ("deploy-site.yml", Self.deploySite()),
+            ("codeql.yml", Self.codeql()),
+            ("sanitizers.yml", Self.sanitizers()),
         ] {
             for rawLine in yaml.components(separatedBy: .newlines) {
                 guard let usesRange = rawLine.range(of: "uses:") else { continue }

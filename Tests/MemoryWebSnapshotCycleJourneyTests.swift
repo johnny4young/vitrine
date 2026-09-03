@@ -7,17 +7,20 @@ import Testing
 struct MemoryWebSnapshotCycleJourneyTests {
     @Test func rendersTenDistinctSessionsSequentially() async throws {
         var rendered: [Int] = []
+        var observed: [Int] = []
         let journey = MemoryWebSnapshotCycleJourney(
             render: {
                 rendered.append($0)
                 return "snapshot-\($0)"
             },
-            sleep: { _ in })
+            sleep: { _ in },
+            observe: { observed.append($0) })
 
         let result = try await journey.run()
 
         #expect(result == .init(completedIterations: 10, uniqueSnapshots: 10))
         #expect(rendered == Array(0..<10))
+        #expect(observed == Array(1...10))
     }
 
     @Test func propagatesCancellationBetweenSessions() async {

@@ -535,17 +535,22 @@ cat <<'CHECKLIST'
                                   as a release blocker.
     [ ] 18. Public URL WebKit — capture and export the real https://example.com page,
                                   not the deterministic UI-test placeholder.
-    [ ] 19. Loopback reject   — submit the 127.0.0.1 fixture and require an immediate
+    [ ] 19. Private resources — run private-subresource-probe.sh prepare, capture the
+                                  public URL it copies through real WebKit, require the
+                                  PRIVATE_SUBRESOURCE_PROBE_READY marker, then run verify
+                                  and require zero observed loopback request bytes.
+    [ ] 20. Loopback reject   — submit the 127.0.0.1 fixture and require an immediate
                                   domain rejection before WebKit navigation begins.
-    [ ] 20. Private reject    — submit the private/link-local fixtures and require an
+    [ ] 21. Private reject    — submit the private/link-local fixtures and require an
                                   immediate domain rejection before WebKit navigation.
-    [ ] 21. Uninstall         — quit Vitrine, move it to the Trash (or
+    [ ] 22. Uninstall         — quit Vitrine, move it to the Trash (or
                                   `brew uninstall --cask vitrine`); it leaves no
                                   menu-bar icon and no login item behind.
 
     Evidence boundary: this manual journey does NOT validate a public-to-private
     redirect. That policy remains covered by deterministic navigation-delegate tests;
-    never claim it as clean-Mac evidence from these fixtures.
+    it also does not validate DNS rebinding from a public hostname to a private address.
+    Never claim either boundary as clean-Mac evidence from these fixtures.
 CHECKLIST
 
 # --- Summary + exit ---------------------------------------------------------

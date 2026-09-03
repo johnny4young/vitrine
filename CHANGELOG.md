@@ -12,6 +12,92 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Extract portable models, recipes, search, terminal policies, settings defaults, and
+  bounded file/transport safety into a hostless `VitrineDomain` module shared by the app
+  and CLI. The CLI now compiles only its render-facing source set instead of dragging app
+  lifecycle, windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI.
+- Link the app and CLI against one static `VitrineRendering` engine for canvas layout,
+  highlighting, image policy, render budgets, and encoding. Direct module tests plus an
+  App/CLI normalized-pixel contract protect the shared output from boundary drift.
+- Measure build boundaries against the real `VitrineDomainTests` target rather than a
+  temporary copied-source package, while preserving the matched app-hosted probe.
+- Split terminal-screen scanning, ANSI dispatch, cell operations, and serialization into
+  focused portable components, and separate Web Snapshot document lifecycle, capture
+  orchestration, window presentation, and authenticated-session ownership without changing
+  output or user-facing behavior.
+- Generate CLI parsing, aliases, required-value arity, constrained-command allowlists,
+  mode-only validation, and 80-column help from one dependency-free argument schema while
+  preserving every command, alias, error contract, and render option.
+- Retain exact Highlightr 2.3.0 behind the shared rendering adapter after a measured
+  replacement review found incomplete theme compatibility and a 61.8% uncached-medium p95
+  regression in its recommended successor. Record explicit migration gates in ADR 0001.
+
+### Fixed
+
+- Validate every built-in syntax stylesheet against the engine catalog and fall back
+  deterministically to One Dark if a stylesheet cannot load, instead of silently reusing
+  the previously rendered theme.
+
+## [1.2.1] - 2026-08-30
+
+Vitrine 1.2.1 is a focused safety release. It bounds every raster render allocation before
+its bitmap is created, makes failures actionable across app and automation surfaces, and
+strengthens Web Snapshot isolation without changing the supported workflow or public
+distribution contract.
+
+### Added
+
+- Add shared preview and export render budgets with overflow-safe checks for logical
+  dimensions, scale, total pixels, and estimated concurrent buffers.
+- Add typed `tooLarge`, `allocationFailed`, `encodingFailed`, and `cancelled` render
+  failures with consistent user-facing messages and CLI exit behavior.
+- Add CodeQL `security-extended` analysis for Swift and JavaScript/TypeScript, plus
+  focused weekly/manual Address Sanitizer and Thread Sanitizer evidence lanes.
+
+### Changed
+
+- Clamp full-page Web Snapshot height against page, axis, pixel-area, and estimated-memory
+  ceilings before asking WebKit to allocate the snapshot.
+- Bound syntax-highlighting caches by cost, debounce interactive work, and switch very large
+  documents to an explicit plain-text mode instead of retaining duplicate attributed copies.
+- Validate image metadata before decode, normalize supported imports to one static frame, and
+  downsample with ImageIO inside the shared render budget.
+- Move living-file metadata and bounded reads off the main actor, with cancellation and
+  generation guards when a document changes or its window closes.
+- Preserve the existing macOS 15 Sequoia floor, macOS 26 Tahoe qualification matrix,
+  and universal Apple silicon + Intel direct-download contract.
+
+### Fixed
+
+- Reject extreme editor, CLI, App Intent, batch, social-card, comparison-board, Web
+  responsive-board, and Web Snapshot renders before bitmap allocation instead of risking
+  process termination or a blank result.
+- Propagate render and encoding failures through copy, save, share, batch, and automation
+  surfaces instead of collapsing them into generic or silent failures.
+- Recheck actual WebKit image dimensions before composition so an engine result cannot
+  bypass the preflight budget.
+- Collect remote image bodies in bounded chunks and cancel the request as soon as its byte
+  ceiling is crossed instead of accumulating an unbounded async byte sequence.
+- Release editor-window and code-editor resources on teardown, backed by comparable
+  20/50/100-iteration image, window, WebKit, and large-document memory journeys.
+- Bound shell startup-file inspection to 1 MiB on one locked regular-file descriptor, append
+  only the helper suffix, canonicalize CLI symlink targets, and atomically replace stale links
+  without deleting regular files.
+
+### Security
+
+- Block literal localhost, LAN, link-local, metadata, reserved, IPv6-private, mapped IPv4,
+  and ambiguous numeric WebKit subresources across images, CSS, scripts, frames, fetch,
+  WebSockets, and other resource types. Explicit loopback opt-in remains narrow and does
+  not allow other private destinations.
+- Compile the production content-rule list in a real WebKit test and add a clean-Mac
+  zero-request loopback probe. Public-host DNS resolution and rebinding remain documented
+  residual risks because WebKit rules match request URLs rather than resolved addresses.
+- Require canonical unpadded base64url for local snapshot links and reject alternate alphabets,
+  whitespace, padding, impossible lengths, and ambiguous tail bits before decompression.
+
 ## [1.2.0] - 2026-08-28
 
 Vitrine 1.2 is the first public successor to 1.0.1. It carries forward the complete
@@ -1168,7 +1254,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/johnny4young/vitrine/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/johnny4young/vitrine/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/johnny4young/vitrine/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/johnny4young/vitrine/compare/v1.0.0...v1.0.1

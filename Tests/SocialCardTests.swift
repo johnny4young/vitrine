@@ -329,6 +329,18 @@ struct SocialCardRenderDimensionTests {
         #expect(image.width == 800 && image.height == 800)
     }
 
+    @Test func anOversizedCardIsRejectedBeforeRasterAllocation() {
+        #expect(
+            throws: RenderBudgetError.tooLarge(
+                .dimension(actual: 16_385, maximum: 16_384))
+        ) {
+            try SocialCardRenderer.renderCGImageChecked(
+                SocialCardFixtures.defaultCard,
+                size: CGSize(width: 16_385, height: 1),
+                scale: 1)
+        }
+    }
+
     @Test func anEmptyModelRendersNothing() {
         // The renderer refuses an empty model across every entry point rather than
         // emitting a blank card.

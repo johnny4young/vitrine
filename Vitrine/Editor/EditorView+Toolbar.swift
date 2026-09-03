@@ -234,11 +234,11 @@ extension EditorView {
         // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
         // render/encode failure — mirroring the menu command and the quick-capture HUD.
         // The HUD shows near the menu bar regardless of `closeAfterCopy`.
-        let copied = ExportManager.copyToPasteboard(
+        let outcome = ExportManager.copyToPasteboardOutcome(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
             richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
-        session.feedback(ExportFeedback.copyOutcome(copied))
+        session.feedback(ExportFeedback.copyOutcome(outcome))
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
         // environment's app-wide settings (what the Settings toggle edits) rather than
         // this window's per-session copy. Close *this* window — captured via
@@ -247,10 +247,10 @@ extension EditorView {
         // and `close()` (not `performClose`) so it is unconditional.
         guard
             Self.shouldCloseAfterCopy(
-                copied: copied,
+                copied: outcome == .copied,
                 preferenceEnabled: environment.appSettings.export.closeAfterCopy)
         else { return }
-        guard let editorWindow else { return }
+        guard let editorWindow = editorWindow.value else { return }
         DispatchQueue.main.async { editorWindow.close() }
     }
 
@@ -502,40 +502,52 @@ extension EditorView {
     }
 
     func pinSnapshot() {
-        guard
-            let image = ExportManager.renderNSImage(
+        do {
+            let image = try ExportManager.renderNSImageChecked(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
                 fixedSize: settings.effectiveFixedSize,
                 profile: settings.export.colorProfile)
-        else { return }
-        session.presentation.pin(image)
+            session.presentation.pin(image)
+        } catch let error {
+            session.feedback(ExportFeedback.renderFailure(error))
+        }
     }
 
     // MARK: - Export/share actions
 
     func share() {
-        guard
-            let image = ExportManager.renderNSImage(
+        do {
+            let image = try ExportManager.renderNSImageChecked(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
                 fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
-        else { return }
-        session.presentation.share(image, relativeTo: editorWindow?.contentView)
+            session.presentation.share(image, relativeTo: editorWindow.value?.contentView)
+        } catch let error {
+            session.feedback(ExportFeedback.renderFailure(error))
+        }
     }
 
     /// Copies the rendered image to the clipboard as a `data:image/png;base64,…`
     /// URI string, honoring the active preset's framing.
     func copyDataURI() {
-        RichPasteboard.copyDataURI(
-            for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
+        session.feedback(
+            ExportFeedback.copyOutcome(
+                RichPasteboard.copyDataURIOutcome(
+                    for: settings.exportConfig,
+                    scale: CGFloat(settings.effectiveExportScale),
+                    fixedSize: settings.effectiveFixedSize,
+                    profile: settings.export.colorProfile)))
     }
 
     /// Copies a self-contained Markdown image embed followed by the visible,
     /// redaction-safe source in a language-tagged code fence.
     func copyMarkdown() {
-        RichPasteboard.copyMarkdown(
-            for: settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile)
+        session.feedback(
+            ExportFeedback.copyOutcome(
+                RichPasteboard.copyMarkdownOutcome(
+                    for: settings.exportConfig,
+                    scale: CGFloat(settings.effectiveExportScale),
+                    fixedSize: settings.effectiveFixedSize,
+                    profile: settings.export.colorProfile)))
     }
 
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors

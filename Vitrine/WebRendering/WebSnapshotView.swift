@@ -107,6 +107,9 @@ struct WebSnapshotView {
         guard request.viewport.width > 0, request.viewport.height > 0 else {
             throw WebSnapshotError.invalidViewport
         }
+        // Reject an excessive visible viewport before creating WKWebView. Axis
+        // bounds alone are insufficient because scale multiplies both dimensions.
+        _ = try Self.checkedAllocation(forSourceSize: request.viewport, scale: request.scale)
         // A base URL is only ever a local file. Anything else (an http(s) origin,
         // a data: URL) would widen what relative references can reach, so reject it
         // rather than load it.
@@ -167,27 +170,46 @@ struct WebSnapshotView {
             throw WebSnapshotError.snapshotFailed
         }
 
-        guard let cgImage = cgImage(from: image, scale: request.scale) else {
+        let cgImage: CGImage
+        do throws(WebSnapshotError) {
+            cgImage = try cgImageChecked(from: image, scale: request.scale)
+        } catch let error {
             Log.render.error("HTML snapshot produced no CGImage")
-            throw WebSnapshotError.snapshotFailed
+            throw error
         }
         return cgImage
     }
 
     /// The exact device-pixel dimensions a snapshot of `sourceSize` points renders
-    /// to at `scale`: each axis is `size × scale`, rounded to the nearest integer.
-    /// This is the determinism guarantee the rendering contract requires, isolated as pure
-    /// arithmetic so it is assertable without a web process. `(0, 0)` for a
-    /// non-positive input signals "no drawable bitmap".
+    /// to at `scale`: each axis is `size × scale`, rounded up so fractional points
+    /// are never underestimated. This is the determinism guarantee the rendering
+    /// contract requires, isolated as pure arithmetic so it is assertable without a
+    /// web process. `(0, 0)` signals an invalid or over-budget bitmap.
     static func pixelDimensions(
         forSourceSize sourceSize: CGSize, scale: CGFloat
     )
         -> (width: Int, height: Int)
     {
-        let width = Int((sourceSize.width * scale).rounded())
-        let height = Int((sourceSize.height * scale).rounded())
-        guard width > 0, height > 0 else { return (0, 0) }
-        return (width, height)
+        guard
+            let allocation = try? RenderBudget.export.allocation(
+                for: sourceSize, scale: scale)
+        else { return (0, 0) }
+        return (allocation.pixelWidth, allocation.pixelHeight)
+    }
+
+    /// Checked counterpart to `pixelDimensions`: applies the shared export budget
+    /// and preserves the exact rejection reason for callers that must fail before a
+    /// WebKit or Core Graphics allocation.
+    static func checkedAllocation(
+        forSourceSize sourceSize: CGSize, scale: CGFloat
+    ) throws(WebSnapshotError) -> RenderBudget.Allocation {
+        do throws(RenderBudgetError) {
+            return try RenderBudget.export.allocation(for: sourceSize, scale: scale)
+        } catch .tooLarge(let rejection) {
+            throw .renderTooLarge(rejection)
+        } catch {
+            throw .snapshotFailed
+        }
     }
 
     /// Extracts a `CGImage` from the snapshot `NSImage`, drawing it into a
@@ -195,30 +217,46 @@ struct WebSnapshotView {
     /// `viewport × scale` device pixels regardless of the backing screen. The
     /// context keeps an alpha channel so a transparent page body stays transparent.
     func cgImage(from image: NSImage, scale: CGFloat) -> CGImage? {
-        let (pixelWidth, pixelHeight) = Self.pixelDimensions(
-            forSourceSize: image.size, scale: scale)
-        guard pixelWidth > 0, pixelHeight > 0 else { return nil }
-        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        try? cgImageChecked(from: image, scale: scale)
+    }
+
+    /// Converts an AppKit snapshot only after checking its actual logical size. The
+    /// second check prevents an unexpected WebKit result from bypassing the rect
+    /// preflight performed before `takeSnapshot`.
+    func cgImageChecked(from image: NSImage, scale: CGFloat) throws(WebSnapshotError) -> CGImage {
+        let allocation = try Self.checkedAllocation(forSourceSize: image.size, scale: scale)
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else {
+            throw .snapshotFailed
+        }
         guard
             let context = CGContext(
                 data: nil,
-                width: pixelWidth,
-                height: pixelHeight,
+                width: allocation.pixelWidth,
+                height: allocation.pixelHeight,
                 bitsPerComponent: 8,
                 bytesPerRow: 0,
                 space: colorSpace,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             )
-        else { return nil }
+        else { throw .snapshotFailed }
 
-        var proposedRect = CGRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight)
+        var proposedRect = CGRect(
+            x: 0, y: 0,
+            width: allocation.pixelWidth,
+            height: allocation.pixelHeight)
         guard
             let cgImage = image.cgImage(
                 forProposedRect: &proposedRect, context: nil, hints: nil)
-        else { return nil }
+        else { throw .snapshotFailed }
         context.interpolationQuality = .high
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: pixelWidth, height: pixelHeight))
-        return context.makeImage()
+        context.draw(
+            cgImage,
+            in: CGRect(
+                x: 0, y: 0,
+                width: allocation.pixelWidth,
+                height: allocation.pixelHeight))
+        guard let result = context.makeImage() else { throw .snapshotFailed }
+        return result
     }
 }
 
@@ -320,35 +358,6 @@ extension WebSnapshotView {
             return isLocal(scheme: scheme) ? .allow : .cancel
         }
     }
-}
-
-/// Why an HTML snapshot did not produce an image, as a typed error rather than a
-/// blank picture ( "Snapshot failure returns a typed error, not
-/// a blank image"). Each case names a distinct, non-PII failure mode so a caller
-/// can offer the right recovery and tests can assert the exact reason.
-enum WebSnapshotError: Error, Equatable {
-    /// The requested viewport had a non-positive dimension.
-    case invalidViewport
-
-    /// A base URL was supplied that is not a local `file:` URL. Local asset
-    /// references are limited to user-selected files or bundled resources, so a
-    /// remote or non-file base URL is refused.
-    case invalidBaseURL
-
-    /// The page failed to load — for example a blocked remote redirect, malformed
-    /// HTML that WebKit refused, or a provisional navigation error.
-    case loadFailed
-
-    /// The page did not finish loading within the request's timeout.
-    case timedOut
-
-    /// The page loaded but `takeSnapshot` yielded no usable image.
-    case snapshotFailed
-
-    /// The remote-block content rule list could not be compiled, so the engine
-    /// refused to render pasted HTML without its network isolation. The
-    /// render fails closed instead of loading the page unisolated.
-    case networkIsolationUnavailable
 }
 
 /// Drives one offscreen load: enforces the network policy and signals when the

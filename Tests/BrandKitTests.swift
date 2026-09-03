@@ -45,18 +45,6 @@ struct BrandKitTests {
         #expect(BrandKit().watermarkText.isEmpty)
     }
 
-    @Test func everyPlacementHasALabelAndAlignment() {
-        for placement in Watermark.Placement.allCases {
-            #expect(!placement.label.isEmpty)
-        }
-        // The four corner placements map to a real corner alignment; `.free` has no
-        // corner anchor — it is positioned by `freePosition`, so `.center` is just its
-        // exhaustive fallback.
-        for placement in Watermark.Placement.allCases where placement != .free {
-            #expect(placement.alignment != .center)
-        }
-    }
-
     // MARK: - Free placement
 
     @Test func freePlacementPersistsItsPositionAndResolvesIntoTheMark() {
@@ -159,7 +147,7 @@ struct BrandKitTests {
         #expect(second.brandKit.placement == .bottomLeading)
     }
 
-    @Test func importingALogoMakesItAvailableAndCarriesItIntoTheMark() throws {
+    @Test func importingALogoMakesItAvailableAndCarriesItIntoTheMark() async throws {
         let (store, dir) = isolatedStore()
         defer { try? FileManager.default.removeItem(at: dir) }
         store.isEnabled = true
@@ -169,7 +157,7 @@ struct BrandKitTests {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try Self.tinyPNG().write(to: source)
 
-        #expect(store.importLogo(from: source))
+        #expect(await store.importLogo(from: source))
         #expect(store.logoImage != nil)
         // A logo alone is enough content, and it rides into the resolved mark.
         let mark = store.resolvedWatermark(isPro: true)

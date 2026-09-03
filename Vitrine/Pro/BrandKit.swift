@@ -147,7 +147,7 @@ final class BrandKitStore {
     private let defaults: UserDefaults
     private let imageStore: BackgroundImageStore
 
-    /// The decoded logo bytes, cached so `resolvedWatermark` does no disk I/O on the
+    /// The encoded logo bytes, cached so `resolvedWatermark` does no disk I/O on the
     /// render/preview hot path. Refreshed whenever the logo changes.
     private var cachedLogoData: Data?
 
@@ -200,11 +200,19 @@ final class BrandKitStore {
     /// whether it succeeded. The file is validated as an image and copied under a
     /// content-addressed name, exactly like a background image.
     @discardableResult
-    func importLogo(from url: URL) -> Bool {
+    func importLogo(from url: URL) async -> Bool {
         do {
-            brandKit.logo = try imageStore.importImage(from: url)
+            let reference = try await imageStore.importImageConcurrently(from: url)
+            guard await imageStore.preloadImage(for: reference) != nil else {
+                Log.export.error("Brand-kit logo decode failed")
+                return false
+            }
+            try Task.checkCancellation()
+            brandKit.logo = reference
             Log.export.info("Imported a brand-kit logo")
             return true
+        } catch is CancellationError {
+            return false
         } catch {
             Log.export.error("Brand-kit logo import failed")
             return false
@@ -236,9 +244,11 @@ final class BrandKitStore {
 
     private func refreshLogoCache() {
         cachedLogoData = brandKit.logo.flatMap { reference in
-            imageStore.url(for: reference).flatMap { try? Data(contentsOf: $0) }
+            imageStore.url(for: reference).flatMap {
+                try? BackgroundImageStore.readBoundedImageData(from: $0)
+            }
         }
-        cachedLogoImage = cachedLogoData.flatMap { NSImage(data: $0) }
+        cachedLogoImage = brandKit.logo.flatMap { imageStore.image(for: $0) }
     }
 
     private func persist() {

@@ -3,14 +3,6 @@ import Foundation
 /// Mutable state for one CLI invocation. It owns token consumption and records
 /// syntactically valid flag values; semantic compatibility is resolved separately.
 struct CLIArgumentParser {
-    /// The complete public surface of the constrained operation emitted by `vgrab`.
-    /// All future general CLI flags stay PRO by default because they are rejected here
-    /// until deliberately reviewed for this free capability.
-    private static let terminalCaptureFlags: Set<String> = [
-        "--help", "-h", "--copy", "--edit", "-e", "--terminal-width", "--filename",
-        "--title",
-    ]
-
     var remaining: ArraySlice<String>
     let mode: CLIOptions.Command
 
@@ -110,6 +102,7 @@ struct CLIArgumentParser {
     var textSidecar = false
     var markdownSidecar = false
     var htmlSidecar = false
+    var seenOptionIDs: Set<CLIOptionID> = []
 
     init(_ arguments: [String]) throws {
         let remaining = ArraySlice(arguments)
@@ -117,13 +110,8 @@ struct CLIArgumentParser {
         guard let command = remaining.first else { throw CLIError.helpRequested }
         if command == "--help" || command == "-h" { throw CLIError.helpRequested }
 
-        let mode: CLIOptions.Command
-        switch command {
-        case "terminal-capture": mode = .terminalCapture
-        case "render": mode = .render
-        case "multi-size": mode = .multiSize
-        case "batch": mode = .batch
-        default: throw CLIError.unknownCommand(command)
+        guard let mode = CLIArgumentSchema.command(named: command) else {
+            throw CLIError.unknownCommand(command)
         }
 
         self.remaining = remaining.dropFirst()
@@ -145,263 +133,268 @@ struct CLIArgumentParser {
     mutating func parseTokens() throws {
         while let token = remaining.first {
             remaining = remaining.dropFirst()
-            if mode == .terminalCapture, token.hasPrefix("-"),
-                !Self.terminalCaptureFlags.contains(token)
-            {
-                throw CLIError.unknownFlag(token)
-            }
-            switch token {
-            case "--help", "-h":
-                throw CLIError.helpRequested
-            case "--out", "-o":
-                outputPath = try value(for: token)
-            case "--image":
-                imageInputPath = try value(for: token)
-            case "--quiet", "-q":
-                quiet = true
-            case "--json":
-                jsonOutput = true
-            case "--theme":
-                themeID = try resolveTheme(try value(for: token))
-            case "--language", "--lang":
-                languageID = try resolveLanguage(try value(for: token))
-            case "--preset":
-                presetID = try resolvePreset(try value(for: token))
-            case "--presets":
-                multiSizePresetIDs.formUnion(
-                    try resolvePresetList(try value(for: token), flag: token))
-            case "--style-preset":
-                stylePresetID = try resolveStylePreset(try value(for: token))
-            case "--recipe":
-                recipePath = try value(for: token)
-            case "--canvas-size":
-                canvasSize = try resolveCanvasSize(try value(for: token), flag: token)
-            case "--scale":
-                scale = try resolveScale(try value(for: token), flag: token)
-            case "--font":
-                fontName = try resolveFont(try value(for: token))
-            case "--font-ligatures":
-                fontLigatures = true
-            case "--no-font-ligatures":
-                fontLigatures = false
-            case "--font-size":
-                fontSize = try resolveFontSize(try value(for: token), flag: token)
-            case "--padding":
-                padding = try resolvePadding(try value(for: token), flag: token)
-            case "--corner-radius":
-                cornerRadius = try resolveCornerRadius(try value(for: token), flag: token)
-            case "--shadow-radius":
-                shadowRadius = try resolveShadowRadius(try value(for: token), flag: token)
-            case "--terminal-width":
-                terminalColumns = try resolveColumns(try value(for: token), flag: token)
-            case "--wrap-columns", "--wrap":
-                wrapColumns = try resolveWrapColumns(try value(for: token), flag: token)
-            case "--format-code", "--tidy":
-                formatCode = true
-            case "--format":
-                explicitFormat = try resolveFormat(try value(for: token))
-            case "--profile":
-                profile = try resolveProfile(try value(for: token))
-            case "--transparent":
-                transparent = true
-            case "--background":
-                background = .gradient(try resolveBackground(try value(for: token)))
-                gradientBackgroundRequested = true
-            case "--background-color":
-                background = .solid(try resolveBackgroundColor(try value(for: token)))
-                solidBackgroundRequested = true
-            case "--background-gradient":
-                customGradientColors = try resolveCustomGradientColors(try value(for: token))
-            case "--background-angle":
-                customGradientAngle = try resolveBackgroundAngle(try value(for: token))
-            case "--background-image":
-                backgroundImagePath = try value(for: token)
-            case "--background-fit":
-                backgroundImageFit = try resolveBackgroundFit(try value(for: token))
-            case "--background-blur":
-                backgroundImageBlur = try resolveBackgroundBlur(try value(for: token), flag: token)
-            case "--background-dimming":
-                backgroundImageDimming = try resolveBackgroundDimming(
-                    try value(for: token), flag: token)
-            case "--watermark":
-                watermarkText = try resolveWatermarkText(try value(for: token))
-            case "--watermark-logo":
-                watermarkLogoPath = try value(for: token)
-            case "--watermark-color":
-                watermarkColor = try resolveWatermarkColor(try value(for: token))
-            case "--watermark-position":
-                watermarkPosition = try resolveWatermarkPosition(try value(for: token))
-            case "--watermark-x":
-                watermarkX = try resolveNormalizedCoordinate(try value(for: token), flag: token)
-            case "--watermark-y":
-                watermarkY = try resolveNormalizedCoordinate(try value(for: token), flag: token)
-            case "--callout":
-                calloutText = try resolveCalloutText(try value(for: token))
-            case "--callout-x":
-                calloutX = try resolveNormalizedCoordinate(try value(for: token), flag: token)
-            case "--callout-y":
-                calloutY = try resolveNormalizedCoordinate(try value(for: token), flag: token)
-            case "--callout-color":
-                calloutColor = try resolveCalloutColor(try value(for: token))
-            case "--callout-size":
-                calloutSize = try resolveCalloutSize(try value(for: token))
-            case "--counter":
-                counterNumber = try resolveCounterNumber(try value(for: token))
-            case "--counter-x":
-                counterX = try resolveNormalizedCoordinate(try value(for: token), flag: token)
-            case "--counter-y":
-                counterY = try resolveNormalizedCoordinate(try value(for: token), flag: token)
-            case "--counter-color":
-                counterColor = try resolveHexColor(try value(for: token), flag: token)
-            case "--counter-size":
-                counterSize = try resolveAnnotationSize(try value(for: token), flag: token)
-            case "--arrow":
-                arrowSegments.append(
-                    try resolveNormalizedSegment(try value(for: token), flag: token))
-            case "--arrow-color":
-                arrowColor = try resolveHexColor(try value(for: token), flag: token)
-            case "--arrow-size":
-                arrowSize = try resolveAnnotationSize(try value(for: token), flag: token)
-            case "--line":
-                lineSegments.append(
-                    try resolveNormalizedSegment(try value(for: token), flag: token))
-            case "--line-color":
-                lineColor = try resolveHexColor(try value(for: token), flag: token)
-            case "--line-size":
-                lineSize = try resolveAnnotationSize(try value(for: token), flag: token)
-            case "--rectangle":
-                rectangleRegions.append(
-                    try resolveNormalizedRegion(try value(for: token), flag: token))
-            case "--rectangle-color":
-                rectangleColor = try resolveHexColor(try value(for: token), flag: token)
-            case "--rectangle-size":
-                rectangleSize = try resolveAnnotationSize(try value(for: token), flag: token)
-            case "--highlighter":
-                highlighterRegions.append(
-                    try resolveNormalizedRegion(try value(for: token), flag: token))
-            case "--highlighter-color":
-                highlighterColor = try resolveHexColor(try value(for: token), flag: token)
-            case "--blur-box":
-                blurBoxRegions.append(
-                    try resolveNormalizedRegion(try value(for: token), flag: token))
-            case "--frame":
-                imageFrame = try resolveImageFrame(try value(for: token))
-            case "--frame-appearance":
-                frameAppearance = try resolveFrameAppearance(try value(for: token))
-            case "--no-overwrite", "--no-clobber":
-                noOverwrite = true
-            case "--window-title":
-                windowTitle = try value(for: token)
-            case "--filename":
-                metadataFilename = try value(for: token)
-            case "--stdin-name", "--stdin-filename":
-                stdinFilename = try value(for: token)
-            case "--title":
-                metadataTitle = try value(for: token)
-            case "--caption":
-                metadataCaption = try value(for: token)
-            case "--language-badge", "--show-language-badge":
-                showLanguageBadge = true
-            case "--no-language-badge":
-                showLanguageBadge = false
-            case "--line-numbers":
-                showLineNumbers = true
-            case "--no-line-numbers":
-                showLineNumbers = false
-            case "--chrome":
-                showChrome = true
-            case "--no-chrome":
-                showChrome = false
-            case "--shadow":
-                showShadow = true
-            case "--no-shadow":
-                showShadow = false
-            case "--highlight-lines":
-                highlightedLineRanges = try resolveLineRanges(try value(for: token), flag: token)
-            case "--redact-lines":
-                redactedLineRanges = try resolveLineRanges(try value(for: token), flag: token)
-            case "--redact-secrets":
-                redactSecrets = true
-            case "--focus-lines":
-                focusHighlightedLines = true
-            case "--no-focus-lines":
-                focusHighlightedLines = false
-            case "--diff-bands":
-                diffDecorations = true
-            case "--no-diff-bands":
-                diffDecorations = false
-            case "--recursive":
-                recursiveBatch = true
-            case "--fail-on-skipped":
-                failOnSkipped = true
-            case "--fail-on-empty":
-                failOnEmpty = true
-            case "--skipped-report":
-                skippedReportPath = try value(for: token)
-            case "--manifest":
-                batchManifestPath = try value(for: token)
-            case "--dry-run":
-                dryRunBatch = true
-            case "--include-ext":
-                batchIncludeExtensions.formUnion(
-                    try resolveExtensionList(try value(for: token), flag: token))
-            case "--exclude-ext":
-                batchExcludeExtensions.formUnion(
-                    try resolveExtensionList(try value(for: token), flag: token))
-            case "--stdin":
-                readStdin = true
-            case "--git-diff":
-                if let gitDiffSource {
-                    let message =
-                        if case .staged = gitDiffSource {
-                            "Cannot combine --git-diff with --git-staged."
-                        } else {
-                            "--git-diff may be provided only once."
-                        }
-                    throw CLIError.incompatibleOptions(message)
-                }
-                gitDiffSource = .revision(
-                    try resolveGitDiffRange(try value(for: token), flag: token))
-            case "--git-staged":
-                if let gitDiffSource {
-                    let message =
-                        if case .revision = gitDiffSource {
-                            "Cannot combine --git-staged with --git-diff."
-                        } else {
-                            "--git-staged may be provided only once."
-                        }
-                    throw CLIError.incompatibleOptions(message)
-                }
-                gitDiffSource = .staged
-            case "--git-path":
-                gitDiffPaths.append(try resolveGitPath(try value(for: token), flag: token))
-            case "--git-context":
-                gitDiffContextLines = try resolveGitContextLines(
-                    try value(for: token), flag: token)
-            case "--copy":
-                copyToClipboard = true
-            case "--edit", "-e":
-                openInEditor = true
-            case "--text-sidecar":
-                textSidecar = true
-            case "--markdown-sidecar":
-                markdownSidecar = true
-            case "--html-sidecar":
-                htmlSidecar = true
-            case "--sidecars":
-                let sidecars = try resolveSidecars(try value(for: token), flag: token)
-                textSidecar = textSidecar || sidecars.text
-                markdownSidecar = markdownSidecar || sidecars.markdown
-                htmlSidecar = htmlSidecar || sidecars.html
-            default:
-                if token.hasPrefix("-") {
+            if token.hasPrefix("-") {
+                guard let definition = CLIArgumentSchema.option(named: token) else {
                     throw CLIError.unknownFlag(token)
                 }
+                if mode == .terminalCapture, !definition.terminalCaptureAllowed {
+                    throw CLIError.unknownFlag(token)
+                }
+                let rawValue = try parsedValue(for: definition, token: token)
+                seenOptionIDs.insert(definition.id)
+                try apply(definition.id, rawValue: rawValue, token: token)
+            } else {
                 // The first non-flag token is the input path; a second positional is
                 // unexpected and rejected so a stray argument is not silently ignored.
                 guard inputPath == nil else { throw CLIError.unknownFlag(token) }
                 inputPath = token
             }
+        }
+    }
+
+    private mutating func parsedValue(
+        for definition: CLIOptionDefinition,
+        token: String
+    ) throws -> String? {
+        switch definition.arity {
+        case .flag: nil
+        case .value: try value(for: token)
+        }
+    }
+
+    private mutating func apply(
+        _ option: CLIOptionID,
+        rawValue: String?,
+        token: String
+    ) throws {
+        // Value arity is enforced before dispatch from the schema. Keeping the local
+        // fallback non-optional makes each resolver call concise without introducing a
+        // second list of which cases consume values.
+        let value = rawValue ?? ""
+        switch option {
+        case .help:
+            throw CLIError.helpRequested
+        case .out:
+            outputPath = value
+        case .image:
+            imageInputPath = value
+        case .quiet:
+            quiet = true
+        case .json:
+            jsonOutput = true
+        case .theme:
+            themeID = try resolveTheme(value)
+        case .language:
+            languageID = try resolveLanguage(value)
+        case .preset:
+            presetID = try resolvePreset(value)
+        case .presets:
+            multiSizePresetIDs.formUnion(try resolvePresetList(value, flag: token))
+        case .stylePreset:
+            stylePresetID = try resolveStylePreset(value)
+        case .recipe:
+            recipePath = value
+        case .canvasSize:
+            canvasSize = try resolveCanvasSize(value, flag: token)
+        case .scale:
+            scale = try resolveScale(value, flag: token)
+        case .font:
+            fontName = try resolveFont(value)
+        case .fontLigatures:
+            fontLigatures = true
+        case .noFontLigatures:
+            fontLigatures = false
+        case .fontSize:
+            fontSize = try resolveFontSize(value, flag: token)
+        case .padding:
+            padding = try resolvePadding(value, flag: token)
+        case .cornerRadius:
+            cornerRadius = try resolveCornerRadius(value, flag: token)
+        case .shadowRadius:
+            shadowRadius = try resolveShadowRadius(value, flag: token)
+        case .terminalWidth:
+            terminalColumns = try resolveColumns(value, flag: token)
+        case .wrapColumns:
+            wrapColumns = try resolveWrapColumns(value, flag: token)
+        case .formatCode:
+            formatCode = true
+        case .format:
+            explicitFormat = try resolveFormat(value)
+        case .profile:
+            profile = try resolveProfile(value)
+        case .transparent:
+            transparent = true
+        case .background:
+            background = .gradient(try resolveBackground(value))
+            gradientBackgroundRequested = true
+        case .backgroundColor:
+            background = .solid(try resolveBackgroundColor(value))
+            solidBackgroundRequested = true
+        case .backgroundGradient:
+            customGradientColors = try resolveCustomGradientColors(value)
+        case .backgroundAngle:
+            customGradientAngle = try resolveBackgroundAngle(value)
+        case .backgroundImage:
+            backgroundImagePath = value
+        case .backgroundFit:
+            backgroundImageFit = try resolveBackgroundFit(value)
+        case .backgroundBlur:
+            backgroundImageBlur = try resolveBackgroundBlur(value, flag: token)
+        case .backgroundDimming:
+            backgroundImageDimming = try resolveBackgroundDimming(value, flag: token)
+        case .watermark:
+            watermarkText = try resolveWatermarkText(value)
+        case .watermarkLogo:
+            watermarkLogoPath = value
+        case .watermarkColor:
+            watermarkColor = try resolveWatermarkColor(value)
+        case .watermarkPosition:
+            watermarkPosition = try resolveWatermarkPosition(value)
+        case .watermarkX:
+            watermarkX = try resolveNormalizedCoordinate(value, flag: token)
+        case .watermarkY:
+            watermarkY = try resolveNormalizedCoordinate(value, flag: token)
+        case .callout:
+            calloutText = try resolveCalloutText(value)
+        case .calloutX:
+            calloutX = try resolveNormalizedCoordinate(value, flag: token)
+        case .calloutY:
+            calloutY = try resolveNormalizedCoordinate(value, flag: token)
+        case .calloutColor:
+            calloutColor = try resolveCalloutColor(value)
+        case .calloutSize:
+            calloutSize = try resolveCalloutSize(value)
+        case .counter:
+            counterNumber = try resolveCounterNumber(value)
+        case .counterX:
+            counterX = try resolveNormalizedCoordinate(value, flag: token)
+        case .counterY:
+            counterY = try resolveNormalizedCoordinate(value, flag: token)
+        case .counterColor:
+            counterColor = try resolveHexColor(value, flag: token)
+        case .counterSize:
+            counterSize = try resolveAnnotationSize(value, flag: token)
+        case .arrow:
+            arrowSegments.append(try resolveNormalizedSegment(value, flag: token))
+        case .arrowColor:
+            arrowColor = try resolveHexColor(value, flag: token)
+        case .arrowSize:
+            arrowSize = try resolveAnnotationSize(value, flag: token)
+        case .line:
+            lineSegments.append(try resolveNormalizedSegment(value, flag: token))
+        case .lineColor:
+            lineColor = try resolveHexColor(value, flag: token)
+        case .lineSize:
+            lineSize = try resolveAnnotationSize(value, flag: token)
+        case .rectangle:
+            rectangleRegions.append(try resolveNormalizedRegion(value, flag: token))
+        case .rectangleColor:
+            rectangleColor = try resolveHexColor(value, flag: token)
+        case .rectangleSize:
+            rectangleSize = try resolveAnnotationSize(value, flag: token)
+        case .highlighter:
+            highlighterRegions.append(try resolveNormalizedRegion(value, flag: token))
+        case .highlighterColor:
+            highlighterColor = try resolveHexColor(value, flag: token)
+        case .blurBox:
+            blurBoxRegions.append(try resolveNormalizedRegion(value, flag: token))
+        case .frame:
+            imageFrame = try resolveImageFrame(value)
+        case .frameAppearance:
+            frameAppearance = try resolveFrameAppearance(value)
+        case .noOverwrite:
+            noOverwrite = true
+        case .windowTitle:
+            windowTitle = value
+        case .filename:
+            metadataFilename = value
+        case .stdinName:
+            stdinFilename = value
+        case .title:
+            metadataTitle = value
+        case .caption:
+            metadataCaption = value
+        case .languageBadge:
+            showLanguageBadge = true
+        case .noLanguageBadge:
+            showLanguageBadge = false
+        case .lineNumbers:
+            showLineNumbers = true
+        case .noLineNumbers:
+            showLineNumbers = false
+        case .chrome:
+            showChrome = token == "--chrome"
+        case .shadow:
+            showShadow = token == "--shadow"
+        case .highlightLines:
+            highlightedLineRanges = try resolveLineRanges(value, flag: token)
+        case .redactLines:
+            redactedLineRanges = try resolveLineRanges(value, flag: token)
+        case .redactSecrets:
+            redactSecrets = true
+        case .focusLines:
+            focusHighlightedLines = token == "--focus-lines"
+        case .diffBands:
+            diffDecorations = token == "--diff-bands"
+        case .recursive:
+            recursiveBatch = true
+        case .failOnSkipped:
+            failOnSkipped = true
+        case .failOnEmpty:
+            failOnEmpty = true
+        case .skippedReport:
+            skippedReportPath = value
+        case .manifest:
+            batchManifestPath = value
+        case .dryRun:
+            dryRunBatch = true
+        case .includeExt:
+            batchIncludeExtensions.formUnion(try resolveExtensionList(value, flag: token))
+        case .excludeExt:
+            batchExcludeExtensions.formUnion(try resolveExtensionList(value, flag: token))
+        case .stdin:
+            readStdin = true
+        case .gitDiff:
+            if let gitDiffSource {
+                let message =
+                    if case .staged = gitDiffSource {
+                        "Cannot combine --git-diff with --git-staged."
+                    } else {
+                        "--git-diff may be provided only once."
+                    }
+                throw CLIError.incompatibleOptions(message)
+            }
+            gitDiffSource = .revision(try resolveGitDiffRange(value, flag: token))
+        case .gitStaged:
+            if let gitDiffSource {
+                let message =
+                    if case .revision = gitDiffSource {
+                        "Cannot combine --git-staged with --git-diff."
+                    } else {
+                        "--git-staged may be provided only once."
+                    }
+                throw CLIError.incompatibleOptions(message)
+            }
+            gitDiffSource = .staged
+        case .gitPath:
+            gitDiffPaths.append(try resolveGitPath(value, flag: token))
+        case .gitContext:
+            gitDiffContextLines = try resolveGitContextLines(value, flag: token)
+        case .copy:
+            copyToClipboard = true
+        case .edit:
+            openInEditor = true
+        case .textSidecar:
+            textSidecar = true
+        case .markdownSidecar:
+            markdownSidecar = true
+        case .htmlSidecar:
+            htmlSidecar = true
+        case .sidecars:
+            let sidecars = try resolveSidecars(value, flag: token)
+            textSidecar = textSidecar || sidecars.text
+            markdownSidecar = markdownSidecar || sidecars.markdown
+            htmlSidecar = htmlSidecar || sidecars.html
         }
     }
 }

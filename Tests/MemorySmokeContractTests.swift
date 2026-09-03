@@ -36,15 +36,22 @@ struct MemorySmokeContractTests {
             "--memory-image-cycle",
             "--memory-window-churn",
             "--memory-web-snapshot-cycle",
+            "--memory-large-document-cycle",
+            "VITRINE_MEMORY_ITERATIONS",
+            "VITRINE_MEMORY_SAMPLE",
             "VITRINE_MEMORY_IMAGE_CYCLE_COMPLETE",
             "VITRINE_MEMORY_WINDOW_CHURN_COMPLETE",
             "VITRINE_MEMORY_WEB_SNAPSHOT_CYCLE_COMPLETE",
+            "VITRINE_MEMORY_LARGE_DOCUMENT_CYCLE_COMPLETE",
             "editor-snapshot",
             "image-import-cycle",
             "window-churn",
             "web-snapshot-cycle",
+            "large-document-cycle",
             "journey_id",
             "comparable_journey",
+            "comparable_iteration_count",
+            "post_warmup_slope_bytes_per_iteration",
             "working_tree_clean",
             "f\"{arguments.journey}.memgraph\"",
             "leaks.txt",
@@ -58,11 +65,15 @@ struct MemorySmokeContractTests {
         let makefile = try Self.text("Makefile")
         #expect(makefile.contains("memory-smoke: build memory-smoke-check"))
         #expect(makefile.contains("memory-smoke-all: build memory-smoke-check"))
+        #expect(makefile.contains("memory-soak-matrix: build memory-smoke-check"))
         #expect(makefile.contains("python3 scripts/run-memory-smoke.py --self-test"))
         #expect(makefile.contains(#"--journey "$(MEMORY_JOURNEY)""#))
         #expect(
             makefile.contains(
-                "editor-snapshot image-import-cycle window-churn web-snapshot-cycle"))
+                "editor-snapshot image-import-cycle window-churn web-snapshot-cycle large-document-cycle"
+            ))
+        #expect(makefile.contains("for iterations in 20 50 100"))
+        #expect(makefile.contains("--launch-timeout 900 --analysis-timeout 300"))
 
         let lintLine = try #require(
             makefile.components(separatedBy: .newlines).first { $0.hasPrefix("lint:") })
@@ -77,7 +88,7 @@ struct MemorySmokeContractTests {
         #expect(handler.contains("session(for: .primary).settings"))
         #expect(handler.contains("unique-snapshots="))
 
-        let store = try Self.text("Vitrine", "Models", "BackgroundImageStore.swift")
+        let store = try Self.text("VitrineRendering", "Models", "BackgroundImageStore.swift")
         #expect(store.contains("#if DEBUG"))
         #expect(store.contains("VITRINE_MEMORY_IMAGE_STORE_ISOLATED"))
         #expect(store.contains("SHA256.hash"))
@@ -86,6 +97,25 @@ struct MemorySmokeContractTests {
         #expect(journey.contains("VITRINE_MEMORY_IMAGE_CYCLE_COMPLETE"))
         #expect(journey.contains("defer { settings.config.foregroundImage = nil }"))
         #expect(journey.contains("JourneyError.duplicateSnapshot"))
+
+        let probe = try Self.text("Vitrine", "App", "MemoryJourneyProbe.swift")
+        #expect(probe.contains("TASK_VM_INFO"))
+        #expect(probe.contains("phys_footprint"))
+        #expect(probe.contains("autoreleasepool"))
+        #expect(probe.contains("RunLoop.main.run"))
+
+        let accessor = try Self.text("Vitrine", "Editor", "WindowAccessor.swift")
+        #expect(accessor.contains("static func dismantleNSView"))
+        #expect(accessor.contains("onResolve(nil)"))
+        #expect(accessor.contains("weak var value: NSWindow?"))
+        let editorView = try Self.text("Vitrine", "Editor", "EditorView.swift")
+        #expect(editorView.contains("@State var editorWindow = WeakWindowReference()"))
+        #expect(!editorView.contains("@State var editorWindow: NSWindow?"))
+        let codeEditor = try Self.text("Vitrine", "Editor", "CodeEditorView.swift")
+        #expect(codeEditor.contains("coordinator.dismantle()"))
+        #expect(codeEditor.contains("textView.delegate = nil"))
+        #expect(codeEditor.contains("textView.onPaste = nil"))
+
     }
 
     @Test func laneRequiresReviewInsteadOfInferringLeakOwnership() throws {
@@ -98,7 +128,10 @@ struct MemorySmokeContractTests {
         let documentation = try Self.text("docs", "RELEASING.md")
         #expect(documentation.contains("evidence lane, not a zero-leak CI gate"))
         #expect(documentation.contains("same clean"))
-        #expect(documentation.contains("commit, OS, architecture, Xcode, and journey"))
+        #expect(
+            documentation.contains(
+                "commit, OS, architecture, Xcode, journey, and iteration count"))
+        #expect(documentation.contains("20/50/100 profiles"))
         #expect(documentation.contains("generated evidence local"))
         #expect(documentation.contains("untracked"))
     }

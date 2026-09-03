@@ -26,6 +26,25 @@
       "expected": "real WebKit capture exported from https://example.com"
     },
     {
+      "id": "public-private-subresource-block",
+      "control": "private-subresource-probe.sh evidence prepare|verify",
+      "expectedMarker": "PRIVATE_SUBRESOURCE_PROBE_READY",
+      "expectedPrivateRequestBytes": 0,
+      "resourceTypes": [
+        "image",
+        "style-sheet",
+        "script",
+        "child-document",
+        "fetch",
+        "websocket"
+      ],
+      "requiredEvidence": [
+        "successful public control",
+        "real exported WebKit capture",
+        "zero observed loopback bytes"
+      ]
+    },
+    {
       "id": "loopback-rejection",
       "input": "blocked-destinations.txt#L1",
       "expected": "rejected before WebKit navigation"
@@ -37,6 +56,7 @@
     }
   ],
   "excludedManualClaims": [
-    "public-to-private redirect revalidation"
+    "public-to-private redirect revalidation",
+    "public-hostname DNS rebinding and resolution-time private-address detection"
   ]
 }

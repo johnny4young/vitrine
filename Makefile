@@ -49,6 +49,7 @@ COVERAGE_BASE_REF_FLAG := $(if $(COVERAGE_BASE_REF),--base-ref "$(COVERAGE_BASE_
 MEMORY_OUTPUT ?= build/memory-smoke
 MEMORY_JOURNEY ?= editor-snapshot
 MEMORY_BASELINE_FLAG := $(if $(MEMORY_BASELINE),--baseline "$(MEMORY_BASELINE)",)
+MEMORY_ITERATIONS_FLAG := $(if $(MEMORY_ITERATIONS),--iterations "$(MEMORY_ITERATIONS)",)
 
 # The entitlements file the Vitrine target signs with, consumed by project.yml as
 # ${VITRINE_ENTITLEMENTS_FILE} (XcodeGen resolves it to a literal at generate time,
@@ -66,7 +67,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -137,6 +138,10 @@ test: project
 ## coverage. The result bundle is mandatory: the guard fails if xccov cannot read
 ## it, rejects a production-target drop over one percentage point, and requires
 ## 80% coverage for changed executable lines in critical non-visual logic.
+## The instrumented test host runs without the product sandbox only in this lane.
+## Otherwise privacy-hardened macOS hosts can prevent xcodebuild from retrieving
+## the raw profile from the app container, leaving an unreadable coverage archive.
+## These command-line overrides do not change the generated product configuration.
 test-coverage: project
 	@test -f "$(COVERAGE_BASELINE)" || { \
 		echo "Unsupported coverage platform '$(COVERAGE_PLATFORM)' or missing baseline: $(COVERAGE_BASELINE)" >&2; \
@@ -146,6 +151,7 @@ test-coverage: project
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage YES \
+		CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO \
 		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" test
 	python3 scripts/check-coverage.py \
 		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \
@@ -155,6 +161,43 @@ test-coverage: project
 ## coverage-check: validate parser, scope, and fail-closed behavior without Xcode
 coverage-check:
 	python3 scripts/check-coverage.py --self-test
+
+# Sanitizers intentionally exercise focused model, parser, file-safety, and
+# asynchronous-lifecycle suites instead of the full AppKit/WebKit UI host. The
+# weekly/manual hosted workflow retains each result bundle. These lanes are
+# non-required early warnings until their runner stability has been established.
+ASAN_TEST_SELECTION := \
+	-only-testing:VitrineTests/ANSIParserTests \
+	-only-testing:VitrineTests/TerminalGridTests \
+	-only-testing:VitrineTests/RenderBudgetTests \
+	-only-testing:VitrineTests/BoundedFileReaderTests \
+	-only-testing:VitrineTests/AsciinemaCastTests \
+	-only-testing:VitrineTests/FileInputLoaderDecodeTests \
+	-only-testing:VitrineTests/FileInputLoaderDecodeTextTests \
+	-only-testing:VitrineTests/ImageSecretRedactorTests \
+	-only-testing:VitrineTests/PrivateNetworkBlockRulesTests
+
+TSAN_TEST_SELECTION := \
+	-only-testing:VitrineTests/DebouncerTests \
+	-only-testing:VitrineTests/ItemProviderLoadWaiterTests \
+	-only-testing:VitrineTests/WebLoadWaiterTests \
+	-only-testing:VitrineTests/MemoryWebSnapshotCycleJourneyTests
+
+## test-asan: run focused allocation/input/parser logic under Address Sanitizer
+test-asan: project
+	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+		-destination 'platform=macOS' -enableCodeCoverage NO \
+		-enableAddressSanitizer YES $(RESULT_BUNDLE_FLAG) \
+		$(ASAN_TEST_SELECTION) test
+
+## test-tsan: run focused cancellation/waiter lifecycle logic under Thread Sanitizer
+test-tsan: project
+	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+		-destination 'platform=macOS' -enableCodeCoverage NO \
+		-enableThreadSanitizer YES $(RESULT_BUNDLE_FLAG) \
+		$(TSAN_TEST_SELECTION) test
 
 ## build-ui-tests: compile UI tests without requiring local automation permission
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.
@@ -229,16 +272,29 @@ memory-smoke: build memory-smoke-check
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
 		--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
 		--output "$(MEMORY_OUTPUT)" --journey "$(MEMORY_JOURNEY)" \
-		$(MEMORY_BASELINE_FLAG)
+		$(MEMORY_ITERATIONS_FLAG) $(MEMORY_BASELINE_FLAG)
 
-## memory-smoke-all: capture all four journeys sequentially against one clean build
+## memory-smoke-all: capture all five bounded journeys sequentially against one clean build
 ## Baselines are intentionally per-journey; use memory-smoke when comparing one report.
 memory-smoke-all: build memory-smoke-check
-	@set -e; for journey in editor-snapshot image-import-cycle window-churn web-snapshot-cycle; do \
+	@set -e; for journey in editor-snapshot image-import-cycle window-churn web-snapshot-cycle large-document-cycle; do \
 		echo "==> memory smoke: $$journey"; \
 		env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
 			--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
 			--output "$(MEMORY_OUTPUT)" --journey "$$journey"; \
+	done
+
+## memory-soak-matrix: record longitudinal 20/50/100 lifecycle profiles
+## Runs four teardown-heavy journeys sequentially; generated memgraphs and JSON remain ignored.
+memory-soak-matrix: build memory-smoke-check
+	@set -e; for journey in image-import-cycle window-churn web-snapshot-cycle large-document-cycle; do \
+		for iterations in 20 50 100; do \
+			echo "==> memory soak: $$journey ($$iterations iterations)"; \
+			env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/run-memory-smoke.py \
+				--project "$(PROJECT)" --scheme "$(SCHEME)" --configuration Debug \
+				--output "$(MEMORY_OUTPUT)" --journey "$$journey" \
+				--iterations "$$iterations" --launch-timeout 900 --analysis-timeout 300; \
+		done; \
 	done
 
 ## memory-smoke-check: validate the parser and baseline comparison without launching UI
@@ -300,11 +356,11 @@ site-test:
 
 ## format: format Swift sources in place (Apple swift-format)
 format:
-	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
+	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
 lint: hygiene build-boundaries-check informational-update-check release-promotion-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
-	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineCLI VitrineMenuBarHelper Tests UITests
+	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
 hygiene:

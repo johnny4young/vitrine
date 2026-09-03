@@ -259,8 +259,8 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
         XCTAssertEqual(cards.count, 3)
-        cards.element(boundBy: 0).click()
-        cards.element(boundBy: 1).click()
+        hittableRecentCard(containing: "Go", in: app).click()
+        hittableRecentCard(containing: "Rust", in: app).click()
         Thread.sleep(forTimeInterval: 0.4)
         save(
             recentsWindow, as: "35-recents-comparison-selection",
@@ -544,9 +544,10 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let window = element("recents-window", in: app)
         XCTAssertTrue(window.waitForExistence(timeout: 8))
-        let sort = element("recents-sort-picker", in: app)
-        XCTAssertTrue(sort.waitForExistence(timeout: 5))
-        XCTAssertTrue(sort.isHittable)
+        assertHittable(
+            "recents-sort-picker", in: app,
+            "Recents should expose its sort picker", timeout: 5)
+        let sort = hittableElement("recents-sort-picker", in: app)
         sort.click()
 
         let oldestFirst = app.menuItems["Oldest First"]
@@ -873,6 +874,28 @@ final class ScreenshotTourUITests: XCTestCase {
             "Refusing contaminated screenshot \(slug): frontmost application is "
                 + "\(observedBundleIdentifier ?? "unknown"), not \(expectedBundleIdentifier)")
         return false
+    }
+
+    @MainActor
+    private func hittableRecentCard(
+        containing labelFragment: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 3
+    ) -> XCUIElement {
+        let query = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == %@ AND label CONTAINS[c] %@",
+                "recents-card", labelFragment))
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if let card = query.allElementsBoundByIndex.first(where: { $0.isHittable }) {
+                return card
+            }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < deadline
+
+        XCTFail("Recent card containing \(labelFragment) did not become hittable")
+        return query.firstMatch
     }
 
     @MainActor

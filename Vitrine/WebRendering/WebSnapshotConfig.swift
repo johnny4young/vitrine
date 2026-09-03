@@ -39,9 +39,9 @@ import Foundation
 /// - **Wait strategy** (`WaitStrategy`): wait for the DOM, a fixed extra delay, or a
 ///   best-effort network-quiet settle, so a page that loads its content
 ///   asynchronously has a chance to finish before the snapshot.
-/// - **Safety caps** (`SafetyCaps`): a maximum captured page height and a hard
-///   timeout ceiling, so a full-page capture of a runaway document cannot exhaust
-///   memory or hang.
+/// - **Safety caps** (`SafetyCaps`): a maximum captured page height, the shared
+///   total-pixel/buffer budget, and a hard timeout ceiling, so a full-page capture
+///   of a runaway document cannot exhaust memory or hang.
 ///
 /// These policies keep network behavior explicit and the safety gate reviewable.
 struct WebSnapshotConfig: Equatable {
@@ -102,6 +102,52 @@ struct WebSnapshotConfig: Equatable {
         SafetyCaps.clampTimeout(waitStrategy.totalBudget, to: safetyCaps.maxTimeout)
     }
 
+    /// Resolves the logical rect that WebKit may snapshot under the shared export
+    /// raster budget. Visible captures are accepted or rejected as a whole. Full-page
+    /// captures first honor `maxPageHeight`, then clamp further for viewport width,
+    /// output scale, total pixels, and estimated concurrent buffers.
+    func captureSize(contentHeight: CGFloat? = nil) throws(WebSnapshotError) -> CGSize {
+        let viewport = viewport
+        guard viewport.width.isFinite, viewport.height.isFinite,
+            viewport.width > 0, viewport.height > 0
+        else {
+            throw .invalidViewport
+        }
+
+        do throws(RenderBudgetError) {
+            // The web view itself is allocated at the visible viewport before a
+            // full-page document can be measured, so it must fit independently of
+            // any smaller caller-supplied page-height cap.
+            _ = try RenderBudget.export.allocation(for: viewport, scale: scale)
+            let requestedHeight =
+                if captureMode.capturesFullHeight {
+                    safetyCaps.clampPageHeight(
+                        contentHeight ?? viewport.height,
+                        viewportHeight: viewport.height)
+                } else {
+                    viewport.height
+                }
+            let resolvedHeight =
+                if captureMode.capturesFullHeight {
+                    try RenderBudget.export.clampedLogicalHeight(
+                        requestedHeight,
+                        forLogicalWidth: viewport.width,
+                        scale: scale)
+                } else {
+                    requestedHeight
+                }
+            let size = CGSize(width: viewport.width, height: resolvedHeight)
+            _ = try RenderBudget.export.allocation(for: size, scale: scale)
+            return size
+        } catch .tooLarge(let rejection) {
+            throw .renderTooLarge(rejection)
+        } catch {
+            // The budget's sizing APIs currently emit only `.tooLarge`; retain a
+            // closed failure if that typed contract expands in the future.
+            throw .snapshotFailed
+        }
+    }
+
     /// Builds a configuration for `captureURL`, rejecting any URL that is not a
     /// safe `http`/`https` page with a typed `URLValidationError`. This is the only
     /// initializer, so every `WebSnapshotConfig` carries a validated URL by
@@ -128,6 +174,33 @@ struct WebSnapshotConfig: Equatable {
         self.profile = profile
         self.dataStoreMode = dataStoreMode
     }
+}
+
+/// Why a WebKit snapshot did not produce an image. This Foundation/CoreGraphics-only
+/// error lives beside the shared capture policy because `WebSnapshotConfig` is also
+/// compiled into the CLI target, while the WebKit implementation is not.
+enum WebSnapshotError: Error, Equatable {
+    /// The requested viewport had a non-finite or non-positive dimension.
+    case invalidViewport
+
+    /// The requested viewport or measured full-page rect exceeds the shared raster
+    /// allocation budget. Carries only the non-PII arithmetic rejection.
+    case renderTooLarge(RenderBudget.Rejection)
+
+    /// A base URL was supplied that is not a local `file:` URL.
+    case invalidBaseURL
+
+    /// The page failed to load or a navigation was blocked.
+    case loadFailed
+
+    /// The page did not finish loading within the request's timeout.
+    case timedOut
+
+    /// The page loaded but snapshotting or bitmap conversion failed.
+    case snapshotFailed
+
+    /// WebKit could not obtain a required fail-closed content rule list.
+    case networkIsolationUnavailable
 }
 
 #if DEBUG
@@ -475,13 +548,13 @@ extension WebSnapshotConfig {
         static let standard = SafetyCaps(
             maxPageHeight: 20_000, maxTimeout: .seconds(60))
 
-        /// Clamps a requested full-page `contentHeight` to `maxPageHeight`, so the
-        /// captured height never exceeds the cap. A non-positive height falls back to
-        /// the cap-bounded minimum of the viewport so the result is always drawable.
+        /// Applies the configured page-height ceiling without shrinking below the
+        /// visible viewport. `captureSize(contentHeight:)` applies the additional
+        /// raster-dimension, pixel-count, and buffer-cost ceilings.
         func clampPageHeight(_ contentHeight: CGFloat, viewportHeight: CGFloat) -> CGFloat {
             let lowerBound = max(viewportHeight, 1)
             let requested = max(contentHeight, lowerBound)
-            return min(requested, maxPageHeight)
+            return min(requested, max(maxPageHeight, lowerBound))
         }
 
         /// Clamps `requested` to `ceiling`, so the effective timeout never exceeds the

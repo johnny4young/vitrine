@@ -517,3 +517,25 @@ struct QuickCaptureFenceTests {
         #expect(recents.captures.isEmpty)
     }
 }
+
+@Suite("Quick capture raster preflight")
+struct QuickCaptureRasterPreflightTests {
+    @Test("A PDF-only save skips the shared raster so its budget cannot block the vector path")
+    func pdfOnlySaveSkipsRaster() {
+        #expect(
+            !QuickCapture.rasterIsRequired(autoCopy: false, savesToFile: true, format: .pdf))
+    }
+
+    @Test("Clipboard copies and bitmap saves require the shared raster")
+    func rasterConsumersRequireRaster() {
+        #expect(QuickCapture.rasterIsRequired(autoCopy: true, savesToFile: false, format: .pdf))
+        #expect(QuickCapture.rasterIsRequired(autoCopy: false, savesToFile: true, format: .png))
+        #expect(QuickCapture.rasterIsRequired(autoCopy: true, savesToFile: true, format: .pdf))
+    }
+
+    @Test("No enabled destination renders nothing")
+    func noDestinationsSkipRaster() {
+        #expect(
+            !QuickCapture.rasterIsRequired(autoCopy: false, savesToFile: false, format: .png))
+    }
+}

@@ -42,6 +42,27 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.2.1",
+            headline: "Safer rendering, stricter web capture",
+            highlights: [
+                "Extreme canvases and full-page web captures now stop before allocating "
+                    + "unsafe bitmaps, with clear guidance instead of a blank result or crash.",
+                "Copy, save, share, batch, social-card, comparison-board, CLI, and Shortcuts "
+                    + "exports now report the same actionable render failures.",
+                "Web snapshots block literal local and private subresources by default across "
+                    + "images, styles, scripts, frames, and requests; loopback remains explicit.",
+                "CodeQL and focused Address and Thread Sanitizer lanes add repeatable security "
+                    + "and lifecycle evidence before a candidate can be promoted.",
+                "Large code and image inputs now use bounded caches, metadata-first decoding, "
+                    + "and explicit fallbacks that keep editing responsive.",
+                "Living files, remote images, and closed editor windows now cancel and release "
+                    + "their work through measured lifecycle paths.",
+                "Shell and CLI setup now bounds startup-file reads, preserves existing files, "
+                    + "and installs canonical command links for Apple silicon or Intel.",
+                "Vitrine continues to require macOS 15 Sequoia or later and qualifies Tahoe "
+                    + "while direct downloads remain universal for Apple silicon and Intel.",
+            ]),
+        ReleaseNote(
             version: "1.2.0",
             headline: "Safer inputs, stronger foundations",
             highlights: [

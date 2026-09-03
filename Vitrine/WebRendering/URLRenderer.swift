@@ -134,6 +134,9 @@ struct URLRenderer: Renderer {
             Log.render.error(
                 "URL capture failed to snapshot the page (\(error.diagnosticReason, privacy: .public))"
             )
+            if case .renderTooLarge(let rejection) = error {
+                throw RenderError.renderTooLarge(rejection)
+            }
             throw RenderError.renderFailed
         }
 

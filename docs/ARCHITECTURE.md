@@ -1,7 +1,8 @@
 # Vitrine — Architecture
 
-This document mirrors the shipping module layout in [`Vitrine/`](../Vitrine) and the
-runtime boundaries enforced by the test suite.
+This document mirrors the shipping module layout in [`VitrineDomain/`](../VitrineDomain),
+[`VitrineRendering/`](../VitrineRendering), [`Vitrine/`](../Vitrine), and
+[`VitrineCLI/`](../VitrineCLI), plus the runtime boundaries enforced by the test suite.
 
 ## Product and distribution boundaries
 
@@ -146,6 +147,28 @@ true transparency (its empty pixels stay fully clear, `(0,0,0,0)`) and is never
 composited over an opaque matte, so the result drops cleanly onto any slide or
 page background.
 
+## Raster resource budgets and failure contract
+
+Every raster render/export path preflights `RenderBudget` after layout resolves the logical
+canvas but before `ImageRenderer`, Core Graphics, or WebKit creates the potentially large
+bitmap. Small fixed-size sampling/thumbnail operations derive from an already bounded image
+and retain their own hard caps. The value-only render policy accounts for logical
+dimensions, render scale, total pixels, and estimated simultaneously live buffers using
+overflow-safe integer arithmetic. Preview and export use separate ceilings: preview
+remains responsive, while export permits larger intentional output without granting an
+unbounded allocation.
+Full-page Web Snapshot height is clamped from the same axis, pixel, and estimated-byte
+constraints before `WKWebView.takeSnapshot` is called, and the returned image is checked
+again before board composition.
+
+`RenderBudgetError` is the shared typed failure boundary: `tooLarge`, `allocationFailed`,
+`encodingFailed`, and `cancelled`. The app, CLI, App Intents, batch exporters, social cards,
+comparison boards, Web responsive boards, pasteboard, and file writers preserve those
+categories instead of turning them into a blank image, partial success, or process-level
+allocation failure.
+User-facing adapters own concise recovery copy; the core error never exposes a file path or
+platform allocation detail.
+
 ## Vector export
 
 The supported scalable format is **PDF**, not SVG. This is a deliberate decision
@@ -185,12 +208,67 @@ fixed number formatting and attribute order), so the same template always produc
 identical bytes. This serializer is intentionally **not** wired up as a general
 export choice for the arbitrary code canvas; it exists for the template path only.
 
+## Syntax-highlighting memory and responsiveness
+
+`HighlightManager` owns one long-lived Highlight.js context, but its derived output is
+disposable. Five deterministic `CostLimitedLRUCache` instances cover the native attributed
+string, SwiftUI bridge, row split, terminal bridge, and terminal row split. Each cache is
+bounded by both count and a conservative four-MiB estimated-cost budget (at most 20 MiB across
+all five estimates); a theme key contains
+the built-in stylesheet name or the complete custom palette rather than a mutable display id.
+This prevents stale custom-theme colors and replaces the former FIFO behavior, where a hot
+document could be evicted by a one-off inspector/render combination.
+
+The accepted source-file ceiling and the interactive-highlighting ceiling are deliberately
+different contracts. A source can still be loaded up to the shared five-MiB safety limit, but:
+
+- syntax sources up to 32 KiB may enter the derived caches;
+- 32–128 KiB sources are highlighted without caching and use a 250 ms trailing editor debounce;
+- sources over 128 KiB remain editable and renderable as theme-legible plain text, with an
+  explicit editor notice instead of a silent visual change.
+
+The ordinary editor and preview debounces remain 100 ms and 90 ms respectively. Entering the
+large-document fallback clears existing token colors once; later keystrokes inherit plain typing
+attributes rather than recoloring the whole document. Terminal captures keep their separate
+parser/emulator semantics and bypass caches above 32 KiB; their deeper large-stream policy belongs
+to the terminal reliability boundary rather than pretending ANSI input is syntax highlighting.
+
+## Bounded static image pipeline
+
+`BackgroundImageStore` applies one contract to backgrounds, foreground screenshots, Brand Kit
+logos, drag/drop, remote downloads, and CLI image inputs. It reads at most 25 MiB, then
+`ImageDecodePolicy` inspects ImageIO source and per-frame status plus dimensions with caching
+disabled. Import validation therefore does not allocate every frame merely to prove that metadata
+is plausible; truncated containers fail the completeness check, frame tables are capped at 256,
+and cumulative source geometry is capped at 64 megapixels.
+
+Vitrine produces static artifacts, so an animated source has an explicit **first-frame** contract.
+The resolver never uses `NSImage(contentsOf:)`, which can retain a full-resolution animated
+representation. It asks ImageIO for one orientation-corrected thumbnail and constrains that decode
+to the interactive `RenderBudget` (16 megapixels and an 8,192-pixel axis ceiling) before creating
+the AppKit image. The process cache is still cost-bounded at 256 MiB, but its cost now reflects the
+actual downsampled surface rather than unbounded source metadata.
+
+Picker, drag/drop, remote, Brand Kit, and image-memory-journey imports run bounded read,
+validation, hashing, atomic persistence, and first decode on Swift 6.2's explicit concurrent
+executor. The main actor publishes the reference and creates/caches the final `NSImage` only after
+that work completes. Existing stored references retain a synchronous bounded fallback so launch,
+CLI, and migration behavior remains compatible.
+
+Remote image transport does not iterate `URLSession.AsyncBytes` one byte at a time. A dedicated
+ephemeral `URLSessionDataDelegate` feeds the chunks delivered by Foundation into a
+subtraction-safe collector. A known oversized `Content-Length` is rejected before body delivery;
+otherwise the first chunk that would cross 25 MiB is rejected without being appended and the data
+task is cancelled before the typed `tooLarge` error resumes its caller. The same one-shot state
+machine makes caller cancellation authoritative while retaining the public-to-private redirect
+block.
+
 ## Terminal rendering: two engines
 
 Terminal capture is not "syntax highlighting with an ANSI palette". Two structurally
 different programs write to a terminal, and rendering either one the other's way
-produces a wrong image, so `Vitrine/Terminal/` ships **two renderers behind one
-entry point**. The user-facing guide is [TERMINAL.md](TERMINAL.md); this section is
+produces a wrong image, so `VitrineDomain/Terminal/` and `VitrineRendering/Terminal/` ship **two renderers
+behind one entry point**. The user-facing guide is [TERMINAL.md](TERMINAL.md); this section is
 the design rationale behind it.
 
 `ANSIRenderer.styledRuns(_:columns:)` is the router. Both engines return `[ANSIRun]`,
@@ -314,22 +392,27 @@ boundary before file work. `CLIOptions.Command.requiresPro` uses an exhaustive s
 so every future command must make an explicit product decision; a new general flag
 remains unavailable to the free command until its allowlist is deliberately changed.
 
-**Pixel-identical output.** The CLI does not re-implement rendering. The `VitrineCLI`
-target compiles the same `Vitrine/` source tree (models, `SnapshotCanvas`,
-`ExportManager`, `HighlightManager`, …) and supplies its own `main.swift`, excluding
-only the SwiftUI `@main` app (`VitrineApp.swift`) so there is a single entry point. The
-thin CLI layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
-facade; `CLIArgumentParser` owns token consumption and mutable invocation state;
-`CLIArgumentValidation` checks cross-option semantics and materializes `CLIOptions`;
-and `CLIArgumentValues` handles catalog and range conversion. `CLIOptions` then builds
-a `SnapshotConfig` with the **same** preset/theme precedence the GUI uses.
+**Pixel-identical output.** The CLI does not re-implement or separately compile rendering.
+App and CLI link the same `VitrineDomain` value/policy module and the same static
+`VitrineRendering` engine containing `SnapshotCanvas`, `ExportManager`, `RenderBudget`,
+the image policy/store, and `HighlightManager`. The CLI does not compile app lifecycle,
+windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI. The thin CLI
+layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
+facade. `CLIArgumentSchema` is the single catalog for parser-owned commands, option
+identities, aliases, value arity, constrained-command availability, mode-only validation,
+and generated help. `CLIArgumentParser` consumes tokens and dispatches those stable
+identities into mutable invocation state; `CLIArgumentValidation` retains cross-option
+semantics and materializes `CLIOptions`; and `CLIArgumentValues` handles catalog and
+range conversion. `CLIOptions` then builds a `SnapshotConfig` with the **same**
+preset/theme precedence the GUI uses.
 `CLIRenderer` is the stable operation facade, `CLIRenderResources` owns temporary
 background and watermark preparation, `CLIBatchRenderer` owns folder discovery and
 batch reporting, and `CLIOutputWriter` owns artifact preflight, shared encoding, and
 sidecars. The output component still calls the unchanged `ExportManager`; none of these
 boundaries introduces a second render implementation. Because the inputs and pipeline
-are identical, a CLI render is byte-for-byte identical to the app's export for the same
-options — a focused output-contract test asserts exactly that.
+are identical, a CLI render has the same normalized RGBA pixels as the app's export for
+the same options. A focused output-contract test compares those pixels directly, while
+the pinned golden suite protects the shared engine's visual contract.
 
 **Portable workspace recipes.** `WorkspaceRecipeDocument` is a versioned JSON envelope
 over the existing `StyleSnapshot` model. It can add portable header metadata, output
@@ -353,7 +436,10 @@ value. A custom recipe canvas remains CLI-only and is reported as such by Settin
 `EditorSession`, not to `AppEnvironment` or a persistent store. The **Live file** picker
 is the only entry point: it selects one source file, applies the same bounded text loader
 used by drag and drop, and retains that file's security scope only while the editor
-window remains open. A 650 ms task compares file size, modification date, resource
+window remains open. Filesystem access sits behind an async, `Sendable` `FileClient`.
+Swift 6.2 `@concurrent` entry points move metadata lookup and the bounded descriptor read
+off the main actor; decoding policy stays centralized, and editor state is applied only
+on the main actor. A 650 ms task compares file size, modification date, resource
 identifier, and filesystem file/volume numbers; including inode identity detects editors
 that save by atomically replacing the file instead of mutating its original inode.
 Content is read only after the stamp changes.
@@ -365,8 +451,12 @@ visible pending change and requires **Reload** or **Keep**; it never overwrites 
 draft in the background. A transient read failure does not advance the observed stamp,
 so the same atomic save remains retryable. Replacing the document through another input,
 loading an image, closing the window, restoring a draft, or stopping the watcher releases
-the scope and cancels polling. The URL, watcher, and security scope are excluded from
-window restoration and app defaults; ordinary file drops remain one-time imports.
+the scope and cancels polling, picker reads, and content reads. Each replacement also
+invalidates a monotonic generation. That second guard rejects a late filesystem result
+even when cancellation cannot force an in-progress POSIX read to return immediately.
+Only one content read is session-owned at a time. The URL, watcher, tasks, and security
+scope are excluded from window restoration and app defaults; ordinary file drops remain
+one-time imports.
 
 **Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
 suites cover entitlement, version and catalog contracts, argument parsing and
@@ -404,8 +494,10 @@ extension-based language inference and default metadata while still reading the 
 only from standard input.
 
 Raster availability is capability-driven rather than version-switched:
-`ExportFormat.availableCases` caches `CGImageDestinationCopyTypeIdentifiers()` once and
-interactive pickers expose only writers the active ImageIO stack actually provides.
+`ExportFormat.availableCases` (`VitrineRendering/Export/ExportFormat+Encoding.swift`) caches
+`CGImageDestinationCopyTypeIdentifiers()` once and interactive pickers expose only writers
+the active ImageIO stack actually provides. The probe lives in the rendering layer because
+encodability is a property of the running host, not of the portable `ExportFormat` value.
 That keeps PNG/PDF/HEIC available on Sequoia while adding AVIF on Tahoe and newer.
 Persisted or imported AVIF settings fall back to PNG on a Mac without the writer; the
 CLI grammar remains stable across OS versions and returns an encoding failure rather
@@ -487,6 +579,24 @@ a combined project/branch label plus the shell-escaped command through the exist
 and `--title` metadata options. Context therefore stays outside the ANSI transcript and
 works for both scrolling output and reconstructed full-screen frames. It never reads
 repository status, and `--no-context` omits the header for minimal or sensitive captures.
+
+**Integration installation.** Settings never reads an arbitrary startup file with
+`Data(contentsOf:)`. The granted file is opened once, required to be a regular file,
+locked without waiting, and read in chunks under a 1 MiB ceiling. Vitrine verifies the
+same descriptor identity and size before appending only the small integration suffix with
+`O_APPEND`; it refuses invalid UTF-8, concurrent changes, devices, directories, and large
+files without rewriting their contents. The CLI installer canonicalizes both absolute and
+relative symlink destinations, prefers `/opt/homebrew/bin` on Apple Silicon and
+`/usr/local/bin` on Intel, and retains the other prefix as a fallback. New links are staged
+as unique siblings and installed with `RENAME_EXCL` or `RENAME_SWAP`, so a regular file
+named `vitrine` is never removed and stale links have no unlink/recreate gap. The copyable
+Terminal fallback intentionally omits `ln -f` for the same fail-closed rule.
+
+**Share-link encoding.** `vitrine://open` accepts one bounded, canonical RFC 4648
+base64url representation. The decoder rejects padding, whitespace, standard base64
+characters, impossible lengths, non-ASCII input, and non-zero unused tail bits before
+bounded zlib expansion and JSON decoding. A deterministic seeded adversarial corpus guards
+that contract against future normalization or Foundation decoder changes.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the capability
@@ -616,7 +726,7 @@ RenderEngine (Product local rendering: code; web capture: URL/HTML/social cards)
     ↓
 Live preview with sliders (padding, radius, scale)  [editor mode only]
     ↓
-ImageRenderer(content:) → PNG @ 2x/3x (perfect retina)
+RenderBudget preflight → ImageRenderer(content:) → PNG @ 2x/3x
     ↓
 ExportEngine
   ├── Copy to clipboard (NSPasteboard) ← primary action
@@ -682,7 +792,7 @@ another application window.
                         ▼
             ┌──────────────────────────┐
             │  ExportManager            │
-            │  ImageRenderer → PNG →    │
+            │  RenderBudget → PNG →     │
             │  NSPasteboard / NSSavePanel│
             └──────────────────────────┘
 ```
@@ -690,6 +800,28 @@ another application window.
 ## Module / folder structure
 
 ```
+VitrineDomain/                # static Foundation/CoreGraphics value and policy module
+├── Models/                    # portable themes, presets, recipes, search, metadata
+├── Policies/                  # pure host/input safety classification
+├── Settings/                  # typed defaults/schema and pure migrations
+├── Support/                   # bounded local/transport reads and decode helpers
+└── Terminal/                  # portable ANSI and terminal-screen policy
+    ├── TerminalGrid.swift      # cells and bounded screen state
+    ├── TerminalScreen+Scanner.swift # addressing detection and geometry inference
+    ├── TerminalScreen+Parser.swift # byte-stream and CSI dispatch
+    ├── TerminalScreen+Operations.swift # cursor, drawing, erase, and scrolling
+    └── TerminalScreen+Serialization.swift # final frame and styled runs
+
+VitrineRendering/             # static AppKit/SwiftUI engine linked by App and CLI
+├── Canvas/                    # shared snapshot/social-card layout and visual adapters
+├── DesignSystem/              # render-facing brand tokens and SwiftUI color bridges
+├── Editor/                    # Highlightr adapter, bounded caches, large-document policy
+├── Export/                    # raster/PDF/Markdown/SVG encoding facades
+├── Models/                    # SnapshotConfig, images, fonts, and social-card values
+├── Rendering/                 # RenderBudget, CaptureInput, Renderer, RenderedAsset
+├── Support/                   # rendering-owned logging and cost-limited LRU cache
+└── Terminal/                  # AppKit palette over portable terminal values
+
 Vitrine/
 ├── App/
 │   ├── VitrineApp.swift       # @main + inert Settings scene
@@ -720,14 +852,10 @@ Vitrine/
 │   ├── CodeFormatter+Reindent.swift
 │   ├── CodeFormatter+SQL.swift # dependency-free language-family transforms
 │   ├── CodeFormatter+LanguageStrategy.swift # Language → safe formatter route
-│   ├── HighlightManager.swift # Highlightr wrapper
 │   └── LanguageDetector.swift # detection by extension / heuristic
 ├── Canvas/
-│   ├── SnapshotCanvas.swift   # the view that becomes the PNG
-│   ├── WindowChrome.swift     # decorative traffic lights
-│   └── BackgroundView.swift   # solid or gradient background
+│   └── BackgroundEditor.swift # app-owned image/gradient editing controls
 ├── Export/
-│   ├── ExportManager.swift    # stable render-and-encode facade
 │   ├── ExportManager+Pasteboard.swift # source/image clipboard delivery
 │   ├── ExportManager+File.swift # save-panel and file delivery
 │   ├── ExportManager+Batch.swift # multi-size and carousel delivery
@@ -738,19 +866,13 @@ Vitrine/
 │   ├── ComparisonBoard.swift # path-free validated 2–4 item value
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
 │   ├── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
-│   ├── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
-│   └── VectorTemplateSVG.swift # deterministic SVG for the simple-template subset
+│   └── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
 ├── Comparison/
 │   ├── ComparisonBoardSelection.swift # ordered ephemeral Recents selection
 │   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
 │   ├── ComparisonBoardPreview.swift # debounced preview phase and failure state
 │   ├── ComparisonBoardEditorView.swift # preview, layout, captions, export controls
 │   └── ComparisonBoardPresentation.swift # injected share operation
-├── Terminal/                  # ANSI/VT terminal rendering (see docs/TERMINAL.md)
-│   ├── ANSIParser.swift       # escape-sequence tokenizer
-│   ├── TerminalGrid.swift     # VT screen model (CSI dispatch, scrollback, alt screen)
-│   ├── ANSIPalette.swift      # 16/256-color + truecolor palettes
-│   └── CharacterWidth.swift   # cell-width classification (wide/combining glyphs)
 ├── Settings/
 │   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)
 │   ├── SettingsWindow.swift / SettingsRootView.swift # custom preferences window
@@ -762,23 +884,15 @@ Vitrine/
 │   ├── PresetStore.swift      # reusable-style catalog and persistence
 │   └── PresetFileExchange.swift # user-initiated JSON import/export panels
 ├── Models/
-│   ├── Theme.swift
-│   ├── StoredCustomTheme.swift # validated portable theme record
-│   ├── CustomThemeDocument.swift # validated theme JSON exchange envelope
-│   ├── Language.swift
-│   ├── SnapshotConfig.swift
-│   ├── ExportPreset.swift     # fixed destination sizing and presentation guidance
-│   ├── StyleSnapshot.swift / StylePreset.swift
-│   │                         # portable presentation state + reusable catalog entries
-│   ├── StylePresetDocument.swift # validated JSON exchange envelope
-│   ├── WorkspaceRecipe.swift # path-free style/metadata/output exchange envelope
+│   ├── Capture.swift          # recent-capture adapter over shared config
 │   └── GlobalShortcuts.swift  # KeyboardShortcuts.Name definitions
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
 │   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…"
 ├── CLI/                       # `vitrine render` core, shared with VitrineCLI
 │   ├── CLIArguments.swift     # stable dependency-free parser facade
-│   ├── CLIArgumentParser.swift # command selection, tokens, and invocation state
+│   ├── CLIArgumentSchema.swift # commands, aliases, arity, mode rules, and help
+│   ├── CLIArgumentParser.swift # token consumption and invocation state
 │   ├── CLIArgumentValidation.swift # cross-option rules → immutable CLIOptions
 │   ├── CLIArgumentValues.swift # catalog, range, color, and geometry conversion
 │   ├── CLIError.swift / CLIUsage.swift # process errors and help contract
@@ -808,20 +922,28 @@ Vitrine/
 │   ├── URLRenderer.swift      # URL render facade, validation/error mapping
 │   ├── URLSnapshotEngine.swift # bounded offscreen WKWebView rasterization
 │   ├── URLLoadCoordinator.swift # navigation completion + redirect/host policy
+│   ├── PrivateNetworkBlockRules.swift # all-resource literal-private content rules
 │   ├── HTMLRenderer / WebSnapshotView
-│   ├── WebSnapshot{WindowController,EditorView}.swift
+│   ├── WebSnapshotWindowController.swift # NSWindow presentation and teardown
+│   ├── WebSnapshotModel.swift     # observable document and task lifecycle
+│   ├── WebSnapshotCaptureOrchestration.swift # bounded concurrent capture pipeline
+│   ├── WebSnapshotTypes.swift     # viewport results and injected renderer strategy
+│   ├── WebSnapshotEditorView*.swift # declarative editor regions and actions
+│   ├── WebSessionStore.swift      # authenticated WebKit data ownership
+│   ├── WebSessionWindowController.swift # interactive sign-in lifecycle
 │   ├── WebSnapshotConfig.swift       # viewport/wait/capture-mode value type
 │   ├── WebURLValidation.swift        # http(s)-only + SSRF host blocklist (typed errors)
 │   ├── NetworkCapability.swift       # network-entitlement gate for URL capture
 │   └── ResponsiveBoardComposer.swift # multi-viewport board (deterministic)
 ├── SocialCards/               # social-card editor + renderer; Canvas/SocialCardCanvas
-├── Rendering/                 # shared Renderer / RenderedAsset abstractions
 ├── DesignSystem/              # VitrineTokens + Token components (the redesign system)
 ├── State/                     # RecentsStore + pure window-state model
 ├── Recents/ · Updates/ · Help/ # recents selection/navigation; updates; Help/What's New
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
-│   └── Log.swift              # os.Logger per subsystem + render signposts
+│   ├── DomainAliases.swift    # app compatibility names over VitrineDomain
+│   ├── RenderingAliases.swift # app compatibility names over VitrineRendering
+│   └── Log.swift              # app-lifecycle os.Logger categories
 └── Resources/
     ├── Assets.xcassets
     ├── Info.plist
@@ -834,6 +956,9 @@ VitrineMenuBarHelper/          # sandbox-inheriting status-item helper target
 VitrineCLI/                    # the `vitrine` executable target
 ├── main.swift                 # minimal accessory NSApplication host → CLIRenderer
 └── CLIEnvironment.swift       # locates the Fonts/ folder staged next to the binary
+
+DomainTests/                  # hostless VitrineDomain contract tests
+RenderingTests/               # direct VitrineRendering facade and policy contracts
 ```
 
 The editor owns batch-export presentation at the toolbar root rather than at an
@@ -866,14 +991,19 @@ All app-owned targets inherit `SWIFT_TREAT_WARNINGS_AS_ERRORS`. Compiler diagnos
 a new Swift or macOS SDK are compatibility signals that must be resolved deliberately;
 they cannot accumulate silently behind otherwise-green CI results.
 
-`make build-boundaries` measures architectural build costs before a new module or
-package boundary is introduced. It runs clean and no-op builds plus low-fan-out
-Foundation and high-fan-out model changes in disposable DerivedData. It also compares
-clean focused-test builds and test-runner startup between the app target and a temporary
-hostless package built from the Foundation-only terminal parser. Both test paths compile
+`make build-boundaries` measures architectural build costs before and after module
+boundaries change. It runs clean and no-op builds plus low-fan-out Foundation and
+high-fan-out domain-model changes in disposable DerivedData. It also compares clean
+focused-test builds and test-runner startup between the app target and the real
+hostless `VitrineDomainTests` target. Both test paths compile
 and execute the same tracked Swift Testing suite, and the command rejects results when
 their executed-test counts differ. Exact package downloads are resolved once into a
 shared cache so clean samples measure compilation rather than network variance.
+The app side uses a dedicated `VitrineHostedProbe` scheme so adding another test bundle
+to the full `Vitrine` scheme cannot silently enlarge the historical workload. Schema 3
+records the real Xcode domain-target timings under distinct metric names; it therefore
+does not compare those values directly with schema-2 timings from the former temporary
+SwiftPM package.
 
 The command defaults to seven samples and writes every sample, min/median/max, median
 absolute deviation, hardware/toolchain provenance, and complete relative-path logs beneath
@@ -895,7 +1025,7 @@ definitions, and pass the full unit, performance, golden, and UI gates.
 
 | Library             | How to add                                                   | For                                                   |
 | ------------------- | ------------------------------------------------------------ | ----------------------------------------------------- |
-| `Highlightr`        | SPM ([raspu/Highlightr](https://github.com/raspu/Highlightr)) | Syntax highlighting (Highlight.js — 160+ languages)   |
+| `Highlightr` 2.3.0 | SPM ([raspu/Highlightr](https://github.com/raspu/Highlightr), exact pin) | Syntax highlighting behind `VitrineRendering.HighlightManager` |
 | `KeyboardShortcuts` | SPM ([sindresorhus/KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)) | Configurable global hotkey                             |
 | `Sparkle`           | Vendored framework (`scripts/fetch-sparkle.sh`, checksum-pinned) | Auto-update on the direct-download build only (stripped from the App Store binary) |
 | AppKit / SwiftUI / `ImageRenderer` / `CryptoKit` / `WebKit` | Built-in | `NSStatusItem`, View→PNG, Ed25519 license verify, URL/HTML capture |
@@ -904,9 +1034,12 @@ definitions, and pass the full unit, performance, golden, and UI gates.
 > the `sindresorhus/Settings` package, which has been removed.
 > The Vitrine PRO monetization subsystem is documented in **`docs/PRO.md`**.
 
-**Why Highlightr and not swift-syntax:** swift-syntax only covers Swift; Highlightr
-supports 160+ languages via Highlight.js (battle-tested). Enough for v0.1; later it
-could be complemented with Tree-sitter.
+Highlightr is isolated behind the rendering adapter because it is no longer actively
+maintained. [ADR 0001](decisions/0001-syntax-highlighting-engine.md) records the measured
+replacement review, rejected candidates, current fail-closed theme contract, and exact
+gates for reconsidering the dependency. `swift-syntax` and Splash cannot replace it
+because they cover Swift rather than Vitrine's 33-language contract; lower-level
+Tree-sitter infrastructure is not treated as a drop-in dependency update.
 
 ## Data model
 
@@ -988,6 +1121,25 @@ feature gates, upgrade sheets, feedback, pinning, sharing, and batch export pres
 therefore cannot fall back to a different process-global graph. Promoting a window's style
 also targets the environment that created that window.
 
+An editor window owns its AppKit hosting controller and SwiftUI tree; the hosted tree must
+not own that same window in return. `WindowAccessor` therefore resolves into a stable weak
+slot used only by concrete window actions such as close-after-copy and sharing. Its
+coordinator invalidates queued resolution during dismantling, while `CodeEditorView`
+cancels delayed highlighting and severs its text delegate, paste callback, undo actions,
+and document view. Closing a window removes the controller's window/session/generation
+entries and lets normal AppKit/ARC teardown release the tree; the primary session alone
+may preserve its in-process draft for reopening.
+
+Opt-in memory qualification records `TASK_VM_INFO.phys_footprint` only after each journey
+has returned to its baseline and completed three bounded main-run-loop/autorelease-pool
+drains. The local harness requires an exact ordered sample sequence and completion count,
+then preserves every sample, full and post-warm-up slopes, `leaks` roots, memgraph, and
+environment provenance. Image, editor-window, local-HTML WebKit, and large-document
+journeys support 20/50/100 profiles. Comparisons require the same clean commit, journey,
+iteration count, macOS, architecture, and Xcode. Slopes and allocation paths are diagnostic
+signals rather than ownership verdicts; WebKit samples cover the Vitrine host process, not
+separate WebContent processes.
+
 `SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
 the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that
 created it and supplies that graph to its SwiftUI root. Social Card resolves the working
@@ -998,8 +1150,12 @@ presentation operations. Social Card rendering remains independent from the shar
 while Web Snapshot keeps authenticated-session and sharing routes behind a closure-backed
 adapter. Web Snapshot export-all reuses `BatchExportPresentation` for directory selection
 and Finder reveal, plus `BatchExportCompletion` for exact output accounting; partial writes
-remain visible as failures and never trigger a success reveal. The windows remain reusable
-and app-global, but isolated tests no longer create roots that silently observe or mutate
+remain visible as failures and never trigger a success reveal. Capture orchestration lives in a
+model extension separate from the observable document/task lifecycle, while the AppKit controller
+owns only presentation and teardown. Authenticated website-data ownership remains in
+`WebSessionStore`, separate from the short-lived interactive sign-in window; closing that window
+drops its `WKWebView` so timers and network work cannot survive off-screen. The windows remain
+reusable and app-global, but isolated tests no longer create roots that silently observe or mutate
 process-global stores or construct presentation windows.
 
 `RecentsGalleryWindowController` owns the equivalent boundary for capture history. Its

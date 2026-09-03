@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineRendering
 
 /// The editor's right-hand inspector, restyled per design system: a
 /// 302 pt glass column of uppercase-labeled sections — Background swatches,

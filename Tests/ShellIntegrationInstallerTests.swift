@@ -116,6 +116,51 @@ struct ShellIntegrationInstallerTests {
         #expect(try Data(contentsOf: file) == invalidUTF8)
     }
 
+    @Test func installRefusesAnOversizedStartupFileWithoutReadingOrChangingIt() throws {
+        let file = try makeStartupFile()
+        let original = Data(
+            repeating: 0x61, count: ShellIntegrationInstaller.maxStartupFileBytes + 1)
+        try original.write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let outcome = ShellIntegrationInstaller.install(.zsh, into: file)
+
+        guard case .failed(let message) = outcome else {
+            Issue.record("expected .failed, got \(outcome)")
+            return
+        }
+        #expect(!message.isEmpty)
+        #expect(try Data(contentsOf: file) == original)
+    }
+
+    @Test func installRejectsANonRegularSelection() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vitrine-rc-directory-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        guard case .failed = ShellIntegrationInstaller.install(.zsh, into: directory) else {
+            Issue.record("expected a directory selection to fail closed")
+            return
+        }
+        #expect(
+            FileManager.default.fileExists(atPath: directory.path),
+            "the selected directory must remain untouched")
+    }
+
+    @Test func installAppendsOnlyTheSmallIntegrationSuffix() throws {
+        let original = String(repeating: "export VALUE=1\n", count: 4_096)
+        let file = try makeStartupFile(original)
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        #expect(ShellIntegrationInstaller.install(.bash, into: file) == .installed(file))
+
+        let written = try String(contentsOf: file, encoding: .utf8)
+        #expect(written.hasPrefix(original))
+        #expect(
+            written.dropFirst(original.count) == ShellIntegrationInstaller.block(for: .bash) + "\n")
+    }
+
     @Test func terminalCommandAppendsTheEvalLineToTheRCFile() {
         #expect(
             ShellIntegrationInstaller.terminalCommand(for: .zsh)
@@ -128,5 +173,51 @@ struct ShellIntegrationInstallerTests {
             ShellIntegrationInstaller.terminalCommand(for: .fish)
                 == "mkdir -p ~/.config/fish && echo 'vitrine shell-init fish | source' "
                 + ">> ~/.config/fish/config.fish")
+    }
+}
+
+extension ShellIntegrationInstallerTests {
+    /// An editor that saves atomically renames a fresh file over the startup
+    /// file's pathname. The descriptor then still points at the old, unlinked
+    /// inode — the path check is what must notice.
+    @Test func pathnameCheckDetectsAtomicReplacement() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let rcFile = directory.appendingPathComponent(".zshrc")
+        try Data("# original\n".utf8).write(to: rcFile)
+
+        let descriptor = open(rcFile.path, O_RDWR)
+        #expect(descriptor >= 0)
+        defer { close(descriptor) }
+        var status = stat()
+        #expect(fstat(descriptor, &status) == 0)
+
+        // Same inode: the pathname still resolves to the open descriptor.
+        #expect(ShellIntegrationInstaller.pathnameResolves(rcFile, toDeviceAndInodeOf: status))
+
+        // An atomic editor save: a new file renamed over the same pathname.
+        let replacement = directory.appendingPathComponent(".zshrc.new")
+        try Data("# replaced\n".utf8).write(to: replacement)
+        _ = try FileManager.default.replaceItemAt(rcFile, withItemAt: replacement)
+
+        #expect(!ShellIntegrationInstaller.pathnameResolves(rcFile, toDeviceAndInodeOf: status))
+    }
+
+    /// A deleted pathname (no replacement at all) also fails the check.
+    @Test func pathnameCheckFailsForADeletedPath() throws {
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vitrine-\(UUID().uuidString).zshrc")
+        try Data("# original\n".utf8).write(to: file)
+        let descriptor = open(file.path, O_RDWR)
+        #expect(descriptor >= 0)
+        defer { close(descriptor) }
+        var status = stat()
+        #expect(fstat(descriptor, &status) == 0)
+
+        try FileManager.default.removeItem(at: file)
+        #expect(!ShellIntegrationInstaller.pathnameResolves(file, toDeviceAndInodeOf: status))
     }
 }

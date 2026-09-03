@@ -20,16 +20,17 @@ from pathlib import Path
 from typing import Sequence
 
 
-SCHEMA_VERSION = 2
-SUPPORTED_BASELINE_SCHEMAS = {1, SCHEMA_VERSION}
+SCHEMA_VERSION = 3
+SUPPORTED_BASELINE_SCHEMAS = {1, 2, SCHEMA_VERSION}
 DEFAULT_RUNS = 7
 MINIMUM_P95_SAMPLES = 20
-DEFAULT_FOUNDATION_INCREMENTAL_FILE = Path("Vitrine/Terminal/CharacterWidth.swift")
-DEFAULT_MODEL_INCREMENTAL_FILE = Path("Vitrine/Models/SnapshotConfig.swift")
+DEFAULT_FOUNDATION_INCREMENTAL_FILE = Path("VitrineDomain/Terminal/CharacterWidth.swift")
+DEFAULT_MODEL_INCREMENTAL_FILE = Path("VitrineDomain/Models/StyleSnapshot.swift")
 DEFAULT_OUTPUT = Path("build/metrics/build-boundaries.json")
 DEFAULT_WORK_ROOT = Path("build/BuildBoundaryMetrics")
 FOCUSED_TEST_SUITE = "BuildBoundaryProbeTests"
 HOST_BACKED_TEST = f"VitrineTests/{FOCUSED_TEST_SUITE}"
+HOSTLESS_TEST = f"VitrineDomainTests/{FOCUSED_TEST_SUITE}"
 COMPARABLE_ENVIRONMENT_KEYS = (
     "macos",
     "architecture",
@@ -251,6 +252,7 @@ def xcode_command(
     derived_data: Path,
     package_cache: Path,
     action: str,
+    scheme: str = "Vitrine",
     extra: Sequence[str] = (),
 ) -> list[str]:
     return [
@@ -258,7 +260,7 @@ def xcode_command(
         "-project",
         "Vitrine.xcodeproj",
         "-scheme",
-        "Vitrine",
+        scheme,
         "-configuration",
         "Debug",
         "-destination",
@@ -273,45 +275,6 @@ def xcode_command(
         *extra,
         action,
     ]
-
-
-def create_hostless_probe(root: Path, destination: Path) -> None:
-    """Create a temporary package over representative Foundation-only code."""
-    sources = destination / "Sources" / "VitrineCoreProbe"
-    tests = destination / "Tests" / "VitrineCoreProbeTests"
-    sources.mkdir(parents=True, exist_ok=True)
-    tests.mkdir(parents=True, exist_ok=True)
-
-    for relative in [
-        Path("Vitrine/Terminal/ANSIParser.swift"),
-        Path("Vitrine/Terminal/CharacterWidth.swift"),
-        Path("Vitrine/Terminal/TerminalGrid.swift"),
-    ]:
-        shutil.copy2(root / relative, sources / relative.name)
-
-    (destination / "Package.swift").write_text(
-        """// swift-tools-version: 6.2
-import PackageDescription
-
-let package = Package(
-    name: "VitrineCoreProbe",
-    platforms: [.macOS(.v14)],
-    targets: [
-        .target(name: "VitrineCoreProbe"),
-        .testTarget(
-            name: "VitrineCoreProbeTests",
-            dependencies: ["VitrineCoreProbe"],
-            swiftSettings: [.define("VITRINE_HOSTLESS_PROBE")]
-        ),
-    ]
-)
-""",
-        encoding="utf-8",
-    )
-    shutil.copy2(
-        root / "Tests" / "BuildBoundaryProbeTests.swift",
-        tests / "BuildBoundaryProbeTests.swift",
-    )
 
 
 def require_self_test(condition: bool, label: str) -> None:
@@ -629,9 +592,6 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
         env=env,
         log_path=work_root / "logs" / "package-resolution.log",
     )
-    probe = work_root / "HostlessProbe"
-    create_hostless_probe(root, probe)
-
     samples: dict[str, list[Measurement]] = {
         "clean_build": [],
         "no_op_build": [],
@@ -639,8 +599,8 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
         "incremental_model_build": [],
         "host_backed_test_build": [],
         "host_backed_test_startup": [],
-        "hostless_test_build": [],
-        "hostless_test_startup": [],
+        "domain_test_build": [],
+        "domain_test_startup": [],
     }
     original_stats = {
         path: path.stat() for _, path in incremental_scenarios
@@ -652,11 +612,11 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
         for index in range(1, arguments.runs + 1):
             app_derived_data = work_root / f"AppDerivedData-{index}"
             host_backed_derived_data = work_root / f"HostedTestDerivedData-{index}"
-            hostless_scratch = work_root / f"HostlessScratch-{index}"
+            hostless_derived_data = work_root / f"HostlessDerivedData-{index}"
             for disposable_path in [
                 app_derived_data,
                 host_backed_derived_data,
-                hostless_scratch,
+                hostless_derived_data,
             ]:
                 shutil.rmtree(disposable_path, ignore_errors=True)
             log_dir = work_root / "logs" / f"run-{index}"
@@ -724,6 +684,7 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
                         derived_data=host_backed_derived_data,
                         package_cache=package_cache,
                         action="build-for-testing",
+                        scheme="VitrineHostedProbe",
                         extra=[f"-only-testing:{HOST_BACKED_TEST}"],
                     ),
                     cwd=root,
@@ -739,6 +700,7 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
                         derived_data=host_backed_derived_data,
                         package_cache=package_cache,
                         action="test-without-building",
+                        scheme="VitrineHostedProbe",
                         extra=[f"-only-testing:{HOST_BACKED_TEST}"],
                     ),
                     cwd=root,
@@ -748,40 +710,32 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
             )
             host_backed_test_counts.append(require_executed_tests(host_backed_log))
 
-            samples["hostless_test_build"].append(
+            samples["domain_test_build"].append(
                 run_timed(
                     label=f"Clean hostless test build {index}/{arguments.runs}",
-                    command=[
-                        "xcrun",
-                        "swift",
-                        "build",
-                        "--package-path",
-                        str(probe),
-                        "--scratch-path",
-                        str(hostless_scratch),
-                        "--build-tests",
-                    ],
+                    command=xcode_command(
+                        derived_data=hostless_derived_data,
+                        package_cache=package_cache,
+                        action="build-for-testing",
+                        scheme="VitrineDomain",
+                        extra=[f"-only-testing:{HOSTLESS_TEST}"],
+                    ),
                     cwd=root,
                     env=env,
                     log_path=log_dir / "hostless-test-build.log",
                 )
             )
             hostless_log = log_dir / "hostless-test-startup.log"
-            samples["hostless_test_startup"].append(
+            samples["domain_test_startup"].append(
                 run_timed(
                     label=f"Hostless focused test {index}/{arguments.runs}",
-                    command=[
-                        "xcrun",
-                        "swift",
-                        "test",
-                        "--package-path",
-                        str(probe),
-                        "--scratch-path",
-                        str(hostless_scratch),
-                        "--skip-build",
-                        "--filter",
-                        FOCUSED_TEST_SUITE,
-                    ],
+                    command=xcode_command(
+                        derived_data=hostless_derived_data,
+                        package_cache=package_cache,
+                        action="test-without-building",
+                        scheme="VitrineDomain",
+                        extra=[f"-only-testing:{HOSTLESS_TEST}"],
+                    ),
                     cwd=root,
                     env=env,
                     log_path=hostless_log,
@@ -793,7 +747,7 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
                 for disposable_path in [
                     app_derived_data,
                     host_backed_derived_data,
-                    hostless_scratch,
+                    hostless_derived_data,
                 ]:
                     shutil.rmtree(disposable_path, ignore_errors=True)
     finally:
@@ -818,21 +772,21 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
         for measurement in samples["clean_build"]
     ]
     host_backed_startup = metrics["host_backed_test_startup"]["median_seconds"]
-    hostless_startup = metrics["hostless_test_startup"]["median_seconds"]
+    hostless_startup = metrics["domain_test_startup"]["median_seconds"]
     host_backed_build = metrics["host_backed_test_build"]["median_seconds"]
-    hostless_build = metrics["hostless_test_build"]["median_seconds"]
+    hostless_build = metrics["domain_test_build"]["median_seconds"]
     comparisons = {
         "focused_test_count": focused_test_count,
-        "hostless_test_build_reduction_percent": reduction_percent(
+        "domain_test_build_reduction_percent": reduction_percent(
             float(host_backed_build), float(hostless_build)
         ),
-        "hostless_test_build_saved_seconds": round(
+        "domain_test_build_saved_seconds": round(
             float(host_backed_build) - float(hostless_build), 3
         ),
-        "hostless_test_startup_reduction_percent": reduction_percent(
+        "domain_test_startup_reduction_percent": reduction_percent(
             float(host_backed_startup), float(hostless_startup)
         ),
-        "hostless_test_startup_saved_seconds": round(
+        "domain_test_startup_saved_seconds": round(
             float(host_backed_startup) - float(hostless_startup), 3
         ),
     }
@@ -853,11 +807,15 @@ def measure(arguments: argparse.Namespace) -> dict[str, object]:
             "destination": "platform=macOS",
             "focused_test_source": "Tests/BuildBoundaryProbeTests.swift",
             "host_backed_test": HOST_BACKED_TEST,
-            "hostless_test": FOCUSED_TEST_SUITE,
-            "hostless_probe_sources": [
-                "Vitrine/Terminal/ANSIParser.swift",
-                "Vitrine/Terminal/CharacterWidth.swift",
-                "Vitrine/Terminal/TerminalGrid.swift",
+            "domain_test": HOSTLESS_TEST,
+            "domain_probe_sources": [
+                "VitrineDomain/Terminal/ANSIParser.swift",
+                "VitrineDomain/Terminal/CharacterWidth.swift",
+                "VitrineDomain/Terminal/TerminalGrid.swift",
+                "VitrineDomain/Terminal/TerminalScreen+Scanner.swift",
+                "VitrineDomain/Terminal/TerminalScreen+Parser.swift",
+                "VitrineDomain/Terminal/TerminalScreen+Operations.swift",
+                "VitrineDomain/Terminal/TerminalScreen+Serialization.swift",
             ],
         },
         "preparation": {

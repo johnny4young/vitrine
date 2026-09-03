@@ -1,6 +1,8 @@
 import AppKit
 import Foundation
 import OSLog
+import UniformTypeIdentifiers
+import VitrineRendering
 
 /// Owns artifact preflight, shared encoding, sidecar generation, and file output.
 enum CLIOutputWriter {
@@ -98,7 +100,7 @@ enum CLIOutputWriter {
     /// color profile — so the CLI never re-implements the format switch. The PNG branch
     /// keeps its `CGImage` only to report exact pixel dimensions; the format-specific
     /// dimension reporting below is the one genuinely CLI-only part. A render or encode
-    /// failure maps to `CLIError.renderFailed`; an unavailable system writer to
+    /// failure maps to an actionable render error; an unavailable system writer to
     /// `CLIError.unsupportedOutputFormat`; a write failure to
     /// `CLIError.writeFailed` — neither ever crashes the process.
     static func renderAndWrite(
@@ -109,24 +111,28 @@ enum CLIOutputWriter {
         guard options.format.isEncodingAvailable else {
             throw CLIError.unsupportedOutputFormat(options.format.displayName)
         }
-        var pngImage: CGImage?
-        let payload = ExportManager.encodedPayload(
-            options.format,
-            png: {
-                let image = ExportManager.renderCGImage(
-                    config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                    profile: options.profile, backgroundImageStore: backgroundStore,
-                    foregroundImageStore: foregroundStore)
-                pngImage = image
-                return image
-            },
-            pdf: {
-                ExportManager.pdfData(
-                    config, fixedSize: options.fixedSize,
-                    backgroundImageStore: backgroundStore,
-                    foregroundImageStore: foregroundStore)
-            })
-        guard let payload else { throw CLIError.renderFailed }
+        var rasterImage: CGImage?
+        let payload: (data: Data, type: UTType, ext: String)
+        do {
+            payload = try ExportManager.encodedPayloadChecked(
+                options.format,
+                raster: { () throws(RenderBudgetError) -> CGImage in
+                    let image = try ExportManager.renderCGImageChecked(
+                        config, scale: options.effectiveScale, fixedSize: options.fixedSize,
+                        profile: options.profile, backgroundImageStore: backgroundStore,
+                        foregroundImageStore: foregroundStore)
+                    rasterImage = image
+                    return image
+                },
+                pdf: {
+                    ExportManager.pdfData(
+                        config, fixedSize: options.fixedSize,
+                        backgroundImageStore: backgroundStore,
+                        foregroundImageStore: foregroundStore)
+                })
+        } catch let error {
+            throw CLIError.renderFailure(error)
+        }
         try write(payload.data, to: url)
         if options.textSidecar { try writeTextSidecar(for: config, options: options, beside: url) }
         if options.markdownSidecar {
@@ -136,9 +142,9 @@ enum CLIOutputWriter {
 
         switch options.format {
         case .png, .heic, .avif:
-            // Every raster format encodes the CGImage rendered above, so `pngImage`
+            // Every raster format encodes the CGImage rendered above, so `rasterImage`
             // is non-nil whenever a payload was produced.
-            return (pngImage?.width ?? 0, pngImage?.height ?? 0)
+            return (rasterImage?.width ?? 0, rasterImage?.height ?? 0)
         case .pdf:
             // A PDF is a vector document; report the logical point size it was laid
             // out at (the fixed preset size when one is pinned, else the hugged size

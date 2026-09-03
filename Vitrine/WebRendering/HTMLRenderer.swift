@@ -77,6 +77,9 @@ struct HTMLRenderer: Renderer {
             Log.render.error(
                 "HTMLRenderer failed to snapshot HTML (\(error.diagnosticReason, privacy: .public), \(html.count, privacy: .public) chars)"
             )
+            if case .renderTooLarge(let rejection) = error {
+                throw RenderError.renderTooLarge(rejection)
+            }
             throw RenderError.renderFailed
         }
 
@@ -94,6 +97,7 @@ extension WebSnapshotError {
     var diagnosticReason: String {
         switch self {
         case .invalidViewport: "invalid-viewport"
+        case .renderTooLarge: "render-too-large"
         case .invalidBaseURL: "invalid-base-url"
         case .loadFailed: "load-failed"
         case .timedOut: "timed-out"

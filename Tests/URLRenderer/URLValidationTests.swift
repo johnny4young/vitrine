@@ -70,6 +70,7 @@ struct URLValidationTests {
         for raw in [
             "http://localhost/admin",
             "http://localhost:3000",
+            "http://dev.localhost:3000",
             "http://127.0.0.1:8080",
             "http://127.5.4.3/",
             "http://[::1]:9000",
@@ -88,7 +89,8 @@ struct URLValidationTests {
 
     @Test func loopbackCanBeAllowedWithoutOpeningLocalNetworks() throws {
         for raw in [
-            "http://localhost:3000", "http://localhost./admin", "http://127.0.0.1:8080",
+            "http://localhost:3000", "http://localhost./admin", "http://dev.localhost:3000",
+            "http://127.0.0.1:8080",
             "http://127.0.0.2:5173", "http://127.1", "http://0177.1",
             "http://0x7f000001", "http://2130706433", "http://[::1]:9000",
             "http://[::ffff:127.0.0.1]",
@@ -107,6 +109,10 @@ struct URLValidationTests {
             "http://169.254.169.254/latest/meta-data/", "http://[fe80::1]/",
             "http://[fec0::1]/", "http://[fd00::1]/", "http://[ff02::1]/", "http://[::]/",
             "http://0.0.0.0:5000/", "http://224.0.0.251/", "http://240.0.0.1/",
+            // RFC 6890 special-purpose space that is non-global without being RFC 1918.
+            "http://192.0.0.8/", "http://192.0.2.1/", "http://192.88.99.1/",
+            "http://198.18.0.1/", "http://198.19.255.254/", "http://198.51.100.7/",
+            "http://203.0.113.9/", "http://[::ffff:198.18.0.1]/",
         ] {
             let url = try #require(URL(string: raw), "fixture \(raw) must parse")
             #expect(throws: URLValidationError.privateLocalhost, "\(raw) must stay blocked") {
@@ -117,7 +123,8 @@ struct URLValidationTests {
 
     @Test func loopbackPredicateIsAStrictSubsetOfTheDefaultBlocklist() {
         for host in [
-            "localhost", "localhost.", "127.0.0.1", "127.1", "0177.1", "0x7f000001",
+            "localhost", "localhost.", "dev.localhost", "127.0.0.1", "127.1", "0177.1",
+            "0x7f000001",
             "2130706433", "::1", "[::1]", "::ffff:127.0.0.1", "::ffff:127.1",
         ] {
             #expect(WebSnapshotConfig.isLoopbackHost(host: host), "\(host) must be loopback")
@@ -158,6 +165,7 @@ struct URLValidationTests {
         // the resolver.
         for host in [
             "localhost.",
+            "dev.localhost.",
             "service.local.",
             "127.1",
             "0177.1",

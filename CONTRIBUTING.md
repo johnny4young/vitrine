@@ -110,7 +110,7 @@ work.
 
 ## Adding a theme
 
-Themes live in `Vitrine/Models/Theme.swift` (metadata and Highlight.js theme name).
+Themes live in `VitrineDomain/Models/Theme.swift` (metadata and Highlight.js theme name).
 Add the `Theme` value, include it in
 `Theme.builtIns` (kept alphabetical by display name), and make sure the `hlJsTheme`
 matches a bundled Highlight.js theme name.

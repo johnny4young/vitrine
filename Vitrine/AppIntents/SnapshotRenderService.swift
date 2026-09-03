@@ -23,15 +23,36 @@ enum SnapshotRenderService {
     enum RenderError: Error, Equatable, CustomStringConvertible {
         /// The request carried no usable (non-empty) code to render.
         case emptyCode
-        /// Rendering or encoding produced no image (an internal renderer failure).
-        case renderFailed
+        /// The resolved canvas exceeds Vitrine's safe raster allocation budget.
+        case tooLarge
+        /// The system could not allocate the bounded render buffer.
+        case allocationFailed
+        /// The selected raster format could not be encoded.
+        case encodingFailed
+        /// Rendering was cancelled before producing an artifact.
+        case cancelled
 
         var description: String {
             switch self {
             case .emptyCode:
                 "There is no code to render. Provide some text first."
-            case .renderFailed:
-                "Vitrine could not render an image from that code."
+            case .tooLarge:
+                "That image is too large to render safely. Reduce the canvas size, scale, or source length."
+            case .allocationFailed:
+                "Vitrine could not allocate the image buffer. Reduce the canvas size or scale and try again."
+            case .encodingFailed:
+                "Vitrine rendered the image but could not encode the selected format."
+            case .cancelled:
+                "Rendering was cancelled before an image was produced."
+            }
+        }
+
+        static func renderFailure(_ error: RenderBudgetError) -> RenderError {
+            switch error {
+            case .tooLarge: .tooLarge
+            case .allocationFailed: .allocationFailed
+            case .encodingFailed: .encodingFailed
+            case .cancelled: .cancelled
             }
         }
     }
@@ -40,8 +61,8 @@ enum SnapshotRenderService {
     ///
     /// Raster formats go through `renderCGImage` + ImageIO (honoring the scale,
     /// fixed size, and color profile); PDF uses `pdfData`. Throws
-    /// `RenderError.emptyCode` for empty input and `RenderError.renderFailed` when
-    /// the pipeline yields nothing, so a caller never has to interpret a bare `nil`.
+    /// `RenderError.emptyCode` for empty input and a typed render error when the
+    /// pipeline yields nothing, so a caller never has to interpret a bare `nil`.
     static func renderData(
         _ request: SnapshotRenderRequest,
         themeResolver: (String) -> Theme = Theme.theme(withID:)
@@ -49,24 +70,23 @@ enum SnapshotRenderService {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig(themeResolver: themeResolver)
 
-        let data = ExportManager.encodedPayload(
-            request.format,
-            png: {
-                ExportManager.renderCGImage(
-                    config, scale: request.effectiveScale, fixedSize: request.fixedSize,
-                    profile: request.profile)
-            },
-            pdf: { ExportManager.pdfData(config, fixedSize: request.fixedSize) }
-        )?.data
-
-        guard let data else {
+        do {
+            let payload = try ExportManager.encodedPayloadChecked(
+                request.format,
+                raster: { () throws(RenderBudgetError) -> CGImage in
+                    try ExportManager.renderCGImageChecked(
+                        config, scale: request.effectiveScale, fixedSize: request.fixedSize,
+                        profile: request.profile)
+                },
+                pdf: { ExportManager.pdfData(config, fixedSize: request.fixedSize) })
+            Log.export.notice(
+                "Automation rendered an image (\(request.format.rawValue, privacy: .public))")
+            return payload.data
+        } catch let error {
             Log.export.error(
                 "Automation render produced no \(request.format.rawValue, privacy: .public)")
-            throw RenderError.renderFailed
+            throw RenderError.renderFailure(error)
         }
-        Log.export.notice(
-            "Automation rendered an image (\(request.format.rawValue, privacy: .public))")
-        return data
     }
 
     /// Renders `request` to a `CGImage` — the raster the Services menu hands back
@@ -80,16 +100,16 @@ enum SnapshotRenderService {
     ) throws -> CGImage {
         guard request.hasRenderableCode else { throw RenderError.emptyCode }
         let config = request.makeConfig(themeResolver: themeResolver)
-        guard
-            let cgImage = ExportManager.renderCGImage(
+        do {
+            let cgImage = try ExportManager.renderCGImageChecked(
                 config, scale: request.effectiveScale, fixedSize: request.fixedSize,
                 profile: request.profile)
-        else {
+            Log.export.notice("Automation rendered an image for the Services menu")
+            return cgImage
+        } catch let error {
             Log.export.error("Automation render produced no image")
-            throw RenderError.renderFailed
+            throw RenderError.renderFailure(error)
         }
-        Log.export.notice("Automation rendered an image for the Services menu")
-        return cgImage
     }
 
     /// Renders `request` to an `NSImage` — a convenience over `renderCGImage` for
