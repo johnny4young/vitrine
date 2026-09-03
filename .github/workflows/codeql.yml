@@ -18,6 +18,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # JavaScript/TypeScript extraction is buildless and finishes in minutes, so it runs
+  # on every event including pull requests. The Swift lane traces a full Xcode build
+  # on a hosted macOS runner: 40 minutes when it finishes and, on identical code, an
+  # intermittent extractor stall that only a timeout ends. In the repository's whole
+  # history it has produced one alert, so it does not gate pull requests: it runs on
+  # pushes to main, on the weekly schedule, and on manual dispatch, where a slow or
+  # stalled job costs nobody a review cycle.
   analyze:
     name: Analyze · ${{ matrix.label }}
     strategy:
@@ -28,6 +35,33 @@ jobs:
             label: JavaScript and TypeScript
             runner: ubuntu-latest
             build-mode: none
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
+        with:
+          category: /language:${{ matrix.language }}
+
+  analyze-swift:
+    name: Analyze · ${{ matrix.label }}
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
           - language: swift
             label: Swift
             runner: macos-15
