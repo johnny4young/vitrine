@@ -72,38 +72,42 @@ jobs:
       # timeout kills everything and leaves no log to read. Bound the STEP instead, so a
       # stuck extraction still hands its logs to the upload below.
       # The 75-minute limit is the outer bound. Inside it, a watchdog distinguishes a
-      # SLOW build from a STALLED one. Evidence from stalled runs: xcodebuild's own
-      # stdout goes silent at "EmitSwiftModule … Vitrine" for the rest of the budget
-      # (50 minutes observed), so the build's output is the progress signal. The
-      # earlier design watched file activity under the CodeQL database instead, and
-      # was defeated by itself: the tracer intercepted the watchdog's own `sleep` and
-      # `find`, appending ~28 lines to build-tracer.log per tick, so the directory
-      # never looked idle. The watchdog therefore runs its commands with the tracer
-      # variables cleared — they are neither traced nor logged — and on a stall kills
-      # the whole build tree, including the extractor processes that otherwise
-      # survive a step timeout and wedge every later step.
+      # SLOW build from a STALLED one by watching for new files under the CodeQL
+      # database: a progressing extraction writes TRAP files continuously, a stalled
+      # one writes nothing for the rest of the budget (50 minutes observed). The
+      # tracer's own log and diagnostics are excluded from that check because the
+      # tracer intercepts the watchdog's `sleep` and `find` too and appends to
+      # build-tracer.log on every tick, which once made the directory look busy
+      # forever. On a stall the watchdog kills the extractor and compiler processes
+      # by exact name (they otherwise survive a step timeout and wedge every later
+      # step), then the build tree, and exits 124. The build runs directly in the
+      # step's process tree with no pipes or environment wrappers: an attempt that
+      # mirrored its output through `tee` under a cleared tracer environment left
+      # the hosted runner unable to upload logs or enforce its own step timeout.
       - name: Build Swift database
         if: matrix.language == 'swift'
         timeout-minutes: 75
         run: |
-          set -o pipefail
-          untraced() { env DYLD_INSERT_LIBRARIES= SEMMLE_PRELOAD_libtrace= CODEQL_RUNNER= "$@"; }
-          build_log="$RUNNER_TEMP/codeql-build.log"
-          : > "$build_log"
-          (make build 2>&1 | tee "$build_log") & build=$!
-          last_size=0; quiet=0
+          db="$RUNNER_TEMP/codeql_databases"
+          marker="$RUNNER_TEMP/codeql-activity-marker"
+          touch "$marker"
+          make build & build=$!
+          quiet=0
           while kill -0 "$build" 2>/dev/null; do
-            untraced sleep 60
-            size="$(untraced stat -f %z "$build_log" 2>/dev/null || echo 0)"
-            if [ "$size" != "$last_size" ]; then last_size="$size"; quiet=0; else quiet=$((quiet + 1)); fi
+            sleep 60
+            if [ -n "$(find "$db" -type f -newer "$marker" -not -path '*/log/*' -not -path '*/diagnostic/*' -print -quit 2>/dev/null)" ]; then
+              quiet=0; touch "$marker"
+            else
+              quiet=$((quiet + 1))
+            fi
             if [ "$quiet" -ge 15 ]; then
-              echo "::error::STALLED: no CodeQL extraction activity for 15 minutes (xcodebuild output silent since its last line below); killing the build."
-              untraced tail -n 5 "$build_log"
-              untraced pkill -TERM -f 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null
-              untraced pkill -TERM -P "$build" 2>/dev/null; kill -TERM "$build" 2>/dev/null
-              untraced sleep 5
-              untraced pkill -KILL -f 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null
-              untraced pkill -KILL -P "$build" 2>/dev/null; kill -KILL "$build" 2>/dev/null
+              echo "::error::STALLED: no CodeQL extraction activity for 15 minutes; killing the build."
+              echo "processes to terminate:"; pgrep -lx 'extractor.real|swift-frontend|xcodebuild' || echo "  (none)"
+              pkill -TERM -x 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null
+              pkill -TERM -P "$build" 2>/dev/null; kill -TERM "$build" 2>/dev/null
+              sleep 5
+              pkill -KILL -x 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null
+              pkill -KILL -P "$build" 2>/dev/null; kill -KILL "$build" 2>/dev/null
               wait "$build" 2>/dev/null
               exit 124
             fi
@@ -128,12 +132,10 @@ jobs:
         run: |
           set +e
           bounded() { perl -e 'alarm shift; exec @ARGV' "$@"; }   # bounded <seconds> <command…>
-          pkill -KILL -f 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null && echo "killed orphaned build/extractor processes"
+          pkill -KILL -x 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null && echo "killed orphaned build/extractor processes"
           db="$RUNNER_TEMP/codeql_databases"
           stage="$RUNNER_TEMP/codeql-swift-diagnostics"; mkdir -p "$stage"
           echo "host arch: $(uname -m)"
-          echo "--- last 20 xcodebuild lines ---"
-          bounded 20 tail -n 20 "$RUNNER_TEMP/codeql-build.log" 2>/dev/null | tee "$stage/build-tail.log"
           echo "--- last 60 tracer lines ---"
           bounded 30 tail -n 60 "${CODEQL_TRACER_LOG:-$db/log/build-tracer.log}" 2>/dev/null | tee "$stage/tracer-tail.log"
           # Per-language extractor logs are the evidence for a stall (codeql_databases/*/log);

@@ -432,8 +432,8 @@ struct WorkflowConfigurationTests {
             .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
             .joined(separator: "\n")
         #expect(
-            executableLines.contains("(make build 2>&1 | tee \"$build_log\") & build=$!"),
-            "CodeQL must trace the project build, mirror its output for the watchdog, and retain its process"
+            executableLines.contains("make build & build=$!"),
+            "CodeQL must trace the project build and retain its process for the watchdog"
         )
 
         #expect(workflow.contains("pull_request:"))
