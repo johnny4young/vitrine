@@ -102,11 +102,11 @@ jobs:
             fi
             if [ "$quiet" -ge 15 ]; then
               echo "::error::STALLED: no CodeQL extraction activity for 15 minutes; killing the build."
-              echo "processes to terminate:"; pgrep -lx 'extractor.real|swift-frontend|xcodebuild' || echo "  (none)"
-              pkill -TERM -x 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null
+              echo "processes to terminate:"; pgrep -lx 'extractor\.real|swift-frontend|xcodebuild' || echo "  (none)"
+              pkill -TERM -x 'extractor\.real|swift-frontend|xcodebuild' 2>/dev/null
               pkill -TERM -P "$build" 2>/dev/null; kill -TERM "$build" 2>/dev/null
               sleep 5
-              pkill -KILL -x 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null
+              pkill -KILL -x 'extractor\.real|swift-frontend|xcodebuild' 2>/dev/null
               pkill -KILL -P "$build" 2>/dev/null; kill -KILL "$build" 2>/dev/null
               wait "$build" 2>/dev/null
               exit 124
@@ -132,7 +132,7 @@ jobs:
         run: |
           set +e
           bounded() { perl -e 'alarm shift; exec @ARGV' "$@"; }   # bounded <seconds> <command…>
-          pkill -KILL -x 'extractor.real|swift-frontend|xcodebuild' 2>/dev/null && echo "killed orphaned build/extractor processes"
+          pkill -KILL -x 'extractor\.real|swift-frontend|xcodebuild' 2>/dev/null && echo "killed orphaned build/extractor processes"
           db="$RUNNER_TEMP/codeql_databases"
           stage="$RUNNER_TEMP/codeql-swift-diagnostics"; mkdir -p "$stage"
           echo "host arch: $(uname -m)"
