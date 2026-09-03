@@ -26,7 +26,7 @@ jobs:
   # pushes to main, on the weekly schedule, and on manual dispatch, where a slow or
   # stalled job costs nobody a review cycle.
   analyze:
-    name: Analyze · ${{ matrix.label }}
+    name: Analyze · JavaScript and TypeScript
     strategy:
       fail-fast: false
       matrix:
@@ -56,7 +56,9 @@ jobs:
           category: /language:${{ matrix.language }}
 
   analyze-swift:
-    name: Analyze · ${{ matrix.label }}
+    # A job skipped by its `if` never expands its matrix, so an expression here would
+    # surface on pull requests as the raw template. The name is static instead.
+    name: Analyze · Swift
     if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
