@@ -245,10 +245,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // to schedule checks as soon as its controller exists, but the controller lives
         // behind a lazy `shared`, so before this call it was created only when the user
         // opened "Check for Updates" — and a user who never opened that menu was never
-        // offered an update. Started after the UI is up so it cannot delay first paint,
-        // and never under a test host (see `shouldStartUpdateScheduler`).
+        // offered an update.
+        //
+        // Deferred to a later turn rather than run inline: SwiftUI's scene bring-up
+        // happens only after this method returns (see the menu note above), so anything
+        // synchronous here is work done before the first frame. Nothing waits on the
+        // updater, so it has no claim on that time. Never started under a test host,
+        // whose throwaway defaults suite would reopen Sparkle's one-time consent window
+        // on every launch (see `shouldStartUpdateScheduler`).
         if Self.shouldStartUpdateScheduler(ProcessInfo.processInfo.environment) {
-            SoftwareUpdater.startBackgroundScheduler()
+            Task(priority: .utility) { SoftwareUpdater.startBackgroundScheduler() }
         }
 
         // Pay the syntax highlighter's one-time cold start now, off the render path, so
