@@ -343,6 +343,28 @@ jobs:
             done
           fi
 
+      # The measurements themselves, kept per row. The annotations above only fire when a
+      # fixture crosses its soft target, so a fixture drifting from 180 ms to 290 ms under
+      # a 300 ms target leaves no trace. Retaining the numbers is what lets a later step
+      # compare a run against a recorded baseline instead of against a fixed threshold.
+      - name: Collect performance measurements
+        if: always()
+        run: |
+          if [ -f perf.log ]; then
+            grep '^PERF-JSON ' perf.log | sed 's/^PERF-JSON //' > perf-measurements.jsonl || true
+            wc -l < perf-measurements.jsonl | xargs -I{} echo "recorded {} measurements"
+          fi
+
+      - name: Upload performance measurements
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: perf-measurements-${{ matrix.artifact }}
+          path: perf-measurements.jsonl
+          if-no-files-found: warn
+          retention-days: 30
+
       # Golden-image regression suite. The strict pixel comparison runs
       # only on the pinned runner image recorded in Tests/Fixtures/Golden/
       # manifest.json; on any other image each scenario logs `GOLDEN SKIP` and the

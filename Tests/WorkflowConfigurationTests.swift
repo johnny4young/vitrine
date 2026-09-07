@@ -988,4 +988,27 @@ struct WorkflowConfigurationTests {
             }
         }
     }
+    // MARK: - Contract: performance measurements survive the run that produced them
+
+    /// The performance step annotates a fixture only when it crosses its soft target, so
+    /// drift underneath one is invisible: a fixture moving from 180 ms to 290 ms against a
+    /// 300 ms target produces no signal at all. Retaining the measurements per row is what
+    /// makes a later comparison against a recorded baseline possible, so assert the
+    /// collection and upload stay wired and stay unique per compatibility row.
+    @Test func ciRetainsPerformanceMeasurementsPerRow() throws {
+        let ci = try Self.ci()
+        #expect(
+            ci.contains("PERF-JSON"),
+            "CI must collect the machine-readable measurements the suite emits")
+        #expect(ci.contains("perf-measurements.jsonl"))
+        #expect(
+            ci.contains("name: perf-measurements-${{ matrix.artifact }}"),
+            "measurement artifacts must be unique per compatibility row")
+
+        let perf = try Self.text("Tests", "PerformanceTests.swift")
+        #expect(
+            perf.contains(#"PERF-JSON {"label""#),
+            "the suite must emit each measurement in a machine-readable form")
+    }
+
 }

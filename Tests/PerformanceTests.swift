@@ -91,6 +91,24 @@ struct PerformanceTests {
         static let highlightingTarget: Duration = .milliseconds(250)
         static let highlightingHardCeiling: Duration = .milliseconds(1500)
 
+        /// Hard ceiling for a terminal capture far larger than any screenshot: the size
+        /// band a recorded session or a piped build log actually reaches. The renderer has
+        /// no size ceiling on this path, unlike source code, which falls back to plain
+        /// text past a documented limit — so this fixture is what says whether that
+        /// asymmetry costs anything.
+        ///
+        /// No soft target, for the same reason the large-snippet fixtures have none:
+        /// there is no agreed budget for a megabyte of terminal output yet. The measured
+        /// number is the point, and a target invented before the evidence would either
+        /// warn on every run or be set high enough to mean nothing.
+        static let largeTerminalHardCeiling: Duration = .milliseconds(6000)
+
+        /// Soft target and hard ceiling for storing a capture in Recents, including the
+        /// thumbnail the gallery shows. This runs inside the quick-capture shortcut, so
+        /// whatever it costs is added to the gesture the product is built around.
+        static let recentsAddTarget: Duration = .milliseconds(30)
+        static let recentsAddHardCeiling: Duration = .milliseconds(1000)
+
         /// Soft target and hard ceiling for collecting the largest accepted remote image from
         /// transport-sized chunks. The network is deliberately excluded: this isolates the local
         /// copy/allocation cost that replaced byte-at-a-time async iteration.
@@ -157,6 +175,41 @@ struct PerformanceTests {
                 + "\u{1B}[3;36m(suite \(index % 7))\u{1B}[0m"
         }
         config.code = rows.joined(separator: "\n")
+        return config
+    }
+
+    /// A terminal capture around a megabyte — a recorded session or a piped build log,
+    /// not a screenshot. Built from the same styled rows as the small fixture so the two
+    /// differ in size alone and their costs are comparable.
+    private static func largeTerminalCode() -> String {
+        let row =
+            "\u{1B}[32m✓\u{1B}[0m \u{1B}[1mTest\u{1B}[0m \u{1B}[2mpassed\u{1B}[0m "
+            + "in \u{1B}[38;5;214m12 ms\u{1B}[0m \u{1B}[3;36m(suite 3)\u{1B}[0m"
+        let target = 1_000_000
+        var rows: [String] = []
+        var size = 0
+        var index = 0
+        while size < target {
+            let line = "\(row) line \(index)"
+            rows.append(line)
+            size += line.utf8.count + 1
+            index += 1
+        }
+        return rows.joined(separator: "\n")
+    }
+
+    /// The large fixture with the gutter turned on, and nothing else changed. Without
+    /// line numbers the code renders as a single text block; with them, every line
+    /// becomes its own row of views. Holding the line count identical to `large` is what
+    /// makes the gap between the two labels the cost of the gutter itself rather than a
+    /// difference in input.
+    ///
+    /// It stays at 300 lines because the render budget refuses taller canvases outright —
+    /// 500 lines returns no image at all, with or without the gutter — so a bigger fixture
+    /// would time a refusal instead of a render.
+    private static func lineNumberedConfig() -> SnapshotConfig {
+        var config = largeConfig()
+        config.showLineNumbers = true
         return config
     }
 
@@ -252,6 +305,13 @@ struct PerformanceTests {
         print(
             "PERF \(label) median=\(stats.median.milliseconds)ms "
                 + "p95=\(stats.p95.milliseconds)ms n=\(stats.count)")
+        // The same numbers in a shape a script can read. The human line above is for
+        // someone reading the log; this one is for comparing a run against a recorded
+        // baseline, which is the only way a drift that stays under the soft target — say
+        // 180 ms creeping to 290 ms against a 300 ms target — becomes visible at all.
+        print(
+            #"PERF-JSON {"label":"\#(label)","median_ms":\#(stats.median.milliseconds),"#
+                + #""p95_ms":\#(stats.p95.milliseconds),"samples":\#(stats.count)}"#)
         if let target, stats.p95 > target {
             print(
                 "PERF WARN \(label) p95 \(stats.p95.milliseconds)ms exceeds target "
@@ -386,21 +446,108 @@ struct PerformanceTests {
             "remote-chunks-25mb exceeded the transport hard ceiling")
     }
 
-    private func measureHighlighting(_ code: String, label: String) {
+    /// Every sample highlights a *distinct* document. The point of these fixtures is the
+    /// uncached tokenization cost, and highlighting the identical string seven times would
+    /// measure whatever cache sits in front of it rather than the work itself — silently,
+    /// the moment such a cache is added. A trailing comment is enough to make each sample
+    /// unique without changing the shape or size of the input.
+    // MARK: - Cases the render fixtures do not reach
+
+    @Test func largeTerminalCaptureMeetsBudget() {
+        // Source code past a documented size renders as plain text instead of being
+        // tokenized. A terminal capture has no such ceiling: it goes through the full
+        // parser, emulator, and per-run styling at any size the file loader accepts,
+        // which is several megabytes. This measures what that costs at a megabyte.
         let manager = HighlightManager.shared
+        let code = Self.largeTerminalCode()
         let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-        _ = manager.attributedString(for: code, language: .swift, theme: .oneDark, font: font)
+        _ = manager.terminalAttributedString(
+            for: code, theme: .oneDark, font: font, columns: nil)
 
         let clock = ContinuousClock()
         var durations: [Duration] = []
         durations.reserveCapacity(Self.sampleCount)
-        for _ in 0..<Self.sampleCount {
+        for sample in 0..<Self.sampleCount {
+            // Distinct per sample for the same reason the highlighting fixtures are:
+            // otherwise this measures a cache rather than the work.
+            let input = code + "\n// sample \(sample)"
+            var output: AttributedString?
+            let elapsed = clock.measure {
+                output = manager.terminalAttributedString(
+                    for: input, theme: .oneDark, font: font, columns: nil)
+            }
+            #expect(output?.characters.isEmpty == false)
+            durations.append(elapsed)
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "terminal-large", target: nil)
+        #expect(
+            stats.p95 <= PerfBudget.largeTerminalHardCeiling,
+            "terminal-large exceeded the large-terminal hard ceiling")
+    }
+
+    @Test func lineNumberedRenderMeetsBudget() {
+        // The `large` fixture's own lines, rendered with the gutter on. That fixture is
+        // the control: the gap between the two labels is the per-line cost of building a
+        // row of views per line, which is the number that says whether the gutter is
+        // worth redesigning or is already cheap.
+        measureRender(
+            Self.lineNumberedConfig(), label: "large-gutter",
+            target: nil, hardCeiling: PerfBudget.largeHardCeiling)
+    }
+
+    @Test func storingARecentCaptureMeetsBudget() throws {
+        // Quick capture renders the image, copies it, writes the file, and then stores the
+        // capture in Recents — which renders a *second* image for the gallery thumbnail
+        // and writes it, before the shortcut returns. This isolates that trailing segment,
+        // with the real thumbnail renderer, because its cost is what decides whether it
+        // belongs on the critical path at all.
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("perf-recents-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = RecentsStore(
+            defaults: testDefaults(),
+            thumbnails: RecentsThumbnailCache(directory: directory))
+        let code = Self.defaultConfig().code
+
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+        // One discarded warm-up, matching every other fixture here.
+        store.add(
+            Capture(code: code, languageID: "swift", themeID: "one-dark", date: .now))
+        for sample in 0..<Self.sampleCount {
+            // A distinct document per sample: `add` de-duplicates by code, so repeating
+            // one would measure the replace path instead of a fresh capture.
+            let capture = Capture(
+                code: "\(code)\n// sample \(sample)", languageID: "swift",
+                themeID: "one-dark", date: .now)
+            durations.append(clock.measure { store.add(capture) })
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "recents-add", target: PerfBudget.recentsAddTarget)
+        #expect(
+            stats.p95 <= PerfBudget.recentsAddHardCeiling,
+            "recents-add exceeded the Recents hard ceiling")
+    }
+
+    private func measureHighlighting(_ code: String, label: String) {
+        let manager = HighlightManager.shared
+        let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        _ = manager.attributedString(
+            for: code + "\n// warm-up", language: .swift, theme: .oneDark, font: font)
+
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+        for sample in 0..<Self.sampleCount {
+            let input = code + "\n// sample \(sample)"
             var output: NSAttributedString?
             let elapsed = clock.measure {
                 output = manager.attributedString(
-                    for: code, language: .swift, theme: .oneDark, font: font)
+                    for: input, language: .swift, theme: .oneDark, font: font)
             }
-            #expect(output?.string == code)
+            #expect(output?.string == input)
             durations.append(elapsed)
         }
         let stats = Statistics(durations)
