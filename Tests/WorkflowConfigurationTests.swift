@@ -151,6 +151,16 @@ struct WorkflowConfigurationTests {
         }
 
         #expect(!ci.contains("runs-on: macos-latest"))
+        // The release workflow builds the artifact users install. It must not run on a
+        // moving image either: the toolchain of a shipped DMG would then change with no
+        // commit, no pull request, and no review.
+        let release = try Self.release()
+        #expect(
+            !release.contains("runs-on: macos-latest"),
+            "the release workflow must run on an explicit, certified image")
+        #expect(
+            release.contains("runs-on: macos-26"),
+            "the release workflow must run on an image the CI matrix certifies")
         #expect(buildJob.contains("make test-coverage"))
         #expect(buildJob.contains("COVERAGE_PLATFORM=\"${{ matrix.coverage }}\""))
         #expect(buildJob.contains("fetch-depth: 0"))
@@ -737,12 +747,14 @@ struct WorkflowConfigurationTests {
 
     // MARK: - Contract: the release gate logs the exact toolchain before building
 
-    /// The release `verify` job still runs on the moving `macos-latest` image, so the
-    /// "log exact macOS/Xcode/Swift versions before building" contract applies to it:
-    /// a DMG must be traceable to the toolchain it was validated against. Assert
-    /// the version-probe commands are present in `release.yml` and run before its first
-    /// build, so a future edit that drops toolchain logging from the release gate fails
-    /// the suite rather than shipping an untraceable artifact.
+    /// The release jobs run on the same explicit image the CI matrix certifies, so the
+    /// signed DMG cannot be built on a toolchain no lane has validated. `ci.yml` has
+    /// forbidden the moving `macos-latest` image since the compatibility matrix landed;
+    /// the lane that actually produces the artifact users install kept it until now.
+    ///
+    /// Toolchain logging stays required regardless: the image is pinned but still
+    /// receives rolling updates, and `xcode-version: latest-stable` resolves at run
+    /// time, so a DMG must remain traceable to the exact versions that built it.
     @Test func releaseGateLogsExactToolchainVersionsBeforeBuilding() throws {
         let release = try Self.release()
         #expect(release.contains("sw_vers"), "release gate must log the macOS version (sw_vers)")
