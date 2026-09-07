@@ -39,7 +39,7 @@ jobs:
   verify:
     name: Verify (lint, Debug/Release builds, UI-test build, test)
     if: github.event_name == 'push'
-    runs-on: macos-latest
+    runs-on: macos-26
     # Cap well under the 6-hour default so a wedged SPM resolve or hung
     # xcodebuild surfaces in minutes on the tag run.
     timeout-minutes: 60
@@ -154,7 +154,7 @@ jobs:
     outputs:
       version: ${{ steps.checksum.outputs.version }}
       sha256: ${{ steps.checksum.outputs.sha256 }}
-    runs-on: macos-latest
+    runs-on: macos-26
     # Notarization (`notarytool submit --wait`, twice: app + DMG) can stall on
     # Apple-side outages; cap the job instead of waiting out the 6-hour default.
     timeout-minutes: 90
@@ -521,7 +521,7 @@ jobs:
     name: QA uploaded release candidate
     if: github.event_name == 'push'
     needs: candidate
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
     permissions:
       actions: read
@@ -577,7 +577,7 @@ jobs:
   publish:
     name: Promote vetted candidate to GitHub release
     if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
     permissions:
       actions: read
@@ -712,7 +712,7 @@ jobs:
     name: QA published release artifact
     if: github.event_name == 'workflow_dispatch'
     needs: publish
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
     permissions:
       contents: read
@@ -758,7 +758,7 @@ jobs:
     name: Publish Homebrew, Sparkle feed, and distribution metadata
     if: github.event_name == 'workflow_dispatch'
     needs: published-qa
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
     permissions:
       contents: read

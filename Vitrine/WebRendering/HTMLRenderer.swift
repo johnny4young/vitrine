@@ -29,12 +29,6 @@ struct HTMLRenderer: Renderer {
     /// Color profile to tag the output with — sRGB by default.
     var profile: ColorProfile = .sRGB
 
-    /// Whether remote (network) loads are allowed for the HTML. `false` (the
-    /// default) blocks every remote request, keeping pasted HTML local; a caller
-    /// flips this on only for HTML the user has explicitly allowed to reach the
-    /// network.  owns the real URL network mode.
-    var allowsNetwork: Bool = false
-
     /// An optional **local** base URL (a user-selected file or a bundled resource)
     /// for resolving relative asset references. `nil` (the default) loads with no
     /// base URL, so relative references cannot resolve to anything.
@@ -63,7 +57,6 @@ struct HTMLRenderer: Renderer {
             html: html,
             viewport: viewport,
             scale: scale,
-            allowsNetwork: allowsNetwork,
             localBaseURL: localBaseURL)
 
         let rawImage: CGImage
