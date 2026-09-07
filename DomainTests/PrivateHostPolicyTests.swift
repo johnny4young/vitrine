@@ -56,4 +56,50 @@ struct PrivateHostPolicyTests {
         #expect(!PrivateHostPolicy.isPrivateLocalhost(host: host))
         #expect(!PrivateHostPolicy.isRefusedHost(host, allowLoopback: false))
     }
+    // MARK: - IPv4 addresses hidden inside IPv6 literals
+
+    /// Two transition formats carry an IPv4 address inside an IPv6 literal, so a private
+    /// destination can be written entirely in IPv6 and never reach the IPv4 table. The
+    /// asymmetry this closes: the IPv4 table already refuses the 6to4 relay anycast
+    /// prefix, while a 6to4 address wrapping a private target was classified public.
+    @Test(
+        "6to4 and NAT64 literals wrapping a private IPv4 address are private",
+        arguments: [
+            ("6to4 loopback", "2002:7f00:1::"),
+            ("6to4 link-local metadata", "2002:a9fe:a9fe::"),
+            ("6to4 private 10/8", "2002:a00:1::"),
+            ("6to4 private 192.168/16", "2002:c0a8:101::"),
+            ("NAT64 loopback", "64:ff9b::7f00:1"),
+            ("NAT64 link-local metadata", "64:ff9b::a9fe:a9fe"),
+            ("NAT64 private 172.16/12", "64:ff9b::ac10:1"),
+        ])
+    func embeddedPrivateIPv4IsPrivate(_ fixture: (kind: String, host: String)) {
+        #expect(
+            PrivateHostPolicy.isPrivateLocalhost(host: fixture.host),
+            Comment(rawValue: fixture.kind))
+        #expect(
+            PrivateHostPolicy.isPrivateLocalhost(host: "[\(fixture.host)]"),
+            "\(fixture.kind) in URL bracket form")
+    }
+
+    /// The same prefixes wrapping a public address stay public: this refuses an embedded
+    /// private destination, not the transition mechanism.
+    @Test(
+        "6to4 and NAT64 literals wrapping a public IPv4 address stay public",
+        arguments: ["2002:808:808::", "2002:5db8:d822::", "64:ff9b::808:808"])
+    func embeddedPublicIPv4StaysPublic(host: String) {
+        #expect(!PrivateHostPolicy.isPrivateLocalhost(host: host))
+    }
+
+    /// A wrapped loopback address is refused even with the local-address opt-in on. The
+    /// opt-in exists to reach a development server on this Mac; a tunnelled spelling does
+    /// not resolve to the loopback interface, so releasing it would widen the opt-in past
+    /// what the user agreed to.
+    @Test func theLocalAddressOptInDoesNotReleaseTunnelledLoopback() {
+        for host in ["2002:7f00:1::", "64:ff9b::7f00:1"] {
+            #expect(!PrivateHostPolicy.isLoopbackHost(host: host))
+            #expect(PrivateHostPolicy.isRefusedHost(host, allowLoopback: true))
+        }
+    }
+
 }

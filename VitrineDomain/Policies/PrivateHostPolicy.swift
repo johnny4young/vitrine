@@ -109,6 +109,25 @@ nonisolated public enum PrivateHostPolicy {
         if bytes[0] == 0xff { return true }
         if bytes[0] == 0xfe, (bytes[1] & 0xc0) >= 0x80 { return true }
         if (bytes[0] & 0xfe) == 0xfc { return true }
+        // Transition formats carry an IPv4 address inside an IPv6 literal, so a
+        // private destination can be spelled entirely in IPv6 and skip the IPv4
+        // table above. `::ffff:` is handled by the caller; these two are not.
+        //
+        // 6to4 (`2002::/16`, RFC 3056) embeds the address in bytes 2...5. Note the
+        // IPv4 table already refuses this scheme's relay anycast prefix, so
+        // refusing only one half of the same mechanism was the asymmetry here.
+        if bytes[0] == 0x20, bytes[1] == 0x02, isPrivateIPv4(Array(bytes[2...5])) {
+            return true
+        }
+        // NAT64 well-known prefix (`64:ff9b::/96`, RFC 6052) embeds it in the low
+        // four bytes. The local-use prefix `64:ff9b:1::/48` is deliberately not
+        // matched: it is site-specific, and a translator reachable from this Mac
+        // would already be a private next hop.
+        if Array(bytes[0...11]) == [0, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0],
+            isPrivateIPv4(Array(bytes[12...15]))
+        {
+            return true
+        }
         return false
     }
 
