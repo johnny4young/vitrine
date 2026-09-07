@@ -472,6 +472,10 @@ struct SoftwareUpdateChannelTests {
         #expect(
             body.contains("SoftwareUpdater.startBackgroundScheduler()"),
             "Launch must bring the updater up so its scheduler runs")
+        #expect(
+            body.contains("Self.shouldStartUpdateScheduler"),
+            "...but never under a test host, whose throwaway defaults suite would make Sparkle reopen its one-time consent window on every launch"
+        )
     }
 
 }
