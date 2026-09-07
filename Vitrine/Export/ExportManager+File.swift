@@ -71,6 +71,11 @@ extension ExportManager {
         do {
             // The destination is a user-chosen path; we log only the format, never
             // the path itself (privacy policy).
+            //
+            // Deliberately NOT atomic, unlike the CLI and the exchange files: an atomic
+            // write creates a sibling temporary file and renames it, which needs write
+            // access to the enclosing directory. The save panel grants this app access
+            // to the chosen FILE, so the safer-looking option is the one that can fail.
             try payload.data.write(to: url)
             Log.export.notice("Saved image to file (\(payload.ext, privacy: .public))")
             return .saved
