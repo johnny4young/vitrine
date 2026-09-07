@@ -262,6 +262,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // JavaScriptCore + theme-CSS warm-up inside the "instant" gesture. Low priority
         // so it never contends with the menu bar coming up or a hotkey already firing.
         Task(priority: .utility) { HighlightManager.shared.prewarm() }
+
+        // Decode the persisted background and foreground before anything draws them. The
+        // canvas resolves an image reference synchronously inside its `body` — it has to,
+        // because the same view renders an export, where an image that arrives later would
+        // silently produce the fallback gradient instead of the user's photo. That leaves
+        // the first pass after launch paying the decode on the main actor: 207 ms for a
+        // 24 MB photo, measured. Warming the process-wide cache off the main actor first
+        // turns that pass into a lookup. Nothing depends on it finishing: a miss simply
+        // decodes the way it does today.
+        Task(priority: .utility) { await self.prewarmPersistedImages() }
+    }
+
+    /// Decodes the images the first canvas would otherwise resolve synchronously.
+    private func prewarmPersistedImages() async {
+        let config = environment.appSettings.config
+        if case .image(let background) = config.background {
+            _ = await BackgroundImageStore.container.preloadImage(for: background.reference)
+        }
+        if let foreground = config.foregroundImage {
+            _ = await BackgroundImageStore.foregroundContainer.preloadImage(for: foreground)
+        }
     }
 
     private func handleHotkey() {

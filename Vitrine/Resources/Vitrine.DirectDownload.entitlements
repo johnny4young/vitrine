@@ -28,9 +28,10 @@
 	<!-- Outbound network access, required for Sparkle to fetch the appcast (SUFeedURL) and
 	     download the update. This is present ONLY on the direct-download build; the App Store
 	     build ships without it (and without Sparkle), so the documented "App Store build
-	     requests no network" posture is unchanged. This is NOT the URL capture-capture switch:
-	     URL capture is still gated by NetworkCapability + its own first-use disclosure and
-	     stays off until that feature ships. -->
+	     requests no network" posture is unchanged. This entitlement is also what
+	     NetworkCapability reads to enable URL capture on this build; that feature stays
+	     behind its own first-use disclosure and the user's explicit opt-in for local
+	     addresses. -->
 	<key>com.apple.security.network.client</key>
 	<true/>
 

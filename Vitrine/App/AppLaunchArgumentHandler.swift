@@ -446,7 +446,6 @@ final class AppLaunchArgumentHandler {
                             html: html,
                             viewport: CGSize(width: 640, height: 360),
                             scale: 1,
-                            allowsNetwork: false,
                             localBaseURL: nil))
                     guard let png = ExportManager.pngData(from: image) else {
                         throw RenderError.renderFailed
