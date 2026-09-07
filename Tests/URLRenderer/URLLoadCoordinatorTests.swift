@@ -44,14 +44,14 @@ struct URLLoadCoordinatorTests {
         let url = try #require(URL(string: raw))
         #expect(
             Policy.decision(for: url, isMainFrame: true, allowsLoopback: false)
-                == .cancel(reason: "unsupported scheme"))
+                == .cancel(.unsupportedScheme))
     }
 
     @Test func mainFrameRefusesAWebURLWithNoHost() throws {
         let url = try #require(URL(string: "https:///nowhere"))
         #expect(
             Policy.decision(for: url, isMainFrame: true, allowsLoopback: false)
-                == .cancel(reason: "missing host"))
+                == .cancel(.missingHost))
         #expect(Policy.decision(for: nil, isMainFrame: true, allowsLoopback: false) != .allow)
     }
 
@@ -59,7 +59,7 @@ struct URLLoadCoordinatorTests {
         let metadata = try #require(URL(string: "http://169.254.169.254/latest/meta-data/"))
         #expect(
             Policy.decision(for: metadata, isMainFrame: true, allowsLoopback: false)
-                == .cancel(reason: "private host"))
+                == .cancel(.privateHost))
 
         let publicPage = try #require(URL(string: "https://example.com/page"))
         #expect(
@@ -70,7 +70,7 @@ struct URLLoadCoordinatorTests {
         let local = try #require(URL(string: "http://127.0.0.1:8080/"))
         #expect(
             Policy.decision(for: local, isMainFrame: true, allowsLoopback: false)
-                == .cancel(reason: "private host"))
+                == .cancel(.privateHost))
         #expect(Policy.decision(for: local, isMainFrame: true, allowsLoopback: true) == .allow)
     }
 
@@ -86,25 +86,64 @@ struct URLLoadCoordinatorTests {
         let file = try #require(URL(string: "file:///Users/someone/.ssh/id_ed25519"))
         #expect(
             Policy.decision(for: file, isMainFrame: false, allowsLoopback: false)
-                == .cancel(reason: "local file subframe"))
+                == .cancel(.localFileSubframe))
 
         let metadata = try #require(URL(string: "http://169.254.169.254/"))
         #expect(
             Policy.decision(for: metadata, isMainFrame: false, allowsLoopback: false)
-                == .cancel(reason: "private host"))
+                == .cancel(.privateHost))
     }
 
-    /// The refusal reason reaches the log, so it must never carry a host or a path.
+    /// The refusal reason reaches the log, so it must never carry a host or a path. The
+    /// earlier version of this test used a host the policy does not refuse, so both
+    /// decisions were `.allow` and it asserted nothing at all — it passed by never
+    /// entering its own body.
     @Test func refusalReasonsNeverCarryTheUserSDestination() throws {
-        let url = try #require(URL(string: "https://private.example.internal/secret-path"))
+        let url = try #require(URL(string: "https://169.254.169.254/latest/meta-data/secret"))
         for isMainFrame in [true, false] {
-            if case .cancel(let reason) = Policy.decision(
+            let decision = Policy.decision(
                 for: url, isMainFrame: isMainFrame, allowsLoopback: false)
-            {
-                #expect(!reason.contains("example"))
-                #expect(!reason.contains("secret-path"))
+            // Fail loudly rather than skip: a decision that stopped refusing this host
+            // would be the bug this file exists to catch.
+            guard case .cancel(let refusal) = decision else {
+                Issue.record("the cloud-metadata endpoint must be refused in every frame")
+                continue
             }
+            #expect(refusal == .privateHost)
+            #expect(!refusal.rawValue.contains("169.254"))
+            #expect(!refusal.rawValue.contains("secret"))
         }
+
+        // Structural, not conventional: every case of the closed set is a fixed label, so
+        // a future refusal cannot carry a destination into the log even by accident.
+        for refusal in [
+            Policy.Refusal.unsupportedScheme, .missingHost, .localFileSubframe, .privateHost,
+        ] {
+            #expect(!refusal.rawValue.contains("://"))
+            #expect(refusal.rawValue.allSatisfy { $0.isLetter || $0 == " " })
+        }
+    }
+
+    /// `WKNavigationAction.targetFrame` is `nil` when the navigation targets a new
+    /// browsing context — a `_blank` link or a `window.open` — not this web view's main
+    /// frame. Treating that as the main frame made a page that pops open an `about:`
+    /// window cancel *and* fail the whole capture, which is a page rendering correctly
+    /// today being reported as a failure.
+    @Test func onlyAnExplicitlyMainTargetGetsTheMainFrameRules() {
+        #expect(Policy.appliesMainFrameRules(isMainTarget: true))
+        #expect(!Policy.appliesMainFrameRules(isMainTarget: false))
+        #expect(!Policy.appliesMainFrameRules(isMainTarget: nil))
+
+        // The consequence: a popup to a non-web scheme is dropped, not fatal.
+        let popup = URL(string: "about:blank")
+        let asNewWindow = Policy.appliesMainFrameRules(isMainTarget: nil)
+        #expect(
+            Policy.decision(for: popup, isMainFrame: asNewWindow, allowsLoopback: false)
+                == .allow)
+        // ...while the same URL in the main frame is still refused.
+        #expect(
+            Policy.decision(for: popup, isMainFrame: true, allowsLoopback: false)
+                == .cancel(.unsupportedScheme))
     }
 
     // MARK: - The hermetic local-file capture
@@ -123,18 +162,18 @@ struct URLLoadCoordinatorTests {
         #expect(
             Policy.decision(
                 for: file, isMainFrame: false, allowsLoopback: false, allowsLocalFile: true)
-                == .cancel(reason: "local file subframe"))
+                == .cancel(.localFileSubframe))
         // An ordinary web capture still refuses the scheme outright.
         #expect(
             Policy.decision(
                 for: file, isMainFrame: true, allowsLoopback: false, allowsLocalFile: false)
-                == .cancel(reason: "unsupported scheme"))
+                == .cancel(.unsupportedScheme))
         // Permission to load a local file is not permission to reach a private host.
         #expect(
             Policy.decision(
                 for: URL(string: "http://169.254.169.254/latest/meta-data/"),
                 isMainFrame: true, allowsLoopback: false, allowsLocalFile: true)
-                == .cancel(reason: "private host"))
+                == .cancel(.privateHost))
     }
 
 }

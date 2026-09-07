@@ -87,11 +87,32 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
     /// ordinary page furniture, and refusing them would break real pages without closing
     /// any path to private content.
     enum NavigationPolicy {
+        /// Why a navigation was refused. A closed set of fixed cases, and the log records
+        /// the case rather than a message: the reason reaches a public log, so where the
+        /// user browsed must be unrepresentable here rather than merely absent by
+        /// convention. Adding a case that carried a host would not compile into the log.
+        enum Refusal: String {
+            case unsupportedScheme = "unsupported scheme"
+            case missingHost = "missing host"
+            case localFileSubframe = "local file subframe"
+            case privateHost = "private host"
+        }
+
         enum Decision: Equatable {
             case allow
-            /// Refused, with the reason to log. Never carries a URL or host: the log
-            /// records what kind of thing was refused, never where the user browsed.
-            case cancel(reason: String)
+            case cancel(Refusal)
+        }
+
+        /// Whether a navigation gets the stricter main-frame rules.
+        ///
+        /// `WKNavigationAction.targetFrame` is `nil` when the navigation targets a *new*
+        /// browsing context — a `_blank` link or `window.open` — not this web view's main
+        /// frame. Treating that as the main frame would let a page that pops open an
+        /// `about:` or `javascript:` window fail an otherwise valid capture, so only an
+        /// explicitly main target qualifies. Takes the flag rather than the frame so the
+        /// rule is a pure function a test can state directly.
+        static func appliesMainFrameRules(isMainTarget: Bool?) -> Bool {
+            isMainTarget == true
         }
 
         static func decision(
@@ -106,19 +127,19 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
                     return .allow
                 }
                 guard let scheme, WebSnapshotConfig.allowedSchemes.contains(scheme) else {
-                    return .cancel(reason: "unsupported scheme")
+                    return .cancel(.unsupportedScheme)
                 }
                 guard let host = url?.host, !host.isEmpty else {
-                    return .cancel(reason: "missing host")
+                    return .cancel(.missingHost)
                 }
             } else if scheme == "file" {
-                return .cancel(reason: "local file subframe")
+                return .cancel(.localFileSubframe)
             }
 
             if let host = url?.host,
                 WebSnapshotConfig.isRefusedHost(host, allowLoopback: allowsLoopback)
             {
-                return .cancel(reason: "private host")
+                return .cancel(.privateHost)
             }
             return .allow
         }
@@ -126,14 +147,15 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
 
     /// Re-validates every navigation target. The delegate only pulls the URL and the frame
     /// off the live navigation; the rule itself is `NavigationPolicy`. A blocked main-frame
-    /// target fails the capture; a blocked subframe is dropped so the rest of the page
-    /// still renders.
+    /// target fails the capture; anything else — a subframe, or a navigation aimed at a new
+    /// window — is dropped so the rest of the page still renders.
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
     ) {
-        let isMainFrame = navigationAction.targetFrame?.isMainFrame ?? true
+        let isMainFrame = NavigationPolicy.appliesMainFrameRules(
+            isMainTarget: navigationAction.targetFrame?.isMainFrame)
         switch NavigationPolicy.decision(
             for: navigationAction.request.url,
             isMainFrame: isMainFrame,
@@ -142,11 +164,11 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
         {
         case .allow:
             decisionHandler(.allow)
-        case .cancel(let reason):
+        case .cancel(let refusal):
             decisionHandler(.cancel)
             if isMainFrame {
                 Log.render.error(
-                    "URL capture blocked a navigation (\(reason, privacy: .public))")
+                    "URL capture blocked a navigation (\(refusal.rawValue, privacy: .public))")
                 loadWaiter.complete(.failure(WebSnapshotError.loadFailed))
             }
         }
