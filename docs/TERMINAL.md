@@ -214,6 +214,13 @@ omitted. `--edit` is mutually exclusive with `--copy`/`--out`.
   titles, stray controls) and resolves progress-bar carriage returns so the static image
   shows clean, final lines. For a full-screen app it *interprets* the cursor moves
   instead, reconstructing the final frame — see [Full-screen apps (TUIs)](#full-screen-apps-tuis).
+- **Very large captures keep their text and lose their colors.** Above 512 KB — a
+  recorded session or a piped build log, far past anything you would screenshot — a
+  capture is rendered as plain text instead of being styled run by run, and the editor
+  says so. Nothing is truncated and nothing is escaped: the sequences are still resolved
+  away, so progress-bar redraws still collapse to their final line exactly as they do in
+  a colored render. The limit exists because styling that much output runs on the main
+  thread, and a two-megabyte capture spent over a second there on every edit.
 - **OSC 8 hyperlinks** (the `ESC]8` links emitted by `gh`, `eza --hyperlink`, some test
   runners) are styled — the linked text is underlined and tinted, the way a link reads —
   while the URL itself stays hidden, exactly as it is in the terminal.

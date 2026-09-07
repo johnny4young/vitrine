@@ -178,14 +178,13 @@ struct PerformanceTests {
         return config
     }
 
-    /// A terminal capture around a megabyte — a recorded session or a piped build log,
-    /// not a screenshot. Built from the same styled rows as the small fixture so the two
-    /// differ in size alone and their costs are comparable.
-    private static func largeTerminalCode() -> String {
+    /// A terminal capture at the requested size — a recorded session or a piped build log,
+    /// not a screenshot. Built from the same styled rows as the small fixture so every
+    /// terminal fixture differs in size alone and their costs are comparable.
+    private static func largeTerminalCode(bytes target: Int = 400 * 1024) -> String {
         let row =
             "\u{1B}[32m✓\u{1B}[0m \u{1B}[1mTest\u{1B}[0m \u{1B}[2mpassed\u{1B}[0m "
             + "in \u{1B}[38;5;214m12 ms\u{1B}[0m \u{1B}[3;36m(suite 3)\u{1B}[0m"
-        let target = 1_000_000
         var rows: [String] = []
         var size = 0
         var index = 0
@@ -454,12 +453,12 @@ struct PerformanceTests {
     // MARK: - Cases the render fixtures do not reach
 
     @Test func largeTerminalCaptureMeetsBudget() {
-        // Source code past a documented size renders as plain text instead of being
-        // tokenized. A terminal capture has no such ceiling: it goes through the full
-        // parser, emulator, and per-run styling at any size the file loader accepts,
-        // which is several megabytes. This measures what that costs at a megabyte.
+        // A capture just under the terminal ceiling: the largest input still parsed,
+        // emulated, and styled run by run. Its counterpart below measures the other side
+        // of the same threshold, so the pair shows what the ceiling buys.
         let manager = HighlightManager.shared
         let code = Self.largeTerminalCode()
+        #expect(HighlightPolicy.mode(for: code, language: .terminal) == .full)
         let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
         _ = manager.terminalAttributedString(
             for: code, theme: .oneDark, font: font, columns: nil)
@@ -484,6 +483,38 @@ struct PerformanceTests {
         #expect(
             stats.p95 <= PerfBudget.largeTerminalHardCeiling,
             "terminal-large exceeded the large-terminal hard ceiling")
+    }
+
+    @Test func terminalCaptureAboveTheCeilingMeetsBudget() {
+        // Past the ceiling the same capture keeps its text and loses its colors. The
+        // escapes still have to be parsed to be removed, so this measures the half a
+        // fallback can actually skip.
+        let manager = HighlightManager.shared
+        let code = Self.largeTerminalCode(bytes: 1_000_000)
+        let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        #expect(HighlightPolicy.mode(for: code, language: .terminal).usesPlainTextFallback)
+        _ = manager.terminalAttributedString(
+            for: code, theme: .oneDark, font: font, columns: nil)
+
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+        for sample in 0..<Self.sampleCount {
+            let input = code + "\n// sample \(sample)"
+            var output: AttributedString?
+            let elapsed = clock.measure {
+                output = manager.terminalAttributedString(
+                    for: input, theme: .oneDark, font: font, columns: nil)
+            }
+            // The point of the fallback: readable text, no escape sequences left in it.
+            #expect(output?.characters.contains("\u{1B}") == false)
+            durations.append(elapsed)
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "terminal-over-ceiling", target: nil)
+        #expect(
+            stats.p95 <= PerfBudget.largeTerminalHardCeiling,
+            "terminal-over-ceiling exceeded the large-terminal hard ceiling")
     }
 
     @Test func lineNumberedRenderMeetsBudget() {

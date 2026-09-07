@@ -24,6 +24,18 @@ public enum HighlightPolicy {
     /// snippet while bounding synchronous tokenization and bridge amplification on the main actor.
     nonisolated public static let maximumHighlightedByteCount = 128 * 1024
 
+    /// Largest terminal capture rendered with colors. A capture is parsed, emulated, and
+    /// styled run by run rather than tokenized, so it costs more per byte than source and
+    /// had no ceiling at all: the file loader accepts five megabytes, and a two-megabyte
+    /// capture spent well over a second of the main actor on every settle.
+    ///
+    /// Four times the source ceiling, because a recorded session or a piped build log is
+    /// legitimately larger than a code snippet. Above it the capture stays readable — the
+    /// escapes are resolved away rather than shown raw, so line redraws still collapse the
+    /// way they do in a colored render — and the editor shows the same "syntax colors
+    /// paused" notice a large source document gets.
+    nonisolated public static let maximumTerminalByteCount = 512 * 1024
+
     /// Documents above this size are never retained by a highlighting cache. A cache hit is most
     /// valuable for screenshot-sized snippets; retaining large documents across multiple derived
     /// representations would trade a small speed-up for disproportionate memory pressure.
@@ -51,13 +63,12 @@ public enum HighlightPolicy {
     }
 
     nonisolated public static func mode(for code: String, language: Language) -> HighlightMode {
-        // Terminal captures use a separate bounded parser/emulator rather than Highlight.js.
-        // Its large-input lifecycle belongs to the dedicated terminal reliability band.
-        guard language != .terminal else { return .full }
         let bytes = byteCount(of: code)
-        guard bytes > maximumHighlightedByteCount else { return .full }
-        return .plainTextFallback(
-            actualBytes: bytes, maximumBytes: maximumHighlightedByteCount)
+        // Terminal captures go through the bounded parser/emulator rather than Highlight.js,
+        // and carry their own, larger ceiling.
+        let maximum = language == .terminal ? maximumTerminalByteCount : maximumHighlightedByteCount
+        guard bytes > maximum else { return .full }
+        return .plainTextFallback(actualBytes: bytes, maximumBytes: maximum)
     }
 
     nonisolated public static func shouldCache(_ code: String) -> Bool {

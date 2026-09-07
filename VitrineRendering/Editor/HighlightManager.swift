@@ -222,6 +222,18 @@ public final class HighlightManager {
         for code: String, theme: VitrineDomain.Theme, font: NSFont, columns: Int?
     ) -> AttributedString {
         let palette = ANSIPalette.forTheme(theme)
+        // Past the terminal ceiling the capture stays readable but loses its colors: the
+        // escapes are resolved away by the same renderer that would have styled them, so
+        // line redraws still collapse and a progress bar still reads as one line rather
+        // than every frame it ever drew. Only the per-run styling and its attribute
+        // dictionaries are skipped, which is the half a fallback can skip — the escapes
+        // have to be parsed to be removed. The editor surfaces this through the same
+        // notice a large source document gets.
+        guard HighlightPolicy.mode(for: code, language: .terminal) == .full else {
+            return AttributedString(
+                plainText(
+                    ANSIRenderer.plainText(code, columns: columns), theme: theme, font: font))
+        }
         let render = {
             AttributedString(
                 ANSIRenderer.attributedString(

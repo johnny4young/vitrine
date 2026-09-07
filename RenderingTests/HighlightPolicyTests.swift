@@ -182,4 +182,66 @@ struct HighlightPolicyTests {
         #expect(manager.cachedEntryCountForTesting == 2)
     }
 
+    /// The terminal path had no ceiling: source code stops being tokenized past a
+    /// documented size, but a capture was parsed, emulated, and styled run by run at any
+    /// size the file loader accepts — five megabytes. Its own, larger ceiling bounds that
+    /// while leaving room for a recorded session or a piped build log.
+    @Test func terminalCapturesCarryTheirOwnLargerCeiling() {
+        #expect(
+            HighlightPolicy.maximumTerminalByteCount
+                > HighlightPolicy.maximumHighlightedByteCount)
+
+        let row = "\u{1B}[32m✓\u{1B}[0m ok"
+        func capture(bytes: Int) -> String {
+            var rows: [String] = []
+            var size = 0
+            var index = 0
+            while size < bytes {
+                let line = "\(row) line \(index)"
+                rows.append(line)
+                size += line.utf8.count + 1
+                index += 1
+            }
+            return rows.joined(separator: "\n")
+        }
+
+        let under = capture(bytes: HighlightPolicy.maximumTerminalByteCount / 2)
+        let over = capture(bytes: HighlightPolicy.maximumTerminalByteCount * 2)
+        #expect(HighlightPolicy.mode(for: under, language: .terminal) == .full)
+        #expect(HighlightPolicy.mode(for: over, language: .terminal).usesPlainTextFallback)
+
+        // Source keeps its own, smaller ceiling: a capture that is still colored would
+        // already be plain text as source.
+        #expect(HighlightPolicy.mode(for: under, language: .swift).usesPlainTextFallback)
+    }
+
+    /// Above the ceiling the capture must stay *readable*, not merely uncolored. The
+    /// escapes are resolved away by the same renderer that would have styled them, so a
+    /// line redraw still collapses instead of leaving every frame it ever drew.
+    @Test func aCaptureAboveTheCeilingKeepsItsTextAndDropsItsEscapes() {
+        let manager = HighlightManager.shared
+        manager.resetCachesForTesting()
+        var rows: [String] = []
+        var size = 0
+        var index = 0
+        while size < HighlightPolicy.maximumTerminalByteCount * 2 {
+            let line = "\u{1B}[32m✓\u{1B}[0m \u{1B}[1mstep\u{1B}[0m \(index)"
+            rows.append(line)
+            size += line.utf8.count + 1
+            index += 1
+        }
+        // A carriage-return redraw, the case a naive escape-stripper would get wrong.
+        rows.append("progress 10%\rprogress 100%")
+        let capture = rows.joined(separator: "\n")
+
+        let rendered = manager.terminalAttributedString(
+            for: capture, theme: .oneDark, font: Self.font, columns: nil)
+        let text = String(rendered.characters)
+
+        #expect(!text.contains("\u{1B}"), "no escape sequence may survive into the text")
+        #expect(text.contains("✓ step 0"))
+        #expect(text.contains("progress 100%"))
+        #expect(!text.contains("progress 10%\rprogress"), "a redraw must still collapse")
+    }
+
 }
