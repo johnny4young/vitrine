@@ -153,4 +153,33 @@ struct HighlightPolicyTests {
         #expect(manager.cachedEntryCountForTesting == 3)
     }
 
+    /// A terminal capture is the one input with no size ceiling: source code falls back to
+    /// plain text past a documented limit, while a capture goes through the full parser,
+    /// emulator, and per-run styling at any size the file loader accepts. Above the
+    /// cacheable size the canvas and the gutter were each paying that in full — the gutter
+    /// re-rendered the frame before splitting it — so one settle did the work twice.
+    @Test func largeTerminalCaptureReusesItsMostRecentFrame() {
+        let manager = HighlightManager.shared
+        manager.resetCachesForTesting()
+        let row = "\u{1B}[32m✓\u{1B}[0m \u{1B}[1mpassed\u{1B}[0m"
+        let capture = (0..<3_000).map { "\(row) line \($0)" }.joined(separator: "\n")
+        #expect(!HighlightPolicy.shouldCache(capture))
+
+        let frame = manager.terminalAttributedString(
+            for: capture, theme: .oneDark, font: Self.font, columns: nil)
+        let rows = manager.terminalAttributedLines(
+            for: capture, theme: .oneDark, font: Self.font, columns: nil)
+
+        // The rows are the frame's own lines, not a second render of the capture.
+        #expect(rows.count == 3_000)
+        #expect(String(frame.characters).contains("line 2999"))
+        #expect(manager.cachedEntryCountForTesting == 2)
+
+        // A different capture replaces both rather than accumulating.
+        let other = capture + "\n\(row) line 3000"
+        _ = manager.terminalAttributedString(
+            for: other, theme: .oneDark, font: Self.font, columns: nil)
+        #expect(manager.cachedEntryCountForTesting == 2)
+    }
+
 }

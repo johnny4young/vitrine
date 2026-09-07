@@ -80,6 +80,8 @@ public final class HighlightManager {
     private var lastHighlight = LastDerived<HighlightKey, NSAttributedString>()
     private var lastSwiftUI = LastDerived<HighlightKey, AttributedString>()
     private var lastLines = LastDerived<HighlightKey, [AttributedString]>()
+    private var lastTerminal = LastDerived<TerminalKey, AttributedString>()
+    private var lastTerminalLines = LastDerived<TerminalKey, [AttributedString]>()
 
     private var highlightCache = CostLimitedLRUCache<HighlightKey, NSAttributedString>(
         totalCostLimit: HighlightPolicy.perRepresentationCostLimit,
@@ -227,7 +229,12 @@ public final class HighlightManager {
         }
         let key = TerminalKey(
             code: code, themeSource: theme.source, font: font, columns: columns)
-        guard HighlightPolicy.shouldCache(code) else { return render() }
+        guard HighlightPolicy.shouldCache(code) else {
+            if let recent = lastTerminal.value(forKey: key) { return recent }
+            let rendered = render()
+            lastTerminal.store(rendered, forKey: key)
+            return rendered
+        }
         if let cached = terminalCache.value(forKey: key) { return cached }
         let bridged = render()
         Self.cache(
@@ -272,7 +279,12 @@ public final class HighlightManager {
             for: code, theme: theme, font: font, columns: columns)
         let key = TerminalKey(
             code: code, themeSource: theme.source, font: font, columns: columns)
-        guard HighlightPolicy.shouldCache(code) else { return Self.splitRows(bridged) }
+        guard HighlightPolicy.shouldCache(code) else {
+            if let recent = lastTerminalLines.value(forKey: key) { return recent }
+            let rows = Self.splitRows(bridged)
+            lastTerminalLines.store(rows, forKey: key)
+            return rows
+        }
         if let cached = terminalLineCache.value(forKey: key) { return cached }
         let lines = Self.splitRows(bridged)
         Self.cache(
@@ -312,6 +324,7 @@ public final class HighlightManager {
         highlightCache.metrics.count + swiftUICache.metrics.count + terminalCache.metrics.count
             + lineCache.metrics.count + terminalLineCache.metrics.count
             + lastHighlight.count + lastSwiftUI.count + lastLines.count
+            + lastTerminal.count + lastTerminalLines.count
     }
 
     public func resetCachesForTesting() {
@@ -323,6 +336,8 @@ public final class HighlightManager {
         lastHighlight.removeAll()
         lastSwiftUI.removeAll()
         lastLines.removeAll()
+        lastTerminal.removeAll()
+        lastTerminalLines.removeAll()
         builtInChrome.removeAll()
     }
 
