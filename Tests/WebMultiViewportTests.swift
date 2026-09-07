@@ -20,7 +20,7 @@ struct WebMultiViewportSelectionTests {
 
     @Test func viewportsRoundTripsInSelectionOrder() {
         let store = defaults()
-        store.set(["mobile", "desktop", "fullHD"], forKey: "webViewports")
+        store.set(["mobile", "desktop", "fullHD"], forKey: SettingsCodec.Keys.webViewports)
         #expect(WebDefaults.viewports(from: store) == [.mobile, .desktop, .fullHD])
     }
 
@@ -54,20 +54,34 @@ struct WebMultiViewportSelectionTests {
 
     @Test func viewportsDropsDuplicatesKeepingFirstOrder() {
         let store = defaults()
-        store.set(["mobile", "desktop", "mobile"], forKey: "webViewports")
+        store.set(["mobile", "desktop", "mobile"], forKey: SettingsCodec.Keys.webViewports)
         #expect(WebDefaults.viewports(from: store) == [.mobile, .desktop])
+    }
+
+    /// The reader and the writer must name each key through the same constant. When the
+    /// reader spelled the keys as literals, a rename would compile and pass every test
+    /// while the setting silently reverted to its default on the next launch — and this
+    /// suite spelled them as literals too, so it drifted along with the reader.
+    @Test func readerNamesEveryKeyThroughTheSharedConstants() throws {
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("Vitrine/Settings/WebDefaults.swift"),
+            encoding: .utf8)
+        #expect(!source.contains("forKey: \""), "WebDefaults must read through SettingsCodec.Keys")
     }
 
     @Test func viewportsDropsUnknownRawValues() {
         let store = defaults()
-        store.set(["mobile", "totally-bogus", "custom"], forKey: "webViewports")
+        store.set(["mobile", "totally-bogus", "custom"], forKey: SettingsCodec.Keys.webViewports)
         #expect(WebDefaults.viewports(from: store) == [.mobile, .custom])
     }
 
     @Test func viewportsFallsBackToTheSingleViewportWhenStoredEmpty() {
         let store = defaults()
-        store.set([String](), forKey: "webViewports")
-        store.set("desktop", forKey: "webViewportKind")
+        store.set([String](), forKey: SettingsCodec.Keys.webViewports)
+        store.set("desktop", forKey: SettingsCodec.Keys.webViewportKind)
         #expect(WebDefaults.viewports(from: store) == [.desktop])
     }
 

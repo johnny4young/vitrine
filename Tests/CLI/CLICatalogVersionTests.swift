@@ -40,7 +40,10 @@ struct CLICatalogVersionTests: CLITestSupport {
 
         let fallback = CLIVersion.output(
             format: .text, infoDictionary: [:], executablePath: "/missing/vitrine-cli")
-        #expect(fallback == "vitrine 1.2.1 (36)\n")
+        #expect(
+            fallback
+                == "vitrine \(CLIVersion.fallbackMarketingVersion) (\(CLIVersion.fallbackBuildNumber))\n"
+        )
     }
 
     @Test func versionFallbackConstantsMatchProjectSettings() throws {

@@ -215,15 +215,14 @@ struct WebSnapshotNetworkTests {
             of: .init(
                 html: HTMLFixture.remoteImage,
                 viewport: CGSize(width: 500, height: 300),
-                scale: 1,
-                allowsNetwork: false))
+                scale: 1))
         #expect(image.width == 500)
         #expect(image.height == 300)
     }
 
     @Test func networkIsBlockedByDefault() async throws {
-        // The default request blocks network: the same fixture renders without the
-        // caller having to opt out, proving `allowsNetwork` defaults to false.
+        // The same fixture renders with no caller opt-out available: blocking remote
+        // subresources is what the engine does, not a mode it can be asked for.
         // Scale is pinned to 1 so the pixel assertion is exact — the request's
         // default scale is 2, which doubles the bitmap (deterministic sizing).
         let engine = WebSnapshotView()
@@ -382,7 +381,7 @@ struct WebSnapshotErrorTests {
 
 /// The privacy guarantee at the heart of — *"pasted HTML cannot reach the
 /// network"* — is the navigation delegate's allow/cancel decision. That decision is
-/// pure (the request's scheme plus the caller's `allowsNetwork` flag), so it is
+/// pure — the request's scheme, and nothing else — so it is
 /// proven here directly against `WebSnapshotView.NetworkPolicy` with **no
 /// `WKWebView` and no web content process** — unlike the live network suite, which
 /// only runs where WebKit can launch. This is the assertion that keeps the
@@ -392,24 +391,23 @@ struct WebSnapshotErrorTests {
 struct WebSnapshotNetworkPolicyTests {
     private typealias Policy = WebSnapshotView.NetworkPolicy
 
-    @Test func remoteSchemesAreCancelledWhenNetworkIsNotAllowed() {
-        // The whole point: with network off, any scheme that reaches the wire is
-        // cancelled, so an absolute https subresource or a remote redirect in pasted
-        // HTML never loads.
+    @Test func remoteSchemesAreAlwaysCancelled() {
+        // The whole point: any scheme that reaches the wire is cancelled, so an
+        // absolute https subresource or a remote redirect in pasted HTML never loads.
         for scheme in ["http", "https", "ws", "wss", "ftp"] {
             #expect(
-                Policy.decision(forScheme: scheme, allowsNetwork: false) == .cancel,
-                "\(scheme) must be cancelled when network is not allowed")
+                Policy.decision(forScheme: scheme) == .cancel,
+                "\(scheme) must be cancelled")
             #expect(!Policy.isLocal(scheme: scheme), "\(scheme) is a network scheme")
         }
     }
 
-    @Test func localSchemesLoadEvenWhenNetworkIsNotAllowed() {
-        // The in-memory document and inline/local data must still load with network
-        // off, otherwise the page itself could never render.
+    @Test func localSchemesLoad() {
+        // The in-memory document and inline/local data must still load, otherwise the
+        // page itself could never render.
         for scheme in ["about", "file", "data", "blob"] {
             #expect(
-                Policy.decision(forScheme: scheme, allowsNetwork: false) == .allow,
+                Policy.decision(forScheme: scheme) == .allow,
                 "\(scheme) is local and must load")
             #expect(Policy.isLocal(scheme: scheme), "\(scheme) is a local scheme")
         }
@@ -419,35 +417,28 @@ struct WebSnapshotNetworkPolicyTests {
         // `loadHTMLString`'s main-frame navigation carries no URL/scheme; it is the
         // document being rendered and must always be allowed.
         #expect(Policy.isLocal(scheme: nil))
-        #expect(Policy.decision(forScheme: nil, allowsNetwork: false) == .allow)
+        #expect(Policy.decision(forScheme: nil) == .allow)
     }
 
     @Test func schemeMatchingIsCaseInsensitive() {
         // A delegate sees whatever case the URL carried; classification must not be
         // fooled by `HTTPS` vs `https` or `FILE` vs `file`.
-        #expect(Policy.decision(forScheme: "HTTPS", allowsNetwork: false) == .cancel)
-        #expect(Policy.decision(forScheme: "FILE", allowsNetwork: false) == .allow)
+        #expect(Policy.decision(forScheme: "HTTPS") == .cancel)
+        #expect(Policy.decision(forScheme: "FILE") == .allow)
         #expect(Policy.isLocal(scheme: "DATA"))
     }
 
-    @Test func everythingLoadsOnceTheCallerExplicitlyAllowsNetwork() {
-        // The single opt-in switch: when the caller allows network, even a remote
-        // scheme loads. This is the only path that reaches the wire, and it is never
-        // the default.
-        #expect(Policy.decision(forScheme: "https", allowsNetwork: true) == .allow)
-        #expect(Policy.decision(forScheme: "http", allowsNetwork: true) == .allow)
-        #expect(Policy.decision(forScheme: nil, allowsNetwork: true) == .allow)
-    }
-
-    @Test func theDefaultRequestKeepsNetworkOff() {
-        // The Request value the renderer builds must default to network-off, so the
-        // policy above applies unless a caller deliberately opts in.
-        let request = WebSnapshotView.Request(html: "<b>x</b>")
-        #expect(request.allowsNetwork == false)
-        // And with that default, a remote scheme is cancelled — the end-to-end
-        // default-deny, asserted without a live load.
-        #expect(
-            Policy.decision(forScheme: "https", allowsNetwork: request.allowsNetwork) == .cancel)
+    /// There is no way to widen this. The policy used to take a flag that returned
+    /// `.allow` for everything in one branch; nothing outside these tests ever set it,
+    /// so its only effect was to keep a whole-policy bypass one assignment away.
+    @Test func thereIsNoSwitchThatWidensThePolicy() {
+        let source = try! String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("Vitrine/WebRendering/WebSnapshotView.swift"),
+            encoding: .utf8)
+        #expect(!source.contains("allowsNetwork"))
     }
 }
 
