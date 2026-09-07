@@ -282,10 +282,17 @@ struct WorkflowConfigurationTests {
                 "if: failure() && hashFiles('Vitrine.xcodeproj/project.pbxproj') != ''"))
     }
 
+    /// The inventory contract is "every release publishes an SPDX file produced by a
+    /// SHA-pinned generator at a pinned Syft version" — not one specific commit or
+    /// version. `thirdPartyActionsArePinnedToCommitSHAs` already proves the pin is a
+    /// commit SHA, so repeating the digest here only broke both build lanes whenever
+    /// Dependabot bumped the action.
     @Test func releasePublishesPinnedSpdxInventory() throws {
         let release = try Self.release()
-        #expect(release.contains("anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610"))
-        #expect(release.contains("syft-version: v1.49.0"))
+        #expect(release.contains("anchore/sbom-action@"))
+        #expect(
+            release.contains(try Regex(#"syft-version: v[0-9]+\.[0-9]+\.[0-9]+"#)),
+            "The SBOM generator must pin an exact Syft version")
         #expect(release.contains("dist/*.spdx.json"))
     }
 
@@ -502,8 +509,17 @@ struct WorkflowConfigurationTests {
         #expect(make.contains("-enableAddressSanitizer YES"))
         #expect(make.contains("test-tsan: project"))
         #expect(make.contains("-enableThreadSanitizer YES"))
-        #expect(make.contains("ItemProviderLoadWaiterTests"))
-        #expect(make.contains("MemoryWebSnapshotCycleJourneyTests"))
+        // The contract is that each lane stays FOCUSED on named unit suites rather than
+        // running the whole AppKit/WebKit host. Naming the suites here made every test
+        // rename or relocation fail this guard without weakening anything.
+        for selection in ["ASAN_TEST_SELECTION", "TSAN_TEST_SELECTION"] {
+            let lane = try #require(
+                sanitizerLanes.range(of: selection), "\(selection) must define a focused lane")
+            let body = sanitizerLanes[lane.upperBound...].prefix(while: { $0 != "#" })
+            #expect(
+                body.contains("-only-testing:VitrineTests/"),
+                "\(selection) must select individual unit suites")
+        }
         #expect(!sanitizerLanes.contains("-only-testing:VitrineUITests"))
 
         #expect(doc.contains("CodeQL"))
@@ -932,6 +948,8 @@ struct WorkflowConfigurationTests {
             ("deploy-site.yml", Self.deploySite()),
             ("codeql.yml", Self.codeql()),
             ("sanitizers.yml", Self.sanitizers()),
+            ("dependency-freshness.yml", Self.freshness()),
+            ("xcode-27-preview.yml", Self.xcode27Preview()),
         ] {
             for rawLine in yaml.components(separatedBy: .newlines) {
                 guard let usesRange = rawLine.range(of: "uses:") else { continue }
