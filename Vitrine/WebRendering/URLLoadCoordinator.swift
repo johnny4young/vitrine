@@ -57,30 +57,85 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
         loadWaiter.complete(.failure(WebSnapshotError.loadFailed))
     }
 
-    /// Re-validates every navigation target against the SSRF host filter. The entry
-    /// URL is checked before `load`, but a public page can 30x-redirect — or embed a frame —
-    /// to a private, loopback, or link-local host (e.g. the `169.254.169.254` cloud-metadata
-    /// endpoint); without this, WebKit would follow it and render the private response. This
-    /// closes the post-redirect gap, matching `BackgroundImageStore`'s image-download re-check.
-    /// A blocked main-frame target fails the capture; a blocked subframe is dropped so the rest
-    /// of the page still renders.
+    /// Whether a navigation may proceed during a URL capture.
+    ///
+    /// Extracted from the delegate so the rule is a pure function tests assert directly,
+    /// with no `WKWebView` and no web content process — the same shape as
+    /// `WebSnapshotView.NetworkPolicy` on the pasted-HTML side.
+    ///
+    /// Two independent reasons to refuse:
+    ///
+    /// - **Scheme.** The entry URL is validated against `WebSnapshotConfig.allowedSchemes`
+    ///   before the load, but that check never ran again afterwards. A navigation whose URL
+    ///   carries no host — `file:`, `data:`, `about:`, `blob:` — skipped the host filter
+    ///   entirely and was allowed. A main-frame navigation must therefore be a web scheme
+    ///   with a host, and `file:` is refused in any frame.
+    /// - **Host.** A public page can 30x-redirect, or embed a frame, pointing at a private,
+    ///   loopback, or link-local host (the `169.254.169.254` cloud-metadata endpoint being
+    ///   the canonical example). This is the post-redirect gap that mirrors
+    ///   `BackgroundImageStore`'s image-download re-check.
+    ///
+    /// Subframes keep the narrower rule on purpose: `about:srcdoc` and `data:` iframes are
+    /// ordinary page furniture, and refusing them would break real pages without closing
+    /// any path to private content.
+    enum NavigationPolicy {
+        enum Decision: Equatable {
+            case allow
+            /// Refused, with the reason to log. Never carries a URL or host: the log
+            /// records what kind of thing was refused, never where the user browsed.
+            case cancel(reason: String)
+        }
+
+        static func decision(
+            for url: URL?, isMainFrame: Bool, allowsLoopback: Bool
+        ) -> Decision {
+            let scheme = url?.scheme?.lowercased()
+
+            if isMainFrame {
+                guard let scheme, WebSnapshotConfig.allowedSchemes.contains(scheme) else {
+                    return .cancel(reason: "unsupported scheme")
+                }
+                guard let host = url?.host, !host.isEmpty else {
+                    return .cancel(reason: "missing host")
+                }
+            } else if scheme == "file" {
+                return .cancel(reason: "local file subframe")
+            }
+
+            if let host = url?.host,
+                WebSnapshotConfig.isRefusedHost(host, allowLoopback: allowsLoopback)
+            {
+                return .cancel(reason: "private host")
+            }
+            return .allow
+        }
+    }
+
+    /// Re-validates every navigation target. The delegate only pulls the URL and the frame
+    /// off the live navigation; the rule itself is `NavigationPolicy`. A blocked main-frame
+    /// target fails the capture; a blocked subframe is dropped so the rest of the page
+    /// still renders.
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
     ) {
-        if let host = navigationAction.request.url?.host,
-            WebSnapshotConfig.isRefusedHost(
-                host, allowLoopback: allowsLoopbackCapture)
+        let isMainFrame = navigationAction.targetFrame?.isMainFrame ?? true
+        switch NavigationPolicy.decision(
+            for: navigationAction.request.url,
+            isMainFrame: isMainFrame,
+            allowsLoopback: allowsLoopbackCapture)
         {
+        case .allow:
+            decisionHandler(.allow)
+        case .cancel(let reason):
             decisionHandler(.cancel)
-            if navigationAction.targetFrame?.isMainFrame ?? true {
-                Log.render.error("URL capture blocked a navigation to a private host")
+            if isMainFrame {
+                Log.render.error(
+                    "URL capture blocked a navigation (\(reason, privacy: .public))")
                 loadWaiter.complete(.failure(WebSnapshotError.loadFailed))
             }
-            return
         }
-        decisionHandler(.allow)
     }
 
     /// Backstop for server-issued redirects of the provisional (main-frame) navigation: if the
