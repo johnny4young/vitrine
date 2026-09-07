@@ -46,16 +46,30 @@ final class SoftwareUpdater {
     }
 
     #if VITRINE_DIRECT_DOWNLOAD
-        /// Sparkle's standard controller. Created with `startingUpdater: true` so the
-        /// background scheduler begins on first launch (subject to the user's consent prompt
-        /// Sparkle shows once). No custom `updaterDelegate`/`userDriverDelegate` is supplied:
-        /// the absence of a delegate is what guarantees no system-profiling hook and no
-        /// telemetry — the updater only does the standard, user-visible check-and-install.
+        /// Sparkle's standard controller. Created with `startingUpdater: true`, so the
+        /// background scheduler begins the moment this instance exists (subject to the
+        /// consent prompt Sparkle shows once). No custom `updaterDelegate`/`userDriverDelegate`
+        /// is supplied: the absence of a delegate is what guarantees no system-profiling hook
+        /// and no telemetry — the updater only does the standard, user-visible
+        /// check-and-install.
         private let controller = SPUStandardUpdaterController(
             startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     #endif
 
     private init() {}
+
+    /// Brings up the updater so its background scheduler starts, and returns.
+    ///
+    /// `shared` is a lazy `static let`: nothing exists, and therefore nothing is
+    /// scheduled, until something first touches it. Until this call was added the only
+    /// reference was the "Check for Updates" menu command, so a user who never opened
+    /// that menu received no automatic checks at all — the opposite of what the
+    /// controller above is configured to do. Called once at launch.
+    static func startBackgroundScheduler() {
+        #if VITRINE_DIRECT_DOWNLOAD
+            _ = shared
+        #endif
+    }
 
     /// Begins a user-initiated update check, showing Sparkle's standard progress and
     /// "you're up to date" / "a new version is available" UI. A no-op on a build that

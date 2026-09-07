@@ -37,4 +37,21 @@ struct AppLaunchGuardTests {
         #expect(AppDelegate.handoffRoute(for: URL(string: "https://open?d=x")!) == nil)
         #expect(AppDelegate.handoffRoute(for: URL(string: "vitrine://unknown?d=x")!) == nil)
     }
+    // MARK: - Update scheduler
+
+    /// Sparkle asks once, in a modal window, whether to check automatically, and records
+    /// the answer in the app's defaults. A UI-test run gets a fresh throwaway suite each
+    /// time, so that window opens on every launch and steals focus from the automation.
+    @Test func startsTheUpdateSchedulerOnlyOutsideATestHost() {
+        #expect(AppDelegate.shouldStartUpdateScheduler([:]))
+        #expect(AppDelegate.shouldStartUpdateScheduler(["HOME": "/Users/x"]))
+        #expect(
+            !AppDelegate.shouldStartUpdateScheduler(["VITRINE_USER_DEFAULTS_SUITE": "suite-123"]))
+        #expect(
+            !AppDelegate.shouldStartUpdateScheduler([
+                "XCTestConfigurationFilePath": "/tmp/x.xctestconfiguration"
+            ]))
+        #expect(!AppDelegate.shouldStartUpdateScheduler(ProcessInfo.processInfo.environment))
+    }
+
 }
