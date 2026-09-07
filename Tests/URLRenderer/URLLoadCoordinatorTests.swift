@@ -107,4 +107,34 @@ struct URLLoadCoordinatorTests {
         }
     }
 
+    // MARK: - The hermetic local-file capture
+
+    /// `WebSnapshotConfig(localFileURL:)` is the one path that legitimately loads a
+    /// `file:` document: URL validation rejects the scheme for anything a user could
+    /// type, so only that explicit hook produces such a capture. Refusing the scheme
+    /// outright broke the live render suite, which is what this pins.
+    @Test func aLocalFileCaptureLoadsItsOwnDocument() {
+        let file = URL(fileURLWithPath: "/tmp/fixture.html")
+        #expect(
+            Policy.decision(
+                for: file, isMainFrame: true, allowsLoopback: false, allowsLocalFile: true)
+                == .allow)
+        // The permission covers that capture's main document only.
+        #expect(
+            Policy.decision(
+                for: file, isMainFrame: false, allowsLoopback: false, allowsLocalFile: true)
+                == .cancel(reason: "local file subframe"))
+        // An ordinary web capture still refuses the scheme outright.
+        #expect(
+            Policy.decision(
+                for: file, isMainFrame: true, allowsLoopback: false, allowsLocalFile: false)
+                == .cancel(reason: "unsupported scheme"))
+        // Permission to load a local file is not permission to reach a private host.
+        #expect(
+            Policy.decision(
+                for: URL(string: "http://169.254.169.254/latest/meta-data/"),
+                isMainFrame: true, allowsLoopback: false, allowsLocalFile: true)
+                == .cancel(reason: "private host"))
+    }
+
 }

@@ -18,8 +18,15 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
     /// Frozen from the validated config so policy cannot change midway through a load.
     private let allowsLoopbackCapture: Bool
 
-    init(allowsLoopbackCapture: Bool) {
+    /// Whether this capture was configured to load a local file. Only the explicit
+    /// `WebSnapshotConfig(localFileURL:)` hook produces one — URL validation rejects a
+    /// `file:` URL a user could type — so the scheme is allowed for the main frame of
+    /// exactly those captures and refused everywhere else.
+    private let allowsLocalFile: Bool
+
+    init(allowsLoopbackCapture: Bool, allowsLocalFile: Bool = false) {
         self.allowsLoopbackCapture = allowsLoopbackCapture
+        self.allowsLocalFile = allowsLocalFile
         super.init()
     }
 
@@ -69,7 +76,8 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
     ///   before the load, but that check never ran again afterwards. A navigation whose URL
     ///   carries no host — `file:`, `data:`, `about:`, `blob:` — skipped the host filter
     ///   entirely and was allowed. A main-frame navigation must therefore be a web scheme
-    ///   with a host, and `file:` is refused in any frame.
+    ///   with a host — or, for a capture built through the local-file hook, that one
+    ///   file. A `file:` subframe is refused unconditionally.
     /// - **Host.** A public page can 30x-redirect, or embed a frame, pointing at a private,
     ///   loopback, or link-local host (the `169.254.169.254` cloud-metadata endpoint being
     ///   the canonical example). This is the post-redirect gap that mirrors
@@ -87,11 +95,16 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
         }
 
         static func decision(
-            for url: URL?, isMainFrame: Bool, allowsLoopback: Bool
+            for url: URL?, isMainFrame: Bool, allowsLoopback: Bool, allowsLocalFile: Bool = false
         ) -> Decision {
             let scheme = url?.scheme?.lowercased()
 
             if isMainFrame {
+                // A local-file capture loads exactly one `file:` document, which has no
+                // host to check; anything else in its main frame follows the web rule.
+                if allowsLocalFile && scheme == "file" {
+                    return .allow
+                }
                 guard let scheme, WebSnapshotConfig.allowedSchemes.contains(scheme) else {
                     return .cancel(reason: "unsupported scheme")
                 }
@@ -124,7 +137,8 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
         switch NavigationPolicy.decision(
             for: navigationAction.request.url,
             isMainFrame: isMainFrame,
-            allowsLoopback: allowsLoopbackCapture)
+            allowsLoopback: allowsLoopbackCapture,
+            allowsLocalFile: allowsLocalFile)
         {
         case .allow:
             decisionHandler(.allow)
