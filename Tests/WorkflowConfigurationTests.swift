@@ -273,6 +273,21 @@ struct WorkflowConfigurationTests {
         let freshness = try Self.freshness()
         #expect(freshness.contains("schedule:"))
         #expect(freshness.contains("./scripts/check-dependency-freshness.sh"))
+
+        // Every external dependency needs a watcher. The two SwiftPM packages are pinned
+        // in project.yml and the generated project (with its resolved graph) is ignored,
+        // so Dependabot cannot see them: without this check they could sit unchanged
+        // through a security advisory with nothing raising a hand.
+        let checker = try Self.text("scripts", "check-dependency-freshness.sh")
+        #expect(checker.contains("check_tag Highlightr"))
+        #expect(checker.contains("check_tag KeyboardShortcuts"))
+        // A version-behind pin warns; only bytes changing under the pinned version fail.
+        #expect(
+            checker.contains("note_drift"),
+            "drift must be reported as a warning rather than a recurring red scheduled run")
+        #expect(
+            checker.contains("checksum differs from the official release asset"),
+            "a checksum mismatch at the pinned version must stay fatal")
     }
 
     @Test func failureDiagnosticsRequireGeneratedProject() throws {
