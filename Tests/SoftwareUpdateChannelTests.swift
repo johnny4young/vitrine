@@ -453,4 +453,25 @@ struct SoftwareUpdateChannelTests {
                 || doc.localizedCaseInsensitiveContains("no analytics"),
             "RELEASING.md must state the update path collects no analytics")
     }
+    // MARK: - Contract: the background scheduler actually starts
+
+    /// Sparkle's controller is built with `startingUpdater: true`, but it lives behind a
+    /// lazy `shared`, so it schedules nothing until something touches it. For one release
+    /// the only reference was the "Check for Updates" menu command, which means a user who
+    /// never opened that menu received no automatic checks — the configuration promised an
+    /// update channel the app never opened. Launch must start it.
+    @Test func launchStartsTheBackgroundUpdateScheduler() throws {
+        let delegate = try Self.text("Vitrine", "App", "AppDelegate.swift")
+        let updater = try Self.text("Vitrine", "Updates", "SoftwareUpdater.swift")
+
+        #expect(updater.contains("static func startBackgroundScheduler()"))
+        #expect(updater.contains("startingUpdater: true"))
+
+        let launch = try #require(delegate.range(of: "func applicationDidFinishLaunching"))
+        let body = String(delegate[launch.lowerBound...])
+        #expect(
+            body.contains("SoftwareUpdater.startBackgroundScheduler()"),
+            "Launch must bring the updater up so its scheduler runs")
+    }
+
 }

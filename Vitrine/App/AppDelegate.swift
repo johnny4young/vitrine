@@ -227,6 +227,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Bring the updater up so its background scheduler runs. Sparkle is configured
+        // to schedule checks as soon as its controller exists, but the controller lives
+        // behind a lazy `shared`, so before this call it was created only when the user
+        // opened "Check for Updates" — and a user who never opened that menu was never
+        // offered an update. Started after the UI is up so it cannot delay first paint.
+        SoftwareUpdater.startBackgroundScheduler()
+
         // Pay the syntax highlighter's one-time cold start now, off the render path, so
         // a user whose first interaction is a ⇧⌘S quick capture doesn't eat the
         // JavaScriptCore + theme-CSS warm-up inside the "instant" gesture. Low priority
