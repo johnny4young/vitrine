@@ -42,7 +42,6 @@ import WebKit
 /// waits for the load to finish (or fail) via a retained navigation delegate, then
 /// rasterizes. The work is bounded by `timeout` so a script that never settles
 /// cannot hang the caller — it surfaces a typed `.timedOut`, never a blank image.
-@MainActor
 struct WebSnapshotView {
     /// The render request: the HTML to draw, the viewport to draw it in, and the
     /// isolation policy (network and local base URL). Carrying these as a value
@@ -358,7 +357,6 @@ extension WebSnapshotView {
 /// `WKNavigationDelegate` is an `NSObjectProtocol`, so this is an `NSObject`
 /// subclass; its callbacks arrive on the main actor (where the web view lives),
 /// matching the module's default isolation.
-@MainActor
 private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
     private let loadWaiter = WebLoadWaiter()
 

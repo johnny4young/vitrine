@@ -8,7 +8,6 @@ import Foundation
 /// read user files, or need AppKit. The executable handles it before the PRO render
 /// gate, giving docs and CI scripts a cheap way to discover valid ids from the same
 /// source of truth the parser validates against.
-@MainActor
 enum CLICatalog {
     enum Catalog: Equatable, Sendable {
         case all

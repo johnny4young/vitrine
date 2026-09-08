@@ -7,7 +7,6 @@ import Security
 /// separate process identity is required because Control Center can block every status
 /// item owned by the main bundle while leaving the app running. The helper owns no user
 /// data and self-exits when its exact containing Vitrine process disappears.
-@MainActor
 enum MenuBarHelperLauncher {
     static let executableName = MenuBarHelperContract.executableName
 

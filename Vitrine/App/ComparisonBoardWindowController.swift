@@ -2,7 +2,6 @@ import AppKit
 import SwiftUI
 
 /// Owns the single session-only comparison-board window.
-@MainActor
 final class ComparisonBoardWindowController: NSObject, NSWindowDelegate {
     static let shared = ComparisonBoardWindowController(
         environment: .shared,

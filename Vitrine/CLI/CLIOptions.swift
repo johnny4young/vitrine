@@ -17,7 +17,6 @@ import Foundation
 /// Main-actor isolated (the module default) so `makeConfig` can build a
 /// `SnapshotConfig` and apply the main-actor `ExportPreset`/`Theme`/`SettingsDefaults`
 /// model exactly as the GUI does, keeping the produced image identical.
-@MainActor
 struct CLIOptions: Equatable {
     /// Whether this is the constrained free terminal-capture path, a single-file
     /// `render`, one-source `multi-size`, or folder `batch` invocation. Output paths

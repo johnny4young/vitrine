@@ -11,7 +11,6 @@ import Foundation
 /// launch (`WebSessionStore.registerPresenter()`). In the CLI nothing is installed: there
 /// are no sessions to list and nothing to clear, which is the honest answer for a tool
 /// that never loads a page. Mirrors `WebSnapshotPresenter`.
-@MainActor
 enum WebSessionPresenter {
     /// Reads the hosts Vitrine holds a session for. `nil` until the app installs it.
     static var readSignedInHosts: (() async -> [String])?

@@ -14,7 +14,6 @@ import SwiftUI
 /// via frame autosave, across launches. The working card itself survives through
 /// `AppSettings`, so the window carries no document state of its own and needs no
 /// secure state restoration.
-@MainActor
 final class SocialCardWindowController: NSObject {
     static let shared = SocialCardWindowController(
         environment: .shared,

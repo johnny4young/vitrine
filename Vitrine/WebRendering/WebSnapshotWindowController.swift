@@ -10,7 +10,6 @@ import SwiftUI
 /// File-menu command, the `--open-web-snapshot` hook, and the quick-capture URL route —
 /// all of which live in `App/` and must not link WebKit — present it through that seam
 /// rather than naming this WebKit-backed controller directly.
-@MainActor
 final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSnapshotWindowController(
         environment: .shared,

@@ -18,7 +18,6 @@ import Foundation
 /// their own `.shared`; controllers that host data-backed views receive this root when
 /// their shared instance is created. `HighlightManager` is a stateless engine cache with
 /// a private init and stays a leaf singleton.
-@MainActor
 final class AppEnvironment {
     /// The app-wide graph, built once over the standard defaults. `Store.shared`
     /// forwards here, so this is the single construction site for the whole app.

@@ -159,7 +159,6 @@ struct WhatsNewView: View {
 /// Mirrors `WelcomeWindowController`: the version gate lives in
 /// `presentIfNewVersion`, which the app lifecycle calls after onboarding so the
 /// two first-launch surfaces never both appear.
-@MainActor
 final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     static let shared = WhatsNewWindowController()
 

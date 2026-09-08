@@ -15,7 +15,6 @@ import Observation
 /// HUD presentation and recovery navigation enter as small operation values. The live
 /// adapters bridge to the reusable AppKit window owners; this coordinator remains
 /// deterministic and can be exercised without constructing UI.
-@MainActor
 @Observable
 final class CaptureFeedbackPresenter {
     static let shared = CaptureFeedbackPresenter()

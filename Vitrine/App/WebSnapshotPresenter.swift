@@ -12,7 +12,6 @@ import Foundation
 /// (`WebSnapshotWindowController.registerPresenter()` from the app-only `VitrineApp`).
 /// In the CLI the closure is never installed and `show` is a no-op, so the command
 /// surface compiles and links without WebKit.
-@MainActor
 enum WebSnapshotPresenter {
     /// The real window opener, installed once at launch by the app. `nil` in headless
     /// contexts (the CLI), where there is no window surface, so `show` does nothing.

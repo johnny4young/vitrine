@@ -43,7 +43,6 @@ enum ResponsiveBoardComposer {
     /// Compatibility wrapper for callers that do not present typed render feedback.
     /// Production Web Snapshot uses `composeChecked` so an unsafe board size remains
     /// distinguishable from an ordinary allocation failure.
-    @MainActor
     static func compose(
         _ captures: [CapturedViewport], scale: CGFloat, profile: ColorProfile
     ) -> RenderedAsset? {
@@ -54,7 +53,6 @@ enum ResponsiveBoardComposer {
     /// export budget. A single capture can be safe while its aspect-derived board
     /// column is not (for example, a very wide custom viewport), so this final
     /// preflight is required independently of the per-viewport checks.
-    @MainActor
     static func composeChecked(
         _ captures: [CapturedViewport], scale: CGFloat, profile: ColorProfile
     ) throws(RenderBudgetError) -> RenderedAsset {

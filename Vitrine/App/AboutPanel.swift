@@ -8,7 +8,6 @@ import AppKit
 /// twice (the bug this type fixes). Both entry points — the App-menu "About Vitrine"
 /// command and the menu-bar panel's About row — present through here so the surface is
 /// identical from either path.
-@MainActor
 enum AboutPanel {
     /// Activates the app and shows the standard About panel with the branded credits.
     static func present() {

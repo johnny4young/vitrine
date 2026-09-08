@@ -357,7 +357,6 @@ import Foundation
     /// `LicenseToken` → return it for persistence. The validator and signing key are injected
     /// so the whole flow is unit-tested with a fake validator and a development key, never the
     /// network or the production key.
-    @MainActor
     struct LicenseActivationService {
         let validator: LicenseKeyValidator
         /// The build-injected signing key, or `nil` on a from-source build (→ `notConfigured`).
@@ -430,7 +429,6 @@ import Foundation
 
     /// Resolves only the remote half of deactivation. Entitlement coordination owns the
     /// record comparison and local cleanup so actor reentrancy cannot clear a newer seat.
-    @MainActor
     struct LicenseDeactivationService {
         let deactivator: LicenseKeyDeactivator
 

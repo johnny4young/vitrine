@@ -194,7 +194,6 @@ private struct HelpTopic: Identifiable {
 /// `EditorWindowController`): an AppKit window hosting the SwiftUI view, created
 /// lazily and reused so reopening Help focuses the existing window rather than
 /// stacking duplicates.
-@MainActor
 final class HelpWindowController {
     static let shared = HelpWindowController()
 

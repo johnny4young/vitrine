@@ -120,7 +120,6 @@ struct CaptureHUDView: View {
 /// menu bar on the active screen and hosts `CaptureHUDView`. Presenting again
 /// before the previous HUD has faded simply replaces its content and resets the
 /// timer, so a burst of captures never stacks windows.
-@MainActor
 final class CaptureHUDController {
     static let shared = CaptureHUDController()
 
