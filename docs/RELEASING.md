@@ -139,6 +139,12 @@ CI is a release gate, not just a compile check.
   and stops. Public promotion is a separate manual dispatch that pins the successful
   candidate run, tag commit, operator-confirmed clean-Mac checklist, and SHA-256. The
   published bytes pass QA again before downstream distribution changes.
+- **The release workflow builds on an image the matrix certifies.** Every `release.yml`
+  job runs on the explicit `macos-26` label, the same Tahoe row `ci.yml` gates on, so a
+  shipped DMG is never produced on a toolchain no lane has validated. `xcode-version`
+  still resolves to the latest stable release and the image still receives rolling
+  updates, which is why each job records the exact macOS, Xcode, and Swift versions
+  into its summary before building.
 
 ### Supported macOS matrix
 
