@@ -221,9 +221,17 @@ The lane always writes an `.xcresult` and passes its `xccov --json` report and r
 archive through `scripts/check-coverage.py`; an absent, empty, or malformed report fails
 the gate rather than becoming a best-effort warning. CI selects the committed baseline
 for its Sequoia or Tahoe row, retains failure bundles, and publishes per-target `xccov`
-output in the job summary. The weighted coverage across `Vitrine.app`, `vitrine-cli`,
-and `VitrineMenuBarHelper` may not fall more than one percentage point below the
-pre-hardening baseline for that OS.
+output in the job summary. The weighted coverage across the five production binaries —
+`Vitrine.app`, `vitrine-cli`, `VitrineMenuBarHelper`, `libVitrineDomain.a`, and
+`libVitrineRendering.a` — may not fall more than one percentage point below the recorded
+baseline for that OS.
+
+Each baseline in `scripts/coverage-baselines/` records the measurement it came from: the
+revision, the CI run, the runner image, and the toolchain, alongside the covered and
+executable line counts. It also records the target set it was measured over, and the
+guard refuses a baseline whose set differs from its own — a baseline measured across
+different binaries is not comparable to today's sum, so changing the set means
+re-recording rather than reinterpreting the old number.
 
 The instrumented app host runs without code-signing entitlements or App Sandbox only
 inside `make test-coverage`. On privacy-hardened macOS hosts, `xcodebuild` otherwise may

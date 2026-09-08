@@ -138,6 +138,18 @@ def validate_baseline(baseline: Any) -> dict[str, Any]:
         raise CoverageError("coverage baseline line counts are inconsistent")
     if abs(covered / executable - float(coverage)) > 1e-12:
         raise CoverageError("coverage baseline ratio does not match its recorded line counts")
+    # The target set is part of the measurement, not a label. A baseline recorded over a
+    # different set of binaries is not comparable to today's sum: when the modules were
+    # extracted, the recorded set kept naming three targets while the guard summed five,
+    # and the drop check silently compared one measurement against another.
+    recorded_targets = baseline.get("productionTargets")
+    if not isinstance(recorded_targets, list) or sorted(recorded_targets) != sorted(
+        PRODUCTION_TARGETS
+    ):
+        raise CoverageError(
+            "coverage baseline productionTargets must match the guard's production targets; "
+            "re-record the baseline after changing the target set"
+        )
     return baseline
 
 
@@ -285,8 +297,16 @@ def self_test() -> None:
         "productionLineCoverage": 0.8,
         "coveredLines": 8,
         "executableLines": 10,
+        "productionTargets": sorted(PRODUCTION_TARGETS),
     }
     assert validate_baseline(baseline)["productionLineCoverage"] == 0.8
+    stale = dict(baseline, productionTargets=["Vitrine.app"])
+    try:
+        validate_baseline(stale)
+    except CoverageError:
+        pass
+    else:
+        raise AssertionError("a baseline measured over a different target set must fail closed")
     try:
         parse_json("not-json", "fixture")
     except CoverageError:
