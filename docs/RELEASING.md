@@ -121,14 +121,6 @@ CI is a release gate, not just a compile check.
   compares both the XcodeGen and Sparkle versions and checksums with GitHub's published
   release metadata. Each GitHub release includes a versioned SPDX JSON SBOM alongside the
   DMG and checksum.
-- **Static security analysis.** `codeql.yml` analyzes Swift on `macos-15` through a
-  traced manual Xcode build and JavaScript/TypeScript on Linux without a synthetic
-  build. Both use CodeQL's `security-extended` suite. The JavaScript/TypeScript lane
-  runs on pull requests, pushes to `main`, a weekly schedule, and manual dispatch; the
-  Swift lane runs on everything except pull requests, because its traced build takes
-  about 40 minutes when it finishes and stalls intermittently on identical code, and it
-  is not a required check. Results are uploaded to GitHub code scanning; the workflow
-  has no write permission beyond `security-events`.
 - **Focused sanitizer early warning.** `sanitizers.yml` runs Address Sanitizer over
   bounded input/parser/allocation logic and Thread Sanitizer over cancellation and
   waiter lifecycles every week or on manual dispatch. It deliberately excludes the
@@ -183,14 +175,15 @@ runner as GA and the full runtime, UI, visual, performance, and clean-Mac eviden
 
 ### Security-analysis lanes
 
-CodeQL is the deterministic source-analysis lane. Swift uses `build-mode: manual` so
-the database contains exactly the generated Xcode targets compiled by `make build`;
-JavaScript/TypeScript uses buildless extraction for the static Astro site and supporting
-scripts. Both run `security-extended`; only the JavaScript/TypeScript lane runs on pull
-requests, and a Swift finding therefore surfaces on `main` or on the weekly run rather
-than blocking a review. Action references are immutable commit-SHA pins
-and remain covered by Dependabot. A CodeQL alert is investigated or dismissed with a
-documented reason; do not exclude the affected path merely to make the workflow green.
+Sanitizers are the repository's source-analysis lane, alongside the SSRF host policy and
+its WebKit rule set, the secret scanner, and the coverage floor over critical logic.
+
+CodeQL was removed in 1.2.2. It ran here for one release cycle and produced one alert in
+that time, already fixed. Its Swift lane traced a full Xcode build on a hosted macOS
+runner, which was bimodal: about 40 minutes when it finished, and an intermittent
+extractor stall that only a timeout ended — 14 of the last 26 runs were killed that way.
+It was never a required check, so the cost was paid without gating anything. Action
+references remain immutable commit-SHA pins covered by Dependabot.
 
 The sanitizer commands are also available locally:
 
