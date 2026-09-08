@@ -976,4 +976,37 @@ struct WorkflowConfigurationTests {
             }
         }
     }
+    // MARK: - Contract: the documented coverage set matches the enforced one
+
+    /// The release guide states which binaries the coverage floor is weighted across, and
+    /// contributors read it as the contract. When the domain and rendering modules were
+    /// extracted the guard started summing five targets while the guide still named three,
+    /// so the documented contract was simply wrong — and nothing noticed, because prose
+    /// and code drift apart silently.
+    ///
+    /// Derives the expected set from the guard itself rather than hardcoding it here, so
+    /// the next change to the target set fails on the documentation instead of shipping a
+    /// second wrong contract.
+    @Test func theReleaseGuideNamesEveryTargetTheCoverageGuardSums() throws {
+        let guardSource = try Self.coverageGuard()
+        let setStart = try #require(guardSource.range(of: "PRODUCTION_TARGETS = {"))
+        let setEnd = try #require(
+            guardSource.range(of: "}", range: setStart.upperBound..<guardSource.endIndex))
+        let body = guardSource[setStart.upperBound..<setEnd.lowerBound]
+        let targets =
+            body
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.hasPrefix("\"") && $0.hasSuffix("\"") }
+            .map { $0.dropFirst().dropLast() }
+        #expect(targets.count >= 3, "the guard must declare its production targets inline")
+
+        let doc = try Self.releasingDoc()
+        for target in targets {
+            #expect(
+                doc.contains("`\(target)`"),
+                "RELEASING.md must name \(target) among the binaries the coverage floor covers")
+        }
+    }
+
 }
