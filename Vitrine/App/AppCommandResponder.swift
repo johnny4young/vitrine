@@ -38,7 +38,7 @@ final class AppCommandResponder: NSObject {
     /// Routed through `WebSnapshotPresenter` so this command surface
     /// carries no dependency on the WebKit-backed window (which the CLI excludes).
     @objc func openWebSnapshotEditor(_ sender: Any?) {
-        WebSnapshotPresenter.show()
+        WebSnapshotWindowController.shared.show()
     }
 
     @objc func openSettings(_ sender: Any?) {

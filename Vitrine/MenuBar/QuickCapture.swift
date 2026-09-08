@@ -413,7 +413,7 @@ enum QuickCapture {
             // the privacy disclosure and the local capture live — rather than
             // the old deferred dead-end. `WebSnapshotPresenter` keeps this free of any
             // WebKit dependency, so the menu-bar path stays CLI-safe.
-            WebSnapshotPresenter.show(prefillURL: text)
+            WebSnapshotWindowController.shared.show(prefillURL: text)
         default:
             feedback.present(result, environment: environment)
         }

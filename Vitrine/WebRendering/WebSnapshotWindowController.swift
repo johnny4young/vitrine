@@ -5,11 +5,10 @@ import SwiftUI
 /// (on a build that carries the network entitlement) URL capture, with a live preview
 /// and the same clipboard/save/share export as the rest of the app.
 ///
-/// Like `SocialCardWindowController`, the window is reused across opens and closes. It
-/// is registered with `WebSnapshotPresenter` at launch (`registerPresenter()`), so the
-/// File-menu command, the `--open-web-snapshot` hook, and the quick-capture URL route —
-/// all of which live in `App/` and must not link WebKit — present it through that seam
-/// rather than naming this WebKit-backed controller directly.
+/// Like `SocialCardWindowController`, the window is reused across opens and closes. The
+/// File-menu command, the `--open-web-snapshot` hook, and the quick-capture URL route
+/// call `shared.show(prefillURL:)` directly; the CLI excludes `App/`, `Settings/`, and
+/// this file, so naming it from there links no WebKit into the tool.
 @MainActor
 final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSnapshotWindowController(
@@ -66,15 +65,6 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
             environment: environment,
             feedback: feedback,
             presentation: presentation)
-    }
-
-    /// Installs the window opener on `WebSnapshotPresenter`. Called once at launch from
-    /// the app-only `VitrineApp`, so the CLI (which excludes this file) never links the
-    /// WebKit-backed window.
-    static func registerPresenter() {
-        WebSnapshotPresenter.open = { prefillURL in
-            WebSnapshotWindowController.shared.show(prefillURL: prefillURL)
-        }
     }
 
     /// Shows the Web Snapshot window, creating it the first time, and focuses it.
