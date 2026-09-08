@@ -13,7 +13,6 @@ import Foundation
 /// the last version loaded from disk. Once the user edits locally, a newer disk
 /// version becomes pending and requires an explicit reload, so a background refresh
 /// can never overwrite work in progress.
-@MainActor
 @Observable
 final class LivingSnapshotSession {
     enum Status: Equatable {

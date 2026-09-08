@@ -1,6 +1,5 @@
 import Foundation
 
-@MainActor
 extension WebSnapshotModel {
     /// The maximum number of viewport captures to run at once. Small so a large
     /// selection never spawns many heavy `WKWebView`s (and their web-content processes)

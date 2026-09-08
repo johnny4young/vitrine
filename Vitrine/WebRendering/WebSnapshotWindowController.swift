@@ -16,7 +16,6 @@ import SwiftUI
 /// That is a property of the target's source set rather than of this code, so
 /// `WebSnapshotCLIBoundaryTests` derives the calling directories from the sources and
 /// fails if any of them stops being excluded.
-@MainActor
 final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSnapshotWindowController(
         environment: .shared,

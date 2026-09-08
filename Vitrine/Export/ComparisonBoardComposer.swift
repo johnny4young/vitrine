@@ -47,7 +47,6 @@ enum ComparisonBoardComposer {
 
     /// Produces a board at 1×, 2×, or 3×. The images are already rendered inputs, so
     /// composition performs no source-file access and no network work.
-    @MainActor
     static func compose(
         _ board: ComparisonBoard,
         scale: CGFloat = 2,

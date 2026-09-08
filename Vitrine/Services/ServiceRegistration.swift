@@ -26,7 +26,6 @@ enum ServiceRegistration {
 
     /// Installs the provider and advertises the send/return types so the Services
     /// menu item appears and enables for a text selection.
-    @MainActor
     static func register(provider: CodeImageService = .shared) {
         NSApp.servicesProvider = provider
         NSApp.registerServicesMenuSendTypes(sendTypes, returnTypes: returnTypes)

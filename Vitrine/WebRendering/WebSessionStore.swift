@@ -10,7 +10,6 @@ import WebKit
 ///
 /// Everything a signed-in capture relies on lives here, which makes this also the place
 /// that has to be able to throw it all away again.
-@MainActor
 enum WebSessionStore {
 
     /// The record types a sign-in leaves behind. Cookies carry the session itself; the
