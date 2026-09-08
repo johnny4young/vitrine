@@ -59,7 +59,7 @@ The current source bundle's newest note is **Safer rendering, stricter web captu
   typed render failures;
 - Web Snapshot blocks literal local and private subresources across images, styles,
   scripts, frames, and network requests unless loopback is explicitly enabled;
-- CodeQL and focused Address and Thread Sanitizer lanes add repeatable candidate evidence;
+- focused Address and Thread Sanitizer lanes add repeatable candidate evidence;
   and
 - the supported floor remains macOS 15 Sequoia, with Tahoe qualification and universal
   direct downloads.
