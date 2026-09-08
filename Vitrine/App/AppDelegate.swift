@@ -102,6 +102,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             && environment["XCTestConfigurationFilePath"] == nil
     }
 
+    /// Whether to start Sparkle's background update scheduler for a launch with this
+    /// environment. Returns `false` under both test hosts, for the same reason the
+    /// single-instance guard is exempt there.
+    ///
+    /// Sparkle asks once, in a modal window, whether to check for updates automatically,
+    /// and it records the answer in the app's defaults. A UI-test run gets a fresh
+    /// throwaway defaults suite every time, so that window would open on every launch and
+    /// steal focus from the automation — which is exactly what it did the first time this
+    /// scheduler was started unconditionally. Pure + injectable so the rule is testable.
+    static func shouldStartUpdateScheduler(_ environment: [String: String]) -> Bool {
+        environment["VITRINE_USER_DEFAULTS_SUITE"] == nil
+            && environment["XCTestConfigurationFilePath"] == nil
+    }
+
     /// Chooses the status-item owner without leaking helper processes into tests.
     /// Unit tests exercise `StatusItemController` explicitly, while UI tests keep the
     /// item in-process so XCUIAutomation can reach it through the launched app.
@@ -227,11 +241,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Bring the updater up so its background scheduler runs. Sparkle is configured
+        // to schedule checks as soon as its controller exists, but the controller lives
+        // behind a lazy `shared`, so before this call it was created only when the user
+        // opened "Check for Updates" — and a user who never opened that menu was never
+        // offered an update.
+        //
+        // Deferred to a later turn rather than run inline: SwiftUI's scene bring-up
+        // happens only after this method returns (see the menu note above), so anything
+        // synchronous here is work done before the first frame. Nothing waits on the
+        // updater, so it has no claim on that time. Never started under a test host,
+        // whose throwaway defaults suite would reopen Sparkle's one-time consent window
+        // on every launch (see `shouldStartUpdateScheduler`).
+        if Self.shouldStartUpdateScheduler(ProcessInfo.processInfo.environment) {
+            Task(priority: .utility) { SoftwareUpdater.startBackgroundScheduler() }
+        }
+
         // Pay the syntax highlighter's one-time cold start now, off the render path, so
         // a user whose first interaction is a ⇧⌘S quick capture doesn't eat the
         // JavaScriptCore + theme-CSS warm-up inside the "instant" gesture. Low priority
         // so it never contends with the menu bar coming up or a hotkey already firing.
         Task(priority: .utility) { HighlightManager.shared.prewarm() }
+
+        // Decode the persisted background and foreground before anything draws them. The
+        // canvas resolves an image reference synchronously inside its `body` — it has to,
+        // because the same view renders an export, where an image that arrives later would
+        // silently produce the fallback gradient instead of the user's photo. That leaves
+        // the first pass after launch paying the decode on the main actor: 207 ms for a
+        // 24 MB photo, measured. Warming the process-wide cache off the main actor first
+        // turns that pass into a lookup. Nothing depends on it finishing: a miss simply
+        // decodes the way it does today.
+        Task(priority: .utility) { await self.prewarmPersistedImages() }
+    }
+
+    /// Decodes the images the first canvas would otherwise resolve synchronously.
+    private func prewarmPersistedImages() async {
+        let config = environment.appSettings.config
+        if case .image(let background) = config.background {
+            _ = await BackgroundImageStore.container.preloadImage(for: background.reference)
+        }
+        if let foreground = config.foregroundImage {
+            _ = await BackgroundImageStore.foregroundContainer.preloadImage(for: foreground)
+        }
     }
 
     private func handleHotkey() {

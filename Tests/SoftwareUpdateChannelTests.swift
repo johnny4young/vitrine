@@ -453,4 +453,45 @@ struct SoftwareUpdateChannelTests {
                 || doc.localizedCaseInsensitiveContains("no analytics"),
             "RELEASING.md must state the update path collects no analytics")
     }
+    // MARK: - Contract: the background scheduler actually starts
+
+    /// Sparkle's controller is built with `startingUpdater: true`, but it lives behind a
+    /// lazy `shared`, so it schedules nothing until something touches it. For one release
+    /// the only reference was the "Check for Updates" menu command, which means a user who
+    /// never opened that menu received no automatic checks — the configuration promised an
+    /// update channel the app never opened. Launch must start it.
+    @Test func launchStartsTheBackgroundUpdateScheduler() throws {
+        let delegate = try Self.text("Vitrine", "App", "AppDelegate.swift")
+        let updater = try Self.text("Vitrine", "Updates", "SoftwareUpdater.swift")
+
+        #expect(updater.contains("startingUpdater: true"))
+
+        // The function existing is not the contract; touching `shared` is. Emptying its
+        // body would restore the silent no-scheduler bug while every other assertion here
+        // still passed, so read the body itself.
+        let signature = try #require(updater.range(of: "static func startBackgroundScheduler()"))
+        let afterSignature = updater[signature.upperBound...]
+        let bodyEnd = try #require(afterSignature.range(of: "\n    }"))
+        let schedulerBody = String(afterSignature[..<bodyEnd.lowerBound])
+        #expect(
+            schedulerBody.contains("shared"),
+            "starting the scheduler means forcing the lazy controller into existence")
+
+        let launch = try #require(delegate.range(of: "func applicationDidFinishLaunching"))
+        let body = String(delegate[launch.lowerBound...])
+        #expect(
+            body.contains("SoftwareUpdater.startBackgroundScheduler()"),
+            "Launch must bring the updater up so its scheduler runs")
+        #expect(
+            body.contains("Self.shouldStartUpdateScheduler"),
+            "...but never under a test host, whose throwaway defaults suite would make Sparkle reopen its one-time consent window on every launch"
+        )
+        // SwiftUI's scene bring-up begins only after this callback returns, so building
+        // the updater inline would put it ahead of the first frame. Nothing waits on it.
+        #expect(
+            body.contains(
+                "Task(priority: .utility) { SoftwareUpdater.startBackgroundScheduler() }"),
+            "the updater must come up on a later turn, not before the first frame")
+    }
+
 }

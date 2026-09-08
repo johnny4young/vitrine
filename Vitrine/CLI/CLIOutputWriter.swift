@@ -170,7 +170,7 @@ enum CLIOutputWriter {
     ) throws {
         let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("txt")
         do {
-            try Data(config.sidecarText.utf8).write(to: sidecarURL)
+            try Data(config.sidecarText.utf8).write(to: sidecarURL, options: .atomic)
         } catch {
             let nsError = error as NSError
             Log.export.error(
@@ -192,7 +192,7 @@ enum CLIOutputWriter {
         let contents = markdownSidecarContents(
             for: config, imageName: imageURL.lastPathComponent)
         do {
-            try Data(contents.utf8).write(to: sidecarURL)
+            try Data(contents.utf8).write(to: sidecarURL, options: .atomic)
         } catch {
             let nsError = error as NSError
             Log.export.error(
@@ -212,7 +212,7 @@ enum CLIOutputWriter {
         let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("html")
         let contents = htmlSidecarContents(for: config, imageName: imageURL.lastPathComponent)
         do {
-            try Data(contents.utf8).write(to: sidecarURL)
+            try Data(contents.utf8).write(to: sidecarURL, options: .atomic)
         } catch {
             let nsError = error as NSError
             Log.export.error(
@@ -307,9 +307,14 @@ enum CLIOutputWriter {
     }
 
     /// Writes `data` to `url`, mapping any I/O failure to `CLIError.writeFailed`.
+    ///
+    /// Atomic, like every other write the batch renderer and the app's exchange files
+    /// perform: an interrupted run (a full disk, or Ctrl-C between two `write` calls)
+    /// must not leave a truncated image or sidecar that looks complete to whatever
+    /// script consumes it.
     private static func write(_ data: Data, to url: URL) throws {
         do {
-            try data.write(to: url)
+            try data.write(to: url, options: .atomic)
         } catch {
             // Log only the format, never the (user-chosen) path (privacy policy).
             let nsError = error as NSError
