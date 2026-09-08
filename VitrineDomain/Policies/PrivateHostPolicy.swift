@@ -120,12 +120,25 @@ nonisolated public enum PrivateHostPolicy {
             return true
         }
         // NAT64 well-known prefix (`64:ff9b::/96`, RFC 6052) embeds it in the low
-        // four bytes. The local-use prefix `64:ff9b:1::/48` is deliberately not
-        // matched: it is site-specific, and a translator reachable from this Mac
-        // would already be a private next hop.
+        // four bytes. IANA registers this prefix as globally reachable, so it is a
+        // legitimate way to reach a *public* IPv4 host and only an embedded private
+        // address is refused — the mechanism itself is not.
         if Array(bytes[0...11]) == [0, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0],
             isPrivateIPv4(Array(bytes[12...15]))
         {
+            return true
+        }
+        // Local-use translation prefix (`64:ff9b:1::/48`, RFC 8215) is refused whole,
+        // for the reason every non-global range above is: IANA registers it as
+        // special-purpose and *not* globally reachable, so a literal under it can
+        // never be a public origin.
+        //
+        // Decoding it would not be possible anyway. RFC 6052 lets a translator embed
+        // the IPv4 address at an offset that depends on the site's chosen prefix
+        // length, so there is no fixed position to read — which is exactly why the
+        // whole block, rather than an embedded address, is the thing to refuse. The
+        // WebKit subresource rules already block this family.
+        if Array(bytes[0...5]) == [0, 0x64, 0xff, 0x9b, 0, 1] {
             return true
         }
         return false
