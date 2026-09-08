@@ -90,7 +90,9 @@ struct URLSnapshotEngine {
         // literal private/local destinations are already blocked by the content
         // rule list above. The engine still runs locally and never uses a remote
         // rendering service.
-        let coordinator = URLLoadCoordinator(allowsLoopbackCapture: config.allowsLoopbackCapture)
+        let coordinator = URLLoadCoordinator(
+            allowsLoopbackCapture: config.allowsLoopbackCapture,
+            allowsLocalFile: config.url.isFileURL)
         webView.navigationDelegate = coordinator
         defer {
             webView.navigationDelegate = nil
