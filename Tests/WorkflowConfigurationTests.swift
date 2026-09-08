@@ -286,8 +286,23 @@ struct WorkflowConfigurationTests {
             checker.contains("note_drift"),
             "drift must be reported as a warning rather than a recurring red scheduled run")
         #expect(
-            checker.contains("checksum differs from the official release asset"),
+            checker.contains("checksum differs from its published release asset"),
             "a checksum mismatch at the pinned version must stay fatal")
+
+        // The tamper check must read the *pinned* release, not whatever is newest, and it
+        // must run before drift can return. Making drift a warning means a pin may sit
+        // behind indefinitely, so a checksum check that only ran while the pin was current
+        // would be a check that switches itself off and stays off.
+        #expect(
+            checker.contains("releases/tags/${tag}"),
+            "the digest must come from the pinned release, not the latest one")
+        let checkPinStart = try #require(checker.range(of: "check_pin() {"))
+        let checkPinBody = String(checker[checkPinStart.upperBound...])
+        let digestCheck = try #require(checkPinBody.range(of: "checksum differs"))
+        let driftReport = try #require(checkPinBody.range(of: "note_drift"))
+        #expect(
+            digestCheck.lowerBound < driftReport.lowerBound,
+            "the checksum must be verified before drift can return early")
     }
 
     @Test func failureDiagnosticsRequireGeneratedProject() throws {
