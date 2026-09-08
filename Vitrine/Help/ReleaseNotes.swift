@@ -42,6 +42,28 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.2.2",
+            headline: "Updates that arrive, and a faster editor",
+            highlights: [
+                "Vitrine now checks for updates on its own. Until this release it only "
+                    + "checked when you opened Check for Updates yourself, so an install "
+                    + "that never used that menu was never told a new version existed.",
+                "Editing a large file keeps up with your typing. A 90 KB document used to "
+                    + "re-highlight itself three times between keystrokes; now it does that "
+                    + "work once.",
+                "Large terminal captures render about twice as fast. Past 512 KB — a "
+                    + "recorded session, not a screenshot — the text stays exact and "
+                    + "readable but loses its colors, and the editor tells you so.",
+                "Opening Vitrine with a photo background no longer stalls on the first "
+                    + "frame while the image decodes.",
+                "Web capture refuses a page's attempt to navigate somewhere that is not a "
+                    + "web address, and recognizes private destinations written in the IPv6 "
+                    + "forms that hide an internal address inside them.",
+                "Vitrine continues to require macOS 15 Sequoia or later and qualifies "
+                    + "Tahoe, and direct downloads remain universal for Apple silicon and "
+                    + "Intel.",
+            ]),
+        ReleaseNote(
             version: "1.2.1",
             headline: "Safer rendering, stricter web capture",
             highlights: [
