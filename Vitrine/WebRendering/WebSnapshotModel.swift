@@ -10,7 +10,6 @@ import Observation
 /// routes HTML to `HTMLRenderer` and URLs to `URLRenderer`; URL capture stays gated on
 /// the network entitlement inside `URLRenderer`, so a build without it surfaces a clear
 /// "only in the direct-download build" message rather than a blank result.
-@MainActor
 @Observable
 final class WebSnapshotModel {
     let viewportRenderer: WebSnapshotViewportRenderer

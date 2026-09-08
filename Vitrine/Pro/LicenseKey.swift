@@ -322,7 +322,6 @@ extension JSONDecoder {
     /// signed `LicenseToken`, verified offline against the embedded public key at every launch
     /// and by the CLI. `LicenseActivationService` performs the one-time online activation and
     /// hands the minted token here; this provider persists it and mirrors it to the CLI file.
-    @MainActor
     final class LicenseKeyProvider: EntitlementProvider {
         private let store: LicenseTokenStore
         private let activationRecordStore: LicenseActivationRecordStore

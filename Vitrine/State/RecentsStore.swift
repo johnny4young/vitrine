@@ -17,7 +17,6 @@ import Observation
 /// shared** — they are a local recognition aid only. The cache is kept in lock-step
 /// with the capture list: adding a capture renders and stores its thumbnail and
 /// prunes any orphans, and clearing recents clears the cache.
-@MainActor
 @Observable
 final class RecentsStore {
     /// The shared store, constructed by the composition root (``AppEnvironment``) and
@@ -230,7 +229,6 @@ enum RecentsThumbnail {
     static let size = CGSize(width: 320, height: 200)
 
     /// PNG bytes for `capture`'s preview, or `nil` if the render fails.
-    @MainActor
     static func pngData(for capture: Capture) -> Data? {
         let config = capture.applying(to: SnapshotConfig())
         // Thumbnails are recognition aids, not exports: render at 1× into the fixed

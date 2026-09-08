@@ -108,7 +108,6 @@ struct BrandKit: Equatable, Codable {
 /// user enabled it, PRO is unlocked, and the kit actually has content. So the brand
 /// kit can be configured for free, but it only marks an export once PRO is active,
 /// and it is the caller's `isPro` (read from `Entitlements`) that decides.
-@MainActor
 @Observable
 final class BrandKitStore {
     /// The shared store, constructed by the composition root (``AppEnvironment``) and

@@ -15,7 +15,6 @@ import SwiftUI
 /// The in-process item remains for UI tests and as a launch fallback. It has a stable
 /// identity, fixed width, no removal behavior, repaired defaults, and a bounded
 /// post-materialization visibility repair.
-@MainActor
 final class StatusItemController: NSObject, NSPopoverDelegate {
     /// The app's single status item. A second one would stack a duplicate icon.
     static let shared = StatusItemController(

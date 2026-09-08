@@ -180,7 +180,6 @@ enum QuickCapture {
         autoCopy || (savesToFile && format != .pdf)
     }
 
-    @MainActor
     private static func copyAndSave(
         _ plan: RenderPlan, settings: AppSettings
     ) -> ExportAttempt {
