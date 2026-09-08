@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-09-08
+
+Vitrine 1.2.2 repairs the update channel itself, closes two ways a private destination
+could be reached during a web capture, and makes the editor responsive on the inputs that
+were slowest: large source files and large terminal captures.
+
 ### Changed
 
 - Extract portable models, recipes, search, terminal policies, settings defaults, and
@@ -36,6 +42,15 @@ can never drift.
 
 ### Fixed
 
+- Refuse a URL capture navigation that is not a web scheme, or that carries no host, in
+  the frame the capture is rendering. The entry URL was validated once before the load,
+  but a later navigation with no host — `file:`, `data:`, `about:` — skipped the host
+  filter entirely. A navigation aimed at a new window is dropped rather than failing the
+  capture, so a page that opens a popup still renders.
+- Refuse IPv6 literals that embed a private IPv4 address through the 6to4 and NAT64
+  transition formats, and the whole local-use translation prefix, which is registered as
+  special-purpose and not globally reachable. A private destination could previously be
+  spelled entirely in IPv6 and never reach the IPv4 table.
 - Start the direct-download build's background update scheduler at launch. Sparkle's
   controller is configured to schedule checks as soon as it exists, but it was created
   only when someone opened "Check for Updates", so an install that never used that menu
@@ -44,6 +59,30 @@ can never drift.
 - Validate every built-in syntax stylesheet against the engine catalog and fall back
   deterministically to One Dark if a stylesheet cannot load, instead of silently reusing
   the previously rendered theme.
+- Keep the clean-Mac QA bundle free of AppleDouble sidecars, and fail the build if any
+  appear, so the archive a reviewer opens matches the one that was verified.
+
+### Performance
+
+- Reuse the most recent highlighting result for a document too large for the derived
+  caches. Editing a 90 KB file re-highlighted the same text three times per settle — once
+  for the editor, again for the preview, again for the gutter — which took 473 ms against
+  a 250 ms quiet window, so typing never caught up. It now takes 190 ms.
+- Reuse the most recent terminal frame for a capture too large for those caches, and
+  render captures above 512 KB as plain text. A two-megabyte capture cost 2659 ms per
+  settle on the main thread; it now costs 1096 ms. Above the ceiling the escapes are still
+  resolved away, so line redraws collapse exactly as they do in a colored render, and the
+  editor shows the same notice a large source document gets.
+- Decode a persisted image background before the first canvas draws it, instead of inside
+  that first pass. A 24 MB photo background cost 207 ms of the launch's first frame.
+
+### Removed
+
+- Remove the CodeQL analysis lanes. They ran for one release cycle and produced one alert,
+  already fixed, while never gating a merge. The Swift lane traced a full Xcode build on a
+  hosted runner and was killed by a timeout in 14 of its last 26 runs. Sanitizer lanes, the
+  SSRF host policy and its WebKit rule set, the secret scanner, and the coverage floor over
+  critical logic are unchanged.
 
 ## [1.2.1] - 2026-08-30
 
@@ -1259,7 +1298,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/johnny4young/vitrine/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/johnny4young/vitrine/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/johnny4young/vitrine/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/johnny4young/vitrine/compare/v1.0.1...v1.1.0
