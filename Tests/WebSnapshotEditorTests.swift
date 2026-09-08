@@ -134,29 +134,6 @@ struct URLCaptureConsentTests {
     }
 }
 
-@Suite("Web snapshot presenter bridge")
-@MainActor
-struct WebSnapshotPresenterTests {
-    @Test func showRoutesThePrefillURLToTheInstalledOpener() {
-        let original = WebSnapshotPresenter.open
-        defer { WebSnapshotPresenter.open = original }
-
-        var received: String??
-        WebSnapshotPresenter.open = { received = $0 }
-        WebSnapshotPresenter.show(prefillURL: "https://example.com")
-        #expect(received == "https://example.com")
-    }
-
-    @Test func showIsANoOpWithoutAnInstalledOpener() {
-        let original = WebSnapshotPresenter.open
-        defer { WebSnapshotPresenter.open = original }
-        // In a headless context (the CLI) no opener is installed; show must not crash.
-        WebSnapshotPresenter.open = nil
-        WebSnapshotPresenter.show()
-        WebSnapshotPresenter.show(prefillURL: "https://example.com")
-    }
-}
-
 @Suite("Web snapshot command and menu")
 @MainActor
 struct WebSnapshotCommandTests {

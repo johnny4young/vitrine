@@ -5,11 +5,17 @@ import SwiftUI
 /// (on a build that carries the network entitlement) URL capture, with a live preview
 /// and the same clipboard/save/share export as the rest of the app.
 ///
-/// Like `SocialCardWindowController`, the window is reused across opens and closes. It
-/// is registered with `WebSnapshotPresenter` at launch (`registerPresenter()`), so the
-/// File-menu command, the `--open-web-snapshot` hook, and the quick-capture URL route —
-/// all of which live in `App/` and must not link WebKit — present it through that seam
-/// rather than naming this WebKit-backed controller directly.
+/// Like `SocialCardWindowController`, the window is reused across opens and closes.
+///
+/// Callers name `shared.show(prefillURL:)` directly, from `App/` (the File-menu command
+/// and the `--open-web-snapshot` hook), `MenuBar/` (menu navigation and the quick-capture
+/// URL route), and `Feedback/` (the capture-feedback port). Those three directories, and
+/// `WebRendering/` itself, are excluded from the CLI target, which is what keeps WebKit
+/// out of the headless tool now that no indirection stands between them.
+///
+/// That is a property of the target's source set rather than of this code, so
+/// `WebSnapshotCLIBoundaryTests` derives the calling directories from the sources and
+/// fails if any of them stops being excluded.
 final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSnapshotWindowController(
         environment: .shared,
@@ -65,15 +71,6 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
             environment: environment,
             feedback: feedback,
             presentation: presentation)
-    }
-
-    /// Installs the window opener on `WebSnapshotPresenter`. Called once at launch from
-    /// the app-only `VitrineApp`, so the CLI (which excludes this file) never links the
-    /// WebKit-backed window.
-    static func registerPresenter() {
-        WebSnapshotPresenter.open = { prefillURL in
-            WebSnapshotWindowController.shared.show(prefillURL: prefillURL)
-        }
     }
 
     /// Shows the Web Snapshot window, creating it the first time, and focuses it.

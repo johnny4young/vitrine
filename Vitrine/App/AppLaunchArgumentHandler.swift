@@ -205,7 +205,7 @@ final class AppLaunchArgumentHandler {
             didOpenWindow = true
         }
         if arguments.contains("--open-web-snapshot") {
-            WebSnapshotPresenter.show()
+            WebSnapshotWindowController.shared.show()
             didOpenWindow = true
         }
         if arguments.contains("--open-menu-panel") {

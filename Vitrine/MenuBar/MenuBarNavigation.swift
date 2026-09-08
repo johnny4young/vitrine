@@ -50,7 +50,7 @@ struct MenuBarNavigation {
             case .editor:
                 EditorWindowController.shared.show()
             case .webSnapshot:
-                WebSnapshotPresenter.show()
+                WebSnapshotWindowController.shared.show()
             case .socialCard:
                 SocialCardWindowController.shared.show()
             case .settings:

@@ -110,7 +110,7 @@ struct CaptureFeedbackPresenterTests {
         for forbiddenDependency in [
             "CaptureHUDController.shared",
             "EditorWindowController.shared",
-            "WebSnapshotPresenter.show",
+            "WebSnapshotWindowController.shared",
         ] {
             #expect(
                 !code.contains(forbiddenDependency),

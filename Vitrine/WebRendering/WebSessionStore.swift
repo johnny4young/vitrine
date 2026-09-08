@@ -11,13 +11,6 @@ import WebKit
 /// Everything a signed-in capture relies on lives here, which makes this also the place
 /// that has to be able to throw it all away again.
 enum WebSessionStore {
-    /// Installs the store behind `WebSessionPresenter`, so the settings pane — which the
-    /// WebKit-free CLI also compiles — can list and clear sessions without linking WebKit.
-    /// Called once at launch from the app-only entry point.
-    static func registerPresenter() {
-        WebSessionPresenter.readSignedInHosts = { await signedInHosts() }
-        WebSessionPresenter.clearSessions = { await clearSessions() }
-    }
 
     /// The record types a sign-in leaves behind. Cookies carry the session itself; the
     /// storage types are what a site uses to keep a login alive across loads, so leaving
