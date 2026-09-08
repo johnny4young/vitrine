@@ -143,6 +143,15 @@ enum PrivateNetworkBlockRules {
         #"\[fe[89abcdef][0-9a-f:%.]*\]"#,
         #"\[ff[0-9a-f:%.]*\]"#,
 
+        // Transition formats that carry an IPv4 address inside an IPv6 literal, so a
+        // private destination can be spelled entirely in IPv6: 6to4 (`2002::/16`) and
+        // the NAT64 well-known prefix (`64:ff9b::/96`). Enumerating which embedded
+        // IPv4 addresses are private would mean matching hex groups, so the whole
+        // family is blocked — the same conservative stance the hex-tail rules below
+        // take, and a public subresource in either spelling is vanishingly rare.
+        #"\[2002:[0-9a-f:%.]*\]"#,
+        #"\[64:ff9b:[0-9a-f:%.]*\]"#,
+
         // IPv4-mapped private IPv6 literals WebKit may preserve in URL form.
         #"\[::ffff:0\.[0-9]+\.[0-9]+\.[0-9]+\]"#,
         #"\[::ffff:10\.[0-9]+\.[0-9]+\.[0-9]+\]"#,
