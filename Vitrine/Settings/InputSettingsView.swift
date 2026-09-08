@@ -168,7 +168,7 @@ struct WebCaptureControls: View {
         // Read the stored sessions here rather than on the row that lists them: that row
         // is hidden while the list is empty, so it could never populate itself. This row
         // is always present in both layouts.
-        .task { signedInHosts = await WebSessionPresenter.signedInHosts() }
+        .task { signedInHosts = await WebSessionStore.signedInHosts() }
     }
 
     /// Throwing away every stored session.
@@ -184,8 +184,8 @@ struct WebCaptureControls: View {
             ) {
                 Button("Sign Out of All") {
                     Task {
-                        await WebSessionPresenter.clear()
-                        signedInHosts = await WebSessionPresenter.signedInHosts()
+                        await WebSessionStore.clearSessions()
+                        signedInHosts = await WebSessionStore.signedInHosts()
                     }
                 }
                 .accessibilityIdentifier("web-clear-sessions-button")
