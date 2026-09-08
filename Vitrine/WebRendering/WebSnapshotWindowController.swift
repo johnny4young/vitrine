@@ -5,10 +5,17 @@ import SwiftUI
 /// (on a build that carries the network entitlement) URL capture, with a live preview
 /// and the same clipboard/save/share export as the rest of the app.
 ///
-/// Like `SocialCardWindowController`, the window is reused across opens and closes. The
-/// File-menu command, the `--open-web-snapshot` hook, and the quick-capture URL route
-/// call `shared.show(prefillURL:)` directly; the CLI excludes `App/`, `Settings/`, and
-/// this file, so naming it from there links no WebKit into the tool.
+/// Like `SocialCardWindowController`, the window is reused across opens and closes.
+///
+/// Callers name `shared.show(prefillURL:)` directly, from `App/` (the File-menu command
+/// and the `--open-web-snapshot` hook), `MenuBar/` (menu navigation and the quick-capture
+/// URL route), and `Feedback/` (the capture-feedback port). Those three directories, and
+/// `WebRendering/` itself, are excluded from the CLI target, which is what keeps WebKit
+/// out of the headless tool now that no indirection stands between them.
+///
+/// That is a property of the target's source set rather than of this code, so
+/// `WebSnapshotCLIBoundaryTests` derives the calling directories from the sources and
+/// fails if any of them stops being excluded.
 @MainActor
 final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSnapshotWindowController(

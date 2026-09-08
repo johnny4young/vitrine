@@ -35,8 +35,9 @@ final class AppCommandResponder: NSObject {
     }
 
     /// Opens the Web Snapshot editor — local HTML rendering and gated URL capture.
-    /// Routed through `WebSnapshotPresenter` so this command surface
-    /// carries no dependency on the WebKit-backed window (which the CLI excludes).
+    /// Names the WebKit-backed window directly: `App/` is excluded from the CLI target,
+    /// so this dependency never reaches the headless tool (see
+    /// `WebSnapshotWindowController` for the full boundary).
     @objc func openWebSnapshotEditor(_ sender: Any?) {
         WebSnapshotWindowController.shared.show()
     }

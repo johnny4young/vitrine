@@ -410,9 +410,9 @@ enum QuickCapture {
             feedback.present(result, environment: environment)
         case .url(let text):
             // A clipboard URL opens the Web Snapshot window preloaded with it — where
-            // the privacy disclosure and the local capture live — rather than
-            // the old deferred dead-end. `WebSnapshotPresenter` keeps this free of any
-            // WebKit dependency, so the menu-bar path stays CLI-safe.
+            // the privacy disclosure and the local capture live — rather than the old
+            // deferred dead-end. `MenuBar/` is excluded from the CLI target, so naming
+            // the WebKit-backed window here keeps the tool free of it.
             WebSnapshotWindowController.shared.show(prefillURL: text)
         default:
             feedback.present(result, environment: environment)
