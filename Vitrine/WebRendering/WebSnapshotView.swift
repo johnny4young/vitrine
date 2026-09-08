@@ -62,12 +62,6 @@ struct WebSnapshotView {
         /// `viewport × scale` pixels. Defaults to 2 to match `ExportManager`.
         var scale: CGFloat = 2
 
-        /// Whether remote (network) loads are allowed. `false` (the default) blocks
-        /// every request to a remote scheme/host, so pasted HTML stays local unless
-        /// the user explicitly opts in. URL capture owns the real network mode; this
-        /// flag exists so the engine has a single, testable allow switch.
-        var allowsNetwork: Bool = false
-
         /// An optional **local** base URL for resolving relative asset references,
         /// limited to a user-selected file or a bundled resource. `nil` (the
         /// default) loads with no base URL, so relative references cannot resolve.
@@ -83,14 +77,12 @@ struct WebSnapshotView {
             html: String,
             viewport: CGSize = CGSize(width: 1200, height: 630),
             scale: CGFloat = 2,
-            allowsNetwork: Bool = false,
             localBaseURL: URL? = nil,
             timeout: Duration = .seconds(10)
         ) {
             self.html = html
             self.viewport = viewport
             self.scale = scale
-            self.allowsNetwork = allowsNetwork
             self.localBaseURL = localBaseURL
             self.timeout = timeout
         }
@@ -121,14 +113,12 @@ struct WebSnapshotView {
         // Never persist anything the page touches (cookies, caches, storage).
         configuration.websiteDataStore = .nonPersistent()
 
-        if !request.allowsNetwork {
-            // The content rule list is what actually keeps pasted HTML off the
-            // network: it blocks remote subresources and script-initiated requests
-            // inside the web process, which the navigation delegate below never
-            // sees. Failing to obtain it fails the render (closed), preserving the
-            // Keep the local-rendering promise even on the network-entitled direct-download build.
-            configuration.userContentController.add(try await Self.remoteBlockList())
-        }
+        // The content rule list is what actually keeps pasted HTML off the network:
+        // it blocks remote subresources and script-initiated requests inside the web
+        // process, which the navigation delegate below never sees. Failing to obtain
+        // it fails the render (closed), keeping the local-rendering promise even on
+        // the network-entitled direct-download build.
+        configuration.userContentController.add(try await Self.remoteBlockList())
 
         let frame = CGRect(origin: .zero, size: request.viewport)
         let webView = WKWebView(frame: frame, configuration: configuration)
@@ -140,7 +130,7 @@ struct WebSnapshotView {
         // The delegate enforces the network policy and reports load completion. It
         // is retained for the lifetime of this call (the web view holds it weakly),
         // and torn down with the web view when the function returns.
-        let coordinator = NavigationCoordinator(allowsNetwork: request.allowsNetwork)
+        let coordinator = NavigationCoordinator()
         webView.navigationDelegate = coordinator
         defer {
             webView.navigationDelegate = nil
@@ -348,14 +338,15 @@ extension WebSnapshotView {
             return localSchemes.contains(scheme)
         }
 
-        /// The decision for a request with `scheme`, given the caller's
-        /// `allowsNetwork` flag. When network is allowed, everything loads; when it
-        /// is not, only local schemes load and any remote scheme is cancelled — the
-        /// rule that blocks an absolute `https://…` subresource or a top-level
-        /// redirect for pasted HTML.
-        static func decision(forScheme scheme: String?, allowsNetwork: Bool) -> Decision {
-            if allowsNetwork { return .allow }
-            return isLocal(scheme: scheme) ? .allow : .cancel
+        /// The decision for a request with `scheme`: only local schemes load, and any
+        /// remote scheme is cancelled — the rule that blocks an absolute `https://…`
+        /// subresource or a top-level redirect for pasted HTML.
+        ///
+        /// There is deliberately no allow-everything escape hatch. One existed, was
+        /// never set outside this suite's own tests, and would have bypassed the whole
+        /// policy in a single branch if anything had ever set it.
+        static func decision(forScheme scheme: String?) -> Decision {
+            isLocal(scheme: scheme) ? .allow : .cancel
         }
     }
 }
@@ -369,13 +360,9 @@ extension WebSnapshotView {
 /// matching the module's default isolation.
 @MainActor
 private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
-    /// Whether remote loads are permitted. When `false`, any request to a remote
-    /// scheme/host is cancelled.
-    private let allowsNetwork: Bool
     private let loadWaiter = WebLoadWaiter()
 
-    init(allowsNetwork: Bool) {
-        self.allowsNetwork = allowsNetwork
+    override init() {
     }
 
     /// Suspends until the page finishes loading or fails, or until `timeout`
@@ -405,9 +392,7 @@ private final class NavigationCoordinator: NSObject, WKNavigationDelegate {
         // The decision is pure logic (scheme + the allow flag); the delegate only
         // pulls the scheme off the live navigation. See `NetworkPolicy`.
         let scheme = navigationAction.request.url?.scheme
-        switch WebSnapshotView.NetworkPolicy.decision(
-            forScheme: scheme, allowsNetwork: allowsNetwork)
-        {
+        switch WebSnapshotView.NetworkPolicy.decision(forScheme: scheme) {
         case .allow:
             decisionHandler(.allow)
         case .cancel:

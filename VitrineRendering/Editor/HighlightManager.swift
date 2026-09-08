@@ -48,6 +48,41 @@ public final class HighlightManager {
         let themeSource: VitrineDomain.Theme.Source
         let font: NSFont
     }
+    /// The most recent derived value for one document, kept for input the LRU caches
+    /// deliberately refuse.
+    ///
+    /// A document between the cacheable size and the highlighting ceiling is highlighted
+    /// twice per settle today: the editor asks for the attributed string, then the preview
+    /// asks for the bridged one, whose first step is to highlight the same text again. On a
+    /// 90 KB document that is 138 ms followed by 170 ms — a 308 ms settle against a 250 ms
+    /// quiet window, so typing never catches up.
+    ///
+    /// Retaining every such document is what the size limit exists to prevent, but
+    /// retaining exactly the **last** one costs a single document's memory regardless of
+    /// how large the input band is, and that is the one every consumer in a settle asks
+    /// for. A different document replaces it immediately.
+    private struct LastDerived<Key: Hashable, Value> {
+        private var entry: (key: Key, value: Value)?
+
+        /// Reported through `cachedEntryCountForTesting` like any other retained value:
+        /// a slot holding a document is a cache, whatever its size.
+        var count: Int { entry == nil ? 0 : 1 }
+
+        func value(forKey key: Key) -> Value? {
+            guard let entry, entry.key == key else { return nil }
+            return entry.value
+        }
+
+        mutating func store(_ value: Value, forKey key: Key) { entry = (key, value) }
+        mutating func removeAll() { entry = nil }
+    }
+
+    private var lastHighlight = LastDerived<HighlightKey, NSAttributedString>()
+    private var lastSwiftUI = LastDerived<HighlightKey, AttributedString>()
+    private var lastLines = LastDerived<HighlightKey, [AttributedString]>()
+    private var lastTerminal = LastDerived<TerminalKey, AttributedString>()
+    private var lastTerminalLines = LastDerived<TerminalKey, [AttributedString]>()
+
     private var highlightCache = CostLimitedLRUCache<HighlightKey, NSAttributedString>(
         totalCostLimit: HighlightPolicy.perRepresentationCostLimit,
         countLimit: HighlightPolicy.countLimit)
@@ -121,6 +156,7 @@ public final class HighlightManager {
         let key = HighlightKey(
             code: code, language: language, themeSource: theme.source, font: font)
         if shouldCache, let cached = highlightCache.value(forKey: key) { return cached }
+        if !shouldCache, let recent = lastHighlight.value(forKey: key) { return recent }
 
         if let palette = theme.palette {
             let fallback = plainText(code, theme: theme, font: font)
@@ -130,6 +166,7 @@ public final class HighlightManager {
             Self.cache(
                 result, forKey: key, code: code, representation: .attributedString,
                 in: &highlightCache)
+            if !shouldCache { lastHighlight.store(result, forKey: key) }
             return result
         }
 
@@ -144,6 +181,7 @@ public final class HighlightManager {
         Self.cache(
             highlighted, forKey: key, code: code, representation: .attributedString,
             in: &highlightCache)
+        if !shouldCache { lastHighlight.store(highlighted, forKey: key) }
         return highlighted
     }
 
@@ -154,10 +192,21 @@ public final class HighlightManager {
     public func swiftUIAttributedString(
         for code: String, language: Language, theme: VitrineDomain.Theme, font: NSFont
     ) -> AttributedString {
-        let ns = attributedString(for: code, language: language, theme: theme, font: font)
-        guard HighlightPolicy.shouldCache(code) else { return AttributedString(ns) }
         let key = HighlightKey(
             code: code, language: language, themeSource: theme.source, font: font)
+        guard HighlightPolicy.shouldCache(code) else {
+            if let recent = lastSwiftUI.value(forKey: key) { return recent }
+            let bridged = AttributedString(
+                attributedString(for: code, language: language, theme: theme, font: font))
+            // Only a fully highlighted result is worth keeping: the plain-text fallback
+            // above the highlighting ceiling is cheap to rebuild, and retaining it would
+            // hold a multi-megabyte document for no gain.
+            if HighlightPolicy.mode(for: code, language: language) == .full {
+                lastSwiftUI.store(bridged, forKey: key)
+            }
+            return bridged
+        }
+        let ns = attributedString(for: code, language: language, theme: theme, font: font)
         if let cached = swiftUICache.value(forKey: key) { return cached }
         let bridged = AttributedString(ns)
         Self.cache(
@@ -180,7 +229,12 @@ public final class HighlightManager {
         }
         let key = TerminalKey(
             code: code, themeSource: theme.source, font: font, columns: columns)
-        guard HighlightPolicy.shouldCache(code) else { return render() }
+        guard HighlightPolicy.shouldCache(code) else {
+            if let recent = lastTerminal.value(forKey: key) { return recent }
+            let rendered = render()
+            lastTerminal.store(rendered, forKey: key)
+            return rendered
+        }
         if let cached = terminalCache.value(forKey: key) { return cached }
         let bridged = render()
         Self.cache(
@@ -198,9 +252,16 @@ public final class HighlightManager {
     ) -> [AttributedString] {
         let bridged = swiftUIAttributedString(
             for: code, language: language, theme: theme, font: font)
-        guard HighlightPolicy.shouldCache(code) else { return Self.splitRows(bridged) }
         let key = HighlightKey(
             code: code, language: language, themeSource: theme.source, font: font)
+        guard HighlightPolicy.shouldCache(code) else {
+            if let recent = lastLines.value(forKey: key) { return recent }
+            let rows = Self.splitRows(bridged)
+            if HighlightPolicy.mode(for: code, language: language) == .full {
+                lastLines.store(rows, forKey: key)
+            }
+            return rows
+        }
         if let cached = lineCache.value(forKey: key) { return cached }
         let lines = Self.splitRows(bridged)
         Self.cache(
@@ -218,7 +279,12 @@ public final class HighlightManager {
             for: code, theme: theme, font: font, columns: columns)
         let key = TerminalKey(
             code: code, themeSource: theme.source, font: font, columns: columns)
-        guard HighlightPolicy.shouldCache(code) else { return Self.splitRows(bridged) }
+        guard HighlightPolicy.shouldCache(code) else {
+            if let recent = lastTerminalLines.value(forKey: key) { return recent }
+            let rows = Self.splitRows(bridged)
+            lastTerminalLines.store(rows, forKey: key)
+            return rows
+        }
         if let cached = terminalLineCache.value(forKey: key) { return cached }
         let lines = Self.splitRows(bridged)
         Self.cache(
@@ -257,6 +323,8 @@ public final class HighlightManager {
     public var cachedEntryCountForTesting: Int {
         highlightCache.metrics.count + swiftUICache.metrics.count + terminalCache.metrics.count
             + lineCache.metrics.count + terminalLineCache.metrics.count
+            + lastHighlight.count + lastSwiftUI.count + lastLines.count
+            + lastTerminal.count + lastTerminalLines.count
     }
 
     public func resetCachesForTesting() {
@@ -265,6 +333,11 @@ public final class HighlightManager {
         terminalCache.removeAll()
         lineCache.removeAll()
         terminalLineCache.removeAll()
+        lastHighlight.removeAll()
+        lastSwiftUI.removeAll()
+        lastLines.removeAll()
+        lastTerminal.removeAll()
+        lastTerminalLines.removeAll()
         builtInChrome.removeAll()
     }
 

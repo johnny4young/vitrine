@@ -55,6 +55,9 @@ struct PrivateNetworkBlockRulesTests {
             ("TEST-NET-2", "https://198.51.100.7/resource"),
             ("TEST-NET-3", "https://203.0.113.9/resource"),
             ("mapped TEST-NET-2", "https://[::ffff:198.51.100.7]/resource"),
+            ("6to4 loopback", "https://[2002:7f00:1::]/resource"),
+            ("6to4 link-local metadata", "https://[2002:a9fe:a9fe::]/resource"),
+            ("NAT64 private", "https://[64:ff9b::ac10:1]/resource"),
         ])
     func defaultPolicyBlocksPrivateResource(_ fixture: (kind: String, url: String)) throws {
         #expect(

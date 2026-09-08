@@ -36,6 +36,11 @@ can never drift.
 
 ### Fixed
 
+- Start the direct-download build's background update scheduler at launch. Sparkle's
+  controller is configured to schedule checks as soon as it exists, but it was created
+  only when someone opened "Check for Updates", so an install that never used that menu
+  command was never offered an update. Sparkle's one-time prompt asking whether to check
+  automatically now appears on the next launch.
 - Validate every built-in syntax stylesheet against the engine catalog and fall back
   deterministically to One Dark if a stylesheet cannot load, instead of silently reusing
   the previously rendered theme.
