@@ -95,7 +95,6 @@ struct StoreKitClient {
 /// A refunded purchase is revoked (`revocationDate` set), so
 /// it drops out of `currentEntitlements` and `isPro` flips to `false` on the next refresh —
 /// PRO re-locks, but nothing the user made (exports, presets, brand kit) is destroyed.
-@MainActor
 final class StoreKitProvider: LiveEntitlementProvider {
     /// The non-consumable product identifier; must match the IAP configured in App Store
     /// Connect ("Vitrine PRO", lifetime).

@@ -11,7 +11,6 @@ import SwiftUI
 /// that promotes a session's look back into the shared settings. The session also
 /// produces the ``EditorWindowState`` archived for state restoration and adopts a
 /// restored draft on relaunch.
-@MainActor
 @Observable
 final class EditorSession {
     /// This window's identity (and therefore its frame-autosave / restoration name).
@@ -125,7 +124,6 @@ final class EditorSession {
 ///
 /// `EditorWindowController` is a `NSObject` so it can serve as each window's delegate
 /// (to clean up on close) and observe screen-arrangement changes.
-@MainActor
 final class EditorWindowController: NSObject {
     static let shared = EditorWindowController(
         environment: .shared,

@@ -429,7 +429,6 @@ struct WelcomeView: View {
 /// `RecentsGalleryWindowController`): an AppKit window hosting the SwiftUI view,
 /// created lazily and reused. `presentIfFirstRun` is the single entry the app
 /// lifecycle calls so the per-defaults-suite gate lives in one place.
-@MainActor
 final class WelcomeWindowController {
     static let shared = WelcomeWindowController()
 

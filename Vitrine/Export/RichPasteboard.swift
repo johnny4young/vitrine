@@ -217,7 +217,6 @@ enum RichPasteboard {
     /// which are main-actor bound. The styled-text serialization that follows runs on the
     /// same actor; it is bounded by the cap and serializes the highlighted code (KB-scale),
     /// so it does not meaningfully add to the main-actor render cost.
-    @MainActor
     static func makePayload(
         for config: SnapshotConfig,
         scale: CGFloat,
@@ -237,7 +236,6 @@ enum RichPasteboard {
 
     /// Throwing payload builder used by export surfaces that present actionable
     /// render-budget and encoder failures.
-    @MainActor
     static func makePayloadChecked(
         for config: SnapshotConfig,
         scale: CGFloat,
@@ -266,7 +264,6 @@ enum RichPasteboard {
     /// hotkey path renders the styled image once and feeds it to both the copy and the
     /// save, so the rich clipboard no longer re-renders the identical config. The rich
     /// text/HTML is still derived from `config`'s highlighted code.
-    @MainActor
     static func makePayload(
         cgImage: CGImage,
         for config: SnapshotConfig,
@@ -294,7 +291,6 @@ enum RichPasteboard {
     /// The highlighted attributed string for `config`'s code, using the config's
     /// language, theme, and *selected font* so the copied rich text matches the
     /// rendered image's typography.
-    @MainActor
     static func highlightedCode(for config: SnapshotConfig) -> NSAttributedString {
         var exportConfig = config
         exportConfig.code = config.richClipboardText
@@ -345,7 +341,6 @@ enum RichPasteboard {
     /// engine, and the styled-text serialization that follows is bounded by the size cap
     /// and serializes the code (KB-scale), so it stays responsive. Returns whether the
     /// image was placed on the pasteboard.
-    @MainActor
     @discardableResult
     static func copy(
         _ config: SnapshotConfig,
@@ -366,7 +361,6 @@ enum RichPasteboard {
     }
 
     /// Throwing rich-copy path used by the app and CLI to preserve render failures.
-    @MainActor
     @discardableResult
     static func copyChecked(
         _ config: SnapshotConfig,
@@ -389,7 +383,6 @@ enum RichPasteboard {
 
     /// Copies from an **already-rendered** `cgImage` — the quick-capture path passes
     /// the single render shared with the file save, rather than re-rendering the config.
-    @MainActor
     @discardableResult
     static func copy(
         cgImage: CGImage,
@@ -405,7 +398,6 @@ enum RichPasteboard {
 
     /// Checked rich-copy path for an already-rendered raster. Payload creation can
     /// still fail during PNG/RTF/HTML encoding or representation-size validation.
-    @MainActor
     @discardableResult
     static func copyOutcome(
         cgImage: CGImage,
@@ -430,7 +422,6 @@ enum RichPasteboard {
     ///
     /// The base64 encoding is bounded by `maxRepresentationBytes` and is the only
     /// non-trivial cost, so this stays responsive even for a large card.
-    @MainActor
     @discardableResult
     static func copyDataURI(
         for config: SnapshotConfig,
@@ -444,7 +435,6 @@ enum RichPasteboard {
             to: pasteboard) == .copied
     }
 
-    @MainActor
     @discardableResult
     static func copyDataURIOutcome(
         for config: SnapshotConfig,
@@ -476,7 +466,6 @@ enum RichPasteboard {
     /// Copies a complete Markdown snippet containing the rendered PNG and the
     /// redaction-safe source. The pasteboard is changed only after render, encoding,
     /// and the complete-document size check all succeed.
-    @MainActor
     @discardableResult
     static func copyMarkdown(
         for config: SnapshotConfig,
@@ -490,7 +479,6 @@ enum RichPasteboard {
             to: pasteboard) == .copied
     }
 
-    @MainActor
     @discardableResult
     static func copyMarkdownOutcome(
         for config: SnapshotConfig,
@@ -528,7 +516,6 @@ enum RichPasteboard {
     /// HTML-preferring one (many web editors) each get colored text from the same
     /// copy; a plain-text fallback rides along so a code editor still receives the
     /// raw source.
-    @MainActor
     @discardableResult
     static func copyHighlightedCode(
         for config: SnapshotConfig,

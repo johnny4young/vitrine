@@ -16,7 +16,6 @@ import WebKit
 /// capture sends. Nothing is scraped from another browser: WebKit isolates website data
 /// per application, so this is Vitrine signing in on its own behalf, with the user
 /// driving it.
-@MainActor
 final class WebSessionWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSessionWindowController()
 

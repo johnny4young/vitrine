@@ -9,7 +9,6 @@
     /// credential stores, a unique nonexistent temporary CLI path, and a local deactivator.
     /// Consequently, exercising Settings never reads a real Keychain item, exposes a real
     /// license key, mutates the user's CLI entitlement, or contacts Lemon Squeezy.
-    @MainActor
     enum ManagedLicenseUITestFixture {
         static let environmentKey = "VITRINE_MANAGED_LICENSE_UI_TEST"
 

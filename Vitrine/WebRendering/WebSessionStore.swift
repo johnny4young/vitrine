@@ -10,7 +10,6 @@ import WebKit
 ///
 /// Everything a signed-in capture relies on lives here, which makes this also the place
 /// that has to be able to throw it all away again.
-@MainActor
 enum WebSessionStore {
     /// Installs the store behind `WebSessionPresenter`, so the settings pane — which the
     /// WebKit-free CLI also compiles — can list and clear sessions without linking WebKit.

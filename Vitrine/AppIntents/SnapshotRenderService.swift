@@ -16,7 +16,6 @@ import OSLog
 ///
 /// `@MainActor` because `ImageRenderer` and Highlightr require AppKit on the main
 /// actor; App Intents `perform()` and the Services provider both run there.
-@MainActor
 enum SnapshotRenderService {
     /// A reason a request could not be turned into an image, mapped to clear,
     /// user-facing copy for an App Intent error or a Services failure.

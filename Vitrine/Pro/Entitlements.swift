@@ -14,7 +14,6 @@ import Observation
 ///
 /// `WKWebView`-free and network-free by itself: nothing here logs or transmits anything
 /// about purchases; the privacy rule extends to entitlement checks.
-@MainActor
 @Observable
 final class Entitlements {
     /// The app-wide entitlement state, constructed by the composition root
