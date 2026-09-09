@@ -5,6 +5,10 @@ import OSLog
 nonisolated enum RenderingLog {
     private static let subsystem = "com.johnny4young.vitrine"
 
+    /// Quick-capture and file-input path. Matches the app catalog's `capture`
+    /// category so a moved file keeps landing in the same stream and the
+    /// diagnostics bundle keeps collecting it.
+    static let capture = Logger(subsystem: subsystem, category: "capture")
     static let render = Logger(subsystem: subsystem, category: "render")
     static let export = Logger(subsystem: subsystem, category: "export")
 }
