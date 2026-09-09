@@ -18,7 +18,6 @@ import Foundation
 /// Main-actor isolated (the module default) so it can read the main-actor model
 /// catalogs (`ExportPreset`, `SettingsDefaults`) while validating ids and ranges. The
 /// executable runs it from `main.swift`, whose top-level code is on the main actor.
-@MainActor
 enum CLIArguments {
     /// Parses the argument list *after* the executable name (that is,
     /// `CommandLine.arguments.dropFirst()`), returning one validated command contract.

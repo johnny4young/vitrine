@@ -12,20 +12,6 @@ import SwiftUI
 struct VitrineApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
-    init() {
-        // Install the Web Snapshot window opener so the app's command surface — the
-        // File-menu command, the launch hook, and the quick-capture URL route, none of
-        // which link WebKit — can present it through `WebSnapshotPresenter`. App-only:
-        // the CLI excludes this file and the window, so it never links WebKit.
-        // `App.init()` is already main-actor-isolated under the module's default
-        // isolation, so this needs no actor hop.
-        WebSnapshotWindowController.registerPresenter()
-        // Same seam for the stored web sessions the Input settings pane lists and clears:
-        // that pane is compiled into the WebKit-free CLI, so it reaches the data store
-        // through `WebSessionPresenter` rather than importing WebKit.
-        WebSessionStore.registerPresenter()
-    }
-
     var body: some Scene {
         // The menu bar is owned by `StatusItemController` (installed by `AppDelegate`),
         // not by a `MenuBarExtra` scene — see that type for the macOS 26 behaviour that

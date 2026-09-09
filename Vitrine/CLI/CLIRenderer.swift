@@ -16,7 +16,6 @@ import OSLog
 /// main actor. The executable hosts a minimal `NSApplication` (accessory policy, no
 /// Dock/menu) so this code can run; nothing here needs the network, screen recording,
 /// or Accessibility — code rendering is fully local.
-@MainActor
 enum CLIRenderer {
     /// Machine-readable success summary for a `render` invocation.
     private struct RenderSummary: Encodable, Equatable {

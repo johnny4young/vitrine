@@ -9,7 +9,6 @@ import SwiftUI
 /// One pin at a time (a reference, not a collection): pinning again replaces the
 /// image and re-shows the panel. The panel is titled/closable/resizable, so the user
 /// dismisses or resizes it like any window; closing it is the same as unpinning.
-@MainActor
 final class PinnedSnapshotController: NSObject, NSWindowDelegate {
     static let shared = PinnedSnapshotController()
 

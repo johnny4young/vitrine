@@ -34,5 +34,5 @@ struct CaptureRecoveryRouting {
     static let live = CaptureRecoveryRouting(
         loadPrimaryEditor: { EditorWindowController.shared.loadIntoPrimary($0) },
         presentEditor: { EditorWindowController.shared.show() },
-        presentWebSnapshot: { WebSnapshotPresenter.show(prefillURL: $0) })
+        presentWebSnapshot: { WebSnapshotWindowController.shared.show(prefillURL: $0) })
 }

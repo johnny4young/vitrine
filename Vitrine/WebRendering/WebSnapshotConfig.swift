@@ -22,9 +22,9 @@ import Foundation
 /// Two security-relevant collaborators live in their own reviewable files:
 /// **URL validation** (`WebSnapshotConfig.validate(captureURL:)`, the SSRF host
 /// blocklist, and `URLValidationError`) in `WebURLValidation.swift`, and the
-/// **network-capability gate** in `NetworkCapability.swift` — both still compiled
-/// into the CLI alongside this file (the validating initializer below depends on
-/// `validate`, and settings surfaces read the capability gate).
+/// **network-capability gate** in `NetworkCapability.swift`. All three are app-only:
+/// the CLI excludes this directory outright and names no file from it, which is what
+/// lets the permission matrix say the tool reaches no network.
 ///
 /// ## Predictable capture policy
 ///

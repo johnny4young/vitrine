@@ -487,7 +487,7 @@ struct MenuBarStatusItemTests {
         for forbiddenDependency in [
             "RecentsGalleryWindowController.shared",
             "EditorWindowController.shared",
-            "WebSnapshotPresenter.show",
+            "WebSnapshotWindowController.shared",
             "SocialCardWindowController.shared",
             "SettingsWindowManager.shared",
             "HelpWindowController.shared",
