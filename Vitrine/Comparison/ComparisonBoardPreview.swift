@@ -3,7 +3,6 @@ import Observation
 
 /// Tracks asynchronous preview rendering without treating a renderer failure as an
 /// indefinitely running operation.
-@MainActor
 @Observable
 final class ComparisonBoardPreview {
     enum Phase: Equatable {

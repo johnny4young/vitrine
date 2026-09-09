@@ -29,7 +29,6 @@ import Foundation
 /// is installed), so an update check sends only the request needed to fetch the appcast and
 /// the chosen download — no usage data, no identifiers, no telemetry. This keeps the
 /// menu-bar app's on-device, account-less promise intact for the update path too.
-@MainActor
 final class SoftwareUpdater {
     /// The shared updater for the app's lifetime.
     static let shared = SoftwareUpdater()

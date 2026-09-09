@@ -6,7 +6,6 @@ import Observation
 ///
 /// A draft owns finished capture pixels and user-visible captions only. It is never
 /// encoded into defaults or Recents, and closing its window releases the entire value.
-@MainActor
 @Observable
 final class ComparisonBoardDraft {
     struct Item: Identifiable, Sendable {

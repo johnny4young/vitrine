@@ -7,7 +7,6 @@ import AppKit
 /// returns, dropping the picker (or its completion) under ARC. So a small retained
 /// presenter holds the picker until the popover closes, then releases it. At most one
 /// picker is retained at a time (a new share replaces the previous one).
-@MainActor
 final class ShareManager: NSObject, NSSharingServicePickerDelegate {
     /// Retains the live picker across its async popover; cleared when it dismisses.
     private static var active: ShareManager?

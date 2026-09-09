@@ -2,7 +2,6 @@ import Foundation
 import UniformTypeIdentifiers
 
 /// Encodes a board through the shared export formats at the scale captured by its draft.
-@MainActor
 enum ComparisonBoardExporter {
     static func encodedPayload(
         for draft: ComparisonBoardDraft,
