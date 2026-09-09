@@ -302,14 +302,7 @@ targets:
           - "WebRendering"
       # Non-UI editor services used by CLI input normalization and highlighting.
       - path: Vitrine/Editor/AsciinemaCast.swift
-      - path: Vitrine/Editor/CodeFormatter.swift
-      - path: Vitrine/Editor/CodeFormatter+JSON.swift
-      - path: Vitrine/Editor/CodeFormatter+LanguageStrategy.swift
-      - path: Vitrine/Editor/CodeFormatter+Markup.swift
-      - path: Vitrine/Editor/CodeFormatter+Reindent.swift
-      - path: Vitrine/Editor/CodeFormatter+SQL.swift
       - path: Vitrine/Editor/FileInputLoader.swift
-      - path: Vitrine/Editor/LanguageDetector.swift
       # Render/export primitives required by the headless command surface.
       - path: Vitrine/Export/ExportManager+File.swift
       - path: Vitrine/Export/ExportManager+Pasteboard.swift

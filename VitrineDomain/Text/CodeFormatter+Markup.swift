@@ -10,7 +10,7 @@ extension CodeFormatter {
     /// could change meaning: mixed text + child elements, multi-line text nodes, and
     /// raw-text containers (`script`, `style`, `pre`, `textarea`). The caller then uses
     /// the existing line-only tag re-indenter, so Format Code never corrupts content.
-    nonisolated static func formatMarkup(_ code: String) -> String? {
+    public nonisolated static func formatMarkup(_ code: String) -> String? {
         enum Token {
             case opening(name: String, raw: String)
             case closing(name: String, raw: String)

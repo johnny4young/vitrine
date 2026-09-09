@@ -10,7 +10,7 @@ extension CodeFormatter {
     /// Returns `nil` when the input does not begin with a recognized SQL statement, a
     /// quote/comment is unterminated, or parentheses are unbalanced. That conservative
     /// contract lets callers fall back to dedent instead of reshaping uncertain text.
-    nonisolated static func formatSQL(_ code: String) -> String? {
+    public nonisolated static func formatSQL(_ code: String) -> String? {
         enum Token {
             case word(raw: String, upper: String)
             case opaque(String)

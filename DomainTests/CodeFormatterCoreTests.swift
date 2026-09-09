@@ -1,6 +1,6 @@
 import Testing
 
-@testable import Vitrine
+@testable import VitrineDomain
 
 @Suite("Code formatter — routing and whitespace")
 struct CodeFormatterCoreTests {
