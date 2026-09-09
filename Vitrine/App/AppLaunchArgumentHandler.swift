@@ -1,7 +1,9 @@
-import AppKit
-import CryptoKit
+import Foundation
 
 #if DEBUG
+
+    import AppKit
+    import CryptoKit
 
     /// Handles explicit development and UI-automation launch arguments.
     ///
@@ -615,9 +617,24 @@ import CryptoKit
     /// `run-memory-smoke.py` defaults to Debug, and the release QA script passes no launch
     /// arguments at all. So Release gets this stub, and `handle` reporting `false` means
     /// the normal first-run surfaces present exactly as they would for any user.
-    @MainActor
-    struct AppLaunchArgumentHandler {
-        init(environment: AppEnvironment) {}
+    ///
+    /// The declaration mirrors the Debug one member for member — same kind, same
+    /// initializer including its defaulted panel route, same `handle` signature — so a
+    /// call site that compiles in one configuration compiles in the other. `make
+    /// build-release` runs on every pull request and would reject a call the stub cannot
+    /// satisfy, but only once such a call exists; keeping the surfaces identical means one
+    /// never can.
+    final class AppLaunchArgumentHandler {
+        let environment: AppEnvironment
+
+        init(
+            environment: AppEnvironment,
+            showMenuBarPanel: @escaping () -> Void = {
+                StatusItemController.shared.showPanelForAutomation()
+            }
+        ) {
+            self.environment = environment
+        }
 
         func handle(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool { false }
     }
