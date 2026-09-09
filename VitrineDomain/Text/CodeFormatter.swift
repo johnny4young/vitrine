@@ -36,7 +36,7 @@ import Foundation
 /// lifetime (`&'a T`) sharing a line with a brace, and an attribute brace that spans
 /// lines inside a JSX open tag, can mis-indent that line; four or more adjacent
 /// quotes (`""""`) can be misread as a triple-quote opener.
-enum CodeFormatter {
+public enum CodeFormatter {
     /// Runs the bounded pure formatter away from the caller's actor. Swift 6.2 keeps
     /// ordinary async functions on their caller's executor, so the explicit
     /// `@concurrent` hop is what prevents a large interactive format from blocking
@@ -44,7 +44,7 @@ enum CodeFormatter {
     /// transform: callers can suppress obsolete results even though the formatter's
     /// one-megabyte input cap already bounds the CPU work itself.
     @concurrent
-    nonisolated static func tidyConcurrently(
+    public nonisolated static func tidyConcurrently(
         _ code: String, language: Language
     ) async throws
         -> String
@@ -63,7 +63,7 @@ enum CodeFormatter {
     /// lines or trailing spaces lands even and centered without a separate action
     /// (the Xnapper-style "smart trim"). The output is always valid and idempotent; a
     /// tidy input comes back unchanged.
-    nonisolated static func tidy(_ code: String, language: Language) -> String {
+    public nonisolated static func tidy(_ code: String, language: Language) -> String {
         let routed =
             switch language.formatStrategy {
             case .json: formatJSON(code) ?? dedent(code)
@@ -86,7 +86,7 @@ enum CodeFormatter {
     /// formats (Markdown, where two trailing spaces are a hard line break; diff; plain
     /// text) only the surrounding blank lines are dropped and line interiors are left
     /// byte-for-byte intact. Idempotent, and never touches indentation or tokens.
-    nonisolated static func trimmed(_ code: String, language: Language) -> String {
+    public nonisolated static func trimmed(_ code: String, language: Language) -> String {
         func isBlank(_ line: String) -> Bool { line.allSatisfy { $0 == " " || $0 == "\t" } }
         var lines = code.components(separatedBy: "\n")
         // Pattern-match rather than `!=`: the synthesized Equatable is main-actor-
@@ -112,7 +112,7 @@ enum CodeFormatter {
     /// compared literally (no tab-width assumptions); whitespace-only lines are
     /// emptied so no trailing indentation survives. Returns `code` unchanged when the
     /// lines share no common leading whitespace.
-    nonisolated static func dedent(_ code: String) -> String {
+    public nonisolated static func dedent(_ code: String) -> String {
         let lines = code.components(separatedBy: "\n")
         func leading(_ line: String) -> String {
             String(line.prefix { $0 == " " || $0 == "\t" })

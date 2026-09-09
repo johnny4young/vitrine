@@ -1,6 +1,6 @@
 import Testing
 
-@testable import Vitrine
+@testable import VitrineDomain
 
 @Suite("Code formatter — brace and tag indentation")
 struct CodeFormatterReindentTests {

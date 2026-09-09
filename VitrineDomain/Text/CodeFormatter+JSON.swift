@@ -6,7 +6,7 @@ extension CodeFormatter {
     /// value, so a non-JSON paste is never mangled. The scan is string- and
     /// escape-aware, so braces, brackets, or commas inside string literals are left
     /// untouched, and empty containers collapse to `{}` / `[]`.
-    nonisolated static func formatJSON(_ code: String) -> String? {
+    public nonisolated static func formatJSON(_ code: String) -> String? {
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let head = trimmed.first, head == "{" || head == "[" else { return nil }
         // Validate first so non-JSON (or truncated JSON) is rejected, not reshaped.
