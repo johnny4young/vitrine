@@ -11,9 +11,9 @@ import Foundation
 /// often carry an explicit language in their info string) and file paths /
 /// drop metadata (whose extension names the language). `interpret(_:)` combines
 /// all of this into a single, unit-testable result the capture path consumes.
-enum LanguageDetector {
+public enum LanguageDetector {
     /// Returns `true` when the text looks like a single http(s) URL.
-    static func isURL(_ text: String) -> Bool {
+    public static func isURL(_ text: String) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.contains(where: \.isNewline),
             let url = URL(string: trimmed),
@@ -23,7 +23,7 @@ enum LanguageDetector {
     }
 
     /// Detects the most likely language via weighted keyword scoring.
-    static func detect(_ raw: String) -> Language {
+    public static func detect(_ raw: String) -> Language {
         // A bare http(s) URL is not source code: render it as plain text rather than
         // letting keyword scoring color it like a program (e.g. the digits in
         // `…/v0.1.0` highlighted as numeric literals). .
@@ -139,7 +139,7 @@ enum LanguageDetector {
 
     /// Maps a filename extension (with or without a leading dot, any case) to a
     /// language, or `nil` when it is empty or unrecognized.
-    static func language(forFileExtension rawExtension: String) -> Language? {
+    public static func language(forFileExtension rawExtension: String) -> Language? {
         let key =
             rawExtension
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -153,7 +153,7 @@ enum LanguageDetector {
     /// Handles plain paths (`~/src/main.go`), `file://` URLs, and a
     /// special case for the extensionless `Dockerfile`. Returns `nil` when the
     /// text is not a single path-like token or its extension is unknown.
-    static func language(forPath rawPath: String) -> Language? {
+    public static func language(forPath rawPath: String) -> Language? {
         let trimmed = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
         // A path that quick capture cares about is a single token with no spaces;
         // anything with whitespace or a newline is prose or source, not a path.
@@ -188,14 +188,14 @@ enum LanguageDetector {
     /// hint, and how many distinct fenced code blocks were found. `blockCount`
     /// lets the capture path decide between rendering inline and deferring a
     /// multi-block paste to the editor.
-    struct Interpretation: Equatable {
-        var code: String
-        var language: Language
+    public struct Interpretation: Equatable {
+        public var code: String
+        public var language: Language
         /// Number of fenced code blocks detected (0 when the text was not
         /// Markdown-fenced; 1 for a single block; >1 for several).
-        var blockCount: Int
+        public var blockCount: Int
 
-        var hasMultipleBlocks: Bool { blockCount > 1 }
+        public var hasMultipleBlocks: Bool { blockCount > 1 }
     }
 
     /// Interprets raw clipboard text into the code + language the capture path
@@ -212,7 +212,7 @@ enum LanguageDetector {
     /// blocks are concatenated (so the editor receives everything) and
     /// `blockCount` reports the count so the caller can defer to the editor.
     /// Plain text with no fence is returned unchanged, preserving prior behavior.
-    static func interpret(_ raw: String) -> Interpretation {
+    public static func interpret(_ raw: String) -> Interpretation {
         // A bare http(s) URL is plain text, not source — return it before any fence,
         // path, or keyword hint runs so a trailing extension in the URL path
         // (`…/styles.css`, `…/v0.1.0`) is never mistaken for a source language.
@@ -254,18 +254,18 @@ enum LanguageDetector {
 /// fence to use the same character and be at least as long as the opening one,
 /// and reads the opening fence's info string for an explicit language. Kept a
 /// separate namespace so the line scanning is straightforward to unit-test.
-enum MarkdownFence {
+public enum MarkdownFence {
     /// One fenced code block: its inner text (delimiters stripped, no trailing
     /// newline) and the language declared by its info string, if any.
-    struct Block: Equatable {
-        var code: String
-        var declaredLanguage: Language?
+    public struct Block: Equatable {
+        public var code: String
+        public var declaredLanguage: Language?
     }
 
     /// Extracts every fenced code block in `text`, in document order. Returns an
     /// empty array when the text has no complete fence, so callers can treat
     /// "not fenced" and "no code" the same way.
-    static func codeBlocks(in text: String) -> [Block] {
+    public static func codeBlocks(in text: String) -> [Block] {
         // Split on any newline flavor (LF, CRLF, and bare CR — each is one
         // grapheme to `isNewline`) but keep empty lines so blank lines inside a
         // fence are preserved verbatim. This normalizes Windows clipboards.

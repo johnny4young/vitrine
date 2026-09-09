@@ -1,6 +1,6 @@
 import Testing
 
-@testable import Vitrine
+@testable import VitrineDomain
 
 @Suite("Code formatter — SQL")
 struct CodeFormatterSQLTests {
