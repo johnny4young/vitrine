@@ -495,6 +495,23 @@ struct CLIPermissionPostureTests {
                 docs/PERMISSIONS.md and this test together if this changes.
                 """)
         }
+
+        // Excluding the directory is not the same as keeping its files out: a target can
+        // exclude a directory and then name individual files from it back in, which is
+        // exactly what this target did for three files including `NetworkCapability`.
+        // The assertion above stayed green throughout, while the rationale it states —
+        // that the exclusion keeps NetworkCapability out of the CLI — was false.
+        let readdedWebFiles =
+            cli
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { $0.hasPrefix("- path:") && $0.contains("WebRendering/") }
+        #expect(
+            readdedWebFiles.isEmpty,
+            """
+            The VitrineCLI target must name no file from WebRendering, or the exclusion \
+            above means nothing. Found: \(readdedWebFiles.joined(separator: ", "))
+            """)
     }
 
     /// A tool has no app bundle in which Xcode can install an asset catalog, string catalog,

@@ -290,14 +290,15 @@ targets:
           - "DesignSystem/ThemeChips.swift"
           - "DesignSystem/TokenButtons.swift"
           - "DesignSystem/TokenComponents.swift"
+          # The Style-pane background editor is a SwiftUI view; its only consumers are
+          # the Settings, Social Card, and Editor surfaces already excluded above.
+          # Excluding it is what makes the WebRendering exclusion below complete: it
+          # held the last reference the CLI had into that directory.
+          - "Canvas"
           # Local HTML rendering drives an offscreen WKWebView, which needs
           # a window-server connection at runtime that this headless tool does not
           # have. The CLI renders code, not web content, so it neither links WebKit
-          # nor compiles the WebKit renderers. Three value-only files are included
-          # explicitly below: WebSnapshotConfig because shared AppSettings/WebDefaults
-          # persist URL capture preferences, WebURLValidation because the config's
-          # validating initializer depends on it, and NetworkCapability because
-          # settings surfaces read the entitlement gate.
+          # nor compiles the WebKit renderers.
           - "WebRendering"
       # Non-UI editor services used by CLI input normalization and highlighting.
       - path: Vitrine/Editor/AsciinemaCast.swift
@@ -317,9 +318,6 @@ targets:
       # Offline verification only; StoreKit, purchase state, and paywall UI remain
       # app-owned and are not compiled into the CLI.
       - path: Vitrine/Pro/LicenseKey.swift
-      - path: Vitrine/WebRendering/WebSnapshotConfig.swift
-      - path: Vitrine/WebRendering/WebURLValidation.swift
-      - path: Vitrine/WebRendering/NetworkCapability.swift
       - path: VitrineCLI
     dependencies:
       - target: VitrineDomain
