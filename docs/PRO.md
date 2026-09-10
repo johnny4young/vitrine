@@ -19,7 +19,7 @@ output and unlocks *new* surfaces.
 | Feature: multi-size export | `Vitrine/Export/ExportManager+Batch.swift` (`exportPresetSizes`), `Vitrine/Export/MultiSizeExportView.swift` |
 | Feature: carousel export | `Vitrine/Export/ExportManager+Batch.swift` (`exportCarousel`), `Vitrine/Export/CarouselExportView.swift`, `Vitrine/Export/CarouselPaginator.swift` |
 | Feature: automation gating | `VitrineCLI/main.swift`, `Vitrine/CLI/CLIOptions.swift` (`Command.requiresPro`), `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
-| Tests | `Tests/EntitlementsTests.swift`, `Tests/LicenseActivationTests.swift`, `Tests/ProDocumentationTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLI/CLIEntitlementTests.swift`, `UITests/VitrineUITests.swift` |
+| Tests | `Tests/EntitlementsTests.swift`, `Tests/LicenseActivationTests.swift`, `RepositoryTests/ProDocumentationTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLI/CLIEntitlementTests.swift`, `UITests/VitrineUITests.swift` |
 
 ## Product contract: evaluation and distribution
 

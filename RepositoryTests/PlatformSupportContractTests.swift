@@ -10,9 +10,26 @@ struct PlatformSupportContractTests {
     @Test func everyGeneratedTargetAndHomebrewUseTheSequoiaFloor() throws {
         let project = try Self.text("project.yml")
         #expect(project.contains("macOS: \"15.0\""))
+        // Assert the property the test is named for — every declared target sits on the
+        // Sequoia floor — rather than a target count. A count fails the next time a target
+        // is added, which is drift in the test rather than in the contract it guards, and
+        // it never noticed a target declared on some *other* floor.
+        let declaredFloors =
+            project
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            // Only per-target inline declarations; the project-wide default is written as a
+            // nested `deploymentTarget:` block and is covered by the `macOS: "15.0"` check
+            // above.
+            .filter { $0.hasPrefix("deploymentTarget: \"") }
+        #expect(!declaredFloors.isEmpty, "project.yml declares no deployment target at all")
+        let offenders = Set(declaredFloors.filter { $0 != "deploymentTarget: \"15.0\"" })
         #expect(
-            project.components(separatedBy: "deploymentTarget: \"15.0\"").count - 1 == 9)
-        #expect(!project.contains("deploymentTarget: \"14.0\""))
+            offenders.isEmpty,
+            """
+            Every generated target must declare the Sequoia floor. Found: \
+            \(offenders.sorted().joined(separator: ", "))
+            """)
 
         let cask = try Self.text("packaging/Casks/vitrine.rb")
         #expect(cask.contains("depends_on macos: :sequoia"))
