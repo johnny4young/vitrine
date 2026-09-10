@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 // The style/document surface lives in three hand-kept persistence surfaces —
 // `SettingsCodec` (app defaults + editor-session seed), `EditorWindowState` (window
@@ -47,6 +48,16 @@ struct StyleCodecCompletenessTests {
         config.background = .gradient(.sunset)
         config.metadata = SnapshotMetadata(
             filename: "main.py", title: "Demo", caption: "A caption", showLanguageBadge: true)
+        // The deliberately unpersisted fields carry non-default values too. Resetting them
+        // in `expected` below is only an assertion if they differ here: left at their
+        // defaults, every one of those lines is a no-op and the exclusion goes untested.
+        config.code = "print('hello')"
+        config.redactedLineRanges = [2...3]
+        config.watermark = Watermark(text: "@vitrine")
+        config.foregroundImage = ImageReference(fileName: "beautified.png")
+        config.imageFrame = .macOSWindow
+        config.imageFrameAppearance = .dark
+        config.terminalColumns = 100
         return config
     }
 
@@ -132,17 +143,11 @@ struct StyleCodecCompletenessTests {
     /// exercised by `richConfig()` or be excused here with the reason it carries no
     /// persisted style.
     @Test func everySnapshotConfigFieldIsExercisedOrExcused() {
-        // Each reason matches the exclusion the round-trip test applies to the same
-        // field, so the two lists cannot drift apart silently.
-        let excused: [String: String] = [
-            "code": "document text, never style",
-            "redactedLineRanges": "secret marks on a specific document",
-            "watermark": "Brand Kit owns its own persistence",
-            "foregroundImage": "per-capture beautified image, not a default",
-            "imageFrame": "frame of that image, travels with it",
-            "imageFrameAppearance": "frame appearance, travels with the image",
-            "terminalColumns": "measured from the capture, not a preference",
-        ]
+        // Empty on purpose: every field is exercised by richConfig(), including the ones
+        // persistStyle deliberately drops, whose exclusion the round-trip test asserts by
+        // resetting them in `expected`. An entry here is the escape hatch for a future
+        // field that genuinely cannot be given a non-default value.
+        let excused: [String: String] = [:]
 
         let unaccounted = Mirror(reflecting: SnapshotConfig()).children
             .compactMap(\.label)

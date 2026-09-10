@@ -3,6 +3,7 @@ import Foundation
 import Testing
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 // — window restoration and multi-window editing.
 //
@@ -115,7 +116,21 @@ struct EditorWindowStateTests {
         config.foregroundImage = ImageReference(fileName: "beautified.png")
         config.imageFrame = .macOSWindow
         config.imageFrameAppearance = .dark
+        // Not carried by the bridge. They hold non-default values so `expectedAfterRestore`
+        // actually asserts the omission instead of comparing two type defaults.
+        config.watermark = Watermark(text: "@vitrine")
+        config.terminalColumns = 100
         return config
+    }
+
+    /// `original` with the two fields the bridge deliberately does not carry reset to the
+    /// values a restored window will actually show. If the bridge ever starts or stops
+    /// carrying one, the whole-config comparisons below fail instead of quietly agreeing.
+    private func expectedAfterRestore(_ original: SnapshotConfig) -> SnapshotConfig {
+        var expected = original
+        expected.watermark = nil  // Brand Kit owns its own persistence
+        expected.terminalColumns = nil  // measured from the capture, not restored state
+        return expected
     }
 
     @Test func roundTripsEveryFieldThroughTheStateBridge() {
@@ -152,7 +167,7 @@ struct EditorWindowStateTests {
     /// `everySnapshotConfigFieldIsExercisedOrExcused` is what keeps that set complete.
     @Test func restoredConfigEqualsTheOriginalWholesale() {
         let original = richConfig()
-        #expect(EditorWindowState(config: original).config() == original)
+        #expect(EditorWindowState(config: original).config() == expectedAfterRestore(original))
     }
 
     /// The labels `richConfig()` changes from a default `SnapshotConfig`, derived by
@@ -180,11 +195,10 @@ struct EditorWindowStateTests {
     /// This guards *name* coverage, not values: every stored property must be exercised by
     /// `richConfig()` or excused here with the reason it is not restorable document state.
     @Test func everySnapshotConfigFieldIsExercisedOrExcused() {
-        // Not carried by the bridge, each with the reason it is not restorable draft state.
-        let excused: [String: String] = [
-            "watermark": "Brand Kit owns its own persistence",
-            "terminalColumns": "measured from the capture, not restored state",
-        ]
+        // Empty on purpose: every field is exercised by richConfig(), including the two the
+        // bridge drops, whose omission `expectedAfterRestore` asserts. An entry here is the
+        // escape hatch for a future field that cannot be given a non-default value.
+        let excused: [String: String] = [:]
 
         let mutated = labelsMutatedByRichConfig()
         let unaccounted = Mirror(reflecting: SnapshotConfig()).children
@@ -208,7 +222,7 @@ struct EditorWindowStateTests {
         let decoded = try #require(EditorWindowState.decoded(from: data))
         let restored = decoded.config()
 
-        #expect(restored == original)
+        #expect(restored == expectedAfterRestore(original))
     }
 
     /// Structural guard against the drift that let five document fields go missing.
