@@ -57,7 +57,7 @@ struct FramedImageView: View {
 
     /// Process-wide cache of resolved `.auto` chrome, keyed by the content-addressed
     /// (SHA-256) foreground image file name, so a given name maps to one immutable
-    /// sample. Mirrors `BackgroundImageStore.imageCache`.
+    /// sample. Mirrors `DecodedImageCache.imageCache`.
     @MainActor private static let autoChromeCache = NSCache<NSString, FrameChromeBox>()
 
     public var body: some View {

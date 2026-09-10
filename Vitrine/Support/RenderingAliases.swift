@@ -10,6 +10,7 @@ typealias Brand = VitrineRendering.Brand
 typealias BrandMark = VitrineRendering.BrandMark
 typealias CaptureInput = VitrineRendering.CaptureInput
 typealias CodeFont = VitrineRendering.CodeFont
+typealias DecodedImageCache = VitrineRendering.DecodedImageCache
 typealias ExportManager = VitrineRendering.ExportManager
 typealias FileInputLoader = VitrineRendering.FileInputLoader
 typealias HighlightManager = VitrineRendering.HighlightManager

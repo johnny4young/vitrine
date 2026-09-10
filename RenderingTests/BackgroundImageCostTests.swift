@@ -19,7 +19,7 @@ struct BackgroundImageCostTests {
             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
         image.addRepresentation(bitmap)
         // 200 × 100 pixels × 4 bytes, from the bitmap rep — not 100 × 50 points.
-        #expect(BackgroundImageStore.decodedByteCost(of: image) == 200 * 100 * 4)
+        #expect(DecodedImageCache.decodedByteCost(of: image) == 200 * 100 * 4)
     }
 
     /// The decode-time cache cost must charge the surface's real backing bytes.
@@ -29,26 +29,26 @@ struct BackgroundImageCostTests {
     @Test func decodedSurfaceCostChargesActualBackingBytes() {
         // RGBA8, tightly packed: identical to the old 4-bytes-per-pixel figure.
         #expect(
-            BackgroundImageStore.decodedSurfaceCost(bytesPerRow: 200 * 4, height: 100)
+            DecodedImageCache.decodedSurfaceCost(bytesPerRow: 200 * 4, height: 100)
                 == 200 * 100 * 4)
         // RGBA16: twice the bytes the pixel-count formula assumed.
         #expect(
-            BackgroundImageStore.decodedSurfaceCost(bytesPerRow: 200 * 8, height: 100)
+            DecodedImageCache.decodedSurfaceCost(bytesPerRow: 200 * 8, height: 100)
                 == 200 * 100 * 8)
         // Row padding counts: the allocation is bytesPerRow-wide, not width-wide.
         #expect(
-            BackgroundImageStore.decodedSurfaceCost(bytesPerRow: 832, height: 100) == 83_200)
+            DecodedImageCache.decodedSurfaceCost(bytesPerRow: 832, height: 100) == 83_200)
         // Degenerate surfaces still cost at least 1, so the count limit applies.
-        #expect(BackgroundImageStore.decodedSurfaceCost(bytesPerRow: 0, height: 100) == 1)
+        #expect(DecodedImageCache.decodedSurfaceCost(bytesPerRow: 0, height: 100) == 1)
         // Overflow saturates instead of trapping.
         #expect(
-            BackgroundImageStore.decodedSurfaceCost(bytesPerRow: Int.max, height: 2) == Int.max)
+            DecodedImageCache.decodedSurfaceCost(bytesPerRow: Int.max, height: 2) == Int.max)
     }
 
     /// A vector-only image (no bitmap representation) reports the minimum cost of 1, so
     /// it is still subject to the count limit rather than being exempt at zero cost.
     @Test func decodedByteCostFloorsAtOneForAVectorImage() {
         let empty = NSImage(size: NSSize(width: 10, height: 10))
-        #expect(BackgroundImageStore.decodedByteCost(of: empty) == 1)
+        #expect(DecodedImageCache.decodedByteCost(of: empty) == 1)
     }
 }
