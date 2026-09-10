@@ -64,11 +64,10 @@ jobs:
           REQUESTED_REF: ${{ inputs.release_ref }}
         run: |
           set -euo pipefail
+          # The script fails closed with a precise reason (missing key, or a version
+          # the release tag guard would refuse), and `set -e` stops here, so there is
+          # no empty-value branch left to write.
           VERSION="$(../scripts/project-version.sh --project ../project.yml)"
-          if [ -z "${VERSION}" ]; then
-            echo "::error::Could not read MARKETING_VERSION from project.yml."
-            exit 1
-          fi
 
           if [ -z "${REQUESTED_REF}" ]; then
             echo "published=false" >> "$GITHUB_OUTPUT"

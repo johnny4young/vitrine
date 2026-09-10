@@ -26,9 +26,22 @@ USAGE
 }
 
 read_field() {
-    # `head -n1` keeps the project-wide `settings` block authoritative when a target
-    # overrides the same key further down.
-    sed -nE "s/^[[:space:]]*$1:[[:space:]]*\"?([^\"[:space:]]+)\"?[[:space:]]*\$/\1/p" "$2" | head -n1
+    # One process that stops at the first match, rather than `sed … | head -n1`: under
+    # `pipefail`, head closing the pipe can kill sed with SIGPIPE and fail the whole
+    # script with 141 even though the value was produced. That is not hypothetical — it
+    # reproduces on a file with enough matching lines, which is exactly the
+    # more-than-one-match case this is here to handle. The first match wins so the
+    # project-wide `settings` block stays authoritative over a later target override.
+    awk -v key="$1" '
+        $0 ~ "^[[:space:]]*" key ":" {
+            value = $0
+            sub("^[[:space:]]*" key ":[[:space:]]*", "", value)
+            sub(/[[:space:]]*$/, "", value)
+            gsub(/^"|"$/, "", value)
+            print value
+            exit
+        }
+    ' "$2"
 }
 
 self_test() {
