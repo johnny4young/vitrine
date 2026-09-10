@@ -51,9 +51,12 @@ struct StyleCodecCompletenessTests {
     }
 
     /// Wholesale round-trip: everything `persistStyle` writes must read back equal, and
-    /// everything it deliberately excludes must read back as the default. The exclusions
-    /// are spelled out one by one so adding a `SnapshotConfig` field forces a decision
-    /// here — persist it or excuse it — instead of silently dropping it.
+    /// everything it deliberately excludes must read back as the default.
+    ///
+    /// This comparison only constrains fields `richConfig()` sets to a non-default value;
+    /// a field left at its default matches on both sides whether or not anything persists
+    /// it. `everySnapshotConfigFieldIsExercisedOrExcused` is what makes adding a field a
+    /// decision rather than a silent omission.
     @Test func persistedStyleReadsBackWholesale() {
         let defaults = freshDefaults()
         let rich = richConfig()
@@ -98,6 +101,61 @@ struct StyleCodecCompletenessTests {
             These editor-session seed keys are never written by persistStyle, so a new \
             window cannot inherit them: \(missing.sorted().joined(separator: ", ")). \
             Write them in persistStyle, or excuse them here with the store that owns them.
+            """)
+    }
+
+    /// The labels `richConfig()` actually changes from a default `SnapshotConfig`,
+    /// derived by comparing the two through `Mirror` rather than by reading the source
+    /// of `richConfig()`.
+    private func labelsMutatedByRichConfig() -> Set<String> {
+        let base = Array(Mirror(reflecting: SnapshotConfig()).children)
+        let rich = Array(Mirror(reflecting: richConfig()).children)
+        var mutated: Set<String> = []
+        for (defaultChild, richChild) in zip(base, rich) {
+            guard let label = defaultChild.label else { continue }
+            if String(describing: defaultChild.value) != String(describing: richChild.value) {
+                mutated.insert(label)
+            }
+        }
+        return mutated
+    }
+
+    /// Anchors the round-trip guard to `SnapshotConfig` itself.
+    ///
+    /// `persistedStyleReadsBackWholesale` only proves something about a field that
+    /// `richConfig()` sets to a non-default value: a field left at its default reads back
+    /// as its default whether or not anything persists it, so the comparison passes
+    /// either way. That made the suite's promise — that adding a field forces a decision
+    /// — untrue, and a temporary `var` added to `SnapshotConfig` passed unnoticed.
+    ///
+    /// This guards *name* coverage, not values: every stored property must either be
+    /// exercised by `richConfig()` or be excused here with the reason it carries no
+    /// persisted style.
+    @Test func everySnapshotConfigFieldIsExercisedOrExcused() {
+        // Each reason matches the exclusion the round-trip test applies to the same
+        // field, so the two lists cannot drift apart silently.
+        let excused: [String: String] = [
+            "code": "document text, never style",
+            "redactedLineRanges": "secret marks on a specific document",
+            "watermark": "Brand Kit owns its own persistence",
+            "foregroundImage": "per-capture beautified image, not a default",
+            "imageFrame": "frame of that image, travels with it",
+            "imageFrameAppearance": "frame appearance, travels with the image",
+            "terminalColumns": "measured from the capture, not a preference",
+        ]
+
+        let unaccounted = Mirror(reflecting: SnapshotConfig()).children
+            .compactMap(\.label)
+            .filter { labelsMutatedByRichConfig().contains($0) == false && excused[$0] == nil }
+
+        #expect(
+            unaccounted.isEmpty,
+            """
+            These SnapshotConfig fields are neither exercised by richConfig() nor excused, \
+            so the round-trip guard says nothing about them: \
+            \(unaccounted.sorted().joined(separator: ", ")). Set them in richConfig() so the \
+            round trip covers them, or excuse them here with the reason they carry no \
+            persisted style.
             """)
     }
 

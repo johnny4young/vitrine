@@ -109,6 +109,12 @@ struct EditorWindowStateTests {
                 kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),
                 text: "step one", number: 1)
         ]
+        // The bridge carries all three of these (`foregroundImageFileName`, `imageFrameID`,
+        // `imageFrameAppearanceID`), so the round trip should exercise them rather than
+        // compare two type defaults.
+        config.foregroundImage = ImageReference(fileName: "beautified.png")
+        config.imageFrame = .macOSWindow
+        config.imageFrameAppearance = .dark
         return config
     }
 
@@ -141,11 +147,59 @@ struct EditorWindowStateTests {
 
     /// Restoration is wholesale — `config()` starts from a fresh `SnapshotConfig` — so a
     /// field the bridge omits is not merely un-restored, it *overwrites* the correctly
-    /// seeded value with a type default. Comparing whole configs catches an omission that
-    /// a field-by-field list would miss whenever someone adds a field and forgets the test.
+    /// seeded value with a type default. Comparing whole configs beats a field-by-field
+    /// list, but only for fields `richConfig()` actually varies:
+    /// `everySnapshotConfigFieldIsExercisedOrExcused` is what keeps that set complete.
     @Test func restoredConfigEqualsTheOriginalWholesale() {
         let original = richConfig()
         #expect(EditorWindowState(config: original).config() == original)
+    }
+
+    /// The labels `richConfig()` changes from a default `SnapshotConfig`, derived by
+    /// comparing the two through `Mirror` rather than by reading its source.
+    private func labelsMutatedByRichConfig() -> Set<String> {
+        let base = Array(Mirror(reflecting: SnapshotConfig()).children)
+        let rich = Array(Mirror(reflecting: richConfig()).children)
+        var mutated: Set<String> = []
+        for (defaultChild, richChild) in zip(base, rich) {
+            guard let label = defaultChild.label else { continue }
+            if String(describing: defaultChild.value) != String(describing: richChild.value) {
+                mutated.insert(label)
+            }
+        }
+        return mutated
+    }
+
+    /// Anchors the wholesale comparison above to `SnapshotConfig` itself.
+    ///
+    /// `restoredConfigEqualsTheOriginalWholesale` only says something about a field
+    /// `richConfig()` sets to a non-default value. A field left at its default is equal on
+    /// both sides whether or not the bridge carries it, so the comparison passes either
+    /// way — which is exactly the omission it claims to catch.
+    ///
+    /// This guards *name* coverage, not values: every stored property must be exercised by
+    /// `richConfig()` or excused here with the reason it is not restorable document state.
+    @Test func everySnapshotConfigFieldIsExercisedOrExcused() {
+        // Not carried by the bridge, each with the reason it is not restorable draft state.
+        let excused: [String: String] = [
+            "watermark": "Brand Kit owns its own persistence",
+            "terminalColumns": "measured from the capture, not restored state",
+        ]
+
+        let mutated = labelsMutatedByRichConfig()
+        let unaccounted = Mirror(reflecting: SnapshotConfig()).children
+            .compactMap(\.label)
+            .filter { !mutated.contains($0) && excused[$0] == nil }
+
+        #expect(
+            unaccounted.isEmpty,
+            """
+            These SnapshotConfig fields are neither exercised by richConfig() nor excused, \
+            so the restoration round trip says nothing about them and a window restoring \
+            after relaunch could overwrite them with type defaults: \
+            \(unaccounted.sorted().joined(separator: ", ")). Set them in richConfig(), or \
+            excuse them here with the reason.
+            """)
     }
 
     @Test func roundTripsThroughJSONData() throws {
