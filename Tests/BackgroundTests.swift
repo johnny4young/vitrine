@@ -6,6 +6,7 @@ import Testing
 import UniformTypeIdentifiers
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 // `import SwiftUI` also brings a `BackgroundStyle` (a `ShapeStyle`) into scope,
 // which would make the bare name ambiguous here. Pin it to Vitrine's model type
@@ -626,16 +627,16 @@ struct BackgroundTests {
 
     @Test func remoteImageDownloadPolicyAllowsOnlyPublicWebURLs() {
         #expect(
-            BackgroundImageStore.isAllowedRemoteImageDownloadURL(
+            RemoteImageFetcher.isAllowedRemoteImageDownloadURL(
                 URL(string: "https://example.com/image.png")!))
         #expect(
-            !BackgroundImageStore.isAllowedRemoteImageDownloadURL(
+            !RemoteImageFetcher.isAllowedRemoteImageDownloadURL(
                 URL(string: "ftp://example.com/image.png")!))
         #expect(
-            !BackgroundImageStore.isAllowedRemoteImageDownloadURL(
+            !RemoteImageFetcher.isAllowedRemoteImageDownloadURL(
                 URL(string: "http://127.1/image.png")!))
         #expect(
-            !BackgroundImageStore.isAllowedRemoteImageDownloadURL(
+            !RemoteImageFetcher.isAllowedRemoteImageDownloadURL(
                 URL(string: "http://[::ffff:127.0.0.1]/image.png")!))
     }
 
@@ -653,7 +654,7 @@ struct BackgroundTests {
         // A payload past the cap is rejected before decoding, bounding memory/disk
         // against a hostile URL.
         let store = Self.tempStore()
-        let huge = Data(count: BackgroundImageStore.maxRemoteImageBytes + 1)
+        let huge = Data(count: RemoteImageFetcher.maxRemoteImageBytes + 1)
         await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
             _ = try await store.importImage(
                 downloadedFrom: URL(string: "https://example.com/big.png")!
@@ -733,7 +734,7 @@ struct BackgroundTests {
         ChunkedRemoteImageURLProtocol.recorder.reset()
 
         await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
-            _ = try await BackgroundImageStore.loadBoundedRemoteImage(
+            _ = try await RemoteImageFetcher.loadBoundedRemoteImage(
                 from: URL(string: "https://chunked.test/overflow")!,
                 maxBytes: 8,
                 configuration: Self.chunkedRemoteConfiguration())
@@ -748,7 +749,7 @@ struct BackgroundTests {
     @Test func remoteImageChunkLoaderReturnsCompleteChunks() async throws {
         ChunkedRemoteImageURLProtocol.recorder.reset()
 
-        let (data, response) = try await BackgroundImageStore.loadBoundedRemoteImage(
+        let (data, response) = try await RemoteImageFetcher.loadBoundedRemoteImage(
             from: URL(string: "https://chunked.test/success")!,
             maxBytes: 12,
             configuration: Self.chunkedRemoteConfiguration())
@@ -764,7 +765,7 @@ struct BackgroundTests {
         ChunkedRemoteImageURLProtocol.recorder.reset()
 
         await #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
-            _ = try await BackgroundImageStore.loadBoundedRemoteImage(
+            _ = try await RemoteImageFetcher.loadBoundedRemoteImage(
                 from: URL(string: "https://chunked.test/known-overflow")!,
                 maxBytes: 8,
                 configuration: Self.chunkedRemoteConfiguration())
@@ -777,7 +778,7 @@ struct BackgroundTests {
     @Test func cancellingRemoteImageChunkLoaderCancelsTransport() async {
         ChunkedRemoteImageURLProtocol.recorder.reset()
         let task = Task {
-            try await BackgroundImageStore.loadBoundedRemoteImage(
+            try await RemoteImageFetcher.loadBoundedRemoteImage(
                 from: URL(string: "https://chunked.test/slow")!,
                 maxBytes: 8,
                 configuration: Self.chunkedRemoteConfiguration())
