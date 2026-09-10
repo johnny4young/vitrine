@@ -8,7 +8,7 @@
 #
 # The contract, and how each part is kept:
 #
-#   * Every site must match exactly one line. That is counted, never inferred from
+#   * Every site must match exactly once. That is counted, never inferred from
 #     whether the file changed: a duplicated key changes the file too, and a same-version
 #     resubmission legitimately changes nothing on its version-only sites.
 #   * Nothing is written until every site has been checked. Rewrites are staged in a
@@ -69,33 +69,43 @@ target_files() {
     done | awk '!seen[$0]++'
 }
 
-# Matching lines, not bytes changed. `grep -c` prints 0 and exits 1 on no match.
+# Count occurrences, including repeated README phrases on the same line.
 count_matches() {
-    grep -cE -- "$2" "$1" || true
+    local matches status=0
+    matches="$(grep -oE -- "$2" "$1")" || status=$?
+    case "$status" in
+        0) printf '%s\n' "$matches" | awk 'END { print NR }' ;;
+        1) echo 0 ;;
+        *) return "$status" ;;
+    esac
 }
 
-run_bump() {
+run_bump() (
     local root="$1" v="$2" b="$3"
     local i file description match template replacement path count stage
     local current_version current_build failures=0
 
-    printf '%s' "$v" | grep -qE '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || {
+    [[ "$v" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
         echo "bump-version: '$v' is not a stable SemVer version the release tag guard would accept" >&2
         return 1
     }
-    printf '%s' "$b" | grep -qE '^[1-9][0-9]*$' || {
+    [[ "$b" =~ ^[1-9][0-9]*$ ]] || {
         echo "bump-version: build '$b' must be a positive integer" >&2
         return 1
     }
 
     current_version="$("$root/scripts/project-version.sh" --project "$root/project.yml")" || return 1
     current_build="$("$root/scripts/project-version.sh" --build --project "$root/project.yml")" || return 1
-    if [ "$b" -le "$current_build" ]; then
+    # Positive decimal strings compare by length, then lexically. Shell integer
+    # comparisons overflow for long builds and their error must not admit a downgrade.
+    local LC_ALL=C
+    if [ "${#b}" -lt "${#current_build}" ] ||
+        { [ "${#b}" -eq "${#current_build}" ] && [[ ! "$b" > "$current_build" ]]; }; then
         echo "bump-version: build $b must be greater than the current $current_build — Sparkle and App Store Connect both order builds by it" >&2
         return 1
     fi
 
-    # Preflight: every site exists and matches exactly one line, before anything is written.
+    # Preflight: every site is writable and matches exactly once, before anything is written.
     for ((i = 0; i < ${#SITES[@]}; i += 4)); do
         file="${SITES[i]}"
         description="${SITES[i + 1]}"
@@ -106,9 +116,13 @@ run_bump() {
             failures=1
             continue
         fi
-        count="$(count_matches "$path" "$match")"
+        if [ ! -w "$path" ]; then
+            echo "bump-version: $file is not writable; nothing was written" >&2
+            return 1
+        fi
+        count="$(count_matches "$path" "$match")" || return 1
         if [ "$count" != "1" ]; then
-            echo "bump-version: $file — '$description' matched $count lines, expected exactly 1" >&2
+            echo "bump-version: $file — '$description' matched $count occurrences, expected exactly 1" >&2
             failures=1
         fi
     done
@@ -118,10 +132,15 @@ run_bump() {
     fi
 
     # Stage every rewrite; publish only once all of them validate.
-    stage="$(mktemp -d)"
+    # Publication is sequential, not crash-atomic: an interruption or new I/O failure
+    # during the final copies can still require recovering the checkout manually.
+    stage="$(mktemp -d)" || return 1
+    # A subshell owns the trap so staging failures clean up even under the self-test's
+    # conditional calls, where Bash deliberately disables implicit errexit handling.
+    trap 'rm -rf "$stage"' EXIT
     while IFS= read -r file; do
-        mkdir -p "$stage/$(dirname "$file")"
-        cp "$root/$file" "$stage/$file"
+        mkdir -p "$stage/$(dirname "$file")" || return 1
+        cp "$root/$file" "$stage/$file" || return 1
     done < <(target_files)
 
     for ((i = 0; i < ${#SITES[@]}; i += 4)); do
@@ -130,8 +149,8 @@ run_bump() {
         template="${SITES[i + 3]}"
         replacement="${template//@V@/$v}"
         replacement="${replacement//@B@/$b}"
-        sed -E "s/$match/$replacement/" "$stage/$file" > "$stage/$file.next"
-        mv "$stage/$file.next" "$stage/$file"
+        sed -E "s/$match/$replacement/" "$stage/$file" > "$stage/$file.next" || return 1
+        mv "$stage/$file.next" "$stage/$file" || return 1
         if [ "$(count_matches "$stage/$file" "$match")" != "1" ]; then
             echo "bump-version: $file — rewriting '${SITES[i + 1]}' did not leave exactly one match; nothing was written" >&2
             rm -rf "$stage"
@@ -140,7 +159,10 @@ run_bump() {
     done
 
     while IFS= read -r file; do
-        cp "$stage/$file" "$root/$file"
+        cp "$stage/$file" "$root/$file" || {
+            echo "bump-version: could not publish $file; inspect the checkout for partial writes" >&2
+            return 1
+        }
     done < <(target_files)
     rm -rf "$stage"
 
@@ -152,7 +174,7 @@ run_bump() {
     for ((i = 0; i < ${#SITES[@]}; i += 4)); do
         echo "  ${SITES[i]} — ${SITES[i + 1]}"
     done
-}
+)
 
 # Set by self_test and read by its EXIT trap, so it must not be local: the trap fires when
 # the script exits, after self_test has returned and its locals are gone. Under `set -u` a
@@ -221,6 +243,45 @@ self_test() {
     if run_bump "$dir" 9.9.9 999 >/dev/null 2>&1; then fail "a duplicated anchor was accepted"; fi
     [ "$(fingerprint "$dir")" = "$before" ] || fail "a duplicated anchor still wrote files"
 
+    # Two unanchored occurrences on one line must not leave the second version stale.
+    dir="$(fixture duplicate_inline)"
+    sed 's/ release line/ release line; not part of the v0.0.0 release line/' \
+        "$dir/README.md" > "$dir/README.md.next"
+    mv "$dir/README.md.next" "$dir/README.md"
+    before="$(fingerprint "$dir")"
+    if run_bump "$dir" 9.9.9 999 >/dev/null 2>&1; then fail "a same-line duplicate was accepted"; fi
+    [ "$(fingerprint "$dir")" = "$before" ] || fail "a same-line duplicate still wrote files"
+
+    # A predictable publication failure is rejected before the build number moves.
+    dir="$(fixture readonly)"
+    chmod a-w "$dir/README.md"
+    if [ ! -w "$dir/README.md" ]; then
+        before="$(fingerprint "$dir")"
+        if run_bump "$dir" 9.9.9 999 >/dev/null 2>&1; then fail "a read-only target was accepted"; fi
+        [ "$(fingerprint "$dir")" = "$before" ] || fail "a read-only target left partial writes"
+    fi
+    chmod u+w "$dir/README.md"
+    run_bump "$dir" 9.9.9 999 >/dev/null || fail "a bump failed after restoring write permission"
+
+    # Staging I/O failures must return failure even when called from a conditional.
+    dir="$(fixture staging_failure)"
+    before="$(fingerprint "$dir")"
+    if (
+        cp() { return 1; }
+        run_bump "$dir" 9.9.9 999
+    ) >/dev/null 2>&1; then fail "a failed staging copy was accepted"; fi
+    [ "$(fingerprint "$dir")" = "$before" ] || fail "a failed staging copy wrote files"
+
+    # Decimal ordering remains exact beyond the machine integer range, including equality.
+    dir="$(fixture large_build)"
+    run_bump "$dir" "$cv" 9223372036854775809 >/dev/null || fail "a large build was refused"
+    before="$(fingerprint "$dir")"
+    for args in 9223372036854775808 9223372036854775809 999; do
+        if run_bump "$dir" "$cv" "$args" >/dev/null 2>&1; then fail "a large build did not move forward"; fi
+    done
+    [ "$(fingerprint "$dir")" = "$before" ] || fail "a refused large build wrote files"
+    run_bump "$dir" "$cv" 9223372036854775810 >/dev/null || fail "a larger build was refused"
+
     # A site that fails late writes nothing, so the same command works once it is fixed.
     dir="$(fixture recovery)"
     sed 's/--candidate-orange/--stable-green/' "$dir/README.md" > "$dir/README.md.next"
@@ -239,6 +300,8 @@ self_test() {
         # shellcheck disable=SC2086
         if run_bump "$dir" $args >/dev/null 2>&1; then fail "run_bump $args was accepted"; fi
     done
+    if run_bump "$dir" $'9.9.9\ninvalid' 999 >/dev/null 2>&1; then fail "a multiline version was accepted"; fi
+    if run_bump "$dir" 9.9.9 $'999\ninvalid' >/dev/null 2>&1; then fail "a multiline build was accepted"; fi
     [ "$(fingerprint "$dir")" = "$before" ] || fail "a refused bump wrote files"
 
     echo "bump-version self-test passed"
