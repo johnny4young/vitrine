@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 
 /// A portable, reproducible snapshot: the content, annotations, header, and style,
 /// encoded into a `vitrine://open` URL so a snapshot can be shared as a link and
@@ -13,10 +14,10 @@ import Foundation
 /// Decoding treats the payload as **untrusted input**: rendering values are bounded,
 /// annotations and line ranges are normalized, nothing references the filesystem, and
 /// nothing executes.
-struct SharedSnapshot: Codable, Equatable {
+public struct SharedSnapshot: Codable, Equatable {
     /// The payload schema. Bumped only on a breaking change; an unknown version is
     /// refused rather than misread.
-    static let schemaVersion = 1
+    public static let schemaVersion = 1
 
     var version: Int
     var code: String
@@ -41,7 +42,7 @@ struct SharedSnapshot: Codable, Equatable {
     /// value. Redacted source lines are replaced before encoding, so a visual redaction
     /// cannot leak through the link. A foreground image is intentionally omitted — it
     /// is a local file, not shareable text.
-    init(capturing config: SnapshotConfig) {
+    public init(capturing config: SnapshotConfig) {
         self.version = Self.schemaVersion
         self.code = config.richClipboardText
         self.languageID = config.language.rawValue
@@ -60,7 +61,7 @@ struct SharedSnapshot: Codable, Equatable {
     /// Applies this shared snapshot onto `config`, replacing its content and style.
     /// Content-bound marks that this snapshot does not carry (redactions) are cleared
     /// so a stale blur can't linger over unrelated code.
-    func apply(to config: inout SnapshotConfig) {
+    public func apply(to config: inout SnapshotConfig) {
         config.clearContentMarks()
         config.code = code
         config.language = Language(rawValue: languageID) ?? .plaintext
@@ -81,7 +82,7 @@ struct SharedSnapshot: Codable, Equatable {
         case terminalColumns
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         version = try container.decode(Int.self, forKey: .version)
         code = try container.decode(String.self, forKey: .code)
@@ -157,23 +158,23 @@ struct SharedSnapshot: Codable, Equatable {
 /// base64url-encoded into the `d` query item — so the link is a single self-contained
 /// string with no server, exactly like the rest of Vitrine. Decoding reverses each
 /// step defensively and bounds both compressed input and decompressed JSON.
-enum SnapshotShareLink {
+public enum SnapshotShareLink {
     /// The URL scheme + host that mean "open this shared snapshot".
-    static let scheme = "vitrine"
-    static let host = "open"
+    public static let scheme = "vitrine"
+    public static let host = "open"
     /// The query item carrying the base64url payload.
-    static let payloadKey = "d"
+    public static let payloadKey = "d"
 
     /// The largest encoded payload accepted, in characters. Comfortably fits a large
     /// snippet after compression while bounding a decode of hostile input; a snapshot
     /// past it is refused at encode time so the app never emits an unusable link.
-    static let maxEncodedLength = 64 * 1024
+    public static let maxEncodedLength = 64 * 1024
     /// The largest decoded JSON document accepted. This prevents a small compressed
     /// payload from expanding into an unexpectedly large allocation.
-    static let maxDecodedLength = 1 * 1024 * 1024
+    public static let maxDecodedLength = 1 * 1024 * 1024
 
     /// Why a share link could not be built or read.
-    enum ShareLinkError: Error, Equatable {
+    public enum ShareLinkError: Error, Equatable {
         /// The snapshot encodes to a payload larger than `maxEncodedLength`.
         case tooLarge
         /// The URL is not a well-formed `vitrine://open?d=…` link.
@@ -184,7 +185,7 @@ enum SnapshotShareLink {
 
     /// Builds the `vitrine://open` URL for `snapshot`, or throws when the compressed
     /// payload would exceed `maxEncodedLength` (a snippet too large to share as a link).
-    static func url(for snapshot: SharedSnapshot) throws -> URL {
+    public static func url(for snapshot: SharedSnapshot) throws -> URL {
         let json = try JSONEncoder().encode(snapshot)
         guard json.count <= maxDecodedLength else { throw ShareLinkError.tooLarge }
         let compressed = try Zlib.compress(json)
@@ -204,7 +205,7 @@ enum SnapshotShareLink {
     /// bounded, valid base64url → zlib → JSON chain, and the schema version must be one
     /// this build understands. Any deviation throws rather than producing a partial or
     /// surprising snapshot.
-    static func snapshot(from url: URL) throws -> SharedSnapshot {
+    public static func snapshot(from url: URL) throws -> SharedSnapshot {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
             components.scheme?.lowercased() == scheme,
             components.host?.lowercased() == host,

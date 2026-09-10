@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 
 /// Derives the save panel's proposed filename from what the snapshot actually
 /// shows, replacing the fixed `vitrine.png` so exports land pre-named after
@@ -14,9 +15,9 @@ import Foundation
 ///
 /// Pure and deterministic (no AppKit, no state) so the mapping is unit-testable;
 /// the extension is appended by the caller from the encoded payload.
-enum SuggestedFilename {
+public enum SuggestedFilename {
     /// The proposed basename (no extension) for exporting `config`.
-    static func basename(for config: SnapshotConfig) -> String {
+    public static func basename(for config: SnapshotConfig) -> String {
         if let filename = config.metadata.filename {
             let stem = (filename as NSString).lastPathComponent
             let withoutExtension = (stem as NSString).deletingPathExtension
@@ -68,7 +69,7 @@ enum SuggestedFilename {
     /// (`ContentView.swift` *is* a good title) and an inferred identifier carries no
     /// `vitrine-` prefix. Terminal output and plain images yield `nil` rather than a
     /// generic label the user would just delete.
-    static func suggestedTitle(for config: SnapshotConfig) -> String? {
+    public static func suggestedTitle(for config: SnapshotConfig) -> String? {
         if let filename = config.metadata.filename {
             let stem = (filename as NSString).lastPathComponent
                 .trimmingCharacters(in: .whitespacesAndNewlines)

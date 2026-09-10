@@ -110,7 +110,7 @@ struct ConcurrencySafetyTests {
             encoding: .utf8)
         let loader = try String(
             contentsOf: repositoryRoot.appendingPathComponent(
-                "Vitrine/Editor/FileInputLoader.swift"),
+                "VitrineRendering/Models/FileInputLoader.swift"),
             encoding: .utf8)
         let picker = try String(
             contentsOf: repositoryRoot.appendingPathComponent(
