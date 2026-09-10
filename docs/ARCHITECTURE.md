@@ -959,6 +959,7 @@ VitrineCLI/                    # the `vitrine` executable target
 
 DomainTests/                  # hostless VitrineDomain contract tests
 RenderingTests/               # direct VitrineRendering facade and policy contracts
+RepositoryTests/              # hostless repository contracts: workflows, packaging, docs
 ```
 
 The editor owns batch-export presentation at the toolbar root rather than at an

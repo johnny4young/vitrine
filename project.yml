@@ -442,6 +442,21 @@ targets:
         SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_HOSTLESS_PROBE
 
+  VitrineRepositoryTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    # Repository-contract suites: they read tracked files from disk and assert on their
+    # contents. They import nothing but Foundation and Testing, so they need neither a
+    # product target nor an app host — which is the whole point of the separate bundle.
+    sources:
+      - path: RepositoryTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.VitrineRepositoryTests
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+
   VitrineRenderingTests:
     type: bundle.unit-test
     platform: macOS
@@ -482,6 +497,7 @@ schemes:
         Vitrine: all
         VitrineDomainTests: [test]
         VitrineRenderingTests: [test]
+        VitrineRepositoryTests: [test]
         VitrineTests: [test]
     run:
       config: Debug
@@ -505,6 +521,7 @@ schemes:
       targets:
         - VitrineDomainTests
         - VitrineRenderingTests
+        - VitrineRepositoryTests
         - VitrineTests
       # Forward the opt-in generator flags into the test runner's environment.
       # xcodebuild does not pass arbitrary host env vars to the test process, so each
