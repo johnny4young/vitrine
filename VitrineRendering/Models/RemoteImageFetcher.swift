@@ -14,8 +14,10 @@ import VitrineDomain
 /// applies to the initial request and to every redirect.
 nonisolated public enum RemoteImageFetcher {
 
-    /// The remote loader shares the universal import limit. Keep this name as the
-    /// streaming API's explicit contract and for source compatibility with callers.
+    /// The remote loader's byte cap, currently the same value as the import limit it
+    /// derives from. It keeps its own name because the two are separate contracts: this
+    /// one bounds what a stream may accumulate from a host the user does not control,
+    /// and could tighten without changing what a local import accepts.
     nonisolated public static let maxRemoteImageBytes = BackgroundImageStore.maxImportBytes
 
     /// Keep the direct remote fetch from lingering forever on a slow or stalled
