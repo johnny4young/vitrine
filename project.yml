@@ -451,6 +451,8 @@ targets:
     # product target nor an app host — which is the whole point of the separate bundle.
     sources:
       - path: RepositoryTests
+      # Shared with the app-hosted bundle so both halves read the version identically.
+      - path: Tests/ProjectVersionSupport.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

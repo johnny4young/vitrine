@@ -89,14 +89,7 @@ struct AppStoreReadinessTests {
     /// `MARKETING_VERSION` as `project.yml` actually sets it — the single source of
     /// truth the version-sync guards below all compare against.
     private static func marketingVersion() throws -> String {
-        let project = try projectYAML()
-        let regex = try NSRegularExpression(
-            pattern: #"(?m)^\s*MARKETING_VERSION:\s*"?([0-9][0-9A-Za-z.\-]*)"?\s*$"#)
-        let match = try #require(
-            regex.firstMatch(
-                in: project, range: NSRange(project.startIndex..<project.endIndex, in: project)),
-            "project.yml must set MARKETING_VERSION")
-        return String(project[try #require(Range(match.range(at: 1), in: project))])
+        try ProjectVersion.marketing()
     }
 
     // MARK: - Files exist
@@ -200,18 +193,10 @@ struct AppStoreReadinessTests {
     /// shipping a stale history.
     @Test func changelogNewestEntryMatchesTheShippedVersion() throws {
         let changelog = try Self.text("CHANGELOG.md")
-        let project = try Self.projectYAML()
 
         // MARKETING_VERSION from project.yml — the same source of truth the version-doc
-        // test reads.
-        let mvRegex = try NSRegularExpression(
-            pattern: #"(?m)^\s*MARKETING_VERSION:\s*"?([0-9][0-9A-Za-z.\-]*)"?\s*$"#)
-        let mvMatch = try #require(
-            mvRegex.firstMatch(
-                in: project, range: NSRange(project.startIndex..<project.endIndex, in: project)),
-            "project.yml must set MARKETING_VERSION")
-        let marketingVersion = String(
-            project[try #require(Range(mvMatch.range(at: 1), in: project))])
+        // test reads, through the parser the release scripts use.
+        let marketingVersion = try ProjectVersion.marketing()
 
         // The newest *released* heading — `## [1.2.3]` — skipping the `## [Unreleased]`
         // collector, which carries no version number.
