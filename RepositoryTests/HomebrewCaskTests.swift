@@ -137,21 +137,13 @@ struct HomebrewCaskTests {
 
     @Test func caskTemplateVersionMatchesTheProjectRelease() throws {
         let cask = try Self.cask()
-        let project = try Self.projectYAML()
         let versionLine = try #require(
             cask.components(separatedBy: .newlines).first { $0.contains("version \"") },
             "the cask must declare a version")
         let caskVersion = try #require(
             versionLine.split(separator: "\"").dropFirst().first.map(String.init),
             "the cask version must be a quoted string")
-        let regex = try NSRegularExpression(
-            pattern: #"(?m)^\s*MARKETING_VERSION:\s*"?([0-9][0-9A-Za-z.\-]*)"?\s*$"#)
-        let match = try #require(
-            regex.firstMatch(
-                in: project, range: NSRange(project.startIndex..<project.endIndex, in: project)),
-            "project.yml must set MARKETING_VERSION")
-        let projectVersion = String(
-            project[try #require(Range(match.range(at: 1), in: project))])
+        let projectVersion = try ProjectVersion.marketing()
 
         #expect(
             caskVersion == projectVersion,

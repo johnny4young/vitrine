@@ -599,6 +599,30 @@ struct WorkflowConfigurationTests {
 
     // MARK: - Contract: a published release refreshes the marketing site
 
+    /// Both release gates and the site deploy read the version through one script.
+    ///
+    /// They used to carry their own `sed` expressions in two dialects: the release
+    /// guard accepted `1.3.0-beta.1` while the site deploy matched nothing on it, so a
+    /// prerelease version would have let the release proceed and failed the site build.
+    /// `VersionParserConsolidationTests` rejects a new inline extraction; this pins the
+    /// other half, that these three call sites still go through the script.
+    @Test func releaseAndSiteReadTheVersionThroughOneScript() throws {
+        let release = try Self.release()
+        #expect(
+            release.components(separatedBy: "./scripts/project-version.sh").count - 1 == 2,
+            "both release version reads must call scripts/project-version.sh")
+
+        let site = try Self.text(".github", "workflows", "deploy-site.yml")
+        #expect(
+            site.contains("../scripts/project-version.sh --project ../project.yml"),
+            "the site deploy must read the version through the shared script")
+
+        let makefile = try Self.text("Makefile")
+        #expect(
+            makefile.contains("./scripts/project-version.sh --self-test"),
+            "lint must run the version parser's self-test")
+    }
+
     @Test func releaseRefreshesTheMarketingSiteAfterPublishing() throws {
         let release = try Self.release()
         let deploySite = try Self.deploySite()
