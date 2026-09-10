@@ -7,7 +7,7 @@ struct DocumentationPathTests {
         let documents = try Self.documentsToCheck()
         let expression = try NSRegularExpression(
             pattern:
-                #"`((?:Vitrine(?:Domain|Rendering|CLI|MenuBarHelper)?|Tests|DomainTests|RenderingTests|UITests)/[A-Za-z0-9_+./-]+\.swift)`"#
+                #"`((?:Vitrine(?:Domain|Rendering|CLI|MenuBarHelper)?|Tests|DomainTests|RenderingTests|RepositoryTests|UITests)/[A-Za-z0-9_+./-]+\.swift)`"#
         )
         var missing: [String] = []
 
