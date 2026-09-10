@@ -1,16 +1,21 @@
 import OSLog
+import VitrineDomain
 
-/// Rendering-owned unified logging. The category names intentionally match the app's
-/// diagnostics catalog while keeping the reusable module independent of app lifecycle.
+/// Rendering-owned unified logging. The categories come from the shared `LogCategory`
+/// in the value layer, so this module stays independent of app lifecycle without
+/// keeping a second, drift-prone copy of the diagnostics catalog.
 nonisolated enum RenderingLog {
-    private static let subsystem = "com.johnny4young.vitrine"
+    private static func logger(_ category: LogCategory) -> Logger {
+        Logger(subsystem: LogCategory.subsystem, category: category.rawValue)
+    }
 
-    /// Quick-capture and file-input path. Matches the app catalog's `capture`
-    /// category so a moved file keeps landing in the same stream and the
-    /// diagnostics bundle keeps collecting it.
-    static let capture = Logger(subsystem: subsystem, category: "capture")
-    static let render = Logger(subsystem: subsystem, category: "render")
-    static let export = Logger(subsystem: subsystem, category: "export")
+    /// Quick-capture and file-input path. Built from the shared `LogCategory` rather
+    /// than a matching string literal, so renaming or removing a case is a compile
+    /// error here instead of silently emitting to a category the diagnostics bundle
+    /// no longer collects.
+    static let capture = logger(.capture)
+    static let render = logger(.render)
+    static let export = logger(.export)
 }
 
 public enum RenderSignpost {

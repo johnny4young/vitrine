@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 /// A `vitrine://open` URL that round-trips content and style, decodes untrusted input
 /// defensively, and never carries a local file reference.

@@ -1,4 +1,5 @@
 import OSLog
+import VitrineDomain
 
 /// Structured logging for Vitrine.
 ///
@@ -25,19 +26,14 @@ import OSLog
 nonisolated enum Log {
     /// The single subsystem all categories share. Matches the bundle identifier so
     /// the unified-logging stream is easy to find (`log stream --subsystem com.johnny4young.vitrine`).
-    static let subsystem = "com.johnny4young.vitrine"
+    static let subsystem = LogCategory.subsystem
 
     /// The fixed set of logging categories, one per product area.
-    /// Keeping these as an enum — rather than ad-hoc category strings scattered
-    /// across the codebase — guarantees the diagnostics bundle can enumerate every
-    /// category it knows about and document exactly what it collects.
-    enum Category: String, CaseIterable {
-        case app
-        case capture
-        case render
-        case export
-        case settings
-    }
+    /// Declared once in the value layer so the rendering module builds its loggers
+    /// from the same cases: that is what guarantees the diagnostics bundle can
+    /// enumerate every category any module logs to, rather than only the ones the
+    /// app happens to declare.
+    typealias Category = LogCategory
 
     /// App lifecycle (launch, hotkey wiring, termination).
     static let app = logger(.app)

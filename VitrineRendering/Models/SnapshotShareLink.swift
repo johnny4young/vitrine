@@ -19,18 +19,18 @@ public struct SharedSnapshot: Codable, Equatable {
     /// refused rather than misread.
     public static let schemaVersion = 1
 
-    public var version: Int
-    public var code: String
-    public var languageID: String
-    public var style: StyleSnapshot
-    public var annotations: [Annotation]
-    public var windowTitle: String
-    public var metadata: SnapshotMetadata
-    public var shadowRadius: Double
-    public var highlightedLineRanges: [ClosedRange<Int>]
-    public var focusHighlightedLines: Bool
-    public var diffDecorations: Bool
-    public var terminalColumns: Int?
+    var version: Int
+    var code: String
+    var languageID: String
+    var style: StyleSnapshot
+    var annotations: [Annotation]
+    var windowTitle: String
+    var metadata: SnapshotMetadata
+    var shadowRadius: Double
+    var highlightedLineRanges: [ClosedRange<Int>]
+    var focusHighlightedLines: Bool
+    var diffDecorations: Bool
+    var terminalColumns: Int?
 
     private static let maxAnnotations = 256
     private static let maxAnnotationTextLength = 4_096

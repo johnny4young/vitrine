@@ -33,7 +33,7 @@ public enum FileInputLoader {
     /// A successfully loaded file: the decoded text, an inferred language, and the
     /// source file's display name (its last path component) for the metadata
     /// header.
-    public struct LoadedFile: Equatable, Sendable {
+    public nonisolated struct LoadedFile: Equatable, Sendable {
         /// The decoded file contents, ready to drop into the editor.
         public var text: String
         /// The language inferred from the extension, or from the content when the
@@ -45,11 +45,12 @@ public enum FileInputLoader {
         /// workspace association matching. Decoded text and pasted content have none.
         public var sourceURL: URL? = nil
 
-        /// Swift synthesises the memberwise initialiser at `internal`, so crossing a
-        /// module boundary needs an explicit one. It is `nonisolated` because this
-        /// target defaults to `MainActor` while the synthesised initialiser was not
-        /// isolated, and callers construct loaded files off the main actor.
-        nonisolated public init(
+        /// Swift synthesizes the memberwise initializer at `internal`, so crossing a
+        /// module boundary needs an explicit one. The type is `nonisolated` — matching
+        /// its `Sendable` conformance — so this initializer and the stored properties
+        /// it fills are reachable from the same places, rather than letting a caller
+        /// construct a value off the main actor that it cannot then read.
+        public init(
             text: String, language: Language, filename: String, sourceURL: URL? = nil
         ) {
             self.text = text
@@ -73,6 +74,10 @@ public enum FileInputLoader {
         /// - Appending keeps the current language (the existing code defines it)
         ///   and only grows the text, inserting a single newline separator just
         ///   when the current content does not already end with one.
+        /// `@MainActor` because it mutates `SnapshotConfig`, whose API is main-actor
+        /// isolated; the loaded value itself stays nonisolated so it can be produced
+        /// and inspected off the main actor.
+        @MainActor
         public func apply(to config: inout SnapshotConfig, replacing: Bool) {
             if replacing {
                 // Swapping the whole document is a new capture: drop content-bound marks
@@ -131,9 +136,9 @@ public enum FileInputLoader {
     public nonisolated static let maximumByteCount = 5 * 1024 * 1024
 
     nonisolated private struct RawFile: Sendable {
-        public var data: Data
-        public var filename: String
-        public var sourceURL: URL
+        var data: Data
+        var filename: String
+        var sourceURL: URL
     }
 
     // MARK: - File loading
@@ -161,14 +166,25 @@ public enum FileInputLoader {
         return try decode(rawFile: rawFile)
     }
 
-    /// Async sibling for living files. Only the bounded filesystem read hops to the concurrent
-    /// executor; the existing pure interpretation policy remains centralized in `decode`.
+    /// Async sibling for living files. The read and the interpretation both stay on the
+    /// concurrent executor: `decode` is `nonisolated`, so scanning and language detection
+    /// over a file up to `maximumByteCount` never runs on the main actor.
     @concurrent
     public static func loadConcurrently(from url: URL) async throws -> LoadedFile {
         try Task.checkCancellation()
-        let rawFile = try readBoundedFile(from: url)
+        let rawFile: RawFile
+        do {
+            rawFile = try readBoundedFile(from: url)
+        } catch LoadError.tooLarge {
+            throw LoadError.tooLarge
+        } catch {
+            // Same diagnostic as the synchronous path, so a living-file read failure
+            // is visible in an exported bundle too. Never echo the path (privacy policy).
+            RenderingLog.capture.error("File input: read failed")
+            throw error
+        }
         try Task.checkCancellation()
-        return try await decode(rawFile: rawFile)
+        return try decode(rawFile: rawFile)
     }
 
     /// Reads the user-selected source under a balanced security scope on the caller's executor.
@@ -193,7 +209,7 @@ public enum FileInputLoader {
             sourceURL: url.standardizedFileURL)
     }
 
-    private static func decode(rawFile: RawFile) throws -> LoadedFile {
+    nonisolated private static func decode(rawFile: RawFile) throws -> LoadedFile {
         var loaded = try decode(data: rawFile.data, filename: rawFile.filename)
         loaded.sourceURL = rawFile.sourceURL
         return loaded
@@ -205,7 +221,7 @@ public enum FileInputLoader {
     /// cap, binary rejection, text decoding, and language inference — with no
     /// filesystem or AppKit dependency, so the whole policy is unit-testable from
     /// fixtures (tests).
-    public static func decode(data: Data, filename: String) throws -> LoadedFile {
+    public nonisolated static func decode(data: Data, filename: String) throws -> LoadedFile {
         guard data.count <= maximumByteCount else { throw LoadError.tooLarge }
 
         guard let text = decodeText(from: data) else { throw LoadError.binaryFile }
@@ -241,7 +257,7 @@ public enum FileInputLoader {
     ///    check has already excluded NUL-containing data.
     ///
     /// Empty input is valid text (an empty file loads as an empty document).
-    public static func decodeText(from data: Data) -> String? {
+    public nonisolated static func decodeText(from data: Data) -> String? {
         if data.isEmpty { return "" }
 
         // 1. Explicit Unicode BOM — decode by it before the NUL heuristic runs.
@@ -262,7 +278,7 @@ public enum FileInputLoader {
     /// using that encoding, or `nil` when there is no recognized BOM. Handled
     /// separately because UTF-16 text contains NUL bytes and so must bypass the
     /// NUL-based binary check.
-    private static func decodeBOMText(from data: Data) -> String? {
+    nonisolated private static func decodeBOMText(from data: Data) -> String? {
         let bytes = [UInt8](data.prefix(3))
         if bytes.starts(with: [0xFF, 0xFE]) || bytes.starts(with: [0xFE, 0xFF]) {
             return String(data: data, encoding: .utf16)
@@ -280,7 +296,11 @@ public enum FileInputLoader {
     /// reverse extension table, which also recognizes the extensionless
     /// `Dockerfile`), then falls back to weighted content detection when the
     /// extension is unknown or absent.
-    public static func inferLanguage(forFilename filename: String, content: String) -> Language {
+    public nonisolated static func inferLanguage(
+        forFilename filename: String, content: String
+    )
+        -> Language
+    {
         // ANSI escape codes are a definitive "terminal output" signal that overrides
         // the extension — a `.txt` or `.log` of colored output renders as a terminal.
         if ANSIParser.containsANSI(content) { return .terminal }
@@ -293,7 +313,7 @@ public enum FileInputLoader {
     /// Extracts a language hint from a known filename context. Unlike quick-capture
     /// path detection, this accepts spaces because callers pass an explicit filename
     /// (a real loaded file or `--stdin-name`), not arbitrary clipboard prose.
-    private static func languageHint(forFilename filename: String) -> Language? {
+    nonisolated private static func languageHint(forFilename filename: String) -> Language? {
         let trimmed = filename.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 

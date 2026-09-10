@@ -300,7 +300,6 @@ targets:
           # have. The CLI renders code, not web content, so it neither links WebKit
           # nor compiles the WebKit renderers.
           - "WebRendering"
-      # Non-UI editor services used by CLI input normalization and highlighting.
       # Render/export primitives required by the headless command surface.
       - path: Vitrine/Export/ExportManager+File.swift
       - path: Vitrine/Export/ExportManager+Pasteboard.swift
