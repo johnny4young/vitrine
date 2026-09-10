@@ -614,6 +614,18 @@ struct WorkflowConfigurationTests {
             makefile.contains("./scripts/bump-version.sh --self-test"),
             "lint must run the bump script's self-test")
 
+        // Every command target is phony. Without the declaration, a stray file named
+        // `bump` makes `make bump` report "up to date" and skip the script entirely —
+        // the kind of drift that happened here once already, when `bump-check` was
+        // declared and `bump` was not.
+        let phonyLine = try #require(
+            makefile.split(separator: "\n").first { $0.hasPrefix(".PHONY:") },
+            "the Makefile must declare its phony targets")
+        let phonyTargets = Set(
+            phonyLine.dropFirst(".PHONY:".count).split(separator: " ").map(String.init))
+        #expect(phonyTargets.contains("bump"), "make bump must be declared .PHONY")
+        #expect(phonyTargets.contains("bump-check"), "make bump-check must be declared .PHONY")
+
         let releasing = try Self.text("docs", "RELEASING.md")
         #expect(
             releasing.contains("make bump VERSION=x.y.z BUILD=n"),

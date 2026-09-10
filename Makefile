@@ -67,7 +67,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check project-version-check bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open

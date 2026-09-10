@@ -1,14 +1,25 @@
 #!/usr/bin/env bash
 # Rewrites the mechanical half of the release version lockstep.
 #
-# A release moves the version through eleven places. Six of them are mechanical
-# substitutions that a person retypes by hand today, and the release workflow refuses to
-# tag if any one of them disagrees. The other half is prose — a changelog section, the
-# in-app What's New — that has to be written, so this prints those instead of guessing.
+# A release moves the version through eleven places. Six files carry mechanical
+# substitutions that used to be retyped by hand, and the release workflow refuses to tag
+# if any one of them disagrees. The other half is prose — a changelog section, the in-app
+# What's New — that has to be written, so this prints those instead of guessing.
 #
-# Every rewrite is anchored and must match exactly once. A pattern that stops matching
-# is a hard failure rather than a silent skip: skipping is precisely how a site gets
-# left behind, and the tag guard would then reject the release after the fact.
+# The contract, and how each part is kept:
+#
+#   * Every site must match exactly one line. That is counted, never inferred from
+#     whether the file changed: a duplicated key changes the file too, and a same-version
+#     resubmission legitimately changes nothing on its version-only sites.
+#   * Nothing is written until every site has been checked. Rewrites are staged in a
+#     temporary tree and copied into place only after all of them validate, so a failing
+#     site leaves the checkout exactly as it was — including the build number, which is
+#     what lets the same command succeed once the problem is fixed.
+#   * Anchors sit on surrounding syntax, never on the old version string, so prose that
+#     records an older release is untouched.
+#
+# Literal metacharacters are bracket expressions (`[|]`, `[*]`, `[(]`) so each pattern
+# means the same thing to BSD tools on a Mac and GNU tools in CI.
 set -euo pipefail
 
 usage() {
@@ -16,126 +27,248 @@ usage() {
 usage: bump-version.sh VERSION BUILD
        bump-version.sh --self-test
 
-  VERSION   stable SemVer, e.g. 1.2.3 (the dialect the release tag guard enforces)
-  BUILD     positive integer, must be greater than the current build
+  VERSION   stable SemVer, e.g. 1.2.3 (the dialect the release tag guard enforces).
+            May equal the current version: an App Store resubmission keeps the
+            marketing version and moves only the build (docs/APP-STORE.md).
+  BUILD     positive integer, strictly greater than the current build
 USAGE
     exit 2
 }
 
-# Each entry: file | description | sed expression. The expressions anchor on the
-# surrounding syntax, never on the old version alone, so historical prose that mentions
-# an older version (docs/RELEASING.md records which release removed CodeQL) is untouched.
-rewrite_sites() {
-    local v="$1" b="$2"
-    cat <<SITES
-project.yml|MARKETING_VERSION|s/^([[:space:]]*MARKETING_VERSION:[[:space:]]*")[^"]*(")/\\1${v}\\2/
-project.yml|CURRENT_PROJECT_VERSION|s/^([[:space:]]*CURRENT_PROJECT_VERSION:[[:space:]]*")[^"]*(")/\\1${b}\\2/
-Vitrine/CLI/CLIVersion.swift|CLI fallback version|s/^([[:space:]]*static let fallbackMarketingVersion = ")[^"]*(")/\\1${v}\\2/
-Vitrine/CLI/CLIVersion.swift|CLI fallback build|s/^([[:space:]]*static let fallbackBuildNumber = ")[^"]*(")/\\1${b}\\2/
-packaging/Casks/vitrine.rb|Homebrew cask version|s/^([[:space:]]*version ")[^"]*(")/\\1${v}\\2/
-site/src/components/Commercial.astro|site release version|s/^(const releaseVersion = ')[^']*(';)/\\1${v}\\2/
-docs/APP-STORE.md|App Store marketing version|s/^(\\| Marketing version \\| \`)[^\`]*(\`)/\\1${v}\\2/
-docs/APP-STORE.md|App Store build number|s/^(\\| Build number \\| \`)[^\`]*(\`)/\\1${b}\\2/
-README.md|status badge|s/(status-v)[0-9][^-]*(--candidate-orange)/\\1${v}\\2/
-README.md|status sentence|s/(\\*\\*v)[0-9][0-9.]*( \\(build )[0-9]+(\\) is the current release candidate)/\\1${v}\\2${b}\\3/
-README.md|release-line sentence|s/(not part of the v)[0-9][0-9.]*( release line)/\\1${v}\\2/
-SITES
+# Four fields per site: file, description, match (POSIX ERE), replacement template.
+# In the template, @V@ is the version and @B@ the build.
+SITES=(
+    'project.yml' 'MARKETING_VERSION'
+    '^([[:space:]]*MARKETING_VERSION:[[:space:]]*")[^"]*(")' '\1@V@\2'
+    'project.yml' 'CURRENT_PROJECT_VERSION'
+    '^([[:space:]]*CURRENT_PROJECT_VERSION:[[:space:]]*")[^"]*(")' '\1@B@\2'
+    'Vitrine/CLI/CLIVersion.swift' 'CLI fallback version'
+    '^([[:space:]]*static let fallbackMarketingVersion = ")[^"]*(")' '\1@V@\2'
+    'Vitrine/CLI/CLIVersion.swift' 'CLI fallback build'
+    '^([[:space:]]*static let fallbackBuildNumber = ")[^"]*(")' '\1@B@\2'
+    'packaging/Casks/vitrine.rb' 'Homebrew cask version'
+    '^([[:space:]]*version ")[^"]*(")' '\1@V@\2'
+    'site/src/components/Commercial.astro' 'site release version'
+    "^(const releaseVersion = ')[^']*(';)" '\1@V@\2'
+    'docs/APP-STORE.md' 'App Store marketing version'
+    '^([|] Marketing version [|] `)[^`]*(`)' '\1@V@\2'
+    'docs/APP-STORE.md' 'App Store build number'
+    '^([|] Build number [|] `)[^`]*(`)' '\1@B@\2'
+    'README.md' 'status badge'
+    '(status-v)[0-9][^-]*(--candidate-orange)' '\1@V@\2'
+    'README.md' 'status sentence'
+    '([*][*]v)[0-9][0-9.]*( [(]build )[0-9]+([)] is the current release candidate)' '\1@V@\2@B@\3'
+    'README.md' 'release-line sentence'
+    '(not part of the v)[0-9][0-9.]*( release line)' '\1@V@\2'
+)
+
+target_files() {
+    local i
+    for ((i = 0; i < ${#SITES[@]}; i += 4)); do
+        printf '%s\n' "${SITES[i]}"
+    done | awk '!seen[$0]++'
 }
 
-apply_bump() {
-    local v="$1" b="$2" root="$3" failures=0
-    while IFS='|' read -r file description expression; do
-        [ -n "$file" ] || continue
-        local path="$root/$file"
+# Matching lines, not bytes changed. `grep -c` prints 0 and exits 1 on no match.
+count_matches() {
+    grep -cE -- "$2" "$1" || true
+}
+
+run_bump() {
+    local root="$1" v="$2" b="$3"
+    local i file description match template replacement path count stage
+    local current_version current_build failures=0
+
+    printf '%s' "$v" | grep -qE '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || {
+        echo "bump-version: '$v' is not a stable SemVer version the release tag guard would accept" >&2
+        return 1
+    }
+    printf '%s' "$b" | grep -qE '^[1-9][0-9]*$' || {
+        echo "bump-version: build '$b' must be a positive integer" >&2
+        return 1
+    }
+
+    current_version="$("$root/scripts/project-version.sh" --project "$root/project.yml")" || return 1
+    current_build="$("$root/scripts/project-version.sh" --build --project "$root/project.yml")" || return 1
+    if [ "$b" -le "$current_build" ]; then
+        echo "bump-version: build $b must be greater than the current $current_build — Sparkle and App Store Connect both order builds by it" >&2
+        return 1
+    fi
+
+    # Preflight: every site exists and matches exactly one line, before anything is written.
+    for ((i = 0; i < ${#SITES[@]}; i += 4)); do
+        file="${SITES[i]}"
+        description="${SITES[i + 1]}"
+        match="${SITES[i + 2]}"
+        path="$root/$file"
         if [ ! -f "$path" ]; then
             echo "bump-version: missing $file" >&2
             failures=1
             continue
         fi
-        local before after
-        before="$(cat "$path")"
-        after="$(printf '%s' "$before" | sed -E "$expression")"
-        if [ "$before" = "$after" ]; then
-            echo "bump-version: $file — '$description' matched nothing; the anchor moved" >&2
+        count="$(count_matches "$path" "$match")"
+        if [ "$count" != "1" ]; then
+            echo "bump-version: $file — '$description' matched $count lines, expected exactly 1" >&2
             failures=1
-            continue
         fi
-        printf '%s\n' "$after" > "$path"
-        echo "  rewrote $file — $description"
-    done < <(rewrite_sites "$v" "$b")
-    return "$failures"
-}
-
-self_test() {
-    local dir; dir="$(mktemp -d)"
-    trap 'rm -rf "$dir"' RETURN
-    local root; root="$(cd "$(dirname "$0")/.." && pwd)"
-
-    # Copy the real files, so the anchors are tested against the shapes actually shipped.
-    while IFS='|' read -r file _ _; do
-        [ -n "$file" ] || continue
-        mkdir -p "$dir/$(dirname "$file")"
-        cp "$root/$file" "$dir/$file"
-    done < <(rewrite_sites 9.9.9 999)
-
-    apply_bump 9.9.9 999 "$dir" >/dev/null
-
-    local missed=0
-    grep -q 'MARKETING_VERSION: "9.9.9"' "$dir/project.yml" || { echo "self-test: project version" >&2; missed=1; }
-    grep -q 'CURRENT_PROJECT_VERSION: "999"' "$dir/project.yml" || { echo "self-test: project build" >&2; missed=1; }
-    grep -q 'fallbackMarketingVersion = "9.9.9"' "$dir/Vitrine/CLI/CLIVersion.swift" || { echo "self-test: cli version" >&2; missed=1; }
-    grep -q 'fallbackBuildNumber = "999"' "$dir/Vitrine/CLI/CLIVersion.swift" || { echo "self-test: cli build" >&2; missed=1; }
-    grep -q 'version "9.9.9"' "$dir/packaging/Casks/vitrine.rb" || { echo "self-test: cask" >&2; missed=1; }
-    grep -q "releaseVersion = '9.9.9'" "$dir/site/src/components/Commercial.astro" || { echo "self-test: site" >&2; missed=1; }
-    grep -q 'status-v9.9.9--candidate' "$dir/README.md" || { echo "self-test: badge" >&2; missed=1; }
-    grep -q '\*\*v9.9.9 (build 999) is the current release candidate' "$dir/README.md" || { echo "self-test: status sentence" >&2; missed=1; }
-    grep -q 'not part of the v9.9.9 release line' "$dir/README.md" || { echo "self-test: release line" >&2; missed=1; }
-    grep -q '| Marketing version | `9.9.9`' "$dir/docs/APP-STORE.md" || { echo "self-test: app store version" >&2; missed=1; }
-    grep -q '| Build number | `999`' "$dir/docs/APP-STORE.md" || { echo "self-test: app store build" >&2; missed=1; }
-    [ "$missed" -eq 0 ] || return 1
-
-    # An anchor that no longer matches must fail loudly rather than skip the file.
-    printf 'nothing to match here\n' > "$dir/project.yml"
-    if apply_bump 9.9.9 999 "$dir" >/dev/null 2>&1; then
-        echo "self-test: a moved anchor was accepted" >&2
+    done
+    if [ "$failures" -ne 0 ]; then
+        echo "bump-version: nothing was written" >&2
         return 1
     fi
+
+    # Stage every rewrite; publish only once all of them validate.
+    stage="$(mktemp -d)"
+    while IFS= read -r file; do
+        mkdir -p "$stage/$(dirname "$file")"
+        cp "$root/$file" "$stage/$file"
+    done < <(target_files)
+
+    for ((i = 0; i < ${#SITES[@]}; i += 4)); do
+        file="${SITES[i]}"
+        match="${SITES[i + 2]}"
+        template="${SITES[i + 3]}"
+        replacement="${template//@V@/$v}"
+        replacement="${replacement//@B@/$b}"
+        sed -E "s/$match/$replacement/" "$stage/$file" > "$stage/$file.next"
+        mv "$stage/$file.next" "$stage/$file"
+        if [ "$(count_matches "$stage/$file" "$match")" != "1" ]; then
+            echo "bump-version: $file — rewriting '${SITES[i + 1]}' did not leave exactly one match; nothing was written" >&2
+            rm -rf "$stage"
+            return 1
+        fi
+    done
+
+    while IFS= read -r file; do
+        cp "$stage/$file" "$root/$file"
+    done < <(target_files)
+    rm -rf "$stage"
+
+    if [ "$v" = "$current_version" ]; then
+        echo "Resubmission of $v: marketing version unchanged, build $current_build → $b"
+    else
+        echo "Bumped $current_version (build $current_build) → $v (build $b)"
+    fi
+    for ((i = 0; i < ${#SITES[@]}; i += 4)); do
+        echo "  ${SITES[i]} — ${SITES[i + 1]}"
+    done
+}
+
+# Set by self_test and read by its EXIT trap, so it must not be local: the trap fires when
+# the script exits, after self_test has returned and its locals are gone. Under `set -u` a
+# local here made a fully passing self-test print its success line and then exit 1.
+SELF_TEST_ROOT=""
+
+self_test() {
+    local here dir before cv cb args
+    here="$(cd "$(dirname "$0")/.." && pwd)"
+    SELF_TEST_ROOT="$(mktemp -d)"
+    trap 'rm -rf "$SELF_TEST_ROOT"' EXIT
+
+    fixture() {
+        local fixture_dir="$SELF_TEST_ROOT/$1" fixture_file
+        mkdir -p "$fixture_dir/scripts"
+        cp "$here/scripts/project-version.sh" "$fixture_dir/scripts/"
+        while IFS= read -r fixture_file; do
+            mkdir -p "$fixture_dir/$(dirname "$fixture_file")"
+            cp "$here/$fixture_file" "$fixture_dir/$fixture_file"
+        done < <(target_files)
+        printf '%s' "$fixture_dir"
+    }
+    # Byte-level fingerprint of every target file, so "wrote nothing" is measured.
+    fingerprint() {
+        local fingerprint_file
+        while IFS= read -r fingerprint_file; do
+            cat "$1/$fingerprint_file"
+        done < <(target_files) | cksum
+    }
+    fail() {
+        echo "bump-version self-test: $1" >&2
+        exit 1
+    }
+
+    cv="$("$here/scripts/project-version.sh" --project "$here/project.yml")"
+    cb="$("$here/scripts/project-version.sh" --build --project "$here/project.yml")"
+
+    # A normal bump rewrites all eleven sites, against the shapes actually shipped.
+    dir="$(fixture normal)"
+    run_bump "$dir" 9.9.9 999 >/dev/null || fail "a valid bump was refused"
+    grep -q 'MARKETING_VERSION: "9.9.9"' "$dir/project.yml" || fail "project version"
+    grep -q 'CURRENT_PROJECT_VERSION: "999"' "$dir/project.yml" || fail "project build"
+    grep -q 'fallbackMarketingVersion = "9.9.9"' "$dir/Vitrine/CLI/CLIVersion.swift" || fail "cli version"
+    grep -q 'fallbackBuildNumber = "999"' "$dir/Vitrine/CLI/CLIVersion.swift" || fail "cli build"
+    grep -q 'version "9.9.9"' "$dir/packaging/Casks/vitrine.rb" || fail "cask"
+    grep -q "releaseVersion = '9.9.9'" "$dir/site/src/components/Commercial.astro" || fail "site"
+    grep -q '| Marketing version | `9.9.9`' "$dir/docs/APP-STORE.md" || fail "app store version"
+    grep -q '| Build number | `999`' "$dir/docs/APP-STORE.md" || fail "app store build"
+    grep -q 'status-v9.9.9--candidate' "$dir/README.md" || fail "badge"
+    grep -q '\*\*v9.9.9 (build 999) is the current release candidate' "$dir/README.md" || fail "status sentence"
+    grep -q 'not part of the v9.9.9 release line' "$dir/README.md" || fail "release-line sentence"
+
+    # A resubmission keeps the marketing version and moves only the build.
+    dir="$(fixture resubmission)"
+    run_bump "$dir" "$cv" "$((cb + 1))" >/dev/null || fail "a same-version resubmission was refused"
+    [ "$("$dir/scripts/project-version.sh" --project "$dir/project.yml")" = "$cv" ] ||
+        fail "a resubmission changed the marketing version"
+    [ "$("$dir/scripts/project-version.sh" --build --project "$dir/project.yml")" = "$((cb + 1))" ] ||
+        fail "a resubmission did not move the build"
+    grep -q "version \"$cv\"" "$dir/packaging/Casks/vitrine.rb" || fail "a resubmission changed the cask"
+
+    # A duplicated anchor is refused, and nothing is written.
+    dir="$(fixture duplicate)"
+    printf '  version "%s"\n' "$cv" >> "$dir/packaging/Casks/vitrine.rb"
+    before="$(fingerprint "$dir")"
+    if run_bump "$dir" 9.9.9 999 >/dev/null 2>&1; then fail "a duplicated anchor was accepted"; fi
+    [ "$(fingerprint "$dir")" = "$before" ] || fail "a duplicated anchor still wrote files"
+
+    # A site that fails late writes nothing, so the same command works once it is fixed.
+    dir="$(fixture recovery)"
+    sed 's/--candidate-orange/--stable-green/' "$dir/README.md" > "$dir/README.md.next"
+    mv "$dir/README.md.next" "$dir/README.md"
+    before="$(fingerprint "$dir")"
+    if run_bump "$dir" 9.9.9 999 >/dev/null 2>&1; then fail "a moved anchor was accepted"; fi
+    [ "$(fingerprint "$dir")" = "$before" ] || fail "a failed bump left files half-rewritten"
+    sed 's/--stable-green/--candidate-orange/' "$dir/README.md" > "$dir/README.md.next"
+    mv "$dir/README.md.next" "$dir/README.md"
+    run_bump "$dir" 9.9.9 999 >/dev/null || fail "the same bump failed after its anchor was restored"
+
+    # Refused inputs write nothing: a prerelease, a build that does not move, a zero build.
+    dir="$(fixture refusals)"
+    before="$(fingerprint "$dir")"
+    for args in "1.3.0-beta.1 $((cb + 1))" "9.9.9 $cb" "9.9.9 0"; do
+        # shellcheck disable=SC2086
+        if run_bump "$dir" $args >/dev/null 2>&1; then fail "run_bump $args was accepted"; fi
+    done
+    [ "$(fingerprint "$dir")" = "$before" ] || fail "a refused bump wrote files"
 
     echo "bump-version self-test passed"
 }
 
 [ $# -gt 0 ] || usage
-if [ "$1" = "--self-test" ]; then self_test; exit 0; fi
+if [ "$1" = "--self-test" ]; then
+    self_test
+    exit 0
+fi
 [ $# -eq 2 ] || usage
 
-VERSION="$1"
-BUILD="$2"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PREVIOUS_VERSION="$("$ROOT/scripts/project-version.sh" --project "$ROOT/project.yml")"
+run_bump "$ROOT" "$1" "$2"
 
-printf '%s' "$VERSION" | grep -qE '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || {
-    echo "bump-version: '$VERSION' is not a stable SemVer version the release tag guard would accept" >&2
-    exit 1
-}
-printf '%s' "$BUILD" | grep -qE '^[1-9][0-9]*$' || {
-    echo "bump-version: build '$BUILD' must be a positive integer" >&2
-    exit 1
-}
+if [ "$1" = "$PREVIOUS_VERSION" ]; then
+    cat <<'PROSE'
 
-CURRENT_BUILD="$("$ROOT/scripts/project-version.sh" --build --project "$ROOT/project.yml")"
-if [ "$BUILD" -le "$CURRENT_BUILD" ]; then
-    echo "bump-version: build $BUILD must be greater than the current $CURRENT_BUILD — Sparkle decides 'is this newer?' from it" >&2
-    exit 1
-fi
-
-echo "Bumping to $VERSION (build $BUILD):"
-apply_bump "$VERSION" "$BUILD" "$ROOT"
-
-cat <<PROSE
+A resubmission keeps its CHANGELOG section and What's New entry, so there is no prose to
+write. Open the bump as a pull request and tag only after it merges.
+PROSE
+else
+    cat <<PROSE
 
 Still yours to write — these carry meaning, not a substitution:
-  CHANGELOG.md                    a '## [$VERSION]' section, plus its link definitions
-  Vitrine/Help/ReleaseNotes.swift the in-app What's New entry for $VERSION
+  CHANGELOG.md                    a '## [$1]' section, plus its link definitions
+  Vitrine/Help/ReleaseNotes.swift the in-app What's New entry for $1
 
 Then: open the bump as a pull request and tag only after it merges. A tag on the
 pre-bump commit fails the release workflow's version guard (docs/RELEASING.md).
 PROSE
+fi
