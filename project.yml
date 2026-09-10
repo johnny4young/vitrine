@@ -300,14 +300,10 @@ targets:
           # have. The CLI renders code, not web content, so it neither links WebKit
           # nor compiles the WebKit renderers.
           - "WebRendering"
-      # Non-UI editor services used by CLI input normalization and highlighting.
-      - path: Vitrine/Editor/AsciinemaCast.swift
-      - path: Vitrine/Editor/FileInputLoader.swift
       # Render/export primitives required by the headless command surface.
       - path: Vitrine/Export/ExportManager+File.swift
       - path: Vitrine/Export/ExportManager+Pasteboard.swift
       - path: Vitrine/Export/RichPasteboard.swift
-      - path: Vitrine/Export/SuggestedFilename.swift
       # Offline verification only; StoreKit, purchase state, and paywall UI remain
       # app-owned and are not compiled into the CLI.
       - path: Vitrine/Pro/LicenseKey.swift

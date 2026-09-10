@@ -9,6 +9,7 @@ typealias ANSIStyle = VitrineDomain.ANSIStyle
 typealias Annotation = VitrineDomain.Annotation
 typealias AnnotationTool = VitrineDomain.AnnotationTool
 typealias AppLanguage = VitrineDomain.AppLanguage
+typealias AsciinemaCast = VitrineDomain.AsciinemaCast
 typealias BackgroundFit = VitrineDomain.BackgroundFit
 typealias BackgroundStyle = VitrineDomain.BackgroundStyle
 typealias Base64URL = VitrineDomain.Base64URL

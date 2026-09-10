@@ -13,11 +13,11 @@ import Foundation
 /// unit-testable and compiles in the headless CLI target unchanged. Malformed
 /// input returns `nil` rather than throwing: a `.cast`-named file that is not a
 /// real recording falls back to the ordinary text-load path instead of erroring.
-enum AsciinemaCast {
+public enum AsciinemaCast {
     /// Whether `filename` looks like an asciinema recording (a `.cast` extension,
     /// case-insensitive). Cheap filename gate so the JSONL parse only runs on
     /// files that claim to be recordings.
-    static func isCastFilename(_ filename: String) -> Bool {
+    public static func isCastFilename(_ filename: String) -> Bool {
         (filename as NSString).pathExtension.lowercased() == "cast"
     }
 
@@ -29,7 +29,7 @@ enum AsciinemaCast {
     /// malformed *event* line is skipped rather than failing the whole file —
     /// recordings are occasionally truncated mid-write — but a malformed *header*
     /// rejects the file, so ordinary JSON never masquerades as a recording.
-    static func terminalText(from text: String) -> String? {
+    public static func terminalText(from text: String) -> String? {
         var lines = text.split(separator: "\n", omittingEmptySubsequences: true)[...]
 
         guard let headerLine = lines.first,
