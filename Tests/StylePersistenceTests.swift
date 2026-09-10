@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 // The style/document surface lives in three hand-kept persistence surfaces —
 // `SettingsCodec` (app defaults + editor-session seed), `EditorWindowState` (window
@@ -47,13 +48,26 @@ struct StyleCodecCompletenessTests {
         config.background = .gradient(.sunset)
         config.metadata = SnapshotMetadata(
             filename: "main.py", title: "Demo", caption: "A caption", showLanguageBadge: true)
+        // The deliberately unpersisted fields carry non-default values too. Resetting them
+        // in `expected` below is only an assertion if they differ here: left at their
+        // defaults, every one of those lines is a no-op and the exclusion goes untested.
+        config.code = "print('hello')"
+        config.redactedLineRanges = [2...3]
+        config.watermark = Watermark(text: "@vitrine")
+        config.foregroundImage = ImageReference(fileName: "beautified.png")
+        config.imageFrame = .macOSWindow
+        config.imageFrameAppearance = .dark
+        config.terminalColumns = 100
         return config
     }
 
     /// Wholesale round-trip: everything `persistStyle` writes must read back equal, and
-    /// everything it deliberately excludes must read back as the default. The exclusions
-    /// are spelled out one by one so adding a `SnapshotConfig` field forces a decision
-    /// here — persist it or excuse it — instead of silently dropping it.
+    /// everything it deliberately excludes must read back as the default.
+    ///
+    /// This comparison only constrains fields `richConfig()` sets to a non-default value;
+    /// a field left at its default matches on both sides whether or not anything persists
+    /// it. `everySnapshotConfigFieldIsExercisedOrExcused` is what makes adding a field a
+    /// decision rather than a silent omission.
     @Test func persistedStyleReadsBackWholesale() {
         let defaults = freshDefaults()
         let rich = richConfig()
@@ -98,6 +112,55 @@ struct StyleCodecCompletenessTests {
             These editor-session seed keys are never written by persistStyle, so a new \
             window cannot inherit them: \(missing.sorted().joined(separator: ", ")). \
             Write them in persistStyle, or excuse them here with the store that owns them.
+            """)
+    }
+
+    /// The labels `richConfig()` actually changes from a default `SnapshotConfig`,
+    /// derived by comparing the two through `Mirror` rather than by reading the source
+    /// of `richConfig()`.
+    private func labelsMutatedByRichConfig() -> Set<String> {
+        let base = Array(Mirror(reflecting: SnapshotConfig()).children)
+        let rich = Array(Mirror(reflecting: richConfig()).children)
+        var mutated: Set<String> = []
+        for (defaultChild, richChild) in zip(base, rich) {
+            guard let label = defaultChild.label else { continue }
+            if String(describing: defaultChild.value) != String(describing: richChild.value) {
+                mutated.insert(label)
+            }
+        }
+        return mutated
+    }
+
+    /// Anchors the round-trip guard to `SnapshotConfig` itself.
+    ///
+    /// `persistedStyleReadsBackWholesale` only proves something about a field that
+    /// `richConfig()` sets to a non-default value: a field left at its default reads back
+    /// as its default whether or not anything persists it, so the comparison passes
+    /// either way. That made the suite's promise — that adding a field forces a decision
+    /// — untrue, and a temporary `var` added to `SnapshotConfig` passed unnoticed.
+    ///
+    /// This guards *name* coverage, not values: every stored property must either be
+    /// exercised by `richConfig()` or be excused here with the reason it carries no
+    /// persisted style.
+    @Test func everySnapshotConfigFieldIsExercisedOrExcused() {
+        // Empty on purpose: every field is exercised by richConfig(), including the ones
+        // persistStyle deliberately drops, whose exclusion the round-trip test asserts by
+        // resetting them in `expected`. An entry here is the escape hatch for a future
+        // field that genuinely cannot be given a non-default value.
+        let excused: [String: String] = [:]
+
+        let unaccounted = Mirror(reflecting: SnapshotConfig()).children
+            .compactMap(\.label)
+            .filter { labelsMutatedByRichConfig().contains($0) == false && excused[$0] == nil }
+
+        #expect(
+            unaccounted.isEmpty,
+            """
+            These SnapshotConfig fields are neither exercised by richConfig() nor excused, \
+            so the round-trip guard says nothing about them: \
+            \(unaccounted.sorted().joined(separator: ", ")). Set them in richConfig() so the \
+            round trip covers them, or excuse them here with the reason they carry no \
+            persisted style.
             """)
     }
 
