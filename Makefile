@@ -67,7 +67,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check project-version-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check project-version-check bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -318,6 +318,15 @@ build-boundaries-check:
 informational-update-check:
 	python3 scripts/mark-informational-update.py --self-test
 
+## bump: rewrite the mechanical release version sites (VERSION=x.y.z BUILD=n)
+bump:
+	@[ -n "$(VERSION)" ] && [ -n "$(BUILD)" ] || { echo "usage: make bump VERSION=x.y.z BUILD=n"; exit 2; }
+	./scripts/bump-version.sh "$(VERSION)" "$(BUILD)"
+
+## bump-check: verify the version bump rewrites against the real file shapes
+bump-check:
+	./scripts/bump-version.sh --self-test
+
 ## project-version-check: verify the single MARKETING_VERSION parser
 project-version-check:
 	./scripts/project-version.sh --self-test
@@ -363,7 +372,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene project-version-check build-boundaries-check informational-update-check release-promotion-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: hygiene project-version-check bump-check build-boundaries-check informational-update-check release-promotion-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
