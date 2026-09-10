@@ -49,9 +49,15 @@ struct CodeFormatterCoreTests {
     /// A superseded editor command cancels before its old result can be applied.
     @Test func concurrentTidyHonorsCancellation() async {
         let task = Task {
-            try await CodeFormatter.tidyConcurrently("let stale = true", language: .swift)
+            // Cancel from inside the task so the first `checkCancellation()` in
+            // `tidyConcurrently` is guaranteed to observe it. Cancelling from outside
+            // races the task's start: `Task {}` begins running immediately, and
+            // formatting sixteen characters can finish both cancellation checks before
+            // `cancel()` lands, so the test failed on identical, correct code. CI hit
+            // that on one platform while the other passed in the same run.
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await CodeFormatter.tidyConcurrently("let stale = true", language: .swift)
         }
-        task.cancel()
         await #expect(throws: CancellationError.self) {
             try await task.value
         }
