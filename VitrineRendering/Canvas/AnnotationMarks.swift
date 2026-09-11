@@ -94,7 +94,11 @@ struct CurvedArrowMark: View {
 }
 
 /// The arc + chevron head of a curved arrow, in canvas points.
-struct CurvedArrowShape: Shape {
+///
+/// The annotation shapes are `nonisolated`: the Xcode 27 SDK declares `Shape.path(in:)` a
+/// nonisolated requirement, which a main-actor method (this module's default isolation)
+/// cannot satisfy. Their geometry is pure value math, so it is safe off the main actor.
+nonisolated struct CurvedArrowShape: Shape {
     let from: CGPoint
     let to: CGPoint
     var weight: CGFloat = 5
@@ -135,8 +139,9 @@ struct CurvedArrowShape: Shape {
     }
 }
 
-/// The shaft + chevron head of an arrow, in canvas points.
-struct ArrowShape: Shape {
+/// The shaft + chevron head of an arrow, in canvas points. `nonisolated` for the same
+/// reason as `CurvedArrowShape`.
+nonisolated struct ArrowShape: Shape {
     let from: CGPoint
     let to: CGPoint
     var weight: CGFloat = 5
@@ -277,8 +282,9 @@ struct MeasureMark: View {
     }
 }
 
-/// The measure's shaft plus perpendicular end caps, in canvas points.
-struct MeasureShape: Shape {
+/// The measure's shaft plus perpendicular end caps, in canvas points. `nonisolated` for
+/// the same reason as `CurvedArrowShape`.
+nonisolated struct MeasureShape: Shape {
     let from: CGPoint
     let to: CGPoint
 
