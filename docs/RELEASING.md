@@ -254,6 +254,40 @@ do not weaken the committed hosted threshold to accommodate a local skip. Run
 feedback must not depend on coverage finalization, and CI coverage must not depend
 implicitly on the Xcode scheme default.
 
+### Performance baselines
+
+The build job also runs `make perf`. Each fixture's p95 is held to a soft target, which
+annotates, and a hard ceiling, which fails. Neither sees a fixture that drifts from 180 ms to
+290 ms under a 300 ms target. For that, CI compares each row's medians with
+`scripts/perf-baselines/<platform>.json` through `scripts/check-perf.py`.
+
+Shared runners vary by up to about 40% from one run to the next, and a slow machine slows
+every scenario together. The comparison therefore scales the baseline by the run's overall
+speed: the median of every scenario's measured-to-baseline ratio. It then annotates only a
+scenario that is more than 1.5 times that expectation and at least 25 ms slower. Scenarios
+under 5 ms are printed but not judged.
+
+The rule was backtested on the 12 passing `main` runs a baseline was recorded from, holding
+out each run in turn. Across both rows it raised 3 warnings in 24 runs, and 1 more in 6 pull
+request runs outside the baseline. It flagged a single scenario that doubled 78% of the time.
+Absolute thresholds raised 13 warnings on the same history. The comparison never fails the
+job.
+
+Record a baseline only from recent passing `main` runs on the named runner. Download each
+run's `perf-measurements-<row>` artifact with `gh run download`, then pass the files to
+`scripts/check-perf.py --record`, with one `--source` per file naming its run and commit:
+
+```bash
+python3 scripts/check-perf.py --record scripts/perf-baselines/sequoia.json \
+  --platform "macOS 15 Sequoia" --runner-label macos-15 \
+  --source "GitHub Actions run <id> at <sha>" … runs/*/sequoia-15/perf-measurements.jsonl
+```
+
+A new scenario is noted as unrecorded until it has run on `main` and a baseline includes it.
+A renamed or removed scenario must leave the baseline too; `WorkflowConfigurationTests`
+rejects a recorded scenario the suite no longer emits. `make perf-check`, part of
+`make lint`, runs the comparison's self-test.
+
 ### Dynamic memory evidence
 
 Run `make memory-smoke` before a release candidate and after changes to window,

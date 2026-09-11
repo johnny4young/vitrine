@@ -341,8 +341,8 @@ jobs:
 
       # The measurements themselves, kept per row. The annotations above only fire when a
       # fixture crosses its soft target, so a fixture drifting from 180 ms to 290 ms under
-      # a 300 ms target leaves no trace. Retaining the numbers is what lets a later step
-      # compare a run against a recorded baseline instead of against a fixed threshold.
+      # a 300 ms target leaves no trace. Retaining the numbers is what lets the comparison
+      # below judge a run against its recorded baseline instead of a fixed threshold.
       - name: Collect performance measurements
         if: always()
         run: |
@@ -360,6 +360,15 @@ jobs:
           path: perf-measurements.jsonl
           if-no-files-found: warn
           retention-days: 30
+
+      # Compare this row's medians with the baseline recorded for its platform
+      # (`matrix.coverage` is the same key the coverage baselines use). Shared runners
+      # vary by up to ~40% between runs, so the script scales the baseline by the run's
+      # overall speed and flags only a scenario more than 1.5x that expectation and at
+      # least 25 ms slower. Warn-only: it annotates and never fails the job.
+      - name: Compare performance with the baseline
+        if: always()
+        run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/${{ matrix.coverage }}.json"
 
       # Golden-image regression suite. The strict pixel comparison runs
       # only on the pinned runner image recorded in Tests/Fixtures/Golden/
