@@ -1,0 +1,13 @@
+# Lint configuration for the repository's Python gate scripts (scripts/*.py).
+#
+# The rule selection is explicit on purpose. ruff's default rule set changes between
+# releases — 0.16.7 enables far more than the pyflakes-and-syntax core that older
+# releases shipped — so relying on the defaults would let a version bump silently change
+# what CI enforces. CI pins the ruff version for the same reason (.github/workflows/ci.yml).
+#
+# E4, E7, E9 and F catch what breaks a script at runtime: syntax errors, undefined names,
+# unused imports and variables, and invalid comparisons. Broader families stay out until
+# they are adopted deliberately, because several of them change behavior rather than
+# style — TRY004, for one, would swap the exception type a caller catches.
+[lint]
+select = ["E4", "E7", "E9", "F"]
