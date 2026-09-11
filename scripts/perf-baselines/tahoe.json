@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "platform": "macOS 26 Tahoe",
+  "runnerLabel": "macos-26",
+  "metric": "median of each run's median_ms",
+  "sources": [
+    "GitHub Actions run 34416129069 at 47b01f4",
+    "GitHub Actions run 34474100588 at 687dcac",
+    "GitHub Actions run 34483902289 at 3e94e1d",
+    "GitHub Actions run 34492663015 at 8a4e0b1",
+    "GitHub Actions run 34502696415 at 13ee486",
+    "GitHub Actions run 34528300995 at 28290d5",
+    "GitHub Actions run 34535054705 at 1ec9785",
+    "GitHub Actions run 34552416028 at f228c7c",
+    "GitHub Actions run 34622368352 at de1822a",
+    "GitHub Actions run 34631820180 at 0d10621",
+    "GitHub Actions run 34642946397 at 240b0ca",
+    "GitHub Actions run 34642984466 at 6621ba9"
+  ],
+  "medians": {
+    "blur-annotated": 75.0,
+    "command-search-1000": 13.0,
+    "command-search-unicode-1000": 33.5,
+    "command-search-unicode-worst-miss-1000": 42.0,
+    "custom-theme": 54.5,
+    "default": 56.5,
+    "default@3x": 111.5,
+    "highlighting-large-fallback": 0.0,
+    "highlighting-medium-uncached": 273.0,
+    "large": 1816.5,
+    "large-gutter": 2528.5,
+    "recents-add": 13.5,
+    "remote-chunks-25mb": 4.5,
+    "short": 26.0,
+    "terminal": 144.5,
+    "terminal-large": 1028.0
+  }
+}
