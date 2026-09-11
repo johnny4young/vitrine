@@ -24,8 +24,8 @@ runtime.
 The public binary floor is macOS 15 Sequoia. Required runtime qualification covers both
 Sequoia and macOS 26 Tahoe, while the direct-download artifact remains universal
 (`arm64` + `x86_64`). A separate scheduled Xcode 27 preview lane compiles and unit-tests
-the same source on its macOS 26 host; it is an early toolchain warning, not a claim of
-macOS 27 runtime support. A future runtime becomes supported only after its runner is GA
+the same source on GitHub's `xcode-27` preview image, and each run's job summary records the
+host macOS; it is an early toolchain warning, not a claim of macOS 27 runtime support. A future runtime becomes supported only after its runner is GA
 and the complete build, UI, visual, performance, and clean-Mac gates are promoted to the
 required matrix.
 
