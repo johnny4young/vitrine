@@ -148,6 +148,7 @@ jobs:
         with:
           summary-title: Release candidate toolchain
           summary-context: "Tag: ${{ github.ref_name }}"
+          spm-cache: "false"
 
       # A release candidate is intentionally stricter than a local/fork DMG build.
       # `build-dmg.sh` retains its ad-hoc fallback for local development, but a tag

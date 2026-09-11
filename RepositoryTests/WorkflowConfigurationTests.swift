@@ -95,6 +95,22 @@ struct WorkflowConfigurationTests {
         return String(workflow[start.lowerBound..<(end ?? workflow.endIndex)])
     }
 
+    /// The `default:` of one toolchain-action input, read from that input's own block.
+    private static func toolchainInputDefault(_ input: String) throws -> String {
+        let action = try toolchainAction()
+        let start = try #require(
+            action.range(of: "\n  \(input):\n"), "the action has no `\(input)` input")
+        let nextKey = try Regex(#"\n(?:  )?[A-Za-z0-9_-]+:"#)
+        let end =
+            action[start.upperBound...].firstMatch(of: nextKey)?.range.lowerBound ?? action.endIndex
+        let line = try #require(
+            action[start.upperBound..<end].split(separator: "\n")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .first { $0.hasPrefix("default:") },
+            "`\(input)` declares no default")
+        return String(line.dropFirst("default:".count)).trimmingCharacters(in: .whitespaces)
+    }
+
     /// Expects `job` to check out, then run the shared toolchain action exactly once, before
     /// `firstBuild`. A local action is read from the workspace, so it only exists after
     /// checkout, and the toolchain must be on record before anything builds.
@@ -229,6 +245,15 @@ struct WorkflowConfigurationTests {
             in: preview, before: "run: make lint", label: "xcode-27-preview.yml compatibility")
         // That image's default Xcode is the preview under test; latest-stable would skip it.
         #expect(preview.contains(#"select-xcode: "false""#))
+
+        // Every other building job omits `select-xcode`. The default and the step it gates are
+        // what keep those jobs on the latest stable Xcode, so pin them, not only the override.
+        let action = try Self.toolchainAction()
+        #expect(
+            try Self.toolchainInputDefault("select-xcode") == #""true""#,
+            "jobs that omit select-xcode must keep selecting the latest stable Xcode")
+        #expect(action.contains("if: inputs.select-xcode == 'true'"))
+        #expect(action.contains("xcode-version: latest-stable"))
     }
 
     /// Dependabot's github-actions updater reads only `.github/workflows` and a root
@@ -390,6 +415,9 @@ struct WorkflowConfigurationTests {
         #expect(
             action.contains("if: inputs.spm-cache == 'true'"),
             "each job must opt in to the cache, so the signed build can stay cold")
+        #expect(
+            try Self.toolchainInputDefault("spm-cache") == #""false""#,
+            "a job that omits spm-cache must not restore a cache")
 
         let ci = try Self.ci()
         for name in ["build", "ui-test"] {
@@ -974,6 +1002,10 @@ struct WorkflowConfigurationTests {
         let candidate = try Self.job("candidate", in: release)
         try Self.expectToolchainSetUp(
             in: candidate, before: "run: ./scripts/build-dmg.sh", label: "release.yml candidate")
+        // The opt-out is spelled out at the call site, so it does not hang on the action's default.
+        #expect(
+            candidate.contains(#"spm-cache: "false""#),
+            "the signed release candidate must opt out of the package cache explicitly")
         #expect(
             !candidate.contains(#"spm-cache: "true""#),
             "the signed release candidate must not restore a package cache")
