@@ -100,7 +100,7 @@ jobs:
       - name: Validate workflow YAML
         run: |
           set -euo pipefail
-          for f in .github/workflows/*.yml; do
+          for f in .github/workflows/*.yml .github/actions/*/action.yml; do
             ruby -ryaml -e 'YAML.load_file(ARGV[0])' "$f"
             echo "✓ $f"
           done
@@ -215,50 +215,16 @@ jobs:
           # checkout would make either event-specific comparison fail closed.
           fetch-depth: 0
 
-      - name: Select latest stable Xcode
-        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
+      # Selects Xcode, records the exact toolchain in the job summary before any build
+      # step, installs the pinned XcodeGen, and restores the SPM cache, keyed per runner
+      # label so the two OS rows never share a cache.
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
         with:
-          xcode-version: latest-stable
-
-      - name: Export DEVELOPER_DIR
-        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
-
-      # Record the exact toolchain this run built against. Printed before
-      # any build step and echoed into the job summary so a green/red result is
-      # always tied to a known macOS image, Xcode, and Swift version — the anchor
-      # for diagnosing runner drift.
-      - name: Toolchain versions
-        run: |
-          {
-            echo "### Toolchain"
-            echo '```'
-            echo "Event: ${GITHUB_EVENT_NAME}"
-            echo "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
-            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
-            sw_vers
-            echo "DEVELOPER_DIR=${DEVELOPER_DIR}"
-            xcodebuild -version
-            swift --version
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Install pinned XcodeGen
-        run: ./scripts/install-xcodegen.sh
-
-      # Cache the global Swift Package Manager download/clone cache. This
-      # directory is a content-addressed checkout cache, safe to restore across
-      # runs; xcodebuild repopulates and re-resolves into DerivedData as needed, so
-      # a stale or partial cache only costs a re-download, never a wrong build. The
-      # key is bound to project.yml because that file is the single source of truth
-      # for the package dependencies (the resolved project is generated, not
-      # committed).
-      - name: Cache Swift Package Manager
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/Library/Caches/org.swift.swiftpm
-          key: ${{ matrix.runner }}-spm-${{ hashFiles('project.yml') }}
-          restore-keys: |
-            ${{ matrix.runner }}-spm-
+          summary-title: Toolchain
+          summary-context: "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
+          spm-cache: "true"
+          spm-cache-prefix: ${{ matrix.runner }}
 
       - name: Lint (swift-format)
         run: make lint
@@ -488,27 +454,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Select latest stable Xcode
-        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
-        with:
-          xcode-version: latest-stable
-
-      - name: Export DEVELOPER_DIR
-        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
-
       # Same toolchain anchor as the build job: tie this job's result to
       # the exact image/Xcode it ran against.
-      - name: Toolchain versions
-        run: |
-          {
-            echo "### Toolchain — UI tests"
-            echo '```'
-            echo "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
-            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
-            sw_vers
-            xcodebuild -version
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
+        with:
+          summary-title: Toolchain — UI tests
+          summary-context: "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
+          spm-cache: "true"
+          spm-cache-prefix: ${{ matrix.runner }}
 
       # Diagnostic only — never a gate. Empirically (macos-15-arm64 image
       # 20260527) the suite executes even while `automationmodetool` reports
@@ -526,17 +480,6 @@ jobs:
             echo "csrutil: $(csrutil status || true)"
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Install pinned XcodeGen
-        run: ./scripts/install-xcodegen.sh
-
-      - name: Cache Swift Package Manager
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/Library/Caches/org.swift.swiftpm
-          key: ${{ matrix.runner }}-spm-${{ hashFiles('project.yml') }}
-          restore-keys: |
-            ${{ matrix.runner }}-spm-
 
       # The whole suite runs here, including the four display-geometry-sensitive
       # tests that used to be skipped on the runner's 1024x768 virtual display:

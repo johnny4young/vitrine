@@ -31,39 +31,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Select latest stable Xcode
-        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
-        with:
-          xcode-version: latest-stable
-
-      - name: Export DEVELOPER_DIR
-        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
-
       # Record the exact toolchain this archive was built against for traceability,
       # so an export result is always tied to a known macOS image, Xcode, and SDK.
-      - name: Toolchain versions
-        run: |
-          {
-            echo "### App Store dry-run toolchain"
-            echo '```'
-            echo "Event: ${GITHUB_EVENT_NAME}"
-            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
-            sw_vers
-            xcodebuild -version
-            swift --version
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Install pinned XcodeGen
-        run: ./scripts/install-xcodegen.sh
-
-      - name: Cache Swift Package Manager
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
         with:
-          path: ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
+          summary-title: App Store dry-run toolchain
+          spm-cache: "true"
 
       # project.yml links the checksum-pinned local framework even when the App Store
       # compilation condition removes every Sparkle call site. Stage it so the linker can
