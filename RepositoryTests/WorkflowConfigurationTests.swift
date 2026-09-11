@@ -1298,4 +1298,57 @@ struct WorkflowConfigurationTests {
             "the suite must emit each measurement in a machine-readable form")
     }
 
+    /// The retained medians are compared with the medians recorded for each platform, which
+    /// is what makes drift under a soft target visible. The comparison only warns: shared
+    /// runners vary by about 40% between runs, so `scripts/check-perf.py` scales the baseline
+    /// by the run's overall speed, and its self-test (under `make lint`) pins that it returns
+    /// success whatever it finds. A baseline for every matrix platform must exist and say
+    /// which runs it came from; each scenario it records must still be one the suite emits.
+    /// A new scenario is not required to have one yet, since only a run on `main` can
+    /// measure it.
+    @Test func ciComparesPerformanceMediansWithRecordedBaselines() throws {
+        let build = try Self.job("build", in: Self.ci())
+        let collect = try #require(build.range(of: "name: Collect performance measurements"))
+        let compare = try #require(build.range(of: "name: Compare performance with the baseline"))
+        #expect(collect.lowerBound < compare.lowerBound, "the comparison reads the collected file")
+        let nextStep = build[compare.upperBound...].range(of: "\n      - ")?.lowerBound
+        let step = String(build[compare.lowerBound..<(nextStep ?? build.endIndex)])
+        #expect(step.contains("if: always()"), "a failed perf step must still be compared")
+        #expect(
+            step.contains(
+                #"run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/${{ matrix.coverage }}.json""#
+            ))
+
+        let make = try Self.makefile()
+        let lint = try #require(make.split(separator: "\n").first { $0.hasPrefix("lint:") })
+        #expect(
+            lint.split(separator: " ").contains("perf-check"), "make lint must run the self-test")
+        #expect(make.contains("perf-check:\n\tpython3 scripts/check-perf.py --self-test"))
+
+        let platforms = build.split(separator: "\n").compactMap { line -> String? in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return trimmed.hasPrefix("coverage: ")
+                ? String(trimmed.dropFirst("coverage: ".count)) : nil
+        }
+        #expect(platforms.sorted() == ["sequoia", "tahoe"])
+        let suite = try Self.text("Tests", "PerformanceTests.swift")
+        for platform in platforms {
+            let data = try Data(
+                contentsOf: Self.url("scripts", "perf-baselines", "\(platform).json"))
+            let baseline = try #require(
+                try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            #expect(baseline["schemaVersion"] as? Int == 1)
+            #expect(
+                (baseline["sources"] as? [String])?.isEmpty == false,
+                "\(platform) baseline must record the runs it was measured on")
+            let medians = try #require(baseline["medians"] as? [String: NSNumber])
+            #expect(!medians.isEmpty)
+            for label in medians.keys.sorted() {
+                #expect(
+                    suite.contains("label: \"\(label)\""),
+                    "\(platform) baseline records \(label), which PerformanceTests no longer emits")
+            }
+        }
+    }
+
 }
