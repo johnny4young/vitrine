@@ -53,8 +53,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let window = editor.window
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         XCTAssertTrue(editor.previewStage.waitForExistence(timeout: 5))
-        // Let the preview render settle before the hero shot.
-        Thread.sleep(forTimeInterval: 1.5)
         save(
             window, as: "10-editor",
             note: "Editor: glass toolbar, code pane, ambient-light stage, inspector")
@@ -63,7 +61,6 @@ final class ScreenshotTourUITests: XCTestCase {
         if output.waitForExistence(timeout: 3) {
             output.click()
             _ = element("editor-destination-preset-picker", in: app).waitForExistence(timeout: 3)
-            Thread.sleep(forTimeInterval: 0.5)
             save(
                 window, as: "11-editor-inspector-output",
                 note: "Editor inspector with the Output disclosure open")
@@ -80,7 +77,6 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let window = editor.window
         XCTAssertTrue(window.waitForExistence(timeout: 8))
-        Thread.sleep(forTimeInterval: 1.0)
         save(
             window, as: "12-editor-empty-state",
             note: "Editor empty state (no code loaded)")
@@ -109,8 +105,6 @@ final class ScreenshotTourUITests: XCTestCase {
                 miss(pane.slug, reason: "pane \(pane.identifier) did not appear")
                 continue
             }
-            // Give the pane transition a beat to settle before capturing.
-            Thread.sleep(forTimeInterval: 0.8)
             save(window, as: pane.slug, note: "Settings pane: \(pane.identifier)")
         }
 
@@ -121,7 +115,6 @@ final class ScreenshotTourUITests: XCTestCase {
         if newTheme.waitForExistence(timeout: 3) {
             newTheme.click()
             if element("custom-theme-name-field", in: app).waitForExistence(timeout: 4) {
-                Thread.sleep(forTimeInterval: 0.5)
                 save(
                     window, as: "26-settings-custom-theme-editor",
                     note: "Custom theme editor sheet (Library pane)")
@@ -143,7 +136,6 @@ final class ScreenshotTourUITests: XCTestCase {
             resetAll.click()
             let resetConfirmation = app.sheets.firstMatch.buttons["Reset"].firstMatch
             if resetConfirmation.waitForExistence(timeout: 3) {
-                Thread.sleep(forTimeInterval: 0.4)
                 save(
                     window, as: "27-settings-reset-confirmation",
                     note: "Reset All confirmation naming every cleared user catalog")
@@ -165,7 +157,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let window = recents.window
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         XCTAssertTrue(recents.gallery.waitForExistence(timeout: 3))
-        Thread.sleep(forTimeInterval: 0.5)
         save(
             window, as: "30-recents-gallery-empty",
             note: "Recents gallery (branded empty state — fresh defaults suite)")
@@ -181,7 +172,6 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         let picker = element("recents-preset-picker", in: app)
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
-        Thread.sleep(forTimeInterval: 0.5)
         save(
             window, as: "31-recents-gallery-populated",
             note: "Recents gallery with one locally rendered capture and preset action")
@@ -194,7 +184,6 @@ final class ScreenshotTourUITests: XCTestCase {
                     !$0.frame.isEmpty
                 })
             {
-                Thread.sleep(forTimeInterval: 0.3)
                 save(
                     visibleMenu, as: "32-recents-destination-presets",
                     note: "One-off destination preset picker for a recent capture")
@@ -220,7 +209,6 @@ final class ScreenshotTourUITests: XCTestCase {
         search.typeText("Rust")
         XCTAssertEqual(
             app.descendants(matching: .any).matching(identifier: "recents-card").count, 1)
-        Thread.sleep(forTimeInterval: 0.4)
         save(
             window, as: "33-recents-search-filtered",
             note: "Recents filtered locally by source, language, or theme")
@@ -233,7 +221,6 @@ final class ScreenshotTourUITests: XCTestCase {
                     !$0.frame.isEmpty
                 })
             {
-                Thread.sleep(forTimeInterval: 0.3)
                 save(
                     visibleMenu, as: "34-recents-capture-actions",
                     note: "Destination presets and individual deletion for a recent capture")
@@ -261,7 +248,6 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertEqual(cards.count, 3)
         hittableRecentCard(containing: "Go", in: app).click()
         hittableRecentCard(containing: "Rust", in: app).click()
-        Thread.sleep(forTimeInterval: 0.4)
         save(
             recentsWindow, as: "35-recents-comparison-selection",
             note: "Ordered, session-only selection of two captures in Recents")
@@ -275,7 +261,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let preview = element("comparison-board-preview-stage", in: app)
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
         preview.click()
-        Thread.sleep(forTimeInterval: 1.0)
         save(
             boardWindow, as: "36-comparison-board",
             note: "Comparison board with editable captions, layout, reorder, copy, save, and share")
@@ -297,7 +282,6 @@ final class ScreenshotTourUITests: XCTestCase {
             })
         app.activate()
         window.click()
-        Thread.sleep(forTimeInterval: 0.8)
         save(
             stage, as: "35-editor-before-surprise",
             note: "Editor before applying a curated style")
@@ -315,7 +299,6 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(dracula.isSelected)
         app.activate()
         window.click()
-        Thread.sleep(forTimeInterval: 1.2)
         save(
             stage, as: "36-editor-surprise-style-applied",
             note: "Editor after applying the curated Sunset style without changing code")
@@ -333,14 +316,12 @@ final class ScreenshotTourUITests: XCTestCase {
         ).click()
         let swatch = element("annotation-sticker-swatch", in: app)
         XCTAssertTrue(swatch.waitForExistence(timeout: 3))
-        Thread.sleep(forTimeInterval: 0.4)
         save(
             window, as: "56-editor-sticker-tool-active",
             note: "Sticker tool active: glyph swatch + size slider, no color swatch")
 
         if swatch.isHittable {
             swatch.click()
-            Thread.sleep(forTimeInterval: 0.5)
             save(
                 window, as: "57-editor-sticker-picker-open",
                 note: "Curated sticker picker popover (👀 🔥 ✅ …)")
@@ -367,7 +348,6 @@ final class ScreenshotTourUITests: XCTestCase {
         revealInspectorControl("inspector-safe-area-toggle", in: app)
         toggle.click()
         assertToggleIsOn(toggle, named: "Safe-area guides")
-        Thread.sleep(forTimeInterval: 0.6)
         save(
             window, as: "58-editor-safe-area-guides",
             note: "Safe-area guide toggle on: budget chip over the preview")
@@ -390,7 +370,6 @@ final class ScreenshotTourUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.1)
         }
         XCTAssertTrue((editor.value as? String ?? "").contains("\n  <h1>"))
-        Thread.sleep(forTimeInterval: 0.8)
         save(
             window, as: "59-editor-html-pretty-print",
             note: "Format Code expanded compact HTML into a readable element hierarchy")
@@ -412,7 +391,6 @@ final class ScreenshotTourUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.1)
         }
         XCTAssertTrue((editor.value as? String ?? "").contains("\nLEFT JOIN orders"))
-        Thread.sleep(forTimeInterval: 0.8)
         save(
             window, as: "60-editor-sql-pretty-print",
             note: "Format Code expanded compact SQL into select, join, and predicate lines")
@@ -426,7 +404,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let window = element("recents-window", in: app)
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         XCTAssertTrue(element("recents-pinned-badge", in: app).waitForExistence(timeout: 5))
-        Thread.sleep(forTimeInterval: 0.8)
         save(
             window, as: "37-recents-pinned",
             note: "Pinned capture leading the local Recents gallery")
@@ -442,7 +419,6 @@ final class ScreenshotTourUITests: XCTestCase {
                 !$0.frame.isEmpty
             })
         {
-            Thread.sleep(forTimeInterval: 0.3)
             save(
                 visibleMenu, as: "38-recents-pinned-actions",
                 note: "Pinned capture actions with a reversible Unpin command")
@@ -470,7 +446,6 @@ final class ScreenshotTourUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.2)
         }
         XCTAssertEqual(cards.count, 1)
-        Thread.sleep(forTimeInterval: 0.6)
         save(
             window, as: "53-recents-pinned-filter",
             note: "Recents gallery filtered to the locally pinned captures")
@@ -531,7 +506,6 @@ final class ScreenshotTourUITests: XCTestCase {
         clearUnpinned.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
         let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
-        Thread.sleep(forTimeInterval: 0.4)
         save(
             window, as: "56-recents-clear-unpinned-confirmation",
             note: "Safe Recents cleanup confirmation that explicitly preserves pinned captures")
@@ -553,7 +527,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let oldestFirst = app.menuItems["Oldest First"]
         XCTAssertTrue(oldestFirst.waitForExistence(timeout: 3))
         if let visibleMenu = app.menus.allElementsBoundByIndex.first(where: { !$0.frame.isEmpty }) {
-            Thread.sleep(forTimeInterval: 0.3)
             save(
                 visibleMenu, as: "57-recents-sort-options",
                 note: "Local Recents ordering choices with newest first selected")
@@ -567,7 +540,6 @@ final class ScreenshotTourUITests: XCTestCase {
         }
         XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
         XCTAssertTrue(cards.element(boundBy: 1).label.contains("Python"))
-        Thread.sleep(forTimeInterval: 0.5)
         save(
             window, as: "58-recents-oldest-first",
             note: "Recents sorted oldest-first within pinned and unpinned groups")
@@ -581,7 +553,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let window = element("help-window", in: app)
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         XCTAssertTrue(element("help-view", in: app).waitForExistence(timeout: 3))
-        Thread.sleep(forTimeInterval: 0.5)
         save(window, as: "40-help", note: "In-app Help window (offline topics)")
     }
 
@@ -593,7 +564,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let window = element("whats-new-window", in: app)
         XCTAssertTrue(window.waitForExistence(timeout: 8))
         XCTAssertTrue(element("whats-new-highlights", in: app).waitForExistence(timeout: 3))
-        Thread.sleep(forTimeInterval: 0.5)
         save(window, as: "41-whats-new", note: "What's New release-notes window")
     }
 
@@ -628,7 +598,6 @@ final class ScreenshotTourUITests: XCTestCase {
             item.click()
             let menu = item.menus.firstMatch
             if menu.waitForExistence(timeout: 3) {
-                Thread.sleep(forTimeInterval: 0.3)
                 save(menu, as: slug, note: "Main menu: \(title)")
             } else {
                 miss(slug, reason: "menu \(title) did not open")
@@ -644,7 +613,6 @@ final class ScreenshotTourUITests: XCTestCase {
 
         let panel = openMenuBarPanel(in: app)
         if panel.exists {
-            Thread.sleep(forTimeInterval: 0.5)
             save(panel, as: "50-menubar-panel", note: "Menu-bar panel (.window)")
 
             let presetPicker = element("menu-capture-preset-picker", in: app)
@@ -652,7 +620,6 @@ final class ScreenshotTourUITests: XCTestCase {
                 presetPicker.click()
                 let openGraph = app.menuItems["OpenGraph 1200×630"]
                 if openGraph.waitForExistence(timeout: 3) {
-                    Thread.sleep(forTimeInterval: 0.3)
                     if let visibleMenu = app.menus.allElementsBoundByIndex.first(where: {
                         !$0.frame.isEmpty
                     }) {
@@ -681,7 +648,6 @@ final class ScreenshotTourUITests: XCTestCase {
             about.click()
             let aboutWindow = app.dialogs.firstMatch
             if aboutWindow.waitForExistence(timeout: 4) {
-                Thread.sleep(forTimeInterval: 0.5)
                 save(aboutWindow, as: "53-about-panel", note: "Standard About panel")
             } else {
                 miss("53-about-panel", reason: "About panel did not appear")
@@ -713,7 +679,6 @@ final class ScreenshotTourUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.2)
         }
         XCTAssertTrue(dracula.isSelected)
-        Thread.sleep(forTimeInterval: 0.5)
         save(
             panel, as: "52-menubar-surprise-style",
             note: "Menu-bar curated style action with the applied theme selected")
@@ -733,7 +698,6 @@ final class ScreenshotTourUITests: XCTestCase {
             miss("55-menubar-recent-copy-actions", reason: "source-copy action is missing")
             return
         }
-        Thread.sleep(forTimeInterval: 0.5)
         save(
             panel, as: "55-menubar-recent-copy-actions",
             note: "Menu-bar Recents rows with visible image and original-source copy actions")
@@ -746,7 +710,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let web = WebSnapshotRobot(testCase: self, app: app)
 
         XCTAssertTrue(web.inspector.waitForExistence(timeout: 8))
-        Thread.sleep(forTimeInterval: 1.0)
         let window = app.windows.firstMatch
         save(
             window, as: "60-web-snapshot",
@@ -756,7 +719,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let html = web.htmlMode
         if html.waitForExistence(timeout: 3) {
             html.click()
-            Thread.sleep(forTimeInterval: 0.6)
             save(
                 window, as: "61-web-snapshot-html",
                 note: "Web Snapshot HTML mode (code field + branded empty state)")
@@ -768,7 +730,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let advanced = element("web-advanced-disclosure", in: app)
         if advanced.waitForExistence(timeout: 3) {
             advanced.click()
-            Thread.sleep(forTimeInterval: 0.4)
             save(
                 window, as: "62-web-snapshot-advanced",
                 note: "Web Snapshot inspector with the Capture options disclosure open")
@@ -783,7 +744,6 @@ final class ScreenshotTourUITests: XCTestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(element("social-card-inspector", in: app).waitForExistence(timeout: 8))
-        Thread.sleep(forTimeInterval: 1.0)
         let window = app.windows.firstMatch
         save(
             window, as: "63-social-card",
@@ -793,7 +753,6 @@ final class ScreenshotTourUITests: XCTestCase {
         let typography = element("social-card-typography-disclosure", in: app)
         if typography.waitForExistence(timeout: 3) {
             typography.click()
-            Thread.sleep(forTimeInterval: 0.4)
             save(
                 window, as: "64-social-card-typography",
                 note: "Social Card with the Typography disclosure open")
@@ -818,7 +777,10 @@ final class ScreenshotTourUITests: XCTestCase {
     }
 
     @MainActor
-    private func save(_ element: XCUIElement, as slug: String, note: String) {
+    private func save(
+        _ element: XCUIElement, as slug: String, note: String,
+        settleTimeout: TimeInterval = 2.0
+    ) {
         guard assertVitrineIsFrontmost(for: slug) else { return }
         guard element.exists else {
             XCTFail("Required screenshot \(slug) has no accessibility element to capture")
@@ -829,9 +791,81 @@ final class ScreenshotTourUITests: XCTestCase {
             XCTFail("Required screenshot \(slug) has an invalid capture frame: \(frame)")
             return
         }
+        if !waitUntilStill(element, timeout: settleTimeout) {
+            log("\(slug) — captured while still moving after \(settleTimeout)s")
+        }
 
         let screenshot = element.screenshot()
         persist(screenshot, as: slug, note: note)
+    }
+
+    /// Waits until `element` stops changing on screen, so a capture lands on a finished
+    /// surface rather than mid-transition.
+    ///
+    /// Every capture used to follow a hand-tuned sleep, which is too long once the surface
+    /// is already still and too short when a slower machine is still animating. The tour's
+    /// product is the image, so the property worth waiting on is that the pixels stopped
+    /// moving. Two consecutive screenshots are compared as coarse grayscale fingerprints.
+    /// If the surface never settles — an ambient animation, a blinking element larger than
+    /// the tolerance — the capture still happens once the budget runs out and the manifest
+    /// records it, because evidence of a moving surface beats no evidence at all.
+    @MainActor
+    private func waitUntilStill(
+        _ element: XCUIElement, timeout: TimeInterval, poll: TimeInterval = 0.12
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        var previous = fingerprint(of: element)
+        repeat {
+            Thread.sleep(forTimeInterval: poll)
+            let current = fingerprint(of: element)
+            defer { previous = current }
+            if let previous, let current, Self.isStill(previous, current) { return true }
+        } while Date() < deadline
+        return false
+    }
+
+    /// A coarse grayscale thumbnail of `element`, the unit the stillness check compares.
+    /// Small enough that antialiasing and a caret cannot dominate a cell, large enough that
+    /// a sheet or menu moving across the surface does.
+    @MainActor
+    private func fingerprint(of element: XCUIElement) -> [UInt8]? {
+        guard element.exists else { return nil }
+        let image = element.screenshot().image
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return nil
+        }
+        let width = 64
+        let height = 40
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        let drawn = pixels.withUnsafeMutableBytes { raw -> Bool in
+            guard
+                let context = CGContext(
+                    data: raw.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                    bytesPerRow: width, space: CGColorSpaceCreateDeviceGray(),
+                    bitmapInfo: CGImageAlphaInfo.none.rawValue)
+            else { return false }
+            context.interpolationQuality = .medium
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        return drawn ? pixels : nil
+    }
+
+    /// Whether two fingerprints show the same surface at rest.
+    ///
+    /// The average cell may drift by less than one step out of 255 and no single cell by
+    /// more than a tenth of the range: a blinking caret moves one cell by a few steps, a
+    /// transition moves many cells by far more.
+    private static func isStill(_ before: [UInt8], _ after: [UInt8]) -> Bool {
+        guard before.count == after.count, !before.isEmpty else { return false }
+        var total = 0
+        var peak = 0
+        for (left, right) in zip(before, after) {
+            let delta = abs(Int(left) - Int(right))
+            total += delta
+            peak = max(peak, delta)
+        }
+        return Double(total) / Double(before.count) < 1.0 && peak <= 24
     }
 
     @MainActor
