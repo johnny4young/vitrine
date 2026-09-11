@@ -79,10 +79,17 @@ struct VersionParserConsolidationTests {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
-    /// The only file allowed to spell out its own extraction. Astro reads `project.yml`
-    /// at build time inside Vite, where shelling out to the script is not available, so
-    /// it carries the same dialect instead — which the test below pins.
-    private static let sanctioned = "site/src/lib/project.ts"
+    /// Files allowed to spell out a version pattern, each for a stated reason.
+    ///
+    /// `project.ts` is the one *reader*: Astro reads `project.yml` at build time inside
+    /// Vite, where shelling out to the script is not available, so it carries the same
+    /// dialect instead — which the test below pins. `bump-version.sh` is a *writer*: its
+    /// anchored substitutions are the inverse operation, and they must name the keys to
+    /// rewrite them.
+    private static let sanctioned: Set<String> = [
+        "site/src/lib/project.ts",
+        "scripts/bump-version.sh",
+    ]
 
     /// Source roots this repository owns, listed rather than excluded: an allowlist
     /// cannot be defeated by a new scratch directory appearing beside them, which an
@@ -122,7 +129,8 @@ struct VersionParserConsolidationTests {
 
     @Test func noFileSpellsOutItsOwnVersionExtraction() throws {
         var offenders: [String] = []
-        for relativePath in try Self.sourceFiles() where relativePath != Self.sanctioned {
+        for relativePath in try Self.sourceFiles()
+        where !Self.sanctioned.contains(relativePath) {
             let contents = try String(
                 contentsOf: Self.root.appending(path: relativePath), encoding: .utf8)
             for line in contents.split(separator: "\n", omittingEmptySubsequences: false)
@@ -141,7 +149,7 @@ struct VersionParserConsolidationTests {
 
     @Test func theSiteCarriesTheSameDialectAsTheScript() throws {
         let site = try String(
-            contentsOf: Self.root.appending(path: Self.sanctioned), encoding: .utf8)
+            contentsOf: Self.root.appending(path: "site/src/lib/project.ts"), encoding: .utf8)
         let script = try String(
             contentsOf: Self.root.appending(path: "scripts/project-version.sh"), encoding: .utf8)
 
