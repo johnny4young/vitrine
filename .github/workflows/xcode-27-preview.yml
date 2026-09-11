@@ -2,7 +2,8 @@ name: Xcode 27 preview (non-required)
 
 on:
   # This is an early-warning lane, not a pull-request or release gate. GitHub's
-  # xcode-27 preview image currently uses a macOS 26 host with the preview SDK.
+  # xcode-27 preview image pairs the preview Xcode and SDK with a host macOS that has
+  # changed during the preview, so each run records the exact host in its summary.
   schedule:
     - cron: "0 8 * * 3"
   workflow_dispatch:
@@ -28,7 +29,7 @@ jobs:
         uses: ./.github/actions/setup-macos-toolchain
         with:
           summary-title: Preview toolchain
-          summary-note: "This is compile-time preview evidence on a macOS 26 host, not macOS 27 runtime certification."
+          summary-note: "This is early preview evidence on the host recorded above, not macOS 27 runtime certification."
           select-xcode: "false"
 
       - name: Lint
