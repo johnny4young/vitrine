@@ -20,12 +20,20 @@ updates:
       interval: weekly
       day: monday
     groups:
+      # Security fixes get their own group. With one group covering every update, a
+      # single incompatible version bump — the TypeScript major ignored below is the
+      # standing example — held back any security fix riding in the same pull request.
+      # Splitting by `applies-to` lets a security update land on its own.
       site-dependencies:
+        applies-to: version-updates
+        patterns: ["*"]
+      site-security-updates:
+        applies-to: security-updates
         patterns: ["*"]
     # `@astrojs/check` declares `peer typescript@"^5.0.0 || ^6.0.0"`, so a TypeScript
-    # major bump fails `npm ci` with ERESOLVE in the Linux static-check job. Because a
-    # single group covers every package here, that one incompatible major also blocks
-    # the safe astro/wrangler bumps and any queued security fix riding the same tree.
+    # major bump fails `npm ci` with ERESOLVE in the Linux static-check job. Because one
+    # group covers every version update here, that one incompatible major also blocks the
+    # safe astro/wrangler bumps grouped with it; security fixes have their own group.
     # Minor and patch TypeScript updates still flow. Remove this entry once
     # `@astrojs/check` widens its peer range to accept the next major.
     ignore:
