@@ -1039,7 +1039,12 @@ license again.
 
 - [ ] `make test` green (includes the launch-gallery render regression + artifact checks)
 - [ ] `make icon` up to date
-- [ ] Version bumped in `project.yml` (`MARKETING_VERSION`) and the cask
+- [ ] Version bumped with `make bump VERSION=x.y.z BUILD=n`, which rewrites the six
+      mechanical sites together — `project.yml`, `CLIVersion.swift`, the cask,
+      `Commercial.astro`, the README status badge and sentences, and `docs/APP-STORE.md`
+      — and prints the prose it deliberately leaves to you. It refuses a version the tag
+      guard would reject, refuses a build that does not move forward, and fails loudly if
+      any anchor stops matching rather than skipping that file
 - [ ] `CHANGELOG.md` updated: promote `[Unreleased]` to `## [x.y.z] - YYYY-MM-DD`, open a
       fresh `[Unreleased]`, refresh the compare links, then `make changelog-check`
 - [ ] Release note added to `Vitrine/Help/ReleaseNotes.swift` (newest first; version
@@ -1049,6 +1054,9 @@ license again.
 - [ ] **Visual review against the launch gallery** done (re-run `make gallery` if a
       visual change landed; review the `Tests/Fixtures/Samples/` diff) — see DESIGN-QA.md
 - [ ] `UI tests` CI job green on the release commit (or `make test-ui` run locally)
+- [ ] Tag pushed **after the bump pull request merges**, never on the pre-bump commit:
+      the release workflow compares the tag against `MARKETING_VERSION` and aborts when
+      they disagree, leaving the DMG job skipped
 - [ ] Tag pushed; release workflow `verify` gate and DMG publish both green
 - [ ] Tap PR opened: cask `version` + `sha256` set from the release's
       `vitrine-cask-update.txt`, `brew audit --cask --strict` green in the tap, and

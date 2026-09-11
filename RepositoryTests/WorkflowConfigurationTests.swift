@@ -599,6 +599,42 @@ struct WorkflowConfigurationTests {
 
     // MARK: - Contract: a published release refreshes the marketing site
 
+    /// The version bump is a script, and lint proves it still matches the files.
+    ///
+    /// The bump touches six files whose shapes drift independently of it. An anchored
+    /// rewrite that stops matching would silently skip its file and leave the release
+    /// inconsistent, so the script fails instead — and its self-test runs against the
+    /// real files under `make lint`, which is what keeps that promise honest.
+    @Test func theVersionBumpIsScriptedAndSelfTested() throws {
+        let makefile = try Self.text("Makefile")
+        #expect(
+            makefile.contains("./scripts/bump-version.sh \"$(VERSION)\" \"$(BUILD)\""),
+            "make bump must call the bump script")
+        #expect(
+            makefile.contains("./scripts/bump-version.sh --self-test"),
+            "lint must run the bump script's self-test")
+
+        // Every command target is phony. Without the declaration, a stray file named
+        // `bump` makes `make bump` report "up to date" and skip the script entirely —
+        // the kind of drift that happened here once already, when `bump-check` was
+        // declared and `bump` was not.
+        let phonyLine = try #require(
+            makefile.split(separator: "\n").first { $0.hasPrefix(".PHONY:") },
+            "the Makefile must declare its phony targets")
+        let phonyTargets = Set(
+            phonyLine.dropFirst(".PHONY:".count).split(separator: " ").map(String.init))
+        #expect(phonyTargets.contains("bump"), "make bump must be declared .PHONY")
+        #expect(phonyTargets.contains("bump-check"), "make bump-check must be declared .PHONY")
+
+        let releasing = try Self.text("docs", "RELEASING.md")
+        #expect(
+            releasing.contains("make bump VERSION=x.y.z BUILD=n"),
+            "the release checklist must name the bump command")
+        #expect(
+            releasing.contains("after the bump pull request merges"),
+            "the checklist must keep the tag-after-merge callout")
+    }
+
     /// Both release gates and the site deploy read the version through one script.
     ///
     /// They used to carry their own `sed` expressions in two dialects: the release
