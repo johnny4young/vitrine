@@ -1,0 +1,95 @@
+name: Set up macOS toolchain
+description: >-
+  Select Xcode, export DEVELOPER_DIR, record the exact toolchain in the job summary,
+  install the pinned XcodeGen, and optionally restore the Swift Package Manager cache.
+  Run it right after actions/checkout.
+
+# Dependabot's github-actions updater reads only .github/workflows and a root action.yml
+# for `directory: /`, so .github/dependabot.yml lists this directory explicitly. Without
+# that entry the pins below would silently stop receiving updates.
+
+inputs:
+  summary-title:
+    description: Heading of the toolchain block in the job summary.
+    required: true
+  summary-context:
+    description: Lines printed above the versions, such as the matrix row or the tag.
+    required: false
+    default: ""
+  summary-note:
+    description: A line printed below the versions block.
+    required: false
+    default: ""
+  select-xcode:
+    description: >-
+      "true" selects the newest stable Xcode on the image. Preview lanes pass "false":
+      their image default is the toolchain under test, and latest-stable would skip it.
+    required: false
+    default: "true"
+  spm-cache:
+    description: >-
+      "true" restores and saves the Swift Package Manager download cache.
+    required: false
+    default: "false"
+  spm-cache-prefix:
+    description: >-
+      Cache key prefix. Defaults to the runner OS; CI passes the runner label so its
+      macOS rows keep separate caches.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Select latest stable Xcode
+      if: inputs.select-xcode == 'true'
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
+      with:
+        xcode-version: latest-stable
+
+    - name: Export DEVELOPER_DIR
+      shell: bash
+      run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+
+    # Record the exact toolchain before any build step, echoed into the job summary so a
+    # green or red result is always tied to a known macOS image, Xcode, and Swift version:
+    # the anchor for diagnosing runner drift. Inputs reach the script through the
+    # environment, never through expression expansion inside it.
+    - name: Toolchain versions
+      shell: bash
+      env:
+        SUMMARY_TITLE: ${{ inputs.summary-title }}
+        SUMMARY_CONTEXT: ${{ inputs.summary-context }}
+        SUMMARY_NOTE: ${{ inputs.summary-note }}
+      run: |
+        {
+          echo "### ${SUMMARY_TITLE}"
+          echo '```'
+          echo "Event: ${GITHUB_EVENT_NAME}"
+          if [ -n "${SUMMARY_CONTEXT}" ]; then printf '%s\n' "${SUMMARY_CONTEXT}"; fi
+          echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
+          sw_vers
+          echo "DEVELOPER_DIR=${DEVELOPER_DIR}"
+          xcodebuild -version
+          swift --version
+          echo '```'
+          if [ -n "${SUMMARY_NOTE}" ]; then printf '%s\n' "${SUMMARY_NOTE}"; fi
+        } | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Install pinned XcodeGen
+      shell: bash
+      run: ./scripts/install-xcodegen.sh
+
+    # The global Swift Package Manager download/clone cache is content-addressed, so it is
+    # safe to restore across runs: xcodebuild re-resolves into DerivedData as needed, and a
+    # stale or partial cache only costs a re-download, never a wrong build. The key is bound
+    # to project.yml because that file is the single source of truth for the package
+    # dependencies (the resolved project is generated, not committed).
+    - name: Cache Swift Package Manager
+      if: inputs.spm-cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: ~/Library/Caches/org.swift.swiftpm
+        key: ${{ inputs.spm-cache-prefix || runner.os }}-spm-${{ hashFiles('project.yml') }}
+        restore-keys: |
+          ${{ inputs.spm-cache-prefix || runner.os }}-spm-

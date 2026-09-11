@@ -33,29 +33,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Select latest stable Xcode
-        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
         with:
-          xcode-version: latest-stable
-
-      - name: Export DEVELOPER_DIR
-        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
-
-      - name: Toolchain versions
-        run: |
-          {
-            echo "### ${{ matrix.label }} toolchain"
-            echo '```'
-            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
-            sw_vers
-            xcodebuild -version
-            swift --version
-            echo '```'
-            echo "Focused non-required early warning; this is not full UI qualification."
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Install pinned XcodeGen
-        run: ./scripts/install-xcodegen.sh
+          summary-title: "${{ matrix.label }} toolchain"
+          summary-note: "Focused non-required early warning; this is not full UI qualification."
 
       - name: Run focused sanitizer suite
         run: >-

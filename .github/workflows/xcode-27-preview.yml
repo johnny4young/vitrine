@@ -22,21 +22,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Toolchain versions
-        run: |
-          {
-            echo "### Preview toolchain"
-            echo '```'
-            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
-            sw_vers
-            xcodebuild -version
-            swift --version
-            echo '```'
-            echo "This is compile-time preview evidence on a macOS 26 host, not macOS 27 runtime certification."
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Install pinned XcodeGen
-        run: ./scripts/install-xcodegen.sh
+      # The image default is the preview Xcode this lane exists to exercise;
+      # selecting latest-stable would skip it.
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
+        with:
+          summary-title: Preview toolchain
+          summary-note: "This is compile-time preview evidence on a macOS 26 host, not macOS 27 runtime certification."
+          select-xcode: "false"
 
       - name: Lint
         run: make lint

@@ -12,9 +12,9 @@ import Testing
 /// They read the committed files from the source tree (anchored to this file via
 /// `#filePath`, like `PrivacyManifestTests` / `LocalizationTests`) rather than any
 /// built bundle. Full YAML *syntax* validation runs in CI itself (the
-/// "Validate workflow YAML" step parses each file with Ruby's standard-library YAML
-/// parser); here we additionally guard against tab-indentation — a YAML syntax error
-/// the targeted structural reads below would not otherwise catch.
+/// "Validate workflow YAML" step parses each workflow and local action with Ruby's
+/// standard-library YAML parser); here we additionally guard against tab-indentation — a
+/// YAML syntax error the targeted structural reads below would not otherwise catch.
 @Suite("CI workflow configuration")
 struct WorkflowConfigurationTests {
 
@@ -65,6 +65,67 @@ struct WorkflowConfigurationTests {
         try text(".github", "workflows", "sanitizers.yml")
     }
 
+    /// The shared macOS toolchain setup every building job runs right after checkout.
+    private static let toolchainActionReference = "uses: ./.github/actions/setup-macos-toolchain"
+
+    private static func toolchainAction() throws -> String {
+        try text(".github", "actions", "setup-macos-toolchain", "action.yml")
+    }
+
+    /// Every local composite action's metadata, discovered on disk so a scan that must cover
+    /// all of them cannot silently skip one added later.
+    private static func compositeActions() throws -> [(String, String)] {
+        let directory = url(".github", "actions")
+        return try FileManager.default.contentsOfDirectory(atPath: directory.path).sorted()
+            .compactMap { name -> (String, String)? in
+                let manifest = directory.appendingPathComponent(name)
+                    .appendingPathComponent("action.yml")
+                guard FileManager.default.fileExists(atPath: manifest.path) else { return nil }
+                return (
+                    "actions/\(name)/action.yml", try String(contentsOf: manifest, encoding: .utf8)
+                )
+            }
+    }
+
+    /// One top-level job's text, from its `  <name>:` line up to the next job.
+    private static func job(_ name: String, in workflow: String) throws -> String {
+        let start = try #require(workflow.range(of: "\n  \(name):\n"), "no `\(name)` job")
+        let nextJob = try Regex(#"\n  [A-Za-z0-9_-]+:\n"#)
+        let end = workflow[start.upperBound...].firstMatch(of: nextJob)?.range.lowerBound
+        return String(workflow[start.lowerBound..<(end ?? workflow.endIndex)])
+    }
+
+    /// Expects `job` to check out, then run the shared toolchain action exactly once, before
+    /// `firstBuild`. A local action is read from the workspace, so it only exists after
+    /// checkout, and the toolchain must be on record before anything builds.
+    private static func expectToolchainSetUp(
+        in job: String, before firstBuild: String, label: String,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+        #expect(
+            job.components(separatedBy: toolchainActionReference).count - 1 == 1,
+            "\(label) must set up the toolchain exactly once through the shared action",
+            sourceLocation: sourceLocation)
+        let checkout = try #require(
+            job.range(of: "uses: actions/checkout@"), "\(label) has no checkout step",
+            sourceLocation: sourceLocation)
+        let setup = try #require(
+            job.range(of: toolchainActionReference),
+            "\(label) must set up the toolchain through the shared action",
+            sourceLocation: sourceLocation)
+        let build = try #require(
+            job.range(of: firstBuild), "\(label) no longer contains `\(firstBuild)`",
+            sourceLocation: sourceLocation)
+        #expect(
+            checkout.lowerBound < setup.lowerBound,
+            "\(label) must check out before it can use a local action",
+            sourceLocation: sourceLocation)
+        #expect(
+            setup.lowerBound < build.lowerBound,
+            "\(label) must record the toolchain before building",
+            sourceLocation: sourceLocation)
+    }
+
     private static func makefile() throws -> String {
         try text("Makefile")
     }
@@ -96,7 +157,7 @@ struct WorkflowConfigurationTests {
             ("dependency-freshness.yml", Self.freshness()),
             ("xcode-27-preview.yml", Self.xcode27Preview()),
             ("sanitizers.yml", Self.sanitizers()),
-        ] {
+        ] + Self.compositeActions() {
             for (index, line) in body.components(separatedBy: .newlines).enumerated() {
                 let indentation = line.prefix { $0 == " " || $0 == "\t" }
                 #expect(
@@ -111,18 +172,87 @@ struct WorkflowConfigurationTests {
     /// The CI workflow must record the exact toolchain (macOS image, Xcode, Swift)
     /// before it builds. The explicit OS labels still receive rolling image/toolchain
     /// updates, so each result must remain traceable to the versions it exercised.
+    /// The probe lives in the shared toolchain action, which both jobs run first.
     @Test func ciLogsExactToolchainVersionsBeforeBuilding() throws {
-        let ci = try Self.ci()
-        #expect(ci.contains("sw_vers"), "CI must log the macOS version (sw_vers)")
-        #expect(ci.contains("xcodebuild -version"), "CI must log the Xcode version")
-        #expect(ci.contains("swift --version"), "CI must log the Swift version")
-
-        // The toolchain step must come before the first build invocation.
-        let toolchainMarker = try #require(ci.range(of: "sw_vers"))
-        let buildMarker = try #require(ci.range(of: "run: make build"))
+        let action = try Self.toolchainAction()
+        #expect(action.contains("sw_vers"), "CI must log the macOS version (sw_vers)")
+        #expect(action.contains("xcodebuild -version"), "CI must log the Xcode version")
+        #expect(action.contains("swift --version"), "CI must log the Swift version")
         #expect(
-            toolchainMarker.lowerBound < buildMarker.lowerBound,
-            "Toolchain versions must be logged before building")
+            action.contains(#"} | tee -a "$GITHUB_STEP_SUMMARY""#),
+            "the toolchain record must reach the job summary")
+
+        let ci = try Self.ci()
+        try Self.expectToolchainSetUp(
+            in: Self.job("build", in: ci), before: "run: make lint", label: "ci.yml build")
+        try Self.expectToolchainSetUp(
+            in: Self.job("ui-test", in: ci), before: "make test-ui RESULT_BUNDLE=",
+            label: "ci.yml ui-test")
+    }
+
+    // MARK: - Contract: one shared macOS toolchain setup
+
+    /// Xcode selection, the toolchain probe, the XcodeGen install, and the SPM cache were
+    /// copied, in varying combinations, into seven jobs across five workflows, so a pin bump
+    /// or a fix to the probe had to land in every copy and could drift between lanes. They now live in one composite
+    /// action. This keeps copies from creeping back, and keeps the action ahead of the first
+    /// build in every job that builds.
+    @Test func macOSToolchainSetupLivesInOneCompositeAction() throws {
+        for (name, workflow) in try [
+            ("ci.yml", Self.ci()),
+            ("release.yml", Self.release()),
+            ("appstore.yml", Self.appstore()),
+            ("deploy-site.yml", Self.deploySite()),
+            ("dependency-freshness.yml", Self.freshness()),
+            ("xcode-27-preview.yml", Self.xcode27Preview()),
+            ("sanitizers.yml", Self.sanitizers()),
+        ] {
+            for inlined in [
+                "maxim-lobanov/setup-xcode@", "install-xcodegen.sh", "org.swift.swiftpm",
+                "xcode-select -p",
+            ] {
+                #expect(
+                    !workflow.contains(inlined),
+                    "\(name) must use the shared toolchain action instead of inlining `\(inlined)`")
+            }
+        }
+
+        // ci.yml and release.yml jobs are covered by the two toolchain-logging contracts.
+        try Self.expectToolchainSetUp(
+            in: Self.job("archive", in: Self.appstore()), before: "run: xcodegen generate",
+            label: "appstore.yml archive")
+        try Self.expectToolchainSetUp(
+            in: Self.job("focused", in: Self.sanitizers()), before: "make ${{ matrix.target }}",
+            label: "sanitizers.yml focused")
+        let preview = try Self.job("compatibility", in: Self.xcode27Preview())
+        try Self.expectToolchainSetUp(
+            in: preview, before: "run: make lint", label: "xcode-27-preview.yml compatibility")
+        // That image's default Xcode is the preview under test; latest-stable would skip it.
+        #expect(preview.contains(#"select-xcode: "false""#))
+    }
+
+    /// Dependabot's github-actions updater reads only `.github/workflows` and a root
+    /// `action.yml` for `directory: /`, so the pins inside a local composite action are
+    /// invisible to it unless that directory is listed. When the setup-xcode and cache pins
+    /// moved out of the workflows, they would otherwise have stopped receiving updates, with
+    /// nothing failing.
+    @Test func dependabotWatchesTheCompositeActionPins() throws {
+        let dependabot = try Self.text(".github", "dependabot.yml")
+        let entry = try #require(dependabot.range(of: "- package-ecosystem: github-actions"))
+        let next = dependabot.range(
+            of: "- package-ecosystem:", range: entry.upperBound..<dependabot.endIndex)
+        let actions = String(
+            dependabot[entry.lowerBound..<(next?.lowerBound ?? dependabot.endIndex)])
+        #expect(actions.contains("\n    directories:\n"))
+        #expect(actions.contains("\n      - /\n"), "the workflows directory must stay covered")
+        #expect(
+            actions.contains("\n      - /.github/actions/*\n"),
+            "local composite actions must be covered, or their pins stop being updated")
+        // Matched as a key at entry indentation: the explanatory comment names `directory: /`.
+        #expect(
+            !actions.contains("\n    directory:"),
+            "`directory` and `directories` cannot be combined")
+        #expect(try !Self.compositeActions().isEmpty)
     }
 
     // MARK: - Contract: certify Sequoia and Tahoe explicitly
@@ -247,16 +377,28 @@ struct WorkflowConfigurationTests {
     // MARK: - Contract: cache SPM dependencies where safe
 
     @Test func ciCachesSwiftPackageManagerDependencies() throws {
-        let ci = try Self.ci()
-        #expect(ci.contains("actions/cache@"), "CI must cache something (SPM)")
+        let action = try Self.toolchainAction()
+        #expect(action.contains("actions/cache@"), "CI must cache something (SPM)")
         #expect(
-            ci.contains("org.swift.swiftpm"),
+            action.contains("org.swift.swiftpm"),
             "CI must cache the Swift Package Manager cache directory")
         // Keyed on project.yml — the dependency source of truth (the resolved project
         // is generated, not committed).
         #expect(
-            ci.contains("hashFiles('project.yml')"),
+            action.contains("hashFiles('project.yml')"),
             "The SPM cache key must be bound to project.yml")
+        #expect(
+            action.contains("if: inputs.spm-cache == 'true'"),
+            "each job must opt in to the cache, so the signed build can stay cold")
+
+        let ci = try Self.ci()
+        for name in ["build", "ui-test"] {
+            let job = try Self.job(name, in: ci)
+            #expect(
+                job.contains(#"spm-cache: "true""#), "ci.yml \(name) must restore the SPM cache")
+            // Per runner label, so the Sequoia and Tahoe rows never share a cache.
+            #expect(job.contains("spm-cache-prefix: ${{ matrix.runner }}"))
+        }
     }
 
     @Test func workflowsVerifyPinnedXcodeGenAndWatchExternalPins() throws {
@@ -271,8 +413,11 @@ struct WorkflowConfigurationTests {
         #expect(verifier.contains("xcodegen-version.env"))
         #expect(verifier.contains(#"[ "$actual" != "$XCODEGEN_VERSION" ]"#))
         #expect(try Self.makefile().contains(#"verify-xcodegen-version.sh "$(XCODEGEN)""#))
-        for workflow in try [Self.ci(), Self.release(), Self.appstore()] {
-            #expect(workflow.contains("./scripts/install-xcodegen.sh"))
+        #expect(try Self.toolchainAction().contains("./scripts/install-xcodegen.sh"))
+        for workflow in try [
+            Self.ci(), Self.release(), Self.appstore(), Self.sanitizers(), Self.xcode27Preview(),
+        ] {
+            #expect(workflow.contains(Self.toolchainActionReference))
             #expect(!workflow.contains("brew install xcodegen"))
         }
         let freshness = try Self.freshness()
@@ -813,17 +958,25 @@ struct WorkflowConfigurationTests {
     /// receives rolling updates, and `xcode-version: latest-stable` resolves at run
     /// time, so a DMG must remain traceable to the exact versions that built it.
     @Test func releaseGateLogsExactToolchainVersionsBeforeBuilding() throws {
-        let release = try Self.release()
-        #expect(release.contains("sw_vers"), "release gate must log the macOS version (sw_vers)")
-        #expect(release.contains("xcodebuild -version"), "release gate must log the Xcode version")
-        #expect(release.contains("swift --version"), "release gate must log the Swift version")
+        let action = try Self.toolchainAction()
+        #expect(action.contains("sw_vers"), "release gate must log the macOS version (sw_vers)")
+        #expect(action.contains("xcodebuild -version"), "release gate must log the Xcode version")
+        #expect(action.contains("swift --version"), "release gate must log the Swift version")
 
-        // The toolchain probe must precede the first build invocation in the gate.
-        let toolchainMarker = try #require(release.range(of: "sw_vers"))
-        let buildMarker = try #require(release.range(of: "run: make build "))
+        let release = try Self.release()
+        try Self.expectToolchainSetUp(
+            in: Self.job("verify", in: release), before: "run: make build ",
+            label: "release.yml verify")
+
+        // The DMG users install is built in `candidate`, on a runner that can carry a different
+        // image version than `verify`'s, so that job records its own toolchain too. It restores
+        // no package cache: the shipped build resolves its packages from a clean state.
+        let candidate = try Self.job("candidate", in: release)
+        try Self.expectToolchainSetUp(
+            in: candidate, before: "run: ./scripts/build-dmg.sh", label: "release.yml candidate")
         #expect(
-            toolchainMarker.lowerBound < buildMarker.lowerBound,
-            "Toolchain versions must be logged before building in the release gate")
+            !candidate.contains(#"spm-cache: "true""#),
+            "the signed release candidate must not restore a package cache")
     }
 
     // MARK: - Contract: the release gate uploads .xcresult bundles on failure
@@ -1001,11 +1154,11 @@ struct WorkflowConfigurationTests {
 
     // MARK: - Contract: third-party actions are commit-SHA pinned
 
-    /// Every `uses:` in every workflow must reference a full 40-character commit SHA,
-    /// never a mutable `@vN`/`@branch` tag — the release workflow holds the Developer ID
-    /// `.p12`, the notary `.p8`, the Sparkle EdDSA key, the license-signing key, and the
-    /// tap deploy key, so a hijacked tag on a community action is a direct path to those
-    /// secrets (the tj-actions incident pattern).
+    /// Every `uses:` in every workflow and local composite action must reference a full
+    /// 40-character commit SHA, never a mutable `@vN`/`@branch` tag — the release workflow
+    /// holds the Developer ID `.p12`, the notary `.p8`, the Sparkle EdDSA key, the
+    /// license-signing key, and the tap deploy key, so a hijacked tag on a community action
+    /// is a direct path to those secrets (the tj-actions incident pattern).
     /// A trailing `# vX.Y.Z` comment must record the human-readable version the SHA
     /// corresponds to, which is also what Dependabot rewrites when it bumps the pin.
     @Test func thirdPartyActionsArePinnedToCommitSHAs() throws {
@@ -1018,7 +1171,7 @@ struct WorkflowConfigurationTests {
             ("sanitizers.yml", Self.sanitizers()),
             ("dependency-freshness.yml", Self.freshness()),
             ("xcode-27-preview.yml", Self.xcode27Preview()),
-        ] {
+        ] + Self.compositeActions() {
             for rawLine in yaml.components(separatedBy: .newlines) {
                 guard let usesRange = rawLine.range(of: "uses:") else { continue }
                 // The reference value: everything after `uses:` up to an inline comment.

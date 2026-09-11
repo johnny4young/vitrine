@@ -6,7 +6,11 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    # `directory: /` reads only .github/workflows and a root action.yml, so the local
+    # composite actions need their own entry or the pins inside them stop being updated.
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
       day: monday
