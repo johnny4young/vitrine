@@ -152,7 +152,12 @@ certification covers:
 
 Both are standard arm64 GitHub-hosted labels. `setup-xcode` selects the newest stable
 Xcode installed on each image, and the workflow logs the resolved versions instead of
-assuming they match. `fail-fast: false` ensures a failure on one OS never cancels the
+assuming they match. Every job that builds gets both from one composite action,
+`.github/actions/setup-macos-toolchain`, which also installs the pinned XcodeGen and,
+where a job opts in, restores the SPM cache. Dependabot's `directory: /` covers only
+`.github/workflows` and a root `action.yml`, so `.github/dependabot.yml` also lists
+`/.github/actions/*`; without it the pins inside the action would stop being updated.
+`fail-fast: false` ensures a failure on one OS never cancels the
 evidence from the other. Artifact names include `sequoia-15` or `tahoe-26`, preventing
 parallel matrix uploads from colliding.
 

@@ -83,40 +83,15 @@ jobs:
           fi
           echo "Tag v${TAG_VERSION} matches project.yml and has bundled release notes." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Select latest stable Xcode
-        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
         with:
-          xcode-version: latest-stable
-
-      - name: Export DEVELOPER_DIR
-        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
-
-      - name: Toolchain versions
-        run: |
-          {
-            echo "### Release toolchain"
-            echo '```'
-            echo "Tag: ${GITHUB_REF_NAME}"
-            echo "Image: ${ImageOS:-unknown} (${ImageVersion:-unknown})"
-            sw_vers
-            xcodebuild -version
-            swift --version
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Install pinned XcodeGen
-        run: ./scripts/install-xcodegen.sh
+          summary-title: Release toolchain
+          summary-context: "Tag: ${{ github.ref_name }}"
+          spm-cache: "true"
 
       - name: CHANGELOG matches the tagged version
         run: make changelog-check
-
-      - name: Cache Swift Package Manager
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('project.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
 
       - name: Lint (swift-format)
         run: make lint
@@ -165,16 +140,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Select latest stable Xcode
-        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
+      # This job builds the DMG users install, on a runner that can carry a different image
+      # version than `verify`'s, so it records its own toolchain. It restores no package
+      # cache: the shipped build resolves its packages from a clean state.
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
         with:
-          xcode-version: latest-stable
-
-      - name: Export DEVELOPER_DIR
-        run: echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
-
-      - name: Install pinned XcodeGen
-        run: ./scripts/install-xcodegen.sh
+          summary-title: Release candidate toolchain
+          summary-context: "Tag: ${{ github.ref_name }}"
+          spm-cache: "false"
 
       # A release candidate is intentionally stricter than a local/fork DMG build.
       # `build-dmg.sh` retains its ad-hoc fallback for local development, but a tag
