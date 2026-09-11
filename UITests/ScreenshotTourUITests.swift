@@ -959,7 +959,12 @@ final class ScreenshotTourUITests: XCTestCase {
             "\(name) did not turn on (accessibility value: \(value ?? "nil"))")
     }
 
+    /// Records one tour line in the run log and, where the sandbox allows writing, in the
+    /// manifest beside the PNGs. CI keeps the job log but not that directory, so anything
+    /// worth noticing later — a missing state, a surface still moving when its budget ran
+    /// out — has to reach standard output to be visible there at all.
     private func log(_ line: String) {
+        print("TOUR \(line)")
         let manifest = outputDirectory.appendingPathComponent("manifest.txt")
         let entry = line + "\n"
         if let handle = try? FileHandle(forWritingTo: manifest) {
