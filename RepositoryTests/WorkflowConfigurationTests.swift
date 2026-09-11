@@ -620,6 +620,19 @@ struct WorkflowConfigurationTests {
         let doc = try Self.releasingDoc()
         #expect(doc.contains("**Xcode 27 preview**"))
         #expect(doc.contains("not a claim of macOS 27 runtime support"))
+
+        // GitHub moved the preview image from a macOS 26 host to a macOS 27 one while three
+        // files still named the old host. Each run's summary records the exact host, so the
+        // prose describing the lane must not pin one.
+        let pinnedHost = try Regex(#"macOS \d+ host"#)
+        for (name, text) in try [
+            ("xcode-27-preview.yml", workflow), ("RELEASING.md", doc),
+            ("ARCHITECTURE.md", Self.text("docs", "ARCHITECTURE.md")),
+        ] {
+            #expect(
+                text.firstMatch(of: pinnedHost) == nil,
+                "\(name) must not name the preview image's host macOS")
+        }
     }
 
     @Test func sanitizersAreFocusedWeeklyManualEarlyWarnings() throws {

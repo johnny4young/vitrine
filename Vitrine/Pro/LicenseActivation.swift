@@ -49,7 +49,12 @@ import Foundation
 
     /// Validates a license key against a provider (Lemon Squeezy in production, a fake in
     /// tests). Abstracted so `LicenseActivationService` is unit-testable without the network.
-    protocol LicenseKeyValidator: Sendable {
+    ///
+    /// `nonisolated`, like `LicenseKeyDeactivator`: every conformer is isolation-agnostic (a
+    /// `nonisolated struct` in production, structs and actors in tests). Without the keyword,
+    /// Swift 6.4 gives the protocol this module's default `MainActor` isolation, and an actor
+    /// cannot conform to a main-actor-isolated protocol.
+    nonisolated protocol LicenseKeyValidator: Sendable {
         /// Activates `licenseKey` for a named instance (the user's machine), returning the
         /// activation details or throwing a `LicenseActivationError`.
         func activate(licenseKey: String, instanceName: String) async throws -> LicenseActivation
@@ -74,7 +79,8 @@ import Foundation
 
     /// Releases a previously recorded provider instance. The raw key crosses only this
     /// boundary and is never exposed to defaults, diagnostics, or the CLI token file.
-    protocol LicenseKeyDeactivator: Sendable {
+    /// `nonisolated` for the same reason as `LicenseKeyValidator`.
+    nonisolated protocol LicenseKeyDeactivator: Sendable {
         func deactivate(
             licenseKey: String, instanceID: String
         ) async throws
