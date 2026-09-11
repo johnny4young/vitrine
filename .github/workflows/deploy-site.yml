@@ -49,6 +49,28 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
+      # Surface known vulnerabilities without failing the job. The site tree can carry an
+      # advisory whose fix needs a deliberate upgrade, so a blocking audit would stop
+      # unrelated work. The step tells a registry outage apart from findings rather than
+      # reporting both as vulnerabilities, since `npm audit` exits non-zero for either.
+      - name: Surface npm audit findings
+        run: |
+          set -uo pipefail
+          npm audit --json > "$RUNNER_TEMP/npm-audit.json" 2>/dev/null || true
+          node -e '
+            const fs = require("fs");
+            let report = null;
+            try { report = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); } catch {}
+            const counts = report && report.metadata && report.metadata.vulnerabilities;
+            if (!counts) {
+              console.log("::warning title=npm audit::npm audit produced no report, so vulnerabilities were not checked. The registry may be unreachable.");
+            } else if (counts.high + counts.critical > 0) {
+              console.log(`::warning title=npm audit::${counts.critical} critical and ${counts.high} high severity entries in site/. See the repository Dependabot alerts.`);
+            } else {
+              console.log(`npm audit: no high or critical findings (${counts.total} total).`);
+            }
+          ' "$RUNNER_TEMP/npm-audit.json"
+
       - name: Validate
         run: npm test
 

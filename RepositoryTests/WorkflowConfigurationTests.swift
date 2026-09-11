@@ -635,6 +635,52 @@ struct WorkflowConfigurationTests {
             "the checklist must keep the tag-after-merge callout")
     }
 
+    /// The Python gate scripts are linted at a pinned ruff version with a committed rule
+    /// selection, and npm audit findings are surfaced instead of silenced.
+    ///
+    /// Both ruff pins matter. Its default rule set grows between releases, and 0.16.7's
+    /// defaults report issues on these scripts that the core selection does not, so an
+    /// unpinned version or an implicit selection would change what CI enforces without any
+    /// change in this repository. The shape of the pin is asserted, not its number, so a
+    /// deliberate ruff upgrade does not also require editing this test.
+    @Test func pythonScriptsAreLintedAndNpmAuditIsSurfaced() throws {
+        let ci = try Self.ci()
+        let pinnedRuff = try NSRegularExpression(
+            pattern: #"pipx run ruff==[0-9]+\.[0-9]+\.[0-9]+ check scripts/"#)
+        #expect(
+            pinnedRuff.firstMatch(in: ci, range: NSRange(ci.startIndex..., in: ci)) != nil,
+            "ci.yml must lint scripts/ with a pinned ruff version")
+
+        let ruffConfig = try Self.text("ruff.toml")
+        #expect(
+            ruffConfig.contains("select = ["),
+            "ruff.toml must select rules explicitly rather than inherit ruff's defaults")
+
+        // The audit must not fail the job, and must tell an unreachable registry apart from
+        // findings: `npm audit` exits non-zero for both. The exact non-blocking line is
+        // asserted because a bare `|| true` would match any other step in the file.
+        let nonBlockingAudit =
+            #"npm audit --json > "$RUNNER_TEMP/npm-audit.json" 2>/dev/null || true"#
+        let deploySite = try Self.deploySite()
+        for (name, workflow) in [("ci.yml", ci), ("deploy-site.yml", deploySite)] {
+            #expect(
+                workflow.contains("name: Surface npm audit findings"),
+                "\(name) must surface npm audit findings")
+            #expect(workflow.contains(nonBlockingAudit), "\(name) must keep the audit non-blocking")
+            #expect(
+                workflow.contains("produced no report"),
+                "\(name) must report a missing audit report separately from findings")
+        }
+
+        let dependabot = try Self.text(".github", "dependabot.yml")
+        #expect(
+            dependabot.contains("applies-to: version-updates"),
+            "npm version updates must be grouped separately from security updates")
+        #expect(
+            dependabot.contains("applies-to: security-updates"),
+            "npm security fixes must not wait behind an incompatible version bump in one group")
+    }
+
     /// Both release gates and the site deploy read the version through one script.
     ///
     /// They used to carry their own `sed` expressions in two dialects: the release
