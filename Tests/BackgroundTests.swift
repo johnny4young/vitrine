@@ -10,8 +10,8 @@ import VitrineDomain
 @testable import VitrineRendering
 
 // `import SwiftUI` also brings a `BackgroundStyle` (a `ShapeStyle`) into scope,
-// which would make the bare name ambiguous here. Pin it to Vitrine's model type
-// for this test file.
+// which would make the bare name ambiguous here. Pin it to the VitrineDomain model
+// type for this test file.
 private typealias BackgroundStyle = VitrineDomain.BackgroundStyle
 
 /// Custom and image backgrounds.

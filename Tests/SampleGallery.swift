@@ -9,7 +9,7 @@ import VitrineRendering
 @testable import Vitrine
 
 // `import SwiftUI` also brings a `BackgroundStyle` (a `ShapeStyle`) into scope, so
-// the unqualified name is ambiguous here. Pin it to the app's canvas-background
+// the unqualified name is ambiguous here. Pin it to the VitrineDomain canvas-background
 // model for this file, matching `BackgroundTests`.
 private typealias BackgroundStyle = VitrineDomain.BackgroundStyle
 
