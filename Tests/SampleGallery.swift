@@ -3,13 +3,15 @@ import CryptoKit
 import Foundation
 import SwiftUI
 import Testing
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 
 // `import SwiftUI` also brings a `BackgroundStyle` (a `ShapeStyle`) into scope, so
 // the unqualified name is ambiguous here. Pin it to the app's canvas-background
 // model for this file, matching `BackgroundTests`.
-private typealias BackgroundStyle = Vitrine.BackgroundStyle
+private typealias BackgroundStyle = VitrineDomain.BackgroundStyle
 
 /// The launch-gallery catalog and its design-QA suite.
 ///

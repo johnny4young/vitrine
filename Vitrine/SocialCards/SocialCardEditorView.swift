@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The social-card composer: a live 1200×630 preview beside an inspector
 /// that edits the working ``SocialCardModel``, with copy / save / share export in a

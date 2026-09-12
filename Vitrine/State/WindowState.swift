@@ -1,5 +1,7 @@
 import AppKit
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 /// The pure, testable state layer behind editor-window restoration and
 /// multi-window editing.

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VitrineRendering
 
 /// The version-aware "What's New" surface.
 ///

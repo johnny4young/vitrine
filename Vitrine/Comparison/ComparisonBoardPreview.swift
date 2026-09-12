@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import VitrineRendering
 
 /// Tracks asynchronous preview rendering without treating a renderer failure as an
 /// indefinitely running operation.

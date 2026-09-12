@@ -2,6 +2,8 @@ import CoreGraphics
 import CryptoKit
 import Foundation
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

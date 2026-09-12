@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineRendering
 
 /// The Web Snapshot composer's inspector: source mode, the URL/HTML input, output
 /// options, and the primary capture/render action.

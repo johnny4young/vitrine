@@ -1,4 +1,5 @@
 import AppKit
+import VitrineRendering
 
 /// The standard macOS "About Vitrine" panel, branded with the app's tagline.
 ///

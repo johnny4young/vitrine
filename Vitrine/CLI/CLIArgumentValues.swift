@@ -1,4 +1,6 @@
 import Foundation
+import VitrineDomain
+import VitrineRendering
 
 extension CLIArgumentParser {
     // MARK: - Value resolution (each rejects an unknown id with a clear error)

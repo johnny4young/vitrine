@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 import Testing
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

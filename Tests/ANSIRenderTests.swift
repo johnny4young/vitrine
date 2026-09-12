@@ -1,7 +1,6 @@
 import AppKit
 import Testing
-// `palette` stores a VitrineRendering type, so the module is imported directly rather than
-// reached through Vitrine's typealias, which Xcode 27 reports.
+import VitrineDomain
 import VitrineRendering
 
 @testable import Vitrine

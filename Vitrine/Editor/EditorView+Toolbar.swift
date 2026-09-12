@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 private enum EditorToolbarDensity: Equatable {
     case full

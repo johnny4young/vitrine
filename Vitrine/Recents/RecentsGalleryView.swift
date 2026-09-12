@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The visual recents gallery: a window that shows past captures as
 /// preview cards instead of only a truncated line of code in a menu.

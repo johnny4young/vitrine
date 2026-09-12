@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import VitrineDomain
+import VitrineRendering
 
 /// The configuration and safety policy for capturing a user-provided URL through
 /// local WebKit.

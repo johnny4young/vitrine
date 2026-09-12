@@ -3,6 +3,8 @@ import Testing
 #if VITRINE_HOSTLESS_PROBE
     @testable import VitrineDomain
 #else
+    import VitrineDomain
+
     @testable import Vitrine
 #endif
 

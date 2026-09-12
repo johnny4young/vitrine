@@ -1,5 +1,7 @@
 import Foundation
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 /// Owns folder discovery, output planning, reporting, and batch render orchestration.
 enum CLIBatchRenderer {

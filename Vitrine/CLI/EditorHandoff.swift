@@ -1,4 +1,5 @@
 import AppKit
+import VitrineDomain
 
 /// The contract for handing captured content from the `vitrine` CLI to the running
 /// app's editor (`vitrine render … --edit`, behind `vgrab -e`).

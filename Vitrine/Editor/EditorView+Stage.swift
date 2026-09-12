@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// The editor's three columns: the code input, the ambient preview stage, and the
 /// inspector.

@@ -1,4 +1,5 @@
 import CoreGraphics
+import VitrineDomain
 
 /// Redacts secrets in a beautified image by painting over the image's own pixels.
 ///

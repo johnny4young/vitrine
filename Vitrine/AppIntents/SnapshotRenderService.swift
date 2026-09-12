@@ -1,6 +1,8 @@
 import AppKit
 import Foundation
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 /// Renders a `SnapshotRenderRequest` into image data or an `NSImage` through the
 /// **unchanged** app render path, for every automation surface (App Intents and the

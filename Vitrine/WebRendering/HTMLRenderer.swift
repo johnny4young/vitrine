@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 /// Renders a `.html` input to an image locally through `WKWebView`.
 ///

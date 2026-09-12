@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineDomain
 import VitrineRendering
 
 /// The editor's right-hand inspector, restyled per design system: a
