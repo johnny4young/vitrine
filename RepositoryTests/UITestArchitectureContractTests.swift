@@ -19,6 +19,29 @@ struct UITestArchitectureContractTests {
         #expect(Self.testMethodCount(in: tour) >= 20)
     }
 
+    /// Captures wait for the surface, not for the clock.
+    ///
+    /// Every capture in the tour used to follow a hand-tuned sleep, 24 seconds of them, and
+    /// a fixed wait is both too long once a surface is already still and too short when a
+    /// slower machine is mid-transition. `save(_:as:note:)` now waits for the pixels to stop
+    /// changing. The sleeps that remain are poll intervals inside loops that end as soon as
+    /// their condition holds, so this pins that shape: no sleep outside a bounded wait.
+    @Test func theVisualTourWaitsForSurfacesRatherThanTheClock() throws {
+        let tour = try Self.text("UITests/ScreenshotTourUITests.swift")
+        #expect(tour.contains("private func waitUntilStill("))
+        #expect(
+            tour.contains("waitUntilStill(element, timeout: settleTimeout)"),
+            "every capture must go through the stillness wait")
+
+        let lines = tour.components(separatedBy: .newlines)
+        for (index, line) in lines.enumerated() where line.contains("Thread.sleep(") {
+            let context = lines[max(0, index - 6)..<min(lines.count, index + 3)]
+            #expect(
+                context.contains(where: { $0.contains("deadline") }),
+                "line \(index + 1) waits on the clock; wait on a condition or the surface")
+        }
+    }
+
     @Test func keepsDomainRobotsAndSerialExecutionPolicy() throws {
         let robots = [
             "EditorRobot.swift": "struct EditorRobot",
