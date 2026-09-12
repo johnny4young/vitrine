@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 
 /// Reads the one recipe file explicitly named by a CLI invocation.
 ///

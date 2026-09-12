@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import OSLog
 import Observation
+import VitrineRendering
 
 /// Persists the last `limit` captures and their preview thumbnails: pinned first,
 /// newest-first within each group, capped, and de-duplicated

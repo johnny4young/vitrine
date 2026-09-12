@@ -1,6 +1,7 @@
 import AppKit
 import OSLog
 import SwiftUI
+import VitrineRendering
 
 /// One editor window's per-window state: a stable identity, an independent
 /// settings instance seeded from the app-wide defaults, and the live config the

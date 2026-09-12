@@ -4,6 +4,8 @@ import ImageIO
 import SwiftUI
 import Testing
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 
@@ -292,7 +294,7 @@ struct ColorOutputTests {
         // export is always sRGB and the P3 export is always P3, and both encode
         // to a valid PNG (magic number) — a structural color-output regression net.
         // Qualified: SwiftUI also declares a `BackgroundStyle` shape style.
-        let backgrounds: [Vitrine.BackgroundStyle] = [
+        let backgrounds: [VitrineDomain.BackgroundStyle] = [
             .gradient(.aurora), .solid(RGBAColor(Color(hex: "#1F1C2C"))), .transparent,
         ]
         for background in backgrounds {

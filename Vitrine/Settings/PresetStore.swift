@@ -1,6 +1,8 @@
 import Foundation
 import OSLog
 import Observation
+import VitrineDomain
+import VitrineRendering
 
 /// Owns the user's saved style presets and the built-in catalog, and brokers
 /// every preset operation: save the current style, apply, duplicate, rename,

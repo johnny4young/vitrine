@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 
 extension CLIArgumentParser {
     /// Validates option combinations and materializes the immutable command contract.

@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 
 /// Pure inspection commands for explicit workspace-recipe files.
 ///

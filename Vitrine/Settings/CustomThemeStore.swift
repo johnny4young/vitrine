@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import Observation
+import VitrineDomain
 
 /// Owns the user's custom themes and brokers every custom-theme operation: import
 /// from a documented file schema, export, rename, delete, and resolve a theme id to

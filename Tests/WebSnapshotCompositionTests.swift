@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Testing
+import VitrineRendering
 
 @testable import Vitrine
 

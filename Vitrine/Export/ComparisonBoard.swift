@@ -1,4 +1,5 @@
 import Foundation
+import VitrineRendering
 
 /// A validated, path-free description of a board made from two to four finished
 /// captures.

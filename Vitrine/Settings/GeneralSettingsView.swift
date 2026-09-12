@@ -1,6 +1,7 @@
 import AppKit
 import KeyboardShortcuts
 import SwiftUI
+import VitrineDomain
 
 /// General pane: hotkey, what it triggers, launch at login,
 /// plus a "Reset all settings" action that restores defaults.

@@ -1,4 +1,5 @@
 import AppKit
+import VitrineRendering
 
 /// Routes menu-bar commands to app-owned windows without exposing their global
 /// lifecycles to the SwiftUI panel.

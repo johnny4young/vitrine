@@ -1,6 +1,8 @@
 import AppKit
 import KeyboardShortcuts
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The first-run quick-start.
 ///

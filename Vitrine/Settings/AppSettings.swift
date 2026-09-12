@@ -1,5 +1,7 @@
 import OSLog
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The app's persisted settings and the live `SnapshotConfig`, shared across the
 /// UI, the quick-capture path, and the exporter. `UserDefaults` is

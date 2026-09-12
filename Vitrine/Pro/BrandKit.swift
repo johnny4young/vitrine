@@ -1,6 +1,8 @@
 import AppKit
 import OSLog
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The user's brand identity — a logo, a handle, an optional project label, an
 /// accent color, and a corner placement — applied as a watermark to exported

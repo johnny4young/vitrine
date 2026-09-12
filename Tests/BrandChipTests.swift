@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import Testing
 import Vision
+import VitrineRendering
 
 @testable import Vitrine
 

@@ -4,6 +4,7 @@ import ImageIO
 import SwiftUI
 import Testing
 import UniformTypeIdentifiers
+import VitrineDomain
 
 @testable import Vitrine
 @testable import VitrineRendering
@@ -11,7 +12,7 @@ import UniformTypeIdentifiers
 // `import SwiftUI` also brings a `BackgroundStyle` (a `ShapeStyle`) into scope,
 // which would make the bare name ambiguous here. Pin it to Vitrine's model type
 // for this test file.
-private typealias BackgroundStyle = Vitrine.BackgroundStyle
+private typealias BackgroundStyle = VitrineDomain.BackgroundStyle
 
 /// Custom and image backgrounds.
 ///
