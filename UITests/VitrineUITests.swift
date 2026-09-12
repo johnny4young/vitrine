@@ -590,9 +590,7 @@ final class VitrineUITests: XCTestCase {
         assertHittable(
             "editor-style-preset-picker", in: app, "Style preset picker is not reachable")
         element("editor-style-preset-picker", in: app).click()
-        let surprise = app.menuItems["Surprise Me"]
-        XCTAssertTrue(surprise.waitForExistence(timeout: 3))
-        surprise.click()
+        chooseMenuItem("Surprise Me", in: app)
 
         let dracula = app.buttons["Dracula"].firstMatch
         XCTAssertTrue(dracula.waitForExistence(timeout: 3))
@@ -1068,9 +1066,7 @@ final class VitrineUITests: XCTestCase {
             "A recent capture should expose its destination preset picker")
         element("recents-preset-picker", in: app).click()
 
-        let openGraph = app.menuItems["OpenGraph 1200×630"]
-        XCTAssertTrue(openGraph.waitForExistence(timeout: 3))
-        openGraph.click()
+        chooseMenuItem("OpenGraph 1200×630", in: app)
 
         let deadline = Date().addingTimeInterval(6)
         var representation: NSBitmapImageRep?
@@ -1180,9 +1176,7 @@ final class VitrineUITests: XCTestCase {
             "recents-preset-picker", in: app,
             "The filtered recent should keep its actions menu")
         element("recents-preset-picker", in: app).click()
-        let delete = app.menuItems["Delete Capture"]
-        XCTAssertTrue(delete.waitForExistence(timeout: 3))
-        delete.click()
+        chooseMenuItem("Delete Capture", in: app)
         let confirmation = app.sheets.firstMatch.buttons["Delete Capture"].firstMatch
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
         confirmation.click()
@@ -1195,49 +1189,23 @@ final class VitrineUITests: XCTestCase {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.recents)
         defer { app.terminate() }
+        let recents = RecentsRobot(testCase: self, app: app)
 
-        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
-        XCTAssertEqual(cards.count, 3)
-        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
-        XCTAssertEqual(
-            app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count,
-            1)
+        XCTAssertEqual(recents.cards.count, 3)
+        XCTAssertTrue(recents.cards.element(boundBy: 0).label.contains("Go"))
+        XCTAssertEqual(recents.pinnedBadges.count, 1)
 
-        let actions = app.descendants(matching: .any).matching(
-            identifier: "recents-preset-picker")
-        actions.element(boundBy: 0).click()
-        let unpin = app.menuItems["Unpin Capture"]
-        XCTAssertTrue(unpin.waitForExistence(timeout: 3))
-        unpin.click()
+        // Pinned captures lead the gallery, so the leading card shows that a pin change
+        // landed. The badge count is then read once instead of polled.
+        recents.presetPickers.element(boundBy: 0).click()
+        chooseMenuItem("Unpin Capture", in: app)
+        waitForLabel(of: recents.cards.element(boundBy: 0), toContain: "Rust")
+        XCTAssertEqual(recents.pinnedBadges.count, 0)
 
-        let unpinDeadline = Date().addingTimeInterval(3)
-        while app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count
-            != 0,
-            Date() < unpinDeadline
-        {
-            Thread.sleep(forTimeInterval: 0.2)
-        }
-        XCTAssertEqual(
-            app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count,
-            0)
-        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Rust"))
-
-        actions.element(boundBy: 2).click()
-        let pin = app.menuItems["Pin Capture"]
-        XCTAssertTrue(pin.waitForExistence(timeout: 3))
-        pin.click()
-
-        let pinDeadline = Date().addingTimeInterval(3)
-        while app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count
-            != 1,
-            Date() < pinDeadline
-        {
-            Thread.sleep(forTimeInterval: 0.2)
-        }
-        XCTAssertEqual(
-            app.descendants(matching: .any).matching(identifier: "recents-pinned-badge").count,
-            1)
-        XCTAssertTrue(cards.element(boundBy: 0).label.contains("Go"))
+        recents.presetPickers.element(boundBy: 2).click()
+        chooseMenuItem("Pin Capture", in: app)
+        waitForLabel(of: recents.cards.element(boundBy: 0), toContain: "Go")
+        XCTAssertEqual(recents.pinnedBadges.count, 1)
     }
 
     @MainActor
@@ -1334,9 +1302,7 @@ final class VitrineUITests: XCTestCase {
             "Recents should expose its sort picker", timeout: 8)
         let sort = hittableElement("recents-sort-picker", in: app)
         sort.click()
-        let oldestFirst = app.menuItems["Oldest First"]
-        XCTAssertTrue(oldestFirst.waitForExistence(timeout: 3))
-        oldestFirst.click()
+        chooseMenuItem("Oldest First", in: app)
 
         let deadline = Date().addingTimeInterval(3)
         while !cards.element(boundBy: 1).label.contains("Python"), Date() < deadline {
@@ -1365,9 +1331,7 @@ final class VitrineUITests: XCTestCase {
             "recents-preset-picker", in: app,
             "A recent capture should expose its source-copy action")
         element("recents-preset-picker", in: app).click()
-        let copySource = app.menuItems["Copy Source"]
-        XCTAssertTrue(copySource.waitForExistence(timeout: 3))
-        copySource.click()
+        chooseMenuItem("Copy Source", in: app)
 
         let deadline = Date().addingTimeInterval(3)
         while pasteboard.string(forType: .string) == "sentinel", Date() < deadline {
@@ -1401,9 +1365,7 @@ final class VitrineUITests: XCTestCase {
             "The destination preset picker should be reachable from the menu-bar panel")
         element("menu-capture-preset-picker", in: app).click()
 
-        let openGraph = app.menuItems["OpenGraph 1200×630"]
-        XCTAssertTrue(openGraph.waitForExistence(timeout: 3))
-        openGraph.click()
+        chooseMenuItem("OpenGraph 1200×630", in: app)
 
         let deadline = Date().addingTimeInterval(6)
         var representation: NSBitmapImageRep?
