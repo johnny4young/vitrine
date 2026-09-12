@@ -1,5 +1,6 @@
 import AppKit
 import Security
+import os
 
 /// Owns the lifecycle of the minimal process that paints Vitrine's menu-bar item.
 ///

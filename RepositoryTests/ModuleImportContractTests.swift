@@ -88,6 +88,27 @@ struct ModuleImportContractTests {
         )
     }
 
+    /// With `MemberImportVisibility` on, a file that calls a member declared in another
+    /// module's extension must import that module itself. Without it, one import anywhere
+    /// in a target made those members visible in every file, which is how 84 imports were
+    /// missing when it was first enabled. It is set once for every target, so this pins the
+    /// base setting and that no target turns it back off.
+    @Test func memberImportVisibilityStaysOnForEveryTarget() throws {
+        let project = try String(
+            contentsOf: Self.root.appendingPathComponent("project.yml"), encoding: .utf8)
+        let settings = project.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { $0.hasPrefix("SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY:") }
+        #expect(
+            settings == ["SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES"],
+            "set MemberImportVisibility once, in the base settings, and never override it: \(settings)"
+        )
+        let base = try #require(project.range(of: "\nsettings:\n  base:\n"))
+        let targets = try #require(project.range(of: "\ntargets:\n"))
+        let baseSettings = project[base.upperBound..<targets.lowerBound]
+        #expect(baseSettings.contains("SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES"))
+    }
+
     private static func swiftFiles(in directory: String) -> [URL] {
         let files = FileManager.default.enumerator(
             at: root.appendingPathComponent(directory), includingPropertiesForKeys: nil)

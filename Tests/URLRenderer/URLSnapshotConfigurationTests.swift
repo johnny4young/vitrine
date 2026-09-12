@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
 import Testing
+import VitrineDomain
+import VitrineRendering
 import WebKit
 
 @testable import Vitrine

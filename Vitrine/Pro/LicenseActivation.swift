@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import os
 
 #if VITRINE_DIRECT_DOWNLOAD
     /// One-time online license activation for the direct-download build.

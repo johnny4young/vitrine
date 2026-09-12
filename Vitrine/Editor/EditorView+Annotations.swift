@@ -1,5 +1,6 @@
 import SwiftUI
 import VitrineDomain
+import VitrineRendering
 
 /// The editor's annotation toolbar state and undo/redo history.
 extension EditorView {

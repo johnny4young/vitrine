@@ -1,6 +1,7 @@
 import AppKit
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
 
 /// A privacy-safe diagnostics report a user can attach to a bug report.
 ///

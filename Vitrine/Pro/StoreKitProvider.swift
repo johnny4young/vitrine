@@ -1,5 +1,6 @@
 import Foundation
 import StoreKit
+import os
 
 /// The outcome of a purchase attempt, so the paywall can tell success from a user cancel
 /// (silent) and a genuine failure (show an error) instead of clearing the spinner with no

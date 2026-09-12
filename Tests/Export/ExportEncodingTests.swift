@@ -1,6 +1,7 @@
 import CoreGraphics
 import ImageIO
 import Testing
+import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
