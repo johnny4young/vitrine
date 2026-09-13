@@ -94,31 +94,55 @@ struct ModuleImportContractTests {
     /// missing when it was first enabled.
     ///
     /// The project's base settings turn it on for every target. Anywhere else that sets it may
-    /// only repeat `YES`, and no compiler flag may name the feature at all. That covers a target
-    /// or configuration in `project.yml` (bare or quoted key), every xcconfig the project names
-    /// and every file those include, and the `xcodebuild` command lines in the Makefile,
-    /// workflows, and scripts, whose overrides beat every project setting.
+    /// only repeat `YES`, and no compiler flag may disable the feature. That covers a target or
+    /// configuration in `project.yml` (bare or quoted key); every xcconfig the project names, a
+    /// command line passes with `-xcconfig` or `XCODE_XCCONFIG_FILE`, or one of those includes;
+    /// and the `xcodebuild` command lines in the Makefile, workflows, and scripts, whose
+    /// overrides beat every project setting. `scripts/check-swift-features.py` checks the same
+    /// thing on CI from what the compiler was actually invoked with.
     @Test func memberImportVisibilityStaysOnForEveryTarget() throws {
         let project = try String(
             contentsOf: Self.root.appendingPathComponent("project.yml"), encoding: .utf8)
-        let base = Self.memberImportVisibility(in: Self.projectBaseSettings(of: project))
+        let base = Self.memberImportVisibility(
+            in: Self.projectBaseSettings(of: project), comments: ["#"])
         #expect(
             base.values == ["YES"],
             "set MemberImportVisibility to YES in the project's base settings: \(base.values)")
 
         var sources = [("project.yml", project)]
-        var pending = project.components(separatedBy: .newlines).compactMap { line -> URL? in
-            let value = Self.withoutComment(line).trimmingCharacters(in: Self.quotesAndSpaces)
-            guard value.hasSuffix(".xcconfig"),
-                let path = value.split(separator: ":", maxSplits: 1).last
-            else { return nil }
-            return Self.root
-                .appendingPathComponent(path.trimmingCharacters(in: Self.quotesAndSpaces))
-                .standardizedFileURL
+        for file in [Self.root.appendingPathComponent("Makefile")]
+            + Self.files(in: ".github", withExtensions: ["yml", "yaml"])
+            + Self.files(in: "scripts", withExtensions: ["sh", "py", "rb", "swift"])
+        {
+            sources.append((file.lastPathComponent, try String(contentsOf: file, encoding: .utf8)))
+        }
+
+        // Every xcconfig the project names, plus any a command line passes.
+        var pending: [URL] = []
+        for line in project.components(separatedBy: .newlines) {
+            var value = Self.withoutComment(line, markers: ["#"])
+                .trimmingCharacters(in: Self.quotesAndSpaces)
+            if value.hasPrefix("- ") { value = String(value.dropFirst(2)) }
+            guard value.hasSuffix(".xcconfig") else { continue }
+            let path = value.split(separator: ":", maxSplits: 1).last ?? Substring(value)
+            pending.append(
+                Self.root.appendingPathComponent(path.trimmingCharacters(in: Self.quotesAndSpaces)))
+        }
+        let passed = try Regex(#"(?:-xcconfig\s+|XCODE_XCCONFIG_FILE=)["']?([^\s"']+\.xcconfig)"#)
+        for (_, text) in sources {
+            for match in text.matches(of: passed) {
+                if let path = match.output[1].substring {
+                    pending.append(Self.root.appendingPathComponent(String(path)))
+                }
+            }
         }
         var visited: Set<URL> = []
-        while let xcconfig = pending.popLast() {
+        while let xcconfig = pending.popLast()?.standardizedFileURL {
             guard visited.insert(xcconfig).inserted else { continue }
+            guard FileManager.default.fileExists(atPath: xcconfig.path) else {
+                Issue.record("a named xcconfig does not exist: \(xcconfig.path)")
+                continue
+            }
             let text = try String(contentsOf: xcconfig, encoding: .utf8)
             sources.append((xcconfig.lastPathComponent, text))
             for line in text.components(separatedBy: .newlines) {
@@ -129,7 +153,6 @@ struct ModuleImportContractTests {
                 else { continue }
                 let included = xcconfig.deletingLastPathComponent()
                     .appendingPathComponent(String(directive[directive.index(after: open)..<close]))
-                    .standardizedFileURL
                 // `#include?` names an optional file; a plain `#include` must exist.
                 if directive.hasPrefix("#include?"),
                     !FileManager.default.fileExists(atPath: included.path)
@@ -139,37 +162,38 @@ struct ModuleImportContractTests {
                 pending.append(included)
             }
         }
-        let invocations =
-            [Self.root.appendingPathComponent("Makefile")]
-            + Self.files(in: ".github", withExtensions: ["yml", "yaml"])
-            + Self.files(in: "scripts", withExtensions: ["sh", "py", "rb", "swift"])
-        for file in invocations {
-            sources.append((file.lastPathComponent, try String(contentsOf: file, encoding: .utf8)))
-        }
 
         for (name, text) in sources {
-            let found = Self.memberImportVisibility(in: text)
+            let markers: Set<String> =
+                name.hasSuffix(".xcconfig") || name.hasSuffix(".swift") ? ["//"] : ["#"]
+            let found = Self.memberImportVisibility(in: text, comments: markers)
             #expect(
                 found.values.allSatisfy { $0 == "YES" },
                 "\(name) sets MemberImportVisibility to something other than YES: \(found.values)")
             #expect(
                 found.compilerFlags.isEmpty,
-                "\(name) names MemberImportVisibility in a compiler flag: \(found.compilerFlags)")
+                "\(name) disables MemberImportVisibility with a compiler flag: \(found.compilerFlags)"
+            )
         }
     }
 
     /// Every value `text` gives `SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY`, bare or quoted,
     /// with or without xcconfig conditions such as `[config=Release]`, and written as `key: value`
-    /// (YAML) or `key = value` (xcconfig and command lines). Also every line that names the
-    /// feature itself, which only a compiler flag such as `-disable-upcoming-feature` does.
+    /// (YAML) or `key = value` (xcconfig and command lines). Also every `-disable-upcoming-feature`
+    /// flag that names the feature, on the same line or, for a YAML list, on the next one.
     private static func memberImportVisibility(
-        in text: String
+        in text: String, comments: Set<String>
     ) -> (values: [String], compilerFlags: [String]) {
         var values: [String] = []
         var compilerFlags: [String] = []
+        var previous: Substring = ""
         for rawLine in text.components(separatedBy: .newlines) {
-            let line = Self.withoutComment(rawLine)
-            if line.contains("MemberImportVisibility") {
+            let line = Self.withoutComment(rawLine, markers: comments)
+            defer { previous = line }
+            if line.contains("MemberImportVisibility"),
+                line.contains("disable-upcoming-feature")
+                    || previous.contains("disable-upcoming-feature")
+            {
                 compilerFlags.append(line.trimmingCharacters(in: .whitespaces))
             }
             guard let key = line.range(of: "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY") else {
@@ -199,7 +223,7 @@ struct ModuleImportContractTests {
         var inBase = false
         var lines: [String] = []
         for rawLine in project.components(separatedBy: .newlines) {
-            let line = Self.withoutComment(rawLine)
+            let line = Self.withoutComment(rawLine, markers: ["#"])
             let key = line.trimmingCharacters(in: .whitespaces)
             if key.isEmpty { continue }
             if !inSettings {
@@ -218,10 +242,12 @@ struct ModuleImportContractTests {
         return lines.joined(separator: "\n")
     }
 
-    /// `line` up to its first `#` or `//` comment marker.
-    private static func withoutComment(_ line: String) -> Substring {
+    /// `line` up to its first comment marker. `#` starts a comment in YAML, make, shell and
+    /// Python; `//` does so in xcconfig and Swift, where a `#` would also cut `#include`, and in
+    /// the other files it is usually part of a URL.
+    private static func withoutComment(_ line: String, markers: Set<String>) -> Substring {
         var code = Substring(line)
-        for marker in ["#", "//"] {
+        for marker in markers {
             if let comment = code.range(of: marker) { code = code[..<comment.lowerBound] }
         }
         return code
