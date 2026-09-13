@@ -1,6 +1,7 @@
 import AppKit
 import KeyboardShortcuts
 import SwiftUI
+import VitrineRendering
 
 /// Concise, offline in-app Help.
 ///

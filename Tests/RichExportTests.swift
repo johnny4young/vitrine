@@ -2,6 +2,8 @@ import AppKit
 import Foundation
 import Testing
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

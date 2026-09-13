@@ -1,5 +1,7 @@
 import AppKit
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 extension ExportManager {
     nonisolated struct BatchExportResult: Equatable, Sendable {

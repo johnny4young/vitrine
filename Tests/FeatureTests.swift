@@ -1,6 +1,8 @@
 import Foundation
 import ServiceManagement
 import Testing
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

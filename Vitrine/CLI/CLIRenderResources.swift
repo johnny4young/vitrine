@@ -1,5 +1,7 @@
 import AppKit
 import Foundation
+import VitrineDomain
+import VitrineRendering
 
 /// Prepares invocation-scoped image resources without touching persistent app storage.
 enum CLIRenderResources {

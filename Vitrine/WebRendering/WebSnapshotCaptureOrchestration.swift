@@ -1,4 +1,5 @@
 import Foundation
+import VitrineRendering
 
 extension WebSnapshotModel {
     /// The maximum number of viewport captures to run at once. Small so a large

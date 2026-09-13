@@ -1,5 +1,7 @@
 import Foundation
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// Encodes a board through the shared export formats at the scale captured by its draft.
 enum ComparisonBoardExporter {

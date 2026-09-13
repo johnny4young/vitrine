@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineDomain
 
 /// SwiftUI presentation for `AnnotationTool` (its label and keyboard shortcut), kept in
 /// the UI layer so the `AnnotationTool` model itself stays UI-free (VitrineCore

@@ -2,6 +2,7 @@ import AppKit
 import CoreServices
 import KeyboardShortcuts
 import OSLog
+import VitrineRendering
 
 /// App lifecycle: configures the agent app and listens for the global hotkey.
 ///

@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// Brand Kit controls for the Style pane.
 ///

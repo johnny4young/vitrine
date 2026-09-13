@@ -1,4 +1,5 @@
 import AppIntents
+import VitrineDomain
 
 /// App Intents picker enums for the automation surfaces.
 ///

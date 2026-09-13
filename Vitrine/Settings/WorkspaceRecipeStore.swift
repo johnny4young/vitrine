@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import Observation
+import VitrineDomain
 
 /// A machine-local association between one folder and one portable recipe file.
 ///

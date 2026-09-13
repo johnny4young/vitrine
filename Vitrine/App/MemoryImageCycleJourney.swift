@@ -1,4 +1,6 @@
 import AppKit
+import VitrineDomain
+import VitrineRendering
 
 #if DEBUG
 

@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 /// Captures a user-provided URL by loading the page **locally** in an offscreen
 /// `WKWebView` and rasterizing it.

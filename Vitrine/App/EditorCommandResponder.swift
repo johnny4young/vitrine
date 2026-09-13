@@ -1,4 +1,6 @@
 import AppKit
+import VitrineDomain
+import VitrineRendering
 
 /// Performs and validates the editor/document commands (Copy / Save / Share
 /// Image) so they exist as real menu commands with keyboard shortcuts, not just

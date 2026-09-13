@@ -1,5 +1,7 @@
 import CoreGraphics
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// Deterministically arranges a validated comparison board into one color-managed
 /// rendered asset.

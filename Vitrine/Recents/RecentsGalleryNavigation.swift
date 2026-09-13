@@ -1,3 +1,5 @@
+import VitrineRendering
+
 /// Routes Recents gallery actions to app-owned editor windows without exposing their
 /// singleton lifecycle to the SwiftUI gallery.
 struct RecentsGalleryNavigation {

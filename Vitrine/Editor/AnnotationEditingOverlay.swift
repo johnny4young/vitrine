@@ -1,4 +1,6 @@
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The interactive editing layer drawn over the live preview.
 ///

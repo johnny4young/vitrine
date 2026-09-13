@@ -1,6 +1,8 @@
 import AppKit
 import Foundation
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// The editor's drag-and-drop input: reading a dropped source file or text and
 /// loading it into the live document.

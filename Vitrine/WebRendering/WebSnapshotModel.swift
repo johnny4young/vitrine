@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import VitrineRendering
 
 /// The observable document behind the Web Snapshot window: the chosen input mode, the
 /// URL/HTML the user is composing, the rendered result, and the in-flight/error state.

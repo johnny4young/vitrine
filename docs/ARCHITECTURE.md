@@ -941,8 +941,6 @@ Vitrine/
 ├── Recents/ · Updates/ · Help/ # recents selection/navigation; updates; Help/What's New
 ├── Support/
 │   ├── AppDefaults.swift      # UserDefaults routing (real app vs isolated UI tests)
-│   ├── DomainAliases.swift    # app compatibility names over VitrineDomain
-│   ├── RenderingAliases.swift # app compatibility names over VitrineRendering
 │   └── Log.swift              # app-lifecycle os.Logger categories
 └── Resources/
     ├── Assets.xcassets

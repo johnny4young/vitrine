@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineDomain
 
 /// Query-invariant metadata for one command-search field.
 ///

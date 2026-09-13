@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineRendering
 
 // Shared inspector input chrome for the editor-style composer windows (the social-card
 // and web-snapshot inspectors). Both surfaces need the same full-width bordered text

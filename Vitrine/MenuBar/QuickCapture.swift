@@ -1,6 +1,8 @@
 import AppKit
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// Quick mode: read the clipboard, detect the content, render with the saved
 /// settings, store it in Recents, and put the result back on the clipboard — no

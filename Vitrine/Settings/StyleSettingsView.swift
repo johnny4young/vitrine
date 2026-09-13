@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// Style pane: theme, background, padding, font, chrome, shadow + live preview,
 /// in the current design's sticky-header layout — the live preview and

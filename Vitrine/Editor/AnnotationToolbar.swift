@@ -1,4 +1,6 @@
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 enum AnnotationToolbarDensity: Equatable {
     case full

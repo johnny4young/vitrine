@@ -1,4 +1,6 @@
 import Foundation
+import VitrineDomain
+import VitrineRendering
 
 /// A past capture stored in Recents. Themes and languages are stored by
 /// id so the model stays `Codable` and decoupled from SwiftUI types.

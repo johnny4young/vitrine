@@ -1,4 +1,5 @@
 import Foundation
+import VitrineRendering
 
 /// Keeps one explicitly selected source file connected to an editor window for
 /// the lifetime of that window only.

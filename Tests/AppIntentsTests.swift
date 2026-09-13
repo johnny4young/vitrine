@@ -3,6 +3,8 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import Testing
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

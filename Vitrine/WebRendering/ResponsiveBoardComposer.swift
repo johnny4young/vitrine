@@ -1,5 +1,7 @@
 import CoreGraphics
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// Composites the captured viewports of a multi-resolution batch into one shareable
 /// "responsive board" image: each capture on a labeled card, laid out in a row

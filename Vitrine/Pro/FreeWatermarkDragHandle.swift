@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VitrineRendering
 
 /// The interactive drag layer for a free-placed brand mark .
 ///

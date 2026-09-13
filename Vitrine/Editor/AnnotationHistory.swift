@@ -1,3 +1,5 @@
+import VitrineDomain
+
 /// The annotation editor's undo/redo stacks, as a value type.
 ///
 /// The editor snapshots the whole mark list before each discrete edit — a draw, a

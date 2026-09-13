@@ -1,4 +1,5 @@
 import CoreGraphics
+import VitrineRendering
 
 @testable import Vitrine
 

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VitrineRendering
 
 /// A short-lived, in-app heads-up display anchored near the menu bar that
 /// confirms a quick capture without a Notification Center banner.

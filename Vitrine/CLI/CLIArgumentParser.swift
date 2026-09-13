@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 
 /// Mutable state for one CLI invocation. It owns token consumption and records
 /// syntactically valid flag values; semantic compatibility is resolved separately.

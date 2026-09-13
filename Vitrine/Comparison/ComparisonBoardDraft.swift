@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
 import Observation
+import VitrineDomain
+import VitrineRendering
 
 /// Session-only editing state for a comparison board.
 ///

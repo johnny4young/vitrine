@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import Testing
+import VitrineDomain
 
 @testable import Vitrine
 

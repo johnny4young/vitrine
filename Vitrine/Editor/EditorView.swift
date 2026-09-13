@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The editor window, redesigned around presets: a preset-first command
 /// strip on top, then code on the left, a hero preview on a neutral stage in the

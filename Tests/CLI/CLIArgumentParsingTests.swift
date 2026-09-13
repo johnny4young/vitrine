@@ -5,6 +5,8 @@ import Foundation
 import ImageIO
 import Testing
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

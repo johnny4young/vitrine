@@ -1,6 +1,8 @@
 import AppKit
 import Foundation
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 /// Drives a single `vitrine render` invocation: read the source file, build the
 /// snapshot, render it through the **unchanged** app render path, and write the

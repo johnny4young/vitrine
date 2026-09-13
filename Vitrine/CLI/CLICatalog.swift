@@ -1,4 +1,6 @@
 import Foundation
+import VitrineDomain
+import VitrineRendering
 
 /// Lists the local CLI catalogs used to validate themes, languages, export/style presets, fonts,
 /// backgrounds, image-background fits, image frames, frame appearances, watermark

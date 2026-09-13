@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineDomain
 import VitrineRendering
 
 /// Output pane: clipboard/save behavior, resolution, format.

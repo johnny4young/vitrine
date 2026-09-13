@@ -2,6 +2,8 @@ import CoreGraphics
 import Foundation
 import SwiftUI
 import Testing
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

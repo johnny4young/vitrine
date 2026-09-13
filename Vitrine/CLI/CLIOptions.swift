@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import VitrineDomain
+import VitrineRendering
 
 /// The parsed options for a single `vitrine render` invocation.
 ///

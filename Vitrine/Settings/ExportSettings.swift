@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import VitrineDomain
 import VitrineRendering
 
 /// The image-output settings (Output), extracted from `AppSettings` into a

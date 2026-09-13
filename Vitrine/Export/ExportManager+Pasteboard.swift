@@ -1,5 +1,7 @@
 import AppKit
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 extension ExportManager {
     /// Replaces the pasteboard contents with the exact plain-text source.

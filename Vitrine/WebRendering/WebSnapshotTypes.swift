@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VitrineRendering
 
 /// Which kind of web input the Web Snapshot surface is composing.
 enum WebInputMode: String, CaseIterable, Identifiable {
