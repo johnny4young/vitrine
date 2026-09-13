@@ -1,4 +1,6 @@
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The PRO multi-size one-pass export sheet: multi-select the platform
 /// presets, choose a folder, and write one correctly-sized file per preset in a

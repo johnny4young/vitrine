@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import VitrineRendering
 
 /// A session-only editor for arranging and exporting two to four recent captures.
 struct ComparisonBoardEditorView: View {

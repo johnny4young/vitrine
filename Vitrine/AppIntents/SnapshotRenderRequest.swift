@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import VitrineDomain
+import VitrineRendering
 
 /// A pure, value-typed request to render a piece of code text into an image,
 /// shared by every automation surface (App Intents and the Services menu).

@@ -1,6 +1,8 @@
 import AppKit
 import KeyboardShortcuts
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The menu-bar panel, built with the shared design system as the window-style
 /// surface behind the status item: header with the live hotkey, the gradient

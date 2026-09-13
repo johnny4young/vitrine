@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineRendering
 
 /// A branded empty-state placeholder built entirely from design tokens.
 ///

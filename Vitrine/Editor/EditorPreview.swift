@@ -1,4 +1,5 @@
 import Foundation
+import VitrineRendering
 
 /// Pure helpers backing the editor's hero preview.
 ///

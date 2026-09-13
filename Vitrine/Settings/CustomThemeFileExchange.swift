@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
 
 /// The user-initiated import/export of custom-theme files.
 ///

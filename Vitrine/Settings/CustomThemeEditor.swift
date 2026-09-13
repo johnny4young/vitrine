@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// A mutable, `Color`-backed draft of a custom-theme palette, used by
 /// `CustomThemeEditor` so the color wells bind to live SwiftUI colors and the

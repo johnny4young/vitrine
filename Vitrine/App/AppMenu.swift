@@ -1,4 +1,5 @@
 import AppKit
+import VitrineDomain
 
 // MARK: - Main menu builder
 

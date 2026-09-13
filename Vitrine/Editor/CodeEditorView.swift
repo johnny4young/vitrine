@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// Code text editor backed by `NSTextView` with live syntax highlighting:
 /// adaptive debounced recolor (100–250 ms), monospaced font, Tab = 4 spaces, no autocorrect.

@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineRendering
 
 // The shared chrome components of the current designed surfaces.
 // Every visual value here resolves through `VitrineTokens`; the shapes and

@@ -3,6 +3,8 @@ import ImageIO
 import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// Renders a `SocialCardModel` to an image and exports it to the clipboard or a file.
 ///

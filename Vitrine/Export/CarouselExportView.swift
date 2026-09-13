@@ -1,4 +1,6 @@
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The carousel export sheet: choose the lines-per-slide, see how many
 /// slides the snippet splits into, pick a folder, and write `carousel-01.png` … in one

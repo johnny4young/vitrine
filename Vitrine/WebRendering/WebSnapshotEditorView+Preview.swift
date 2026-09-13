@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VitrineRendering
 
 /// The Web Snapshot composer's center preview: the hero stage, the multi-size
 /// filmstrip, and the loading / empty / error states.

@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
 
 /// User-initiated recipe export and folder association panels.
 ///

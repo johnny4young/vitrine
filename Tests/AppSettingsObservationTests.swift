@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 import Testing
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

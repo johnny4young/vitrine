@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// The Style-pane editor for the canvas background.
 ///
@@ -10,7 +12,7 @@ import UniformTypeIdentifiers
 /// `BackgroundStyle` binding directly, so changes flow straight into the live
 /// `SnapshotConfig` and persist through `AppSettings`.
 struct BackgroundEditor: View {
-    @Binding var background: BackgroundStyle
+    @Binding var background: VitrineDomain.BackgroundStyle
 
     /// Imports/resolves image backgrounds in the app container. Injectable so the
     /// editor can be previewed/tested against an isolated store.
@@ -105,7 +107,7 @@ enum BackgroundKind: String, CaseIterable, Identifiable {
     }
 
     /// The kind backing an existing style.
-    init(_ style: BackgroundStyle) {
+    init(_ style: VitrineDomain.BackgroundStyle) {
         switch style {
         case .gradient: self = .gradient
         case .customGradient: self = .customGradient
@@ -118,9 +120,9 @@ enum BackgroundKind: String, CaseIterable, Identifiable {
     /// A default `BackgroundStyle` for this kind, seeded from the previous style
     /// where it makes sense so switching kinds carries intent forward.
     func makeDefault(
-        from previous: BackgroundStyle, imageStore: BackgroundImageStore
+        from previous: VitrineDomain.BackgroundStyle, imageStore: BackgroundImageStore
     )
-        -> BackgroundStyle
+        -> VitrineDomain.BackgroundStyle
     {
         switch self {
         case .gradient:

@@ -1,5 +1,6 @@
 import AppIntents
 import OSLog
+import VitrineDomain
 
 /// A Shortcuts action that opens a snippet of code in the Vitrine editor.
 ///

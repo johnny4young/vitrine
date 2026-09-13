@@ -1,6 +1,7 @@
 import AppKit
 import Testing
 import UniformTypeIdentifiers
+import VitrineRendering
 
 @testable import Vitrine
 

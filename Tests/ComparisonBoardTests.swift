@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
+import VitrineRendering
 
 @testable import Vitrine
 

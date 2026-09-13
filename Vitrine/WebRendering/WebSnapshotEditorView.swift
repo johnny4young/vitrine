@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VitrineRendering
 
 /// The Web Snapshot composer: a live preview beside an inspector that
 /// switches between **URL** capture and **HTML** rendering, with copy / save / share

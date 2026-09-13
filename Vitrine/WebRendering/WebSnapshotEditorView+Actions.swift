@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import VitrineRendering
 
 /// The Web Snapshot composer's actions: starting a capture and exporting the result
 /// (copy / save / share / export-all).

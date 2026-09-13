@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineDomain
 
 /// The editor's ⌘K command catalog.
 ///

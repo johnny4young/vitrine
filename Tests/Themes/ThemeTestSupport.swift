@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 
 @testable import Vitrine
 

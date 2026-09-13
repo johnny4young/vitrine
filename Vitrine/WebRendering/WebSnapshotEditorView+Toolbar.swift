@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VitrineRendering
 
 /// The Web Snapshot composer's glass toolbar (export/copy/share actions).
 extension WebSnapshotEditorView {

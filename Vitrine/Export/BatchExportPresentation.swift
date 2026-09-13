@@ -1,4 +1,5 @@
 import AppKit
+import VitrineRendering
 
 /// Routes batch exports through app-owned directory presentation without coupling
 /// SwiftUI sheets to AppKit window lifecycles.

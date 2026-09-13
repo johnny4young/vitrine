@@ -1,6 +1,8 @@
 import AppKit
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 extension ExportManager {
     /// Presents an `NSSavePanel` and writes the image as PNG, PDF, HEIC, or AVIF.

@@ -1,4 +1,5 @@
 import Foundation
+import VitrineRendering
 
 /// The one place a copy/save/share outcome turns into transient feedback.
 ///

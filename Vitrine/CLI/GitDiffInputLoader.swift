@@ -1,4 +1,5 @@
 import Foundation
+import VitrineRendering
 
 /// Loads a local Git diff as bounded, editor-ready source without invoking a shell.
 ///

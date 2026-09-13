@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// The flat token namespace for the current designed app chrome.
 ///

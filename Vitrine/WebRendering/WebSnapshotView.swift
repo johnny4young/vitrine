@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import OSLog
+import VitrineRendering
 import WebKit
 
 /// Renders a self-contained HTML string to a `CGImage` in an offscreen

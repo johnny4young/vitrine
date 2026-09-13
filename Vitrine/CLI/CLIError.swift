@@ -1,4 +1,5 @@
 import Foundation
+import VitrineRendering
 
 /// A problem the CLI reports to the user, mapped to a clear message and a process
 /// exit code. Every failure mode the `render` command can hit has a case

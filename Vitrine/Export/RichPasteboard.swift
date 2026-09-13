@@ -2,6 +2,8 @@ import AppKit
 import Foundation
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// Builds developer-grade clipboard payloads with *multiple representations* and
 /// produces the non-PNG copy targets the editor exposes.

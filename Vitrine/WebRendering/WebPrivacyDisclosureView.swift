@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineRendering
 
 /// The first-use privacy disclosure shown before Vitrine captures a webpage.
 ///

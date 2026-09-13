@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineDomain
 
 /// Canonical destination-chip ids and their short labels, single-sourced so the
 /// Settings picker and the editor inspector's two-row variant never drift.

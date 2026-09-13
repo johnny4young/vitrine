@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import VitrineRendering
 
 /// Surfaces quick-capture outcomes as tasteful, non-intrusive feedback.
 ///

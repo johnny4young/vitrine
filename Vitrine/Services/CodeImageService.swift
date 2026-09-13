@@ -1,6 +1,8 @@
 import AppKit
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
+import VitrineRendering
 
 /// Provides the macOS Services menu action "Render Code Image with Vitrine".
 ///

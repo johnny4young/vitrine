@@ -1,3 +1,5 @@
+import VitrineRendering
+
 /// Routes recovery actions to app-owned windows without coupling the feedback
 /// coordinator to their singleton lifecycles.
 ///

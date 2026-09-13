@@ -1,5 +1,7 @@
 import Foundation
 import OSLog
+import VitrineDomain
+import VitrineRendering
 
 /// The persistence codec for `AppSettings`: it owns the `UserDefaults` key names and
 /// the defensive (de)serialization between the store and the typed model.
