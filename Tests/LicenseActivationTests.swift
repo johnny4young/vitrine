@@ -493,16 +493,21 @@ import Testing
             }
             #expect(provider.setActivation(signedToken: token, record: record))
             #expect(provider.cachedIsPro)
-            // The CLI's check, pointed at the written file + the dev key, unlocks — with the env
-            // bypass empty so it is the signature that grants PRO, not the Debug override.
-            #expect(
-                CLIEntitlement.isProUnlocked(
-                    tokenURL: tokenURL, verifier: verifier, environment: [:]))
+            // The CLI's check, applied to the written file and the dev key, unlocks: it is the
+            // signature that grants PRO, not the Debug override.
+            #expect(Self.cliUnlocks(tokenURL: tokenURL, verifier: verifier))
 
             #expect(provider.clearActivation(ifMatching: record) == .cleared)
-            #expect(
-                !CLIEntitlement.isProUnlocked(
-                    tokenURL: tokenURL, verifier: verifier, environment: [:]))
+            #expect(!Self.cliUnlocks(tokenURL: tokenURL, verifier: verifier))
+        }
+
+        /// The verdict `CLIEntitlement.isProUnlocked` reaches for a token file with the Debug
+        /// bypass unset: the trimmed file contents must carry a valid signature. The CLI's own
+        /// function lives in VitrineCLICore, which this app-hosted bundle does not link, and
+        /// `CLIEntitlementTests` covers it there.
+        private static func cliUnlocks(tokenURL: URL, verifier: LicenseVerifier) -> Bool {
+            guard let raw = try? String(contentsOf: tokenURL, encoding: .utf8) else { return false }
+            return verifier.verify(raw.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
         }
 
         private static var repositoryRoot: URL {

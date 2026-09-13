@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import Testing
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Filesystem-level batch rendering, filtering, reporting, sidecar, and collision contracts.
 @Suite("CLI batch rendering")

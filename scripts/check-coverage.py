@@ -15,6 +15,7 @@ from typing import Any, Callable
 
 PRODUCTION_TARGETS = {
     "Vitrine.app",
+    "libVitrineCLICore.a",
     "libVitrineDomain.a",
     "libVitrineRendering.a",
     "vitrine-cli",
@@ -294,7 +295,7 @@ def self_test() -> None:
             for name in sorted(PRODUCTION_TARGETS)
         ]
     }
-    assert production_coverage(report)[:3] == (40, 50, 0.8)
+    assert production_coverage(report)[:3] == (8 * len(PRODUCTION_TARGETS), 10 * len(PRODUCTION_TARGETS), 0.8)
     assert is_critical("Vitrine/Models/Theme.swift")
     assert is_critical("VitrineDomain/Models/Theme.swift")
     assert is_critical("VitrineRendering/Rendering/RenderBudget.swift")

@@ -2,7 +2,7 @@ import Foundation
 import Testing
 import VitrineDomain
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Batch option parsing, cross-command validation, and user-facing failure contracts.
 @Suite("CLI batch arguments")

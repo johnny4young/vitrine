@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 @MainActor
 @Suite("CLI argument schema")

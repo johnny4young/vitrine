@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Raster rendering coverage for overlays, watermarks, and local backgrounds.
 @MainActor

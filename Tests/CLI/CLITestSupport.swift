@@ -7,7 +7,7 @@ import Testing
 import UniformTypeIdentifiers
 import VitrineRendering
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Shared fixtures for focused CLI suites.
 enum CLITestFixtures {

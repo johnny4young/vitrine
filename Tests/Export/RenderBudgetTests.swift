@@ -240,14 +240,4 @@ struct RenderBudgetTests {
                 pdf: { nil })
         }
     }
-
-    @Test("CLI maps renderer failures to actionable stable errors")
-    func cliErrorMapping() {
-        #expect(CLIError.renderFailure(.tooLarge(.arithmeticOverflow)) == .renderTooLarge)
-        #expect(CLIError.renderFailure(.allocationFailed) == .renderAllocationFailed)
-        #expect(CLIError.renderFailure(.encodingFailed) == .renderEncodingFailed)
-        #expect(CLIError.renderFailure(.cancelled) == .renderCancelled)
-        #expect(CLIError.renderTooLarge.exitCode != 0)
-        #expect(CLIError.renderTooLarge.message.contains("Reduce"))
-    }
 }
