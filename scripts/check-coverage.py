@@ -49,6 +49,8 @@ NONVISUAL_WEB_FILES = {
     "WebSnapshotPresentation.swift",
     "WebURLValidation.swift",
 }
+# Files xccov reports no entry for, because they declare nothing executable. The guard fails
+# when xccov starts measuring one of them, so an exemption cannot outlive the file's lack of code.
 DATA_ONLY_FILES = {
     # A declarative help-text wrapper. The executable schema interpolation is
     # attributed to CLIArgumentSchema.swift, so xccov emits no entry for this file.
@@ -60,10 +62,15 @@ DATA_ONLY_FILES = {
     # longer does, because it gained a real logger factory that xccov does measure.
     "VitrineDomain/Support/LogCategory.swift",
     # Two KeyboardShortcuts.Name constants declared in an extension. xccov emits no file
-    # entry for it on either CI image, so a change such as a new import cannot be measured.
+    # entry for it on either CI image, so adding another constant would demand an entry
+    # that never appears.
     "Vitrine/Models/GlobalShortcuts.swift",
 }
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+# Added lines that can never execute: blank lines, line comments, and imports.
+NON_CODE_LINE = re.compile(
+    r"^\s*(?:$|//|(?:@\w+\s+)*(?:(?:public|package|internal|fileprivate|private)\s+)?import\s)"
+)
 
 
 class CoverageError(RuntimeError):
@@ -177,6 +184,7 @@ def is_critical(path: str) -> bool:
 def parse_changed_lines(diff: str) -> dict[str, set[int]]:
     changed: dict[str, set[int]] = {}
     current: str | None = None
+    next_line = 0
     for line in diff.splitlines():
         if line.startswith("+++ b/"):
             candidate = line[6:]
@@ -188,13 +196,18 @@ def parse_changed_lines(diff: str) -> dict[str, set[int]]:
             continue
         match = HUNK_HEADER.match(line)
         if match:
-            start = int(match.group(1))
-            count = int(match.group(2) or "1")
-            changed[current].update(range(start, start + count))
+            next_line = int(match.group(1))
+            continue
+        if line.startswith("+"):
+            # A file whose only additions are imports, comments, or blank lines has nothing to
+            # measure, so it must not demand an xccov entry that a data-only file never gets.
+            if not NON_CODE_LINE.match(line[1:]):
+                changed[current].add(next_line)
+            next_line += 1
     return {path: lines for path, lines in changed.items() if lines}
 
 
-def find_report_path(targets: dict[str, Any], relative_path: str) -> str:
+def report_paths(targets: dict[str, Any], relative_path: str) -> list[str]:
     suffix = "/" + relative_path
     candidates: list[str] = []
     for target in targets.values():
@@ -206,6 +219,16 @@ def find_report_path(targets: dict[str, Any], relative_path: str) -> str:
                 file_path = file["path"]
                 if file_path.endswith(suffix):
                     candidates.append(file_path)
+    return candidates
+
+
+def measured_data_only_files(targets: dict[str, Any]) -> list[str]:
+    """Data-only exemptions that xccov now measures, so the exemption would skip real code."""
+    return [path for path in sorted(DATA_ONLY_FILES) if report_paths(targets, path)]
+
+
+def find_report_path(targets: dict[str, Any], relative_path: str) -> str:
+    candidates = report_paths(targets, relative_path)
     if not candidates:
         raise CoverageError(f"xccov report has no production entry for changed file {relative_path}")
     return sorted(candidates, key=lambda value: ("/Vitrine.app/" not in value, len(value)))[0]
@@ -281,11 +304,24 @@ def self_test() -> None:
     assert not is_critical("Vitrine/Editor/EditorView.swift")
     parsed = parse_changed_lines(
         "diff --git a/Vitrine/Models/A.swift b/Vitrine/Models/A.swift\n"
-        "+++ b/Vitrine/Models/A.swift\n@@ -1 +2,3 @@\n"
+        "+++ b/Vitrine/Models/A.swift\n@@ -1 +2,3 @@\n-old()\n+let a = 1\n+let b = 2\n+let c = 3\n"
         "diff --git a/Vitrine/Editor/B.swift b/Vitrine/Editor/B.swift\n"
-        "+++ b/Vitrine/Editor/B.swift\n@@ -1 +1 @@\n"
+        "+++ b/Vitrine/Editor/B.swift\n@@ -1 +1 @@\n-old()\n+new()\n"
     )
     assert parsed == {"Vitrine/Models/A.swift": {2, 3, 4}}
+    # Imports, comments, and blank lines are not code: an import-only change measures nothing,
+    # and a mixed hunk keeps only the lines that can execute.
+    assert parse_changed_lines(
+        "+++ b/Vitrine/Models/C.swift\n@@ -0,0 +1,4 @@\n"
+        "+import os\n+@testable import VitrineDomain\n+\n+// why\n"
+    ) == {}
+    assert parse_changed_lines(
+        "+++ b/Vitrine/Models/D.swift\n@@ -3,0 +4,3 @@\n+/// Doc.\n+func run() {}\n+    \n"
+    ) == {"Vitrine/Models/D.swift": {5}}
+    data_only = sorted(DATA_ONLY_FILES)[0]
+    measured = {"Vitrine.app": {"files": [{"path": "/checkout/" + data_only}]}}
+    assert measured_data_only_files(measured) == [data_only]
+    assert measured_data_only_files({"Vitrine.app": {"files": []}}) == []
     source_path = "/checkout/Vitrine/Models/A.swift"
     result = changed_line_coverage(
         parsed,
@@ -350,6 +386,11 @@ def main() -> int:
         ["xcrun", "xccov", "view", "--report", "--json", str(args.result_bundle)], root)
     report = parse_json(report_raw, "xccov report")
     covered, executable, ratio, targets = production_coverage(report)
+    measured = measured_data_only_files(targets)
+    if measured:
+        raise CoverageError(
+            "xccov now measures files the guard exempts as data-only; remove them from "
+            f"DATA_ONLY_FILES so their changes are checked: {', '.join(measured)}")
     floor = float(baseline["productionLineCoverage"]) - args.maximum_overall_drop_points / 100
     print(
         f"Production coverage: {covered}/{executable} = {ratio:.2%} "

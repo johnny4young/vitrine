@@ -91,22 +91,92 @@ struct ModuleImportContractTests {
     /// With `MemberImportVisibility` on, a file that calls a member declared in another
     /// module's extension must import that module itself. Without it, one import anywhere
     /// in a target made those members visible in every file, which is how 84 imports were
-    /// missing when it was first enabled. It is set once for every target, so this pins the
-    /// base setting and that no target turns it back off.
+    /// missing when it was first enabled.
+    ///
+    /// The project's base settings turn it on for every target. Anywhere else that sets it
+    /// (a target, a configuration, a quoted key, or an xcconfig the project names) may only
+    /// repeat `YES`, and no compiler flag may name the feature at all.
     @Test func memberImportVisibilityStaysOnForEveryTarget() throws {
         let project = try String(
             contentsOf: Self.root.appendingPathComponent("project.yml"), encoding: .utf8)
-        let settings = project.components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { $0.hasPrefix("SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY:") }
+        let base = Self.memberImportVisibility(in: Self.projectBaseSettings(of: project))
         #expect(
-            settings == ["SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES"],
-            "set MemberImportVisibility once, in the base settings, and never override it: \(settings)"
-        )
-        let base = try #require(project.range(of: "\nsettings:\n  base:\n"))
-        let targets = try #require(project.range(of: "\ntargets:\n"))
-        let baseSettings = project[base.upperBound..<targets.lowerBound]
-        #expect(baseSettings.contains("SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES"))
+            base.values == ["YES"],
+            "set MemberImportVisibility to YES in the project's base settings: \(base.values)")
+
+        var sources = [("project.yml", project)]
+        for line in project.components(separatedBy: .newlines) where line.contains(".xcconfig") {
+            let path =
+                line.split(separator: ":", maxSplits: 1).last?
+                .trimmingCharacters(in: CharacterSet(charactersIn: " \"'")) ?? ""
+            sources.append(
+                (
+                    path,
+                    try String(contentsOf: Self.root.appendingPathComponent(path), encoding: .utf8)
+                ))
+        }
+        for (name, text) in sources {
+            let found = Self.memberImportVisibility(in: text)
+            #expect(
+                found.values.allSatisfy { $0 == "YES" },
+                "\(name) sets MemberImportVisibility to something other than YES: \(found.values)")
+            #expect(
+                found.compilerFlags.isEmpty,
+                "\(name) names MemberImportVisibility in a compiler flag: \(found.compilerFlags)")
+        }
+    }
+
+    /// Every value `text` gives `SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY`, bare or quoted
+    /// and written as `key: value` (YAML) or `key = value` (xcconfig), and every line that names
+    /// the feature itself, which only a compiler flag such as `-disable-upcoming-feature` does.
+    /// Text after a `#` or `//` comment marker is not a setting.
+    private static func memberImportVisibility(
+        in text: String
+    ) -> (values: [String], compilerFlags: [String]) {
+        var values: [String] = []
+        var compilerFlags: [String] = []
+        for rawLine in text.components(separatedBy: .newlines) {
+            var line = Substring(rawLine)
+            for marker in ["#", "//"] {
+                if let comment = line.range(of: marker) { line = line[..<comment.lowerBound] }
+            }
+            if line.contains("MemberImportVisibility") {
+                compilerFlags.append(line.trimmingCharacters(in: .whitespaces))
+            }
+            guard let key = line.range(of: "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY") else {
+                continue
+            }
+            let rest = line[key.upperBound...].drop { $0 == "\"" || $0 == "'" || $0 == " " }
+            guard rest.first == ":" || rest.first == "=" else { continue }
+            values.append(
+                rest.dropFirst().trimmingCharacters(in: CharacterSet(charactersIn: " \"'")))
+        }
+        return (values, compilerFlags)
+    }
+
+    /// The project's own `settings.base` block: the lines under the top-level `settings:` and its
+    /// `  base:` key, up to the next key at that depth (`  configs:`) or the next section.
+    private static func projectBaseSettings(of project: String) -> String {
+        var inSettings = false
+        var inBase = false
+        var lines: [String] = []
+        for line in project.components(separatedBy: .newlines) {
+            if !inSettings {
+                inSettings = line == "settings:"
+                continue
+            }
+            let isNested =
+                line.hasPrefix("    ") || line.trimmingCharacters(in: .whitespaces).isEmpty
+            if inBase {
+                if !isNested { break }
+                lines.append(line)
+            } else if line == "  base:" {
+                inBase = true
+            } else if !line.isEmpty && !line.hasPrefix(" ") {
+                break
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 
     private static func swiftFiles(in directory: String) -> [URL] {
