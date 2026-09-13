@@ -82,6 +82,62 @@ extension XCTestCase {
         return false
     }
 
+    /// Chooses `title` from the menu open in `app`, and confirms the menu took the click.
+    ///
+    /// AppKit closes a menu before it sends the chosen item's action, so while the item is
+    /// still on screen nothing has been chosen and no wait for the effect can pass. A loaded
+    /// runner can drop the click: a CI screen recording showed the Recents actions menu still
+    /// open, the item highlighted under the pointer, for the rest of the test. The item is
+    /// then clicked once more, as a person would. That cannot choose it twice, because the
+    /// first click never reached the action.
+    @MainActor
+    func chooseMenuItem(
+        _ title: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let item = app.menuItems[title]
+        guard item.waitForExistence(timeout: 3) else {
+            XCTFail("The open menu has no \"\(title)\" item", file: file, line: line)
+            return
+        }
+        item.click()
+        if menuClosed(after: item) { return }
+        XCTContext.runActivity(named: "The menu is still open; click \"\(title)\" again") { _ in
+            item.click()
+        }
+        if menuClosed(after: item) { return }
+        XCTFail("The menu stayed open after two clicks on \"\(title)\"", file: file, line: line)
+    }
+
+    /// Whether the menu holding `item` has closed. A single query answers once it has;
+    /// XCTest's own wait never reports sooner than a second, so it runs only while the item
+    /// is still there.
+    @MainActor
+    private func menuClosed(after item: XCUIElement) -> Bool {
+        !item.exists || item.waitForNonExistence(timeout: 2)
+    }
+
+    /// Waits for `element`'s accessibility label to contain `text`, and says what it read
+    /// instead when it never does.
+    @MainActor
+    func waitForLabel(
+        of element: XCUIElement,
+        toContain text: String,
+        timeout: TimeInterval = 3,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        if element.label.contains(text) { return }
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", text), object: element)
+        if XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed { return }
+        XCTFail(
+            "Expected a label containing \"\(text)\" within \(timeout)s; it reads \"\(element.label)\"",
+            file: file, line: line)
+    }
+
     /// Opens the real menu-bar panel only after XCUIAutomation has attached.
     ///
     /// Opening an `NSPopover` from a launch argument is too early for a UI test:
