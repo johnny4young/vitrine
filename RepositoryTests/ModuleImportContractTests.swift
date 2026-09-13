@@ -93,9 +93,11 @@ struct ModuleImportContractTests {
     /// in a target made those members visible in every file, which is how 84 imports were
     /// missing when it was first enabled.
     ///
-    /// The project's base settings turn it on for every target. Anywhere else that sets it
-    /// (a target, a configuration, a quoted key, or an xcconfig the project names) may only
-    /// repeat `YES`, and no compiler flag may name the feature at all.
+    /// The project's base settings turn it on for every target. Anywhere else that sets it may
+    /// only repeat `YES`, and no compiler flag may name the feature at all. That covers a target
+    /// or configuration in `project.yml` (bare or quoted key), every xcconfig the project names
+    /// and every file those include, and the `xcodebuild` command lines in the Makefile,
+    /// workflows, and scripts, whose overrides beat every project setting.
     @Test func memberImportVisibilityStaysOnForEveryTarget() throws {
         let project = try String(
             contentsOf: Self.root.appendingPathComponent("project.yml"), encoding: .utf8)
@@ -105,16 +107,46 @@ struct ModuleImportContractTests {
             "set MemberImportVisibility to YES in the project's base settings: \(base.values)")
 
         var sources = [("project.yml", project)]
-        for line in project.components(separatedBy: .newlines) where line.contains(".xcconfig") {
-            let path =
-                line.split(separator: ":", maxSplits: 1).last?
-                .trimmingCharacters(in: CharacterSet(charactersIn: " \"'")) ?? ""
-            sources.append(
-                (
-                    path,
-                    try String(contentsOf: Self.root.appendingPathComponent(path), encoding: .utf8)
-                ))
+        var pending = project.components(separatedBy: .newlines).compactMap { line -> URL? in
+            let value = Self.withoutComment(line).trimmingCharacters(in: Self.quotesAndSpaces)
+            guard value.hasSuffix(".xcconfig"),
+                let path = value.split(separator: ":", maxSplits: 1).last
+            else { return nil }
+            return Self.root
+                .appendingPathComponent(path.trimmingCharacters(in: Self.quotesAndSpaces))
+                .standardizedFileURL
         }
+        var visited: Set<URL> = []
+        while let xcconfig = pending.popLast() {
+            guard visited.insert(xcconfig).inserted else { continue }
+            let text = try String(contentsOf: xcconfig, encoding: .utf8)
+            sources.append((xcconfig.lastPathComponent, text))
+            for line in text.components(separatedBy: .newlines) {
+                let directive = line.trimmingCharacters(in: .whitespaces)
+                guard directive.hasPrefix("#include"),
+                    let open = directive.firstIndex(of: "\""),
+                    let close = directive.lastIndex(of: "\""), open < close
+                else { continue }
+                let included = xcconfig.deletingLastPathComponent()
+                    .appendingPathComponent(String(directive[directive.index(after: open)..<close]))
+                    .standardizedFileURL
+                // `#include?` names an optional file; a plain `#include` must exist.
+                if directive.hasPrefix("#include?"),
+                    !FileManager.default.fileExists(atPath: included.path)
+                {
+                    continue
+                }
+                pending.append(included)
+            }
+        }
+        let invocations =
+            [Self.root.appendingPathComponent("Makefile")]
+            + Self.files(in: ".github", withExtensions: ["yml", "yaml"])
+            + Self.files(in: "scripts", withExtensions: ["sh", "py", "rb", "swift"])
+        for file in invocations {
+            sources.append((file.lastPathComponent, try String(contentsOf: file, encoding: .utf8)))
+        }
+
         for (name, text) in sources {
             let found = Self.memberImportVisibility(in: text)
             #expect(
@@ -126,62 +158,85 @@ struct ModuleImportContractTests {
         }
     }
 
-    /// Every value `text` gives `SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY`, bare or quoted
-    /// and written as `key: value` (YAML) or `key = value` (xcconfig), and every line that names
-    /// the feature itself, which only a compiler flag such as `-disable-upcoming-feature` does.
-    /// Text after a `#` or `//` comment marker is not a setting.
+    /// Every value `text` gives `SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY`, bare or quoted,
+    /// with or without xcconfig conditions such as `[config=Release]`, and written as `key: value`
+    /// (YAML) or `key = value` (xcconfig and command lines). Also every line that names the
+    /// feature itself, which only a compiler flag such as `-disable-upcoming-feature` does.
     private static func memberImportVisibility(
         in text: String
     ) -> (values: [String], compilerFlags: [String]) {
         var values: [String] = []
         var compilerFlags: [String] = []
         for rawLine in text.components(separatedBy: .newlines) {
-            var line = Substring(rawLine)
-            for marker in ["#", "//"] {
-                if let comment = line.range(of: marker) { line = line[..<comment.lowerBound] }
-            }
+            let line = Self.withoutComment(rawLine)
             if line.contains("MemberImportVisibility") {
                 compilerFlags.append(line.trimmingCharacters(in: .whitespaces))
             }
             guard let key = line.range(of: "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY") else {
                 continue
             }
-            let rest = line[key.upperBound...].drop { $0 == "\"" || $0 == "'" || $0 == " " }
+            var rest = line[key.upperBound...]
+            while let first = rest.first,
+                first == "[" || first == "\"" || first == "'" || first == " "
+            {
+                if first == "[", let close = rest.firstIndex(of: "]") {
+                    rest = rest[rest.index(after: close)...]
+                } else {
+                    rest = rest.dropFirst()
+                }
+            }
             guard rest.first == ":" || rest.first == "=" else { continue }
-            values.append(
-                rest.dropFirst().trimmingCharacters(in: CharacterSet(charactersIn: " \"'")))
+            values.append(rest.dropFirst().trimmingCharacters(in: Self.quotesAndSpaces))
         }
         return (values, compilerFlags)
     }
 
     /// The project's own `settings.base` block: the lines under the top-level `settings:` and its
     /// `  base:` key, up to the next key at that depth (`  configs:`) or the next section.
+    /// Comments and blank lines neither start nor end a block.
     private static func projectBaseSettings(of project: String) -> String {
         var inSettings = false
         var inBase = false
         var lines: [String] = []
-        for line in project.components(separatedBy: .newlines) {
+        for rawLine in project.components(separatedBy: .newlines) {
+            let line = Self.withoutComment(rawLine)
+            let key = line.trimmingCharacters(in: .whitespaces)
+            if key.isEmpty { continue }
             if !inSettings {
-                inSettings = line == "settings:"
+                inSettings = !line.hasPrefix(" ") && key == "settings:"
                 continue
             }
-            let isNested =
-                line.hasPrefix("    ") || line.trimmingCharacters(in: .whitespaces).isEmpty
             if inBase {
-                if !isNested { break }
-                lines.append(line)
-            } else if line == "  base:" {
+                if !line.hasPrefix("    ") { break }
+                lines.append(String(line))
+            } else if line.hasPrefix("  ") && !line.hasPrefix("   ") && key == "base:" {
                 inBase = true
-            } else if !line.isEmpty && !line.hasPrefix(" ") {
+            } else if !line.hasPrefix(" ") {
                 break
             }
         }
         return lines.joined(separator: "\n")
     }
 
-    private static func swiftFiles(in directory: String) -> [URL] {
+    /// `line` up to its first `#` or `//` comment marker.
+    private static func withoutComment(_ line: String) -> Substring {
+        var code = Substring(line)
+        for marker in ["#", "//"] {
+            if let comment = code.range(of: marker) { code = code[..<comment.lowerBound] }
+        }
+        return code
+    }
+
+    private static let quotesAndSpaces = CharacterSet(charactersIn: " \"'")
+
+    private static func files(in directory: String, withExtensions extensions: Set<String>) -> [URL]
+    {
         let files = FileManager.default.enumerator(
             at: root.appendingPathComponent(directory), includingPropertiesForKeys: nil)
-        return (files?.allObjects as? [URL] ?? []).filter { $0.pathExtension == "swift" }
+        return (files?.allObjects as? [URL] ?? []).filter { extensions.contains($0.pathExtension) }
+    }
+
+    private static func swiftFiles(in directory: String) -> [URL] {
+        files(in: directory, withExtensions: ["swift"])
     }
 }

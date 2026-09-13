@@ -207,28 +207,38 @@ def parse_changed_lines(diff: str) -> dict[str, set[int]]:
     return {path: lines for path, lines in changed.items() if lines}
 
 
-def report_paths(targets: dict[str, Any], relative_path: str) -> list[str]:
+def report_entries(targets: dict[str, Any], relative_path: str) -> list[dict[str, Any]]:
     suffix = "/" + relative_path
-    candidates: list[str] = []
+    entries: list[dict[str, Any]] = []
     for target in targets.values():
         files = target.get("files")
         if not isinstance(files, list):
             raise CoverageError("xccov target JSON has no files array")
         for file in files:
             if isinstance(file, dict) and isinstance(file.get("path"), str):
-                file_path = file["path"]
-                if file_path.endswith(suffix):
-                    candidates.append(file_path)
-    return candidates
+                if file["path"].endswith(suffix):
+                    entries.append(file)
+    return entries
 
 
 def measured_data_only_files(targets: dict[str, Any]) -> list[str]:
-    """Data-only exemptions that xccov now measures, so the exemption would skip real code."""
-    return [path for path in sorted(DATA_ONLY_FILES) if report_paths(targets, path)]
+    """Data-only exemptions xccov now finds executable lines in, so the exemption would skip code.
+
+    An entry with no executable lines keeps the file data-only: a toolchain that starts listing
+    such files must not fail the guard over an exemption that is still correct.
+    """
+    return [
+        path
+        for path in sorted(DATA_ONLY_FILES)
+        if any(
+            isinstance(entry.get("executableLines"), int) and entry["executableLines"] > 0
+            for entry in report_entries(targets, path)
+        )
+    ]
 
 
 def find_report_path(targets: dict[str, Any], relative_path: str) -> str:
-    candidates = report_paths(targets, relative_path)
+    candidates = [entry["path"] for entry in report_entries(targets, relative_path)]
     if not candidates:
         raise CoverageError(f"xccov report has no production entry for changed file {relative_path}")
     return sorted(candidates, key=lambda value: ("/Vitrine.app/" not in value, len(value)))[0]
@@ -319,8 +329,10 @@ def self_test() -> None:
         "+++ b/Vitrine/Models/D.swift\n@@ -3,0 +4,3 @@\n+/// Doc.\n+func run() {}\n+    \n"
     ) == {"Vitrine/Models/D.swift": {5}}
     data_only = sorted(DATA_ONLY_FILES)[0]
-    measured = {"Vitrine.app": {"files": [{"path": "/checkout/" + data_only}]}}
+    measured = {"Vitrine.app": {"files": [{"path": "/checkout/" + data_only, "executableLines": 3}]}}
     assert measured_data_only_files(measured) == [data_only]
+    listed = {"Vitrine.app": {"files": [{"path": "/checkout/" + data_only, "executableLines": 0}]}}
+    assert measured_data_only_files(listed) == []
     assert measured_data_only_files({"Vitrine.app": {"files": []}}) == []
     source_path = "/checkout/Vitrine/Models/A.swift"
     result = changed_line_coverage(
