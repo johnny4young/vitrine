@@ -59,6 +59,9 @@ DATA_ONLY_FILES = {
     # no file entry. RenderingLog.swift used to belong here for the same reason and no
     # longer does, because it gained a real logger factory that xccov does measure.
     "VitrineDomain/Support/LogCategory.swift",
+    # Two KeyboardShortcuts.Name constants declared in an extension. xccov emits no file
+    # entry for it on either CI image, so a change such as a new import cannot be measured.
+    "Vitrine/Models/GlobalShortcuts.swift",
 }
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
@@ -266,6 +269,7 @@ def self_test() -> None:
     assert not is_critical("Vitrine/CLI/CLIUsage.swift")
     assert not is_critical("VitrineRendering/Rendering/CaptureInput.swift")
     assert not is_critical("VitrineDomain/Support/LogCategory.swift")
+    assert not is_critical("Vitrine/Models/GlobalShortcuts.swift")
     # Exempt until it gained a logger factory with real executable lines; the guard has
     # to follow the code rather than the filename.
     assert is_critical("VitrineRendering/Support/RenderingLog.swift")
