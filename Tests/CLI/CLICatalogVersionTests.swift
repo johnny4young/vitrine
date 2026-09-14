@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Stable version and catalog invocation, text, JSON, and project-metadata contracts.
 @Suite("CLI version and catalog")

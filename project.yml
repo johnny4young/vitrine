@@ -135,11 +135,18 @@ targets:
           # compiled as a source.
           - "Resources/Vitrine.DirectDownload.entitlements"
           - "Resources/Fonts"
+          # The command-line surface compiles into VitrineCLICore. The app keeps only
+          # the two files it calls itself, listed below.
+          - "CLI"
       # Folder reference so the fonts land in Contents/Resources/Fonts/, which
       # ATSApplicationFontsPath ("Fonts") registers at launch.
       - path: Vitrine/Resources/Fonts
         type: folder
         buildPhase: resources
+      # `vitrine://edit` hand-off (AppDelegate) and the shell-integration snippets
+      # (Settings) are shared with the CLI, which compiles its own copy in VitrineCLICore.
+      - path: Vitrine/CLI/EditorHandoff.swift
+      - path: Vitrine/CLI/ShellInit.swift
     dependencies:
       - target: VitrineDomain
       - target: VitrineRendering
@@ -248,75 +255,64 @@ targets:
         # qualification belongs only to the GUI app that links WebKit.
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_GUI
 
-  # Command-line renderer. `vitrine render input.swift --out image.png`.
+  # The command-line surface as a library: argument parsing, the renderer facade, batch,
+  # catalog, and recipe commands, offline license verification, and the process entry
+  # point. The `vitrine-cli` tool adds only `main.swift`, and the hostless VitrineCLITests
+  # bundle links the same library, because a tool target cannot be imported by tests.
   #
-  # The CLI reuses only the app's render-facing slice so its output stays
-  # pixel-identical without compiling window lifecycle, settings, onboarding, or
-  # menu-bar UI. Portable values and policies come from VitrineDomain. The executable
-  # hosts a minimal accessory NSApplication because ImageRenderer/Highlightr require
-  # AppKit on the main actor; see VitrineCLI/main.swift.
-  VitrineCLI:
-    type: tool
+  # The source list is an allowlist: the command-line code plus the four app files it
+  # calls. Nothing from WebRendering, AppIntents, Services, or the app Resources tree is
+  # compiled in, which is what keeps WebKit and network access out of the CLI
+  # (docs/PERMISSIONS.md, CLIPermissionPostureTests, WebSnapshotCLIBoundaryTests).
+  VitrineCLICore:
+    type: library.static
     platform: macOS
     deploymentTarget: "15.0"
     sources:
-      - path: Vitrine
+      - path: Vitrine/CLI
+      - path: VitrineCLI
         excludes:
-          # App bundle resources do not belong to a command-line tool. In
-          # particular, an asset catalog has no valid bundle destination when
-          # Xcode installs the tool into usr/local/bin during an archive. Fonts
-          # are staged as raw files by the build script below instead.
-          - "Resources"
-          # Application/window/settings surfaces do not belong in a command-line
-          # dependency graph. The CLI supplies its own main.swift entry and retains
-          # only explicitly included render, formatter, file, and license primitives.
-          - "App"
-          - "AppIntents"
-          - "Comparison"
-          - "Feedback"
-          - "Help"
-          - "MenuBar"
-          - "Onboarding"
-          - "Recents"
-          - "Services"
-          - "Settings"
-          - "SocialCards"
-          - "State"
-          - "Updates"
-          - "Editor"
-          - "Export"
-          - "Pro"
-          - "DesignSystem/EmptyStateView.swift"
-          - "DesignSystem/FontChips.swift"
-          - "DesignSystem/InspectorChrome.swift"
-          - "DesignSystem/InspectorFields.swift"
-          - "DesignSystem/Swatches.swift"
-          - "DesignSystem/ThemeChips.swift"
-          - "DesignSystem/TokenButtons.swift"
-          - "DesignSystem/TokenComponents.swift"
-          # The Style-pane background editor is a SwiftUI view; its only consumers are
-          # the Settings, Social Card, and Editor surfaces already excluded above.
-          # Excluding it is what makes the WebRendering exclusion below complete: it
-          # held the last reference the CLI had into that directory.
-          - "Canvas"
-          # Local HTML rendering drives an offscreen WKWebView, which needs
-          # a window-server connection at runtime that this headless tool does not
-          # have. The CLI renders code, not web content, so it neither links WebKit
-          # nor compiles the WebKit renderers.
-          - "WebRendering"
-      # Render/export primitives required by the headless command surface.
-      - path: Vitrine/Export/ExportManager+File.swift
+          - "main.swift"
+      # App files the command-line surface calls. The app compiles its own copy.
+      - path: Vitrine/Support/Log.swift
       - path: Vitrine/Export/ExportManager+Pasteboard.swift
       - path: Vitrine/Export/RichPasteboard.swift
       # Offline verification only; StoreKit, purchase state, and paywall UI remain
       # app-owned and are not compiled into the CLI.
       - path: Vitrine/Pro/LicenseKey.swift
-      - path: VitrineCLI
     dependencies:
       - target: VitrineDomain
       - target: VitrineRendering
+    settings:
+      base:
+        PRODUCT_NAME: VitrineCLICore
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.clicore
+        SKIP_INSTALL: YES
+        SWIFT_INSTALL_OBJC_HEADER: NO
+        # The same conditions as the tool: never VITRINE_DIRECT_DOWNLOAD, whose license
+        # provider belongs to the app, and DEBUG only in Debug for the CLI's local QA bypass.
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+
+  # Command-line renderer. `vitrine render input.swift --out image.png`.
+  #
+  # The executable is `main.swift` alone; everything it runs comes from VitrineCLICore,
+  # which reuses the app's render-facing slice so the output stays pixel-identical. It
+  # hosts a minimal accessory NSApplication because ImageRenderer/Highlightr require
+  # AppKit on the main actor; see VitrineCLI/CLICommandLine.swift.
+  VitrineCLI:
+    type: tool
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: VitrineCLI/main.swift
+    dependencies:
+      - target: VitrineCLICore
+      - target: VitrineDomain
+      - target: VitrineRendering
       - package: Highlightr
-      - package: KeyboardShortcuts
     # A command-line tool has no Contents/Resources, so a "Copy Bundle Resources"
     # phase cannot stage the bundled fonts. Copy the Fonts folder next to the binary
     # instead, where CLIEnvironment locates and registers it at launch. This
@@ -413,6 +409,9 @@ targets:
         # build). Exclude the whole fixtures tree from the test target sources.
         excludes:
           - "Fixtures"
+          # The command-line suites run hostless in VitrineCLITests.
+          - "CLI"
+          - "GitDiffInputLoaderTests.swift"
     dependencies:
       - target: Vitrine
     settings:
@@ -429,6 +428,33 @@ targets:
         # embeds Sparkle (TEST_HOST/BUNDLE_LOADER), so this target neither links nor
         # embeds the framework itself — only the search path is needed.
         FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/Vendor
+
+  # The command-line suites, hostless: they link VitrineCLICore instead of loading the app,
+  # so they run without Vitrine.app, its sandbox, or its registered fonts.
+  VitrineCLITests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Tests/CLI
+      - path: Tests/GitDiffInputLoaderTests.swift
+      # Shared with the app-hosted bundle: pixel comparison and render settling.
+      - path: Tests/GoldenComparator.swift
+      - path: Tests/RenderSettling.swift
+    dependencies:
+      - target: VitrineCLICore
+      - target: VitrineDomain
+      - target: VitrineRendering
+      - package: Highlightr
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.johnny4young.vitrine.VitrineCLITests
+        # Match VitrineCLICore, so the `#if DEBUG` entitlement tests see the same code.
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
 
   VitrineDomainTests:
     type: bundle.unit-test
@@ -501,6 +527,7 @@ schemes:
     build:
       targets:
         Vitrine: all
+        VitrineCLITests: [test]
         VitrineDomainTests: [test]
         VitrineRenderingTests: [test]
         VitrineRepositoryTests: [test]
@@ -525,6 +552,7 @@ schemes:
       language: en
       region: US
       targets:
+        - VitrineCLITests
         - VitrineDomainTests
         - VitrineRenderingTests
         - VitrineRepositoryTests

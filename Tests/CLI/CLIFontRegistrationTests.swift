@@ -6,7 +6,7 @@ import ImageIO
 import Testing
 import UniformTypeIdentifiers
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// runtime registration of the app's bundled fonts for the command-line
 /// renderer.
@@ -50,17 +50,22 @@ struct CLIFontRegistrationTests {
     /// default render never touches keeps the Core Text registration path genuinely
     /// exercised while leaving the render's font untouched.
     private static let fontFileName = "SpaceMono-Regular.ttf"
-    private static let fontResourceName = "SpaceMono-Regular"
 
-    /// A real bundled `.ttf` from the app bundle the test host runs in. Using an
-    /// actual font (not a fabricated file) means the Core Text registration path is
-    /// genuinely exercised rather than always failing to parse.
+    /// A real bundled `.ttf`, read from the tracked `Vitrine/Resources/Fonts` because this
+    /// suite runs without an app host. Using an actual font (not a fabricated file) means
+    /// the Core Text registration path is genuinely exercised rather than always failing
+    /// to parse.
     private func bundledFontURL() throws -> URL {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Vitrine/Resources/Fonts")
+            .appendingPathComponent(Self.fontFileName)
         try #require(
-            Bundle.main.url(
-                forResource: Self.fontResourceName, withExtension: "ttf",
-                subdirectory: "Fonts"),
-            "the test host app bundle should ship the bundled fonts")
+            FileManager.default.fileExists(atPath: url.path),
+            "the bundled fonts should be tracked at \(url.path)")
+        return url
     }
 
     /// Unregisters a font this suite registered from a temporary URL and drains the

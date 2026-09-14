@@ -88,7 +88,7 @@ struct GoldenImageTests {
             "could not decode committed golden for \(scenario.label)")
         // Absorb host contention: re-render on a settled run loop until a frame
         // matches, falling back to the last frame (a genuine mismatch) if none do.
-        // See `strictRenderAttempts` for why this cannot mask a real regression.
+        // See `RenderSettling` for why this cannot mask a real regression.
         let (settled, attempts) = Self.settledMatch(scenario, golden: golden, first: image)
         switch GoldenComparator.compare(golden, settled) {
         case .success(let result):
@@ -186,42 +186,11 @@ struct GoldenImageTests {
         }
     }
 
-    // MARK: - Render settling (contention resilience)
-
-    /// How many times a strict, pinned-image render check re-renders a scenario on
-    /// a settled run loop before treating a mismatch as a genuine regression.
-    ///
-    /// Each scenario renders identically in isolation (every diff is zero), but a
-    /// full `make test` run rasterizes these scenarios while ~600 other tests share
-    /// the host. Registering or unregistering a font anywhere in the suite
-    /// (`CLIFontRegistrationTests`) posts an **asynchronous** Core Text
-    /// fonts-changed notification; if the run loop services it while a golden
-    /// scenario is rasterizing, it invalidates the glyph caches mid-render and
-    /// nudges a content-hugging layout by a sub-point — a 1px height drift, or a
-    /// band of anti-aliased edge pixels that tips the line-number gutter past the
-    /// fraction floor. That is host contention, not a render bug.
-    ///
-    /// The CLI byte-identity test absorbs the exact same perturbation by draining
-    /// the run loop and re-rendering once on a settled frame (see `CLITests`); this
-    /// suite was simply missing that guard. `settledMatch`/`settledSize` apply the
-    /// same mitigation with a few attempts: each retry first delivers any in-flight
-    /// fonts-changed notification (while no render is running), then renders again
-    /// against rebuilt, stable caches. The check stays strict — a real regression
-    /// shifts every frame and still fails; only an environment-perturbed frame
-    /// clears on a settled re-render, so this can never mask a true regression.
-    static let strictRenderAttempts = 5
-
-    /// Delivers any in-flight Core Text fonts-changed notification by briefly
-    /// spinning the main run loop, so the *next* render rasterizes against stable
-    /// glyph caches. Mirrors the drain `CLIFontRegistrationTests.unregisterFont` and
-    /// the CLI byte-identity test use for the same reason.
-    static func settleFontCaches() {
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-    }
+    // MARK: - Render settling (contention resilience; see `RenderSettling`)
 
     /// Re-renders `scenario` until a frame matches `golden` within tolerance,
     /// returning that frame and the attempt it landed on; if none match within
-    /// `strictRenderAttempts`, returns the last frame rendered (the genuine
+    /// `RenderSettling.strictRenderAttempts`, returns the last frame rendered (the genuine
     /// mismatch, for the assertion and diff artifacts). `first` is the frame the
     /// caller already rendered, reused as attempt 1 so the common (clean) path
     /// renders exactly once and never spins the run loop.
@@ -229,30 +198,30 @@ struct GoldenImageTests {
         _ scenario: GoldenScenario, golden: CGImage, first: CGImage
     ) -> (image: CGImage, attempts: Int) {
         var candidate = first
-        for attempt in 1...strictRenderAttempts {
+        for attempt in 1...RenderSettling.strictRenderAttempts {
             if case .success(let result) = GoldenComparator.compare(golden, candidate),
                 result.matches
             {
                 return (candidate, attempt)
             }
             // Out of attempts: surface the last (mismatching) frame as the failure.
-            if attempt == strictRenderAttempts { break }
+            if attempt == RenderSettling.strictRenderAttempts { break }
             // Deliver any in-flight fonts-changed notification now, while no render
             // is running, then render again against rebuilt, stable glyph caches.
-            settleFontCaches()
+            RenderSettling.settleFontCaches()
             if let next = scenario.render() { candidate = next }
         }
-        return (candidate, strictRenderAttempts)
+        return (candidate, RenderSettling.strictRenderAttempts)
     }
 
     /// Re-renders `scenario` until it produces the recorded `width × height`,
-    /// returning that frame; if none match within `strictRenderAttempts`, returns
+    /// returning that frame; if none match within `RenderSettling.strictRenderAttempts`, returns
     /// the last frame (the genuine drift, so the assertion reports the real size).
     /// Same contention rationale as `settledMatch`.
     static func settledSize(_ scenario: GoldenScenario, width: Int, height: Int) -> CGImage? {
         var last: CGImage?
-        for attempt in 1...strictRenderAttempts {
-            if attempt > 1 { settleFontCaches() }
+        for attempt in 1...RenderSettling.strictRenderAttempts {
+            if attempt > 1 { RenderSettling.settleFontCaches() }
             guard let image = scenario.render() else { continue }
             last = image
             if image.width == width, image.height == height { return image }
@@ -398,7 +367,7 @@ struct GoldenImageTests {
             // host contention (a fonts-changed notification serviced mid-render);
             // re-render on a settled run loop until the recorded size reappears. A
             // real size regression never reappears and still fails (see
-            // `strictRenderAttempts`).
+            // `RenderSettling`).
             let image = try #require(
                 Self.settledSize(scenario, width: record.width, height: record.height),
                 "render produced no image for \(scenario.label)")
@@ -452,7 +421,9 @@ struct GoldenImageTests {
         ).image
         let (image, attempts) = Self.settledMatch(
             scenario, golden: unreachableGolden, first: first)
-        #expect(attempts == Self.strictRenderAttempts, "a genuine mismatch spends the full budget")
+        #expect(
+            attempts == RenderSettling.strictRenderAttempts,
+            "a genuine mismatch spends the full budget")
         #expect(
             !(try Self.expectSuccess(GoldenComparator.compare(unreachableGolden, image)).matches),
             "the returned frame is the real render, not a fabricated match")

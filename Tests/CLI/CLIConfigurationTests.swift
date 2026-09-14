@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Precedence rules that materialize parsed options into render configuration.
 @MainActor

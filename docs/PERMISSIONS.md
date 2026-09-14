@@ -94,13 +94,14 @@ Accessibility scraping remain rejected.
 
 ## CLI (`vitrine`) — command-line renderer
 
-The CLI is a separate first-party target (`VitrineCLI`, a `tool`), **not** a
-sandboxed `.app`. It renders **code only** and is the scriptable path itself.
+The CLI is a separate first-party executable (`VitrineCLI`, a `tool` that links the
+`VitrineCLICore` library), **not** a sandboxed `.app`. It renders **code only** and is the
+scriptable path itself.
 
 | Entitlement / permission | Reason | User-facing behavior | Required? | Test / review check | App Store impact |
 | --- | --- | --- | --- | --- | --- |
-| App Sandbox | — **not applied.** A command-line tool is not a sandboxed app; it has no `Contents/Resources` and is not distributed through the App Store. | None; standard CLI file access. | **N/A** | The `VitrineCLI` target in `project.yml` sets no `CODE_SIGN_ENTITLEMENTS`; it excludes `WebRendering`, `AppIntents`, and `Services`. | Not an App Store artifact. |
-| Network client | — **not used.** Code rendering is fully local; the CLI excludes the entire web-rendering surface, so it cannot load a URL. | None; works offline. | **Absent** | The CLI target excludes `Vitrine/WebRendering`, so `NetworkCapability` and `WKWebView` are not compiled into it. | N/A (not an App Store artifact). |
+| App Sandbox | — **not applied.** A command-line tool is not a sandboxed app; it has no `Contents/Resources` and is not distributed through the App Store. | None; standard CLI file access. | **N/A** | Neither `VitrineCLI` nor `VitrineCLICore` in `project.yml` sets `CODE_SIGN_ENTITLEMENTS`, and their source lists name nothing from `WebRendering`, `AppIntents`, or `Services`. | Not an App Store artifact. |
+| Network client | — **not used.** Code rendering is fully local; the CLI excludes the entire web-rendering surface, so it cannot load a URL. | None; works offline. | **Absent** | The CLI targets compile nothing from `Vitrine/WebRendering`, so `NetworkCapability` and `WKWebView` are not compiled into the tool. | N/A (not an App Store artifact). |
 | Screen Recording | — **not used.** | None. | **Absent** | `ScreenCaptureDecisionTests` scans the shipped roots (`Vitrine`, `VitrineCLI`) for capture APIs and finds none. | N/A. |
 
 The CLI needs no entitlements, no network, no Screen Recording, and no Accessibility. It
