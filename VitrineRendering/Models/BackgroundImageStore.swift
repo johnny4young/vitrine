@@ -3,6 +3,7 @@ import CryptoKit
 import ImageIO
 import UniformTypeIdentifiers
 import VitrineDomain
+import os
 
 /// Stores and resolves image-background files inside the app container.
 ///

@@ -1,6 +1,8 @@
 import Foundation
+import SwiftUI
 import Testing
 import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 
@@ -25,7 +27,7 @@ struct StylePresetCodableTests {
     }
 
     @Test func everyBackgroundKindRoundTrips() throws {
-        let backgrounds: [BackgroundStyle] = [
+        let backgrounds: [VitrineDomain.BackgroundStyle] = [
             .solid(RGBAColor(.black)), .gradient(.night), .transparent,
             .customGradient(.default),
         ]

@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
 import VitrineRendering
 
 /// Owns artifact preflight, shared encoding, sidecar generation, and file output.

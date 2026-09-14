@@ -1,3 +1,5 @@
+import Foundation
+
 /// Removes Swift line-comment text so source-boundary tests inspect executable
 /// references rather than documentation.
 func sourceCodeWithoutLineComments(_ source: String) -> String {

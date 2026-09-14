@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import VitrineDomain
+import WebKit
 
 @testable import Vitrine
 

@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 import VitrineRendering
 
 #if DEBUG

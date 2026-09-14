@@ -1,4 +1,6 @@
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// Manages machine-local folder associations and exports the current default as a
 /// portable recipe the CLI can consume explicitly.

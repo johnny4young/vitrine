@@ -386,6 +386,23 @@ struct WorkflowConfigurationTests {
         ] {
             #expect(guardScript.contains(requirement))
         }
+        // The parser and the data-only exemption rules are covered by the guard's self-test,
+        // which only runs if `make lint` runs it.
+        let lint = try #require(make.split(separator: "\n").first { $0.hasPrefix("lint:") })
+        #expect(
+            lint.split(separator: " ").contains("coverage-check"),
+            "make lint must run the coverage guard's self-test")
+        #expect(make.contains("coverage-check:\n\tpython3 scripts/check-coverage.py --self-test"))
+        // The resolved compiler flags in the Debug build log decide whether MemberImportVisibility
+        // is on; ci.yml keeps that log and runs the guard over it, and lint runs its self-test.
+        #expect(ci.contains(#"| tee "${RUNNER_TEMP}/build.log""#))
+        #expect(
+            ci.contains(#"run: python3 scripts/check-swift-features.py "${RUNNER_TEMP}/build.log""#)
+        )
+        #expect(lint.split(separator: " ").contains("swift-features-check"))
+        #expect(
+            make.contains(
+                "swift-features-check:\n\tpython3 scripts/check-swift-features.py --self-test"))
         for platform in ["sequoia", "tahoe"] {
             let baseline = try Self.text("scripts", "coverage-baselines", "\(platform).json")
             #expect(baseline.contains(#""schemaVersion": 1"#))

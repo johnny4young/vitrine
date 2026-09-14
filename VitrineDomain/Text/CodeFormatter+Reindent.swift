@@ -1,3 +1,5 @@
+import Foundation
+
 extension CodeFormatter {
     /// Re-indents `code` by recomputing each line's leading whitespace from its nesting
     /// depth: `{}` `()` `[]` for every brace/tag language, plus `<tag>` / `</tag>` /

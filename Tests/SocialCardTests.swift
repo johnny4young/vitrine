@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import SwiftUI
 import Testing
 import VitrineDomain
 import VitrineRendering
@@ -206,7 +207,7 @@ struct SocialCardModelCodableTests {
     }
 
     @Test func roundTripPreservesEveryTemplateAndBackground() throws {
-        let backgrounds: [BackgroundStyle] = [
+        let backgrounds: [VitrineDomain.BackgroundStyle] = [
             .gradient(.aurora), .solid(RGBAColor(.white)), .transparent,
             .customGradient(.default),
         ]

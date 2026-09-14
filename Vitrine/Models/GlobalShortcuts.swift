@@ -1,3 +1,4 @@
+import AppKit
 import KeyboardShortcuts
 
 /// Global keyboard shortcuts, persisted by the KeyboardShortcuts package.

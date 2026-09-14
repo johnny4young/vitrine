@@ -249,10 +249,10 @@ subprocess availability can change which qualification tests execute in a restri
 local environment. Update one only from a complete passing hosted run on the named
 OS/toolchain, record its exact covered/executable counts, and pin the source revision.
 For a local comparison, override `COVERAGE_BASELINE` with a same-environment baseline;
-do not weaken the committed hosted threshold to accommodate a local skip. Run
-`make coverage-check` for the parser's fast self-test. Keep the lanes separate: local
-feedback must not depend on coverage finalization, and CI coverage must not depend
-implicitly on the Xcode scheme default.
+do not weaken the committed hosted threshold to accommodate a local skip. `make lint`
+runs the parser's fast self-test, also available alone as `make coverage-check`. Keep
+the lanes separate: local feedback must not depend on coverage finalization, and CI
+coverage must not depend implicitly on the Xcode scheme default.
 
 ### Performance baselines
 

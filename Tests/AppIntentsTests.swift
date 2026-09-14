@@ -1,7 +1,9 @@
+import AppIntents
 import AppKit
 import CoreGraphics
 import Foundation
 import ImageIO
+import SwiftUI
 import Testing
 import VitrineDomain
 import VitrineRendering
