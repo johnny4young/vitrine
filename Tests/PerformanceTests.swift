@@ -116,6 +116,14 @@ struct PerformanceTests {
         /// copy/allocation cost that replaced byte-at-a-time async iteration.
         static let remoteChunkTarget: Duration = .milliseconds(50)
         static let remoteChunkHardCeiling: Duration = .milliseconds(250)
+
+        /// Hard ceiling for one keystroke in the editor window: the text view's edit plus
+        /// the SwiftUI update and layout pass that follow it.
+        ///
+        /// No soft target yet, for the reason the large-terminal fixture has none: this
+        /// fixture is the first record of what typing costs, and a target chosen before
+        /// that evidence would either warn on every run or mean nothing.
+        static let keystrokeHardCeiling: Duration = .milliseconds(1000)
     }
 
     /// How many timed renders each case samples (after the discarded warm-up).
@@ -533,6 +541,72 @@ struct PerformanceTests {
             "recents-add exceeded the Recents hard ceiling")
     }
 
+    @Test func typingInTheEditorMeetsBudget() throws {
+        // A keystroke is not a render: the text view takes the edit, the editor's SwiftUI
+        // hierarchy updates, and AppKit runs a layout pass before the next frame. The
+        // window hosts the editor through the same factory as the real editor window, so
+        // its sizing configuration is part of what this measures.
+        let environment = AppEnvironment(defaults: testDefaults())
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 97), environment: environment,
+            feedback: .noOp, presentation: .noOp)
+        defer { session.discard() }
+        session.settings.documentCode = Self.largeConfig().code
+            .split(separator: "\n").prefix(60).joined(separator: "\n")
+
+        let hosting = EditorWindowController.makeHostingController(
+            environment: environment, session: session)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1_180, height: 680),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentViewController = hosting
+        defer { window.contentViewController = nil }
+        window.setContentSize(NSSize(width: 1_180, height: 680))
+        EditorWindowController.pinMinimumContentSize(of: window)
+        let root = hosting.view
+        root.layoutSubtreeIfNeeded()
+        // Let the preview's first handoff and the other appearance tasks run, as they do
+        // once a real window is open, so the samples time typing rather than opening.
+        RunLoop.main.run(until: Date().addingTimeInterval(1))
+
+        let textView = try #require(Self.firstTextView(in: root))
+        let end = (textView.string as NSString).length
+        textView.setSelectedRange(NSRange(location: end, length: 0))
+        let typed = Array("\nlet typed = compute(input)")
+        var next = 0
+        func keystroke() {
+            let character = String(typed[next % typed.count])
+            textView.insertText(character, replacementRange: textView.selectedRange())
+            next += 1
+            root.layoutSubtreeIfNeeded()
+        }
+
+        // Warm-up keystrokes, discarded like every other fixture's warm-up pass.
+        for _ in 0..<10 { keystroke() }
+        let clock = ContinuousClock()
+        var durations: [Duration] = []
+        durations.reserveCapacity(Self.sampleCount)
+        for _ in 0..<Self.sampleCount {
+            durations.append(clock.measure { keystroke() })
+        }
+        #expect(session.settings.documentCode.contains("let typed"))
+        let stats = Statistics(durations)
+        report(stats, label: "editor-keystroke", target: nil)
+        #expect(
+            stats.p95 <= PerfBudget.keystrokeHardCeiling,
+            "editor-keystroke exceeded the keystroke hard ceiling")
+    }
+
+    private static func firstTextView(in view: NSView) -> NSTextView? {
+        if let textView = view as? NSTextView { return textView }
+        for subview in view.subviews {
+            if let found = firstTextView(in: subview) { return found }
+        }
+        return nil
+    }
+
     private func measureHighlighting(_ code: String, label: String) {
         let manager = HighlightManager.shared
         let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
@@ -641,6 +715,7 @@ struct PerformanceTests {
         #expect(PerfBudget.highlightingHardCeiling <= PerfBudget.hardCeiling)
         #expect(PerfBudget.remoteChunkTarget < PerfBudget.remoteChunkHardCeiling)
         #expect(PerfBudget.remoteChunkHardCeiling < PerfBudget.hardCeiling)
+        #expect(PerfBudget.keystrokeHardCeiling < PerfBudget.hardCeiling)
     }
 }
 
