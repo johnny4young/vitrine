@@ -233,7 +233,14 @@ jobs:
       # can be triaged offline from the uploaded artifact. RESULT_BUNDLE is honored
       # by the build/build-release/test/build-ui-tests make targets.
       - name: Build (Debug)
-        run: make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult"
+        run: |
+          set -o pipefail
+          make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult" 2>&1 | tee "${RUNNER_TEMP}/build.log"
+
+      # The compiler invocations in the log are the resolved truth for every upcoming
+      # feature, whatever project setting, xcconfig, or command-line override produced them.
+      - name: Check upcoming Swift features
+        run: python3 scripts/check-swift-features.py "${RUNNER_TEMP}/build.log"
 
       # Debug does not exercise Swift's optimizing pipeline. Compile a universal
       # Release product on both compatibility rows so optimizer and cross-architecture

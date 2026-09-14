@@ -3,9 +3,11 @@ import CoreGraphics
 import CoreText
 import Foundation
 import ImageIO
+import SwiftUI
 import Testing
 import UniformTypeIdentifiers
 import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 

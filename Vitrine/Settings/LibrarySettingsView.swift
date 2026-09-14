@@ -1,5 +1,6 @@
 import SwiftUI
 import VitrineDomain
+import VitrineRendering
 
 /// Library pane: the reusable save-and-manage surfaces split out of the Style
 /// pane so neither grows an exaggerated height — saved **style presets** and

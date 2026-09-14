@@ -2,6 +2,7 @@ import AppIntents
 import Foundation
 import OSLog
 import UniformTypeIdentifiers
+import VitrineDomain
 
 /// A Shortcuts action that renders code text to an image.
 ///

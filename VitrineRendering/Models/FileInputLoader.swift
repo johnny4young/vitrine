@@ -1,5 +1,6 @@
 import Foundation
 import VitrineDomain
+import os
 
 /// Loads dropped or opened source files into editor-ready text + a language hint.
 ///

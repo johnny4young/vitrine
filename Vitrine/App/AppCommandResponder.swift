@@ -1,4 +1,5 @@
 import AppKit
+import VitrineRendering
 
 /// Performs the app-scoped commands (New Capture, Open Editor, Settings, Help,
 /// About) from the main menu. A small `@objc` target rather than free functions
