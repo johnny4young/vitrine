@@ -663,6 +663,36 @@ struct EditorSessionIndependenceTests {
         #expect(FileManager.default.fileExists(atPath: nonPlist.path))
     }
 
+    /// Launch runs the sweep off the main actor. The background entry point must collect
+    /// exactly what the synchronous sweep does, and launch must not call the synchronous one.
+    @Test func launchSweepsStaleSuitesOffTheMainActor() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vitrine-sweep-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stale = directory.appendingPathComponent(
+            "\(AppSettings.legacyEditorSessionSuitePrefix)DDDD.plist")
+        try Data("stub".utf8).write(to: stale)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(-30 * 86_400)], ofItemAtPath: stale.path)
+
+        await AppSettings.sweepStaleEditorSessionSuitesInBackground(preferencesDirectory: directory)
+
+        #expect(!FileManager.default.fileExists(atPath: stale.path))
+
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let delegate = sourceCodeWithoutLineComments(
+            try String(
+                contentsOf: root.appendingPathComponent("Vitrine/App/AppDelegate.swift"),
+                encoding: .utf8))
+        #expect(delegate.contains("await AppSettings.sweepStaleEditorSessionSuitesInBackground("))
+        #expect(
+            !delegate.contains("AppSettings.sweepStaleEditorSessionSuites("),
+            "launch must not run the sweep on the main actor")
+    }
+
     @Test func sweepToleratesAMissingDirectory() {
         // First launch on a clean container: the Preferences directory may not exist.
         AppSettings.sweepStaleEditorSessionSuites(

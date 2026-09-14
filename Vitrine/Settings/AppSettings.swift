@@ -257,7 +257,8 @@ final class AppSettings {
     /// The suite-name prefix used by editor sessions in earlier releases. Current sessions
     /// never create a persistent suite; this remains only as the launch sweep's match
     /// criterion so an upgrade can collect historical files safely.
-    static let legacyEditorSessionSuitePrefix = "com.johnny4young.vitrine.editor-session."
+    nonisolated static let legacyEditorSessionSuitePrefix =
+        "com.johnny4young.vitrine.editor-session."
 
     /// Deletes stale per-window suite files left behind by earlier releases.
     ///
@@ -272,7 +273,7 @@ final class AppSettings {
     /// build and an installed build share the container). The age threshold makes the
     /// sweep safe against that race: a live session's plist was written recently, a
     /// stranded one has not been touched since its run died.
-    static func sweepStaleEditorSessionSuites(
+    nonisolated static func sweepStaleEditorSessionSuites(
         preferencesDirectory: URL,
         olderThan age: TimeInterval = 86_400,
         now: Date = Date()
@@ -306,8 +307,22 @@ final class AppSettings {
         }
     }
 
+    /// Runs ``sweepStaleEditorSessionSuites(preferencesDirectory:olderThan:now:)`` off the
+    /// main actor, so launch never waits on it.
+    ///
+    /// Each stale suite costs a `cfprefsd` round trip plus a file removal: 50 of them took
+    /// about 15 ms, and even with none to remove the sweep still lists the whole directory.
+    /// Nothing at launch depends on the result, and the sweep is idempotent, so a quit
+    /// before it finishes only leaves the rest for the next launch.
+    @concurrent
+    nonisolated static func sweepStaleEditorSessionSuitesInBackground(
+        preferencesDirectory: URL
+    ) async {
+        sweepStaleEditorSessionSuites(preferencesDirectory: preferencesDirectory)
+    }
+
     /// The container's Preferences directory, where `cfprefsd` materializes suites.
-    static var preferencesDirectory: URL {
+    nonisolated static var preferencesDirectory: URL {
         FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Preferences", isDirectory: true)
     }

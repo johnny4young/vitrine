@@ -200,9 +200,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Collect persistent per-window suites created by earlier releases. Current
         // sessions are process-local, but existing installs may still carry old files;
-        // anything past the concurrent-instance age guard is safe to migrate away.
-        AppSettings.sweepStaleEditorSessionSuites(
-            preferencesDirectory: AppSettings.preferencesDirectory)
+        // anything past the concurrent-instance age guard is safe to migrate away. The
+        // sweep lists the Preferences directory and removes each stale suite, so it runs
+        // off the launch path.
+        Task(priority: .utility) {
+            await AppSettings.sweepStaleEditorSessionSuitesInBackground(
+                preferencesDirectory: AppSettings.preferencesDirectory)
+        }
 
         // This is the app's only persistent affordance. A minimal child process owns the
         // icon in production because Control Center can block the main bundle's status
