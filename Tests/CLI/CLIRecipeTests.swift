@@ -3,7 +3,7 @@ import Testing
 import VitrineDomain
 import VitrineRendering
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 @MainActor
 @Suite("CLI workspace recipes")

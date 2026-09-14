@@ -18,7 +18,7 @@ output and unlocks *new* surfaces.
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `VitrineRendering/Models/SnapshotConfig.swift` (`Watermark`), `VitrineRendering/Canvas/WatermarkBadge.swift` |
 | Feature: multi-size export | `Vitrine/Export/ExportManager+Batch.swift` (`exportPresetSizes`), `Vitrine/Export/MultiSizeExportView.swift` |
 | Feature: carousel export | `Vitrine/Export/ExportManager+Batch.swift` (`exportCarousel`), `Vitrine/Export/CarouselExportView.swift`, `Vitrine/Export/CarouselPaginator.swift` |
-| Feature: automation gating | `VitrineCLI/main.swift`, `Vitrine/CLI/CLIOptions.swift` (`Command.requiresPro`), `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
+| Feature: automation gating | `VitrineCLI/CLICommandLine.swift`, `Vitrine/CLI/CLIOptions.swift` (`Command.requiresPro`), `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
 | Tests | `Tests/EntitlementsTests.swift`, `Tests/LicenseActivationTests.swift`, `RepositoryTests/ProDocumentationTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLI/CLIEntitlementTests.swift`, `UITests/VitrineUITests.swift` |
 
 ## Product contract: evaluation and distribution
@@ -122,7 +122,7 @@ In-process surfaces gate on their injected `environment.entitlements.isUnlocked(
 before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
 forces terminal language, requires clipboard copy or editor handoff, and accepts only terminal
 width plus filename/title context. The parser rejects every general style, output, sidecar, and
-automation flag on that command. `render`, `multi-size`, and `batch` remain PRO; `main.swift`
+automation flag on that command. `render`, `multi-size`, and `batch` remain PRO; `CLICommandLine`
 calls `CLIEntitlement.isProUnlocked()` for those commands before dispatch, so the unchanged
 `CLIRenderer` operations stay ungated and fully testable. `vpane` deliberately uses general
 `render` and remains PRO. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;

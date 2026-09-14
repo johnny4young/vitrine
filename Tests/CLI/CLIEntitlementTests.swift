@@ -3,7 +3,7 @@ import Foundation
 import Testing
 import VitrineDomain
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Offline CLI license verification and the compile-time boundary around local Debug unlocking.
 @Suite("CLI entitlement")
@@ -129,7 +129,7 @@ struct CLIEntitlementTests: CLITestSupport {
 
     @Test func executableAuthorizesBeforeInitializingAppKit() throws {
         let source = try String(
-            contentsOf: repoFile("VitrineCLI", "main.swift"), encoding: .utf8)
+            contentsOf: repoFile("VitrineCLI", "CLICommandLine.swift"), encoding: .utf8)
         let authorization = try #require(
             source.range(of: "try CLIEntitlement.authorize(options.command)"))
         let appInitialization = try #require(source.range(of: "NSApplication.shared"))

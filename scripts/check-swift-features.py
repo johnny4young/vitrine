@@ -18,6 +18,7 @@ FEATURE = "MemberImportVisibility"
 # Modules the repository owns. Swift packages compile with their own settings.
 APP_MODULES = {
     "Vitrine",
+    "VitrineCLICore",
     "VitrineDomain",
     "VitrineRendering",
     "VitrineMenuBarHelper",

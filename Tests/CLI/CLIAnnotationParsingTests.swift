@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Parsing and model-mapping coverage for watermark and annotation options.
 @MainActor

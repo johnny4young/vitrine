@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// Parsing coverage for defaults, flag mapping, aliases, and source modes.
 @MainActor

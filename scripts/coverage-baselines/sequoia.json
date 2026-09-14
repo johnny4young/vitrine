@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "platform": "macOS 15 Sequoia",
-  "sourceRevision": "47b01f443003fab827712806e66e6f83446b0e20",
-  "productionLineCoverage": 0.516833081190116,
-  "measuredWith": "GitHub Actions run 34418483071 at 6f1a67e; macOS 15.7.9, image macos15 20260829.0321.1, Xcode 26.3",
-  "coveredLines": 25622,
-  "executableLines": 49575,
+  "sourceRevision": "a50f64a936e414699b19e43a24b6c8cdcafc1b22",
+  "productionLineCoverage": 0.48869376693766936,
+  "measuredWith": "GitHub Actions run 34793782898 at 8a57d0b; macOS 15.7.9, image macos-15-arm64 20260907.0337.1, Xcode 26.3",
+  "coveredLines": 22541,
+  "executableLines": 46125,
   "productionTargets": [
     "Vitrine.app",
     "VitrineMenuBarHelper",
+    "libVitrineCLICore.a",
     "libVitrineDomain.a",
     "libVitrineRendering.a",
     "vitrine-cli"

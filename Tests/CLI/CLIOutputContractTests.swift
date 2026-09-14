@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-@testable import Vitrine
+@testable import VitrineCLICore
 
 /// File, sidecar, sizing, format, identity, and loader output contracts.
 @MainActor
@@ -702,7 +702,7 @@ struct CLIOutputContractTests: CLITestSupport {
         }
 
         var matched = false
-        for _ in 0..<GoldenImageTests.strictRenderAttempts {
+        for _ in 0..<RenderSettling.strictRenderAttempts {
             let (cliBytes, appBytes) = try renderBothSides()
             #expect(Array(cliBytes.prefix(4)) == [0x89, 0x50, 0x4E, 0x47])
             let cliImage = try #require(decodedImage(cliBytes))
@@ -714,7 +714,7 @@ struct CLIOutputContractTests: CLITestSupport {
                 matched = true
                 break
             }
-            GoldenImageTests.settleFontCaches()
+            RenderSettling.settleFontCaches()
         }
         #expect(matched, "App and CLI must produce identical normalized pixels")
     }

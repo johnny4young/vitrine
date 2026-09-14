@@ -371,13 +371,15 @@ preview, and no board state enters `UserDefaults` or restoration.
 
 `vitrine render input.swift --out image.png` renders code to an image from the
 command line, for docs pipelines and automation. It is a separate **`VitrineCLI`**
-target (product name `vitrine`); the GUI app is unchanged.
+executable (built as `vitrine-cli` and exposed on `PATH` as `vitrine`) that links the
+**`VitrineCLICore`** static library; the GUI app is unchanged.
 
 **Hosting strategy.** `ImageRenderer` and Highlightr require AppKit on the **main
 actor**, so a plain SwiftPM executable that never starts AppKit cannot render. Two
 options were evaluated: (a) bundle a headless helper the CLI drives over IPC, or (b)
 make the CLI itself a minimal AppKit host. Vitrine uses (b):
-`VitrineCLI/main.swift` brings up the shared `NSApplication`, sets the **accessory**
+`CLICommandLine.run()` (`VitrineCLI/CLICommandLine.swift`, the only call in `main.swift`)
+brings up the shared `NSApplication`, sets the **accessory**
 activation policy (no Dock icon, no app-switcher entry, no menu bar), renders
 synchronously on the main actor, and exits — it never shows a window and never calls
 `app.run()`, so there is no UI and no event loop to get stuck in. This approach has no
@@ -397,7 +399,11 @@ App and CLI link the same `VitrineDomain` value/policy module and the same stati
 `VitrineRendering` engine containing `SnapshotCanvas`, `ExportManager`, `RenderBudget`,
 the image policy/store, and `HighlightManager`. The CLI does not compile app lifecycle,
 windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI. The thin CLI
-layer lives in `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
+layer lives in `Vitrine/CLI/` and compiles into `VitrineCLICore`, together with the entry
+point and the four app files it calls (`Log`, `LicenseKey`, and the two pasteboard export
+files). The executable and the hostless `VitrineCLITests` bundle both link that library,
+because a tool target cannot be imported by tests. The app compiles only `EditorHandoff`
+and `ShellInit` from `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
 facade. `CLIArgumentSchema` is the single catalog for parser-owned commands, option
 identities, aliases, value arity, constrained-command availability, mode-only validation,
 and generated help. `CLIArgumentParser` consumes tokens and dispatches those stable
@@ -458,7 +464,8 @@ Only one content read is session-owned at a time. The URL, watcher, tasks, and s
 scope are excluded from window restoration and app defaults; ordinary file drops remain
 one-time imports.
 
-**Test boundaries.** `Tests/CLI/` mirrors the production responsibilities: focused
+**Test boundaries.** `Tests/CLI/` mirrors the production responsibilities and runs in
+the hostless `VitrineCLITests` bundle, without launching the app: focused
 suites cover entitlement, version and catalog contracts, argument parsing and
 validation, configuration, rendering, and output behavior. Batch argument contracts
 and filesystem rendering have separate suites because one is pure option validation
@@ -889,7 +896,7 @@ Vitrine/
 ├── Feedback/
 │   ├── Notifier.swift         # quick-capture outcome banners
 │   └── DiagnosticsBundle.swift # privacy-safe "Export diagnostics…"
-├── CLI/                       # `vitrine render` core, shared with VitrineCLI
+├── CLI/                       # `vitrine render` core → VitrineCLICore (app: EditorHandoff, ShellInit)
 │   ├── CLIArguments.swift     # stable dependency-free parser facade
 │   ├── CLIArgumentSchema.swift # commands, aliases, arity, mode rules, and help
 │   ├── CLIArgumentParser.swift # token consumption and invocation state
@@ -951,8 +958,9 @@ VitrineMenuBarHelper/          # sandbox-inheriting status-item helper target
 ├── main.swift                 # paint-only NSStatusItem owner
 └── VitrineMenuBarHelper.entitlements
 
-VitrineCLI/                    # the `vitrine` executable target
-├── main.swift                 # minimal accessory NSApplication host → CLIRenderer
+VitrineCLI/                    # the `vitrine` executable: main.swift; the rest → VitrineCLICore
+├── main.swift                 # calls CLICommandLine.run()
+├── CLICommandLine.swift       # minimal accessory NSApplication host → CLIRenderer
 └── CLIEnvironment.swift       # locates the Fonts/ folder staged next to the binary
 
 DomainTests/                  # hostless VitrineDomain contract tests

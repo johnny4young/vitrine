@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "platform": "macOS 26 Tahoe",
-  "sourceRevision": "47b01f443003fab827712806e66e6f83446b0e20",
-  "productionLineCoverage": 0.5173575390821987,
-  "measuredWith": "GitHub Actions run 34418483071 at 6f1a67e; macOS 26.6.2, image macos26 20260831.0337.3, Xcode 26.6",
-  "coveredLines": 25648,
-  "executableLines": 49575,
+  "sourceRevision": "a50f64a936e414699b19e43a24b6c8cdcafc1b22",
+  "productionLineCoverage": 0.4892791327913279,
+  "measuredWith": "GitHub Actions run 34793782898 at 8a57d0b; macOS 26.6.2, image macos-26-arm64 20260907.0351.1, Xcode 26.6",
+  "coveredLines": 22568,
+  "executableLines": 46125,
   "productionTargets": [
     "Vitrine.app",
     "VitrineMenuBarHelper",
+    "libVitrineCLICore.a",
     "libVitrineDomain.a",
     "libVitrineRendering.a",
     "vitrine-cli"

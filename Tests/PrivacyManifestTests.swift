@@ -89,24 +89,24 @@ enum PermissionMatrix {
 
     /// The committed `project.yml` — the source of truth for the generated, git-ignored
     /// `Vitrine.xcodeproj`. The CLI row of the matrix promises its checks read this file
-    /// (the `VitrineCLI` target sets no entitlements and excludes the web-rendering
+    /// (the CLI targets set no entitlements and compile nothing from the web-rendering
     /// surface), so the suite asserts against it rather than the generated project.
     static func projectYAML() throws -> String {
         try text("project.yml")
     }
 
-    /// The body of the `VitrineCLI` target as declared under the top-level `targets:`
-    /// section of `project.yml`, sliced by indentation.
+    /// The body of the target `name` as declared under the top-level `targets:` section of
+    /// `project.yml`, sliced by indentation.
     ///
     /// `project.yml` has no YAML parser linked into the test bundle, and a substring search
     /// for `VitrineCLI:` is ambiguous: the name also appears under `schemes:`. This walks
-    /// the file, enters the `targets:` section, and captures the lines from `  VitrineCLI:`
+    /// the file, enters the `targets:` section, and captures the lines from `  <name>:`
     /// up to the next two-space-indented sibling target (or the next top-level section), so
-    /// the returned text is exactly the CLI *target* declaration and never the scheme entry.
-    static func cliTargetBlock() throws -> String {
+    /// the returned text is exactly the *target* declaration and never the scheme entry.
+    static func targetBlock(named name: String) throws -> String {
         let yaml = try projectYAML()
         var inTargets = false
-        var inCLI = false
+        var inTarget = false
         var captured: [String] = []
 
         for line in yaml.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
@@ -125,19 +125,35 @@ enum PermissionMatrix {
             if isTopLevel { break }
 
             if isTargetEntry {
-                // A sibling target boundary: start capturing at VitrineCLI, stop at the next.
-                if inCLI { break }
-                if line.hasPrefix("  VitrineCLI:") {
-                    inCLI = true
+                // A sibling target boundary: start capturing at `name`, stop at the next.
+                if inTarget { break }
+                if line.hasPrefix("  \(name):") {
+                    inTarget = true
                     captured.append(line)
                 }
                 continue
             }
 
-            if inCLI { captured.append(line) }
+            if inTarget { captured.append(line) }
         }
 
         return captured.joined(separator: "\n")
+    }
+
+    /// The two targets the command-line tool is built from: the `vitrine-cli` executable
+    /// and the `VitrineCLICore` library it links.
+    static func cliTargetBlocks() throws -> (tool: String, library: String) {
+        (try targetBlock(named: "VitrineCLI"), try targetBlock(named: "VitrineCLICore"))
+    }
+
+    /// Every source `- path:` the two CLI targets compile, exactly as `project.yml` spells it.
+    static func cliSourcePaths() throws -> [String] {
+        let blocks = try cliTargetBlocks()
+        return (blocks.tool + "\n" + blocks.library)
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { $0.hasPrefix("- path:") }
+            .map { $0.dropFirst("- path:".count).trimmingCharacters(in: .whitespaces) }
     }
 
     /// The exact minimal App Store entitlement set the matrix documents: the App Sandbox plus
@@ -447,85 +463,88 @@ struct PermissionMatrixDocumentTests {
 
 // MARK: - CLI permission posture (tied to project.yml)
 
-/// The CLI row of the matrix promises a *concrete, checkable* posture: the `VitrineCLI`
-/// target "sets no `CODE_SIGN_ENTITLEMENTS`" and "excludes `WebRendering`, `AppIntents`,
-/// and `Services`", so `NetworkCapability` and `WKWebView` are never compiled into the
-/// tool. Without these checks that row is unenforced prose — the CLI target could quietly
-/// gain an entitlement or pull in the web-rendering surface (and thus the network client)
-/// while the matrix still claimed it had none, exactly the silent drift this suite exists to
-/// stop. These read the committed `project.yml` (the source of truth for the generated,
-/// git-ignored `Vitrine.xcodeproj`), matching how `WorkflowConfigurationTests`
+/// The CLI row of the matrix promises a *concrete, checkable* posture: neither CLI target
+/// (the `VitrineCLI` executable or the `VitrineCLICore` library it links) "sets
+/// `CODE_SIGN_ENTITLEMENTS`", and their sources name nothing from "`WebRendering`,
+/// `AppIntents`, or `Services`", so `NetworkCapability` and `WKWebView` are never compiled
+/// into the tool. Without these checks that row is unenforced prose — a CLI target could
+/// quietly gain an entitlement or pull in the web-rendering surface (and thus the network
+/// client) while the matrix still claimed it had none, exactly the silent drift this suite
+/// exists to stop. These read the committed `project.yml` (the source of truth for the
+/// generated, git-ignored `Vitrine.xcodeproj`), matching how `WorkflowConfigurationTests`
 /// asserts against the same file.
 @Suite("CLI permission posture")
 struct CLIPermissionPostureTests {
 
-    /// The `VitrineCLI` target declares **no** `CODE_SIGN_ENTITLEMENTS`: a command-line
-    /// tool is not a sandboxed `.app`, so it carries none of the app's entitlements. The
-    /// app target *does* set this key, so the assertion is scoped to the CLI block to prove
-    /// the CLI specifically opts out — the matrix's "sets no `CODE_SIGN_ENTITLEMENTS`" claim.
+    /// Neither CLI target declares `CODE_SIGN_ENTITLEMENTS`: a command-line tool is not a
+    /// sandboxed `.app`, so it carries none of the app's entitlements. The app target *does*
+    /// set this key, so the assertion is scoped to the CLI blocks to prove the CLI
+    /// specifically opts out — the matrix's "sets no `CODE_SIGN_ENTITLEMENTS`" claim.
     @Test func cliTargetDeclaresNoEntitlements() throws {
-        let cli = try PermissionMatrix.cliTargetBlock()
-        // Sanity: the slice actually captured the CLI target (guards against a refactor that
-        // renames or moves it leaving an empty, vacuously-passing block).
-        #expect(cli.contains("type: tool"), "Did not locate the VitrineCLI target in project.yml")
+        let blocks = try PermissionMatrix.cliTargetBlocks()
+        // Sanity: the slices actually captured both targets (guards against a refactor that
+        // renames or moves one, leaving an empty, vacuously-passing block).
         #expect(
-            !cli.contains("CODE_SIGN_ENTITLEMENTS"),
-            """
-            The VitrineCLI target must declare no CODE_SIGN_ENTITLEMENTS: a CLI tool \
-            is not a sandboxed app and ships none of the app's entitlements. If this changes, \
-            update the CLI row of docs/PERMISSIONS.md and this test in the same change.
-            """)
-    }
-
-    /// The `VitrineCLI` target **excludes** the web-rendering surface and the automation
-    /// surfaces from its sources. Excluding `WebRendering` is what keeps `NetworkCapability`
-    /// and `WKWebView` out of the tool entirely, so the CLI provably "cannot load a URL" and
-    /// needs no network — the matrix's "excludes `WebRendering`, `AppIntents`, and
-    /// `Services`" claim, and the basis for its "Network client — not used" row.
-    @Test func cliTargetExcludesWebRenderingAndAutomationSurfaces() throws {
-        let cli = try PermissionMatrix.cliTargetBlock()
-        #expect(cli.contains("type: tool"), "Did not locate the VitrineCLI target in project.yml")
-        for excluded in ["WebRendering", "AppIntents", "Services"] {
+            blocks.tool.contains("type: tool"),
+            "Did not locate the VitrineCLI target in project.yml")
+        #expect(
+            blocks.library.contains("type: library.static"),
+            "Did not locate the VitrineCLICore target in project.yml")
+        for (name, block) in [("VitrineCLI", blocks.tool), ("VitrineCLICore", blocks.library)] {
             #expect(
-                cli.contains("\"\(excluded)\"") || cli.contains("- \(excluded)"),
+                !block.contains("CODE_SIGN_ENTITLEMENTS"),
                 """
-                The VitrineCLI target must exclude \(excluded). Excluding WebRendering \
-                in particular keeps NetworkCapability and WKWebView out of the CLI, which is why \
-                the matrix can say the CLI uses no network. Update the CLI row of \
-                docs/PERMISSIONS.md and this test together if this changes.
+                The \(name) target must declare no CODE_SIGN_ENTITLEMENTS: a CLI tool \
+                is not a sandboxed app and ships none of the app's entitlements. If this changes, \
+                update the CLI row of docs/PERMISSIONS.md and this test in the same change.
                 """)
         }
+    }
 
-        // Excluding the directory is not the same as keeping its files out: a target can
-        // exclude a directory and then name individual files from it back in, which is
-        // exactly what this target did for three files including `NetworkCapability`.
-        // The assertion above stayed green throughout, while the rationale it states —
-        // that the exclusion keeps NetworkCapability out of the CLI — was false.
-        let readdedWebFiles =
-            cli
-            .split(separator: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { $0.hasPrefix("- path:") && $0.contains("WebRendering/") }
+    /// The CLI compiles a named list of sources, and none comes from the web-rendering or
+    /// automation surfaces. Keeping `WebRendering` out is what keeps `NetworkCapability` and
+    /// `WKWebView` out of the tool entirely, so the CLI provably "cannot load a URL" and needs
+    /// no network — the matrix's claim, and the basis for its "Network client — not used" row.
+    ///
+    /// The tool used to compile the whole app tree minus excluded directories. Excluding a
+    /// directory is not the same as keeping its files out: a target can exclude a directory
+    /// and then name individual files from it back in, which is exactly what the tool once
+    /// did for three files including `NetworkCapability` while an exclusion check stayed
+    /// green. A named source list closes that gap, provided nobody names the tree back in.
+    @Test func cliTargetsCompileNoWebRenderingOrAutomationSurface() throws {
+        let paths = try PermissionMatrix.cliSourcePaths()
+        #expect(paths.contains("Vitrine/CLI"), "Did not locate the CLI sources in project.yml")
         #expect(
-            readdedWebFiles.isEmpty,
-            """
-            The VitrineCLI target must name no file from WebRendering, or the exclusion \
-            above means nothing. Found: \(readdedWebFiles.joined(separator: ", "))
-            """)
+            !paths.contains("Vitrine"),
+            "The CLI targets must name their sources, not compile the whole app tree: \(paths)")
+        for surface in ["WebRendering", "AppIntents", "Services"] {
+            let offending = paths.filter {
+                $0 == "Vitrine/\(surface)" || $0.hasPrefix("Vitrine/\(surface)/")
+            }
+            #expect(
+                offending.isEmpty,
+                """
+                The CLI targets must compile nothing from Vitrine/\(surface). Keeping \
+                WebRendering out in particular keeps NetworkCapability and WKWebView out of the CLI, \
+                which is why the matrix can say the CLI uses no network. Update the CLI row of \
+                docs/PERMISSIONS.md and this test together if this changes. Found: \(offending)
+                """)
+        }
     }
 
     /// A tool has no app bundle in which Xcode can install an asset catalog, string catalog,
     /// privacy manifest, or property list. The raw font files are staged separately by the
     /// CLI build phase, so the entire app-only resource tree must stay out of its source list.
     /// This also keeps archive builds from treating `usr/local/bin` as an asset-catalog output.
-    @Test func cliTargetExcludesAppBundleResources() throws {
-        let cli = try PermissionMatrix.cliTargetBlock()
-        #expect(cli.contains("type: tool"), "Did not locate the VitrineCLI target in project.yml")
+    @Test func cliTargetsCompileNoAppBundleResources() throws {
+        let paths = try PermissionMatrix.cliSourcePaths()
+        #expect(paths.contains("Vitrine/CLI"), "Did not locate the CLI sources in project.yml")
+        let resources = paths.filter {
+            $0 == "Vitrine" || $0 == "Vitrine/Resources" || $0.hasPrefix("Vitrine/Resources/")
+        }
         #expect(
-            cli.split(separator: "\n").contains {
-                $0.trimmingCharacters(in: .whitespaces) == #"- "Resources""#
-            },
-            "The VitrineCLI target must exclude the app-only Resources tree from its sources")
+            resources.isEmpty,
+            "The CLI targets must not compile the app-only Resources tree: \(resources)")
     }
 
     /// The matrix's CLI row documents the same posture in prose: no `CODE_SIGN_ENTITLEMENTS`
@@ -535,6 +554,7 @@ struct CLIPermissionPostureTests {
     @Test func matrixCLIRowDocumentsTheProjectYAMLPosture() throws {
         let matrix = try PermissionMatrix.matrix()
         #expect(matrix.contains("CODE_SIGN_ENTITLEMENTS"))
+        #expect(matrix.contains("VitrineCLICore"))
         #expect(matrix.contains("WebRendering"))
         #expect(matrix.contains("AppIntents"))
         #expect(matrix.contains("Services"))
