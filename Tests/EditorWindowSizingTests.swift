@@ -42,9 +42,30 @@ struct EditorWindowSizingTests {
         #expect(hosting.sizingOptions.isEmpty)
     }
 
+    /// Sets a frame far below any editor minimum in code, gives layout a few passes to
+    /// react, and returns the content size the window ends up with.
+    private static func contentSizeAfterShrinking(_ window: NSWindow) -> NSSize {
+        window.setFrame(NSRect(x: 0, y: 0, width: 600, height: 400), display: false)
+        for _ in 0..<5 {
+            window.layoutIfNeeded()
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+        }
+        return window.contentRect(forFrameRect: window.frame).size
+    }
+
+    private static func minimumConstraints(of window: NSWindow) -> [NSLayoutConstraint] {
+        let identifiers = [
+            EditorWindowController.minimumWidthIdentifier,
+            EditorWindowController.minimumHeightIdentifier,
+        ]
+        let constraints = window.contentViewController?.view.constraints ?? []
+        return constraints.filter { identifiers.contains($0.identifier ?? "") }
+    }
+
     /// The same editor hosted with the default sizing options is the reference: the
-    /// minimum its constraints impose is the one the pinned window must keep.
-    @Test func thePinnedMinimumIsTheOneTheContentWouldEnforce() {
+    /// minimum its constraints impose, and how a window holds to it when code sets a
+    /// smaller frame, is what the pinned window must reproduce on every macOS release.
+    @Test func thePinnedMinimumHoldsLikeTheConstraintsItReplaces() {
         let environment = AppEnvironment(defaults: testDefaults())
         let session = Self.makeSession(environment, index: 42)
         defer { session.discard() }
@@ -61,6 +82,7 @@ struct EditorWindowSizingTests {
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
         }
         let expected = reference.contentMinSize
+        let referenceShrunk = Self.contentSizeAfterShrinking(reference)
         reference.contentViewController = nil
 
         let window = Self.makeWindow(
@@ -71,13 +93,17 @@ struct EditorWindowSizingTests {
 
         #expect(expected.width > EditorLayout.codeColumnWidth + EditorLayout.inspectorMinWidth)
         #expect(window.contentMinSize == expected)
+        #expect(
+            Self.minimumConstraints(of: window).map(\.constant).sorted()
+                == [expected.height, expected.width].sorted())
 
-        // AppKit holds the window to that minimum even when code sets a smaller frame.
-        window.setFrame(NSRect(x: 0, y: 0, width: 600, height: 400), display: false)
-        window.layoutIfNeeded()
-        let content = window.contentRect(forFrameRect: window.frame).size
-        #expect(content.width >= expected.width)
-        #expect(content.height >= expected.height)
+        let shrunk = Self.contentSizeAfterShrinking(window)
+        let referenceHeld =
+            referenceShrunk.width >= expected.width && referenceShrunk.height >= expected.height
+        let pinnedHeld = shrunk.width >= expected.width && shrunk.height >= expected.height
+        #expect(
+            pinnedHeld == referenceHeld,
+            "the reference ended at \(referenceShrunk), the pinned window at \(shrunk)")
     }
 
     @Test func aResizeMeasuresTheMinimumAgain() {
@@ -93,11 +119,16 @@ struct EditorWindowSizingTests {
         EditorWindowController.pinMinimumContentSize(of: window)
         let measured = window.contentMinSize
         window.contentMinSize = .zero
+        for constraint in Self.minimumConstraints(of: window) { constraint.constant = 0 }
 
         controller.windowWillStartLiveResize(
             Notification(name: NSWindow.willStartLiveResizeNotification, object: window))
 
         #expect(measured != .zero)
         #expect(window.contentMinSize == measured)
+        // Measuring again updates the same two constraints instead of stacking new ones.
+        #expect(
+            Self.minimumConstraints(of: window).map(\.constant).sorted()
+                == [measured.height, measured.width].sorted())
     }
 }

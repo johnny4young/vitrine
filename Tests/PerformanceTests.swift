@@ -580,6 +580,10 @@ struct PerformanceTests {
             let character = String(typed[next % typed.count])
             textView.insertText(character, replacementRange: textView.selectedRange())
             next += 1
+            // A window that is never on screen gets no display cycle. On macOS 15 the edit
+            // alone did not reach the layout pass (keystrokes measured 1 ms there), so ask
+            // for the pass a visible window runs before its next frame.
+            root.needsLayout = true
             root.layoutSubtreeIfNeeded()
         }
 

@@ -495,17 +495,38 @@ extension EditorWindowController {
         return hosting
     }
 
-    /// Sets `window`'s minimum content size to the smallest size its editor supports.
+    /// Holds `window` to the smallest content size its editor supports.
     ///
-    /// AppKit enforces a content minimum for user resizing and during layout, the same
-    /// way it enforced the constraint the hosting controller used to derive, so a
-    /// programmatic frame below it grows back on the next layout pass.
+    /// The minimum is measured once here and applied the way the hosting controller
+    /// applied it: required width and height constraints on the content view, which grow
+    /// a frame set in code below them back on the next layout pass. `contentMinSize` is
+    /// set too, but it is not enough by itself: on macOS 15 it limits user resizing and
+    /// not a frame set in code.
     static func pinMinimumContentSize(of window: NSWindow) {
-        guard let content = window.contentViewController as? any MinimumContentSizing else {
-            return
+        guard let controller = window.contentViewController,
+            let content = controller as? any MinimumContentSizing
+        else { return }
+        let minimum = content.minimumContentSize
+        window.contentMinSize = minimum
+        let view = controller.view
+        let dimensions = [
+            (minimumWidthIdentifier, view.widthAnchor, minimum.width),
+            (minimumHeightIdentifier, view.heightAnchor, minimum.height),
+        ]
+        for (identifier, dimension, constant) in dimensions {
+            if let existing = view.constraints.first(where: { $0.identifier == identifier }) {
+                existing.constant = constant
+            } else {
+                let constraint = dimension.constraint(greaterThanOrEqualToConstant: constant)
+                constraint.identifier = identifier
+                constraint.isActive = true
+            }
         }
-        window.contentMinSize = content.minimumContentSize
     }
+
+    /// Identifies the minimum-size constraints, so a later measurement updates them.
+    static let minimumWidthIdentifier = "editor-window-minimum-width"
+    static let minimumHeightIdentifier = "editor-window-minimum-height"
 }
 
 /// A content controller that can measure the smallest size its content supports.
