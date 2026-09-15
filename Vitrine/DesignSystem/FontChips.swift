@@ -71,11 +71,11 @@ struct FontChipPicker: View {
             ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
                 ForEach(filteredFonts, id: \.self) { family in
                     FontChip(
-                        family: family, isSelected: settings.config.fontName == family,
+                        family: family, isSelected: settings.style.fontName == family,
                         fontSize: fontSize, verticalPadding: verticalPadding,
                         horizontalPadding: horizontalPadding
                     ) {
-                        settings.config.fontName = family
+                        settings.style.fontName = family
                     }
                 }
             }
