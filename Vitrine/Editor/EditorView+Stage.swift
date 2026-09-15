@@ -556,8 +556,6 @@ extension EditorView {
         // document so opening an existing draft never flashes the empty-state sample.
         // Once staged, this expression stops reading `documentCode`; subsequent raw
         // keystrokes are observed only by PreviewCodeSynchronizer.
-        let _ =
-            stagedPreviewCode == nil
         let code = stagedPreviewCode ?? settings.documentCode
         var config = EditorPreview.configForPreview(
             settings.renderConfiguration, stagedCode: code)
