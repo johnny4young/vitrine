@@ -157,8 +157,8 @@ final class EditorWindowController: NSObject {
 
     /// The opening content size for a brand-new editor window. Wide enough for the
     /// preset strip plus the code / preview / inspector columns of the current designed
-    /// editor; the SwiftUI root enforces its own minimum below this. A window
-    /// restored from a saved frame overrides this.
+    /// editor; the minimum measured from the SwiftUI root (``pinMinimumContentSize(of:)``)
+    /// applies below this. A window restored from a saved frame overrides this.
     private static let defaultContentSize = NSSize(width: 1180, height: 680)
 
     init(
@@ -268,10 +268,7 @@ final class EditorWindowController: NSObject {
     /// wired for frame autosave and secure state restoration.
     private func makeWindow(for identity: EditorWindowIdentity) -> NSWindow {
         let session = session(for: identity)
-        let hosting = NSHostingController(
-            rootView: EditorView(environment: environment)
-                .environment(session.settings)
-                .environment(session))
+        let hosting = Self.makeHostingController(environment: environment, session: session)
         let window = TitleBarAlignedWindow(contentViewController: hosting)
         window.title = identity.windowTitle
         window.styleMask = [
@@ -282,6 +279,7 @@ final class EditorWindowController: NSObject {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultContentSize)
+        Self.pinMinimumContentSize(of: window)
         window.isReleasedWhenClosed = false
 
         // Vitrine is not a tabbed-document app: each editor is its own independent
@@ -313,7 +311,7 @@ final class EditorWindowController: NSObject {
         // restore. Cap the default size to the screen it opens on — the 1180-point
         // default is wider than a small display (e.g. 1024x768), and a window that
         // overhangs the screen edge leaves its trailing toolbar actions unreachable
-        // — then center it. The SwiftUI root's own minimum still applies, so
+        // — then center it. The pinned minimum still applies, so
         // the cap never squeezes the editor below its supported layout. One with a
         // saved frame keeps the restored position and only needs the off-screen
         // recovery pass in `showWindow(for:)`.
@@ -464,6 +462,81 @@ extension EditorWindowController: NSWindowDelegate {
         else { return }
         state.encode(data as NSData, forKey: Self.restorationStateKey)
     }
+
+    /// Measures the editor's minimum again as a resize begins, just before the user can
+    /// run into it. The content's minimum can change while the window is open: the
+    /// annotation toolbar shows its color and thickness controls only for some tools.
+    func windowWillStartLiveResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        Self.pinMinimumContentSize(of: window)
+    }
+}
+
+// MARK: - Sizing
+
+extension EditorWindowController {
+    /// Hosts the editor for `session` without the size constraints a hosting controller
+    /// derives from its content by default.
+    ///
+    /// With the default `sizingOptions`, every update re-measures the whole SwiftUI
+    /// hierarchy to refresh the window's minimum, intrinsic, and maximum sizes. The
+    /// editor's root updates on every keystroke, so that measurement ran on every
+    /// keystroke too, and it was most of the cost: typing into a 60-line document took
+    /// 79 ms a key with it and 13 ms without it in an optimized build. The window pins
+    /// its minimum from the content instead (``pinMinimumContentSize(of:)``).
+    static func makeHostingController(
+        environment: AppEnvironment, session: EditorSession
+    ) -> NSHostingController<some View> {
+        let hosting = NSHostingController(
+            rootView: EditorView(environment: environment)
+                .environment(session.settings)
+                .environment(session))
+        hosting.sizingOptions = []
+        return hosting
+    }
+
+    /// Holds `window` to the smallest content size its editor supports.
+    ///
+    /// The minimum is measured once here and applied the way the hosting controller
+    /// applied it: required width and height constraints on the content view, which grow
+    /// a frame set in code below them back on the next layout pass. `contentMinSize` is
+    /// set too, but it is not enough by itself: on macOS 15 it limits user resizing and
+    /// not a frame set in code.
+    static func pinMinimumContentSize(of window: NSWindow) {
+        guard let controller = window.contentViewController,
+            let content = controller as? any MinimumContentSizing
+        else { return }
+        let minimum = content.minimumContentSize
+        window.contentMinSize = minimum
+        let view = controller.view
+        let dimensions = [
+            (minimumWidthIdentifier, view.widthAnchor, minimum.width),
+            (minimumHeightIdentifier, view.heightAnchor, minimum.height),
+        ]
+        for (identifier, dimension, constant) in dimensions {
+            if let existing = view.constraints.first(where: { $0.identifier == identifier }) {
+                existing.constant = constant
+            } else {
+                let constraint = dimension.constraint(greaterThanOrEqualToConstant: constant)
+                constraint.identifier = identifier
+                constraint.isActive = true
+            }
+        }
+    }
+
+    /// Identifies the minimum-size constraints, so a later measurement updates them.
+    static let minimumWidthIdentifier = "editor-window-minimum-width"
+    static let minimumHeightIdentifier = "editor-window-minimum-height"
+}
+
+/// A content controller that can measure the smallest size its content supports.
+protocol MinimumContentSizing {
+    var minimumContentSize: NSSize { get }
+}
+
+extension NSHostingController: MinimumContentSizing {
+    /// The size the SwiftUI content takes under a zero proposal, which is its minimum.
+    var minimumContentSize: NSSize { sizeThatFits(in: .zero) }
 }
 
 // MARK: - State restoration
