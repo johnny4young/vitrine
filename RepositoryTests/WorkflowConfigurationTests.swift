@@ -580,14 +580,16 @@ struct WorkflowConfigurationTests {
             #expect(lane.contains(required), "universal Release lane must contain \(required)")
         }
 
-        for (name, workflow) in [("CI", try Self.ci()), ("release", try Self.release())] {
-            #expect(
-                workflow.contains("make build-release RESULT_BUNDLE="),
-                "\(name) must compile the optimized universal app")
-            #expect(
-                workflow.contains("build-release.xcresult"),
-                "\(name) must retain optimized-build diagnostics")
-        }
+        // CI compiles it on every commit. The release gate does not compile again: it
+        // requires this job's check runs on the tagged commit (see
+        // `releaseGateRequiresTheTaggedCommitsCI`).
+        let ci = try Self.ci()
+        #expect(
+            ci.contains("make build-release RESULT_BUNDLE="),
+            "CI must compile the optimized universal app")
+        #expect(
+            ci.contains("build-release.xcresult"),
+            "CI must retain optimized-build diagnostics")
     }
 
     // MARK: - Contract: run `make build-ui-tests` on every PR
@@ -694,23 +696,18 @@ struct WorkflowConfigurationTests {
 
     // MARK: - Contract: release candidate and manual promotion are fail-closed
 
-    /// The release workflow must run lint, build, the unit suite, and the UI-test
-    /// build, and only the candidate step may depend on that gate. Tag pushes must stop
-    /// after uploading + independently QA-checking a private artifact; public release
-    /// creation belongs exclusively to a separately confirmed workflow_dispatch run.
+    /// The release workflow must gate the candidate on the tagged commit's green CI, and
+    /// only the candidate step may depend on that gate. Tag pushes must stop after
+    /// uploading + independently QA-checking a private artifact; public release creation
+    /// belongs exclusively to a separately confirmed workflow_dispatch run.
     @Test func releaseRefusesToPublishWhenAnyGateFails() throws {
         let release = try Self.release()
 
-        // A verify job runs every gate check, including both build configurations.
-        #expect(release.contains("make lint"), "release gate must run lint")
-        #expect(release.contains("make build "), "release gate must run the Debug build")
+        // The verify job requires the commit's CI, which runs every gate check
+        // (`releaseGateRequiresTheTaggedCommitsCI` pins which ones).
         #expect(
-            release.contains("make build-release "),
-            "release gate must run the optimized universal build")
-        #expect(
-            release.contains("make build-ui-tests"),
-            "release gate must compile the UI tests")
-        #expect(release.contains("make test "), "release gate must run the unit suite")
+            try Self.job("verify", in: release).contains("scripts/verify-commit-ci.py"),
+            "the release gate must require the tagged commit's CI")
 
         // The private candidate build depends on the gate.
         #expect(
@@ -1005,7 +1002,7 @@ struct WorkflowConfigurationTests {
             "the release runbook must explain immutable release history")
     }
 
-    // MARK: - Contract: the release gate logs the exact toolchain before building
+    // MARK: - Contract: the release build logs the exact toolchain before building
 
     /// The release jobs run on the same explicit image the CI matrix certifies, so the
     /// signed DMG cannot be built on a toolchain no lane has validated. `ci.yml` has
@@ -1022,13 +1019,10 @@ struct WorkflowConfigurationTests {
         #expect(action.contains("swift --version"), "release gate must log the Swift version")
 
         let release = try Self.release()
-        try Self.expectToolchainSetUp(
-            in: Self.job("verify", in: release), before: "run: make build ",
-            label: "release.yml verify")
 
-        // The DMG users install is built in `candidate`, on a runner that can carry a different
-        // image version than `verify`'s, so that job records its own toolchain too. It restores
-        // no package cache: the shipped build resolves its packages from a clean state.
+        // The DMG users install is built in `candidate`, which records its own toolchain. The
+        // `verify` gate builds nothing, so it sets up no toolchain. The candidate restores no
+        // package cache: the shipped build resolves its packages from a clean state.
         let candidate = try Self.job("candidate", in: release)
         try Self.expectToolchainSetUp(
             in: candidate, before: "run: ./scripts/build-dmg.sh", label: "release.yml candidate")
@@ -1041,49 +1035,76 @@ struct WorkflowConfigurationTests {
             "the signed release candidate must not restore a package cache")
     }
 
-    // MARK: - Contract: the release gate uploads .xcresult bundles on failure
+    // MARK: - Contract: the release gate requires the tagged commit's green CI
 
-    /// The `.xcresult`-on-failure contract is not CI-only: when the release `verify`
-    /// gate blocks a tag, the same offline-triage diagnostics must be available from the
-    /// tag run. Assert the gate passes `RESULT_BUNDLE=` through every xcodebuild phase
-    /// (build, build-ui-tests, test) and uploads the bundles through a `failure()`-gated
-    /// step, so a regression that drops release-gate diagnostics fails here.
-    @Test func releaseGateUploadsXcresultBundlesOnFailure() throws {
-        let release = try Self.release()
+    /// CI runs lint, the Debug and universal Release builds, the unit and UI suites, and
+    /// the visual tour on every commit that lands on `main`, and uploads `.xcresult`
+    /// bundles when any of it fails. The release `verify` gate reads those results for the
+    /// tagged commit instead of re-running a subset of them. Assert it requires exactly
+    /// the checks `ci.yml` defines, reads them with the permission that needs, waits for a
+    /// bounded time only, builds nothing itself, and that `make lint` exercises the
+    /// decision script's self-test.
+    @Test func releaseGateRequiresTheTaggedCommitsCI() throws {
+        let verify = try Self.job("verify", in: Self.release())
 
-        // Every build/test phase in the gate must request an .xcresult bundle.
-        for phase in [
-            "make build ", "make build-release ", "make build-ui-tests ", "make test ",
+        let requiredPattern = try Regex(#"--required "([^"]+)""#)
+        let gated = Set(
+            verify.matches(of: requiredPattern).compactMap { $0.output[1].substring }
+                .map(String.init))
+        let defined = try Self.ciCheckNames()
+        #expect(defined.count == 5, "ci.yml should define five checks, found \(defined)")
+        #expect(
+            gated == defined,
+            "the release gate must require exactly ci.yml's checks: gated \(gated), defined \(defined)"
+        )
+
+        for fragment in [
+            "checks: read",
+            #"git rev-list -n 1 "${GITHUB_REF_NAME}""#,
+            "/commits/${TAG_COMMIT}/check-runs",
+            "--paginate",
+            "45 * 60",
+            "sleep 60",
         ] {
-            let invocation = try #require(
-                release.components(separatedBy: .newlines).first { $0.contains(phase) },
-                "release gate must invoke `\(phase.trimmingCharacters(in: .whitespaces))`")
-            #expect(
-                invocation.contains("RESULT_BUNDLE="),
-                "release gate `\(phase.trimmingCharacters(in: .whitespaces))` must capture an .xcresult bundle"
-            )
+            #expect(verify.contains(fragment), "the release gate must contain `\(fragment)`")
+        }
+        for build in ["make lint", "make build", "make test", "setup-macos-toolchain"] {
+            #expect(!verify.contains(build), "the release gate must not run `\(build)` itself")
         }
 
-        // The upload step must exist, reference the bundles, and be gated on failure.
-        #expect(release.contains("actions/upload-artifact@"))
+        let makefile = try Self.makefile()
         #expect(
-            release.contains(".xcresult"),
-            "release gate must reference the .xcresult bundles it uploads")
-        let uploadName = try #require(
-            release.range(of: "name: release-verify-xcresults"),
-            "release gate must declare the .xcresult upload step")
-        let preceding = String(release[..<uploadName.lowerBound])
-        #expect(
-            preceding.contains("if: failure()"),
-            "the release gate's .xcresult upload must be gated on failure")
+            makefile.contains("verify-commit-ci.py --self-test")
+                && makefile.contains(" commit-ci-check "),
+            "make lint must execute the commit CI gate's self-test")
+    }
 
-        // The diagnostics upload belongs to the verify gate, before candidate packaging.
-        let verifyMarker = try #require(release.range(of: "\n  verify:"))
-        let candidateMarker = try #require(release.range(of: "\n  candidate:"))
-        #expect(
-            verifyMarker.upperBound < uploadName.lowerBound
-                && uploadName.lowerBound < candidateMarker.lowerBound,
-            "the .xcresult upload must live in the verify gate")
+    /// The check-run names `ci.yml` produces: each job's `name:`, expanded over its matrix
+    /// `platform:` values when the name interpolates `matrix.platform`.
+    private static func ciCheckNames() throws -> Set<String> {
+        let ci = try Self.ci()
+        var names: Set<String> = []
+        for jobKey in ["checks", "build", "ui-test"] {
+            let job = try Self.job(jobKey, in: ci)
+            let nameLine = try #require(
+                job.split(separator: "\n").first { $0.hasPrefix("    name: ") },
+                "`\(jobKey)` has no name")
+            let name = String(nameLine.dropFirst("    name: ".count))
+            guard name.contains("${{ matrix.platform }}") else {
+                names.insert(name)
+                continue
+            }
+            let platforms = job.split(separator: "\n")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { $0.hasPrefix("platform: ") }
+                .map { String($0.dropFirst("platform: ".count)) }
+            #expect(!platforms.isEmpty, "`\(jobKey)` interpolates a platform but has no matrix")
+            for platform in platforms {
+                names.insert(
+                    name.replacingOccurrences(of: "${{ matrix.platform }}", with: platform))
+            }
+        }
+        return names
     }
 
     // MARK: - Contract: CI executes the full UI suite
