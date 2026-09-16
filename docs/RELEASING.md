@@ -288,6 +288,11 @@ A renamed or removed scenario must leave the baseline too; `WorkflowConfiguratio
 rejects a recorded scenario the suite no longer emits. `make perf-check`, part of
 `make lint`, runs the comparison's self-test.
 
+Do not compare `editor-keystroke` across the two rows. On the Sequoia runner the test host
+never runs the preview's first handoff of the document, so the scenario times keystrokes that
+re-render the preview, 90–170 ms, where Tahoe records steady-state typing at 8–16 ms. A
+Sequoia baseline for it tracks drift in that path, not typing latency.
+
 ### Dynamic memory evidence
 
 Run `make memory-smoke` before a release candidate and after changes to window,
