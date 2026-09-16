@@ -82,16 +82,16 @@ struct HighlightedLinesField: View {
             // Match the visible row label so VoiceOver and the title agree.
             .accessibilityLabel("Highlight lines")
             .accessibilityIdentifier("highlight-lines-field")
-            .onAppear { text = LineHighlight.describe(settings.config.highlightedLineRanges) }
+            .onAppear { text = LineHighlight.describe(settings.style.highlightedLineRanges) }
             .onChange(of: text) { _, newValue in
                 let parsed = LineHighlight.parse(newValue)
-                if parsed != settings.config.highlightedLineRanges {
-                    settings.config.highlightedLineRanges = parsed
+                if parsed != settings.style.highlightedLineRanges {
+                    settings.style.highlightedLineRanges = parsed
                 }
             }
             // Re-seed from the config when it changes elsewhere (e.g. Reset All
             // Settings) so the field never shows stale text.
-            .onChange(of: settings.config.highlightedLineRanges) { _, newValue in
+            .onChange(of: settings.style.highlightedLineRanges) { _, newValue in
                 let canonical = LineHighlight.describe(newValue)
                 if LineHighlight.parse(text) != newValue { text = canonical }
             }
@@ -134,7 +134,7 @@ struct MetadataFields: View {
             }
 
             TokenRow(label: Text("Language badge")) {
-                Toggle("Language badge", isOn: $settings.config.metadata.showLanguageBadge)
+                Toggle("Language badge", isOn: $settings.style.metadata.showLanguageBadge)
                     .toggleStyle(.switch)
                     .labelsHidden()
                     .help("Show the current language as a badge in the header")
@@ -161,8 +161,8 @@ struct MetadataFields: View {
     /// so the live config and the field stay in sync without ever storing a blank.
     private func field(_ keyPath: WritableKeyPath<SnapshotMetadata, String?>) -> Binding<String> {
         Binding(
-            get: { settings.config.metadata[keyPath: keyPath] ?? "" },
-            set: { settings.config.metadata[keyPath: keyPath] = SnapshotMetadata.normalized($0) }
+            get: { settings.style.metadata[keyPath: keyPath] ?? "" },
+            set: { settings.style.metadata[keyPath: keyPath] = SnapshotMetadata.normalized($0) }
         )
     }
 }

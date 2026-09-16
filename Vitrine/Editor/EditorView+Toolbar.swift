@@ -31,7 +31,7 @@ extension EditorView {
     /// sharing the command's VoiceOver label and keyboard shortcut.
     var editorToolbar: some View {
         // `settings` arrives via @Environment (an @Observable), which has no projected
-        // value; this local @Bindable provides the `$settings.config.language` binding the
+        // value; this local @Bindable provides the `$settings.style.language` binding the
         // language picker needs.
         @Bindable var settings = settings
         @ViewBuilder func contents(_ density: EditorToolbarDensity) -> some View {
@@ -43,7 +43,7 @@ extension EditorView {
                     .frame(width: 22, height: 22)
                     .accessibilityLabel("Vitrine Editor")
 
-                Picker("Language", selection: $settings.config.language) {
+                Picker("Language", selection: $settings.style.language) {
                     ForEach(settings.orderedLanguages) { language in
                         Text(language.displayName).tag(language)
                     }
@@ -57,10 +57,10 @@ extension EditorView {
                 // turn the +/− bands (and the line gutter they read best with) on
                 // automatically — the feature was previously undiscoverable behind an
                 // inspector toggle. The toggle stays as a manual override.
-                .onChange(of: settings.config.language) { _, newValue in
+                .onChange(of: settings.style.language) { _, newValue in
                     if newValue == .diff {
-                        settings.config.diffDecorations = true
-                        settings.config.showLineNumbers = true
+                        settings.style.diffDecorations = true
+                        settings.style.showLineNumbers = true
                     }
                 }
 
@@ -154,7 +154,7 @@ extension EditorView {
             copyImage()
         }
         .help("Render and copy the image to the clipboard")
-        .disabled(!settings.config.hasRenderableContent)
+        .disabled(!settings.hasRenderableContent)
         .accessibilityLabel(VitrineCommand.copyImage.accessibilityLabel)
         .accessibilityIdentifier("copy-button")
 
@@ -173,13 +173,13 @@ extension EditorView {
             Button(action: saveImage) {
                 Label(VitrineCommand.saveImage.title, systemImage: "square.and.arrow.down")
             }
-            .disabled(!settings.config.hasRenderableContent)
+            .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("save-button")
 
             Button(action: share) {
                 Label(VitrineCommand.shareImage.title, systemImage: "square.and.arrow.up")
             }
-            .disabled(!settings.config.hasRenderableContent)
+            .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("share-button")
 
             Divider()
@@ -187,19 +187,19 @@ extension EditorView {
             Button(action: pinSnapshot) {
                 Label("Pin snapshot", systemImage: "pin")
             }
-            .disabled(!settings.config.hasRenderableContent)
+            .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("pin-snapshot-button")
 
             Button(action: presentMultiSizeExport) {
                 Label("Export sizes", systemImage: "square.grid.2x2")
             }
-            .disabled(!settings.config.hasRenderableContent)
+            .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("export-sizes-button")
 
             Button(action: presentCarouselExport) {
                 Label("Export carousel", systemImage: "rectangle.stack")
             }
-            .disabled(!settings.config.hasRenderableContent || settings.config.usesImageContent)
+            .disabled(!settings.hasRenderableContent || settings.style.usesImageContent)
             .accessibilityIdentifier("export-carousel-button")
 
             Divider()
@@ -283,7 +283,7 @@ extension EditorView {
     /// formats stay clearly labeled, one click away.
     var copyOptionsMenu: some View {
         Menu {
-            if !settings.config.usesImageContent {
+            if !settings.style.usesImageContent {
                 Button {
                     copyHighlightedCode()
                 } label: {
@@ -337,7 +337,7 @@ extension EditorView {
         .help("Copy the code or image in alternate formats")
         .accessibilityLabel("More copy options")
         .accessibilityIdentifier("copy-options-menu")
-        .disabled(!settings.config.hasRenderableContent)
+        .disabled(!settings.hasRenderableContent)
     }
 
     /// The PRO multi-size export entry: when unlocked it opens the size picker; when
@@ -351,7 +351,7 @@ extension EditorView {
                 }
             }
             .help("Export this snapshot to several platform sizes at once")
-            .disabled(!settings.config.hasRenderableContent)
+            .disabled(!settings.hasRenderableContent)
             .accessibilityLabel(Text("Export sizes"))
             .accessibilityIdentifier("export-sizes-button")
     }
@@ -368,7 +368,7 @@ extension EditorView {
             }
             .help("Split the snippet into numbered carousel slides (4:5)")
             .disabled(
-                !settings.config.hasRenderableContent || settings.config.usesImageContent
+                !settings.hasRenderableContent || settings.style.usesImageContent
             )
             .accessibilityLabel(Text("Export carousel"))
             .accessibilityIdentifier("export-carousel-button")
@@ -435,7 +435,7 @@ extension EditorView {
             }
             Divider()
             Button("Save Current Style…") {
-                savePresetName = settings.config.theme.displayName
+                savePresetName = settings.style.theme.displayName
                 showSavePresetPrompt = true
             }
             .accessibilityIdentifier("editor-save-style-preset-button")
@@ -482,7 +482,7 @@ extension EditorView {
     ) -> some View {
         let button = GlassIconButton(systemImage: systemImage, action: action)
             .help(help)
-            .disabled(!settings.config.hasRenderableContent)
+            .disabled(!settings.hasRenderableContent)
             .accessibilityLabel(command.accessibilityLabel)
             .accessibilityIdentifier(identifier)
 
@@ -498,7 +498,7 @@ extension EditorView {
     var pinSnapshotButton: some View {
         GlassIconButton(systemImage: "pin", action: pinSnapshot)
             .help("Pin the snapshot in a floating window that stays on top")
-            .disabled(!settings.config.hasRenderableContent)
+            .disabled(!settings.hasRenderableContent)
             .accessibilityLabel("Pin snapshot")
             .accessibilityIdentifier("pin-snapshot-button")
     }
