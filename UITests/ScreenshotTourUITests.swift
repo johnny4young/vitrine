@@ -287,9 +287,7 @@ final class ScreenshotTourUITests: XCTestCase {
             note: "Editor before applying a curated style")
         XCTAssertTrue(waitForHittableElement("editor-style-preset-picker", in: app, timeout: 5))
         element("editor-style-preset-picker", in: app).click()
-        let surprise = app.menuItems["Surprise Me"]
-        XCTAssertTrue(surprise.waitForExistence(timeout: 3))
-        surprise.click()
+        chooseMenuItem("Surprise Me", in: app)
         let dracula = app.buttons["Dracula"].firstMatch
         XCTAssertTrue(dracula.waitForExistence(timeout: 3))
         let deadline = Date().addingTimeInterval(3)
@@ -479,7 +477,7 @@ final class ScreenshotTourUITests: XCTestCase {
                     reason: "source-copy action menu had no visible accessibility frame")
             }
 
-            copySource.click()
+            chooseMenuItem(copySource)
             let feedback = element("capture-hud", in: app)
             if !feedback.waitForExistence(timeout: 3) {
                 miss("54-recents-copy-source-action", reason: "source-copy feedback did not appear")
@@ -501,9 +499,8 @@ final class ScreenshotTourUITests: XCTestCase {
         XCTAssertTrue(manage.isHittable)
         manage.click()
 
-        let clearUnpinned = app.menuItems["Clear Unpinned"]
-        XCTAssertTrue(clearUnpinned.waitForExistence(timeout: 3))
-        clearUnpinned.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        // The item disappears as it presents the confirmation dialog, so click its center.
+        chooseMenuItem("Clear Unpinned", in: app, clickingCenter: true)
         let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))
         save(
@@ -531,7 +528,7 @@ final class ScreenshotTourUITests: XCTestCase {
                 visibleMenu, as: "57-recents-sort-options",
                 note: "Local Recents ordering choices with newest first selected")
         }
-        oldestFirst.click()
+        chooseMenuItem(oldestFirst)
 
         let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
         let deadline = Date().addingTimeInterval(3)
