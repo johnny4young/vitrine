@@ -565,6 +565,13 @@ struct PerformanceTests {
         defer { window.contentViewController = nil }
         window.setContentSize(NSSize(width: 1_180, height: 680))
         EditorWindowController.pinMinimumContentSize(of: window)
+        // Visible, but parked far outside every display: a window that is never on
+        // screen gets no display cycle, so the editor's appearance work never runs.
+        // The preview's first handoff of the document is part of that work, and
+        // without it every keystroke re-renders the preview instead of measuring
+        // steady-state typing. Parking it keeps the window off the user's screen.
+        window.setFrameOrigin(NSPoint(x: -30_000, y: -30_000))
+        window.orderFrontRegardless()
         let root = hosting.view
         root.layoutSubtreeIfNeeded()
         // Let the preview's first handoff and the other appearance tasks run, as they do
