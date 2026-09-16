@@ -90,10 +90,15 @@ extension XCTestCase {
     /// open, the item highlighted under the pointer, for the rest of the test. The item is
     /// then clicked once more, as a person would. That cannot choose it twice, because the
     /// first click never reached the action.
+    ///
+    /// `clickingCenter` clicks the middle of the item instead of the element. An item whose
+    /// action presents a dialog disappears during the click, and an element click resolves
+    /// the item again while it synthesizes the event, then fails on the defunct element.
     @MainActor
     func chooseMenuItem(
         _ title: String,
         in app: XCUIApplication,
+        clickingCenter: Bool = false,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
@@ -102,10 +107,47 @@ extension XCTestCase {
             XCTFail("The open menu has no \"\(title)\" item", file: file, line: line)
             return
         }
-        item.click()
+        choose(item, titled: title, clickingCenter: clickingCenter, file: file, line: line)
+    }
+
+    /// Chooses `item`, already found in the open menu, and confirms the menu took the click
+    /// the same way ``chooseMenuItem(_:in:clickingCenter:file:line:)`` does.
+    ///
+    /// For a test that looks at the open menu before choosing, such as a tour capture of the
+    /// highlighted item: it finds the item, captures, then chooses it here.
+    @MainActor
+    func chooseMenuItem(
+        _ item: XCUIElement,
+        clickingCenter: Bool = false,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard item.waitForExistence(timeout: 3) else {
+            XCTFail("The menu item to choose is not in the open menu", file: file, line: line)
+            return
+        }
+        choose(item, titled: item.title, clickingCenter: clickingCenter, file: file, line: line)
+    }
+
+    @MainActor
+    private func choose(
+        _ item: XCUIElement,
+        titled title: String,
+        clickingCenter: Bool,
+        file: StaticString,
+        line: UInt
+    ) {
+        func click() {
+            if clickingCenter {
+                item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+            } else {
+                item.click()
+            }
+        }
+        click()
         if menuClosed(after: item) { return }
         XCTContext.runActivity(named: "The menu is still open; click \"\(title)\" again") { _ in
-            item.click()
+            click()
         }
         if menuClosed(after: item) { return }
         XCTFail("The menu stayed open after two clicks on \"\(title)\"", file: file, line: line)
