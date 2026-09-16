@@ -1258,11 +1258,9 @@ final class VitrineUITests: XCTestCase {
         let manage = hittableElement("recents-clear-button", in: app)
         manage.click()
 
-        let clearUnpinned = app.menuItems["Clear Unpinned"]
-        XCTAssertTrue(clearUnpinned.waitForExistence(timeout: 3))
-        // The menu item intentionally disappears as soon as it presents the dialog.
-        // A coordinate click avoids XCUI retrying the now-defunct menu element.
-        clearUnpinned.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        // The menu item intentionally disappears as soon as it presents the dialog, so
+        // click its center: an element click would resolve the defunct item mid-click.
+        chooseMenuItem("Clear Unpinned", in: app, clickingCenter: true)
 
         let confirmation = app.sheets.firstMatch.buttons["Clear Unpinned"].firstMatch
         XCTAssertTrue(confirmation.waitForExistence(timeout: 3))

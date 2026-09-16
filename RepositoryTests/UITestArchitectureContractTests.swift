@@ -42,31 +42,37 @@ struct UITestArchitectureContractTests {
         }
     }
 
-    /// Smoke tests choose menu items through `chooseMenuItem(_:in:)`.
+    /// UI tests and the visual tour choose menu items through `chooseMenuItem`.
     ///
     /// AppKit sends a menu item's action only after the menu closes, and a loaded runner can
     /// drop the click that should close it. The helper confirms the menu closed and clicks
-    /// once more when it did not, where a bare `click()` passes until the run that drops it.
-    /// A coordinate click stays allowed: one test needs it for an item that disappears as it
-    /// presents a dialog.
-    @Test func smokeTestsChooseMenuItemsThroughTheConfirmingHelper() throws {
-        let smoke = try Self.text("UITests/VitrineUITests.swift")
+    /// once more when it did not, where a bare click passes until the run that drops it. A
+    /// coordinate click is no exception: the tour's own Clear Unpinned step used one and
+    /// failed exactly that way. An item that needs its center clicked, because it disappears
+    /// as it presents a dialog, passes `clickingCenter: true` to the helper.
+    @Test func uiTestsChooseMenuItemsThroughTheConfirmingHelper() throws {
         let support = try Self.text("UITests/VitrineUITestSupport.swift")
         #expect(support.contains("func chooseMenuItem("))
 
-        var directClicks: [String] = []
         let binding = try Regex(#"let\s+(\w+)\s*=\s*app\.menuItems\["#)
-        for match in smoke.matches(of: binding) {
-            if let name = match.output[1].substring, smoke.contains("\(name).click()") {
-                directClicks.append("\(name).click()")
+        let inline = try Regex(
+            #"menuItems\[[^\]]*\](?:\.firstMatch)?\.(?:click\(\)|coordinate\()"#)
+        var directClicks: [String] = []
+        for path in ["UITests/VitrineUITests.swift", "UITests/ScreenshotTourUITests.swift"] {
+            let source = try Self.text(path)
+            for match in source.matches(of: binding) {
+                guard let name = match.output[1].substring else { continue }
+                for click in ["\(name).click()", "\(name).coordinate("]
+                where source.contains(click) {
+                    directClicks.append("\(path): \(click)")
+                }
             }
+            directClicks += source.matches(of: inline).compactMap { $0.output[0].substring }
+                .map { "\(path): \($0)" }
         }
-        let inline = try Regex(#"menuItems\[[^\]]*\](?:\.firstMatch)?\.click\(\)"#)
-        directClicks += smoke.matches(of: inline).compactMap { $0.output[0].substring }
-            .map(String.init)
         #expect(
             directClicks.isEmpty,
-            "choose menu items with chooseMenuItem(_:in:) instead of \(directClicks)")
+            "choose menu items with chooseMenuItem instead of \(directClicks)")
     }
 
     @Test func keepsDomainRobotsAndSerialExecutionPolicy() throws {
