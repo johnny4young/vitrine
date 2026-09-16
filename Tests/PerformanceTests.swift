@@ -562,9 +562,21 @@ struct PerformanceTests {
             backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentViewController = hosting
-        defer { window.contentViewController = nil }
+        defer {
+            window.orderOut(nil)
+            window.contentViewController = nil
+        }
         window.setContentSize(NSSize(width: 1_180, height: 680))
         EditorWindowController.pinMinimumContentSize(of: window)
+        // Visible, but parked far outside every display, so it stays off the screen the
+        // developer is looking at. A window that is never ordered in gets no display
+        // cycle on macOS 15, so the editor's appearance work never runs — including the
+        // preview's first handoff of the document. Without that handoff every keystroke
+        // re-renders the preview, which is what the Sequoia runner was measuring: 95 ms
+        // a key, against 9 ms on Tahoe, where the handoff did run.
+        window.setFrameOrigin(NSPoint(x: -30_000, y: -30_000))
+        window.orderFrontRegardless()
+        #expect(window.isVisible, "the editor's appearance work only runs in a visible window")
         let root = hosting.view
         root.layoutSubtreeIfNeeded()
         // Let the preview's first handoff and the other appearance tasks run, as they do
