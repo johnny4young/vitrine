@@ -70,7 +70,7 @@ struct CodeEditorView: NSViewRepresentable {
             if replacedEntireDocument { context.coordinator.parent.onReplaceAllPaste() }
         }
 
-        context.coordinator.configure(textView)
+        context.coordinator.configureIfFontChanged(textView)
         context.coordinator.applyHighlight(to: textView)
         return scrollView
     }
@@ -79,7 +79,7 @@ struct CodeEditorView: NSViewRepresentable {
         guard let textView = nsView.documentView as? NSTextView else { return }
         let coordinator = context.coordinator
         coordinator.parent = self
-        coordinator.configure(textView)
+        coordinator.configureIfFontChanged(textView)
 
         if textView.string != text {
             // External change (e.g. reopening a recent capture): sync + recolor now.
@@ -112,6 +112,17 @@ struct CodeEditorView: NSViewRepresentable {
         private var appliedFontLigatures: Bool?
         private var appliedMode: HighlightMode?
 
+        /// The inputs that decide the text view's font and tab stops.
+        struct FontInputs: Equatable {
+            let name: String
+            let size: Double
+            let ligatures: Bool
+        }
+
+        /// The font inputs ``configure(_:)`` last applied through
+        /// ``configureIfFontChanged(_:)``.
+        private var configuredFont: FontInputs?
+
         init(_ parent: CodeEditorView) { self.parent = parent }
 
         func dismantle() {
@@ -131,6 +142,24 @@ struct CodeEditorView: NSViewRepresentable {
                 || appliedFontName != parent.fontName
                 || appliedFontSize != parent.fontSize
                 || appliedFontLigatures != parent.fontLigatures
+        }
+
+        /// Applies the font and tab stops when their inputs changed since the last time.
+        ///
+        /// Setting `NSTextView.font` applies the font across the whole text storage and lays
+        /// the document out again, even when the font is the one already there. SwiftUI
+        /// updates the representable on every keystroke and every style change, so
+        /// configuring each time made every keystroke pay for the whole document. On 300
+        /// lines in a Debug build that was 14 ms a keystroke; skipping it is 10 ms.
+        /// - Returns: Whether the text view was configured.
+        @discardableResult
+        func configureIfFontChanged(_ textView: NSTextView) -> Bool {
+            let inputs = FontInputs(
+                name: parent.fontName, size: parent.fontSize, ligatures: parent.fontLigatures)
+            guard inputs != configuredFont else { return false }
+            configure(textView)
+            configuredFont = inputs
+            return true
         }
 
         /// Applies the monospaced font and 4-space tab stops.

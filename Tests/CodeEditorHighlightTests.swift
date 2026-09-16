@@ -113,4 +113,67 @@ struct CodeEditorHighlightTests {
 
         #expect(coordinator.styleChanged)
     }
+
+    /// The representable updates on every keystroke and style change, and configuring the
+    /// text view applies the font across the whole document, so it happens only when a
+    /// font input changed.
+    @Test func reconfiguresTheTextViewOnlyWhenAFontInputChanges() throws {
+        func editor(
+            language: Language = .swift, theme: Theme = .oneDark, size: Double = 13
+        )
+            -> CodeEditorView
+        {
+            CodeEditorView(
+                text: .constant(""), language: language, theme: theme,
+                fontName: "SF Mono", fontSize: size, fontLigatures: false,
+                reindentOnPaste: false)
+        }
+        let coordinator = CodeEditorView.Coordinator(editor())
+        let (window, textView) = makeHostedTextView("let value = 42")
+        defer { window.close() }
+
+        #expect(coordinator.configureIfFontChanged(textView))
+        #expect(!coordinator.configureIfFontChanged(textView))
+
+        coordinator.parent = editor(language: .python, theme: .dracula)
+        #expect(!coordinator.configureIfFontChanged(textView), "only font inputs reconfigure")
+
+        coordinator.parent = editor(language: .python, theme: .dracula, size: 17)
+        #expect(coordinator.configureIfFontChanged(textView))
+        #expect(try #require(textView.font).pointSize == 17)
+        #expect(!coordinator.configureIfFontChanged(textView))
+    }
+
+    /// Skipping the repeat configuration must not cost typed text its font: new characters
+    /// take the typing attributes the first configuration set.
+    @Test func typedTextKeepsTheConfiguredFont() throws {
+        let coordinator = makeCoordinator()
+        let (window, textView) = makeHostedTextView("")
+        defer { window.close() }
+        coordinator.configureIfFontChanged(textView)
+        let configured = try #require(textView.font)
+
+        textView.insertText("let typed = 1", replacementRange: NSRange(location: 0, length: 0))
+
+        #expect(!coordinator.configureIfFontChanged(textView))
+        let storage = try #require(textView.textStorage)
+        let font = storage.attribute(.font, at: storage.length - 1, effectiveRange: nil)
+        #expect(font as? NSFont == configured)
+    }
+
+    /// Creating and updating the representable configure the text view only through the
+    /// change check, never directly.
+    @Test func theRepresentableConfiguresOnlyThroughTheChangeCheck() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = sourceCodeWithoutLineComments(
+            try String(
+                contentsOf: root.appendingPathComponent("Vitrine/Editor/CodeEditorView.swift"),
+                encoding: .utf8))
+
+        #expect(source.contains("context.coordinator.configureIfFontChanged(textView)"))
+        #expect(source.contains("        coordinator.configureIfFontChanged(textView)"))
+        #expect(!source.contains("coordinator.configure(textView)"))
+    }
 }
