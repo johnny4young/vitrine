@@ -33,18 +33,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Release gate: the same lint/Debug+Release-build/test/UI-test-build checks CI runs
-  # on every PR, re-run against the tagged commit. `candidate` needs this job, so
-  # a tag cannot even produce a promotable DMG when a gate fails.
+  # Release gate: the tag, version, and changelog guards, then the tagged commit's own CI.
+  # CI already ran lint, the Debug and universal Release builds, the unit and UI suites,
+  # and the visual tour on this exact commit when it landed on main — a strict superset of
+  # what this job used to re-run — so the gate reads those results instead of paying for
+  # them again. `candidate` needs this job, so a tag cannot even produce a promotable DMG
+  # unless that CI passed.
   verify:
-    name: Verify (lint, Debug/Release builds, UI-test build, test)
+    name: Verify (tag, version, changelog, and the commit's CI)
     if: github.event_name == 'push'
     runs-on: macos-26
-    # Cap well under the 6-hour default so a wedged SPM resolve or hung
-    # xcodebuild surfaces in minutes on the tag run.
+    # The CI wait below stops at 45 minutes; the job cap sits just above it.
     timeout-minutes: 60
     permissions:
       contents: read
+      # Reads the tagged commit's check runs.
+      checks: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -83,44 +87,51 @@ jobs:
           fi
           echo "Tag v${TAG_VERSION} matches project.yml and has bundled release notes." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Set up macOS toolchain
-        uses: ./.github/actions/setup-macos-toolchain
-        with:
-          summary-title: Release toolchain
-          summary-context: "Tag: ${{ github.ref_name }}"
-          spm-cache: "true"
-
       - name: CHANGELOG matches the tagged version
         run: make changelog-check
 
-      - name: Lint (swift-format)
-        run: make lint
-
-      - name: Build (Debug)
-        run: make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult"
-
-      - name: Build (universal Release)
-        run: make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult"
-
-      - name: Build UI tests
-        run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
-
-      - name: Test (Swift Testing)
-        run: make test RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
-
-      # Upload diagnostics if the gate fails so a release blocked by a regression
-      # can be triaged from the tag run itself.
-      - name: Upload .xcresult bundles
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: release-verify-xcresults
-          path: |
-            ${{ runner.temp }}/build.xcresult
-            ${{ runner.temp }}/build-release.xcresult
-            ${{ runner.temp }}/build-ui-tests.xcresult
-            ${{ runner.temp }}/test.xcresult
-          if-no-files-found: ignore
+      # A tag usually lands while main's CI for the same commit is still running, so the
+      # gate polls once a minute for up to 45 minutes. Only GitHub Actions check runs on the
+      # exact commit count, and only the newest run of each required job, so a successful
+      # re-run clears an earlier failure. A required check that fails, is cancelled or
+      # skipped, or never appears blocks the candidate; diagnostics stay on that CI run.
+      # The required names are ci.yml's job names, and WorkflowConfigurationTests keeps the
+      # two lists identical.
+      - name: Require the tagged commit's CI to have passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG_COMMIT="$(git rev-list -n 1 "${GITHUB_REF_NAME}")"
+          CHECK_RUNS="${RUNNER_TEMP}/check-runs.jsonl"
+          DEADLINE=$(( $(date +%s) + 45 * 60 ))
+          while true; do
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/commits/${TAG_COMMIT}/check-runs?per_page=100" \
+              --jq '.check_runs[]' > "${CHECK_RUNS}"
+            STATUS=0
+            python3 scripts/verify-commit-ci.py \
+              --commit "${TAG_COMMIT}" \
+              --check-runs "${CHECK_RUNS}" \
+              --required "Static checks (Linux)" \
+              --required "Build & test · Sequoia 15" \
+              --required "Build & test · Tahoe 26" \
+              --required "UI tests · Sequoia 15" \
+              --required "UI tests · Tahoe 26" || STATUS=$?
+            if [ "${STATUS}" -eq 0 ]; then
+              echo "CI passed on ${TAG_COMMIT} for every required check." >> "$GITHUB_STEP_SUMMARY"
+              break
+            fi
+            if [ "${STATUS}" -ne 3 ]; then
+              echo "::error::CI did not pass on ${TAG_COMMIT}. Fix main and tag a commit whose CI passed."
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "${DEADLINE}" ]; then
+              echo "::error::CI on ${TAG_COMMIT} was still incomplete after 45 minutes. Re-run this job once it finishes."
+              exit 1
+            fi
+            sleep 60
+          done
 
   candidate:
     name: Build signed release candidate

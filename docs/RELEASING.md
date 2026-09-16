@@ -36,11 +36,21 @@ git push origin "v${VERSION}"
 ```
 
 Release tags must be annotated and use stable SemVer with a `v` prefix. The tag run
-rejects lightweight, prerelease, or malformed tags, executes the release gates, requires
-every production signing/notarization/update/activation secret, and builds the signed,
-notarized DMG. It then generates the checksum, SBOM, signed appcast, Homebrew metadata,
-and curated changelog notes, attests the DMG, and uploads them together as a private
-`release-candidate-vX.Y.Z` Actions artifact retained for 30 days.
+rejects lightweight, prerelease, or malformed tags, requires CI to have passed on the
+tagged commit, requires every production signing/notarization/update/activation secret,
+and builds the signed, notarized DMG. It then generates the checksum, SBOM, signed
+appcast, Homebrew metadata, and curated changelog notes, attests the DMG, and uploads them
+together as a private `release-candidate-vX.Y.Z` Actions artifact retained for 30 days.
+
+The tag run does not rebuild or retest the commit. CI already ran lint, both builds, the
+unit and UI suites, and the visual tour on it when it landed on `main`, so the `verify` job
+reads that commit's check runs instead: `Static checks (Linux)` and the build and UI test
+jobs on both macOS rows must all have succeeded. A tag pushed right after its commit
+merges usually finds that CI still running; `verify` waits up to 45 minutes for it and
+fails if a check fails, is cancelled or skipped, or never appears. Only the newest run of
+each check counts, so a flaky job that passes when re-run in CI unblocks the tag: re-run
+the failed `verify` job afterwards, as you would after CI outlasts the wait. A real failure
+means fixing `main` and moving the tag to a commit whose CI passed.
 
 The tag run **does not** create a GitHub release, change Homebrew, deploy the production
 appcast, or refresh the website. A fresh runner downloads that candidate, verifies its
@@ -127,8 +137,8 @@ CI is a release gate, not just a compile check.
   full AppKit/WebKit UI host, retains each `.xcresult`, and is **non-required** while
   hosted-runner stability is established.
 - **The release workflow refuses to publish an unvetted build.** `release.yml` runs
-  `verify`, builds a private candidate, re-downloads it onto an independent QA runner,
-  and stops. Public promotion is a separate manual dispatch that pins the successful
+  `verify`, which requires this CI to have passed on the tagged commit, builds a private
+  candidate, re-downloads it onto an independent QA runner, and stops. Public promotion is a separate manual dispatch that pins the successful
   candidate run, tag commit, operator-confirmed clean-Mac checklist, and SHA-256. The
   published bytes pass QA again before downstream distribution changes.
 - **The release workflow builds on an image the matrix certifies.** Every `release.yml`
