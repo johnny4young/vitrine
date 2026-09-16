@@ -601,6 +601,33 @@ struct PerformanceTests {
         #expect(
             stats.p95 <= PerfBudget.keystrokeHardCeiling,
             "editor-keystroke exceeded the keystroke hard ceiling")
+
+        // DIAGNOSTIC (not for merge): split the measurement so the Sequoia runner's
+        // number can be attributed. `forced-layout-idle` asks for the same layout pass
+        // with nothing changed; `no-forced-layout` types without asking for it; and
+        // `style-change` mutates a render input instead of the document.
+        func sample(_ label: String, body: () -> Void) {
+            for _ in 0..<5 { body() }
+            var samples: [Duration] = []
+            for _ in 0..<Self.sampleCount { samples.append(clock.measure { body() }) }
+            report(Statistics(samples), label: label, target: nil)
+        }
+        sample("editor-forced-layout-idle") {
+            root.needsLayout = true
+            root.layoutSubtreeIfNeeded()
+        }
+        sample("editor-keystroke-no-forced-layout") {
+            textView.insertText("x", replacementRange: textView.selectedRange())
+            root.layoutSubtreeIfNeeded()
+        }
+        var toggle = false
+        sample("editor-style-change") {
+            toggle.toggle()
+            session.settings.style.fontSize = toggle ? 15 : 14
+            root.needsLayout = true
+            root.layoutSubtreeIfNeeded()
+        }
+        sample("editor-plain-layout-idle") { root.layoutSubtreeIfNeeded() }
     }
 
     private static func firstTextView(in view: NSView) -> NSTextView? {
