@@ -556,6 +556,7 @@ extension EditorView {
         // document so opening an existing draft never flashes the empty-state sample.
         // Once staged, this expression stops reading `documentCode`; subsequent raw
         // keystrokes are observed only by PreviewCodeSynchronizer.
+        let _ = BodyProbe.begin(stagedPreviewCode == nil ? "previewUnstaged" : "previewStaged")
         let code = stagedPreviewCode ?? settings.documentCode
         var config = EditorPreview.configForPreview(
             settings.renderConfiguration, stagedCode: code)
@@ -734,6 +735,7 @@ private struct PreviewCodeSynchronizer: View {
             .frame(width: 0, height: 0)
             .task(id: settings.documentCode) {
                 let code = settings.documentCode
+                let _ = BodyProbe.begin("syncTaskRan")
                 if !hasSynchronized {
                     hasSynchronized = true
                     synchronize(code)

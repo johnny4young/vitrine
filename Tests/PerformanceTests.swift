@@ -587,6 +587,7 @@ struct PerformanceTests {
             root.layoutSubtreeIfNeeded()
         }
 
+        BodyProbe.reset()
         // Warm-up keystrokes, discarded like every other fixture's warm-up pass.
         for _ in 0..<10 { keystroke() }
         let clock = ContinuousClock()
@@ -628,6 +629,7 @@ struct PerformanceTests {
             root.layoutSubtreeIfNeeded()
         }
         sample("editor-plain-layout-idle") { root.layoutSubtreeIfNeeded() }
+        print("PERF-DIAG preview \(BodyProbe.counts.sorted { $0.key < $1.key })")
     }
 
     private static func firstTextView(in view: NSView) -> NSTextView? {
