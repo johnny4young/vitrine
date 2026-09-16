@@ -371,76 +371,75 @@ extension EditorView {
     var previewStage: some View {
         @Bindable var brandKit = brandKit
         return GeometryReader { proxy in
-            let scale = fitScale(in: proxy.size)
-            // The preview mirrors the active preset's framing, so selecting a
-            // fixed-size preset (e.g. OpenGraph 1200×630) updates the canvas
-            // immediately. The interactive annotation overlay is a sibling at
-            // the canvas's natural size, so it shares the canvas coordinate space and
-            // scales with it — a pointer drag maps straight to normalized
-            // annotation coordinates.
-            ZStack {
-                SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
-                    .equatable()
-                    .fixedSize()
-                    .onGeometryChange(for: CGSize.self, of: \.size) { cardSize = $0 }
-                    .compositingGroup()
-                    .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
-                AnnotationEditingOverlay(
-                    settings: settings, selection: $selectedAnnotationID,
-                    editingAnnotationID: $editingAnnotationID,
-                    canvasSize: cardSize, activeTool: activeTool,
-                    drawColor: newDrawColor, drawThickness: newDrawThickness,
-                    stickerGlyph: newStickerGlyph,
-                    onBeginEdit: beginAnnotationEdit,
-                    onEndEdit: endAnnotationEdit)
-                // Free-placement: drag the brand mark anywhere on the canvas. The
-                // handle shares the canvas coordinate space (a sibling at cardSize),
-                // so a drag maps straight to the normalized brand-kit position.
-                if previewConfig.watermark?.placement == .free {
-                    FreeWatermarkDragHandle(
-                        position: $brandKit.brandKit.freePosition,
-                        contentRect: CGRect(origin: .zero, size: cardSize))
+            // The card's measured size reaches this content through `PreviewCardStage`,
+            // which reads it in its own body. See `PreviewCardGeometry` for why the
+            // editor's body must not read it.
+            PreviewCardStage(geometry: cardGeometry, stageSize: proxy.size) { cardSize in
+                // The preview mirrors the active preset's framing, so selecting a
+                // fixed-size preset (e.g. OpenGraph 1200×630) updates the canvas
+                // immediately. The interactive annotation overlay is a sibling at
+                // the canvas's natural size, so it shares the canvas coordinate space and
+                // scales with it — a pointer drag maps straight to normalized
+                // annotation coordinates.
+                ZStack {
+                    SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
+                        .equatable()
+                        .fixedSize()
+                        .onGeometryChange(for: CGSize.self, of: \.size) {
+                            cardGeometry.size = $0
+                        }
+                        .compositingGroup()
+                        .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
+                    AnnotationEditingOverlay(
+                        settings: settings, selection: $selectedAnnotationID,
+                        editingAnnotationID: $editingAnnotationID,
+                        canvasSize: cardSize, activeTool: activeTool,
+                        drawColor: newDrawColor, drawThickness: newDrawThickness,
+                        stickerGlyph: newStickerGlyph,
+                        onBeginEdit: beginAnnotationEdit,
+                        onEndEdit: endAnnotationEdit)
+                    // Free-placement: drag the brand mark anywhere on the canvas. The
+                    // handle shares the canvas coordinate space (a sibling at cardSize),
+                    // so a drag maps straight to the normalized brand-kit position.
+                    if previewConfig.watermark?.placement == .free {
+                        FreeWatermarkDragHandle(
+                            position: $brandKit.brandKit.freePosition,
+                            contentRect: CGRect(origin: .zero, size: cardSize))
+                    }
+                    // Safe-area guide: editor-only chrome over the preview —
+                    // never part of the export, which is why it lives here beside the
+                    // annotation overlay rather than inside SnapshotCanvas.
+                    if showsSafeAreaGuides {
+                        SafeAreaGuideOverlay(
+                            canvasSize: cardSize,
+                            code: previewConfig.code,
+                            showsGuideRect: settings.effectiveFixedSize != nil)
+                    }
                 }
-                // Safe-area guide: editor-only chrome over the preview —
-                // never part of the export, which is why it lives here beside the
-                // annotation overlay rather than inside SnapshotCanvas.
-                if showsSafeAreaGuides {
-                    SafeAreaGuideOverlay(
-                        canvasSize: cardSize,
-                        code: previewConfig.code,
-                        showsGuideRect: settings.effectiveFixedSize != nil)
+                // Route arrow keys to a selected mark without competing with code-editor
+                // navigation when the annotation canvas has no selection.
+                .focusable(selectedAnnotationID != nil && editingAnnotationID == nil)
+                .focused($stageFocused)
+                .focusEffectDisabled()
+                .onChange(of: selectedAnnotationID) { _, id in
+                    stageFocused = id != nil && editingAnnotationID == nil
+                }
+                .onChange(of: editingAnnotationID) { _, id in
+                    stageFocused = id == nil && selectedAnnotationID != nil
+                }
+                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+                    nudgeSelection(
+                        press.key, shift: press.modifiers.contains(.shift),
+                        isRepeat: press.phase == .repeat) ? .handled : .ignored
                 }
             }
-            // Route arrow keys to a selected mark without competing with code-editor
-            // navigation when the annotation canvas has no selection.
-            .focusable(selectedAnnotationID != nil && editingAnnotationID == nil)
-            .focused($stageFocused)
-            .focusEffectDisabled()
-            .onChange(of: selectedAnnotationID) { _, id in
-                stageFocused = id != nil && editingAnnotationID == nil
-            }
-            .onChange(of: editingAnnotationID) { _, id in
-                stageFocused = id == nil && selectedAnnotationID != nil
-            }
-            .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
-                nudgeSelection(
-                    press.key, shift: press.modifiers.contains(.shift),
-                    isRepeat: press.phase == .repeat) ? .handled : .ignored
-            }
-            .scaleEffect(scale)
-            // `scaleEffect` does not shrink the layout footprint, so without this the
-            // unscaled (often very wide) card stays full-width in layout and its
-            // centered overflow is clipped on the right. Pinning the footprint to the
-            // *scaled* size centers the card on its visible bounds and keeps it fully
-            // inside the stage at every window size (usability fix).
-            .frame(width: cardSize.width * scale, height: cardSize.height * scale)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.easeInOut(duration: 0.25), value: scale)
         }
         .onGeometryChange(for: CGSize.self, of: \.size) { stageSize = $0 }
         .clipped()
         .background(stageBackground)
-        .overlay(alignment: .bottom) { statusCapsule }
+        .overlay(alignment: .bottom) {
+            StageStatusCapsule(settings: settings, geometry: cardGeometry, stageSize: stageSize)
+        }
         .layoutPriority(EditorLayout.stageLayoutPriority)
         .accessibilityIdentifier("editor-preview-stage")
         // Keep high-frequency text observation in a tiny sibling. The expensive
@@ -453,14 +452,14 @@ extension EditorView {
         }
     }
 
-    /// The scale that keeps the card fully visible with a 72 pt margin, never
-    /// upscaling past its natural size.
-    func fitScale(in stage: CGSize) -> CGFloat {
-        guard cardSize.width > 0, cardSize.height > 0 else { return 1 }
+    /// The scale that keeps a card of size `card` fully visible in `stage` with a 72 pt
+    /// margin, never upscaling past its natural size.
+    static func fitScale(card: CGSize, in stage: CGSize) -> CGFloat {
+        guard card.width > 0, card.height > 0 else { return 1 }
         return min(
             1,
-            (stage.width - 72) / cardSize.width,
-            (stage.height - 72) / cardSize.height)
+            (stage.width - 72) / card.width,
+            (stage.height - 72) / card.height)
     }
 
     /// The neutral stage washed by two radial glows in the background's stop
@@ -511,32 +510,6 @@ extension EditorView {
     /// stop (`drop-shadow(0 24px 48px rgba(g1, 0.28))`).
     var ambientShadowColor: Color {
         (glowColors?.0 ?? .black).opacity(0.28)
-    }
-
-    /// The floating status capsule: destination · output size · format and
-    /// resolution · zoom (only when scaled down). Locale-neutral data line.
-    var statusCapsule: some View {
-        Text(verbatim: statusLine)
-            .font(.system(size: VitrineTokens.FontSize.caption))
-            .foregroundStyle(VitrineTokens.Text.tertiary)
-            .padding(.vertical, 4)
-            .padding(.horizontal, VitrineTokens.Spacing.sm)
-            .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
-            .padding(.bottom, 14)
-            .accessibilityIdentifier("editor-status-capsule")
-    }
-
-    var statusLine: String {
-        let destination = settings.selectedPreset?.displayName ?? String(localized: "Custom")
-        let size = settings.effectiveFixedSize ?? cardSize
-        let dimensions = "\(Int(size.width.rounded())) × \(Int(size.height.rounded()))"
-        let output = "\(settings.export.format.displayName) \(settings.effectiveExportScale)×"
-        var line = "\(destination) · \(dimensions) · \(output)"
-        if stageSize.width > 0 {
-            let zoom = Int((fitScale(in: stageSize) * 100).rounded())
-            if zoom < 100 { line += " · \(zoom)%" }
-        }
-        return line
     }
 
     /// The focused inspector column with progressive disclosure for advanced
@@ -615,6 +588,77 @@ extension EditorView {
         settings.documentCode =
             environment.appSettings.reindentOnPaste
             ? CodeFormatter.tidy(text, language: language) : text
+    }
+}
+
+/// The preview card's measured, unscaled size.
+///
+/// An observable reference the editor holds instead of `@State`, so only the views that
+/// read the size in their own bodies depend on it: `PreviewCardStage` and the status
+/// capsule. The size changes whenever the preview does — a padding or font-size step, a
+/// staged document — and as editor state, read while laying out the stage, every such
+/// change evaluated the whole editor a second time.
+@Observable
+final class PreviewCardGeometry {
+    var size: CGSize = .zero
+}
+
+/// Scales the preview card to fit the stage and pins its layout footprint to the scaled
+/// size, handing the card's measured size to `content`.
+private struct PreviewCardStage<Content: View>: View {
+    let geometry: PreviewCardGeometry
+    let stageSize: CGSize
+    @ViewBuilder let content: (CGSize) -> Content
+
+    var body: some View {
+        let cardSize = geometry.size
+        let scale = EditorView.fitScale(card: cardSize, in: stageSize)
+        content(cardSize)
+            .scaleEffect(scale)
+            // `scaleEffect` does not shrink the layout footprint, so without this the
+            // unscaled (often very wide) card stays full-width in layout and its
+            // centered overflow is clipped on the right. Pinning the footprint to the
+            // *scaled* size centers the card on its visible bounds and keeps it fully
+            // inside the stage at every window size (usability fix).
+            .frame(width: cardSize.width * scale, height: cardSize.height * scale)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(.easeInOut(duration: 0.25), value: scale)
+    }
+}
+
+/// The floating status capsule: destination · output size · format and resolution ·
+/// zoom (only when scaled down). Locale-neutral data line.
+///
+/// A view of its own so the card's measured size is read here, not in the editor's body.
+/// See ``PreviewCardGeometry``.
+private struct StageStatusCapsule: View {
+    let settings: AppSettings
+    let geometry: PreviewCardGeometry
+    let stageSize: CGSize
+
+    var body: some View {
+        Text(verbatim: line)
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+            .padding(.vertical, 4)
+            .padding(.horizontal, VitrineTokens.Spacing.sm)
+            .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
+            .padding(.bottom, 14)
+            .accessibilityIdentifier("editor-status-capsule")
+    }
+
+    private var line: String {
+        let destination = settings.selectedPreset?.displayName ?? String(localized: "Custom")
+        let cardSize = geometry.size
+        let size = settings.effectiveFixedSize ?? cardSize
+        let dimensions = "\(Int(size.width.rounded())) × \(Int(size.height.rounded()))"
+        let output = "\(settings.export.format.displayName) \(settings.effectiveExportScale)×"
+        var line = "\(destination) · \(dimensions) · \(output)"
+        if stageSize.width > 0 {
+            let zoom = Int((EditorView.fitScale(card: cardSize, in: stageSize) * 100).rounded())
+            if zoom < 100 { line += " · \(zoom)%" }
+        }
+        return line
     }
 }
 

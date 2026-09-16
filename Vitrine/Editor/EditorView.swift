@@ -63,8 +63,9 @@ struct EditorView: View {
     @State var pendingDrop: PendingDrop?
 
     /// The natural (unscaled) size of the preview card, measured so the stage
-    /// can scale it to always fit (the shared scale-to-fit rule).
-    @State var cardSize: CGSize = .zero
+    /// can scale it to always fit (the shared scale-to-fit rule). Never read in this
+    /// view's body; see ``PreviewCardGeometry``.
+    @State var cardGeometry = PreviewCardGeometry()
 
     /// The stage's current size, recorded so the capsule can report the live
     /// zoom percentage.
