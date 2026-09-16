@@ -77,7 +77,7 @@ extension EditorView {
         else { return }
 
         beginAnnotationEdit()
-        let copy = original.duplicated(in: cardSize, counterNumber: nextCounterNumber)
+        let copy = original.duplicated(in: cardGeometry.size, counterNumber: nextCounterNumber)
         settings.style.annotations.append(copy)
         selectedAnnotationID = copy.id
         endAnnotationEdit()
@@ -134,7 +134,7 @@ extension EditorView {
         guard let delta else { return false }
 
         if !isRepeat { beginAnnotationEdit() }
-        settings.style.annotations[index].nudge(by: delta, in: cardSize)
+        settings.style.annotations[index].nudge(by: delta, in: cardGeometry.size)
         if !isRepeat { endAnnotationEdit() }
         return true
     }
