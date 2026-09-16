@@ -14,20 +14,14 @@ extension EditorView {
     /// the format action, then the live-highlighted editor. Carries the
     /// empty-state affordance and the drop target.
     var codeColumn: some View {
-        // `settings` arrives via @Environment (an @Observable), which has no projected
-        // value; this local @Bindable provides the high-frequency document-text binding
-        // the code editor needs without routing each keystroke through the render config.
-        @Bindable var settings = settings
-        return VStack(spacing: 0) {
+        VStack(spacing: 0) {
             HStack(spacing: 10) {
                 TokenGroupLabel(
-                    title: settings.config.usesImageContent ? Text("Image") : Text("Code"))
+                    title: settings.style.usesImageContent ? Text("Image") : Text("Code"))
                 Spacer(minLength: 0)
                 // The line count + format action are code-only; a beautified image hides them.
-                if !settings.config.usesImageContent {
-                    Text(lineCountLabel)
-                        .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
-                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                if !settings.style.usesImageContent {
+                    CodeLineCountLabel(settings: settings)
                     livingSnapshotMenu
                     formatButton
                 }
@@ -35,38 +29,16 @@ extension EditorView {
             .padding(.top, VitrineTokens.Spacing.sm)
             .padding(.horizontal, 18)
 
-            if settings.config.usesImageContent {
+            if settings.style.usesImageContent {
                 imagePanel
             } else {
                 VStack(spacing: 0) {
                     livingSnapshotNotice
-                    largeDocumentHighlightNotice
-                    CodeEditorView(
-                        text: $settings.documentCode,
-                        language: settings.config.language,
-                        theme: settings.config.theme,
-                        fontName: settings.config.fontName,
-                        fontSize: settings.config.fontSize,
-                        fontLigatures: settings.config.fontLigatures,
+                    LargeDocumentHighlightNotice(settings: settings)
+                    CodeDocumentEditor(
+                        settings: settings,
                         reindentOnPaste: environment.appSettings.reindentOnPaste,
-                        onReplaceAllPaste: { settings.config.clearContentMarks() }
-                    )
-                    .overlay {
-                        if settings.documentCode.isEmpty {
-                            // The overlay is non-interactive except for its "Paste Code" button
-                            // (see EmptyStateView): a click anywhere else falls through to the
-                            // text view so the caret can land and the user can start typing —
-                            // matching the "paste or type" affordance the copy promises.
-                            EmptyStateView(
-                                title: "Nothing to show yet",
-                                message:
-                                    "Paste code or terminal output, or open a live file to turn it into a beautiful image.",
-                                actionTitle: "Paste Code",
-                                action: pasteFromClipboard,
-                                compact: true
-                            )
-                        }
-                    }
+                        pasteFromClipboard: pasteFromClipboard)
                 }
             }
         }
@@ -180,37 +152,6 @@ extension EditorView {
         }
     }
 
-    /// Makes the intentional large-document fallback visible instead of silently flattening syntax
-    /// colors. The source remains editable and the shared render/export path uses the same legible
-    /// plain-text representation, so this is a capability notice rather than an error.
-    @ViewBuilder var largeDocumentHighlightNotice: some View {
-        if HighlightPolicy.mode(
-            for: settings.documentCode, language: settings.config.language
-        ).usesPlainTextFallback {
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "text.badge.minus")
-                    .foregroundStyle(.orange)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Syntax colors paused")
-                        .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
-                    Text("This large document stays editable and exportable in plain text.")
-                        .font(.system(size: VitrineTokens.FontSize.caption))
-                        .foregroundStyle(VitrineTokens.Text.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(Color.orange.opacity(0.12))
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(VitrineTokens.Line.border).frame(height: Brand.Stroke.hairline)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("large-document-highlight-notice")
-        }
-    }
-
     var livingSnapshotSystemImage: String {
         switch session.livingSnapshot.status {
         case .inactive: "doc.badge.plus"
@@ -246,7 +187,7 @@ extension EditorView {
     /// returns the column to the code editor). The whole column is still a drop target.
     var imagePanel: some View {
         VStack(spacing: 14) {
-            if let reference = settings.config.foregroundImage,
+            if let reference = settings.style.foregroundImage,
                 let image = foregroundImageStore.image(for: reference)
             {
                 Image(nsImage: image)
@@ -282,7 +223,7 @@ extension EditorView {
             .help("Scan the image on-device and cover regions that look like secrets")
             .accessibilityIdentifier("redact-image-secrets-button")
             Button(role: .destructive) {
-                settings.config.foregroundImage = nil
+                settings.style.foregroundImage = nil
             } label: {
                 Text("Remove image")
             }
@@ -296,7 +237,7 @@ extension EditorView {
     /// Recognizes the beautified image's text on-device and copies it. Only the
     /// character count is logged, never the recognized text.
     func copyTextFromImage() {
-        guard let reference = settings.config.foregroundImage,
+        guard let reference = settings.style.foregroundImage,
             let image = foregroundImageStore.image(for: reference),
             let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
@@ -310,7 +251,7 @@ extension EditorView {
             do {
                 let text = try await ImageTextExtractor.recognizeText(in: cgImage)
                 try Task.checkCancellation()
-                guard settings.config.foregroundImage == reference else { return }
+                guard settings.style.foregroundImage == reference else { return }
                 guard !text.isEmpty else {
                     session.feedback(
                         Notifier.confirmation(String(localized: "No text found in the image")))
@@ -326,7 +267,7 @@ extension EditorView {
             } catch is CancellationError {
                 return
             } catch {
-                guard settings.config.foregroundImage == reference else { return }
+                guard settings.style.foregroundImage == reference else { return }
                 Log.export.error("Image text recognition failed")
                 session.feedback(
                     Notifier.failure(
@@ -343,7 +284,7 @@ extension EditorView {
     /// frame is applied, and destructive by design (a covered secret cannot be
     /// recovered). Only the count of redactions is logged, never the text.
     func redactImageSecrets() {
-        guard let reference = settings.config.foregroundImage,
+        guard let reference = settings.style.foregroundImage,
             let image = foregroundImageStore.image(for: reference),
             let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
@@ -357,7 +298,7 @@ extension EditorView {
             do {
                 let lines = try await ImageTextExtractor.recognizeLines(in: cgImage)
                 try Task.checkCancellation()
-                guard settings.config.foregroundImage == reference else { return }
+                guard settings.style.foregroundImage == reference else { return }
                 guard
                     let result = try ImageSecretRedactor.redactSecrets(
                         in: cgImage, recognizedLines: lines)
@@ -375,8 +316,8 @@ extension EditorView {
                     throw BackgroundImageStore.ImportError.notAnImage
                 }
                 try Task.checkCancellation()
-                guard settings.config.foregroundImage == reference else { return }
-                settings.config.foregroundImage = newReference
+                guard settings.style.foregroundImage == reference else { return }
+                settings.style.foregroundImage = newReference
                 Log.export.notice(
                     "Redacted image secrets (\(result.regionCount, privacy: .public) regions)")
                 session.feedback(
@@ -384,22 +325,13 @@ extension EditorView {
             } catch is CancellationError {
                 return
             } catch {
-                guard settings.config.foregroundImage == reference else { return }
+                guard settings.style.foregroundImage == reference else { return }
                 Log.export.error("Image secret redaction failed")
                 session.feedback(
                     Notifier.failure(
                         String(localized: "Couldn't redact secrets in the image")))
             }
         }
-    }
-
-    /// The line count shown beside the CODE label, or an em dash when empty.
-    /// One interpolated key whose plural variant the catalog chooses.
-    var lineCountLabel: String {
-        let code = settings.documentCode
-        guard !code.isEmpty else { return "—" }
-        let count = LineSplitter.lineCount(of: code)
-        return String(localized: "\(count) lines")
     }
 
     /// The 26 pt format action in the code header — the mouse route to the
@@ -426,7 +358,7 @@ extension EditorView {
         .help("Tidy the code: re-indent JSON, or strip the indentation shared by every line.")
         .accessibilityLabel(VitrineCommand.formatCode.accessibilityLabel)
         .accessibilityIdentifier("format-button")
-        .disabled(settings.documentCode.isEmpty)
+        .disabled(settings.documentIsEmpty)
     }
 
     // MARK: - Stage
@@ -550,7 +482,7 @@ extension EditorView {
                         endRadius: max(proxy.size.width, proxy.size.height) * 0.55)
                 }
             }
-            .animation(.easeInOut(duration: 0.6), value: settings.config.background)
+            .animation(.easeInOut(duration: 0.6), value: settings.style.background)
         }
         .accessibilityHidden(true)
     }
@@ -559,7 +491,7 @@ extension EditorView {
     /// the gradient's stop colors, a solid's own color twice, or none for an
     /// image/transparent background (the stage stays neutral).
     var glowColors: (Color, Color)? {
-        switch settings.config.background {
+        switch settings.style.background {
         case .gradient(let preset):
             let colors = preset.colors
             guard let first = colors.first, let last = colors.last else { return nil }
@@ -674,15 +606,114 @@ extension EditorView {
             return
         }
         let language = LanguageDetector.detect(text)
-        settings.config.language = language
+        settings.style.language = language
         // Pasting fresh code is a new capture, so drop content-bound marks (annotations,
         // highlighted lines) that were positioned over whatever was here before.
-        settings.config.clearContentMarks()
+        settings.style.clearContentMarks()
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
         settings.documentCode =
             environment.appSettings.reindentOnPaste
             ? CodeFormatter.tidy(text, language: language) : text
+    }
+}
+
+/// The code editor and the empty state over it.
+///
+/// Creating the document-text binding reads the text, so the view that creates it is
+/// invalidated by every keystroke. Creating it here keeps that to this view instead of
+/// the whole editor.
+private struct CodeDocumentEditor: View {
+    @Bindable var settings: AppSettings
+    let reindentOnPaste: Bool
+    let pasteFromClipboard: () -> Void
+
+    var body: some View {
+        CodeEditorView(
+            text: $settings.documentCode,
+            language: settings.style.language,
+            theme: settings.style.theme,
+            fontName: settings.style.fontName,
+            fontSize: settings.style.fontSize,
+            fontLigatures: settings.style.fontLigatures,
+            reindentOnPaste: reindentOnPaste,
+            onReplaceAllPaste: { settings.style.clearContentMarks() }
+        )
+        .overlay {
+            if settings.documentIsEmpty {
+                // The overlay is non-interactive except for its "Paste Code" button
+                // (see EmptyStateView): a click anywhere else falls through to the
+                // text view so the caret can land and the user can start typing —
+                // matching the "paste or type" affordance the copy promises.
+                EmptyStateView(
+                    title: "Nothing to show yet",
+                    message:
+                        "Paste code or terminal output, or open a live file to turn it into a beautiful image.",
+                    actionTitle: "Paste Code",
+                    action: pasteFromClipboard,
+                    compact: true
+                )
+            }
+        }
+    }
+}
+
+/// The line count shown beside the CODE label, or an em dash when empty.
+///
+/// It reads the document text, so it observes that text on its own: a keystroke
+/// re-evaluates this label instead of the whole editor.
+private struct CodeLineCountLabel: View {
+    let settings: AppSettings
+
+    var body: some View {
+        Text(Self.label(for: settings.documentCode))
+            .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+    }
+
+    /// One interpolated key whose plural variant the catalog chooses.
+    private static func label(for code: String) -> String {
+        guard !code.isEmpty else { return "—" }
+        let count = LineSplitter.lineCount(of: code)
+        return String(localized: "\(count) lines")
+    }
+}
+
+/// Makes the intentional large-document fallback visible instead of silently flattening syntax
+/// colors. The source remains editable and the shared render/export path uses the same legible
+/// plain-text representation, so this is a capability notice rather than an error.
+///
+/// Whether the fallback applies depends on the document text, so the notice observes that
+/// text on its own instead of making every keystroke re-evaluate the whole editor.
+private struct LargeDocumentHighlightNotice: View {
+    let settings: AppSettings
+
+    var body: some View {
+        if HighlightPolicy.mode(
+            for: settings.documentCode, language: settings.style.language
+        ).usesPlainTextFallback {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "text.badge.minus")
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Syntax colors paused")
+                        .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
+                    Text("This large document stays editable and exportable in plain text.")
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Color.orange.opacity(0.12))
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(VitrineTokens.Line.border).frame(height: Brand.Stroke.hairline)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("large-document-highlight-notice")
+        }
     }
 }
 

@@ -204,10 +204,10 @@ struct ThemeChipPicker: View {
 
     private func chip(for theme: Theme) -> some View {
         ThemeChip(
-            theme: theme, isSelected: settings.config.theme.id == theme.id,
+            theme: theme, isSelected: settings.style.theme.id == theme.id,
             chipSize: chipSize, dotSize: dotSize
         ) {
-            settings.config.theme = themes.theme(withID: theme.id)
+            settings.style.theme = themes.theme(withID: theme.id)
         }
     }
 }

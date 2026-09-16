@@ -24,7 +24,18 @@ final class AppSettings {
     /// A code editor can change this value on every keystroke without invalidating
     /// views that only read ``renderConfiguration``. The public ``config`` facade
     /// below keeps callers that need an atomic `SnapshotConfig` unchanged.
-    var documentCode: String
+    var documentCode: String {
+        didSet {
+            let isEmpty = documentCode.isEmpty
+            if documentIsEmpty != isEmpty { documentIsEmpty = isEmpty }
+        }
+    }
+
+    /// Whether ``documentCode`` is empty, observed separately from the text itself.
+    ///
+    /// It changes only when the answer does, so a view that needs just this (an action
+    /// disabled until there is code, the empty state) is not invalidated by a keystroke.
+    private(set) var documentIsEmpty: Bool
 
     /// Every render input except the high-frequency document text.
     ///
@@ -62,6 +73,30 @@ final class AppSettings {
                 renderConfiguration = normalized
             }
         }
+    }
+
+    /// The render inputs without the document text, for views and bindings.
+    ///
+    /// Reading any field through ``config`` also reads ``documentCode``, which ties the
+    /// reading view to every keystroke. A view that needs only presentation or content
+    /// marks reads and writes through `style` instead. Its `code` is always empty, and
+    /// setting it never touches the document.
+    var style: SnapshotConfig {
+        get { renderConfiguration }
+        set {
+            var normalized = newValue
+            normalized.code = ""
+            if renderConfiguration != normalized {
+                renderConfiguration = normalized
+            }
+        }
+    }
+
+    /// Whether there is something to render: an image, or any document text. Unlike
+    /// `config.hasRenderableContent`, it reads ``documentIsEmpty``, so it changes only
+    /// when the answer does.
+    var hasRenderableContent: Bool {
+        renderConfiguration.usesImageContent || !documentIsEmpty
     }
 
     /// The working social card: the document of the social-card editor,
@@ -247,6 +282,7 @@ final class AppSettings {
 
         let loadedConfig = SettingsCodec.readConfig(from: defaults)
         documentCode = loadedConfig.code
+        documentIsEmpty = loadedConfig.code.isEmpty
         var normalizedConfig = loadedConfig
         normalizedConfig.code = ""
         renderConfiguration = normalizedConfig
@@ -665,8 +701,8 @@ extension AppSettings {
     /// re-deriving the optional-to-Bool mapping.
     var wrapsLongLines: Binding<Bool> {
         Binding(
-            get: { self.config.wrapsLongLines },
-            set: { self.config.wrapColumns = $0 ? SettingsDefaults.wrapColumns : nil }
+            get: { self.style.wrapsLongLines },
+            set: { self.style.wrapColumns = $0 ? SettingsDefaults.wrapColumns : nil }
         )
     }
 
@@ -674,8 +710,8 @@ extension AppSettings {
     /// write. Only meaningful while wrapping is on.
     var wrapColumnsValue: Binding<Double> {
         Binding(
-            get: { Double(self.config.wrapColumns ?? SettingsDefaults.wrapColumns) },
-            set: { self.config.wrapColumns = SettingsDefaults.clampWrapColumns(Int($0)) }
+            get: { Double(self.style.wrapColumns ?? SettingsDefaults.wrapColumns) },
+            set: { self.style.wrapColumns = SettingsDefaults.clampWrapColumns(Int($0)) }
         )
     }
 }

@@ -42,7 +42,7 @@ struct EditorInspectorView: View {
                 // A beautified image swaps the code-only style controls (theme, fonts)
                 // for the frame picker; everything else (background, canvas, header,
                 // output) applies to both.
-                if settings.config.usesImageContent {
+                if settings.style.usesImageContent {
                     frameSection
                 } else {
                     themeSection
@@ -53,13 +53,13 @@ struct EditorInspectorView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     // The line gutter / highlight / redact controls only make sense for
                     // code, so they're hidden when a beautified image is the content.
-                    if !settings.config.usesImageContent {
+                    if !settings.style.usesImageContent {
                         InspectorDisclosure(
                             label: Text("Lines"), identifier: "inspector-disclosure-lines",
                             isExpanded: $showLines
                         ) {
                             InspectorRow(label: Text("Line numbers")) {
-                                Toggle("Line numbers", isOn: $settings.config.showLineNumbers)
+                                Toggle("Line numbers", isOn: $settings.style.showLineNumbers)
                                     .toggleStyle(.switch)
                                     .labelsHidden()
                                     .accessibilityIdentifier("line-numbers-toggle")
@@ -73,7 +73,7 @@ struct EditorInspectorView: View {
                                     )
                                     .accessibilityIdentifier("wrap-lines-toggle")
                             }
-                            if settings.config.wrapsLongLines {
+                            if settings.style.wrapsLongLines {
                                 InspectorRow(label: Text("Wrap width")) {
                                     HStack(spacing: 8) {
                                         Slider(
@@ -85,7 +85,7 @@ struct EditorInspectorView: View {
                                         .accessibilityIdentifier("wrap-columns-slider")
                                         Text(
                                             verbatim:
-                                                "\(settings.config.wrapColumns ?? SettingsDefaults.wrapColumns)"
+                                                "\(settings.style.wrapColumns ?? SettingsDefaults.wrapColumns)"
                                         )
                                         .font(
                                             .system(
@@ -103,16 +103,16 @@ struct EditorInspectorView: View {
                             InspectorRow(label: Text("Focus highlighted")) {
                                 Toggle(
                                     "Focus highlighted",
-                                    isOn: $settings.config.focusHighlightedLines
+                                    isOn: $settings.style.focusHighlightedLines
                                 )
                                 .toggleStyle(.switch)
                                 .labelsHidden()
-                                .disabled(settings.config.highlightedLineRanges.isEmpty)
+                                .disabled(settings.style.highlightedLineRanges.isEmpty)
                                 .help("Dim the lines outside the highlight so it stands out.")
                                 .accessibilityIdentifier("focus-lines-toggle")
                             }
                             InspectorRow(label: Text("Diff bands")) {
-                                Toggle("Diff bands", isOn: $settings.config.diffDecorations)
+                                Toggle("Diff bands", isOn: $settings.style.diffDecorations)
                                     .toggleStyle(.switch)
                                     .labelsHidden()
                                     .help(
@@ -121,7 +121,7 @@ struct EditorInspectorView: View {
                                     .accessibilityIdentifier("diff-decorations-toggle")
                             }
                             InspectorRow(label: Text("Redact secrets")) {
-                                if settings.config.redactedLineRanges.isEmpty {
+                                if settings.style.redactedLineRanges.isEmpty {
                                     Button("Scan") {
                                         // Scan `sidecarText`, not `code`: for a terminal capture
                                         // the canvas renders the ANSI-resolved screen, so the raw
@@ -130,17 +130,17 @@ struct EditorInspectorView: View {
                                         // `sidecarText == code`.
                                         let lines = SecretScanner.secretLines(
                                             in: settings.config.sidecarText)
-                                        settings.config.redactedLineRanges =
+                                        settings.style.redactedLineRanges =
                                             LineHighlight.normalize(
                                                 lines.map { $0...$0 })
                                     }
                                     .help(
                                         "Blur lines that look like API keys, tokens, or passwords."
                                     )
-                                    .disabled(settings.config.code.isEmpty)
+                                    .disabled(settings.documentIsEmpty)
                                     .accessibilityIdentifier("redact-secrets-button")
                                 } else {
-                                    Button("Clear") { settings.config.redactedLineRanges = [] }
+                                    Button("Clear") { settings.style.redactedLineRanges = [] }
                                         .accessibilityIdentifier("clear-redactions-button")
                                 }
                             }
@@ -208,12 +208,12 @@ struct EditorInspectorView: View {
                     GradientSwatch(
                         preset: preset, isSelected: selectedGradientPreset == preset, size: 28
                     ) {
-                        settings.config.background = .gradient(preset)
+                        settings.style.background = .gradient(preset)
                     }
                 }
                 CustomBackgroundSwatch(size: 28) {
-                    settings.config.background = BackgroundKind.solid.makeDefault(
-                        from: settings.config.background, imageStore: .container)
+                    settings.style.background = BackgroundKind.solid.makeDefault(
+                        from: settings.style.background, imageStore: .container)
                 }
             }
             .accessibilityElement(children: .contain)
@@ -257,12 +257,12 @@ struct EditorInspectorView: View {
                         (ImageFrame.iPhone, Text("iPhone")),
                     ],
                     selection: Binding(
-                        get: { settings.config.imageFrame },
+                        get: { settings.style.imageFrame },
                         set: { newFrame in
                             if newFrame.isPro, !entitlements.isUnlocked(.advancedFrames) {
                                 showingFramePaywall = true
                             } else {
-                                settings.config.imageFrame = newFrame
+                                settings.style.imageFrame = newFrame
                             }
                         }
                     )
@@ -270,7 +270,7 @@ struct EditorInspectorView: View {
                 .accessibilityLabel("Frame style")
                 .accessibilityIdentifier("image-frame-picker")
             }
-            if settings.config.imageFrame != .none {
+            if settings.style.imageFrame != .none {
                 InspectorRow(label: Text("Appearance")) {
                     TokenSegmentedPicker(
                         options: [
@@ -278,19 +278,18 @@ struct EditorInspectorView: View {
                             (FrameAppearance.light, Text("Light")),
                             (FrameAppearance.dark, Text("Dark")),
                         ],
-                        selection: $settings.config.imageFrameAppearance
+                        selection: $settings.style.imageFrameAppearance
                     )
                     .accessibilityLabel("Frame appearance")
                     .accessibilityIdentifier("image-frame-appearance-picker")
                 }
             }
             // The title/address applies only to the window and browser chrome.
-            if settings.config.imageFrame == .macOSWindow || settings.config.imageFrame == .browser
-            {
+            if settings.style.imageFrame == .macOSWindow || settings.style.imageFrame == .browser {
                 InspectorRow(label: Text("Title")) {
                     TokenTextField(
                         prompt: Text(verbatim: "vitrineframe.app"),
-                        text: $settings.config.windowTitle
+                        text: $settings.style.windowTitle
                     )
                     .accessibilityIdentifier("image-frame-title-field")
                 }
@@ -317,7 +316,7 @@ struct EditorInspectorView: View {
             )
             .accessibilityIdentifier("style-font-picker")
             InspectorRow(label: Text("Ligatures")) {
-                Toggle("Ligatures", isOn: $settings.config.fontLigatures)
+                Toggle("Ligatures", isOn: $settings.style.fontLigatures)
                     .toggleStyle(.switch)
                     .labelsHidden()
                     .help(ligatureHelp)
@@ -326,7 +325,7 @@ struct EditorInspectorView: View {
             }
             InspectorRow(label: Text("Font size")) {
                 valueSlider(
-                    "Font size", $settings.config.fontSize, in: 10...20, step: 1,
+                    "Font size", $settings.style.fontSize, in: 10...20, step: 1,
                     identifier: "font-size-slider")
             }
         }
@@ -357,65 +356,46 @@ struct EditorInspectorView: View {
         InspectorSection(title: Text("Canvas")) {
             InspectorRow(label: Text("Padding")) {
                 valueSlider(
-                    "Padding", $settings.config.padding, in: 16...64, step: 4,
+                    "Padding", $settings.style.padding, in: 16...64, step: 4,
                     identifier: "padding-slider")
             }
             InspectorRow(label: Text("Corner radius")) {
                 valueSlider(
-                    "Corner radius", $settings.config.cornerRadius, in: 0...32, step: 2,
+                    "Corner radius", $settings.style.cornerRadius, in: 0...32, step: 2,
                     identifier: "corner-radius-slider")
             }
             // The code card's macOS chrome. For a beautified image the Frame section
             // owns the window/browser chrome, so these rows are hidden there.
-            if !settings.config.usesImageContent {
+            if !settings.style.usesImageContent {
                 InspectorRow(label: Text("Window chrome")) {
-                    Toggle("Window chrome", isOn: $settings.config.showChrome)
+                    Toggle("Window chrome", isOn: $settings.style.showChrome)
                         .toggleStyle(.switch)
                         .labelsHidden()
                         .accessibilityIdentifier("window-chrome-toggle")
                 }
-                if settings.config.showChrome {
+                if settings.style.showChrome {
                     InspectorRow(label: Text("Title")) {
                         HStack(spacing: 6) {
                             TokenTextField(
                                 prompt: Text(verbatim: "ContentView.swift"),
-                                text: $settings.config.windowTitle
+                                text: $settings.style.windowTitle
                             )
                             .accessibilityIdentifier("window-title-field")
-                            // Smart title: fill the header from what the
-                            // code declares — the filename chip, else the first declared
-                            // identifier. Shown only while it would actually change
-                            // something, so it never sits around as dead chrome.
-                            if let suggestion = SuggestedFilename.suggestedTitle(
-                                for: settings.config),
-                                suggestion != settings.config.windowTitle
-                            {
-                                Button {
-                                    settings.config.windowTitle = suggestion
-                                } label: {
-                                    Image(systemName: "wand.and.stars")
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundStyle(VitrineTokens.Accent.system)
-                                }
-                                .buttonStyle(.plain)
-                                .help(Text("Suggest a title: ") + Text(verbatim: suggestion))
-                                .accessibilityLabel("Suggest a title")
-                                .accessibilityIdentifier("window-title-suggest-button")
-                            }
+                            WindowTitleSuggestionButton(settings: settings)
                         }
                     }
                 }
             }
             InspectorRow(label: Text("Drop shadow")) {
-                Toggle("Drop shadow", isOn: $settings.config.showShadow)
+                Toggle("Drop shadow", isOn: $settings.style.showShadow)
                     .toggleStyle(.switch)
                     .labelsHidden()
                     .accessibilityIdentifier("drop-shadow-toggle")
             }
-            if settings.config.showShadow {
+            if settings.style.showShadow {
                 InspectorRow(label: Text("Shadow depth")) {
                     valueSlider(
-                        "Shadow depth", $settings.config.shadowRadius, in: 0...40, step: 2,
+                        "Shadow depth", $settings.style.shadowRadius, in: 0...40, step: 2,
                         identifier: "shadow-radius-slider")
                 }
             }
@@ -522,7 +502,7 @@ struct EditorInspectorView: View {
     }
 
     private var selectedGradientPreset: GradientPreset? {
-        if case .gradient(let preset) = settings.config.background { return preset }
+        if case .gradient(let preset) = settings.style.background { return preset }
         return nil
     }
 
@@ -530,17 +510,17 @@ struct EditorInspectorView: View {
     /// current style, mirroring the Settings pane.
     private var backgroundKindBinding: Binding<BackgroundKind> {
         Binding(
-            get: { BackgroundKind(settings.config.background) },
+            get: { BackgroundKind(settings.style.background) },
             set: {
-                settings.config.background = $0.makeDefault(
-                    from: settings.config.background, imageStore: .container)
+                settings.style.background = $0.makeDefault(
+                    from: settings.style.background, imageStore: .container)
             }
         )
     }
 
     /// The controls for the active non-preset background kind.
     @ViewBuilder private var backgroundDetail: some View {
-        switch settings.config.background {
+        switch settings.style.background {
         case .gradient:
             EmptyView()
         case .customGradient(let gradient):
@@ -548,7 +528,7 @@ struct EditorInspectorView: View {
                 CustomGradientEditor(
                     gradient: Binding(
                         get: { gradient },
-                        set: { settings.config.background = .customGradient($0) }))
+                        set: { settings.style.background = .customGradient($0) }))
             }
         case .solid(let color):
             InspectorRow(label: Text("Color")) {
@@ -556,7 +536,7 @@ struct EditorInspectorView: View {
                     "Color",
                     selection: Binding(
                         get: { color.color },
-                        set: { settings.config.background = .solid(RGBAColor($0)) }),
+                        set: { settings.style.background = .solid(RGBAColor($0)) }),
                     supportsOpacity: true
                 )
                 .labelsHidden()
@@ -566,7 +546,7 @@ struct EditorInspectorView: View {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
                 ImageBackgroundEditor(
                     image: Binding(
-                        get: { image }, set: { settings.config.background = .image($0) }),
+                        get: { image }, set: { settings.style.background = .image($0) }),
                     imageStore: .container)
             }
         case .transparent:
@@ -579,12 +559,40 @@ struct EditorInspectorView: View {
     /// Whether the selected font ships programming ligatures, gating the toggle
     /// so it reads as inert for a font that has none.
     private var fontHasLigatures: Bool {
-        CodeFont.hasLigatures(settings.config.fontName)
+        CodeFont.hasLigatures(settings.style.fontName)
     }
 
     private var ligatureHelp: String {
         fontHasLigatures
             ? "Render programming ligatures (->, =>, !=) for this font."
             : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
+    }
+}
+
+/// Smart title: fills the header from what the code declares — the filename chip, else
+/// the first declared identifier. Shown only while it would actually change something,
+/// so it never sits around as dead chrome.
+///
+/// The suggestion depends on the document text, so it observes that text on its own: a
+/// keystroke re-evaluates this button instead of the whole inspector.
+private struct WindowTitleSuggestionButton: View {
+    let settings: AppSettings
+
+    var body: some View {
+        if let suggestion = SuggestedFilename.suggestedTitle(for: settings.config),
+            suggestion != settings.style.windowTitle
+        {
+            Button {
+                settings.style.windowTitle = suggestion
+            } label: {
+                Image(systemName: "wand.and.stars")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(VitrineTokens.Accent.system)
+            }
+            .buttonStyle(.plain)
+            .help(Text("Suggest a title: ") + Text(verbatim: suggestion))
+            .accessibilityLabel("Suggest a title")
+            .accessibilityIdentifier("window-title-suggest-button")
+        }
     }
 }

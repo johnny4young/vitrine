@@ -985,6 +985,18 @@ changes remain immediate. The preview receives the staged configuration through 
 equatable `SnapshotCanvas`, so parent view updates with the same render inputs do not
 re-run synchronous highlighting.
 
+Views do not read `config` for presentation or content marks. Any field read through
+it also reads `documentCode`, which invalidates the reading view on every keystroke.
+Views read and bind through `AppSettings.style`, the render configuration with an empty
+`code`. A view that only needs to know whether there is anything to render asks
+`documentIsEmpty` or `hasRenderableContent`, and both change only when that answer
+changes. The views that do depend on the text are small views of their own: the code
+editor, whose document binding reads the text when it is created, the line count, the
+large-document notice, the title suggestion, and `PreviewCodeSynchronizer`. A
+keystroke updates those views, not `EditorView` or the inspector.
+`StyleFacadeContractTests` rejects reading the `SnapshotConfig` members computed from
+`code` through `style`, where they would describe an empty document.
+
 This coalescing intentionally uses `SnapshotConfig` value equality rather than a
 second render fingerprint or shared hash cache. The existing highlight and export
 caches already make a default cached export approximately 1–2 ms in the performance

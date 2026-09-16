@@ -9,7 +9,7 @@ extension EditorView {
     /// The annotation currently selected in Select mode, if any.
     var selectedAnnotation: Annotation? {
         guard let id = selectedAnnotationID else { return nil }
-        return settings.config.annotations.first { $0.id == id }
+        return settings.style.annotations.first { $0.id == id }
     }
 
     /// The toolbar color: the selected mark's color when one is selected, otherwise
@@ -20,9 +20,9 @@ extension EditorView {
             set: { newValue in
                 newDrawColor = newValue
                 if let id = selectedAnnotationID,
-                    let index = settings.config.annotations.firstIndex(where: { $0.id == id })
+                    let index = settings.style.annotations.firstIndex(where: { $0.id == id })
                 {
-                    settings.config.annotations[index].color = RGBAColor(newValue)
+                    settings.style.annotations[index].color = RGBAColor(newValue)
                 }
             })
     }
@@ -35,9 +35,9 @@ extension EditorView {
             set: { newValue in
                 newDrawThickness = newValue
                 if let id = selectedAnnotationID,
-                    let index = settings.config.annotations.firstIndex(where: { $0.id == id })
+                    let index = settings.style.annotations.firstIndex(where: { $0.id == id })
                 {
-                    settings.config.annotations[index].thickness = newValue
+                    settings.style.annotations[index].thickness = newValue
                 }
             })
     }
@@ -73,12 +73,12 @@ extension EditorView {
     /// be reused and placed precisely instead of being redrawn from scratch.
     func duplicateSelection() {
         guard let id = selectedAnnotationID,
-            let original = settings.config.annotations.first(where: { $0.id == id })
+            let original = settings.style.annotations.first(where: { $0.id == id })
         else { return }
 
         beginAnnotationEdit()
         let copy = original.duplicated(in: cardSize, counterNumber: nextCounterNumber)
-        settings.config.annotations.append(copy)
+        settings.style.annotations.append(copy)
         selectedAnnotationID = copy.id
         endAnnotationEdit()
     }
@@ -86,18 +86,18 @@ extension EditorView {
     /// One past the highest badge placed, so duplicating a counter continues the
     /// sequence instead of creating two badges with the same number.
     var nextCounterNumber: Int {
-        (settings.config.annotations.filter { $0.kind == .counter }.map(\.number).max() ?? 0) + 1
+        (settings.style.annotations.filter { $0.kind == .counter }.map(\.number).max() ?? 0) + 1
     }
 
     /// Whether moving the selected mark to either edge of the visible draw order
     /// would change the canvas.
     var canBringSelectionToFront: Bool {
-        selectedAnnotationID.map { settings.config.annotations.frontmostMove(for: $0) != nil }
+        selectedAnnotationID.map { settings.style.annotations.frontmostMove(for: $0) != nil }
             ?? false
     }
 
     var canSendSelectionToBack: Bool {
-        selectedAnnotationID.map { settings.config.annotations.backmostMove(for: $0) != nil }
+        selectedAnnotationID.map { settings.style.annotations.backmostMove(for: $0) != nil }
             ?? false
     }
 
@@ -111,7 +111,7 @@ extension EditorView {
             front ? canBringSelectionToFront : canSendSelectionToBack
         else { return }
         beginAnnotationEdit()
-        settings.config.annotations.moveMark(id, toFront: front)
+        settings.style.annotations.moveMark(id, toFront: front)
         endAnnotationEdit()
     }
 
@@ -119,7 +119,7 @@ extension EditorView {
     /// ten with Shift. Auto-repeat records only the initial undo snapshot.
     func nudgeSelection(_ key: KeyEquivalent, shift: Bool, isRepeat: Bool) -> Bool {
         guard let id = selectedAnnotationID,
-            let index = settings.config.annotations.firstIndex(where: { $0.id == id })
+            let index = settings.style.annotations.firstIndex(where: { $0.id == id })
         else { return false }
 
         let step = shift ? Annotation.coarseNudgeStep : Annotation.nudgeStep
@@ -134,7 +134,7 @@ extension EditorView {
         guard let delta else { return false }
 
         if !isRepeat { beginAnnotationEdit() }
-        settings.config.annotations[index].nudge(by: delta, in: cardSize)
+        settings.style.annotations[index].nudge(by: delta, in: cardSize)
         if !isRepeat { endAnnotationEdit() }
         return true
     }
@@ -151,24 +151,24 @@ extension EditorView {
     /// Opens and closes an annotation edit transaction. History is recorded only if
     /// the marks actually changed, so no-op gestures preserve redo and cost no undo.
     func beginAnnotationEdit() {
-        annotationHistory.beginEdit(settings.config.annotations)
+        annotationHistory.beginEdit(settings.style.annotations)
     }
 
     func endAnnotationEdit() {
-        annotationHistory.endEdit(current: settings.config.annotations)
+        annotationHistory.endEdit(current: settings.style.annotations)
     }
 
     func undoAnnotations() {
-        guard let previous = annotationHistory.undo(current: settings.config.annotations)
+        guard let previous = annotationHistory.undo(current: settings.style.annotations)
         else { return }
-        settings.config.annotations = previous
+        settings.style.annotations = previous
         selectedAnnotationID = nil
     }
 
     func redoAnnotations() {
-        guard let next = annotationHistory.redo(current: settings.config.annotations)
+        guard let next = annotationHistory.redo(current: settings.style.annotations)
         else { return }
-        settings.config.annotations = next
+        settings.style.annotations = next
         selectedAnnotationID = nil
     }
 }

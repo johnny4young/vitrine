@@ -49,7 +49,7 @@ struct AnnotationEditingOverlay: View {
                         onBeginDraw: onBeginEdit,
                         onEndDraw: onEndEdit,
                         onCommit: { annotation in
-                            settings.config.annotations.append(annotation)
+                            settings.style.annotations.append(annotation)
                             selection = annotation.id
                             // A new text callout opens straight into its inline field.
                             if annotation.kind == .text { editingAnnotationID = annotation.id }
@@ -70,7 +70,7 @@ struct AnnotationEditingOverlay: View {
             // draw tool is active — so you can move/resize/delete what you just drew
             // without leaving the tool (CleanShot-style). The mark being
             // text-edited shows only its field, so its handle is hidden.
-            ForEach(settings.config.annotations) { annotation in
+            ForEach(settings.style.annotations) { annotation in
                 let isSelected = selection == annotation.id
                 if editingAnnotationID != annotation.id,
                     activeTool == .select || isSelected,
@@ -101,20 +101,20 @@ struct AnnotationEditingOverlay: View {
 
     /// The next badge number — one past the highest counter currently placed.
     private var nextCounterNumber: Int {
-        (settings.config.annotations.filter { $0.kind == .counter }.map(\.number).max() ?? 0) + 1
+        (settings.style.annotations.filter { $0.kind == .counter }.map(\.number).max() ?? 0) + 1
     }
 
     /// An id-keyed binding into the annotations array, robust to reordering.
     private func binding(for id: UUID) -> Binding<Annotation>? {
-        guard settings.config.annotations.contains(where: { $0.id == id }) else { return nil }
+        guard settings.style.annotations.contains(where: { $0.id == id }) else { return nil }
         return Binding(
             get: {
-                settings.config.annotations.first(where: { $0.id == id })
+                settings.style.annotations.first(where: { $0.id == id })
                     ?? Annotation(kind: .text, start: .zero, end: .zero)
             },
             set: { newValue in
-                if let index = settings.config.annotations.firstIndex(where: { $0.id == id }) {
-                    settings.config.annotations[index] = newValue
+                if let index = settings.style.annotations.firstIndex(where: { $0.id == id }) {
+                    settings.style.annotations[index] = newValue
                 }
             })
     }
@@ -132,8 +132,8 @@ struct AnnotationEditingOverlay: View {
     /// and the focus-loss handler.
     private func endTextEditing() {
         guard let id = editingAnnotationID else { return }
-        if settings.config.annotations.first(where: { $0.id == id })?.isBlankText == true {
-            settings.config.annotations.removeAll { $0.id == id }
+        if settings.style.annotations.first(where: { $0.id == id })?.isBlankText == true {
+            settings.style.annotations.removeAll { $0.id == id }
             if selection == id { selection = nil }
         }
         editingAnnotationID = nil
@@ -142,7 +142,7 @@ struct AnnotationEditingOverlay: View {
 
     private func delete(_ id: UUID) {
         onBeginEdit()
-        settings.config.annotations.removeAll { $0.id == id }
+        settings.style.annotations.removeAll { $0.id == id }
         if selection == id { selection = nil }
         if editingAnnotationID == id { editingAnnotationID = nil }
         onEndEdit()
