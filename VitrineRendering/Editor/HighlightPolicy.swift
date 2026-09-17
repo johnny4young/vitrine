@@ -32,7 +32,15 @@ public enum HighlightPolicy {
     /// Each representation owns this conservative estimated-cost budget. `HighlightManager`
     /// keeps five representation caches, so their aggregate estimate stays at or below 20 MiB.
     nonisolated public static let perRepresentationCostLimit = 4 * 1024 * 1024
-    nonisolated public static let countLimit = 8
+
+    /// The most entries one representation keeps, whatever their cost.
+    ///
+    /// Big enough for one document at every step of the inspector's font-size slider (11) or
+    /// in every built-in theme (13), so dragging back across the slider or browsing themes again
+    /// finds each result still cached instead of tokenizing it again. With 8, a sweep back
+    /// across the slider re-highlighted the sizes visited first. Memory stays bounded by
+    /// ``perRepresentationCostLimit``, which evicts first for larger documents.
+    nonisolated public static let countLimit = 16
 
     public enum Representation {
         case attributedString

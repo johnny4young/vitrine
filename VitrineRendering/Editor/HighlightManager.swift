@@ -42,11 +42,15 @@ public final class HighlightManager {
     /// Cache key for highlighted code. `VitrineDomain.Theme.Source` captures the immutable stylesheet name for
     /// a built-in or the complete value-typed palette for a custom theme, so changing a palette
     /// under a stable user-facing id can never return stale colors.
+    ///
+    /// `code` is declared last so the synthesized equality compares it last. The caches scan
+    /// their recency list by equality, and the entries for one document differ only in font or
+    /// theme; comparing those first rejects a non-matching entry without comparing the text.
     private struct HighlightKey: Hashable {
-        let code: String
         let language: Language
         let themeSource: VitrineDomain.Theme.Source
         let font: NSFont
+        let code: String
     }
     /// The most recent derived value for one document, kept for input the LRU caches
     /// deliberately refuse.
@@ -99,10 +103,11 @@ public final class HighlightManager {
     /// otherwise gets fully re-parsed and re-emulated on every `body` pass. Custom
     /// themes include their value-typed source in the key, so edits cannot return stale output.
     private struct TerminalKey: Hashable {
-        let code: String
         let themeSource: VitrineDomain.Theme.Source
         let font: NSFont
         let columns: Int?
+        // Last, for the same reason as `HighlightKey.code`.
+        let code: String
     }
     private var terminalCache = CostLimitedLRUCache<TerminalKey, AttributedString>(
         totalCostLimit: HighlightPolicy.perRepresentationCostLimit,
@@ -154,7 +159,7 @@ public final class HighlightManager {
 
         let shouldCache = HighlightPolicy.shouldCache(code)
         let key = HighlightKey(
-            code: code, language: language, themeSource: theme.source, font: font)
+            language: language, themeSource: theme.source, font: font, code: code)
         if shouldCache, let cached = highlightCache.value(forKey: key) { return cached }
         if !shouldCache, let recent = lastHighlight.value(forKey: key) { return recent }
 
@@ -193,7 +198,7 @@ public final class HighlightManager {
         for code: String, language: Language, theme: VitrineDomain.Theme, font: NSFont
     ) -> AttributedString {
         let key = HighlightKey(
-            code: code, language: language, themeSource: theme.source, font: font)
+            language: language, themeSource: theme.source, font: font, code: code)
         guard HighlightPolicy.shouldCache(code) else {
             if let recent = lastSwiftUI.value(forKey: key) { return recent }
             let bridged = AttributedString(
@@ -228,7 +233,7 @@ public final class HighlightManager {
                     code, font: font, palette: palette, columns: columns))
         }
         let key = TerminalKey(
-            code: code, themeSource: theme.source, font: font, columns: columns)
+            themeSource: theme.source, font: font, columns: columns, code: code)
         guard HighlightPolicy.shouldCache(code) else {
             if let recent = lastTerminal.value(forKey: key) { return recent }
             let rendered = render()
@@ -253,7 +258,7 @@ public final class HighlightManager {
         let bridged = swiftUIAttributedString(
             for: code, language: language, theme: theme, font: font)
         let key = HighlightKey(
-            code: code, language: language, themeSource: theme.source, font: font)
+            language: language, themeSource: theme.source, font: font, code: code)
         guard HighlightPolicy.shouldCache(code) else {
             if let recent = lastLines.value(forKey: key) { return recent }
             let rows = Self.splitRows(bridged)
@@ -278,7 +283,7 @@ public final class HighlightManager {
         let bridged = terminalAttributedString(
             for: code, theme: theme, font: font, columns: columns)
         let key = TerminalKey(
-            code: code, themeSource: theme.source, font: font, columns: columns)
+            themeSource: theme.source, font: font, columns: columns, code: code)
         guard HighlightPolicy.shouldCache(code) else {
             if let recent = lastTerminalLines.value(forKey: key) { return recent }
             let rows = Self.splitRows(bridged)
