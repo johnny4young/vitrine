@@ -54,10 +54,10 @@ SITES=(
     '^([|] Marketing version [|] `)[^`]*(`)' '\1@V@\2'
     'docs/APP-STORE.md' 'App Store build number'
     '^([|] Build number [|] `)[^`]*(`)' '\1@B@\2'
-    'README.md' 'status badge'
-    '(status-v)[0-9][^-]*(--candidate-orange)' '\1@V@\2'
+    'README.md' 'version badge'
+    '(version-v)[0-9][^-]*(-blue)' '\1@V@\2'
     'README.md' 'status sentence'
-    '([*][*]v)[0-9][0-9.]*( [(]build )[0-9]+([)] is the current release candidate)' '\1@V@\2@B@\3'
+    '([*][*]v)[0-9][0-9.]*( [(]build )[0-9]+([)] is the newest version in source)' '\1@V@\2@B@\3'
     'README.md' 'release-line sentence'
     '(not part of the v)[0-9][0-9.]*( release line)' '\1@V@\2'
 )
@@ -223,8 +223,8 @@ self_test() {
     grep -q "releaseVersion = '9.9.9'" "$dir/site/src/components/Commercial.astro" || fail "site"
     grep -q '| Marketing version | `9.9.9`' "$dir/docs/APP-STORE.md" || fail "app store version"
     grep -q '| Build number | `999`' "$dir/docs/APP-STORE.md" || fail "app store build"
-    grep -q 'status-v9.9.9--candidate' "$dir/README.md" || fail "badge"
-    grep -q '\*\*v9.9.9 (build 999) is the current release candidate' "$dir/README.md" || fail "status sentence"
+    grep -q 'version-v9.9.9-blue' "$dir/README.md" || fail "badge"
+    grep -q '\*\*v9.9.9 (build 999) is the newest version in source' "$dir/README.md" || fail "status sentence"
     grep -q 'not part of the v9.9.9 release line' "$dir/README.md" || fail "release-line sentence"
 
     # A resubmission keeps the marketing version and moves only the build.
@@ -284,12 +284,12 @@ self_test() {
 
     # A site that fails late writes nothing, so the same command works once it is fixed.
     dir="$(fixture recovery)"
-    sed 's/--candidate-orange/--stable-green/' "$dir/README.md" > "$dir/README.md.next"
+    sed 's/\(version-v[0-9.]*\)-blue/\1-green/' "$dir/README.md" > "$dir/README.md.next"
     mv "$dir/README.md.next" "$dir/README.md"
     before="$(fingerprint "$dir")"
     if run_bump "$dir" 9.9.9 999 >/dev/null 2>&1; then fail "a moved anchor was accepted"; fi
     [ "$(fingerprint "$dir")" = "$before" ] || fail "a failed bump left files half-rewritten"
-    sed 's/--stable-green/--candidate-orange/' "$dir/README.md" > "$dir/README.md.next"
+    sed 's/\(version-v[0-9.]*\)-green/\1-blue/' "$dir/README.md" > "$dir/README.md.next"
     mv "$dir/README.md.next" "$dir/README.md"
     run_bump "$dir" 9.9.9 999 >/dev/null || fail "the same bump failed after its anchor was restored"
 

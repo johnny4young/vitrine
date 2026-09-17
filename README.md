@@ -16,7 +16,7 @@ pasted HTML, entirely on your Mac.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Status](https://img.shields.io/badge/status-v1.2.3--candidate-orange.svg)](#status)
+[![Version](https://img.shields.io/badge/version-v1.2.3-blue.svg)](#status)
 
 | `vgrab htop` | `vgrab lazygit` | `vgrab nvim` |
 | --- | --- | --- |
@@ -665,7 +665,7 @@ in [`docs/`](docs/):
 
 ## Status
 
-🟠 **v1.2.3 (build 38) is the current release candidate in source.** Public artifacts are published only
+**v1.2.3 (build 38) is the newest version in source.** Public artifacts are published only
 through the vetted release workflow; the [Releases page](https://github.com/johnny4young/vitrine/releases)
 is the source of truth for the newest downloadable version. Everything under
 [Features](#features) is driven by one design-token system
@@ -677,9 +677,9 @@ pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md
 The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release
 also ships an in-app **What's New**.
 
-Preparing this candidate does not publish it: the production website, Homebrew tap,
-Sparkle appcast, and GitHub Release remain unchanged until the separately authorized
-promotion verifies the exact candidate bytes. Anything added under **Unreleased** in the
+Bumping the version in source does not publish it: the production website, Homebrew tap,
+Sparkle appcast, and GitHub Release change only when the separately authorized promotion
+verifies the exact candidate bytes. Anything added under **Unreleased** in the
 changelog belongs to a future build and is not part of the v1.2.3 release line.
 
 Two explicit product boundaries — no arbitrary screen/window capture and no dependency
