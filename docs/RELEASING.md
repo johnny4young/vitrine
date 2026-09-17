@@ -1096,7 +1096,7 @@ license again.
 - [ ] `make icon` up to date
 - [ ] Version bumped with `make bump VERSION=x.y.z BUILD=n`, which rewrites the six
       mechanical sites together — `project.yml`, `CLIVersion.swift`, the cask,
-      `Commercial.astro`, the README status badge and sentences, and `docs/APP-STORE.md`
+      `Commercial.astro`, the README version badge and sentences, and `docs/APP-STORE.md`
       — and prints the prose it deliberately leaves to you. It refuses a version the tag
       guard would reject, refuses a build that does not move forward, and fails loudly if
       any anchor stops matching rather than skipping that file

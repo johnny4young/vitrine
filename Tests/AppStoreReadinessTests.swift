@@ -255,9 +255,9 @@ struct AppStoreReadinessTests {
             "the Unreleased section must link from the latest release to HEAD")
     }
 
-    /// The README — the project's front page — keeps its release-status badge and its
+    /// The README — the project's front page — keeps its version badge and its
     /// `## Status` section in lockstep with `MARKETING_VERSION`. The badge encodes the
-    /// version in its shields.io URL (`status-vX.Y.Z…`) and the section prose names it
+    /// version in its shields.io URL (`version-vX.Y.Z…`) and the section prose names it
     /// in the current release-status line; a version bump that forgets either would greet
     /// every visitor with a stale release number. This fails the bump until the README
     /// is updated, exactly like the CHANGELOG and APP-STORE guards above, so the README
@@ -267,8 +267,8 @@ struct AppStoreReadinessTests {
         let marketingVersion = try Self.marketingVersion()
 
         #expect(
-            readme.contains("status-v\(marketingVersion)"),
-            "README.md status badge must name project version v\(marketingVersion) (stale badge — bump it with the release)"
+            readme.contains("version-v\(marketingVersion)"),
+            "README.md version badge must name project version v\(marketingVersion) (stale badge — bump it with the release)"
         )
 
         let statusSection = try #require(
