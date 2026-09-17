@@ -42,6 +42,25 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.2.3",
+            headline: "An editor that keeps up",
+            highlights: [
+                "Typing in the editor is much lighter. Each keystroke used to re-measure the "
+                    + "whole window and redraw the inspector beside it; now only the parts "
+                    + "that show your text update.",
+                "Dragging the padding or font-size slider updates the editor once per step "
+                    + "instead of twice, and the code editor no longer reapplies its font to "
+                    + "the whole document when nothing about the font changed.",
+                "Going back across font sizes or themes you already tried reuses the "
+                    + "highlighting Vitrine produced the first time.",
+                "Launch no longer waits while Vitrine removes old window settings left by "
+                    + "earlier versions.",
+                "The signed app no longer contains the testing hooks used during development.",
+                "Vitrine continues to require macOS 15 Sequoia or later and qualifies "
+                    + "Tahoe, and direct downloads remain universal for Apple silicon and "
+                    + "Intel.",
+            ]),
+        ReleaseNote(
             version: "1.2.2",
             headline: "Updates that arrive, and a faster editor",
             highlights: [

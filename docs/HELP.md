@@ -49,20 +49,20 @@ the first-run quick-start owns that — and is skippable. See
 [`docs/RELEASING.md`](RELEASING.md) for how release notes are authored as part of
 the release checklist.
 
-### Version 1.2.1
+### Version 1.2.3
 
-The current source bundle's newest note is **Safer rendering, stricter web capture**:
+The current source bundle's newest note is **An editor that keeps up**:
 
-- extreme canvas and full-page Web Snapshot sizes are rejected before unsafe bitmap
-  allocation, with actionable errors instead of blank output;
-- app, CLI, Shortcuts, batch, social-card, and comparison-board exports preserve the same
-  typed render failures;
-- Web Snapshot blocks literal local and private subresources across images, styles,
-  scripts, frames, and network requests unless loopback is explicitly enabled;
-- focused Address and Thread Sanitizer lanes add repeatable candidate evidence;
-  and
+- a keystroke no longer re-measures the whole editor window or re-evaluates the inspector;
+  only the views that show the document text update;
+- a padding or font-size step updates the editor once instead of twice, and the code editor
+  reapplies its font only when the font actually changes;
+- highlighting results cover every font-size step and built-in theme, so revisiting one
+  reuses the earlier result;
+- launch removes stale per-window settings from earlier versions in the background;
+- the signed app no longer contains the development and release-QA launch hooks; and
 - the supported floor remains macOS 15 Sequoia, with Tahoe qualification and universal
   direct downloads.
 
 The Releases page remains the authority for what is publicly downloadable; preparing these
-bundled notes in source does not publish or deploy version 1.2.1.
+bundled notes in source does not publish or deploy version 1.2.3.

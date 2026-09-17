@@ -12,6 +12,90 @@ can never drift.
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-09-16
+
+Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each
+keystroke and inspector step repeated for nothing: re-measuring the whole window,
+re-evaluating the editor and its inspector, reapplying the font to the whole document, and
+re-highlighting results it had just thrown away. It also takes development hooks out of
+the signed build and stops compiling the command line into the app.
+
+### Performance
+
+The timings below were measured on macOS 26 Tahoe.
+
+- Stop re-measuring the whole editor window on every keystroke. Its hosting controller
+  kept the default sizing options, so every update measured the entire SwiftUI hierarchy
+  to refresh the window's size limits: 71% of the main thread while typing. The editor now
+  measures its minimum size when the window opens and when a live resize starts, and pins
+  it with required constraints, so the minimum is unchanged. Per keystroke in a 60-line
+  document, the Debug perf scenario went from 52 to 17 ms, and an optimized build from 79
+  to 13.3 ms.
+- Keep keystrokes from re-evaluating the editor, its inspector, and the annotation overlay.
+  Those views read style fields through a configuration that also carried the document
+  text, so each of them re-evaluated on every keystroke. They now read a style
+  configuration without the text, and the few views that show the text observe it
+  on their own. Per keystroke, the perf scenario went from 17 to 5 ms, and the inspector
+  hosted on its own from 3.0 to 0.23 ms.
+- Apply the code editor's font only when its name, size, or ligature setting changes.
+  Setting the same font on every update laid the whole document out again: a keystroke in a
+  300-line document went from 14.2 to 10.3 ms.
+- Evaluate the editor once per padding or font-size step instead of twice. The preview
+  card's measured size lived in the editor's own state, so every size change became a
+  second update of the whole editor. A padding step's median went from 36.9 to 20.1 ms,
+  the same as a corner-radius step.
+- Keep up to 16 highlighting results per representation instead of 8, enough for one
+  document at every font-size step and in every built-in theme. Moving back across the
+  slider or through the themes re-highlighted what the first pass had produced. Cache keys
+  now compare the document text last. With a 60-line document, the slowest font-size steps
+  (p95) went from 56 to 46 ms.
+- Remove stale per-window settings from earlier versions in the background instead of on
+  the launch path. Fifty stale suites cost 14.6 ms before the menu bar icon appeared.
+
+### Security
+
+- Compile the development and release-QA launch hooks, and the memory journeys, only into
+  Debug builds. The signed, notarized app carried them, including a switch that replaced the
+  Web Snapshot renderer with a fake one. They were reachable only through launch arguments,
+  and every consumer is a Debug build.
+- Raise the website's `sharp` override to 0.35.4 for GHSA-rgj7-g3m4-5g8c, a libheif issue
+  in the site's build tooling. The app does not include `sharp`.
+
+### Changed
+
+- Compile the command line into a `VitrineCLICore` static library, linked by the
+  `vitrine-cli` tool and a hostless test bundle. The app no longer compiles the argument
+  parser, batch renderer, or git diff loader it never runs. Recorded production coverage drops from about 51.7% to 48.9%, because
+  the old figure counted those lines twice.
+- Move the code formatter, language detector, asciinema reader, file input loader,
+  filename suggestion, and share links out of the app into `VitrineDomain` or
+  `VitrineRendering`, shrinking the CLI's hand-maintained source list. Split
+  `BackgroundImageStore`'s remote fetch into `RemoteImageFetcher` and its decoded-image
+  cache into `DecodedImageCache`.
+- Import `VitrineDomain` and `VitrineRendering` explicitly, delete the typealias files that
+  hid those dependencies, and enable `MemberImportVisibility` for every target.
+- Call the Web Snapshot window and the session store directly, stop compiling the
+  background editor into the CLI, and drop `@MainActor` annotations the module default
+  already provides.
+- Gate a release tag on the tagged commit's CI instead of re-running it. The candidate's
+  `verify` job keeps the tag, version, and changelog guards, then requires the commit's
+  static checks, builds, and UI tests on both macOS rows to have passed, waiting up to 45
+  minutes.
+- Share the macOS toolchain setup across workflows through one composite action; read
+  `MARKETING_VERSION` through one script; add `make bump` for the version lockstep; lint
+  the Python gate scripts with ruff and report npm audit findings; and compare CI
+  performance medians with recorded baselines.
+- Run the repository-contract and command-line suites in hostless bundles, and the
+  formatter suites in the domain bundle.
+  Derive the settings persistence guards from `SnapshotConfig` itself. Have the visual tour
+  wait for each surface to stop changing instead of sleeping, and confirm each menu choice.
+
+### Fixed
+
+- Compile the app and its unit tests with Xcode 27. Swift 6.4 rejected the annotation
+  shapes' `Shape` conformance and actors conforming to protocols that inherited the module's
+  main-actor default.
+
 ## [1.2.2] - 2026-09-08
 
 Vitrine 1.2.2 repairs the update channel itself, closes two ways a private destination
@@ -1298,7 +1382,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/johnny4young/vitrine/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/johnny4young/vitrine/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/johnny4young/vitrine/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/johnny4young/vitrine/compare/v1.1.0...v1.2.0
