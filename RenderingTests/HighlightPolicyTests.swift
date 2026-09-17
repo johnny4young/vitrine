@@ -118,6 +118,42 @@ struct HighlightPolicyTests {
 
         #expect(manager.cachedEntryCountForTesting == 3)
     }
+
+    /// Dragging the font-size slider back across its range, or clicking through the themes a
+    /// second time, asks for results the first pass already produced. The count limit keeps
+    /// one document at every slider step and in every built-in theme, so the second pass is
+    /// all cache hits; with room for fewer, it re-tokenized the values visited first.
+    @Test func everyFontSizeStepAndBuiltInThemeStaysCachedForOneDocument() {
+        let manager = HighlightManager.shared
+        let source = "func greet() { print(\"hello\") }"
+        let sizes = Array(
+            stride(
+                from: SettingsDefaults.fontSizeRange.lowerBound,
+                through: SettingsDefaults.fontSizeRange.upperBound, by: 1))
+        #expect(HighlightPolicy.countLimit >= sizes.count)
+        #expect(HighlightPolicy.countLimit >= Theme.builtIns.count)
+
+        manager.resetCachesForTesting()
+        let fonts = sizes.map { NSFont.monospacedSystemFont(ofSize: $0, weight: .regular) }
+        let firstBySize = fonts.map {
+            manager.attributedString(for: source, language: .swift, theme: .oneDark, font: $0)
+        }
+        let secondBySize = fonts.map {
+            manager.attributedString(for: source, language: .swift, theme: .oneDark, font: $0)
+        }
+        #expect(zip(firstBySize, secondBySize).allSatisfy { $0 === $1 })
+        #expect(manager.cachedEntryCountForTesting == sizes.count)
+
+        manager.resetCachesForTesting()
+        let firstByTheme = Theme.builtIns.map {
+            manager.attributedString(for: source, language: .swift, theme: $0, font: Self.font)
+        }
+        let secondByTheme = Theme.builtIns.map {
+            manager.attributedString(for: source, language: .swift, theme: $0, font: Self.font)
+        }
+        #expect(zip(firstByTheme, secondByTheme).allSatisfy { $0 === $1 })
+        #expect(manager.cachedEntryCountForTesting == Theme.builtIns.count)
+    }
     /// Between the cacheable size and the highlighting ceiling, the LRU caches refuse the
     /// document by design — but every consumer in one settle asks for the same text, and
     /// each was re-highlighting it: the editor for its attributed string, the preview for
