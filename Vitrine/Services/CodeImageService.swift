@@ -117,11 +117,17 @@ final class CodeImageService: NSObject {
         // guarantees.
         let image = NSImage(
             cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-        pasteboard.clearContents()
-        var wroteImage = pasteboard.writeObjects([image])
-        if let png = ExportManager.pngData(from: cgImage) {
-            wroteImage = pasteboard.setData(png, forType: .png) || wroteImage
+        let item = NSPasteboardItem()
+        for type in image.writableTypes(for: pasteboard) {
+            if let data = image.pasteboardPropertyList(forType: type) as? Data {
+                item.setData(data, forType: type)
+            }
         }
+        if let png = ExportManager.pngData(from: cgImage) { item.setData(png, forType: .png) }
+        let wroteImage =
+            !item.types.isEmpty
+            && ClipboardWriter.write(
+                [item], concealed: environment.appSettings.export.concealClipboard, to: pasteboard)
 
         guard wroteImage else {
             Log.capture.error("Services could not place the rendered image on the pasteboard")

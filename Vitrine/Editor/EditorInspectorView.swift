@@ -135,7 +135,7 @@ struct EditorInspectorView: View {
                                                 lines.map { $0...$0 })
                                     }
                                     .help(
-                                        "Blur lines that look like API keys, tokens, or passwords."
+                                        "Remove lines that look like API keys, tokens, or passwords from images and exported text."
                                     )
                                     .disabled(settings.documentIsEmpty)
                                     .accessibilityIdentifier("redact-secrets-button")

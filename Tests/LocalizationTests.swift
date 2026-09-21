@@ -386,10 +386,10 @@ struct LocalizationTests {
         // `Text("…" + …)` — the verbatim String initializer of Text — and a raw
         // NSAttributedString built from a string *literal*. A localized attributed
         // string is built from `String(localized:)` first, so only a bare literal
-        // trips this.
+        // trips this. Empty attributed strings carry no user-facing copy.
         let verbatimText = try NSRegularExpression(pattern: #"\bText\(\s*"[^"]*"\s*\+"#)
         let rawAttributed = try NSRegularExpression(
-            pattern: #"NSAttributedString\(\s*string:\s*"[^"]*""#)
+            pattern: #"NSAttributedString\(\s*string:\s*"[^"]+""#)
 
         var offenders: [String] = []
         for url in try swiftSources() {

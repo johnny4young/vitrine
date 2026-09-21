@@ -111,10 +111,11 @@ enum SocialCardRenderer {
         size: CGSize = SocialCardModel.defaultSize,
         scale: CGFloat = 2,
         profile: ColorProfile = .sRGB,
+        concealed: Bool = false,
         pasteboard: NSPasteboard = .general
     ) -> Bool {
         copyToPasteboardOutcome(
-            model, size: size, scale: scale, profile: profile,
+            model, size: size, scale: scale, profile: profile, concealed: concealed,
             pasteboard: pasteboard) == .copied
     }
 
@@ -124,6 +125,7 @@ enum SocialCardRenderer {
         size: CGSize = SocialCardModel.defaultSize,
         scale: CGFloat = 2,
         profile: ColorProfile = .sRGB,
+        concealed: Bool = false,
         pasteboard: NSPasteboard = .general
     ) -> ExportManager.CopyOutcome {
         guard model.isRenderable else { return .failed }
@@ -138,8 +140,7 @@ enum SocialCardRenderer {
             Log.export.error("Social card copy failed: PNG encode failed")
             return .renderFailed(.encodingFailed)
         }
-        pasteboard.clearContents()
-        let copied = pasteboard.setData(png, forType: .png)
+        let copied = ClipboardWriter.copy(png, type: .png, concealed: concealed, to: pasteboard)
         Log.export.info("Copied social card to pasteboard (success \(copied, privacy: .public))")
         return copied ? .copied : .failed
     }

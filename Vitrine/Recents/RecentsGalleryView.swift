@@ -372,14 +372,15 @@ struct RecentsGalleryView: View {
             fixedSize: preset.sizing.fixedSize,
             profile: settings.export.colorProfile,
             richText: settings.export.richClipboard,
-            plainText: settings.export.textSidecar)
+            plainText: settings.export.textSidecar, concealed: settings.export.concealClipboard)
         feedback(ExportFeedback.copyOutcome(outcome))
     }
 
     private func copySource(_ capture: Capture) {
         feedback(
             ExportFeedback.sourceCopyOutcome(
-                ExportManager.copySourceToPasteboard(capture.code)))
+                ExportManager.copySourceToPasteboard(
+                    capture.code, concealed: settings.export.concealClipboard)))
     }
 
     private func open() {

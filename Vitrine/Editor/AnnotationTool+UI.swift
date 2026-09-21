@@ -41,6 +41,12 @@ extension AnnotationTool {
         }
     }
 
+    /// Blur is an appearance effect, not removal of source text from exports.
+    var helpText: LocalizedStringKey {
+        self == .blur
+            ? "Blur is visual only. Use Redact secrets to remove source text from exports." : label
+    }
+
     /// The shortcut digit that selects this tool, used with ⌘ (⌘1…⌘9, then ⌘0).
     /// A Command-modified shortcut is the reliable, non-hijacking choice on macOS: a
     /// modifier-less key would either not fire or steal the code editor's typing, so the

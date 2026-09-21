@@ -1,6 +1,56 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Mark clipboard exports as confidential" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcar las exportaciones al portapapeles como confidenciales"
+          }
+        }
+      }
+    },
+    "Asks compatible clipboard managers to hide exports. Other apps can still read them." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pide a los gestores de portapapeles compatibles que oculten las exportaciones. Otras apps aún pueden leerlas."
+          }
+        }
+      }
+    },
+    "Couldn’t copy to the clipboard" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar al portapapeles"
+          }
+        }
+      }
+    },
+    "Blur is visual only. Use Redact secrets to remove source text from exports." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El desenfoque es solo visual. Usa Ocultar secretos para eliminar el texto original de las exportaciones."
+          }
+        }
+      }
+    },
+    "Remove lines that look like API keys, tokens, or passwords from images and exported text." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina las líneas que parecen claves de API, tokens o contraseñas de las imágenes y del texto exportado."
+          }
+        }
+      }
+    },
     "Annotation Tool" : {
       "comment" : "Edit-menu submenu containing annotation tool choices and shortcuts.",
       "localizations" : {
