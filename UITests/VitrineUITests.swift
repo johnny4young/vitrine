@@ -82,12 +82,18 @@ final class VitrineUITests: XCTestCase {
             let cancel = element("cancel-image-processing-button", in: app)
             assertExists(copy, in: app, timeout: 8)
             let window = element("editor-window", in: app)
-            let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
-                .withOffset(CGVector(dx: -1, dy: -1))
-            corner.press(
+            // A rounded corner can be outside the resize hit region when the
+            // window touches the hosted display edge. Resize each visible edge.
+            let right = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+                .withOffset(CGVector(dx: -1, dy: 0))
+            right.press(
                 forDuration: 0.1,
-                thenDragTo: corner.withOffset(
-                    CGVector(dx: 960 - window.frame.width, dy: 600 - window.frame.height)))
+                thenDragTo: right.withOffset(CGVector(dx: 960 - window.frame.width, dy: 0)))
+            let bottom = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1))
+                .withOffset(CGVector(dx: 0, dy: -1))
+            bottom.press(
+                forDuration: 0.1,
+                thenDragTo: bottom.withOffset(CGVector(dx: 0, dy: 600 - window.frame.height)))
             XCTAssertLessThanOrEqual(window.frame.width, 980)
             XCTAssertLessThanOrEqual(window.frame.height, 620)
             copy.click()
