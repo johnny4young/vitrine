@@ -703,7 +703,7 @@ final class VitrineUITests: XCTestCase {
             settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
             element("new-custom-theme-button", in: app).click()
             let name = element("custom-theme-name-field", in: app)
-            assertExists(name, in: app)
+            assertExists(name, in: app, timeout: 3)
             name.click()
             name.typeKey("a", modifierFlags: .command)
             name.typeText("Theme deletion example")
