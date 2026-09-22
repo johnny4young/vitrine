@@ -46,6 +46,7 @@
       var th = THEMES[name];
       card.style.background = th.bg;
       codeEl.style.color = th.fg;
+      nameEl.style.color = th.fg;
       codeEl.style.setProperty("--ck", th.k);
       ["k","t","n","s","f","c"].forEach(function (cls) {
         codeEl.querySelectorAll("." + cls).forEach(function (el) { el.style.color = th[cls]; });
