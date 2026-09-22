@@ -42,6 +42,30 @@ struct EditorWindowSizingTests {
         #expect(hosting.sizingOptions.isEmpty)
     }
 
+    /// Qualify the product minimum independently of XCUITest pointer hit-testing.
+    /// A resize stopping early must not be assumed to be only an automation problem.
+    @Test(arguments: ["", "let value = 1\n"])
+    func compactViewportFitsTheMeasuredMinimum(code: String) {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let session = Self.makeSession(environment, index: 44)
+        defer { session.discard() }
+        session.settings.documentCode = code
+        let window = Self.makeWindow(
+            hosting: EditorWindowController.makeHostingController(
+                environment: environment, session: session))
+        defer { window.contentViewController = nil }
+        window.contentView?.layoutSubtreeIfNeeded()
+        EditorWindowController.pinMinimumContentSize(of: window)
+        let minimumFrame = window.frameRect(
+            forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
+        ).size
+        print(
+            "EDITOR-MINIMUM hasContent=\(!code.isEmpty) width=\(minimumFrame.width) height=\(minimumFrame.height)"
+        )
+        #expect(minimumFrame.width <= 960, "Measured minimum frame: \(minimumFrame)")
+        #expect(minimumFrame.height <= 600, "Measured minimum frame: \(minimumFrame)")
+    }
+
     /// Sets a frame far below any editor minimum in code, gives layout a few passes to
     /// react, and returns the content size the window ends up with.
     private static func contentSizeAfterShrinking(_ window: NSWindow) -> NSSize {
