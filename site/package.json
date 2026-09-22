@@ -7,11 +7,15 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "postbuild": "node scripts/validate-build.mjs && node --test scripts/localization-contract.test.mjs",
+    "postbuild": "node scripts/validate-build.mjs && node --test scripts/*.test.mjs",
     "preview": "astro preview",
     "check": "astro check",
-    "test": "npm run check && npm run build",
-    "deploy": "wrangler pages deploy dist --project-name=vitrine-web --branch=main"
+    "test": "npm run images && astro check && astro build && npm run postbuild",
+    "deploy": "wrangler pages deploy dist --project-name=vitrine-web --branch=main",
+    "images": "node scripts/generate-images.mjs",
+    "predev": "npm run images",
+    "precheck": "npm run images",
+    "prebuild": "npm run images"
   },
   "dependencies": {
     "@astrojs/sitemap": "3.7.4",
@@ -19,6 +23,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
+    "sharp": "0.35.4",
     "typescript": "6.0.3",
     "wrangler": "4.131.1"
   },
