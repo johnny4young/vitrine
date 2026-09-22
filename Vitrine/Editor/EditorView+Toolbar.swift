@@ -353,6 +353,10 @@ extension EditorView {
             .help("Export this snapshot to several platform sizes at once")
             .disabled(!settings.hasRenderableContent)
             .accessibilityLabel(Text("Export sizes"))
+            .accessibilityValue(
+                entitlements.isUnlocked(.multiSizeExport)
+                    ? Text(verbatim: "") : Text("Requires PRO")
+            )
             .accessibilityIdentifier("export-sizes-button")
     }
 
@@ -371,6 +375,9 @@ extension EditorView {
                 !settings.hasRenderableContent || settings.style.usesImageContent
             )
             .accessibilityLabel(Text("Export carousel"))
+            .accessibilityValue(
+                entitlements.isUnlocked(.carouselExport) ? Text(verbatim: "") : Text("Requires PRO")
+            )
             .accessibilityIdentifier("export-carousel-button")
     }
 

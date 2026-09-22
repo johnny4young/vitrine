@@ -36,10 +36,13 @@ private struct ProGateModifier: ViewModifier {
             }
         } label: {
             content.overlay(alignment: .topTrailing) {
-                if !entitlements.isUnlocked(feature) { ProBadge() }
+                if !entitlements.isUnlocked(feature) { ProBadge().accessibilityHidden(true) }
             }
         }
         .buttonStyle(.plain)
+        .accessibilityValue(
+            entitlements.isUnlocked(feature) ? Text(verbatim: "") : Text("Requires PRO")
+        )
         .sheet(isPresented: $showingPaywall) {
             PaywallSheet(feature: feature, entitlements: entitlements)
         }
@@ -74,6 +77,9 @@ struct PaywallSheet: View {
         @State private var activationFailed = false
     #else
         @State private var purchaseFailed = false
+        @State private var displayPrice: String?
+        @State private var loadingPrice = true
+        @State private var priceRequest = 0
     #endif
 
     var body: some View {
@@ -129,6 +135,15 @@ struct PaywallSheet: View {
         // identifier on a bare VStack propagates down and hides the stable child controls.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("pro-paywall-sheet")
+        #if !VITRINE_DIRECT_DOWNLOAD
+            .task(id: priceRequest) {
+                loadingPrice = true
+                let price = await entitlements.purchaseDisplayPrice()
+                guard !Task.isCancelled else { return }
+                displayPrice = price
+                loadingPrice = false
+            }
+        #endif
     }
 
     @ViewBuilder
@@ -175,6 +190,22 @@ struct PaywallSheet: View {
             }
         #else
             VStack(spacing: 8) {
+                if loadingPrice {
+                    ProgressView("Loading price…")
+                        .controlSize(.small)
+                        .accessibilityIdentifier("pro-price-loading")
+                } else if let displayPrice {
+                    Text(verbatim: displayPrice)
+                        .font(.headline)
+                        .accessibilityIdentifier("pro-display-price")
+                } else {
+                    Text("Price unavailable. Try again or restore a previous purchase.")
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("pro-price-unavailable")
+                    Button("Retry") { priceRequest += 1 }
+                        .accessibilityIdentifier("pro-price-retry")
+                }
                 Button {
                     Task {
                         working = true
@@ -186,7 +217,7 @@ struct PaywallSheet: View {
                     Text("Get Vitrine PRO").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(working)
+                .disabled(working || loadingPrice || displayPrice == nil)
                 .accessibilityIdentifier("pro-buy-button")
                 .keyboardShortcut(.defaultAction)
                 Button {
