@@ -12,6 +12,10 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Link app and CLI clipboard delivery and offline license verification from their shared modules instead of compiling app adapters twice. Keep Keychain, activation and purchase effects app-owned.
+
 ### Fixed
 
 - Apply terminal redactions to reconstructed screen rows in rich-text copies and

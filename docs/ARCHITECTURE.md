@@ -4,6 +4,27 @@ This document mirrors the shipping module layout in [`VitrineDomain/`](../Vitrin
 [`VitrineRendering/`](../VitrineRendering), [`Vitrine/`](../Vitrine), and
 [`VitrineCLI/`](../VitrineCLI), plus the runtime boundaries enforced by the test suite.
 
+## Shared code ownership
+
+The app and `VitrineCLICore` link the same `VitrineDomain` and `VitrineRendering`
+implementations. The CLI target does not compile app adapters as an allowlist.
+
+| Responsibility | Owner | Effects and boundaries |
+| --- | --- | --- |
+| Signed license payload, codec, signing and verification | `VitrineDomain/Licensing/LicenseToken.swift` | Pure byte/value transformations using CryptoKit; callers supply keys. No Keychain, provider, purchase, environment or file access. Wire format and production public key are unchanged. |
+| License storage, injected signing key and activation | `Vitrine/Pro/` | App-owned Keychain/provider and bundle configuration adapters. CLI reads its existing bounded token file and calls the shared verifier; it never activates a license. |
+| Image rendering, safe rich representations and clipboard delivery | `VitrineRendering/Export/` | AppKit effects stay outside Domain. Payload construction is separate from clipboard mutation. App and CLI link one implementation, including sanitization, size limits and cooperative privacy markers. |
+| Logging | Each process/module | App, CLI and rendering own their loggers; `LogCategory` in Domain owns the subsystem/category vocabulary. No app lifecycle code compiles into CLI. |
+| Editor handoff | `Vitrine/CLI/EditorHandoff.swift` | Deliberately source-shared local pasteboard/URL adapter for two processes, not a render or Domain dependency. The app consumes; the CLI stages. |
+| Shell integration | `Vitrine/CLI/ShellInit.swift` | Deliberately source-shared shell selection/snippet contract. Settings installs the same snippet the CLI prints. No extra module is justified for these two small integration boundaries. |
+
+The Domain import guard permits CryptoKit only for pure signed-token operations, not
+Security or StoreKit. Hostless token tests pin the wire format and rejection behavior;
+app/CLI entitlement tests continue to exercise each consumer. The source-ownership guard
+checks the CLI source roots, while compilation proves it links the shared public APIs.
+Moving a source file is not evidence of faster runtime or lower memory: those claims
+require measurements, and this change does not make either claim.
+
 ## Product and distribution boundaries
 
 Vitrine has one open-core product contract, not separate demo and paid render engines.
@@ -399,9 +420,9 @@ App and CLI link the same `VitrineDomain` value/policy module and the same stati
 `VitrineRendering` engine containing `SnapshotCanvas`, `ExportManager`, `RenderBudget`,
 the image policy/store, and `HighlightManager`. The CLI does not compile app lifecycle,
 windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI. The thin CLI
-layer lives in `Vitrine/CLI/` and compiles into `VitrineCLICore`, together with the entry
-point and the four app files it calls (`Log`, `LicenseKey`, and the two pasteboard export
-files). The executable and the hostless `VitrineCLITests` bundle both link that library,
+layer lives in `Vitrine/CLI/` and compiles into `VitrineCLICore`, together with the command-line
+entry adapter. Clipboard delivery comes from `VitrineRendering`; offline token verification
+comes from `VitrineDomain`. No app adapters are compiled into the CLI. The executable and the hostless `VitrineCLITests` bundle both link that library,
 because a tool target cannot be imported by tests. The app compiles only `EditorHandoff`
 and `ShellInit` from `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
 facade. `CLIArgumentSchema` is the single catalog for parser-owned commands, option
@@ -808,6 +829,7 @@ another application window.
 
 ```
 VitrineDomain/                # static Foundation/CoreGraphics value and policy module
+├── Licensing/                 # pure offline signed-token codec and verification
 ├── Models/                    # portable themes, presets, recipes, search, metadata
 ├── Policies/                  # pure host/input safety classification
 ├── Settings/                  # typed defaults/schema and pure migrations
@@ -823,7 +845,7 @@ VitrineRendering/             # static AppKit/SwiftUI engine linked by App and C
 ├── Canvas/                    # shared snapshot/social-card layout and visual adapters
 ├── DesignSystem/              # render-facing brand tokens and SwiftUI color bridges
 ├── Editor/                    # Highlightr adapter, bounded caches, large-document policy
-├── Export/                    # raster/PDF/Markdown/SVG encoding facades
+├── Export/                    # encoders, safe rich payloads, shared clipboard delivery
 ├── Models/                    # SnapshotConfig, images, fonts, and social-card values
 ├── Rendering/                 # RenderBudget, CaptureInput, Renderer, RenderedAsset
 ├── Support/                   # rendering-owned logging and cost-limited LRU cache
@@ -863,7 +885,6 @@ Vitrine/
 ├── Canvas/
 │   └── BackgroundEditor.swift # app-owned image/gradient editing controls
 ├── Export/
-│   ├── ExportManager+Pasteboard.swift # source/image clipboard delivery
 │   ├── ExportManager+File.swift # save-panel and file delivery
 │   ├── ExportManager+Batch.swift # multi-size and carousel delivery
 │   ├── BatchExportPresentation.swift # directory UI + completion policy
@@ -872,8 +893,7 @@ Vitrine/
 │   ├── CarouselExportView.swift # multi-slide export sheet
 │   ├── ComparisonBoard.swift # path-free validated 2–4 item value
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
-│   ├── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
-│   └── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
+│   └── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
 ├── Comparison/
 │   ├── ComparisonBoardSelection.swift # ordered ephemeral Recents selection
 │   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
