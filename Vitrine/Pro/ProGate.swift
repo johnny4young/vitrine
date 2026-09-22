@@ -117,8 +117,13 @@ struct PaywallSheet: View {
         .frame(width: 380)
         .background(VitrineTokens.Surface.window)
         .onChange(of: entitlements.isPro) {
-            // Unlocked (a purchase or activation landed) → close the paywall.
-            if entitlements.isPro { dismiss() }
+            #if VITRINE_DIRECT_DOWNLOAD
+                // A token can survive failed persistence rollback. Let the active request's
+                // explicit result decide dismissal, not that partial cached entitlement.
+                if entitlements.isPro, !working, !activationFailed { dismiss() }
+            #else
+                if entitlements.isPro { dismiss() }
+            #endif
         }
         // `.contain` keeps the children's identifiers reachable under the root id. An
         // identifier on a bare VStack propagates down and hides the stable child controls.
@@ -152,6 +157,7 @@ struct PaywallSheet: View {
                         let ok = await entitlements.activate(licenseKey: licenseKey)
                         activationFailed = !ok
                         working = false
+                        if ok { dismiss() }
                     }
                 } label: {
                     Text("Activate").frame(maxWidth: .infinity)

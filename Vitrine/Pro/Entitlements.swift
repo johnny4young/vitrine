@@ -33,6 +33,7 @@ final class Entitlements {
         /// UI fixture injects a deterministic local deactivator so automation never handles
         /// a real credential or contacts the network.
         private let licenseDeactivationService: LicenseDeactivationService
+        private let licenseActivationService: LicenseActivationService
 
         /// Invalidates older suspended license operations when a newer user action begins.
         private var licenseOperationGeneration = 0
@@ -46,10 +47,13 @@ final class Entitlements {
     #if VITRINE_DIRECT_DOWNLOAD
         init(
             provider: EntitlementProvider,
+            licenseActivationService: LicenseActivationService = LicenseActivationService(
+                validator: LemonSqueezyValidator(), signingKey: LicenseSigningKey.embedded),
             licenseDeactivationService: LicenseDeactivationService = LicenseDeactivationService(
                 deactivator: LemonSqueezyValidator())
         ) {
             self.provider = provider
+            self.licenseActivationService = licenseActivationService
             self.licenseDeactivationService = licenseDeactivationService
             self.isPro = provider.cachedIsPro
         }
@@ -136,9 +140,7 @@ final class Entitlements {
         /// publishes the unlock. A build without the injected signing key cannot mint a token,
         /// so it reports `notConfigured` and stays free (the open-source / pre-key state).
         func activate(licenseKey: String) async -> Bool {
-            let service = LicenseActivationService(
-                validator: LemonSqueezyValidator(), signingKey: LicenseSigningKey.embedded)
-            return await activate(licenseKey: licenseKey, using: service)
+            await activate(licenseKey: licenseKey, using: licenseActivationService)
         }
 
         /// Injectable form used by deterministic tests. A recoverable record always wins over

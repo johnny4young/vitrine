@@ -134,6 +134,24 @@ struct EntitlementsTests {
                     ]) == nil)
         }
 
+        @Test func failedActivationUIFixtureRetainsThePartialTokenWithoutReportingSuccess()
+            async throws
+        {
+            #expect(
+                ManagedLicenseUITestFixture.makeEntitlements(environment: [
+                    ManagedLicenseUITestFixture.environmentKey: "activation-persistence-failure"
+                ]) == nil)
+            let entitlements = try #require(
+                ManagedLicenseUITestFixture.makeEntitlements(environment: [
+                    ManagedLicenseUITestFixture.environmentKey: "activation-persistence-failure",
+                    "VITRINE_USER_DEFAULTS_SUITE": "isolated-activation-failure-test",
+                ]))
+            #expect(!entitlements.isPro)
+            #expect(!(await entitlements.activate(licenseKey: "vitrine-ui-test-key")))
+            #expect(entitlements.isPro)
+            #expect(entitlements.directLicenseManagementState == .active)
+        }
+
         @Test func managedLicenseUIFixtureRelocksThroughTheDefaultService() async {
             let entitlements = Entitlements.makeDefault(
                 environment: [

@@ -177,7 +177,8 @@ Local persistence is ordered, not an atomic transaction across Keychain and the 
 - If the token write fails, the seat record remains available for explicit deactivation.
 - If the CLI mirror fails, the app attempts to remove the new token and retains the seat record.
   If that cleanup also fails, app and CLI state can differ; do not report the activation as
-  successfully completed. Settings can retry deactivation with the retained record.
+  successfully completed. The paywall keeps the failure visible with an explicit exit, even
+  if cached PRO becomes true. Settings can retry deactivation with the retained record.
 
 No failure path silently starts a replacement activation or deletes a different seat record.
 Tests use ephemeral signing keys, in-memory stores, controlled continuations, and temporary
