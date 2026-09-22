@@ -25,6 +25,10 @@ can never drift.
   card, with exact environment provenance and fail-closed execution evidence.
   Other environments retain explicitly labeled render smoke; baseline candidates
   require review and cannot automatically turn a failed comparison green.
+- Select the terminal domain tests in the Address Sanitizer lane and verify that
+  every expected sanitizer suite actually executes passing tests. Empty, omitted,
+  skipped or failed selections now fail instead of accepting build-only success.
+  Sanitizers remain weekly/manual, non-required early-warning checks.
 
 ## [1.2.3] - 2026-09-16
 
