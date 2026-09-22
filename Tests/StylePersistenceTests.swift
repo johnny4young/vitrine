@@ -6,7 +6,7 @@ import VitrineDomain
 @testable import VitrineRendering
 
 // The style/document surface lives in three hand-kept persistence surfaces —
-// `SettingsCodec` (app defaults + editor-session seed), `EditorWindowState` (window
+// `SettingsCodec` (app defaults inherited by editor sessions), `EditorWindowState` (window
 // restoration), and `StyleSnapshot` (named presets) — and nothing forced them to agree:
 // `shadowRadius` shipped in the restoration blob but in neither of the other two, so
 // "Shadow depth" silently reset to 20 in new windows, after relaunch, and through saved
@@ -87,33 +87,16 @@ struct StyleCodecCompletenessTests {
         #expect(SettingsCodec.readConfig(from: defaults) == expected)
     }
 
-    /// Structural guard: every document/style key in the editor-session seed must
-    /// actually be written by `persistStyle` (the seed copies these keys into a new
-    /// window's suite, so a key nothing writes seeds nothing). Output-preference keys are
-    /// excused because other stores persist them.
-    @Test func persistStyleWritesEveryStyleKeyInTheSeed() {
+    /// Exercise all populated persisted fields through the actual factory, not a
+    /// second hand-maintained key list that can agree with an incomplete seed.
+    @Test func newEditorInheritsEveryPersistedStyleField() {
         let defaults = freshDefaults()
         SettingsCodec.persistStyle(richConfig(), to: defaults)
-
-        let excused: Set<String> = [
-            // Persisted by ExportSettings / the selected-preset store, not by persistStyle.
-            SettingsCodec.Keys.exportScale, SettingsCodec.Keys.exportFormat,
-            SettingsCodec.Keys.colorProfile, SettingsCodec.Keys.richClipboard,
-            SettingsCodec.Keys.textSidecar, SettingsCodec.Keys.selectedPreset,
-            // Legacy read-only fallback: `persistBackground` deliberately clears it and
-            // writes `backgroundStyle`; it stays in the seed so an old store's value can
-            // still seed a window once.
-            SettingsCodec.Keys.gradientPreset,
-        ]
-        let missing = SettingsCodec.Keys.editorSessionSeed
-            .filter { !excused.contains($0) && defaults.object(forKey: $0) == nil }
-        #expect(
-            missing.isEmpty,
-            """
-            These editor-session seed keys are never written by persistStyle, so a new \
-            window cannot inherit them: \(missing.sorted().joined(separator: ", ")). \
-            Write them in persistStyle, or excuse them here with the store that owns them.
-            """)
+        let environment = AppEnvironment(
+            defaults: defaults, entitlements: Entitlements(provider: FreeProvider()))
+        let session = environment.makeEditorSessionSettings()
+        defer { session.discardEphemeralStore() }
+        #expect(session.config == SettingsCodec.readConfig(from: defaults))
     }
 
     /// The labels `richConfig()` actually changes from a default `SnapshotConfig`,
@@ -169,7 +152,6 @@ struct StyleCodecCompletenessTests {
         let defaults = freshDefaults()
 
         #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.shadowRadius))
-        #expect(SettingsCodec.Keys.editorSessionSeed.contains(SettingsCodec.Keys.shadowRadius))
 
         var config = SnapshotConfig()
         config.shadowRadius = 40

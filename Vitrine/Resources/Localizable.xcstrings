@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Defaults for new windows and captures. Open editors keep their own style." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valores predeterminados para nuevas ventanas y capturas. Los editores abiertos conservan su propio estilo."
+          }
+        }
+      }
+    },
     "Mark clipboard exports as confidential" : {
       "localizations" : {
         "es" : {

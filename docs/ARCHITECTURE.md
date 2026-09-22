@@ -1088,6 +1088,25 @@ envelope. `PresetStore` owns the in-memory/user-defaults catalog without importi
 `Tests/Presets/` mirror these boundaries so persistence, schema validation, catalog
 immutability, and settings application can evolve independently.
 
+`EditorPreferencesSnapshot` is the app-owned value boundary between persisted defaults
+and per-window editors. It resolves the complete configuration against the real theme
+catalog before entering an ephemeral store; it does not copy that catalog or resolve a
+custom theme against an empty store. It also carries the selected destination and five
+per-capture output values (scale, format, profile, rich text, plain-text sidecar). Session
+creation and Make Default apply this same contract through the existing observable
+properties. Auto-copy, save behavior, close-after-copy, and confidential clipboard markers
+remain app-global. Make Default strips working content and marks; it never restyles other
+open editors. Settings describes this scope and exposes every destination, including Slide.
+
+The filesystem cleanup for historical editor-session plists belongs to
+`EditorSessionMigration`, not to the observable settings store or Domain's pure schema
+migration. Its background entry point preserves the age guard for concurrent instances.
+Window implementations remain specialized: the editor retains a primary draft and releases
+additional sessions; Web Snapshot cancels work and releases rendered assets on close;
+pinned snapshots own floating panels across Spaces. Shared title-bar chrome already lives
+in `TitleBarAlignedWindow`; combining these different lifetimes into another window factory
+would obscure teardown rather than remove a duplicated behavioral contract.
+
 `SettingsResetCoordinator` keeps global reset side effects out of the SwiftUI view.
 `AppSettings` remains the single owner that removes persisted values and resets its own
 state; the coordinator then reloads the independent preset, theme, and Brand Kit stores
