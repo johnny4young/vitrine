@@ -120,7 +120,30 @@ otherwise presents `PaywallSheet` and shows a discreet `ProBadge`. It is **non-n
 paywall appears only on a tap of a gated action, never on launch. Settings panes that hold many
 controls (the Brand Kit sub-tab) use an explicit locked→upsell / unlocked→controls split instead
 of the modifier. `PaywallSheet` reads its copy from the `ProFeature` and shows the per-build
-unlock path (StoreKit buy + Restore, or a license-key field).
+unlock path (StoreKit buy + Restore, or a license-key field). Locked controls expose a
+localized `Requires PRO` accessibility value. Compact toolbar menus include the same
+requirement in their native menu-item title, which AppKit exposes instead of a button
+value. Decorative badges are hidden from the control's accessibility label to avoid
+duplicate speech. The requested feature's benefit
+and the Escape/Not now exit remain available in the sheet.
+
+The Store paywall loads `Product.displayPrice` through the injected `StoreKitClient` and
+shows that storefront-localized string unchanged. A failed or missing offer shows Retry;
+Buy stays disabled until a price is available, while Restore and Not now remain usable.
+Cancelled or replaced price tasks cannot update a dismissed/newer sheet. Direct-download
+builds do not show a guessed checkout price.
+
+For account-free Store UI qualification, Debug Store builds have an explicit isolated
+`VITRINE_MANAGED_STORE_UI_TEST` fixture (`price-available`, `price-retry`, or
+`price-unavailable`) which also requires `VITRINE_USER_DEFAULTS_SUITE`. Its synthetic
+price and local restore do not contact StoreKit or make a purchase; the fixture is absent
+from Release. Both Debug channels compile and exercise the fixture's provider graph in
+unit tests; only the Store app entry point can select it from the environment. This keeps
+its isolation and price behavior covered in the default CI lane too. Run Store tests with
+`VITRINE_CHANNEL_CONDITIONS=` rather than replacing
+`SWIFT_ACTIVE_COMPILATION_CONDITIONS`, which would erase target-specific hostless test
+flags. The default channel remains direct download. Real storefront and assistive-technology
+qualification still require their own evidence; injected tests do not certify either.
 
 ## Automation gating
 

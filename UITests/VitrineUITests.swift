@@ -4,6 +4,191 @@ import XCTest
 
 final class VitrineUITests: XCTestCase {
     @MainActor
+    func testStyleSegmentsSupportArrowKeysAndSelectionSemantics() {
+        continueAfterFailure = false
+        for language in ["en", "es"] {
+            let app = launch(
+                arguments: VitrineLaunchArguments.settings + [
+                    "-AppleLanguages", "(\(language))", "-AppleLocale",
+                    language == "es" ? "es_ES" : "en_US",
+                ])
+            defer { app.terminate() }
+            assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+            element("settings-nav-style", in: app).click()
+            let appearance = element("style-subtab-appearance", in: app)
+            let lines = element("style-subtab-lines", in: app)
+            let background = element("style-subtab-background", in: app)
+            assertExists(appearance, in: app, timeout: 3)
+            appearance.click()
+            app.typeKey(.rightArrow, modifierFlags: [])
+            XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
+            assertExists(element("metadata-filename-field", in: app), in: app)
+            app.typeKey(.rightArrow, modifierFlags: [])
+            XCTAssertTrue(background.wait(for: \.isSelected, toEqual: true, timeout: 3))
+            app.typeKey(.rightArrow, modifierFlags: [])
+            XCTAssertTrue(background.isSelected, "Arrow navigation must stop at the last segment")
+            app.typeKey(.leftArrow, modifierFlags: [])
+            XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
+            app.typeKey(.leftArrow, modifierFlags: [])
+            XCTAssertTrue(appearance.wait(for: \.isSelected, toEqual: true, timeout: 3))
+            app.typeKey(.tab, modifierFlags: [])
+            app.typeKey(.rightArrow, modifierFlags: [])
+            XCTAssertTrue(background.wait(for: \.isSelected, toEqual: true, timeout: 3))
+            app.typeKey(.tab, modifierFlags: .shift)
+            app.typeKey(.leftArrow, modifierFlags: [])
+            XCTAssertTrue(appearance.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        }
+    }
+
+    @MainActor
+    func testPaletteExposesSelectedResultAndKeepsSearchEditable() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--open-command-palette"])
+        defer { app.terminate() }
+        let field = element("command-palette-field", in: app)
+        assertExists(field, in: app, timeout: 8)
+        field.typeText("theme")
+        let themes = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "command-palette-command-theme."))
+        assertExists(themes.element(boundBy: 1), in: app, timeout: 3)
+        let first = themes.element(boundBy: 0)
+        let second = themes.element(boundBy: 1)
+        XCTAssertTrue(first.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        app.typeKey(.downArrow, modifierFlags: [])
+        XCTAssertTrue(second.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        XCTAssertFalse(first.isSelected)
+        app.typeKey(.upArrow, modifierFlags: [])
+        XCTAssertTrue(first.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        // Send typing to the current responder, without clicking the search field again.
+        app.typeText(" dracula")
+        let result = element("command-palette-command-theme.dracula", in: app)
+        assertExists(result, in: app, timeout: 3)
+        XCTAssertTrue(result.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        app.typeText("zzzz")
+        assertExists(app.staticTexts["No matching commands"], in: app)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("command-palette", in: app).waitForNonExistence(timeout: 3))
+    }
+    #if !VITRINE_DIRECT_DOWNLOAD
+        @MainActor
+        func testStorePaywallLoadsLocalizedPriceRetriesAndRestoresWithoutAnAccount() {
+            continueAfterFailure = false
+            for language in ["en", "es"] {
+                let app = launch(
+                    arguments: VitrineLaunchArguments.settings + [
+                        "-AppleLanguages", "(\(language))", "-AppleLocale",
+                        language == "es" ? "es_ES" : "en_US",
+                    ], environment: ["VITRINE_MANAGED_STORE_UI_TEST": "price-retry"])
+                defer { app.terminate() }
+                assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+                element("settings-nav-brandKit", in: app).click()
+                app.buttons[language == "es" ? "Desbloquear Vitrine PRO" : "Unlock Vitrine PRO"]
+                    .click()
+                assertExists(element("pro-price-unavailable", in: app), in: app, timeout: 5)
+                XCTAssertFalse(element("pro-buy-button", in: app).isEnabled)
+                XCTAssertTrue(element("pro-restore-button", in: app).isEnabled)
+                element("pro-price-retry", in: app).click()
+                let price = app.staticTexts["pro-display-price"]
+                assertExists(price, in: app, timeout: 5)
+                XCTAssertEqual(
+                    price.value as? String ?? price.label, "12,34 €",
+                    "Storefront text must be displayed verbatim")
+                XCTAssertTrue(element("pro-buy-button", in: app).isEnabled)
+                element("pro-restore-button", in: app).click()
+                XCTAssertTrue(element("pro-paywall-sheet", in: app).waitForNonExistence(timeout: 5))
+                assertExists(element("settings-brand-kit-controls", in: app), in: app)
+            }
+        }
+    #endif
+
+    @MainActor
+    func testExportControlsAnnounceProRequirementsAndKeepAnEscapePath() throws {
+        try verifyExportProRequirements(compact: false)
+    }
+
+    @MainActor
+    func testCompactExportControlsAnnounceProRequirementsAndKeepAnEscapePath() throws {
+        try verifyExportProRequirements(compact: true)
+    }
+
+    @MainActor
+    private func verifyExportProRequirements(compact: Bool) throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        for language in ["en", "es"] {
+            for unlocked in [false, true] {
+                var environment: [String: String] = [:]
+                if unlocked {
+                    environment["VITRINE_PRO_UNLOCK"] = "1"
+                } else {
+                    #if VITRINE_DIRECT_DOWNLOAD
+                        environment["VITRINE_MANAGED_LICENSE_UI_TEST"] = "activation-success"
+                    #else
+                        environment["VITRINE_MANAGED_STORE_UI_TEST"] = "price-available"
+                    #endif
+                }
+                let app = launch(
+                    arguments: VitrineLaunchArguments.editor + [
+                        "-AppleLanguages", "(\(language))", "-AppleLocale",
+                        language == "es" ? "es_ES" : "en_US",
+                    ], environment: environment)
+                defer { app.terminate() }
+                let window = element("editor-window", in: app)
+                assertExists(window, in: app, timeout: 8)
+                if compact {
+                    // A restored editor can span the display. Shrink from the left
+                    // rather than starting a drag at the physical right screen edge;
+                    // recompute after each live resize instead of assuming its delta.
+                    for _ in 0..<3 {
+                        let excess = window.frame.width - 960
+                        if excess <= 2 { break }
+                        let edge = window.coordinate(
+                            withNormalizedOffset: CGVector(dx: 0, dy: 0.5)
+                        ).withOffset(CGVector(dx: 1, dy: 0))
+                        edge.press(
+                            forDuration: 0.1,
+                            thenDragTo: edge.withOffset(CGVector(dx: excess, dy: 0)),
+                            withVelocity: .slow, thenHoldForDuration: 0.2)
+                    }
+                    XCTAssertLessThanOrEqual(window.frame.width, 1_000)
+                    assertHittable(
+                        "editor-actions-menu", in: app, "Resizing must expose the compact toolbar")
+                }
+                let sizes = revealToolbarAction(
+                    "export-sizes-button", from: "editor-actions-menu", in: app)
+                let lockedValue = language == "es" ? "Requiere PRO" : "Requires PRO"
+                let titles =
+                    language == "es"
+                    ? ["Exportar tamaños", "Exportar carrusel"]
+                    : ["Export sizes", "Export carousel"]
+                for (index, identifier) in ["export-sizes-button", "export-carousel-button"]
+                    .enumerated()
+                {
+                    let button = hittableElement(identifier, in: app)
+                    if button.elementType == .menuItem {
+                        XCTAssertEqual(
+                            button.title, titles[index] + (unlocked ? "" : " — " + lockedValue))
+                    } else {
+                        XCTAssertEqual(button.value as? String ?? "", unlocked ? "" : lockedValue)
+                    }
+                }
+                if !unlocked {
+                    sizes.click()
+                    assertExists(element("pro-paywall-sheet", in: app), in: app, timeout: 3)
+                    app.typeKey(.escape, modifierFlags: [])
+                    XCTAssertTrue(
+                        element("pro-paywall-sheet", in: app).waitForNonExistence(timeout: 3))
+                    XCTAssertTrue(
+                        revealToolbarAction(
+                            "export-sizes-button", from: "editor-actions-menu", in: app
+                        ).isEnabled)
+                }
+            }
+        }
+    }
+
+    @MainActor
     func testEditorLaunchesWithPrimaryControls() {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.editor)

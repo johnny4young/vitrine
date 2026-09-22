@@ -120,6 +120,9 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
     /// Optional stable identifiers, one per option in order, so UI tests can
     /// address individual segments independently of their localized titles.
     var optionIdentifiers: [String]? = nil
+    @FocusState private var focusedValue: Value?
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         track
@@ -173,7 +176,7 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
     private func segment(_ value: Value, label: Text) -> some View {
         let isSelected = value == selection
         return Button {
-            withAnimation(.easeInOut(duration: 0.15)) { selection = value }
+            select(value)
         } label: {
             label
                 .font(.system(size: VitrineTokens.FontSize.caption, weight: .medium))
@@ -198,7 +201,39 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
                 .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
+        // This picker edits a selection with arrow keys; plain button activation
+        // alone is not focusable on macOS unless full keyboard navigation is enabled.
+        .focusable(interactions: .edit)
+        .focusEffectDisabled()
+        .focused($focusedValue, equals: value)
+        .overlay {
+            if focusedValue == value {
+                Capsule().strokeBorder(VitrineTokens.Line.focusRing, lineWidth: Brand.Stroke.focus)
+                    .padding(-2)
+                    .allowsHitTesting(false)
+            }
+        }
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .onKeyPress(.leftArrow) {
+            move(from: value, offset: layoutDirection == .leftToRight ? -1 : 1)
+            return .handled
+        }
+        .onKeyPress(.rightArrow) {
+            move(from: value, offset: layoutDirection == .leftToRight ? 1 : -1)
+            return .handled
+        }
+    }
+
+    private func select(_ value: Value) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) { selection = value }
+        focusedValue = value
+    }
+
+    private func move(from value: Value, offset: Int) {
+        guard let index = options.firstIndex(where: { $0.value == value }) else { return }
+        let next = index + offset
+        guard options.indices.contains(next) else { return }
+        select(options[next].value)
     }
 }
 

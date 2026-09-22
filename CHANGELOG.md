@@ -12,6 +12,14 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Segmented controls support focused arrow-key selection, and the command palette
+  exposes selected results and announces search updates to assistive technology.
+- Locked export controls announce their PRO requirement. The Store paywall displays
+  the localized StoreKit price with retry and restore paths; direct-download pricing
+  is never guessed.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

@@ -5353,6 +5353,16 @@
         }
       }
     },
+    "Export carousel — Requires PRO" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar carrusel — Requiere PRO"
+          }
+        }
+      }
+    },
     "Export carousel" : {
       "comment" : "Carousel export sheet title and toolbar accessibility label.",
       "localizations" : {
@@ -8403,6 +8413,16 @@
         }
       }
     },
+    "Export sizes — Requires PRO" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar tamaños — Requiere PRO"
+          }
+        }
+      }
+    },
     "Export sizes" : {
       "comment" : "Multi-size export sheet/title.",
       "localizations" : {
@@ -10209,6 +10229,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Este documento grande sigue siendo editable y exportable como texto sin formato."
+          }
+        }
+      }
+    },
+    "Requires PRO" : {
+      "comment" : "Accessible value for a feature that opens the PRO upgrade sheet.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requiere PRO"
+          }
+        }
+      }
+    },
+    "Loading price…" : {
+      "comment" : "StoreKit product price loading status.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando precio…"
+          }
+        }
+      }
+    },
+    "Price unavailable. Try again or restore a previous purchase." : {
+      "comment" : "StoreKit product lookup failed; restore remains available.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precio no disponible. Reinténtalo o restaura una compra anterior."
+          }
+        }
+      }
+    },
+    "Results: %lld. %@" : {
+      "comment" : "VoiceOver command-palette result count and first matching command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resultados: %1$lld. %2$@"
           }
         }
       }
