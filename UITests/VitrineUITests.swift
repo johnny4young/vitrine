@@ -19,6 +19,7 @@ final class VitrineUITests: XCTestCase {
                 defer { app.terminate() }
                 let window = element("editor-window", in: app)
                 assertExists(window, in: app, timeout: 8)
+                placeVisualEditorOnPrimaryDisplay(window)
                 // Hosted displays can be narrower than 1280. Record the actual
                 // viewport; only a qualifying display proves the 1280×800 case.
                 for size in [
@@ -94,9 +95,10 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
         let window = element("editor-window", in: app)
         assertExists(window, in: app, timeout: 8)
+        placeVisualEditorOnPrimaryDisplay(window)
         resizeVisualEditor(window, to: CGSize(width: 960, height: 600))
 
-        let expanded = CGSize(width: min(1280, visible.width), height: 600)
+        let expanded = CGSize(width: visible.width, height: 600)
         let growth = expanded.width - window.frame.width
         try XCTSkipUnless(growth > 2, "This display cannot expand beyond the compact viewport")
         // Reproduce the hosted constraint with real window movement. Native dragging
@@ -119,46 +121,87 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    private func placeVisualEditorOnPrimaryDisplay(_ window: XCUIElement) {
+        guard let screen = NSScreen.screens.first else {
+            XCTFail("A primary display is required for the visual viewport journey")
+            return
+        }
+        // AX uses a top-left origin on the primary display. Restored windows may
+        // belong to another connected display; do not resize against unrelated bounds.
+        let visible = CGRect(
+            x: screen.visibleFrame.minX,
+            y: screen.frame.maxY - screen.visibleFrame.maxY,
+            width: screen.visibleFrame.width, height: screen.visibleFrame.height)
+        for _ in 0..<3 {
+            let frame = window.frame
+            if visible.insetBy(dx: -2, dy: -2).contains(frame) { return }
+            let target = CGPoint(
+                x: visible.midX - frame.width / 2,
+                y: visible.minY + max(0, (visible.height - frame.height) / 2))
+            let title = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
+                .withOffset(CGVector(dx: 0, dy: 12))
+            title.press(
+                forDuration: 0.1,
+                thenDragTo: title.withOffset(
+                    CGVector(dx: target.x - frame.minX, dy: target.y - frame.minY)))
+        }
+        XCTAssertTrue(
+            visible.insetBy(dx: -2, dy: -2).contains(window.frame),
+            "The visual fixture must be on the display whose bounds it exercises")
+    }
+
+    @MainActor
     private func resizeVisualEditor(_ window: XCUIElement, to size: CGSize) {
         func dragHorizontalEdge(left: Bool, by delta: CGFloat) {
             let edge = window.coordinate(withNormalizedOffset: CGVector(dx: left ? 0 : 1, dy: 0.5))
                 .withOffset(CGVector(dx: left ? 1 : -1, dy: 0))
             edge.press(
                 forDuration: 0.1,
-                thenDragTo: edge.withOffset(CGVector(dx: delta, dy: 0)))
+                thenDragTo: edge.withOffset(CGVector(dx: delta, dy: 0)),
+                withVelocity: .slow, thenHoldForDuration: 0.2)
         }
         // A delta within the existing assertion tolerance needs no drag; a one-point
         // movement at the bottom edge can activate the Dock instead of resizing.
-        let widthDelta = size.width - window.frame.width
-        if widthDelta < -2 {
-            // Shrink from the left: the right edge can coincide with the display edge.
-            dragHorizontalEdge(left: true, by: -widthDelta)
-        } else if widthDelta > 2, let screen = NSScreen.main {
-            // A restored frame may already touch the right edge of a hosted display.
-            let growthLeft = min(widthDelta, max(0, window.frame.minX - screen.visibleFrame.minX))
-            if growthLeft > 2 { dragHorizontalEdge(left: true, by: -growthLeft) }
-            let remaining = size.width - window.frame.width
-            if remaining > 2 { dragHorizontalEdge(left: false, by: remaining) }
+        // Native live resizing can coalesce pointer events on a loaded hosted Mac.
+        // Settle the gesture, then recompute from the actual frame; a partial left
+        // expansion must not fall back to a right edge that already touches the screen.
+        for _ in 0..<4 {
+            let delta = size.width - window.frame.width
+            if abs(delta) <= 2 { break }
+            if delta < 0 {
+                dragHorizontalEdge(left: true, by: -delta)
+            } else if let screen = NSScreen.main {
+                let availableLeft = max(0, window.frame.minX - screen.visibleFrame.minX)
+                if availableLeft > 2 {
+                    dragHorizontalEdge(left: true, by: -min(delta, availableLeft))
+                } else {
+                    dragHorizontalEdge(left: false, by: delta)
+                }
+            }
         }
         func dragVerticalEdge(top: Bool, by delta: CGFloat) {
             let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: top ? 0 : 1))
                 .withOffset(CGVector(dx: 0, dy: top ? 1 : -1))
             edge.press(
                 forDuration: 0.1,
-                thenDragTo: edge.withOffset(CGVector(dx: 0, dy: delta)))
+                thenDragTo: edge.withOffset(CGVector(dx: 0, dy: delta)),
+                withVelocity: .slow, thenHoldForDuration: 0.2)
         }
-        let heightDelta = size.height - window.frame.height
-        if heightDelta < -2 {
-            // The Dock can intercept the bottom edge on compact displays.
-            dragVerticalEdge(top: true, by: -heightDelta)
-        } else if heightDelta > 2, let screen = NSScreen.main {
-            // A previous top-edge shrink can restore this window lower on screen.
-            // Expand into the available space above before using the space below.
-            let visibleTop = screen.frame.maxY - screen.visibleFrame.maxY
-            let growthAbove = min(heightDelta, max(0, window.frame.minY - visibleTop))
-            if growthAbove > 2 { dragVerticalEdge(top: true, by: -growthAbove) }
-            let remaining = size.height - window.frame.height
-            if remaining > 2 { dragVerticalEdge(top: false, by: remaining) }
+        for _ in 0..<4 {
+            let delta = size.height - window.frame.height
+            if abs(delta) <= 2 { break }
+            if delta < 0 {
+                // The Dock can intercept the bottom edge on compact displays.
+                dragVerticalEdge(top: true, by: -delta)
+            } else if let screen = NSScreen.main {
+                let visibleTop = screen.frame.maxY - screen.visibleFrame.maxY
+                let availableAbove = max(0, window.frame.minY - visibleTop)
+                if availableAbove > 2 {
+                    dragVerticalEdge(top: true, by: -min(delta, availableAbove))
+                } else {
+                    dragVerticalEdge(top: false, by: delta)
+                }
+            }
         }
         XCTAssertEqual(window.frame.width, size.width, accuracy: 2)
         XCTAssertEqual(window.frame.height, size.height, accuracy: 2)
