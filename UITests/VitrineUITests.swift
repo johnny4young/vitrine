@@ -477,12 +477,17 @@ final class VitrineUITests: XCTestCase {
             assertExists(element("editor-window", in: app), in: app, timeout: 8)
             // Exercise the hosted runner's compact toolbar on larger displays too.
             let window = element("editor-window", in: app)
-            if window.frame.width > 1024 {
-                let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
-                    .withOffset(CGVector(dx: -1, dy: 0))
+            // A full-width window places its right resize grip on the display
+            // boundary. Shrink from the left and remeasure actual live geometry.
+            for _ in 0..<3 {
+                let excess = window.frame.width - 1024
+                if excess <= 20 { break }
+                let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+                    .withOffset(CGVector(dx: 1, dy: 0))
                 edge.press(
                     forDuration: 0.1,
-                    thenDragTo: edge.withOffset(CGVector(dx: 1024 - window.frame.width, dy: 0)))
+                    thenDragTo: edge.withOffset(CGVector(dx: excess, dy: 0)),
+                    withVelocity: .slow, thenHoldForDuration: 0.2)
             }
             XCTAssertLessThanOrEqual(window.frame.width, 1044)
             // XCTest can fail to capture a window at negative-X display coordinates.
