@@ -19,11 +19,11 @@ const { copy } = Astro.props;
 <BaseLayout copy={copy} includeMarketingInteractions>
   <Header locale={copy.locale} />
   <main>
-    <Hero />
-    <StyleBench />
-    <FeatureSections />
-    <Commercial />
-    <InstallFooter />
+    <Hero copy={copy} />
+    <StyleBench copy={copy} />
+    <FeatureSections copy={copy} />
+    <Commercial copy={copy} />
+    <InstallFooter copy={copy} />
   </main>
   <SiteFooter locale={copy.locale} />
 </BaseLayout>

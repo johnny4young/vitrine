@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- English and Spanish website pages now contain their complete localized content
+  before JavaScript runs. Language links work natively on the home and CLI pages;
+  accessible descriptions and installation feedback follow the selected language.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

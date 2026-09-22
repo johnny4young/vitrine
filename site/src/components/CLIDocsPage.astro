@@ -1,5 +1,5 @@
 ---
-import type { Locale, SiteCopy } from '~/i18n/content';
+import type { Locale, SiteMetadata } from '~/i18n/content';
 import { cliCommands, cliExamples, cliOptionGroups } from '~/i18n/cli';
 import BaseLayout from '~/layouts/BaseLayout.astro';
 import Header from './Header.astro';
@@ -87,7 +87,7 @@ const text = es
       openRecipeGuide: 'Workspace recipe format',
     };
 
-const meta: SiteCopy = {
+const meta: SiteMetadata = {
   locale,
   meta: {
     title: text.title,
