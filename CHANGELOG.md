@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Require qualified visual comparisons for every export scenario and the social
+  card, with exact environment provenance and fail-closed execution evidence.
+  Other environments retain explicitly labeled render smoke; baseline candidates
+  require review and cannot automatically turn a failed comparison green.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

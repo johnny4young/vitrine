@@ -1,8 +1,11 @@
 {
   "pinnedImage" : {
     "architecture" : "arm64",
-    "osVersion" : "26.5.0",
-    "swiftVersion" : "6.2"
+    "osBuild" : "25G83",
+    "osVersion" : "26.6.2",
+    "sdkBuild" : "26A425",
+    "swiftVersion" : "6.2",
+    "xcodeBuild" : "27A266a"
   },
   "scenarios" : {
     "default-card" : {
@@ -11,5 +14,5 @@
       "width" : 1200
     }
   },
-  "schema" : 1
+  "schema" : 2
 }

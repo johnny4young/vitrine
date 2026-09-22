@@ -1122,3 +1122,27 @@ license again.
       PRO-only CLI multi-size, `0600` token proof, and all installed-candidate WebKit
       fixtures), the structured Sequoia and Tahoe entries completed, and any failure
       triaged as app bug vs. signing/notarization
+
+## Strict export-image comparisons
+
+`make test-goldens` requires a successful pixel comparison for every export
+scenario and the default social card. Both fixture manifests pin the OS version
+and build, CPU architecture, Swift language mode, Xcode build and SDK build.
+Missing fixtures, drifted environments, missing comparisons and smoke-only output
+fail the strict lane; a green build with zero selected tests cannot qualify it.
+The existing channel tolerance (2/255) and differing-pixel limit (0.1%) are unchanged.
+
+CI's Tahoe build selects Xcode 26.6 and runs strict comparisons. The runner OS
+image can still change: that is a qualification failure requiring baseline review,
+not permission to skip pixels. Sequoia and ordinary unit tests run render smoke;
+`make test-goldens GOLDEN_MODE=smoke` requests that contract explicitly. Smoke is not
+visual regression certification. Result bundles and logs identify each comparison.
+
+When intentional rendering or image changes require a new baseline, run
+`make record-goldens` on the intended image, review all export and social-card PNGs,
+and commit their manifests together. On a failed hosted strict run, CI records
+candidates into a separate artifact directory: it never replaces committed fixtures
+or reruns the failed gate against those candidates. Download and inspect those
+artifacts before accepting a baseline, then rerun strict comparisons on the new SHA.
+`GOLDEN_DEST_ROOT=/path/to/candidates make record-goldens` keeps local candidates
+separate too. `make golden-check` tests omitted, duplicate and unqualified receipts.

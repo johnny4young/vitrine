@@ -253,7 +253,8 @@ struct WorkflowConfigurationTests {
             try Self.toolchainInputDefault("select-xcode") == #""true""#,
             "jobs that omit select-xcode must keep selecting the latest stable Xcode")
         #expect(action.contains("if: inputs.select-xcode == 'true'"))
-        #expect(action.contains("xcode-version: latest-stable"))
+        #expect(try Self.toolchainInputDefault("xcode-version") == "latest-stable")
+        #expect(action.contains("xcode-version: ${{ inputs.xcode-version }}"))
     }
 
     /// Dependabot's github-actions updater reads only `.github/workflows` and a root
@@ -315,7 +316,10 @@ struct WorkflowConfigurationTests {
         #expect(buildJob.contains("COVERAGE_PLATFORM=\"${{ matrix.coverage }}\""))
         #expect(buildJob.contains("fetch-depth: 0"))
         #expect(buildJob.contains("make perf"))
-        #expect(buildJob.contains("GoldenImageTests"))
+        #expect(buildJob.contains("make test-goldens"))
+        #expect(buildJob.contains("golden-mode: strict"))
+        #expect(buildJob.contains("golden-mode: smoke"))
+        #expect(buildJob.contains("xcode-version: ${{ matrix.xcode }}"))
         #expect(uiJob.contains("make test-ui RESULT_BUNDLE="))
         #expect(uiJob.contains("make test-visual"))
 

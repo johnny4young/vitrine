@@ -67,7 +67,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -353,14 +353,19 @@ commit-ci-check:
 qa-handoff-check:
 	./scripts/build-qa-handoff.sh --self-test
 
-## record-goldens: (re)generate the golden-image fixtures + manifest
-## The single command that refreshes the visual baseline. It runs only the
-## opt-in recorder test (gated by VITRINE_RECORD_GOLDENS) through the same render
-## path the suite compares, then copies the staged PNGs and the platform manifest
-## into Tests/Fixtures/Golden/. The recorder stages files in the sandboxed test
-## host's container temp, so the copy step is handled by scripts/record-goldens.sh.
-## Run this on the pinned runner image when a deliberate visual change lands, then
-## review and commit the diff.
+## test-goldens: require qualified pixel comparisons; use GOLDEN_MODE=smoke for render-only
+test-goldens: project
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" GOLDEN_MODE="$(or $(GOLDEN_MODE),strict)" \
+		RESULT_BUNDLE="$(or $(RESULT_BUNDLE),build/goldens.xcresult)" bash scripts/test-goldens.sh
+
+## golden-check: reject missing, unqualified or smoke-only comparison receipts
+golden-check:
+	python3 scripts/check-golden-results.py --self-test
+	python3 scripts/check-golden-results.py --check-fixtures
+
+## record-goldens: export complete synthetic export/social fixtures from xcresult attachments
+## Run on the intended image, inspect every candidate, then commit the reviewed baseline.
+## GOLDEN_DEST_ROOT may point outside the source tree for review-only candidates.
 record-goldens: project
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" PROJECT="$(PROJECT)" SCHEME="$(SCHEME)" \
 		bash scripts/record-goldens.sh
@@ -386,7 +391,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
