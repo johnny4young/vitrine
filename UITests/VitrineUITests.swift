@@ -468,10 +468,34 @@ final class VitrineUITests: XCTestCase {
     func testAnnotationDrawingSelectionResizeAndKeyboardNudge() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
+        // A 15-point drag at XCTest's .slow (250 points/s) lasts only 60 ms.
+        // Use deliberate pointer motion rather than a near-click on hosted displays.
+        let dragVelocity = XCUIGestureVelocity(rawValue: 40)
         for fixedCanvas in [false, true] {
             let app = launch(arguments: VitrineLaunchArguments.editor)
             defer { app.terminate() }
             assertExists(element("editor-window", in: app), in: app, timeout: 8)
+            // Exercise the hosted runner's compact toolbar on larger displays too.
+            let window = element("editor-window", in: app)
+            if window.frame.width > 1024 {
+                let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+                    .withOffset(CGVector(dx: -1, dy: 0))
+                edge.press(
+                    forDuration: 0.1,
+                    thenDragTo: edge.withOffset(CGVector(dx: 1024 - window.frame.width, dy: 0)))
+            }
+            XCTAssertLessThanOrEqual(window.frame.width, 1044)
+            // XCTest can fail to capture a window at negative-X display coordinates.
+            // Move only this isolated fixture before taking its window-only evidence.
+            if window.frame.minX < 0 {
+                let grip = window.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: 250, dy: 20))
+                grip.press(
+                    forDuration: 0.1,
+                    thenDragTo: grip.withOffset(
+                        CGVector(
+                            dx: 60 - window.frame.minX, dy: 80 - window.frame.minY)))
+            }
             if fixedCanvas {
                 element("inspector-disclosure-output", in: app).click()
                 let destinations = element("editor-destination-preset-picker", in: app)
@@ -496,7 +520,8 @@ final class VitrineUITests: XCTestCase {
             let start = center.withOffset(CGVector(dx: -30, dy: -20))
             let end = center.withOffset(CGVector(dx: 30, dy: 20))
             start.press(
-                forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
+                forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
+                thenHoldForDuration: 0.15)
             assertExists(delete, in: app)
             revealToolbarAction(
                 "annotation-tool-select", from: "annotation-tool-picker", in: app
@@ -509,14 +534,14 @@ final class VitrineUITests: XCTestCase {
             let beforeMove = delete.frame
             let movedCenter = center.withOffset(CGVector(dx: 15, dy: 0))
             center.press(
-                forDuration: 0.1, thenDragTo: movedCenter, withVelocity: .slow,
+                forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
                 thenHoldForDuration: 0.15)
             XCTAssertEqual(delete.frame.minX - beforeMove.minX, 15, accuracy: 3)
             let beforeResize = delete.frame
             let movedEnd = end.withOffset(CGVector(dx: 15, dy: 0))
             movedEnd.press(
                 forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
-                withVelocity: .slow, thenHoldForDuration: 0.15)
+                withVelocity: dragVelocity, thenHoldForDuration: 0.15)
             XCTAssertEqual(delete.frame.minX - beforeResize.minX, 15, accuracy: 3)
             let beforeKey = delete.frame
             app.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [.shift])
