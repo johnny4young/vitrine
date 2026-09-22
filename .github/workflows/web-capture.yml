@@ -1,0 +1,54 @@
+name: Controlled WebKit capture
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/web-capture.yml'
+      - '.github/actions/setup-macos-toolchain/**'
+      - 'Vitrine/WebRendering/**'
+      - 'Vitrine/Settings/InputSettingsView.swift'
+      - 'Vitrine/Settings/WebCaptureSettings.swift'
+      - 'Tests/URLRenderer/**'
+      - 'Tests/WebSessionAvailabilityTests.swift'
+      - 'scripts/*web-capture*'
+      - 'project.yml'
+      - 'Makefile'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-capture-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  controlled:
+    name: WebKit integration · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
+        with:
+          summary-title: Controlled WebKit toolchain
+          summary-note: Diagnostic test host; not production sandbox or provider SSO qualification.
+      - name: Run real controlled WebKit tests and verify every receipt
+        run: >-
+          make test-web-capture
+          WEB_CAPTURE_OUTPUT="${RUNNER_TEMP}/web-capture"
+          WEB_CAPTURE_HOST_FLAGS=--diagnostic-host
+      - name: Retain real execution evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: web-capture-${{ matrix.os }}
+          path: ${{ runner.temp }}/web-capture
+          if-no-files-found: error

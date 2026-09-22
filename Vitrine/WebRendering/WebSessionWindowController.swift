@@ -80,10 +80,12 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         // Drop the web view with the window: a signed-in page left loaded off-screen
         // would keep running timers and network activity for a window the user closed.
+        webView?.stopLoading()
         webView = nil
         window = nil
         let onClose = self.onClose
         self.onClose = nil
         onClose?()
+        NotificationCenter.default.post(name: WebSessionStore.didChange, object: nil)
     }
 }

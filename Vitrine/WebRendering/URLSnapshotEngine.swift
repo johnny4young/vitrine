@@ -41,6 +41,10 @@ import WebKit
 /// `WKWebView` is main-actor bound, so the whole type runs on the main actor (the
 /// module's default isolation).
 struct URLSnapshotEngine {
+    /// A caller may supply an isolated store for controlled integration tests. Normal
+    /// captures select a fresh or saved-session store exclusively from their config.
+    var websiteDataStore: WKWebsiteDataStore?
+
     /// The maximum number of viewport-sized scroll steps the bounded lazy-load pass
     /// performs for a full-page capture. Caps the work for an infinite-scroll page:
     /// after this many steps the engine stops scrolling regardless of whether the
@@ -70,7 +74,7 @@ struct URLSnapshotEngine {
         // The data store is the explicit network mode: a per-render nonpersistent
         // store by default (nothing written to disk, no cookies across renders), or
         // the persistent store only when the user opted in.
-        configuration.websiteDataStore = dataStore(for: config.dataStoreMode)
+        configuration.websiteDataStore = websiteDataStore ?? dataStore(for: config.dataStoreMode)
         // A navigation delegate sees documents and frames, not images, style sheets,
         // scripts, fonts, media, fetch/XHR, or WebSockets. Install the compiled
         // literal-private-host rule list before creating the web view so those

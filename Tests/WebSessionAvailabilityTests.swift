@@ -77,7 +77,10 @@ struct WebSessionAvailabilityTests {
         #expect(types.contains(WKWebsiteDataTypeLocalStorage))
         #expect(types.contains(WKWebsiteDataTypeSessionStorage))
         #expect(types.contains(WKWebsiteDataTypeIndexedDBDatabases))
-        // Caches are not a session: dropping them would only slow the next capture.
-        #expect(!types.contains(WKWebsiteDataTypeDiskCache))
+        // Cached responses and workers can retain private content after cookie removal.
+        #expect(types.contains(WKWebsiteDataTypeDiskCache))
+        #expect(types.contains(WKWebsiteDataTypeFetchCache))
+        #expect(types.contains(WKWebsiteDataTypeServiceWorkerRegistrations))
+        #expect(types == WKWebsiteDataStore.allWebsiteDataTypes())
     }
 }

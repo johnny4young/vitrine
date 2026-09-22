@@ -12,6 +12,18 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Web capture sign-out now clears cached private responses and service worker data,
+  closes the sign-in window, and refreshes the stored-site inventory. Temporary
+  capture cookies are correctly documented as isolated, not disabled.
+
+### Testing
+
+- Controlled WebKit integration tests exercise redirects, private subresources,
+  localhost opt-in, cancellation, timeouts, capture limits, and session removal.
+  Dedicated result validation rejects missing or skipped scenarios.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

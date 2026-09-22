@@ -94,10 +94,11 @@ struct WebCaptureControls: View {
     var collapsesAdvanced = false
     @State private var showAdvanced = false
 
-    /// The sites Vitrine currently holds a session for. Read from the web data store
-    /// rather than tracked in settings, so it reflects what is actually stored — including
-    /// sessions a site expired on its own.
+    /// WebKit site labels with saved data, not proof of an active login. Read from
+    /// the store rather than duplicating its inventory in preferences.
     @State private var signedInHosts: [String] = []
+    @State private var sessionRevision = 0
+    @State private var isClearingSessions = false
 
     var body: some View {
         viewportsRow
@@ -146,8 +147,8 @@ struct WebCaptureControls: View {
     }
 
     /// Opt-in to keeping a signed-in session for web capture, for pages behind a login.
-    /// Off by default — the private per-render store sends no cookies — so this is a
-    /// deliberate, privacy-widening choice the caption spells out.
+    /// Off by default: the private per-render store starts without saved cookies.
+    /// Retention is a deliberate, privacy-widening choice the caption spells out.
     ///
     /// The caption used to say "your existing cookies", which read as though Vitrine
     /// borrowed the session from Safari or Chrome. It cannot: WebKit isolates website
@@ -168,7 +169,19 @@ struct WebCaptureControls: View {
         // Read the stored sessions here rather than on the row that lists them: that row
         // is hidden while the list is empty, so it could never populate itself. This row
         // is always present in both layouts.
-        .task { signedInHosts = await WebSessionStore.signedInHosts() }
+        .task(id: sessionRevision) {
+            let sites = await WebSessionStore.signedInHosts()
+            guard !Task.isCancelled else { return }
+            signedInHosts = sites
+        }
+        .onReceive(NotificationCenter.default.publisher(for: WebSessionStore.didChange)) { _ in
+            sessionRevision += 1
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+        ) { _ in
+            sessionRevision += 1
+        }
     }
 
     /// Throwing away every stored session.
@@ -183,11 +196,15 @@ struct WebCaptureControls: View {
                 caption: Text(verbatim: signedInHosts.joined(separator: ", "))
             ) {
                 Button("Sign Out of All") {
+                    isClearingSessions = true
+                    // A live sign-in page could immediately recreate its data.
+                    WebSessionWindowController.shared.close()
                     Task {
                         await WebSessionStore.clearSessions()
-                        signedInHosts = await WebSessionStore.signedInHosts()
+                        isClearingSessions = false
                     }
                 }
+                .disabled(isClearingSessions)
                 .accessibilityIdentifier("web-clear-sessions-button")
             }
         }

@@ -14,7 +14,7 @@ import Testing
 //    includes `com.apple.security.network.client`; a build without it refuses with
 //    a typed `RenderError.urlCaptureDisabled`, and the renderer never touches WebKit.
 // 3. **Nonpersistent data store** — `WKWebsiteDataStore.nonPersistent()` is the
-//    default, and cookies / persistent website data are opt-in only.
+//    default, and retaining cookies and website data across captures is opt-in only.
 // 4. **No remote render service** — a URL snapshot is produced locally; the renderer
 //    holds no remote endpoint and the disclosure copy says so.
 // 5. **Typed failures, never a blank image** — every failure mode surfaces a typed
