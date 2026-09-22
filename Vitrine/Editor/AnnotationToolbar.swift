@@ -13,6 +13,8 @@ enum AnnotationToolbarDensity: Equatable {
 /// options — a color swatch that opens a palette, and a size slider. Picking a tool
 /// puts the preview into draw mode; `Select` returns to move/resize.
 struct AnnotationToolbar: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @Binding var activeTool: AnnotationTool
     @Binding var color: Color
     @Binding var thickness: Double
@@ -103,8 +105,8 @@ struct AnnotationToolbar: View {
         // tracking (tooltips keep working); the surrounding title bar stays draggable
         // so the window can still be moved.
         .background(NonDraggableArea())
-        .animation(.easeInOut(duration: 0.15), value: showsColor)
-        .animation(.easeInOut(duration: 0.15), value: showsThickness)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: showsColor)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: showsThickness)
     }
 
     @ViewBuilder private var selectionActionButtons: some View {

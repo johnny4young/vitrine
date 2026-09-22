@@ -22,6 +22,8 @@ import VitrineRendering
 /// properties are therefore module-internal (not `private`) so the extensions can
 /// reach them; nothing outside `EditorView` references them.
 struct EditorView: View {
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+
     @Environment(AppSettings.self) var settings
     @Environment(\.foregroundImageStore) var foregroundImageStore
     let environment: AppEnvironment

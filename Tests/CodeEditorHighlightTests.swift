@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Testing
 import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 
@@ -37,6 +38,33 @@ struct CodeEditorHighlightTests {
         window.isReleasedWhenClosed = false
         window.contentView = textView
         return (window, textView)
+    }
+
+    @Test(arguments: [Theme.oneDark, .oneLight])
+    func keepsSyntaxOnItsOwnBackgroundAndRestoresTheEmptyChrome(_ theme: Theme) throws {
+        let coordinator = makeCoordinator()
+        coordinator.parent.theme = theme
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        let textView = NSTextView(frame: scrollView.bounds)
+        scrollView.documentView = textView
+        textView.drawsBackground = false
+        scrollView.drawsBackground = false
+        textView.string = "let answer = 42"
+        coordinator.configure(textView)
+        coordinator.applyHighlight(to: textView)
+        let background = NSColor(HighlightManager.shared.backgroundColor(for: theme))
+        #expect(textView.drawsBackground)
+        #expect(scrollView.drawsBackground)
+        #expect(textView.backgroundColor == background)
+        #expect(scrollView.backgroundColor == background)
+        #expect(
+            Brand.Contrast.ratio(
+                Color(nsColor: textView.insertionPointColor), on: Color(nsColor: background)) >= 4.5
+        )
+        textView.string = ""
+        coordinator.applyHighlight(to: textView)
+        #expect(!textView.drawsBackground)
+        #expect(!scrollView.drawsBackground)
     }
 
     @Test func recolorsWithoutChangingCharactersOrSelection() throws {
@@ -112,6 +140,15 @@ struct CodeEditorHighlightTests {
             reindentOnPaste: false)
 
         #expect(coordinator.styleChanged)
+        coordinator.applyHighlight(to: textView)
+        #expect(!coordinator.styleChanged)
+        #expect(
+            textView.backgroundColor
+                == NSColor(HighlightManager.shared.backgroundColor(for: coordinator.parent.theme)))
+        #expect(
+            Brand.Contrast.ratio(
+                Color(nsColor: textView.insertionPointColor),
+                on: Color(nsColor: textView.backgroundColor)) >= 4.5)
     }
 
     /// The representable updates on every keystroke and style change, and configuring the

@@ -4,6 +4,104 @@ import XCTest
 
 final class VitrineUITests: XCTestCase {
     @MainActor
+    func testLocalizedVisualChromeFitsCompactAndDesktopEditors() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let visible = try XCTUnwrap(NSScreen.main).visibleFrame.size
+        for language in ["en", "es"] {
+            for dark in [false, true] {
+                let app = launch(
+                    arguments: VitrineLaunchArguments.editor + [
+                        "-AppleLanguages", "(\(language))", "-AppleLocale",
+                        language == "es" ? "es_ES" : "en_US",
+                        dark ? "--appearance-dark" : "--appearance-light",
+                    ])
+                defer { app.terminate() }
+                let window = element("editor-window", in: app)
+                assertExists(window, in: app, timeout: 8)
+                // Hosted displays can be narrower than 1280. Record the actual
+                // viewport; only a qualifying display proves the 1280×800 case.
+                for size in [
+                    CGSize(width: min(1280, visible.width), height: min(800, visible.height)),
+                    CGSize(width: 960, height: 600),
+                ] {
+                    resizeVisualEditor(window, to: size)
+                    for identifier in [
+                        "editor-toolbar", "editor-preview-stage", "editor-inspector",
+                    ] {
+                        assertExists(element(identifier, in: app), in: app, timeout: 3)
+                        // SwiftUI propagates a container identifier to accessible
+                        // leaves. Check all matching frames, not a singular query.
+                        let controls = app.descendants(matching: .any)
+                            .matching(identifier: identifier).allElementsBoundByIndex
+                        XCTAssertFalse(controls.isEmpty)
+                        for control in controls {
+                            XCTAssertTrue(
+                                window.frame.insetBy(dx: -1, dy: -1).contains(control.frame),
+                                identifier)
+                        }
+                    }
+                    assertHittable(
+                        "copy-button", in: app, "The primary action must remain reachable")
+                    let attachment = XCTAttachment(screenshot: window.screenshot())
+                    attachment.name =
+                        "chrome-\(language)-\(dark ? "dark" : "light")-\(Int(window.frame.width))x\(Int(window.frame.height))"
+                    attachment.lifetime = .keepAlways
+                    add(attachment)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func testLocalizedSettingsChromeKeepsNavigationAndStyleControlsVisible() {
+        continueAfterFailure = false
+        for language in ["en", "es"] {
+            for dark in [false, true] {
+                let app = launch(
+                    arguments: VitrineLaunchArguments.settings + [
+                        "-AppleLanguages", "(\(language))", "-AppleLocale",
+                        language == "es" ? "es_ES" : "en_US",
+                        dark ? "--appearance-dark" : "--appearance-light",
+                    ])
+                defer { app.terminate() }
+                assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+                for identifier in [
+                    "settings-nav-general", "settings-nav-style", "settings-nav-output",
+                    "settings-nav-about",
+                ] {
+                    assertHittable(
+                        identifier, in: app, "Localized sidebar controls must remain reachable")
+                }
+                element("settings-nav-style", in: app).click()
+                assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
+                assertHittable("style-theme-picker", in: app, "The localized theme picker must fit")
+                assertHittable("style-font-picker", in: app, "The localized font picker must fit")
+                let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+                attachment.name = "settings-chrome-\(language)-\(dark ? "dark" : "light")"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
+    }
+
+    @MainActor
+    private func resizeVisualEditor(_ window: XCUIElement, to size: CGSize) {
+        let right = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+            .withOffset(CGVector(dx: -1, dy: 0))
+        right.press(
+            forDuration: 0.1,
+            thenDragTo: right.withOffset(CGVector(dx: size.width - window.frame.width, dy: 0)))
+        let bottom = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1))
+            .withOffset(CGVector(dx: 0, dy: -1))
+        bottom.press(
+            forDuration: 0.1,
+            thenDragTo: bottom.withOffset(CGVector(dx: 0, dy: size.height - window.frame.height)))
+        XCTAssertEqual(window.frame.width, size.width, accuracy: 2)
+        XCTAssertEqual(window.frame.height, size.height, accuracy: 2)
+    }
+
+    @MainActor
     func testStyleSegmentsSupportArrowKeysAndSelectionSemantics() {
         continueAfterFailure = false
         for language in ["en", "es"] {

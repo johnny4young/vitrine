@@ -14,6 +14,12 @@ can never drift.
 
 ### Fixed
 
+- Native controls and previews respect Reduce Motion without changing export geometry.
+  Small chrome labels and white CTA text have measured contrast in light/dark appearances.
+  Selected labels adapt to the actual macOS accent without changing the user's color.
+  Code input retains its syntax theme background and readable caret, while preview status
+  uses an adaptive opaque fill in both appearances.
+
 - Segmented controls support focused arrow-key selection, and the command palette
   exposes selected results and announces search updates to assistive technology.
 - Locked export controls announce their PRO requirement. The Store paywall displays

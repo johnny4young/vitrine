@@ -407,6 +407,8 @@ private struct KbdChip: View {
 /// the brand gradient, the capture's first line and metadata, and compact image/source
 /// copy actions. Clicking the row reopens the capture.
 private struct RecentCaptureRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let capture: Capture
     let reopen: () -> Void
     let copyImage: () -> Void
@@ -434,7 +436,7 @@ private struct RecentCaptureRow: View {
             .padding(.trailing, 6)
         }
         .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: isHovered)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("menu-recent-row")
     }
@@ -533,6 +535,8 @@ private struct RecentCaptureRow: View {
 /// One explicit command row (`.mrow`): icon + label + shortcut, washed with
 /// the accent on hover like a native menu item.
 private struct MenuPanelRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let title: String
     let systemImage: String
     var shortcutGlyphs: String?
@@ -547,7 +551,7 @@ private struct MenuPanelRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(
                         isHovered
-                            ? VitrineTokens.Accent.systemContrast.opacity(0.85)
+                            ? VitrineTokens.Accent.systemContrast
                             : VitrineTokens.Text.secondary
                     )
                     .frame(width: 15)
@@ -562,7 +566,7 @@ private struct MenuPanelRow: View {
                         .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
                         .foregroundStyle(
                             isHovered
-                                ? VitrineTokens.Accent.systemContrast.opacity(0.85)
+                                ? VitrineTokens.Accent.systemContrast
                                 : VitrineTokens.Text.tertiary
                         )
                         .padding(.vertical, 2)
@@ -588,7 +592,7 @@ private struct MenuPanelRow: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: isHovered)
     }
 }
 
