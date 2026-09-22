@@ -12,7 +12,7 @@ output and unlocks *new* surfaces.
 | --- | --- |
 | Entitlement state | `Vitrine/Pro/Entitlements.swift` — `Entitlements` (`@MainActor @Observable`, `isPro`), `ProFeature`, `EntitlementProvider`, `FreeProvider`, `#if DEBUG DebugUnlockProvider`; `Vitrine/App/AppEnvironment.swift` owns the app-wide instance |
 | App Store provider | `Vitrine/Pro/StoreKitProvider.swift` — non-consumable IAP `com.johnny4young.vitrine.pro` |
-| Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — provider and device-only `LicenseActivationRecord`; pure Ed25519 token codec in `VitrineDomain/Licensing/LicenseToken.swift` |
+| Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — provider and device-only `LicenseActivationRecord`; the shared-module change moves the pure Ed25519 token codec into VitrineDomain's Licensing area |
 | CLI entitlement (out-of-process) | `Vitrine/CLI/CLIEntitlement.swift` — offline token verify + Debug bypass |
 | Gating UI | `Vitrine/Pro/ProGate.swift` — `View.proGated(_:action:)`, `ProBadge`, `PaywallSheet` |
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `VitrineRendering/Models/SnapshotConfig.swift` (`Watermark`), `VitrineRendering/Canvas/WatermarkBadge.swift` |
