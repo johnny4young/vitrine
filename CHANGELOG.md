@@ -14,6 +14,11 @@ can never drift.
 
 ### Fixed
 
+- Website screenshots now reserve layout space and use responsive, lossless WebP
+  variants with the original PNG fallback. Generated assets have matching cache rules.
+- Download links validate published stable release assets rather than inferring
+  availability from the source version. Patched the transitive devalue dependency.
+
 - English and Spanish website pages now contain their complete localized content
   before JavaScript runs. Language links work natively on the home and CLI pages;
   accessible descriptions and installation feedback follow the selected language.

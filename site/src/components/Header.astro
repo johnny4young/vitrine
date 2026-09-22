@@ -1,4 +1,5 @@
 ---
+import ResponsiveImage from '~/components/ResponsiveImage.astro';
 import { content, type Locale } from '~/i18n/content';
 
 interface Props {
@@ -15,7 +16,7 @@ const labels = content[locale].ui;
 
 <nav aria-label={labels.navigation}>
   <div class="wrap">
-    <a class="brand" href={`${home}#top`}><img src="/vitrine-icon.png" alt="">Vitrine</a>
+    <a class="brand" href={`${home}#top`}><ResponsiveImage src="/vitrine-icon.png" alt="" sizes="28px" width={28} height={28} loading="eager" />Vitrine</a>
     <div class="links">
       <a class="navlink" href={`${home}#bench`}>{labels.bench}</a>
       <a class="navlink" href={`${home}#story`}>{labels.features}</a>

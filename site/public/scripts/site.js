@@ -75,13 +75,6 @@
     paintTheme("one-dark");
   })();
 
-  /* live release download */
-  var REPO = "johnny4young/vitrine";
-  fetch("https://api.github.com/repos/"+REPO+"/releases/latest").then(function(r){return r.ok?r.json():Promise.reject();}).then(function(rel){
-    var tag = rel.tag_name||""; document.querySelectorAll("[data-version]").forEach(function(el){ if(tag) el.textContent=tag; });
-    var dmg=(rel.assets||[]).find(function(a){return /\.dmg$/i.test(a.name);}); var url=dmg?dmg.browser_download_url:rel.html_url;
-    document.querySelectorAll("[data-download]").forEach(function(el){el.href=url;});
-  }).catch(function(){});
   document.getElementById("copy-brew").addEventListener("click", function () {
     var button = this;
     var feedback = document.getElementById("install-feedback");

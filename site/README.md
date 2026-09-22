@@ -46,8 +46,36 @@ lookup; `/download` retains its manual release link without JavaScript. The post
 tests reject English fallback in Spanish sections, omitted or duplicated messages, and
 JavaScript-only or incorrectly routed language controls. Product names and source-code
 samples are intentionally not translated.
-The displayed release version and structured data come from the repository's authoritative
-`project.yml`, so a release version bump cannot leave static website metadata behind.
+Static release highlights and structured data track `project.yml`; they do not authorize a
+download. The optional release lookup accepts only a published stable GitHub release and
+its uploaded, nonempty, matching Vitrine DMG from this repository. Missing assets fall back
+to that release page; offline, invalid, or rate-limited responses preserve `/download` and
+its manual link. Both routes share `public/scripts/release.js` and its adversarial tests.
+
+## Images and caching
+
+`npm run images` generates content-addressed WebP variants from the original PNGs in
+`public/`; development, checking, and build scripts run it automatically. Original paths
+remain available for README links and PNG fallback. Generated files are ignored, not
+hand-edited. `ResponsiveImage.astro` emits native `picture`, responsive source widths,
+explicit geometry and localized alt text without a client framework.
+
+WebP compression is lossless at each selected resolution. Postbuild tests compare decoded
+visible pixels against the resized original, check every emitted file and content hash,
+and enforce a byte reduction. Smaller candidates that cost more bytes than a larger one
+are omitted. Screenshots retain their native-resolution candidate; browser-selected sizes
+still need visual review at desktop/mobile widths and Retina density. The CLI hero loads
+eagerly; below-the-fold screenshots remain lazy.
+
+`_headers` applies immutable caching only to generated `/static/*` and `/responsive/*`
+assets. Original screenshot URLs retain a bounded cache and mutable scripts/HTML are not
+marked immutable. Tests validate the built rules and actual asset paths, **not deployed
+response headers**. Confirm those separately after an approved deployment.
+
+The lockfile updates transitive `devalue` to 5.9.4 for
+[GHSA-9rgm-9g3h-6x36](https://github.com/sveltejs/devalue/security/advisories/GHSA-9rgm-9g3h-6x36).
+This static site has no Astro Actions/server runtime accepting untrusted devalue payloads;
+the dependency is patched regardless. No public vulnerability exception is required.
 
 ## Deployment
 

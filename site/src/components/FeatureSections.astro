@@ -1,8 +1,12 @@
 ---
+import ResponsiveImage from '~/components/ResponsiveImage.astro';
 import type { SiteCopy } from '~/i18n/content';
 
 interface Props { copy: SiteCopy; }
 const { copy } = Astro.props;
+// Match the story and terminal-grid breakpoints in global.css.
+const storySizes = '(max-width: 820px) calc(100vw - 56px), (max-width: 1140px) calc((95vw - 56px) / 2), 514px';
+const terminalSizes = '(max-width: 760px) calc(100vw - 56px), (max-width: 1140px) calc((100vw - 92px) / 3), 350px';
 ---
 
 <!-- ============ STORY ROWS ============ -->
@@ -19,7 +23,7 @@ const { copy } = Astro.props;
         <p data-copy="story1.p" set:html={copy.home["story1.p"]}></p>
         <div class="tagrow"><span class="tag-pill" data-copy="story1.t1" set:html={copy.home["story1.t1"]}></span><span class="tag-pill" data-copy="story1.t2" set:html={copy.home["story1.t2"]}></span><span class="tag-pill" data-copy="story1.t3" set:html={copy.home["story1.t3"]}></span><span class="tag-pill" data-copy="story1.t4" set:html={copy.home["story1.t4"]}></span></div>
       </div>
-      <div class="story-media"><img src="/screenshots/editor.png" alt={copy.ui.image1} loading="lazy"></div>
+      <div class="story-media"><ResponsiveImage src="/screenshots/editor.png" alt={copy.ui.image1} sizes={storySizes} /></div>
     </div>
 
     <div class="story">
@@ -29,7 +33,7 @@ const { copy } = Astro.props;
         <p data-copy="story2.p" set:html={copy.home["story2.p"]}></p>
         <div class="tagrow"><span class="tag-pill" data-copy="story2.t1" set:html={copy.home["story2.t1"]}></span><span class="tag-pill" data-copy="story2.t2" set:html={copy.home["story2.t2"]}></span><span class="tag-pill" data-copy="story2.t3" set:html={copy.home["story2.t3"]}></span><span class="tag-pill" data-copy="story2.t4" set:html={copy.home["story2.t4"]}></span></div>
       </div>
-      <div class="story-media"><img src="/screenshots/annotated.png" alt={copy.ui.image2} loading="lazy"></div>
+      <div class="story-media"><ResponsiveImage src="/screenshots/annotated.png" alt={copy.ui.image2} sizes={storySizes} /></div>
     </div>
 
     <div class="story">
@@ -39,7 +43,7 @@ const { copy } = Astro.props;
         <p data-copy="story3.p" set:html={copy.home["story3.p"]}></p>
         <div class="tagrow"><span class="tag-pill" data-copy="story3.t1" set:html={copy.home["story3.t1"]}></span><span class="tag-pill" data-copy="story3.t2" set:html={copy.home["story3.t2"]}></span><span class="tag-pill" data-copy="story3.t3" set:html={copy.home["story3.t3"]}></span></div>
       </div>
-      <div class="story-media"><img src="/screenshots/diff.png" alt={copy.ui.image3} loading="lazy"></div>
+      <div class="story-media"><ResponsiveImage src="/screenshots/diff.png" alt={copy.ui.image3} sizes={storySizes} /></div>
     </div>
 
     <div class="story">
@@ -49,7 +53,7 @@ const { copy } = Astro.props;
         <p data-copy="story4.p" set:html={copy.home["story4.p"]}></p>
         <div class="tagrow"><span class="tag-pill" data-copy="story4.t1" set:html={copy.home["story4.t1"]}></span><span class="tag-pill" data-copy="story4.t2" set:html={copy.home["story4.t2"]}></span><span class="tag-pill" data-copy="story4.t3" set:html={copy.home["story4.t3"]}></span><span class="tag-pill" data-copy="story4.t4" set:html={copy.home["story4.t4"]}></span></div>
       </div>
-      <div class="story-media"><img src="/screenshots/comparison-board.png" alt={copy.ui.image4} loading="lazy"></div>
+      <div class="story-media"><ResponsiveImage src="/screenshots/comparison-board.png" alt={copy.ui.image4} sizes={storySizes} /></div>
     </div>
 
     <div class="story">
@@ -59,7 +63,7 @@ const { copy } = Astro.props;
         <p data-copy="story5.p" set:html={copy.home["story5.p"]}></p>
         <div class="tagrow"><span class="tag-pill" data-copy="story5.t1" set:html={copy.home["story5.t1"]}></span><span class="tag-pill" data-copy="story5.t2" set:html={copy.home["story5.t2"]}></span><span class="tag-pill" data-copy="story5.t3" set:html={copy.home["story5.t3"]}></span><span class="tag-pill" data-copy="story5.t4" set:html={copy.home["story5.t4"]}></span></div>
       </div>
-      <div class="story-media"><img src="/screenshots/workspace-recipes.png" alt={copy.ui.image5} loading="lazy"></div>
+      <div class="story-media"><ResponsiveImage src="/screenshots/workspace-recipes.png" alt={copy.ui.image5} sizes={storySizes} /></div>
     </div>
   </div>
 </section>
@@ -138,9 +142,9 @@ const { copy } = Astro.props;
     <h2 class="title" data-copy="term.title" set:html={copy.home["term.title"]}></h2>
     <p class="lead" data-copy="term.lead" set:html={copy.home["term.lead"]}></p>
     <div class="shots">
-      <figure><img src="/screenshots/terminal-htop.png" alt={copy.ui.image6} loading="lazy"><figcaption>htop · One Dark</figcaption></figure>
-      <figure><img src="/screenshots/terminal-lazygit.png" alt={copy.ui.image7} loading="lazy"><figcaption>lazygit · Dracula</figcaption></figure>
-      <figure><img src="/screenshots/terminal-nvim.png" alt={copy.ui.image8} loading="lazy"><figcaption>nvim · Nord</figcaption></figure>
+      <figure><ResponsiveImage src="/screenshots/terminal-htop.png" alt={copy.ui.image6} sizes={terminalSizes} /><figcaption>htop · One Dark</figcaption></figure>
+      <figure><ResponsiveImage src="/screenshots/terminal-lazygit.png" alt={copy.ui.image7} sizes={terminalSizes} /><figcaption>lazygit · Dracula</figcaption></figure>
+      <figure><ResponsiveImage src="/screenshots/terminal-nvim.png" alt={copy.ui.image8} sizes={terminalSizes} /><figcaption>nvim · Nord</figcaption></figure>
     </div>
   </div>
 </section>
