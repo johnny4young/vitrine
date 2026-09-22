@@ -649,7 +649,7 @@ final class VitrineUITests: XCTestCase {
             settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
             element("save-style-preset-button", in: app).click()
             let name = app.windows.firstMatch.sheets.textFields.firstMatch
-            assertExists(name, in: app)
+            assertExists(name, in: app, timeout: 3)
             name.click()
             name.typeKey("a", modifierFlags: .command)
             name.typeText("Deletion example")
