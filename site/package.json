@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "postbuild": "node scripts/validate-build.mjs",
+    "postbuild": "node scripts/validate-build.mjs && node --test scripts/localization-contract.test.mjs",
     "preview": "astro preview",
     "check": "astro check",
     "test": "npm run check && npm run build",
