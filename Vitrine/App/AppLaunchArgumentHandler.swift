@@ -206,6 +206,21 @@ import VitrineRendering
                 RecentsGalleryWindowController.shared.show()
                 didOpenWindow = true
             }
+            if arguments.contains("--history-consent-demo"),
+                ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"]?.isEmpty == false
+            {
+                // Synthetic UI fixture only: never read or overwrite the real clipboard.
+                settings.export.autoCopy = false
+                settings.export.alsoSaveToFile = false
+                Task { @MainActor [environment] in
+                    _ = QuickCapture.capture(
+                        settings: environment.appSettings, recents: environment.recents,
+                        clipboard: { "gh" + "p_" + String(repeating: "x", count: 36) },
+                        historyConsent: HistoryConsentPrompt.resolve)
+                    RecentsGalleryWindowController.shared.show()
+                }
+                didOpenWindow = true
+            }
             if arguments.contains("--open-social-card") {
                 SocialCardWindowController.shared.show()
                 didOpenWindow = true

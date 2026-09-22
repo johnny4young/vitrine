@@ -1681,6 +1681,127 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testDisablingHistoryPersistsWithoutDeletingExistingCaptures() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.settingsTour + ["--demo-recents"])
+        defer { app.terminate() }
+        assertExists(element("settings-nav-output", in: app), in: app, timeout: 8)
+        element("settings-nav-output", in: app).click()
+        let toggle = element("history-enabled-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        for _ in 0..<6 where !toggle.isHittable {
+            element("settings-output-pane", in: app).scroll(byDeltaX: 0, deltaY: -400)
+        }
+        XCTAssertEqual(toggle.value as? Int, 1)
+        toggle.click()
+        XCTAssertEqual(toggle.value as? Int, 0)
+        app.terminate()
+        app.launchArguments = VitrineLaunchArguments.settingsTour + ["--open-recents"]
+        app.launch()
+        app.activate()
+        let recents = RecentsRobot(testCase: self, app: app)
+        assertExists(recents.gallery, in: app, timeout: 8)
+        XCTAssertGreaterThanOrEqual(recents.cards.count, 3)
+        app.terminate()
+        app.launchArguments = VitrineLaunchArguments.settingsTour
+        app.launch()
+        app.activate()
+        assertExists(element("settings-nav-output", in: app), in: app, timeout: 8)
+        element("settings-nav-output", in: app).click()
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 0)
+    }
+
+    @MainActor
+    func testHistoryRecoveryAndPurgeRequireExplicitConfirmation() {
+        continueAfterFailure = false
+        let app = launch(
+            arguments: VitrineLaunchArguments.emptyRecents + ["--history-recovery-demo"])
+        defer { app.terminate() }
+        let recents = RecentsRobot(testCase: self, app: app)
+        let recover = element("history-recover", in: app)
+        assertExists(recover, in: app, timeout: 8)
+        XCTAssertGreaterThan(recents.cards.count, 0)
+        recover.click()
+        let cancel = recents.window.sheets.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 3))
+        cancel.click()
+        XCTAssertTrue(recover.exists)
+        recover.click()
+        let confirmRecovery = recents.window.sheets.buttons["Recover Valid Captures"]
+        assertExists(confirmRecovery, in: app, timeout: 3)
+        confirmRecovery.click()
+        XCTAssertFalse(recover.exists)
+        XCTAssertGreaterThan(recents.cards.count, 0)
+        let purge = element("history-purge", in: app)
+        purge.click()
+        XCTAssertTrue(cancel.waitForExistence(timeout: 3))
+        cancel.click()
+        XCTAssertGreaterThan(recents.cards.count, 0)
+        purge.click()
+        let confirmPurge = recents.window.sheets.buttons["Delete All History"]
+        assertExists(confirmPurge, in: app, timeout: 3)
+        confirmPurge.click()
+        XCTAssertEqual(recents.cards.count, 0)
+        app.terminate()
+        app.launch()
+        app.activate()
+        assertExists(recents.gallery, in: app, timeout: 8)
+        XCTAssertFalse(recover.exists)
+        XCTAssertEqual(recents.cards.count, 0)
+    }
+
+    @MainActor
+    func testHistoryConsentEscapeNeverCreatesARecord() {
+        continueAfterFailure = false
+        let app = launch(
+            arguments: VitrineLaunchArguments.emptyRecents + ["--history-consent-demo"])
+        defer { app.terminate() }
+        assertExists(element("history-consent-no-save", in: app), in: app, timeout: 8)
+        app.typeKey(.escape, modifierFlags: [])
+        let recents = RecentsRobot(testCase: self, app: app)
+        assertExists(recents.gallery, in: app, timeout: 5)
+        XCTAssertEqual(recents.cards.count, 0)
+        app.terminate()
+        app.launchArguments = VitrineLaunchArguments.emptyRecents
+        app.launch()
+        app.activate()
+        assertExists(recents.gallery, in: app, timeout: 8)
+        XCTAssertEqual(recents.cards.count, 0)
+    }
+
+    @MainActor
+    func testHistoryConsentChoicesArePerCaptureInBothLanguages() {
+        continueAfterFailure = false
+        for language in ["en", "es"] {
+            for choice in ["sanitized", "original"] {
+                let app = launch(
+                    arguments: VitrineLaunchArguments.emptyRecents + [
+                        "--history-consent-demo", "-AppleLanguages", "(\(language))",
+                    ])
+                defer { app.terminate() }
+                let button = element("history-consent-\(choice)", in: app)
+                assertExists(button, in: app, timeout: 8)
+                button.click()
+                let recents = RecentsRobot(testCase: self, app: app)
+                assertExists(recents.searchField, in: app, timeout: 5)
+                recents.searchField.click()
+                recents.searchField.typeText("gh" + "p_" + String(repeating: "x", count: 36))
+                if choice == "sanitized" {
+                    assertExists(element("recents-no-search-results", in: app), in: app, timeout: 3)
+                } else {
+                    XCTAssertGreaterThan(recents.cards.count, 0)
+                }
+                app.terminate()
+                app.launch()
+                app.activate()
+                assertExists(button, in: app, timeout: 8)
+                app.typeKey(.escape, modifierFlags: [])
+            }
+        }
+    }
+
+    @MainActor
     func testOutputFormatPickerMatchesSystemAVIFSupport() {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.settings)

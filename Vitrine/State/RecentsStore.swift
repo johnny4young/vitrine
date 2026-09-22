@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import OSLog
 import Observation
+import VitrineDomain
 import VitrineRendering
 
 /// Persists the last `limit` captures and their preview thumbnails: pinned first,
@@ -29,6 +30,22 @@ final class RecentsStore {
 
     private let defaults: UserDefaults
     private let key = "recentCaptures"
+    private static let enabledKey = "captureHistoryEnabled"
+    private static let privacyVersionKey = "captureHistoryPrivacyVersion"
+    private var retentionGeneration = 0
+
+    /// Disabling history does not delete existing records or cached previews.
+    var isEnabled: Bool {
+        didSet {
+            defaults.set(isEnabled, forKey: Self.enabledKey)
+            retentionGeneration += 1
+        }
+    }
+    private(set) var needsRecovery = false
+    private(set) var hasLegacyHistory = false
+
+    enum RetentionResult: Equatable { case saved, omitted, requiresConsent }
+    typealias ConsentResolver = (CaptureRetentionPolicy.Decision) -> CaptureRetentionPolicy.Consent
 
     /// The local thumbnail cache backing the visual gallery.
     let thumbnails: RecentsThumbnailCache
@@ -56,34 +73,96 @@ final class RecentsStore {
         self.defaults = defaults
         self.thumbnails = thumbnails
         self.renderThumbnail = renderThumbnail
-        if let data = defaults.data(forKey: key),
-            let decoded = try? JSONDecoder().decode([Capture].self, from: data)
-        {
-            // Same eviction invariant as `add`: cap at `limit` by dropping the oldest
-            // UNPINNED entries, but keep at least one unpinned entry — a fully-pinned
-            // list legitimately persists one capture over `limit` (`add` protects the
-            // newcomer), and a blunt prefix() dropped that newest capture on relaunch.
-            // Pins are never evicted; a hand-inflated blob degrades to pins + 1.
-            var restored = Self.ordered(decoded)
-            while restored.count > Self.limit {
-                let unpinned = restored.indices.filter { !restored[$0].isPinned }
+        if let preference = defaults.object(forKey: Self.enabledKey) {
+            isEnabled = preference as? Bool ?? false
+        } else {
+            isEnabled = true
+        }
+        if let data = defaults.data(forKey: key) {
+            let archive = HistoryArchiveRecovery.decode(data)
+            captures = Self.ordered(archive.captures)
+            needsRecovery = archive.needsRecovery
+            hasLegacyHistory = defaults.integer(forKey: Self.privacyVersionKey) < 1
+            // Retain pins and at least one unpinned capture, matching insertion.
+            while captures.count > Self.limit {
+                let unpinned = captures.indices.filter { !captures[$0].isPinned }
                 guard unpinned.count > 1, let oldest = unpinned.last else { break }
-                restored.remove(at: oldest)
+                captures.remove(at: oldest)
             }
-            captures = restored
         } else {
             captures = []
+            // A value of the wrong storage type is damage too, not an empty history.
+            needsRecovery = defaults.object(forKey: key) != nil
+            hasLegacyHistory = needsRecovery
         }
         // A relaunch restores the capture list from defaults but the cache lives on
         // disk independently; drop any thumbnail whose capture is no longer recent
         // so the cache cannot grow unbounded across launches.
+        if !needsRecovery { thumbnails.prune(keeping: Set(captures.map(\.id))) }
+    }
+
+    /// Records only the approved text. No record, thumbnail or pending-original file
+    /// is created before the synchronous, per-capture consent decision completes.
+    @discardableResult
+    func record(_ config: SnapshotConfig, consent: ConsentResolver? = nil) -> RetentionResult {
+        retain(config, consent: consent) { text in
+            Capture(code: text, languageID: config.language.rawValue, themeID: config.theme.id)
+        }
+    }
+
+    @discardableResult
+    func add(_ capture: Capture, consent: ConsentResolver? = nil) -> RetentionResult {
+        let config = SnapshotConfig(code: capture.code, language: capture.language)
+        return retain(config, consent: consent) { text in
+            var retained = capture
+            retained.code = text
+            return retained
+        }
+    }
+
+    private func retain(
+        _ config: SnapshotConfig, consent: ConsentResolver?, makeCapture: (String) -> Capture
+    ) -> RetentionResult {
+        retentionGeneration += 1
+        let generation = retentionGeneration
+        guard isEnabled, !needsRecovery else { return .omitted }
+        let text: String
+        switch CaptureRetentionPolicy.decide(config) {
+        case .omit: return .omitted
+        case .safe(let safe): text = safe
+        case .requiresConsent(let original, let sanitized):
+            guard let consent else { return .requiresConsent }
+            switch consent(.requiresConsent(original: original, sanitized: sanitized)) {
+            case .doNotSave: return .omitted
+            case .saveSanitized: text = sanitized
+            case .keepOriginal: text = original
+            }
+        }
+        // Consent may run a modal UI. Disabling/clearing history or another capture
+        // during that interaction invalidates the older request rather than reviving it.
+        guard generation == retentionGeneration, isEnabled, !needsRecovery else { return .omitted }
+        insert(makeCapture(text))
+        return .saved
+    }
+
+    /// Explicitly replaces a damaged archive with its valid entries. Until this
+    /// decision, all mutations except a complete purge leave original bytes intact.
+    func recoverAvailableCaptures() {
+        guard needsRecovery, !captures.isEmpty else { return }
+        needsRecovery = false
+        persist()
         thumbnails.prune(keeping: Set(captures.map(\.id)))
+    }
+
+    func acknowledgeLegacyHistory() {
+        hasLegacyHistory = false
+        defaults.set(1, forKey: Self.privacyVersionKey)
     }
 
     /// Inserts `capture`, removing any existing entry with identical code, orders
     /// pins first, caps the list at `limit`, renders its thumbnail into the cache,
     /// and prunes thumbnails for any capture that fell off the list.
-    func add(_ capture: Capture) {
+    private func insert(_ capture: Capture) {
         var capture = capture
         if captures.first(where: { $0.code == capture.code })?.isPinned == true {
             capture.isPinned = true
@@ -119,6 +198,9 @@ final class RecentsStore {
     }
 
     func clear() {
+        retentionGeneration += 1
+        needsRecovery = false
+        acknowledgeLegacyHistory()
         captures.removeAll()
         decodedThumbnails.removeAll()
         persist()
@@ -130,6 +212,8 @@ final class RecentsStore {
     /// without comparing store snapshots.
     @discardableResult
     func clearUnpinned() -> Int {
+        guard !needsRecovery else { return 0 }
+        retentionGeneration += 1
         let originalCount = captures.count
         captures.removeAll { !$0.isPinned }
         let removedCount = originalCount - captures.count
@@ -147,6 +231,8 @@ final class RecentsStore {
     /// the persisted list unnecessarily.
     @discardableResult
     func remove(id: Capture.ID) -> Bool {
+        guard !needsRecovery else { return false }
+        retentionGeneration += 1
         guard captures.contains(where: { $0.id == id }) else { return false }
         captures.removeAll { $0.id == id }
         decodedThumbnails[id] = nil
@@ -159,6 +245,7 @@ final class RecentsStore {
     /// Unknown ids are harmless so stale menus cannot mutate another capture.
     @discardableResult
     func updatePinned(id: Capture.ID, isPinned: Bool) -> Bool {
+        guard !needsRecovery else { return false }
         guard let index = captures.firstIndex(where: { $0.id == id }) else { return false }
         guard captures[index].isPinned != isPinned else { return true }
         captures[index].isPinned = isPinned
@@ -189,8 +276,10 @@ final class RecentsStore {
     }
 
     private func persist() {
+        guard !needsRecovery else { return }
         if let data = try? JSONEncoder().encode(captures) {
             defaults.set(data, forKey: key)
+            if !hasLegacyHistory { defaults.set(1, forKey: Self.privacyVersionKey) }
         }
     }
 
